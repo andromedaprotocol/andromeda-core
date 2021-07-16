@@ -1,0 +1,13 @@
+[package]
+name = "andromeda-protocol"
+version = "0.1.0"
+authors = ["Connor Barr <crnbarr@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cosmwasm-std = { version = "0.10.1" }
+serde = { version = "1.0.103", default-features = false, features = ["derive"] }
+schemars = "0.7"
+andromeda-extensions = { version = "0.1.0", path = "../andromeda_extensions" }
