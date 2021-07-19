@@ -1,6 +1,7 @@
 use crate::hook::InitHook;
+use crate::require::require;
 use andromeda_extensions::extension::Extension;
-use cosmwasm_std::{HumanAddr, Uint128};
+use cosmwasm_std::{HumanAddr, StdResult, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +19,12 @@ pub struct InitMsg {
     pub symbol: String,
     pub extensions: Vec<Extension>,
     pub init_hook: Option<InitHook>,
+}
+
+impl InitMsg {
+    fn validate(&self) -> StdResult<bool> {
+        Ok(true)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
