@@ -1,2 +1,0 @@
-83eeb4cdef5d11289ec293374f47ba4d9afafa5dd2a3b436ced50e46d7239cb3  andromeda_factory.wasm
-53c8119f2aa51e111e860e3cbd9865aa4ba0160c518c81393fcc1205e67bf6bf  andromeda_token.wasm
