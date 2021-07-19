@@ -1,0 +1,11 @@
+{
+  "name": "my-terra-contract",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "author": "William Chen <wchen298@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@terra-money/terra.js": "1.7.0"
+  }
+}
