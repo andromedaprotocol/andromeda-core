@@ -11,13 +11,16 @@ pub struct InitMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
+    //Create new token
     Create {
         name: String,
         symbol: String,
         extensions: Vec<Extension>,
     },
+    //Called by instantiated token contract to store address
     TokenCreationHook {
         symbol: String,
+        creator: HumanAddr
     },
 }
 

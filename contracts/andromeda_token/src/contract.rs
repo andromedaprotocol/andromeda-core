@@ -1,12 +1,7 @@
-use andromeda_extensions::extension::Extension;
-use andromeda_protocol::{
-    hook::InitHook,
-    require::require,
-    token::{HandleMsg, InitMsg, OwnerResponse, QueryMsg},
-};
+use andromeda_protocol::token::{HandleMsg, InitMsg, OwnerResponse, QueryMsg};
 use cosmwasm_std::{
-    to_binary, Api, Binary, CanonicalAddr, CosmosMsg, Env, Extern, HandleResponse, InitResponse,
-    Querier, StdError, StdResult, Storage, WasmMsg,
+    to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, InitResponse, Querier,
+    StdResult, Storage, WasmMsg,
 };
 
 use crate::state::{get_owner, store_config, store_owner, TokenConfig};
@@ -93,6 +88,7 @@ mod tests {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             extensions: vec![],
+            creator: HumanAddr::from("creator"),
             init_hook: None,
         };
 

@@ -13,6 +13,7 @@ pub struct TransferAgreement {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
+    pub creator: HumanAddr,
     pub name: String,
     pub symbol: String,
     pub extensions: Vec<Extension>,
