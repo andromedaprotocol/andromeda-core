@@ -21,8 +21,19 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         symbol: msg.symbol,
     };
 
-    store_config(&mut deps.storage, &config);
-    Ok(InitResponse::default())
+    store_config(&mut deps.storage, &config)?;
+
+    match msg.init_hook {
+        Some(hook) => Ok(InitResponse {
+            messages: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: hook.contract_addr,
+                msg: hook.msg,
+                send: vec![],
+            })],
+            log: vec![],
+        }),
+        None => Ok(InitResponse::default()),
+    }
 }
 
 pub fn handle<S: Storage, A: Api, Q: Querier>(
