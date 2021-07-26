@@ -1,7 +1,7 @@
 use andromeda_protocol::token::{HandleMsg, InitMsg, OwnerResponse, QueryMsg};
 use cosmwasm_std::{
     to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, InitResponse, Querier,
-    StdResult, Storage, WasmMsg,
+    StdError, StdResult, Storage, WasmMsg,
 };
 
 use crate::state::{get_owner, store_config, store_owner, TokenConfig};
@@ -14,21 +14,24 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     let config = TokenConfig {
         name: msg.name,
         symbol: msg.symbol,
+        creator: msg.creator,
     };
 
-    store_config(&mut deps.storage, &config)?;
+    Err(StdError::unauthorized())
 
-    match msg.init_hook {
-        Some(hook) => Ok(InitResponse {
-            messages: vec![CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: hook.contract_addr,
-                msg: hook.msg,
-                send: vec![],
-            })],
-            log: vec![],
-        }),
-        None => Ok(InitResponse::default()),
-    }
+    // store_config(&mut deps.storage, &config)?;
+
+    // match msg.init_hook {
+    //     Some(hook) => Ok(InitResponse {
+    //         messages: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+    //             contract_addr: hook.contract_addr,
+    //             msg: hook.msg,
+    //             send: vec![],
+    //         })],
+    //         log: vec![],
+    //     }),
+    //     None => Ok(InitResponse::default()),
+    // }
 }
 
 pub fn handle<S: Storage, A: Api, Q: Querier>(

@@ -1,4 +1,4 @@
-use andromeda_extensions::extension::Extension;
+use andromeda_modules::modules::ModuleDefinition;
 use cosmwasm_std::HumanAddr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -15,12 +15,12 @@ pub enum HandleMsg {
     Create {
         name: String,
         symbol: String,
-        extensions: Vec<Extension>,
+        extensions: Vec<ModuleDefinition>,
     },
     //Called by instantiated token contract to store address
     TokenCreationHook {
         symbol: String,
-        creator: HumanAddr
+        creator: HumanAddr,
     },
 }
 

@@ -25,7 +25,6 @@ async function storeCodeId(path) {
     });
 
     const result = await lt.tx.broadcast(tx);
-    console.log("RES", result);
     return getCodeId(result);
   } catch (error) {
     console.error(error.response ? error.response.data.error : error);

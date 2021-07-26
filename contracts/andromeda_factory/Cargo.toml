@@ -37,7 +37,7 @@ schemars = "0.7"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 snafu = { version = "0.6.3" }
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
-andromeda-extensions = { version = "0.1.0", path = "../../packages/andromeda_extensions" }
+andromeda-modules = { version = "0.1.0", path = "../../packages/andromeda_modules" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.10.1" }

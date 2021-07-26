@@ -10,4 +10,4 @@ edition = "2018"
 cosmwasm-std = { version = "0.10.1" }
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 schemars = "0.7"
-andromeda-extensions = { version = "0.1.0", path = "../andromeda_extensions" }
+andromeda-modules = { version = "0.1.0", path = "../andromeda_modules" }

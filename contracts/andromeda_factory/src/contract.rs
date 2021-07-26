@@ -1,4 +1,4 @@
-use andromeda_extensions::extension::Extension;
+use andromeda_modules::modules::ModuleDefinition;
 use andromeda_protocol::{
     factory::{AddressResponse, HandleMsg, InitMsg, QueryMsg},
     hook::InitHook,
@@ -6,12 +6,13 @@ use andromeda_protocol::{
     token::InitMsg as TokenInitMsg,
 };
 use cosmwasm_std::{
-    to_binary, Api, Binary, CanonicalAddr, CosmosMsg, Env, Extern, HandleResponse, InitResponse,
-    Querier, StdError, StdResult, Storage, WasmMsg, HumanAddr
+    to_binary, Api, Binary, CanonicalAddr, CosmosMsg, Env, Extern, HandleResponse, HumanAddr,
+    InitResponse, Querier, StdError, StdResult, Storage, WasmMsg,
 };
 
 use crate::state::{
-    is_address_defined, read_address, read_config, store_address, store_config, Config, store_creator, read_creator
+    is_address_defined, read_address, read_config, store_address, store_config, store_creator,
+    Config,
 };
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
@@ -41,7 +42,9 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             name,
             extensions,
         } => create(deps, env, name, symbol, extensions),
-        HandleMsg::TokenCreationHook { symbol, creator } => token_creation(deps, env, symbol, creator),
+        HandleMsg::TokenCreationHook { symbol, creator } => {
+            token_creation(deps, env, symbol, creator)
+        }
     }
 }
 
@@ -125,6 +128,7 @@ fn query_address<S: Storage, A: Api, Q: Querier>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::read_creator;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::{coins, from_binary};
 
@@ -175,7 +179,7 @@ mod tests {
                 init_hook: Some(InitHook {
                     msg: to_binary(&HandleMsg::TokenCreationHook {
                         symbol: TOKEN_SYMBOL.to_string(),
-                        creator: HumanAddr::from("creator")
+                        creator: HumanAddr::from("creator"),
                     })
                     .unwrap(),
                     contract_addr: mock_env("creator", &coins(1000, "earth")).contract.address,
@@ -202,7 +206,7 @@ mod tests {
 
         let msg = HandleMsg::TokenCreationHook {
             symbol: TOKEN_SYMBOL.to_string(),
-            creator: HumanAddr::from("creator")
+            creator: HumanAddr::from("creator"),
         };
 
         let res = handle(&mut deps, env.clone(), msg).unwrap();
@@ -219,7 +223,7 @@ mod tests {
         assert_eq!(env.message.sender, addr_val.address);
         let creator = match read_creator(&deps.storage, TOKEN_SYMBOL.to_string()) {
             Ok(addr) => addr,
-            _ => HumanAddr::default()
+            _ => HumanAddr::default(),
         };
         assert_eq!(env.message.sender, creator)
     }

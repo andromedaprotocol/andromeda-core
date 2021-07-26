@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct TokenConfig {
     pub name: String,
     pub symbol: String,
+    pub creator: HumanAddr,
 }
 
 static CONFIG_KEY: &[u8] = b"config";
