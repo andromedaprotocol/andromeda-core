@@ -11,8 +11,8 @@ use cosmwasm_std::{
 };
 
 use crate::state::{
-    is_address_defined, read_address, read_config, store_address, store_config, store_creator,
-    Config,
+    is_address_defined, is_creator, read_address, read_config, store_address, store_config,
+    store_creator, Config,
 };
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
@@ -45,6 +45,10 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         HandleMsg::TokenCreationHook { symbol, creator } => {
             token_creation(deps, env, symbol, creator)
         }
+        HandleMsg::UpdateAddress {
+            symbol,
+            new_address,
+        } => update_address(deps, env, symbol, new_address),
     }
 }
 
@@ -92,7 +96,6 @@ pub fn token_creation<S: Storage, A: Api, Q: Querier>(
     symbol: String,
     creator: HumanAddr,
 ) -> StdResult<HandleResponse> {
-    //TODO: VALIDATE IF MESSAGE FROM CONTRACT
     require(
         !is_address_defined(&deps.storage, symbol.to_string())?,
         StdError::unauthorized(),
@@ -102,6 +105,22 @@ pub fn token_creation<S: Storage, A: Api, Q: Querier>(
 
     store_address(&mut deps.storage, symbol.to_string(), address)?;
     store_creator(&mut deps.storage, &symbol.to_string(), &creator)?;
+
+    Ok(HandleResponse::default())
+}
+
+pub fn update_address<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    symbol: String,
+    new_address: HumanAddr,
+) -> StdResult<HandleResponse> {
+    require(
+        is_creator(&deps.storage, symbol.clone(), env.message.sender.clone())?,
+        StdError::unauthorized(),
+    )?;
+
+    store_address(&mut deps.storage, symbol.clone(), new_address.clone())?;
 
     Ok(HandleResponse::default())
 }
@@ -226,5 +245,45 @@ mod tests {
             _ => HumanAddr::default(),
         };
         assert_eq!(env.message.sender, creator)
+    }
+
+    #[test]
+    fn test_update_address() {
+        let creator = HumanAddr::from("creator");
+        let mut deps = mock_dependencies(20, &[]);
+        let env = mock_env(creator.clone(), &coins(1000, "earth"));
+
+        let msg = HandleMsg::TokenCreationHook {
+            symbol: TOKEN_SYMBOL.to_string(),
+            creator: creator.clone(),
+        };
+
+        let res = handle(&mut deps, env.clone(), msg).unwrap();
+
+        assert_eq!(res, HandleResponse::default());
+
+        let new_address = HumanAddr::from("new");
+        let update_msg = HandleMsg::UpdateAddress {
+            symbol: TOKEN_SYMBOL.to_string(),
+            new_address: new_address.clone(),
+        };
+
+        let update_res = handle(&mut deps, env.clone(), update_msg.clone()).unwrap();
+
+        assert_eq!(update_res, HandleResponse::default());
+
+        let query_msg = QueryMsg::GetAddress {
+            symbol: TOKEN_SYMBOL.to_string(),
+        };
+
+        let addr_res = query(&deps, query_msg).unwrap();
+        let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
+
+        assert_eq!(new_address.clone(), addr_val.address);
+
+        let unauth_env = mock_env(HumanAddr::from("notcreator"), &coins(1000, "earth"));
+        let unauth_res = handle(&mut deps, unauth_env.clone(), update_msg.clone()).unwrap_err();
+
+        assert_eq!(unauth_res, StdError::unauthorized());
     }
 }

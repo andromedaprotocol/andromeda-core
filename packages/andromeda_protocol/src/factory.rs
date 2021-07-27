@@ -22,6 +22,10 @@ pub enum HandleMsg {
         symbol: String,
         creator: HumanAddr,
     },
+    UpdateAddress {
+        symbol: String,
+        new_address: HumanAddr,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

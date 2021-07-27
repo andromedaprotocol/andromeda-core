@@ -1,7 +1,6 @@
 use andromeda_protocol::token::{HandleMsg, InitMsg, OwnerResponse, QueryMsg};
 use cosmwasm_std::{
-    to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, InitResponse, Querier,
-    StdError, StdResult, Storage, WasmMsg,
+    to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, InitResponse, Querier, StdResult, Storage, WasmMsg,
 };
 
 use crate::state::{get_owner, store_config, store_owner, TokenConfig};
