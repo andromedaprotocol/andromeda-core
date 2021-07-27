@@ -28,7 +28,7 @@ This package contains the definition of an Andromeda Module, alongside any behav
 Each module is defined using the `ModuleDefinition` enum which contains what data must be sent with a module in order for it to be initialized:
 
 ```rust
-pub enum ModuleDefinition {
+enum ModuleDefinition {
     WhiteList { moderators: Vec<HumanAddr> },
     Taxable { tax: Fee, receivers: Vec<HumanAddr> },
     Royalties { fee: Fee, receivers: Vec<HumanAddr> },
@@ -38,7 +38,7 @@ pub enum ModuleDefinition {
 Several of the `Module` trait's methods return a `HookResponse` struct:
 
 ```rust
-pub struct HookResponse {
+struct HookResponse {
     pub msgs: Vec<CosmosMsg>,
     pub logs: Vec<LogAttribute>,
 }
@@ -102,7 +102,7 @@ fn pre_publish<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     token_id: i64,
-) -> StdResult<HookResponse
+) -> StdResult<HookResponse>
 ```
 
 #### Parameters
