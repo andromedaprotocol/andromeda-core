@@ -1,6 +1,7 @@
 use crate::whitelist::Whitelist;
 use cosmwasm_std::{
-    Api, Coin, CosmosMsg, Env, Extern, HumanAddr, LogAttribute, Querier, StdResult, Storage,
+    Api, Coin, CosmosMsg, Env, Extern, HumanAddr, LogAttribute, Querier, StdError, StdResult,
+    Storage,
 };
 use cosmwasm_storage::{singleton, singleton_read};
 use schemars::JsonSchema;
@@ -115,7 +116,13 @@ pub fn store_modules<S: Storage>(
 }
 
 pub fn read_modules<S: Storage>(storage: &S) -> StdResult<Vec<impl Module>> {
-    let module_defs = singleton_read(storage, KEY_MODULES).load()?;
+    match singleton_read(storage, KEY_MODULES).load() {
+        Ok(defs) => Ok(as_modules(defs)),
+        Err(err) => match err {
+            StdError::NotFound { .. } => Ok(vec![]),
+            _ => Err(err),
+        },
+    }
 
-    Ok(as_modules(module_defs))
+    // Ok(as_modules(module_defs))
 }
