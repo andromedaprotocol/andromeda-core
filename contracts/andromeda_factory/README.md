@@ -1,6 +1,13 @@
 # Andromeda Factory
 
-A repository containing the NFT contract for Andromeda Protocol on Terra.
+A repository containing the NFT contract for Andromeda Protocol on Terra. This contract's primary purpose is to initialise and register ADO collections. Registration is done by a mapping between the ADO collection's symbol and the contract address for the given ADO collection.
+
+## Testing
+Testing can be performed using:
+
+```
+cargo test
+```
 
 ## Messages
 All message structs are defined [here](https://github.com/andromedaprotocol/andromeda-contracts/blob/main/packages/andromeda_protocol/src/factory.rs)
@@ -62,7 +69,7 @@ struct GetAddress {
 }
 ```
 
-Response
+**Response**
 ```rust
 struct AddressResponse {
     pub address: HumanAddr,
