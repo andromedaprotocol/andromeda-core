@@ -13,7 +13,7 @@ A monorepository containing all the contracts and packages related to Andromeda 
 | Contract      | Description |
 | ----------- | ----------- |
 | [andromeda_modules](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/packages/andromeda_modules) | Package used to define behaviour of Andromeda modules |
-| [andromeda_protocol]https://github.com/andromedaprotocol/andromeda-contracts/tree/main/packages/andromeda_protocol)      | Package used to define message types and various utility methods used by Andromeda ADO Contracts. |
+| [andromeda_protocol](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/packages/andromeda_protocol)      | Package used to define message types and various utility methods used by Andromeda ADO Contracts. |
 
 ## Development
 
