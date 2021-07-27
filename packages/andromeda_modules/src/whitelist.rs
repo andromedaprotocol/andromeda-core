@@ -1,4 +1,4 @@
-use cosmwasm_std::{Api, Coin, Env, Extern, HumanAddr, Querier, StdError, StdResult, Storage};
+use cosmwasm_std::{Api, Env, Extern, HumanAddr, Querier, StdError, StdResult, Storage};
 use cosmwasm_storage::{bucket, bucket_read};
 
 use crate::{
@@ -47,11 +47,10 @@ impl Module for Whitelist {
             moderators: self.moderators.to_vec(),
         }
     }
-    fn pre_publish<S: Storage, A: Api, Q: Querier>(
+    fn pre_handle<S: Storage, A: Api, Q: Querier>(
         &self,
         deps: &mut Extern<S, A, Q>,
         env: Env,
-        _token_id: i64,
     ) -> StdResult<HookResponse> {
         require(
             self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
@@ -60,69 +59,82 @@ impl Module for Whitelist {
 
         Ok(HookResponse::default())
     }
-    fn pre_transfer<S: Storage, A: Api, Q: Querier>(
-        &self,
-        deps: &mut Extern<S, A, Q>,
-        env: Env,
-        _token_id: i64,
-        _from: HumanAddr,
-        _to: HumanAddr,
-    ) -> StdResult<HookResponse> {
-        require(
-            self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
-            StdError::unauthorized(),
-        )?;
+    // fn pre_publish<S: Storage, A: Api, Q: Querier>(
+    //     &self,
+    //     deps: &mut Extern<S, A, Q>,
+    //     env: Env,
+    //     _token_id: i64,
+    // ) -> StdResult<HookResponse> {
+    //     require(
+    //         self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
+    //         StdError::unauthorized(),
+    //     )?;
 
-        Ok(HookResponse::default())
-    }
-    fn pre_transfer_agreement<S: Storage, A: Api, Q: Querier>(
-        &self,
-        deps: &mut Extern<S, A, Q>,
-        env: Env,
-        _token_id: i64,
-        _amount: Coin,
-        _buyer: HumanAddr,
-    ) -> StdResult<HookResponse> {
-        require(
-            self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
-            StdError::unauthorized(),
-        )?;
+    //     Ok(HookResponse::default())
+    // }
+    // fn pre_transfer<S: Storage, A: Api, Q: Querier>(
+    //     &self,
+    //     deps: &mut Extern<S, A, Q>,
+    //     env: Env,
+    //     _token_id: i64,
+    //     _from: HumanAddr,
+    //     _to: HumanAddr,
+    // ) -> StdResult<HookResponse> {
+    //     require(
+    //         self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
+    //         StdError::unauthorized(),
+    //     )?;
 
-        Ok(HookResponse::default())
-    }
-    fn pre_burn<S: Storage, A: Api, Q: Querier>(
-        &self,
-        deps: &mut Extern<S, A, Q>,
-        env: Env,
-        _token_id: i64,
-    ) -> StdResult<HookResponse> {
-        require(
-            self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
-            StdError::unauthorized(),
-        )?;
+    //     Ok(HookResponse::default())
+    // }
+    // fn pre_transfer_agreement<S: Storage, A: Api, Q: Querier>(
+    //     &self,
+    //     deps: &mut Extern<S, A, Q>,
+    //     env: Env,
+    //     _token_id: i64,
+    //     _amount: Coin,
+    //     _buyer: HumanAddr,
+    // ) -> StdResult<HookResponse> {
+    //     require(
+    //         self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
+    //         StdError::unauthorized(),
+    //     )?;
 
-        Ok(HookResponse::default())
-    }
-    fn pre_archive<S: Storage, A: Api, Q: Querier>(
-        &self,
-        deps: &mut Extern<S, A, Q>,
-        env: Env,
-        _token_id: i64,
-    ) -> StdResult<HookResponse> {
-        require(
-            self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
-            StdError::unauthorized(),
-        )?;
+    //     Ok(HookResponse::default())
+    // }
+    // fn pre_burn<S: Storage, A: Api, Q: Querier>(
+    //     &self,
+    //     deps: &mut Extern<S, A, Q>,
+    //     env: Env,
+    //     _token_id: i64,
+    // ) -> StdResult<HookResponse> {
+    //     require(
+    //         self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
+    //         StdError::unauthorized(),
+    //     )?;
 
-        Ok(HookResponse::default())
-    }
+    //     Ok(HookResponse::default())
+    // }
+    // fn pre_archive<S: Storage, A: Api, Q: Querier>(
+    //     &self,
+    //     deps: &mut Extern<S, A, Q>,
+    //     env: Env,
+    //     _token_id: i64,
+    // ) -> StdResult<HookResponse> {
+    //     require(
+    //         self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
+    //         StdError::unauthorized(),
+    //     )?;
+
+    //     Ok(HookResponse::default())
+    // }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use cosmwasm_std::{
-        coin, coins,
+        coins,
         testing::{mock_dependencies, mock_env},
     };
 
@@ -148,129 +160,148 @@ mod tests {
     }
 
     #[test]
-    fn test_pre_publish() {
+    fn test_pre_handle() {
         let sender = HumanAddr::from("sender");
         let mut deps = mock_dependencies(20, &[]);
         let env = mock_env(sender.clone(), &coins(1000, "earth"));
         let wl = Whitelist { moderators: vec![] };
 
-        let resp = wl.pre_publish(&mut deps, env.clone(), 1).unwrap_err();
+        let resp = wl.pre_handle(&mut deps, env.clone()).unwrap_err();
 
         assert_eq!(resp, StdError::unauthorized());
 
         wl.whitelist_addr(&mut deps.storage, &sender.clone())
             .unwrap();
 
-        let resp = wl.pre_publish(&mut deps, env.clone(), 1).unwrap();
+        let resp = wl.pre_handle(&mut deps, env.clone()).unwrap();
 
         assert_eq!(resp, HookResponse::default());
     }
 
-    #[test]
-    fn test_pre_transfer() {
-        let sender = HumanAddr::from("sender");
-        let mut deps = mock_dependencies(20, &[]);
-        let env = mock_env(sender.clone(), &coins(1000, "earth"));
-        let wl = Whitelist { moderators: vec![] };
+    // #[test]
+    // fn test_pre_publish() {
+    //     let sender = HumanAddr::from("sender");
+    //     let mut deps = mock_dependencies(20, &[]);
+    //     let env = mock_env(sender.clone(), &coins(1000, "earth"));
+    //     let wl = Whitelist { moderators: vec![] };
 
-        let resp = wl
-            .pre_transfer(
-                &mut deps,
-                env.clone(),
-                1,
-                HumanAddr::default(),
-                HumanAddr::default(),
-            )
-            .unwrap_err();
+    //     let resp = wl.pre_publish(&mut deps, env.clone(), 1).unwrap_err();
 
-        assert_eq!(resp, StdError::unauthorized());
+    //     assert_eq!(resp, StdError::unauthorized());
 
-        wl.whitelist_addr(&mut deps.storage, &sender.clone())
-            .unwrap();
+    //     wl.whitelist_addr(&mut deps.storage, &sender.clone())
+    //         .unwrap();
 
-        let resp = wl
-            .pre_transfer(
-                &mut deps,
-                env.clone(),
-                1,
-                HumanAddr::default(),
-                HumanAddr::default(),
-            )
-            .unwrap();
+    //     let resp = wl.pre_publish(&mut deps, env.clone(), 1).unwrap();
 
-        assert_eq!(resp, HookResponse::default());
-    }
+    //     assert_eq!(resp, HookResponse::default());
+    // }
 
-    #[test]
-    fn test_pre_transfer_agreement() {
-        let sender = HumanAddr::from("sender");
-        let mut deps = mock_dependencies(20, &[]);
-        let env = mock_env(sender.clone(), &coins(1000, "earth"));
-        let wl = Whitelist { moderators: vec![] };
+    // #[test]
+    // fn test_pre_transfer() {
+    //     let sender = HumanAddr::from("sender");
+    //     let mut deps = mock_dependencies(20, &[]);
+    //     let env = mock_env(sender.clone(), &coins(1000, "earth"));
+    //     let wl = Whitelist { moderators: vec![] };
 
-        let resp = wl
-            .pre_transfer_agreement(
-                &mut deps,
-                env.clone(),
-                1,
-                coin(100, "earth"),
-                HumanAddr::default(),
-            )
-            .unwrap_err();
+    //     let resp = wl
+    //         .pre_transfer(
+    //             &mut deps,
+    //             env.clone(),
+    //             1,
+    //             HumanAddr::default(),
+    //             HumanAddr::default(),
+    //         )
+    //         .unwrap_err();
 
-        assert_eq!(resp, StdError::unauthorized());
+    //     assert_eq!(resp, StdError::unauthorized());
 
-        wl.whitelist_addr(&mut deps.storage, &sender.clone())
-            .unwrap();
+    //     wl.whitelist_addr(&mut deps.storage, &sender.clone())
+    //         .unwrap();
 
-        let resp = wl
-            .pre_transfer(
-                &mut deps,
-                env.clone(),
-                1,
-                HumanAddr::default(),
-                HumanAddr::default(),
-            )
-            .unwrap();
+    //     let resp = wl
+    //         .pre_transfer(
+    //             &mut deps,
+    //             env.clone(),
+    //             1,
+    //             HumanAddr::default(),
+    //             HumanAddr::default(),
+    //         )
+    //         .unwrap();
 
-        assert_eq!(resp, HookResponse::default());
-    }
+    //     assert_eq!(resp, HookResponse::default());
+    // }
 
-    #[test]
-    fn test_pre_burn() {
-        let sender = HumanAddr::from("sender");
-        let mut deps = mock_dependencies(20, &[]);
-        let env = mock_env(sender.clone(), &coins(1000, "earth"));
-        let wl = Whitelist { moderators: vec![] };
+    // #[test]
+    // fn test_pre_transfer_agreement() {
+    //     let sender = HumanAddr::from("sender");
+    //     let mut deps = mock_dependencies(20, &[]);
+    //     let env = mock_env(sender.clone(), &coins(1000, "earth"));
+    //     let wl = Whitelist { moderators: vec![] };
 
-        let resp = wl.pre_burn(&mut deps, env.clone(), 1).unwrap_err();
+    //     let resp = wl
+    //         .pre_transfer_agreement(
+    //             &mut deps,
+    //             env.clone(),
+    //             1,
+    //             coin(100, "earth"),
+    //             HumanAddr::default(),
+    //         )
+    //         .unwrap_err();
 
-        assert_eq!(resp, StdError::unauthorized());
+    //     assert_eq!(resp, StdError::unauthorized());
 
-        wl.whitelist_addr(&mut deps.storage, &sender.clone())
-            .unwrap();
+    //     wl.whitelist_addr(&mut deps.storage, &sender.clone())
+    //         .unwrap();
 
-        let resp = wl.pre_burn(&mut deps, env.clone(), 1).unwrap();
+    //     let resp = wl
+    //         .pre_transfer(
+    //             &mut deps,
+    //             env.clone(),
+    //             1,
+    //             HumanAddr::default(),
+    //             HumanAddr::default(),
+    //         )
+    //         .unwrap();
 
-        assert_eq!(resp, HookResponse::default());
-    }
+    //     assert_eq!(resp, HookResponse::default());
+    // }
 
-    #[test]
-    fn test_pre_archive() {
-        let sender = HumanAddr::from("sender");
-        let mut deps = mock_dependencies(20, &[]);
-        let env = mock_env(sender.clone(), &coins(1000, "earth"));
-        let wl = Whitelist { moderators: vec![] };
+    // #[test]
+    // fn test_pre_burn() {
+    //     let sender = HumanAddr::from("sender");
+    //     let mut deps = mock_dependencies(20, &[]);
+    //     let env = mock_env(sender.clone(), &coins(1000, "earth"));
+    //     let wl = Whitelist { moderators: vec![] };
 
-        let resp = wl.pre_archive(&mut deps, env.clone(), 1).unwrap_err();
+    //     let resp = wl.pre_burn(&mut deps, env.clone(), 1).unwrap_err();
 
-        assert_eq!(resp, StdError::unauthorized());
+    //     assert_eq!(resp, StdError::unauthorized());
 
-        wl.whitelist_addr(&mut deps.storage, &sender.clone())
-            .unwrap();
+    //     wl.whitelist_addr(&mut deps.storage, &sender.clone())
+    //         .unwrap();
 
-        let resp = wl.pre_archive(&mut deps, env.clone(), 1).unwrap();
+    //     let resp = wl.pre_burn(&mut deps, env.clone(), 1).unwrap();
 
-        assert_eq!(resp, HookResponse::default());
-    }
+    //     assert_eq!(resp, HookResponse::default());
+    // }
+
+    // #[test]
+    // fn test_pre_archive() {
+    //     let sender = HumanAddr::from("sender");
+    //     let mut deps = mock_dependencies(20, &[]);
+    //     let env = mock_env(sender.clone(), &coins(1000, "earth"));
+    //     let wl = Whitelist { moderators: vec![] };
+
+    //     let resp = wl.pre_archive(&mut deps, env.clone(), 1).unwrap_err();
+
+    //     assert_eq!(resp, StdError::unauthorized());
+
+    //     wl.whitelist_addr(&mut deps.storage, &sender.clone())
+    //         .unwrap();
+
+    //     let resp = wl.pre_archive(&mut deps, env.clone(), 1).unwrap();
+
+    //     assert_eq!(resp, HookResponse::default());
+    // }
 }

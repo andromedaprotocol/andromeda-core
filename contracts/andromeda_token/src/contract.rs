@@ -1,6 +1,8 @@
+use andromeda_modules::modules::{read_modules, store_modules, Module};
 use andromeda_protocol::token::{HandleMsg, InitMsg, OwnerResponse, QueryMsg};
 use cosmwasm_std::{
-    to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, InitResponse, Querier, StdResult, Storage, WasmMsg,
+    to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, InitResponse, Querier,
+    StdResult, Storage, WasmMsg,
 };
 
 use crate::state::{get_owner, store_config, store_owner, TokenConfig};
@@ -19,6 +21,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     };
 
     store_config(&mut deps.storage, &config)?;
+    store_modules(&mut deps.storage, msg.modules)?;
 
     match msg.init_hook {
         Some(hook) => Ok(InitResponse {
@@ -38,6 +41,11 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     env: Env,
     msg: HandleMsg,
 ) -> StdResult<HandleResponse> {
+    let modules = read_modules(&deps.storage)?;
+    for module in modules {
+        module.pre_handle(deps, env.clone())?;
+    }
+
     match msg {
         HandleMsg::Mint { token_id } => mint(deps, env, token_id),
     }
