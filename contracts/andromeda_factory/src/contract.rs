@@ -53,7 +53,7 @@ pub fn create<S: Storage, A: Api, Q: Querier>(
     env: Env,
     name: String,
     symbol: String,
-    extensions: Vec<Extension>,
+    extensions: Vec<ModuleDefinition>,
 ) -> StdResult<HandleResponse> {
     let config = read_config(&deps.storage)?;
 

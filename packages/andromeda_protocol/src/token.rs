@@ -1,6 +1,6 @@
 use crate::hook::InitHook;
 use crate::require::require;
-use andromeda_extensions::extension::Extension;
+use andromeda_modules::modules::ModuleDefinition;
 use cosmwasm_std::{HumanAddr, StdResult, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,7 @@ pub struct InitMsg {
     pub creator: HumanAddr,
     pub name: String,
     pub symbol: String,
-    pub extensions: Vec<Extension>,
+    pub extensions: Vec<ModuleDefinition>,
     pub init_hook: Option<InitHook>,
 }
 
@@ -104,7 +104,7 @@ pub struct ArchivedResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ExtensionsResponse {
-    pub extensions: Vec<Extension>,
+    pub extensions: Vec<ModuleDefinition>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

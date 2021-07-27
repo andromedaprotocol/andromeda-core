@@ -36,7 +36,11 @@ pub fn read_address<S: Storage>(storage: &S, symbol: String) -> StdResult<HumanA
     }
 }
 
-pub fn store_creator<S: Storage>(storage: &mut S, symbol: &String, creator: &HumanAddr) -> StdResult<()> {
+pub fn store_creator<S: Storage>(
+    storage: &mut S,
+    symbol: &String,
+    creator: &HumanAddr,
+) -> StdResult<()> {
     bucket(NS_CREATOR, storage).save(symbol.as_bytes(), creator)
 }
 
@@ -57,6 +61,6 @@ pub fn is_address_defined<S: Storage>(storage: &S, symbol: String) -> StdResult<
 pub fn is_creator<S: Storage>(storage: &S, symbol: String, address: HumanAddr) -> StdResult<bool> {
     match read_creator(storage, symbol) {
         Ok(creator) => Ok(address == creator),
-        Err(_e) => Ok(false)
+        Err(_e) => Ok(false),
     }
 }
