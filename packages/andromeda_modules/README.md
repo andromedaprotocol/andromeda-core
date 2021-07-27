@@ -25,9 +25,15 @@ This package contains the definition of an Andromeda Module, alongside any behav
 
 ## Module Trait
 Each module implements the following functions:
+<br />
 
-#### `validate -> StdResult<bool>`
+### Validate
 Validates the module definition and that it does not collide with any other module defined for the token. Errors if the definition is invalid.
+
+```rust
+fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
+```
+
 
 #### Parameters
 
@@ -35,12 +41,24 @@ Validates the module definition and that it does not collide with any other modu
 | ----------- | ----------- | ----------- |
 | `modules`      |   `Vec<ModuleDefinition>` | The vector of modules defined for the given token. |
 
-
-#### `as_definition -> ModuleDefinition`
+### As Definition
 Returns the module as a `ModuleDefinition` enum.
 
-#### `pre_publish -> StdResult<HookResponse>`
-Validates the module definition and that it does not collide with any other module defined for the token. Errors if the definition is invalid.
+```rust
+fn as_definition(&self) -> ModuleDefinition
+```
+
+### Pre Publish
+
+A hook allowing access to data related to an ADO being published. This hook is called when a `HandleMsg::Publish` message is received.
+```rust
+fn pre_publish<S: Storage, A: Api, Q: Querier>(
+    &self,
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    token_id: i64,
+) -> StdResult<HookResponse
+```
 
 #### Parameters
 
@@ -48,8 +66,61 @@ Validates the module definition and that it does not collide with any other modu
 | ----------- | ----------- | ----------- |
 | `token_id`      |   `i64` | The ID of the ADO to be published. |
 
-#### `pre_publish -> StdResult<HookResponse>`
-Validates the module definition and that it does not collide with any other module defined for the token. Errors if the definition is invalid.
+### Pre Transfer
+A hook allowing access to data related to an ADO being transferred. This hook is called when a `HandleMsg::Transfer` message is received.
+
+```rust
+fn pre_transfer<S: Storage, A: Api, Q: Querier>(
+    &self,
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    token_id: i64,
+    from: HumanAddr,
+    to: HumanAddr,
+) -> StdResult<HookResponse>
+```
+
+#### Parameters
+
+| Parameter      | Type | Description |
+| ----------- | ----------- | ----------- |
+| `token_id`      |   `i64` | The ID of the ADO to be transferred. |
+| `from`      |   `HumanAddr` | The current owner of the published ADO. |
+| `to`      |   `HumanAddr` | The receiver of the published ADO. |
+
+### Pre Transfer Agreement
+A hook allowing access to data related to a transfer agreement between the ADO owner and a purchaser. This hook is called when a `HandleMsg::TransferAgreement` message is received.
+
+```rust
+fn pre_transfer_agreement<S: Storage, A: Api, Q: Querier>(
+    &self,
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    token_id: i64,
+    amount: Coin,
+    purchaser: HumanAddr,
+) -> StdResult<HookResponse>
+```
+
+#### Parameters
+
+| Parameter      | Type | Description |
+| ----------- | ----------- | ----------- |
+| `token_id`      |   `i64` | The ID of the ADO the agreement relates to. |
+| `amount`      |   `cosmwasm_std::Coin` | The agreed transfer amount. |
+| `purchaser`      |   `HumanAddr` | The agreed purchaser of the ADO. |
+
+### Pre Burn
+
+A hook allowing access to data related to an ADO being burnt. This hook is called when a `HandleMsg::Burn` message is received.
+```rust
+fn pre_burn<S: Storage, A: Api, Q: Querier>(
+    &self,
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    token_id: i64,
+) -> StdResult<HookResponse>
+```
 
 #### Parameters
 
@@ -57,8 +128,17 @@ Validates the module definition and that it does not collide with any other modu
 | ----------- | ----------- | ----------- |
 | `token_id`      |   `i64` | The ID of the ADO to be published. |
 
-#### `pre_publish -> StdResult<HookResponse>`
-Validates the module definition and that it does not collide with any other module defined for the token. Errors if the definition is invalid.
+### Pre Archive
+
+A hook allowing access to data related to an ADO being archived. This hook is called when a `HandleMsg::Archive` message is received.
+```rust
+fn pre_archive<S: Storage, A: Api, Q: Querier>(
+    &self,
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    token_id: i64,
+) -> StdResult<HookResponse>
+```
 
 #### Parameters
 
@@ -66,4 +146,3 @@ Validates the module definition and that it does not collide with any other modu
 | ----------- | ----------- | ----------- |
 | `token_id`      |   `i64` | The ID of the ADO to be published. |
 
-<i><b>All `pre-` functions take the standard CosmWasm `deps` and `env` parameters as their first two parameters.<b></i>
