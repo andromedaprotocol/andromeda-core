@@ -25,6 +25,7 @@ pub fn as_modules(definitions: Vec<ModuleDefinition>) -> Vec<impl Module> {
     definitions.into_iter().map(|d| as_module(d)).collect()
 }
 
+#[derive(Debug, PartialEq)]
 pub struct HookResponse {
     pub msgs: Vec<CosmosMsg>,
     pub logs: Vec<LogAttribute>,

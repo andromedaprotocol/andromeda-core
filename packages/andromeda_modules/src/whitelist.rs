@@ -63,6 +63,11 @@ impl Module for Whitelist {
 }
 
 mod test {
+    use cosmwasm_std::{
+        coins,
+        testing::{mock_dependencies, mock_env},
+    };
+
     use super::*;
 
     #[test]
@@ -84,5 +89,24 @@ mod test {
             wl.validate(modules.to_vec()),
             Err(StdError::generic_err("Whitelist module must be unique"))
         );
+    }
+
+    #[test]
+    fn test_pre_publish() {
+        let sender = HumanAddr::from("sender");
+        let mut deps = mock_dependencies(20, &[]);
+        let env = mock_env(sender.clone(), &coins(1000, "earth"));
+        let wl = Whitelist { moderators: vec![] };
+
+        let resp = wl.pre_publish(&mut deps, env.clone(), 1).unwrap_err();
+
+        assert_eq!(resp, StdError::unauthorized());
+
+        wl.whitelist_addr(&mut deps.storage, &sender.clone())
+            .unwrap();
+
+        let resp = wl.pre_publish(&mut deps, env.clone(), 1).unwrap();
+
+        assert_eq!(resp, HookResponse::default());
     }
 }
