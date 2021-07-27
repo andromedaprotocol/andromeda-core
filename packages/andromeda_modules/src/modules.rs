@@ -43,6 +43,13 @@ impl HookResponse {
 pub trait Module {
     fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
+    fn pre_handle<S: Storage, A: Api, Q: Querier>(
+        &self,
+        _deps: &mut Extern<S, A, Q>,
+        _env: Env,
+    ) -> StdResult<HookResponse> {
+        Ok(HookResponse::default())
+    }
     fn pre_publish<S: Storage, A: Api, Q: Querier>(
         &self,
         _deps: &mut Extern<S, A, Q>,
