@@ -9,6 +9,12 @@ A monorepository containing all the contracts and packages related to Andromeda 
 | [andromeda_factory](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_factory) | Factory contract used to initialise a given token contract using a preset Code ID. Stores a record of all initialised token contracts via a symbol reference. |
 | [andromeda_token](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_token)      | Token contract used to store all related tokens and any modules that may be attached to them. Initialised by the `andromeda_factory` contract.|
 
+## Packages
+| Contract      | Description |
+| ----------- | ----------- |
+| [andromeda_modules](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/packages/andromeda_modules) | Package used to define behaviour of Andromeda modules |
+| [andromeda_protocol](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_protocol)      | Package used to define message types and various utility methods used by Andromeda ADO Contracts. |
+
 ## Development
 
 ### Environment Setup
