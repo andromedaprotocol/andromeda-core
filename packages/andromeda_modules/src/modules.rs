@@ -1,5 +1,7 @@
 use crate::whitelist::Whitelist;
-use cosmwasm_std::{CosmosMsg, HumanAddr, LogAttribute, StdResult, Storage};
+use cosmwasm_std::{
+    Api, CosmosMsg, Env, Extern, HumanAddr, LogAttribute, Querier, StdResult, Storage,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +31,7 @@ pub struct HookResponse {
 }
 
 impl HookResponse {
-    fn default() -> Self {
+    pub fn default() -> Self {
         HookResponse {
             msgs: vec![],
             logs: vec![],
@@ -40,12 +42,12 @@ impl HookResponse {
 pub trait Module {
     fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
-    // fn handle<S: Storage, A: Api, Q: Querier>(
-    //     deps: &mut Extern<S, A, Q>,
-    //     env: Env,
-    //     msg: HandleMsg,
-    // ) -> StdResult<HandleResponse>;
-    fn pre_publish<S: Storage>(&self, _storage: &S) -> StdResult<HookResponse> {
+    fn pre_publish<S: Storage, A: Api, Q: Querier>(
+        &self,
+        _deps: &mut Extern<S, A, Q>,
+        _env: Env,
+        _token_id: i64,
+    ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
 }
