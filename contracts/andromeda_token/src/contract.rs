@@ -11,27 +11,27 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     _env: Env,
     msg: InitMsg,
 ) -> StdResult<InitResponse> {
+    msg.validate()?;
+
     let config = TokenConfig {
         name: msg.name,
         symbol: msg.symbol,
         creator: msg.creator,
     };
 
-    Err(StdError::unauthorized())
+    store_config(&mut deps.storage, &config)?;
 
-    // store_config(&mut deps.storage, &config)?;
-
-    // match msg.init_hook {
-    //     Some(hook) => Ok(InitResponse {
-    //         messages: vec![CosmosMsg::Wasm(WasmMsg::Execute {
-    //             contract_addr: hook.contract_addr,
-    //             msg: hook.msg,
-    //             send: vec![],
-    //         })],
-    //         log: vec![],
-    //     }),
-    //     None => Ok(InitResponse::default()),
-    // }
+    match msg.init_hook {
+        Some(hook) => Ok(InitResponse {
+            messages: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: hook.contract_addr,
+                msg: hook.msg,
+                send: vec![],
+            })],
+            log: vec![],
+        }),
+        None => Ok(InitResponse::default()),
+    }
 }
 
 pub fn handle<S: Storage, A: Api, Q: Querier>(
@@ -90,7 +90,7 @@ mod tests {
         let msg = InitMsg {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
-            extensions: vec![],
+            modules: vec![],
             creator: HumanAddr::from("creator"),
             init_hook: None,
         };

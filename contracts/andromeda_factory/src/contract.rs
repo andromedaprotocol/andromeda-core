@@ -53,7 +53,7 @@ pub fn create<S: Storage, A: Api, Q: Querier>(
     env: Env,
     name: String,
     symbol: String,
-    extensions: Vec<ModuleDefinition>,
+    modules: Vec<ModuleDefinition>,
 ) -> StdResult<HandleResponse> {
     let config = read_config(&deps.storage)?;
 
@@ -71,7 +71,7 @@ pub fn create<S: Storage, A: Api, Q: Querier>(
                 name: name.to_string(),
                 symbol: symbol.to_string(),
                 creator: env.message.sender.clone(),
-                extensions,
+                modules,
                 init_hook: Some(InitHook {
                     msg: to_binary(&HandleMsg::TokenCreationHook {
                         symbol: symbol.to_string(),
@@ -175,7 +175,7 @@ mod tests {
                 name: TOKEN_NAME.to_string(),
                 symbol: TOKEN_SYMBOL.to_string(),
                 creator: HumanAddr::from("creator"),
-                extensions: vec![],
+                modules: vec![],
                 init_hook: Some(InitHook {
                     msg: to_binary(&HandleMsg::TokenCreationHook {
                         symbol: TOKEN_SYMBOL.to_string(),

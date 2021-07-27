@@ -1,6 +1,6 @@
 use crate::hook::InitHook;
-use crate::require::require;
-use andromeda_modules::modules::ModuleDefinition;
+
+use andromeda_modules::modules::{as_modules, Module, ModuleDefinition};
 use cosmwasm_std::{HumanAddr, StdResult, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -17,12 +17,17 @@ pub struct InitMsg {
     pub creator: HumanAddr,
     pub name: String,
     pub symbol: String,
-    pub extensions: Vec<ModuleDefinition>,
+    pub modules: Vec<ModuleDefinition>,
     pub init_hook: Option<InitHook>,
 }
 
 impl InitMsg {
-    fn validate(&self) -> StdResult<bool> {
+    pub fn validate(&self) -> StdResult<bool> {
+        let mapped_modules = as_modules(self.modules.to_vec());
+        for module in mapped_modules {
+            module.validate(self.modules.to_vec())?;
+        }
+
         Ok(true)
     }
 }
