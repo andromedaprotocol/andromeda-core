@@ -23,8 +23,37 @@ This package contains the definition of an Andromeda Module, alongside any behav
   </tbody>
 </table>
 
+## Structs
+Each module is defined using the `ModuleDefinition` enum which contains what data must be sent with a module in order for it to be initialized:
+
+```rust
+pub enum ModuleDefinition {
+    WhiteList { moderators: Vec<HumanAddr> },
+    Taxable { tax: Fee, receivers: Vec<HumanAddr> },
+    Royalties { fee: Fee, receivers: Vec<HumanAddr> },
+}
+```
+
+Several of the `Module` trait's methods return a `HookResponse` struct:
+
+```rust
+pub struct HookResponse {
+    pub msgs: Vec<CosmosMsg>,
+    pub logs: Vec<LogAttribute>,
+}
+
+impl HookResponse {
+    pub fn default() -> Self {
+        HookResponse {
+            msgs: vec![],
+            logs: vec![],
+        }
+    }
+}
+```
+
 ## Module Trait
-Each module implements the following functions:
+A module is sent with the contract's `InitMsg`, the definitions of these modules is then stored. To operate a module is first converted to a struct which implements `trait Module`. Each module implements the following methods:
 <br />
 
 ### Validate
