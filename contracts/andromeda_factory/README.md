@@ -1,51 +1,70 @@
-# Andromeda Protocol
+# Andromeda Factory
 
 A repository containing the NFT contract for Andromeda Protocol on Terra.
 
-## Building
+## Messages
+All message structs are defined [here](https://github.com/andromedaprotocol/andromeda-contracts/blob/main/packages/andromeda_protocol/src/factory.rs)
 
-The contract was built using a basic CosmWasm template and as such can be built using `cargo wasm`, for more info on building and deploying contracts on Terra check the docs [here](https://docs.terra.money/contracts/). The repository contains a build script to simplify the build process, this can be run using:
+### Init
 
-```./build.sh```
+```rust
+struct InitMsg {
+    pub token_code_id: u64,
+}
+```
 
-## Interaction
+| Key | Description |
+| --- | ----------- |
+| `token_code_id` | The Code ID of the contract to deploy when a new ADO collection is created |
 
-### Collection Creation
-The `InitMsg` for this contract does not currently take any parameters. To create a new NFT collection please use the `Create` message:
 
-``` 
-Create {
+### Handle
+#### Create
+Creates a new ADO collection contract. Once the contract has been initialized a `HandleMsg::TokenCreationHook` message is sent by the `init` method in order to register itself with the factory contract.
+
+```rust
+struct Create {
   name: String,
   symbol: String,
-  extensions: Vec<Extension>
+  modules: Vec<ModuleDefinition>,
 }
 ```
 
-The `symbol` field is used to uniquely identify the collection. The following extensions are currently available:
+| Key | Description |
+| --- | ----------- |
+| `name` | The name of the ADO collection |
+| `symbol` | The unique symbol of the ADO collection |
+| `modules` | The module definitions for the ADO collection |
 
-```
-pub enum Extension {
-    WhiteListExtension { moderators: Vec<HumanAddr> },
-    TaxableExtension { tax: Fee, receivers: Vec<HumanAddr> },
-    RoyaltiesExtension { fee: Fee, receivers: Vec<HumanAddr> },
+#### Token Creation Hook
+A hook called by the initialized ADO collection contract to register the address for the ADO collection's symbol.
+
+```rust
+struct TokenCreationHook {
+    symbol: String,
+    creator: HumanAddr
 }
 ```
 
-### Minting A Token
-To mint a token the `Mint` message is used:
+| Key | Description |
+| --- | ----------- |
+| `symbol` | The unique symbol of the ADO collection |
+| `creator` | The address of the ADO collection creator |
 
-```
-Mint {
-    collection_symbol: String,
-    token_id: i64,
+
+### Query
+#### GetAddress
+Queries the address of a given ADO collection symbol
+
+```rust
+struct GetAddress { 
+  symbol: String
 }
 ```
 
-This will mint a token with the given ID under the given collection owned by the address that sends the message. Any token transactions under the provided collection will be subject to the collection's extensions.
-
-### Further Interaction
-The following interactions are available and the required parameters can be seen in `src/msg.rs`:
-- `Burn`
-- `Archive`
-- `CreateTransferAgreement`
-- `Transfer`
+Response
+```rust
+struct AddressResponse {
+    pub address: HumanAddr,
+}
+```
