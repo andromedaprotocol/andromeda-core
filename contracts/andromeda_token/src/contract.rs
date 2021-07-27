@@ -1,4 +1,5 @@
-use andromeda_modules::modules::{read_modules, store_modules, Module};
+use andromeda_modules::hooks::PreHooks;
+use andromeda_modules::modules::{read_modules, store_modules};
 use andromeda_protocol::token::{HandleMsg, InitMsg, OwnerResponse, QueryMsg};
 use cosmwasm_std::{
     to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, InitResponse, Querier,
@@ -56,6 +57,11 @@ pub fn mint<S: Storage, A: Api, Q: Querier>(
     env: Env,
     token_id: i64,
 ) -> StdResult<HandleResponse> {
+    let modules = read_modules(&deps.storage)?;
+    for module in modules {
+        module.pre_publish(deps, env.clone(), token_id)?;
+    }
+
     let sender = env.message.sender;
 
     store_owner(&mut deps.storage, &token_id, &sender.clone())?;

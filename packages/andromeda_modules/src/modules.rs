@@ -1,8 +1,5 @@
-use crate::whitelist::Whitelist;
-use cosmwasm_std::{
-    Api, Coin, CosmosMsg, Env, Extern, HumanAddr, LogAttribute, Querier, StdError, StdResult,
-    Storage,
-};
+use crate::{hooks::PreHooks, whitelist::Whitelist};
+use cosmwasm_std::{HumanAddr, StdError, StdResult, Storage};
 use cosmwasm_storage::{singleton, singleton_read};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -30,76 +27,9 @@ pub fn as_module(definition: ModuleDefinition) -> impl Module {
 pub fn as_modules(definitions: Vec<ModuleDefinition>) -> Vec<impl Module> {
     definitions.into_iter().map(|d| as_module(d)).collect()
 }
-
-#[derive(Debug, PartialEq)]
-pub struct HookResponse {
-    pub msgs: Vec<CosmosMsg>,
-    pub logs: Vec<LogAttribute>,
-}
-
-impl HookResponse {
-    pub fn default() -> Self {
-        HookResponse {
-            msgs: vec![],
-            logs: vec![],
-        }
-    }
-}
-
-pub trait Module {
+pub trait Module: PreHooks {
     fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
-    fn pre_handle<S: Storage, A: Api, Q: Querier>(
-        &self,
-        _deps: &mut Extern<S, A, Q>,
-        _env: Env,
-    ) -> StdResult<HookResponse> {
-        Ok(HookResponse::default())
-    }
-    fn pre_publish<S: Storage, A: Api, Q: Querier>(
-        &self,
-        _deps: &mut Extern<S, A, Q>,
-        _env: Env,
-        _token_id: i64,
-    ) -> StdResult<HookResponse> {
-        Ok(HookResponse::default())
-    }
-    fn pre_transfer<S: Storage, A: Api, Q: Querier>(
-        &self,
-        _deps: &mut Extern<S, A, Q>,
-        _env: Env,
-        _token_id: i64,
-        _from: HumanAddr,
-        _to: HumanAddr,
-    ) -> StdResult<HookResponse> {
-        Ok(HookResponse::default())
-    }
-    fn pre_transfer_agreement<S: Storage, A: Api, Q: Querier>(
-        &self,
-        _deps: &mut Extern<S, A, Q>,
-        _env: Env,
-        _token_id: i64,
-        _amount: Coin,
-        _buyer: HumanAddr,
-    ) -> StdResult<HookResponse> {
-        Ok(HookResponse::default())
-    }
-    fn pre_burn<S: Storage, A: Api, Q: Querier>(
-        &self,
-        _deps: &mut Extern<S, A, Q>,
-        _env: Env,
-        _token_id: i64,
-    ) -> StdResult<HookResponse> {
-        Ok(HookResponse::default())
-    }
-    fn pre_archive<S: Storage, A: Api, Q: Querier>(
-        &self,
-        _deps: &mut Extern<S, A, Q>,
-        _env: Env,
-        _token_id: i64,
-    ) -> StdResult<HookResponse> {
-        Ok(HookResponse::default())
-    }
 }
 
 pub fn store_modules<S: Storage>(
@@ -123,6 +53,4 @@ pub fn read_modules<S: Storage>(storage: &S) -> StdResult<Vec<impl Module>> {
             _ => Err(err),
         },
     }
-
-    // Ok(as_modules(module_defs))
 }

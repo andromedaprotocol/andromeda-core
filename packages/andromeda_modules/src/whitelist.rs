@@ -3,7 +3,8 @@ use cosmwasm_storage::{bucket, bucket_read};
 
 use crate::{
     common::{is_unique, require},
-    modules::{HookResponse, Module, ModuleDefinition},
+    hooks::{HookResponse, PreHooks},
+    modules::{Module, ModuleDefinition},
 };
 
 const WHITELIST_NS: &[u8] = b"whitelist";
@@ -33,6 +34,21 @@ impl Whitelist {
     }
 }
 
+impl PreHooks for Whitelist {
+    fn pre_handle<S: Storage, A: Api, Q: Querier>(
+        &self,
+        deps: &mut Extern<S, A, Q>,
+        env: Env,
+    ) -> StdResult<HookResponse> {
+        require(
+            self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
+            StdError::unauthorized(),
+        )?;
+
+        Ok(HookResponse::default())
+    }
+}
+
 impl Module for Whitelist {
     fn validate(&self, all_modules: Vec<ModuleDefinition>) -> StdResult<bool> {
         require(
@@ -46,18 +62,6 @@ impl Module for Whitelist {
         ModuleDefinition::WhiteList {
             moderators: self.moderators.to_vec(),
         }
-    }
-    fn pre_handle<S: Storage, A: Api, Q: Querier>(
-        &self,
-        deps: &mut Extern<S, A, Q>,
-        env: Env,
-    ) -> StdResult<HookResponse> {
-        require(
-            self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
-            StdError::unauthorized(),
-        )?;
-
-        Ok(HookResponse::default())
     }
 }
 
