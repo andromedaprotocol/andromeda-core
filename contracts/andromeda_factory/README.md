@@ -3,6 +3,7 @@
 A repository containing the NFT contract for Andromeda Protocol on Terra. This contract's primary purpose is to initialise and register ADO collections. Registration is done by a mapping between the ADO collection's symbol and the contract address for the given ADO collection.
 
 ## Testing
+
 Testing can be performed using:
 
 ```
@@ -10,6 +11,7 @@ cargo test
 ```
 
 ## Messages
+
 All message structs are defined [here](https://github.com/andromedaprotocol/andromeda-contracts/blob/main/packages/andromeda_protocol/src/factory.rs)
 
 ### Init
@@ -20,13 +22,14 @@ struct InitMsg {
 }
 ```
 
-| Key | Description |
-| --- | ----------- |
+| Key             | Description                                                                |
+| --------------- | -------------------------------------------------------------------------- |
 | `token_code_id` | The Code ID of the contract to deploy when a new ADO collection is created |
 
-
 ### Handle
+
 #### Create
+
 Creates a new ADO collection contract. Once the contract has been initialized a `HandleMsg::TokenCreationHook` message is sent by the `init` method in order to register itself with the factory contract.
 
 ```rust
@@ -37,13 +40,14 @@ struct Create {
 }
 ```
 
-| Key | Description |
-| --- | ----------- |
-| `name` | The name of the ADO collection |
-| `symbol` | The unique symbol of the ADO collection |
+| Key       | Description                                   |
+| --------- | --------------------------------------------- |
+| `name`    | The name of the ADO collection                |
+| `symbol`  | The unique symbol of the ADO collection       |
 | `modules` | The module definitions for the ADO collection |
 
 #### Token Creation Hook
+
 A hook called by the initialized ADO collection contract to register the address for the ADO collection's symbol.
 
 ```rust
@@ -53,23 +57,41 @@ struct TokenCreationHook {
 }
 ```
 
-| Key | Description |
-| --- | ----------- |
-| `symbol` | The unique symbol of the ADO collection |
+| Key       | Description                               |
+| --------- | ----------------------------------------- |
+| `symbol`  | The unique symbol of the ADO collection   |
 | `creator` | The address of the ADO collection creator |
 
+#### Update Address
+
+Used to update the registered contract address for a given symbol. May only be used by the symbol creator.
+
+```rust
+  struct UpdateAddress {
+      symbol: String,
+      new_address: HumanAddr,
+  }
+```
+
+| Key           | Description                             |
+| ------------- | --------------------------------------- |
+| `symbol`      | The unique symbol of the ADO collection |
+| `new_address` | The new address of the ADO collection   |
 
 ### Query
+
 #### GetAddress
+
 Queries the address of a given ADO collection symbol
 
 ```rust
-struct GetAddress { 
+struct GetAddress {
   symbol: String
 }
 ```
 
 **Response**
+
 ```rust
 struct AddressResponse {
     pub address: HumanAddr,
