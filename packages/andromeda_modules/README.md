@@ -89,8 +89,7 @@ fn pre_publish<S: Storage, A: Api, Q: Querier>(
     &self,
     deps: &mut Extern<S, A, Q>,
     env: Env,
-    token_id: i64,
-) -> StdResult<HookResponse
+) -> StdResult<()>
 ```
 
 ### Pre Publish
