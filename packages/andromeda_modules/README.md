@@ -28,7 +28,7 @@ This package contains the definition of an Andromeda Module, alongside any behav
   receivers: Vec&lt;HumanAddr&gt;,
 }</pre>
       </td>
-      <td>Adds a percentage (rounded) tax to any agreed transfer between ADOs.</td>
+      <td>Adds a percentage (rounded) tax to any agreed transfer between ADOs. The tax is then sent to each address in the receiver vector (non-split).</td>
     </tr>
   </tbody>
 </table>
