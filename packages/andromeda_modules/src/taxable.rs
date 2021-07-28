@@ -1,247 +1,140 @@
-use crate::extension::Extension;
-use cosmwasm_std::{HumanAddr, StdError, StdResult, Storage};
-use cosmwasm_storage::{singleton, singleton_read};
+use cosmwasm_std::{coin, Coin, Env, HumanAddr, StdError, StdResult, Uint128};
 
-static KEY_TAXABLE: &[u8] = b"taxable";
+use crate::{
+    common::{add_payment, require},
+    hooks::{Payments, PreHooks},
+    modules::{Fee, Module, ModuleDefinition},
+};
 
-pub struct Taxable {
-    fee: i64,
+struct Taxable {
+    tax: Fee,
     receivers: Vec<HumanAddr>,
 }
 
-pub fn store_tax_config<S: Storage>(storage: &mut S, config: Extension) -> StdResult<()> {
-    match config {
-        Extension::TaxableExtension { .. } => {
-            let updated_config = match read_tax_config(storage) {
-                Some(curr_config) => {
-                    let mut new_config = curr_config.clone();
-                    new_config.push(config);
-                    new_config
-                }
-                None => {
-                    let new_config = vec![config];
-                    new_config
-                }
-            };
-            singleton(storage, KEY_TAXABLE).save(&updated_config)
+impl PreHooks for Taxable {}
+
+impl Payments for Taxable {
+    fn on_agreed_transfer(
+        &self,
+        env: Env,
+        payments: &mut Vec<cosmwasm_std::BankMsg>,
+        _owner: HumanAddr,
+        _purchaser: HumanAddr,
+        agreed_payment: Coin,
+    ) -> StdResult<bool> {
+        let contract_addr = env.contract.address;
+        let tax_amount: Uint128 = agreed_payment
+            .amount
+            .multiply_ratio(Uint128(self.tax), 100 as u128);
+
+        let tax = coin(tax_amount.u128(), &agreed_payment.denom.to_string());
+
+        for receiver in self.receivers.to_vec() {
+            add_payment(
+                payments,
+                contract_addr.clone(),
+                receiver.clone(),
+                tax.clone(),
+            );
         }
-        _ => Err(StdError::generic_err(
-            "Incorrect extension type, expected TaxableExtension.",
-        )),
+
+        Ok(true)
     }
 }
 
-pub fn read_tax_config<S: Storage>(storage: &S) -> Option<Vec<Extension>> {
-    match singleton_read(storage, KEY_TAXABLE).load() {
-        Ok(ext) => Some(ext),
-        Err(_e) => None,
+impl Module for Taxable {
+    fn validate(&self, _extensions: Vec<crate::modules::ModuleDefinition>) -> StdResult<bool> {
+        require(
+            self.receivers.len() > 0,
+            StdError::generic_err("Cannot apply a tax with no receiving addresses"),
+        )?;
+        require(self.tax > 0, StdError::generic_err("Tax must be non-zero"))?;
+
+        Ok(true)
+    }
+    fn as_definition(&self) -> ModuleDefinition {
+        ModuleDefinition::Taxable {
+            tax: self.tax,
+            receivers: self.receivers.clone(),
+        }
     }
 }
 
-// pub fn required_payment<S: Storage>(
-//     storage: &S,
-//     _env: &Env,
-//     collection_symbol: &String,
-//     token_id: &i64,
-//     receivers: &Vec<HumanAddr>,
-//     tax_fee: i64,
-// ) -> StdResult<Vec<Coin>> {
-//     let collection = collection_read(storage).load(collection_symbol.as_bytes())?;
-//     match collection.get_transfer_agreement(storage, token_id) {
-//         Ok(a) => {
-//             let amount = a.amount;
-//             let denom = a.denom;
-//             let tax_amount: Uint128 = amount.multiply_ratio(Uint128(tax_fee as u128), 100 as u128);
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::{coins, testing::mock_env, BankMsg};
 
-//             let fee = Coin {
-//                 amount: tax_amount,
-//                 denom: String::from(&denom),
-//             };
+    use super::*;
 
-//             let mut coins: Vec<Coin> = vec![];
-//             for _ in receivers {
-//                 coins.push(fee.clone());
-//             }
+    #[test]
+    fn test_taxable_validate() {
+        let t = Taxable {
+            tax: 2,
+            receivers: vec![HumanAddr::default()],
+        };
 
-//             Ok(coins)
-//         }
-//         Err(e) => match e {
-//             StdError::NotFound { .. } => Ok(vec![]),
-//             _ => Err(e),
-//         },
-//     }
-// }
+        assert_eq!(t.validate(vec![]).unwrap(), true);
 
-// pub fn post_transfer_payments<S: Storage>(
-//     storage: &S,
-//     env: &Env,
-//     collection_symbol: &String,
-//     token_id: &i64,
-//     receivers: &Vec<HumanAddr>,
-//     tax_fee: i64,
-//     payments: &mut Vec<BankMsg>,
-// ) -> StdResult<bool> {
-//     let required_payments = required_payment(
-//         storage,
-//         env,
-//         collection_symbol,
-//         token_id,
-//         receivers,
-//         tax_fee,
-//     )?
-//     .to_vec();
+        let t_invalidtax = Taxable {
+            tax: 0,
+            receivers: vec![HumanAddr::default()],
+        };
 
-//     for i in 0..required_payments.len() {
-//         let from_address = &env.contract.address.clone();
-//         let payment = required_payments[i].clone();
-//         let receiver = receivers[i].clone();
+        assert_eq!(
+            t_invalidtax.validate(vec![]).unwrap_err(),
+            StdError::generic_err("Tax must be non-zero")
+        );
 
-//         add_payment(payments, from_address.clone(), receiver, payment)?;
-//     }
+        let t_invalidrecv = Taxable {
+            tax: 2,
+            receivers: vec![],
+        };
 
-//     Ok(true)
-// }
+        assert_eq!(
+            t_invalidrecv.validate(vec![]).unwrap_err(),
+            StdError::generic_err("Cannot apply a tax with no receiving addresses")
+        );
+    }
 
-// #[cfg(test)]
-// mod test {
-//     use cosmwasm_std::coins;
-//     use cosmwasm_std::{
-//         testing::{mock_dependencies, mock_env},
-//         Api, Extern, Querier,
-//     };
+    #[test]
 
-//     use crate::{
-//         contract::{handle, init},
-//         extensions::extension::Extension,
-//         msg::{HandleMsg, InitMsg},
-//     };
+    fn test_taxable_on_agreed_transfer() {
+        let env = mock_env(HumanAddr::default(), &coins(100, "uluna"));
+        let receivers = vec![HumanAddr::from("recv1"), HumanAddr::from("recv2")];
+        let t = Taxable {
+            tax: 1,
+            receivers: receivers.clone(),
+        };
 
-//     use super::*;
+        let agreed_transfer_amount = coin(100, "uluna");
+        let tax_amount = 1;
+        let owner = HumanAddr::from("owner");
+        let purchaser = HumanAddr::from("purchaser");
+        let mut payments = vec![];
 
-//     fn create_token<S: Storage, A: Api, Q: Querier>(
-//         deps: &mut Extern<S, A, Q>,
-//         sender: &str,
-//         name: String,
-//         symbol: String,
-//         extensions: Vec<Extension>,
-//     ) {
-//         let auth_env = mock_env(sender, &coins(2, "token"));
-//         let msg = HandleMsg::Create {
-//             name,
-//             symbol,
-//             extensions,
-//         };
-//         let _res = handle(deps, auth_env, msg).unwrap();
-//     }
+        t.on_agreed_transfer(
+            env.clone(),
+            &mut payments,
+            owner.clone(),
+            purchaser.clone(),
+            agreed_transfer_amount.clone(),
+        )
+        .unwrap();
 
-//     fn mint_token<S: Storage, A: Api, Q: Querier>(
-//         deps: &mut Extern<S, A, Q>,
-//         owner: &str,
-//         token_id: i64,
-//     ) {
-//         let auth_env = mock_env(owner, &coins(2, "token"));
-//         let msg = HandleMsg::Mint {
-//             collection_symbol: String::from("TT"),
-//             token_id: token_id,
-//         };
-//         let _res = handle(deps, auth_env, msg).unwrap();
-//     }
+        assert_eq!(payments.len(), 2);
 
-//     #[test]
-//     fn required_payments() {
-//         let mut deps = mock_dependencies(20, &coins(100, "token"));
+        let first_payment = BankMsg::Send {
+            from_address: env.contract.address.clone(),
+            to_address: HumanAddr::from("recv1"),
+            amount: coins(tax_amount, &agreed_transfer_amount.denom.to_string()),
+        };
+        let second_payment = BankMsg::Send {
+            from_address: env.contract.address.clone(),
+            to_address: HumanAddr::from("recv2"),
+            amount: coins(tax_amount, &agreed_transfer_amount.denom.to_string()),
+        };
 
-//         let msg = InitMsg {};
-//         let env = mock_env("creator", &coins(2, "token"));
-//         let _res = init(&mut deps, env, msg).unwrap();
-
-//         create_token(
-//             &mut deps,
-//             "creator",
-//             String::from("Test Token"),
-//             String::from("TT"),
-//             vec![],
-//         );
-//         mint_token(&mut deps, "creator", 1);
-
-//         let transfer_env = mock_env("creator", &coins(2, "token"));
-//         let msg = HandleMsg::CreateTransferAgreement {
-//             collection_symbol: String::from("TT"),
-//             token_id: 1,
-//             amount: Uint128(100),
-//             denom: String::from("uluna"),
-//             purchaser: HumanAddr::from("purchaser"),
-//         };
-//         let _res = handle(&mut deps, transfer_env, msg).unwrap();
-
-//         let buyer_env = mock_env("purchaser", &coins(100, "uluna"));
-//         let payments = required_payment(
-//             &deps.storage,
-//             &buyer_env,
-//             &String::from("TT"),
-//             &1,
-//             &vec![HumanAddr::from("recv")],
-//             2,
-//         )
-//         .unwrap();
-
-//         assert!(payments.len() > 0);
-//         assert_eq!(String::from("uluna"), payments[0].denom);
-//         assert_eq!(Uint128(2), payments[0].amount);
-//     }
-
-//     #[test]
-//     fn transfer_payments() {
-//         let mut deps = mock_dependencies(20, &coins(100, "token"));
-
-//         let msg = InitMsg {};
-//         let env = mock_env("creator", &coins(2, "token"));
-//         let _res = init(&mut deps, env, msg).unwrap();
-
-//         create_token(
-//             &mut deps,
-//             "creator",
-//             String::from("Test Token"),
-//             String::from("TT"),
-//             vec![],
-//         );
-//         mint_token(&mut deps, "creator", 1);
-
-//         let transfer_env = mock_env("creator", &coins(2, "token"));
-//         let msg = HandleMsg::CreateTransferAgreement {
-//             collection_symbol: String::from("TT"),
-//             token_id: 1,
-//             amount: Uint128(100),
-//             denom: String::from("uluna"),
-//             purchaser: HumanAddr::from("purchaser"),
-//         };
-//         let _res = handle(&mut deps, transfer_env, msg).unwrap();
-
-//         let buyer_env = mock_env("purchaser", &coins(100, "uluna"));
-//         let mut payments: Vec<BankMsg> = vec![];
-
-//         post_transfer_payments(
-//             &deps.storage,
-//             &buyer_env,
-//             &String::from("TT"),
-//             &1,
-//             &vec![HumanAddr::from("recv")],
-//             2,
-//             &mut payments,
-//         )
-//         .unwrap();
-
-//         assert!(payments.len() > 0);
-
-//         match &payments.to_vec()[0] {
-//             BankMsg::Send {
-//                 to_address, amount, ..
-//             } => {
-//                 assert!(to_address.eq(&HumanAddr::from("recv")));
-//                 assert!(amount.len() > 0);
-//                 assert_eq!(Uint128(2), amount[0].amount);
-//                 assert_eq!(String::from("uluna"), amount[0].denom);
-//             }
-//         }
-//     }
-// }
+        assert_eq!(payments[0], first_payment);
+        assert_eq!(payments[1], second_payment);
+    }
+}

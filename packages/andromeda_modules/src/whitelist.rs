@@ -3,7 +3,7 @@ use cosmwasm_storage::{bucket, bucket_read};
 
 use crate::{
     common::{is_unique, require},
-    hooks::{HookResponse, PreHooks},
+    hooks::{HookResponse, Payments, PreHooks},
     modules::{Module, ModuleDefinition},
 };
 
@@ -48,6 +48,8 @@ impl PreHooks for Whitelist {
         Ok(HookResponse::default())
     }
 }
+
+impl Payments for Whitelist {}
 
 impl Module for Whitelist {
     fn validate(&self, all_modules: Vec<ModuleDefinition>) -> StdResult<bool> {
