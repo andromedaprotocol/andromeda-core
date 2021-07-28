@@ -204,3 +204,27 @@ fn pre_archive<S: Storage, A: Api, Q: Querier>(
 | Parameter  | Type  | Description                        |
 | ---------- | ----- | ---------------------------------- |
 | `token_id` | `i64` | The ID of the ADO to be published. |
+
+### On Agreed Transfer
+
+A hook allowing access to data related to an ADO being transfered via an agreement. This hook is called when a `HandleMsg::Transfer` message is received for an ADO with a transfer agreement.
+
+```rust
+ fn on_agreed_transfer(
+    &self,
+    _env: Env,
+    _payments: &mut Vec<BankMsg>,
+    _owner: HumanAddr,
+    _purchaser: HumanAddr,
+    _amount: Coin,
+) -> StdResult<bool>
+```
+
+#### Parameters
+
+| Parameter   | Type                | Description                                                                                                                                                                                                               |
+| ----------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payments`  | `&mut Vec<BankMsg>` | A mutable vector of payment messages, this is passed between every registered module that may interact with the outgoing payments from the transfer, as such ordering of registered modules may impact outgoing payments. |
+| `owner`     | `HumanAddr`         | The address of the ADO owner.                                                                                                                                                                                             |
+| `purchaser` | `HumanAddr`         | The address of the ADO purchaser.                                                                                                                                                                                         |
+| `amount`    | `Coin`              | The agreed purchase amount.                                                                                                                                                                                               |
