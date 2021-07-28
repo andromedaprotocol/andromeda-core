@@ -20,6 +20,16 @@ This package contains the definition of an Andromeda Module, alongside any behav
       </td>
       <td>Enables a whitelist of addresses that are authorised to interact with the contract's functions.</td>
     </tr>
+        <tr>
+      <td><a href="https://github.com/andromedaprotocol/andromeda-contracts/blob/extensions/packages/andromeda_modules/src/taxable.rs" target="_blank">Taxable</a></td>
+      <td>
+        <pre>struct Taxable {
+  tax: u128,
+  receivers: Vec&lt;HumanAddr&gt;,
+}</pre>
+      </td>
+      <td>Adds a percentage (rounded) tax to any agreed transfer between ADOs.</td>
+    </tr>
   </tbody>
 </table>
 
