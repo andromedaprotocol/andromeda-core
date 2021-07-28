@@ -212,11 +212,11 @@ A hook allowing access to data related to an ADO being transfered via an agreeme
 ```rust
  fn on_agreed_transfer(
     &self,
-    _env: Env,
-    _payments: &mut Vec<BankMsg>,
-    _owner: HumanAddr,
-    _purchaser: HumanAddr,
-    _amount: Coin,
+    env: Env,
+    payments: &mut Vec<BankMsg>,
+    owner: HumanAddr,
+    purchaser: HumanAddr,
+    amount: Coin,
 ) -> StdResult<bool>
 ```
 
