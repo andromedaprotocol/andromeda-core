@@ -20,6 +20,16 @@ This package contains the definition of an Andromeda Module, alongside any behav
       </td>
       <td>Enables a whitelist of addresses that are authorised to interact with the contract's functions.</td>
     </tr>
+        <tr>
+      <td><a href="https://github.com/andromedaprotocol/andromeda-contracts/blob/extensions/packages/andromeda_modules/src/taxable.rs" target="_blank">Taxable</a></td>
+      <td>
+        <pre>struct Taxable {
+  tax: u128,
+  receivers: Vec&lt;HumanAddr&gt;,
+}</pre>
+      </td>
+      <td>Adds a percentage (rounded) tax to any agreed transfer between ADOs. The tax is then sent to each address in the receiver vector (non-split).</td>
+    </tr>
   </tbody>
 </table>
 
@@ -194,3 +204,27 @@ fn pre_archive<S: Storage, A: Api, Q: Querier>(
 | Parameter  | Type  | Description                        |
 | ---------- | ----- | ---------------------------------- |
 | `token_id` | `i64` | The ID of the ADO to be published. |
+
+### On Agreed Transfer
+
+A hook allowing access to data related to an ADO being transfered via an agreement. This hook is called when a `HandleMsg::Transfer` message is received for an ADO with a transfer agreement.
+
+```rust
+ fn on_agreed_transfer(
+    &self,
+    env: Env,
+    payments: &mut Vec<BankMsg>,
+    owner: HumanAddr,
+    purchaser: HumanAddr,
+    amount: Coin,
+) -> StdResult<bool>
+```
+
+#### Parameters
+
+| Parameter   | Type                | Description                                                                                                                                                                                                               |
+| ----------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payments`  | `&mut Vec<BankMsg>` | A mutable vector of payment messages, this is passed between every registered module that may interact with the outgoing payments from the transfer, as such ordering of registered modules may impact outgoing payments. |
+| `owner`     | `HumanAddr`         | The address of the ADO owner.                                                                                                                                                                                             |
+| `purchaser` | `HumanAddr`         | The address of the ADO purchaser.                                                                                                                                                                                         |
+| `amount`    | `Coin`              | The agreed purchase amount.                                                                                                                                                                                               |

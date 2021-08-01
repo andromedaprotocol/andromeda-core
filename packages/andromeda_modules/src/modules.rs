@@ -1,4 +1,7 @@
-use crate::{hooks::PreHooks, whitelist::Whitelist};
+use crate::{
+    hooks::{Payments, PreHooks},
+    whitelist::Whitelist,
+};
 use cosmwasm_std::{HumanAddr, StdError, StdResult, Storage};
 use cosmwasm_storage::{singleton, singleton_read};
 use schemars::JsonSchema;
@@ -6,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 const KEY_MODULES: &[u8] = b"modules";
 
-pub type Fee = i64;
+pub type Fee = u128;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 pub enum ModuleDefinition {
@@ -27,7 +30,7 @@ pub fn as_module(definition: ModuleDefinition) -> impl Module {
 pub fn as_modules(definitions: Vec<ModuleDefinition>) -> Vec<impl Module> {
     definitions.into_iter().map(|d| as_module(d)).collect()
 }
-pub trait Module: PreHooks {
+pub trait Module: PreHooks + Payments {
     fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
 }

@@ -1,5 +1,6 @@
 use cosmwasm_std::{
-    Api, Coin, CosmosMsg, Env, Extern, HumanAddr, LogAttribute, Querier, StdResult, Storage,
+    Api, BankMsg, Coin, CosmosMsg, Env, Extern, HumanAddr, LogAttribute, Querier, StdResult,
+    Storage,
 };
 
 #[derive(Debug, PartialEq)]
@@ -68,5 +69,18 @@ pub trait PreHooks {
         _token_id: i64,
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
+    }
+}
+
+pub trait Payments {
+    fn on_agreed_transfer(
+        &self,
+        _env: Env,
+        _payments: &mut Vec<BankMsg>,
+        _owner: HumanAddr,
+        _purchaser: HumanAddr,
+        _amount: Coin,
+    ) -> StdResult<bool> {
+        Ok(true)
     }
 }
