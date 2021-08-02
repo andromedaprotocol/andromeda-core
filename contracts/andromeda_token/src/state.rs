@@ -1,5 +1,6 @@
-use cosmwasm_std::{HumanAddr, StdResult, Storage};
-use cosmwasm_storage::{bucket, bucket_read, singleton};
+use andromeda_protocol::token::TOKEN_ID;
+use cosmwasm_std::{StdResult, Storage};
+use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -7,24 +8,25 @@ use serde::{Deserialize, Serialize};
 pub struct TokenConfig {
     pub name: String,
     pub symbol: String,
-    pub creator: HumanAddr,
+    pub minter: String,
 }
 
-static CONFIG_KEY: &[u8] = b"config";
-static OWNERS_NS: &[u8] = b"owners";
+pub const CONFIG: Item<TokenConfig> = Item::new("config");
+pub const OWNERSHIP: Map<TOKEN_ID, String> = Map::new("ownership");
 
-pub fn store_config<S: Storage>(storage: &mut S, config: &TokenConfig) -> StdResult<()> {
-    singleton(storage, CONFIG_KEY).save(config)
+pub fn store_config(storage: &mut dyn Storage, config: &TokenConfig) -> StdResult<TokenConfig> {
+    CONFIG.save(storage, config)?;
+    Ok(config.clone())
 }
 
-pub fn store_owner<S: Storage>(
-    storage: &mut S,
-    token_id: &i64,
-    owner: &HumanAddr,
+pub fn store_owner(
+    storage: &mut dyn Storage,
+    token_id: &TOKEN_ID,
+    owner: &String,
 ) -> StdResult<()> {
-    bucket(OWNERS_NS, storage).save(&token_id.to_le_bytes(), owner)
+    OWNERSHIP.save(storage, token_id, owner)
 }
 
-pub fn get_owner<S: Storage>(storage: &S, token_id: &i64) -> StdResult<HumanAddr> {
-    bucket_read(OWNERS_NS, storage).load(&token_id.to_le_bytes())
+pub fn get_owner(storage: &mut dyn Storage, token_id: &TOKEN_ID) -> StdResult<String> {
+    OWNERSHIP.may_load(storage, token_id)
 }

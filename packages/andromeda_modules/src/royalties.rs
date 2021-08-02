@@ -1,4 +1,4 @@
-use cosmwasm_std::{BankMsg, Coin, Env, HumanAddr, StdError, StdResult, Storage, Uint128};
+use cosmwasm_std::{BankMsg, Coin, Env, StdError, StdResult, Storage, String, Uint128};
 
 use crate::{
     hooks::payments::{add_payment, deduct_payment},
@@ -11,7 +11,7 @@ pub fn required_payment<S: Storage>(
     _env: &Env,
     collection_symbol: &String,
     token_id: &i64,
-    receivers: &Vec<HumanAddr>,
+    receivers: &Vec<String>,
     royalty_fee: i64,
 ) -> StdResult<Vec<Coin>> {
     let collection = collection_read(storage).load(collection_symbol.as_bytes())?;
@@ -46,7 +46,7 @@ pub fn post_transfer_payments<S: Storage>(
     env: &Env,
     collection_symbol: &String,
     token_id: &i64,
-    receivers: &Vec<HumanAddr>,
+    receivers: &Vec<String>,
     royalty_fee: i64,
     payments: &mut Vec<BankMsg>,
 ) -> StdResult<bool> {
@@ -149,7 +149,7 @@ mod test {
             token_id: 1,
             amount: Uint128(100),
             denom: String::from("uluna"),
-            purchaser: HumanAddr::from("purchaser"),
+            purchaser: String::from("purchaser"),
         };
         let _res = handle(&mut deps, transfer_env, msg).unwrap();
 
@@ -159,7 +159,7 @@ mod test {
             &buyer_env,
             &String::from("TT"),
             &1,
-            &vec![HumanAddr::from("recv")],
+            &vec![String::from("recv")],
             2,
         )
         .unwrap();
@@ -192,14 +192,14 @@ mod test {
             token_id: 1,
             amount: Uint128(100),
             denom: String::from("uluna"),
-            purchaser: HumanAddr::from("purchaser"),
+            purchaser: String::from("purchaser"),
         };
         let _res = handle(&mut deps, transfer_env, msg).unwrap();
 
         let buyer_env = mock_env("purchaser", &coins(100, "uluna"));
         let mut payments: Vec<BankMsg> = vec![BankMsg::Send {
             from_address: buyer_env.contract.address.clone(),
-            to_address: HumanAddr::from("creator"),
+            to_address: String::from("creator"),
             amount: vec![Coin {
                 denom: String::from("uluna"),
                 amount: Uint128(100),
@@ -211,7 +211,7 @@ mod test {
             &buyer_env,
             &String::from("TT"),
             &1,
-            &vec![HumanAddr::from("recv")],
+            &vec![String::from("recv")],
             2,
             &mut payments,
         )
@@ -223,7 +223,7 @@ mod test {
             BankMsg::Send {
                 to_address, amount, ..
             } => {
-                assert!(to_address.eq(&HumanAddr::from("creator")));
+                assert!(to_address.eq(&String::from("creator")));
                 assert!(amount.len() > 0);
                 assert_eq!(Uint128(98), amount[0].amount);
                 assert_eq!(String::from("uluna"), amount[0].denom);
@@ -234,7 +234,7 @@ mod test {
             BankMsg::Send {
                 to_address, amount, ..
             } => {
-                assert!(to_address.eq(&HumanAddr::from("recv")));
+                assert!(to_address.eq(&String::from("recv")));
                 assert!(amount.len() > 0);
                 assert_eq!(Uint128(2), amount[0].amount);
                 assert_eq!(String::from("uluna"), amount[0].denom);

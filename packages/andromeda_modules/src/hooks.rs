@@ -1,73 +1,47 @@
-use cosmwasm_std::{
-    Api, BankMsg, Coin, CosmosMsg, Env, Extern, HumanAddr, LogAttribute, Querier, StdResult,
-    Storage,
-};
+use cosmwasm_std::{BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, StdResult};
 
 #[derive(Debug, PartialEq)]
 pub struct HookResponse {
     pub msgs: Vec<CosmosMsg>,
-    pub logs: Vec<LogAttribute>,
 }
 
 impl HookResponse {
     pub fn default() -> Self {
-        HookResponse {
-            msgs: vec![],
-            logs: vec![],
-        }
+        HookResponse { msgs: vec![] }
     }
 }
 
 pub trait PreHooks {
-    fn pre_handle<S: Storage, A: Api, Q: Querier>(
-        &self,
-        _deps: &mut Extern<S, A, Q>,
-        _env: Env,
-    ) -> StdResult<HookResponse> {
+    fn pre_execute(&self, _deps: DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_publish<S: Storage, A: Api, Q: Querier>(
-        &self,
-        _deps: &mut Extern<S, A, Q>,
-        _env: Env,
-        _token_id: i64,
-    ) -> StdResult<HookResponse> {
+    fn pre_publish(&self, _deps: DepsMut, _env: Env, _token_id: i64) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_transfer<S: Storage, A: Api, Q: Querier>(
+    fn pre_transfer(
         &self,
-        _deps: &mut Extern<S, A, Q>,
+        _deps: DepsMut,
         _env: Env,
         _token_id: i64,
-        _from: HumanAddr,
-        _to: HumanAddr,
+        _from: String,
+        _to: String,
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_transfer_agreement<S: Storage, A: Api, Q: Querier>(
+    fn pre_transfer_agreement(
         &self,
-        _deps: &mut Extern<S, A, Q>,
+        _deps: DepsMut,
         _env: Env,
         _token_id: i64,
         _amount: Coin,
-        _buyer: HumanAddr,
+        _buyer: String,
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_burn<S: Storage, A: Api, Q: Querier>(
-        &self,
-        _deps: &mut Extern<S, A, Q>,
-        _env: Env,
-        _token_id: i64,
-    ) -> StdResult<HookResponse> {
+    fn pre_burn(&self, _deps: DepsMut, _env: Env, _token_id: i64) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_archive<S: Storage, A: Api, Q: Querier>(
-        &self,
-        _deps: &mut Extern<S, A, Q>,
-        _env: Env,
-        _token_id: i64,
-    ) -> StdResult<HookResponse> {
+    fn pre_archive(&self, _deps: DepsMut, _env: Env, _token_id: i64) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
 }
@@ -77,8 +51,8 @@ pub trait Payments {
         &self,
         _env: Env,
         _payments: &mut Vec<BankMsg>,
-        _owner: HumanAddr,
-        _purchaser: HumanAddr,
+        _owner: String,
+        _purchaser: String,
         _amount: Coin,
     ) -> StdResult<bool> {
         Ok(true)

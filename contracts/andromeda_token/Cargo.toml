@@ -31,13 +31,15 @@ overflow-checks = true
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
-cosmwasm-std = { version = "0.10.1" }
-cosmwasm-storage = { version = "0.10.1" }
+cosmwasm-std = { version = "0.15.2" }
+# cosmwasm-storage = { version = "0.10.1" }
+cw-storage-plus = "0.7.0"
 schemars = "0.7"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 snafu = { version = "0.6.3" }
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
 andromeda-modules = { version = "0.1.0", path = "../../packages/andromeda_modules" }
+cw721 = "0.7.0"
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.10.1" }

@@ -2,7 +2,7 @@ use crate::{
     hooks::{Payments, PreHooks},
     whitelist::Whitelist,
 };
-use cosmwasm_std::{HumanAddr, StdError, StdResult, Storage};
+use cosmwasm_std::{StdError, StdResult, Storage};
 use cosmwasm_storage::{singleton, singleton_read};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -13,9 +13,9 @@ pub type Fee = u128;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 pub enum ModuleDefinition {
-    WhiteList { moderators: Vec<HumanAddr> },
-    Taxable { tax: Fee, receivers: Vec<HumanAddr> },
-    // Royalties { fee: Fee, receivers: Vec<HumanAddr> },
+    WhiteList { moderators: Vec<String> },
+    Taxable { tax: Fee, receivers: Vec<String> },
+    // Royalties { fee: Fee, receivers: Vec<String> },
 }
 
 //Converts a ModuleDefinition to a Module struct

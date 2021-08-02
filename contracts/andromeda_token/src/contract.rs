@@ -1,46 +1,45 @@
-use andromeda_modules::hooks::PreHooks;
-use andromeda_modules::modules::{read_modules, store_modules};
-use andromeda_protocol::token::{HandleMsg, InitMsg, OwnerResponse, QueryMsg};
+use andromeda_protocol::token::{ExecuteMsg, InstantiateMsg, OwnerResponse, QueryMsg};
 use cosmwasm_std::{
-    to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, InitResponse, Querier,
-    StdResult, Storage, WasmMsg,
+    to_binary, Api, Binary, CosmosMsg, DepsMut, Env, MessageInfo, Querier, Response, StdResult,
+    Storage, WasmMsg,
 };
 
 use crate::state::{get_owner, store_config, store_owner, TokenConfig};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
+    deps: DepsMut,
     _env: Env,
-    msg: InitMsg,
-) -> StdResult<InitResponse> {
+    msg: InstantiateMsg,
+) -> StdResult<Response> {
     msg.validate()?;
 
     let config = TokenConfig {
         name: msg.name,
         symbol: msg.symbol,
-        creator: msg.creator,
+        minter: msg.minter,
     };
 
-    store_config(&mut deps.storage, &config)?;
-    store_modules(&mut deps.storage, msg.modules)?;
+    store_config(deps.storage, &config)?;
+    // store_modules(&mut deps.storage, msg.modules)?;
 
     match msg.init_hook {
         Some(hook) => Ok(InitResponse {
             messages: vec![CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: hook.contract_addr,
                 msg: hook.msg,
-                send: vec![],
+                funds: vec![],
             })],
             log: vec![],
         }),
-        None => Ok(InitResponse::default()),
+        None => Ok(Response::default()),
     }
 }
 
-pub fn handle<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
+pub fn execute<S: Storage, A: Api, Q: Querier>(
+    deps: DepsMust,
     env: Env,
-    msg: HandleMsg,
+    _info: MessageInfo,
+    msg: ExecuteMsg,
 ) -> StdResult<HandleResponse> {
     let modules = read_modules(&deps.storage)?;
     for module in modules {
@@ -91,7 +90,7 @@ fn query_owner<S: Storage, A: Api, Q: Querier>(
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use cosmwasm_std::{coins, from_binary, HumanAddr};
+    use cosmwasm_std::{coins, from_binary, String};
 
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
@@ -104,7 +103,7 @@ mod tests {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             modules: vec![],
-            creator: HumanAddr::from("creator"),
+            creator: String::from("creator"),
             init_hook: None,
         };
 
@@ -129,6 +128,6 @@ mod tests {
         let query_res = query(&deps, query_msg).unwrap();
         let query_val: OwnerResponse = from_binary(&query_res).unwrap();
 
-        assert_eq!(query_val.owner, HumanAddr::from("owner"))
+        assert_eq!(query_val.owner, String::from("owner"))
     }
 }

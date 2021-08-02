@@ -1,4 +1,4 @@
-use cosmwasm_std::{coin, Coin, Env, HumanAddr, StdError, StdResult, Uint128};
+use cosmwasm_std::{coin, Coin, Env, StdError, StdResult, Uint128};
 
 use crate::{
     common::{add_payment, require},
@@ -8,7 +8,7 @@ use crate::{
 
 struct Taxable {
     tax: Fee,
-    receivers: Vec<HumanAddr>,
+    receivers: Vec<String>,
 }
 
 impl PreHooks for Taxable {}
@@ -18,24 +18,19 @@ impl Payments for Taxable {
         &self,
         env: Env,
         payments: &mut Vec<cosmwasm_std::BankMsg>,
-        _owner: HumanAddr,
-        _purchaser: HumanAddr,
+        _owner: String,
+        _purchaser: String,
         agreed_payment: Coin,
     ) -> StdResult<bool> {
         let contract_addr = env.contract.address;
         let tax_amount: Uint128 = agreed_payment
             .amount
-            .multiply_ratio(Uint128(self.tax), 100 as u128);
+            .multiply_ratio(Uint128::from(self.tax), 100 as u128);
 
         let tax = coin(tax_amount.u128(), &agreed_payment.denom.to_string());
 
         for receiver in self.receivers.to_vec() {
-            add_payment(
-                payments,
-                contract_addr.clone(),
-                receiver.clone(),
-                tax.clone(),
-            );
+            add_payment(payments, receiver.clone(), tax.clone());
         }
 
         Ok(true)
@@ -70,14 +65,14 @@ mod tests {
     fn test_taxable_validate() {
         let t = Taxable {
             tax: 2,
-            receivers: vec![HumanAddr::default()],
+            receivers: vec![String::default()],
         };
 
         assert_eq!(t.validate(vec![]).unwrap(), true);
 
         let t_invalidtax = Taxable {
             tax: 0,
-            receivers: vec![HumanAddr::default()],
+            receivers: vec![String::default()],
         };
 
         assert_eq!(
@@ -99,8 +94,8 @@ mod tests {
     #[test]
 
     fn test_taxable_on_agreed_transfer() {
-        let env = mock_env(HumanAddr::default(), &coins(100, "uluna"));
-        let receivers = vec![HumanAddr::from("recv1"), HumanAddr::from("recv2")];
+        let env = mock_env();
+        let receivers = vec![String::from("recv1"), String::from("recv2")];
         let t = Taxable {
             tax: 1,
             receivers: receivers.clone(),
@@ -108,8 +103,8 @@ mod tests {
 
         let agreed_transfer_amount = coin(100, "uluna");
         let tax_amount = 1;
-        let owner = HumanAddr::from("owner");
-        let purchaser = HumanAddr::from("purchaser");
+        let owner = String::from("owner");
+        let purchaser = String::from("purchaser");
         let mut payments = vec![];
 
         t.on_agreed_transfer(
@@ -124,13 +119,11 @@ mod tests {
         assert_eq!(payments.len(), 2);
 
         let first_payment = BankMsg::Send {
-            from_address: env.contract.address.clone(),
-            to_address: HumanAddr::from("recv1"),
+            to_address: String::from("recv1"),
             amount: coins(tax_amount, &agreed_transfer_amount.denom.to_string()),
         };
         let second_payment = BankMsg::Send {
-            from_address: env.contract.address.clone(),
-            to_address: HumanAddr::from("recv2"),
+            to_address: String::from("recv2"),
             amount: coins(tax_amount, &agreed_transfer_amount.denom.to_string()),
         };
 

@@ -1,5 +1,4 @@
 use andromeda_modules::modules::ModuleDefinition;
-use cosmwasm_std::HumanAddr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -20,11 +19,11 @@ pub enum HandleMsg {
     //Called by instantiated token contract to store address
     TokenCreationHook {
         symbol: String,
-        creator: HumanAddr,
+        creator: String,
     },
     UpdateAddress {
         symbol: String,
-        new_address: HumanAddr,
+        new_address: String,
     },
 }
 
@@ -36,5 +35,5 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AddressResponse {
-    pub address: HumanAddr,
+    pub address: String,
 }

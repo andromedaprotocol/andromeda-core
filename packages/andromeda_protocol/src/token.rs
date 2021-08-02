@@ -1,40 +1,59 @@
 use crate::hook::InitHook;
 
 use andromeda_modules::modules::ModuleDefinition;
-use cosmwasm_std::{HumanAddr, StdResult, Uint128};
+use cosmwasm_std::{Coin, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub type TOKEN_ID = i64;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TransferAgreement {
-    pub denom: String,
-    pub amount: Uint128,
-    pub purchaser: HumanAddr,
+    pub amount: Coin,
+    pub purchaser: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InitMsg {
-    pub creator: HumanAddr,
+pub struct InstantiateMsg {
+    /// Name of the NFT contract
     pub name: String,
+    /// Symbol of the NFT contract
     pub symbol: String,
+
+    /// The minter is the only one who can create new NFTs.
+    /// This is designed for a base NFT that is controlled by an external program
+    /// or contract. You will likely replace this with custom logic in custom NFTs
+    pub minter: String,
+
+    //The attached Andromeda modules
     pub modules: Vec<ModuleDefinition>,
+
+    //A hook for if the contract is instantiated by the factory
     pub init_hook: Option<InitHook>,
 }
 
-impl InitMsg {
+impl InstantiateMsg {
     pub fn validate(&self) -> StdResult<bool> {
         Ok(true)
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MintMsg {
+    pub token_id: String,
+    pub owner: String,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum HandleMsg {
-    Mint { token_id: i64 },
+pub enum ExecuteMsg {
+    Mint(MintMsg),
     // Transfer {
     //     collection_symbol: String,
-    //     from: HumanAddr,
-    //     to: HumanAddr,
+    //     from: String,
+    //     to: String,
     //     token_id: i64,
     // },
     // Burn {
@@ -50,15 +69,15 @@ pub enum HandleMsg {
     //     token_id: i64,
     //     denom: String,
     //     amount: Uint128,
-    //     purchaser: HumanAddr,
+    //     purchaser: String,
     // },
     // Whitelist {
     //     collection_symbol: String,
-    //     address: HumanAddr,
+    //     address: String,
     // },
     // Dewhitelist {
     //     collection_symbol: String,
-    //     address: HumanAddr,
+    //     address: String,
     // },
 }
 
@@ -67,7 +86,7 @@ pub enum HandleMsg {
 pub enum QueryMsg {
     // GetBalance {
     //     collection_symbol: String,
-    //     address: HumanAddr,
+    //     address: String,
     // },
     GetOwner { token_id: i64 },
     // GetArchived {
@@ -83,7 +102,7 @@ pub enum QueryMsg {
     // },
     // GetWhitelisted {
     //     collection_symbol: String,
-    //     address: HumanAddr,
+    //     address: String,
     // },
 }
 
@@ -94,7 +113,7 @@ pub struct BalanceResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OwnerResponse {
-    pub owner: HumanAddr,
+    pub owner: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -1,5 +1,5 @@
-use cosmwasm_std::{Api, Env, Extern, HumanAddr, Querier, StdError, StdResult, Storage};
-use cosmwasm_storage::{bucket, bucket_read};
+use cosmwasm_std::{Api, DepsMut, Env, MessageInfo, Querier, StdError, StdResult, Storage};
+use cw_storage_plus::Map;
 
 use crate::{
     common::{is_unique, require},
@@ -8,23 +8,24 @@ use crate::{
 };
 
 const WHITELIST_NS: &[u8] = b"whitelist";
+const WHITELIST: Map<String, bool> = Map::new("whitelist");
 
 pub struct Whitelist {
-    pub moderators: Vec<HumanAddr>,
+    pub moderators: Vec<String>,
 }
 
 impl Whitelist {
-    pub fn is_moderator(&self, addr: &HumanAddr) -> bool {
+    pub fn is_moderator(&self, addr: &String) -> bool {
         self.moderators.contains(addr)
     }
-    pub fn whitelist_addr<S: Storage>(&self, storage: &mut S, addr: &HumanAddr) -> StdResult<()> {
-        bucket(WHITELIST_NS, storage).save(addr.to_string().as_bytes(), &true)
+    pub fn whitelist_addr(&self, storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
+        WHITELIST.save(storage, addr.clone(), &true)
     }
-    pub fn remove_whitelist<S: Storage>(&self, storage: &mut S, addr: &HumanAddr) -> StdResult<()> {
-        bucket(WHITELIST_NS, storage).save(addr.to_string().as_bytes(), &false)
+    pub fn remove_whitelist(&self, storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
+        WHITELIST.save(storage, addr.clone(), &false)
     }
-    pub fn is_whitelisted<S: Storage>(&self, storage: &S, addr: &HumanAddr) -> StdResult<bool> {
-        match bucket_read(WHITELIST_NS, storage).load(addr.to_string().as_bytes()) {
+    pub fn is_whitelisted(&self, storage: &dyn Storage, addr: &String) -> StdResult<bool> {
+        match WHITELIST.load(storage, addr.clone()) {
             Ok(whitelisted) => Ok(whitelisted),
             Err(e) => match e {
                 cosmwasm_std::StdError::NotFound { .. } => Ok(false),
@@ -35,14 +36,10 @@ impl Whitelist {
 }
 
 impl PreHooks for Whitelist {
-    fn pre_handle<S: Storage, A: Api, Q: Querier>(
-        &self,
-        deps: &mut Extern<S, A, Q>,
-        env: Env,
-    ) -> StdResult<HookResponse> {
+    fn pre_execute(&self, deps: DepsMut, info: MessageInfo, env: Env) -> StdResult<HookResponse> {
         require(
-            self.is_whitelisted(&deps.storage, &env.message.sender.clone())?,
-            StdError::unauthorized(),
+            self.is_whitelisted(deps.storage, &info.sender.to_string())?,
+            StdError::generic_err("Address is not whitelisted"),
         )?;
 
         Ok(HookResponse::default())
@@ -72,7 +69,7 @@ mod tests {
     use super::*;
     use cosmwasm_std::{
         coins,
-        testing::{mock_dependencies, mock_env},
+        testing::{mock_dependencies, mock_env, mock_info},
     };
 
     #[test]
@@ -98,19 +95,24 @@ mod tests {
 
     #[test]
     fn test_pre_handle() {
-        let sender = HumanAddr::from("sender");
-        let mut deps = mock_dependencies(20, &[]);
-        let env = mock_env(sender.clone(), &coins(1000, "earth"));
+        let sender = String::from("sender");
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("sender", &[]);
         let wl = Whitelist { moderators: vec![] };
 
-        let resp = wl.pre_handle(&mut deps, env.clone()).unwrap_err();
+        let resp = wl
+            .pre_execute(deps.as_mut(), info.clone(), env.clone())
+            .unwrap_err();
 
-        assert_eq!(resp, StdError::unauthorized());
+        assert_eq!(resp, StdError::generic_err("Address is not whitelisted"));
 
         wl.whitelist_addr(&mut deps.storage, &sender.clone())
             .unwrap();
 
-        let resp = wl.pre_handle(&mut deps, env.clone()).unwrap();
+        let resp = wl
+            .pre_execute(deps.as_mut(), info.clone(), env.clone())
+            .unwrap();
 
         assert_eq!(resp, HookResponse::default());
     }

@@ -1,13 +1,13 @@
 use std::fmt;
 
-use cosmwasm_std::HumanAddr;
+use cosmwasm_std::String;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MintLog {
     pub token_id: i64,
-    pub owner: HumanAddr,
+    pub owner: String,
 }
 
 impl fmt::Display for MintLog {
@@ -19,8 +19,8 @@ impl fmt::Display for MintLog {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TransferLog {
     pub token_id: i64,
-    pub from: HumanAddr,
-    pub to: HumanAddr,
+    pub from: String,
+    pub to: String,
 }
 impl fmt::Display for TransferLog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -31,7 +31,7 @@ impl fmt::Display for TransferLog {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BurnLog {
     pub token_id: i64,
-    pub burner: HumanAddr,
+    pub burner: String,
 }
 
 impl fmt::Display for BurnLog {
@@ -43,7 +43,7 @@ impl fmt::Display for BurnLog {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchiveLog {
     pub token_id: i64,
-    pub archiver: HumanAddr,
+    pub archiver: String,
 }
 
 impl fmt::Display for ArchiveLog {
@@ -54,8 +54,8 @@ impl fmt::Display for ArchiveLog {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct WhitelistLog {
-    pub address: HumanAddr,
-    pub whitelister: HumanAddr,
+    pub address: String,
+    pub whitelister: String,
     pub whitelisted: bool,
 }
 
