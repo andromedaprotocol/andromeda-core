@@ -14,6 +14,7 @@ pub fn is_unique<M: Module>(module: &M, all_modules: &Vec<ModuleDefinition>) -> 
     let mut total = 0;
 
     all_modules.into_iter().for_each(|d| {
+        //Compares enum values of given definitions
         if std::mem::discriminant(d) == std::mem::discriminant(&definition) {
             total += 1;
         } else {
@@ -45,6 +46,7 @@ pub fn add_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) {
         to_address: to,
         amount: vec![amount],
     };
+
     payments.push(payment);
 }
 
@@ -72,11 +74,9 @@ pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> 
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{coin, Uint128};
-
-    use crate::whitelist::Whitelist;
-
     use super::*;
+    use crate::whitelist::Whitelist;
+    use cosmwasm_std::{coin, Uint128};
 
     #[test]
     fn test_is_unique() {
