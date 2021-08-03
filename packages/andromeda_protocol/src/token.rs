@@ -5,7 +5,7 @@ use cosmwasm_std::{Coin, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub type TOKEN_ID = i64;
+pub type TokenId = i64;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TransferAgreement {
@@ -40,7 +40,7 @@ impl InstantiateMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MintMsg {
-    pub token_id: String,
+    pub token_id: TokenId,
     pub owner: String,
     pub name: String,
     pub description: Option<String>,
@@ -54,19 +54,19 @@ pub enum ExecuteMsg {
     //     collection_symbol: String,
     //     from: String,
     //     to: String,
-    //     token_id: i64,
+    //     token_id: TokenId,
     // },
     // Burn {
     //     collection_symbol: String,
-    //     token_id: i64,
+    //     token_id: TokenId,
     // },
     // Archive {
     //     collection_symbol: String,
-    //     token_id: i64,
+    //     token_id: TokenId,
     // },
     // CreateTransferAgreement {
     //     collection_symbol: String,
-    //     token_id: i64,
+    //     token_id: TokenId,
     //     denom: String,
     //     amount: Uint128,
     //     purchaser: String,
@@ -88,14 +88,14 @@ pub enum QueryMsg {
     //     collection_symbol: String,
     //     address: String,
     // },
-    GetOwner { token_id: i64 },
+    GetOwner { token_id: TokenId },
     // GetArchived {
     //     collection_symbol: String,
-    //     token_id: i64,
+    //     token_id: TokenId,
     // },
     // GetTransferAgreement {
     //     collection_symbol: String,
-    //     token_id: i64,
+    //     token_id: TokenId,
     // },
     // GetExtensions {
     //     collection_symbol: String,

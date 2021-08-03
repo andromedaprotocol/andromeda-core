@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MintLog {
-    pub token_id: i64,
+    pub token_id: TokenId,
     pub owner: String,
 }
 
@@ -18,37 +18,49 @@ impl fmt::Display for MintLog {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TransferLog {
-    pub token_id: i64,
+    pub token_id: TokenId,
     pub from: String,
     pub to: String,
 }
 impl fmt::Display for TransferLog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{token_id: {}, from: {}, to: {}}}", self.token_id, self.from, self.to)
+        write!(
+            f,
+            "{{token_id: {}, from: {}, to: {}}}",
+            self.token_id, self.from, self.to
+        )
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BurnLog {
-    pub token_id: i64,
+    pub token_id: TokenId,
     pub burner: String,
 }
 
 impl fmt::Display for BurnLog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{token_id: {}, burner: {}}}", self.token_id, self.burner)
+        write!(
+            f,
+            "{{token_id: {}, burner: {}}}",
+            self.token_id, self.burner
+        )
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchiveLog {
-    pub token_id: i64,
+    pub token_id: TokenId,
     pub archiver: String,
 }
 
 impl fmt::Display for ArchiveLog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{token_id: {}, archiver: {}}}", self.token_id, self.archiver)
+        write!(
+            f,
+            "{{token_id: {}, archiver: {}}}",
+            self.token_id, self.archiver
+        )
     }
 }
 
@@ -61,6 +73,10 @@ pub struct WhitelistLog {
 
 impl fmt::Display for WhitelistLog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{address: {}, whitelister: {}, whitelisted: {}}}", self.address, self.whitelister, self.whitelisted)
+        write!(
+            f,
+            "{{address: {}, whitelister: {}, whitelisted: {}}}",
+            self.address, self.whitelister, self.whitelisted
+        )
     }
 }

@@ -6,9 +6,9 @@ use crate::{
     modules::{Fee, Module, ModuleDefinition},
 };
 
-struct Taxable {
-    tax: Fee,
-    receivers: Vec<String>,
+pub struct Taxable {
+    pub tax: Fee,
+    pub receivers: Vec<String>,
 }
 
 impl PreHooks for Taxable {}
@@ -22,7 +22,7 @@ impl Payments for Taxable {
         _purchaser: String,
         agreed_payment: Coin,
     ) -> StdResult<bool> {
-        let contract_addr = env.contract.address;
+        let _contract_addr = env.contract.address;
         let tax_amount: Uint128 = agreed_payment
             .amount
             .multiply_ratio(Uint128::from(self.tax), 100 as u128);

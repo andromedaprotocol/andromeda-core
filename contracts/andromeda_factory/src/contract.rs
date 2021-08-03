@@ -6,7 +6,7 @@
 //     token::InstantiateMsg as TokenInitMsg,
 // };
 // use cosmwasm_std::{
-//     to_binary, Api, Binary, CanonicalAddr, CosmosMsg, DepsMut, Env, Extern, HandleResponse,
+//     // to_binary, Api, Binary, CanonicalAddr, CosmosMsg, DepsMut, Env, Extern, HandleResponse,
 //     InitResponse, Querier, StdError, StdResult, Storage, WasmMsg,
 // };
 

@@ -116,7 +116,7 @@ mod test {
     fn mint_token<S: Storage, A: Api, Q: Querier>(
         deps: &mut Extern<S, A, Q>,
         owner: &str,
-        token_id: i64,
+        token_id: TokenId,
     ) {
         let auth_env = mock_env(owner, &coins(2, "token"));
         let msg = HandleMsg::Mint {

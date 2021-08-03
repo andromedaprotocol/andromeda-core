@@ -32,7 +32,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
 cosmwasm-std = { version = "0.15.2" }
-cosmwasm-storage = { version = "0.10.1" }
+cw-storage-plus = "0.7"
 schemars = "0.8.3"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 snafu = { version = "0.6.3" }
@@ -40,4 +40,4 @@ andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_proto
 andromeda-modules = { version = "0.1.0", path = "../../packages/andromeda_modules" }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "0.10.1" }
+cosmwasm-schema = { version = "0.15.2" }

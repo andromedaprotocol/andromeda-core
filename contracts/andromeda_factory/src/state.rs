@@ -1,11 +1,11 @@
-use cosmwasm_std::{CanonicalAddr, String, StdResult, Storage};
-use cosmwasm_storage::{bucket, bucket_read, singleton, singleton_read};
+use cosmwasm_std::{CanonicalAddr, StdResult, Storage};
+use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-static KEY_CONFIG: &[u8] = b"config";
-static NS_ADDRESS: &[u8] = b"address";
-static NS_CREATOR: &[u8] = b"creator";
+pub const CONFIG: Item<Config> = Item::new("config");
+pub const SYM_ADDRESS: Map<String, String> = Map::new("address");
+pub const SYM_CREATOR: Map<String, String> = Map::new("creator");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
@@ -13,52 +13,38 @@ pub struct Config {
     pub token_code_id: u64,
 }
 
-pub fn store_config<S: Storage>(storage: &mut S, config: &Config) -> StdResult<()> {
-    singleton(storage, KEY_CONFIG).save(config)
+pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()> {
+    CONFIG.save(storage, config)
 }
 
-pub fn read_config<S: Storage>(storage: &S) -> StdResult<Config> {
-    singleton_read(storage, KEY_CONFIG).load()
+pub fn read_config(storage: &dyn Storage) -> StdResult<Config> {
+    CONFIG.load(storage)
 }
 
-pub fn store_address<S: Storage>(
-    storage: &mut S,
-    symbol: String,
-    address: String,
-) -> StdResult<()> {
-    bucket(NS_ADDRESS, storage).save(symbol.as_bytes(), &address)
+pub fn store_address(storage: &mut dyn Storage, symbol: String, address: &String) -> StdResult<()> {
+    SYM_ADDRESS.save(storage, symbol, &address)
 }
 
-pub fn read_address<S: Storage>(storage: &S, symbol: String) -> StdResult<String> {
-    match bucket_read(NS_ADDRESS, storage).load(symbol.as_bytes()) {
-        Ok(addr) => Ok(addr),
-        Err(e) => Err(e),
-    }
+pub fn read_address(storage: &dyn Storage, symbol: String) -> StdResult<String> {
+    SYM_ADDRESS.load(storage, symbol)
 }
 
-pub fn store_creator<S: Storage>(
-    storage: &mut S,
-    symbol: &String,
-    creator: &String,
-) -> StdResult<()> {
-    bucket(NS_CREATOR, storage).save(symbol.as_bytes(), creator)
+pub fn store_creator(storage: &mut dyn Storage, symbol: String, creator: &String) -> StdResult<()> {
+    SYM_CREATOR.save(storage, symbol, creator)
 }
 
-pub fn read_creator<S: Storage>(storage: &S, symbol: String) -> StdResult<String> {
-    match bucket_read(NS_CREATOR, storage).load(symbol.as_bytes()) {
-        Ok(addr) => Ok(addr),
-        Err(e) => Err(e),
-    }
+pub fn read_creator(storage: &dyn Storage, symbol: String) -> StdResult<String> {
+    SYM_CREATOR.load(storage, symbol)
 }
 
-pub fn is_address_defined<S: Storage>(storage: &S, symbol: String) -> StdResult<bool> {
+pub fn is_address_defined(storage: &dyn Storage, symbol: String) -> StdResult<bool> {
     match read_address(storage, symbol) {
         Ok(_addr) => Ok(true),
         _ => Ok(false),
     }
 }
 
-pub fn is_creator<S: Storage>(storage: &S, symbol: String, address: String) -> StdResult<bool> {
+pub fn is_creator(storage: &dyn Storage, symbol: String, address: String) -> StdResult<bool> {
     match read_creator(storage, symbol) {
         Ok(creator) => Ok(address == creator),
         Err(_e) => Ok(false),

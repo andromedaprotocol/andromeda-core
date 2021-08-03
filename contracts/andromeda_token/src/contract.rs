@@ -1,16 +1,14 @@
-use andromeda_protocol::token::{ExecuteMsg, InstantiateMsg, OwnerResponse, QueryMsg};
+use andromeda_modules::modules::{read_modules, store_modules};
+use andromeda_protocol::token::{
+    ExecuteMsg, InstantiateMsg, MintMsg, OwnerResponse, QueryMsg, TokenId,
+};
 use cosmwasm_std::{
-    to_binary, Api, Binary, CosmosMsg, DepsMut, Env, MessageInfo, Querier, Response, StdResult,
-    Storage, WasmMsg,
+    to_binary, Api, Binary, Deps, DepsMut, Env, MessageInfo, Querier, Response, StdResult, Storage,
 };
 
 use crate::state::{get_owner, store_config, store_owner, TokenConfig};
 
-pub fn init<S: Storage, A: Api, Q: Querier>(
-    deps: DepsMut,
-    _env: Env,
-    msg: InstantiateMsg,
-) -> StdResult<Response> {
+pub fn instantiate(deps: DepsMut, _env: Env, msg: InstantiateMsg) -> StdResult<Response> {
     msg.validate()?;
 
     let config = TokenConfig {
@@ -20,67 +18,49 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     };
 
     store_config(deps.storage, &config)?;
-    // store_modules(&mut deps.storage, msg.modules)?;
+    store_modules(deps.storage, &msg.modules)?;
 
     match msg.init_hook {
-        Some(hook) => Ok(InitResponse {
-            messages: vec![CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: hook.contract_addr,
-                msg: hook.msg,
-                funds: vec![],
-            })],
-            log: vec![],
-        }),
+        Some(hook) => {
+            let mut resp = Response::new();
+            resp.add_message(hook.into_cosmos_msg()?);
+            Ok(resp)
+        }
         None => Ok(Response::default()),
     }
 }
 
-pub fn execute<S: Storage, A: Api, Q: Querier>(
-    deps: DepsMust,
-    env: Env,
-    _info: MessageInfo,
-    msg: ExecuteMsg,
-) -> StdResult<HandleResponse> {
-    let modules = read_modules(&deps.storage)?;
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+    let modules = read_modules(deps.storage)?;
     for module in modules {
-        module.pre_handle(deps, env.clone())?;
+        module.pre_execute(&deps, info.clone(), env.clone())?;
     }
 
     match msg {
-        HandleMsg::Mint { token_id } => mint(deps, env, token_id),
+        ExecuteMsg::Mint(msg) => mint(deps, env, info, msg),
     }
 }
 
-pub fn mint<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
-    token_id: i64,
-) -> StdResult<HandleResponse> {
-    let modules = read_modules(&deps.storage)?;
+pub fn mint(deps: DepsMut, env: Env, info: MessageInfo, msg: MintMsg) -> StdResult<Response> {
+    let modules = read_modules(deps.storage)?;
     for module in modules {
-        module.pre_publish(deps, env.clone(), token_id)?;
+        module.pre_publish(&deps, env.clone(), msg.token_id.clone())?;
     }
 
-    let sender = env.message.sender;
+    let sender = info.sender.to_string();
 
-    store_owner(&mut deps.storage, &token_id, &sender.clone())?;
-    Ok(HandleResponse::default())
+    store_owner(deps.storage, &msg.token_id.clone(), &sender.clone())?;
+    Ok(Response::default())
 }
 
-pub fn query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    msg: QueryMsg,
-) -> StdResult<Binary> {
+pub fn query(deps: Deps, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetOwner { token_id } => to_binary(&query_owner(deps, token_id)?),
     }
 }
 
-fn query_owner<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    token_id: i64,
-) -> StdResult<OwnerResponse> {
-    let owner = get_owner(&deps.storage, &token_id)?;
+fn query_owner(deps: Deps, token_id: TokenId) -> StdResult<OwnerResponse> {
+    let owner = get_owner(deps.storage, &token_id)?;
     Ok(OwnerResponse {
         owner: owner.clone(),
     })
@@ -89,45 +69,54 @@ fn query_owner<S: Storage, A: Api, Q: Querier>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use cosmwasm_std::{coins, from_binary, String};
+    use cosmwasm_std::from_binary;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
 
     #[test]
     fn proper_initialization() {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies(&[]);
 
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             modules: vec![],
-            creator: String::from("creator"),
+            minter: String::from("creator"),
             init_hook: None,
         };
 
-        let env = mock_env("creator", &coins(1000, "earth"));
+        let env = mock_env();
 
-        let res = init(&mut deps, env, msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
 
     #[test]
     fn test_mint() {
-        let mut deps = mock_dependencies(20, &[]);
-        let env = mock_env("owner", &coins(1000, "earth"));
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
         let token_id = 1;
+        let creator = "creator".to_string();
 
-        let msg = HandleMsg::Mint { token_id };
+        let mint_msg = MintMsg {
+            token_id,
+            owner: creator.clone(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+        };
 
-        handle(&mut deps, env, msg).unwrap();
+        let msg = ExecuteMsg::Mint(mint_msg);
+
+        execute(deps.as_mut(), env, info, msg).unwrap();
 
         let query_msg = QueryMsg::GetOwner { token_id };
 
-        let query_res = query(&deps, query_msg).unwrap();
+        let query_res = query(deps.as_ref(), query_msg).unwrap();
         let query_val: OwnerResponse = from_binary(&query_res).unwrap();
 
-        assert_eq!(query_val.owner, String::from("owner"))
+        assert_eq!(query_val.owner, creator)
     }
 }

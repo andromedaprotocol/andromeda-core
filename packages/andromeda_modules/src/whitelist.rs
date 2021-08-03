@@ -36,7 +36,7 @@ impl Whitelist {
 }
 
 impl PreHooks for Whitelist {
-    fn pre_execute(&self, deps: DepsMut, info: MessageInfo, env: Env) -> StdResult<HookResponse> {
+    fn pre_execute(&self, deps: &DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
         require(
             self.is_whitelisted(deps.storage, &info.sender.to_string())?,
             StdError::generic_err("Address is not whitelisted"),
@@ -67,10 +67,7 @@ impl Module for Whitelist {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::{
-        coins,
-        testing::{mock_dependencies, mock_env, mock_info},
-    };
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
     fn test_validate() {
@@ -102,7 +99,7 @@ mod tests {
         let wl = Whitelist { moderators: vec![] };
 
         let resp = wl
-            .pre_execute(deps.as_mut(), info.clone(), env.clone())
+            .pre_execute(&deps.as_mut(), info.clone(), env.clone())
             .unwrap_err();
 
         assert_eq!(resp, StdError::generic_err("Address is not whitelisted"));
@@ -111,7 +108,7 @@ mod tests {
             .unwrap();
 
         let resp = wl
-            .pre_execute(deps.as_mut(), info.clone(), env.clone())
+            .pre_execute(&deps.as_mut(), info.clone(), env.clone())
             .unwrap();
 
         assert_eq!(resp, HookResponse::default());

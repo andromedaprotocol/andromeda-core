@@ -12,10 +12,15 @@ impl HookResponse {
 }
 
 pub trait PreHooks {
-    fn pre_execute(&self, _deps: DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
+    fn pre_execute(
+        &self,
+        _deps: &DepsMut,
+        _info: MessageInfo,
+        _env: Env,
+    ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_publish(&self, _deps: DepsMut, _env: Env, _token_id: i64) -> StdResult<HookResponse> {
+    fn pre_publish(&self, _deps: &DepsMut, _env: Env, _token_id: i64) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
     fn pre_transfer(

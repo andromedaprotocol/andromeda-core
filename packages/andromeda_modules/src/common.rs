@@ -138,7 +138,7 @@ mod tests {
     fn test_add_payment() {
         let mut payments: Vec<BankMsg> = vec![];
 
-        let from = String::from("from");
+        let _from = String::from("from");
         let to = String::from("to");
         let amount = coin(1, "uluna");
 
