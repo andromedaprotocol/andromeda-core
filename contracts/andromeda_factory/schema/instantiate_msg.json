@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": ["token_code_id"],
+  "properties": {
+    "token_code_id": {
+      "type": "integer"
+    }
+  }
+}

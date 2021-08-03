@@ -92,9 +92,9 @@ mod test {
     };
 
     use crate::{
-        contract::{handle, init},
+        contract::{execute, init},
         extensions::extension::Extension,
-        msg::{HandleMsg, InitMsg},
+        msg::{ExecuteMsg, InitMsg},
     };
 
     fn create_token(
@@ -105,21 +105,21 @@ mod test {
         extensions: Vec<Extension>,
     ) {
         let auth_env = mock_env(sender, &coins(2, "token"));
-        let msg = HandleMsg::Create {
+        let msg = ExecuteMsg::Create {
             name,
             symbol,
             extensions,
         };
-        let _res = handle(deps, auth_env, msg).unwrap();
+        let _res = execute(deps, auth_env, msg).unwrap();
     }
 
     fn mint_token(deps: DepsMut, owner: &str, token_id: TokenId) {
         let auth_env = mock_env(owner, &coins(2, "token"));
-        let msg = HandleMsg::Mint {
+        let msg = ExecuteMsg::Mint {
             collection_symbol: String::from("TT"),
             token_id: token_id,
         };
-        let _res = handle(deps, auth_env, msg).unwrap();
+        let _res = execute(deps, auth_env, msg).unwrap();
     }
 
     #[test]
@@ -140,14 +140,14 @@ mod test {
         mint_token(&mut deps, "creator", 1);
 
         let transfer_env = mock_env("creator", &coins(2, "token"));
-        let msg = HandleMsg::CreateTransferAgreement {
+        let msg = ExecuteMsg::CreateTransferAgreement {
             collection_symbol: String::from("TT"),
             token_id: 1,
             amount: Uint128(100),
             denom: String::from("uluna"),
             purchaser: String::from("purchaser"),
         };
-        let _res = handle(&mut deps, transfer_env, msg).unwrap();
+        let _res = execute(&mut deps, transfer_env, msg).unwrap();
 
         let buyer_env = mock_env("purchaser", &coins(100, "uluna"));
         let payments = required_payment(
@@ -183,14 +183,14 @@ mod test {
         mint_token(&mut deps, "creator", 1);
 
         let transfer_env = mock_env("creator", &coins(2, "token"));
-        let msg = HandleMsg::CreateTransferAgreement {
+        let msg = ExecuteMsg::CreateTransferAgreement {
             collection_symbol: String::from("TT"),
             token_id: 1,
             amount: Uint128(100),
             denom: String::from("uluna"),
             purchaser: String::from("purchaser"),
         };
-        let _res = handle(&mut deps, transfer_env, msg).unwrap();
+        let _res = execute(&mut deps, transfer_env, msg).unwrap();
 
         let buyer_env = mock_env("purchaser", &coins(100, "uluna"));
         let mut payments: Vec<BankMsg> = vec![BankMsg::Send {

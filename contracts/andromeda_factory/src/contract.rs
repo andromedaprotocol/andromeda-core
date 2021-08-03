@@ -58,8 +58,7 @@ pub fn create(
         StdError::generic_err("Symbol is in use"),
     )?;
 
-    let mut resp = Response::new();
-    resp.add_message(WasmMsg::Instantiate {
+    let resp = Response::new().add_message(WasmMsg::Instantiate {
         code_id: config.token_code_id,
         funds: vec![],
         label: "".to_string(),
@@ -119,7 +118,7 @@ pub fn update_address(
     Ok(Response::default())
 }
 
-pub fn query(deps: Deps, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetAddress { symbol } => to_binary(&query_address(deps, symbol)?),
     }
@@ -197,8 +196,7 @@ mod tests {
             .unwrap(),
         };
 
-        let mut expected_res = Response::new();
-        expected_res.add_message(expected_msg);
+        let expected_res = Response::new().add_message(expected_msg);
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         assert_eq!(res, expected_res);
@@ -224,7 +222,7 @@ mod tests {
             symbol: TOKEN_SYMBOL.to_string(),
         };
 
-        let addr_res = query(deps.as_ref(), query_msg).unwrap();
+        let addr_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
 
         assert_eq!(info.sender, addr_val.address);
@@ -266,7 +264,7 @@ mod tests {
             symbol: TOKEN_SYMBOL.to_string(),
         };
 
-        let addr_res = query(deps.as_ref(), query_msg).unwrap();
+        let addr_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
 
         assert_eq!(new_address.clone(), addr_val.address);

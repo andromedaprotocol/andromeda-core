@@ -5,18 +5,27 @@ import {
   MsgInstantiateContract,
   getContractAddress,
   MsgExecuteContract,
+  LCDClient,
+  MnemonicKey,
 } from "@terra-money/terra.js";
 import { readFileSync } from "fs";
 
-const lt = new LocalTerra();
-
-const deployer = lt.wallets.validator;
+const mk = new MnemonicKey({
+  mnemonic:
+    "notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius",
+});
+// const lt = new LocalTerra();
+const terra = new LCDClient({
+  URL: "http://localhost:1317",
+  chainID: "localterra",
+});
+const deployer = terra.wallet(mk);
 
 async function storeCodeId(path) {
   try {
     const fileBytes = readFileSync(path).toString("base64");
 
-    const storeCode = new MsgStoreCode(deployer.key.accAddress, fileBytes);
+    const storeCode = new MsgStoreCode(deployer.key.accAddress, "");
 
     const tx = await deployer.createAndSignTx({
       msgs: [storeCode],
@@ -24,10 +33,11 @@ async function storeCodeId(path) {
       gasPrices: { uluna: "0.015" },
     });
 
-    const result = await lt.tx.broadcast(tx);
+    const result = await terra.tx.broadcast(tx);
     return getCodeId(result);
   } catch (error) {
-    console.error(error.response ? error.response.data.error : error);
+    console.error(error);
+    console.error("ERROR", error.response ? error.response.data.error : error);
     return undefined;
   }
 }
@@ -53,7 +63,7 @@ async function initFactory(factoryCodeId, tokenCodeId) {
     gasPrices: { uluna: "0.015" },
   });
 
-  const result = await lt.tx.broadcast(tx);
+  const result = await terra.tx.broadcast(tx);
   return getContractAddress(result);
 }
 
@@ -70,7 +80,7 @@ async function initToken(addr) {
     gasPrices: { uluna: "0.015" },
   });
 
-  const res = await lt.tx.broadcast(tx);
+  const res = await terra.tx.broadcast(tx);
 
   return res;
 }
@@ -85,11 +95,11 @@ async function main() {
   const factoryCode = await storeFactoryCode();
   const tokenCode = await storeTokenCode();
 
-  const factoryAddr = await initFactory(factoryCode, tokenCode);
-  await initToken(factoryAddr);
-  const tokenAddr = await queryTokenAddr(factoryAddr);
+  // const factoryAddr = await initFactory(factoryCode, tokenCode);
+  // await initToken(factoryAddr);
+  // const tokenAddr = await queryTokenAddr(factoryAddr);
 
-  console.log(tokenAddr);
+  // console.log(tokenAddr);
 }
 
 main();

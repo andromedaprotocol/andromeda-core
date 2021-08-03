@@ -90,7 +90,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pre_handle() {
+    fn test_pre_execute() {
         let sender = String::from("sender");
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
