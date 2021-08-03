@@ -1,4 +1,4 @@
-use cosmwasm_std::{CanonicalAddr, StdResult, Storage};
+use cosmwasm_std::{StdResult, Storage};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ pub const SYM_CREATOR: Map<String, String> = Map::new("creator");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    pub owner: CanonicalAddr,
+    pub owner: String,
     pub token_code_id: u64,
 }
 

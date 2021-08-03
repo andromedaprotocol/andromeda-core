@@ -2,9 +2,7 @@ use andromeda_modules::modules::{read_modules, store_modules};
 use andromeda_protocol::token::{
     ExecuteMsg, InstantiateMsg, MintMsg, OwnerResponse, QueryMsg, TokenId,
 };
-use cosmwasm_std::{
-    to_binary, Api, Binary, Deps, DepsMut, Env, MessageInfo, Querier, Response, StdResult, Storage,
-};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 use crate::state::{get_owner, store_config, store_owner, TokenConfig};
 

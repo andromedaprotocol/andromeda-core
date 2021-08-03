@@ -6,8 +6,8 @@ use crate::{
     token::exchangeable::Exchangeable,
 };
 
-pub fn required_payment<S: Storage>(
-    storage: &S,
+pub fn required_payment(
+    storage: &dyn Storage,
     _env: &Env,
     collection_symbol: &String,
     token_id: &i64,
@@ -41,8 +41,8 @@ pub fn required_payment<S: Storage>(
     }
 }
 
-pub fn post_transfer_payments<S: Storage>(
-    storage: &S,
+pub fn post_transfer_payments(
+    storage: &dyn Storage,
     env: &Env,
     collection_symbol: &String,
     token_id: &i64,
@@ -97,8 +97,8 @@ mod test {
         msg::{HandleMsg, InitMsg},
     };
 
-    fn create_token<S: Storage, A: Api, Q: Querier>(
-        deps: &mut Extern<S, A, Q>,
+    fn create_token(
+        deps: DepsMut,
         sender: &str,
         name: String,
         symbol: String,
@@ -113,11 +113,7 @@ mod test {
         let _res = handle(deps, auth_env, msg).unwrap();
     }
 
-    fn mint_token<S: Storage, A: Api, Q: Querier>(
-        deps: &mut Extern<S, A, Q>,
-        owner: &str,
-        token_id: TokenId,
-    ) {
+    fn mint_token(deps: DepsMut, owner: &str, token_id: TokenId) {
         let auth_env = mock_env(owner, &coins(2, "token"));
         let msg = HandleMsg::Mint {
             collection_symbol: String::from("TT"),

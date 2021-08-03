@@ -1,4 +1,4 @@
-use cosmwasm_std::{Api, DepsMut, Env, MessageInfo, Querier, StdError, StdResult, Storage};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, StdError, StdResult, Storage};
 use cw_storage_plus::Map;
 
 use crate::{
@@ -7,8 +7,7 @@ use crate::{
     modules::{Module, ModuleDefinition},
 };
 
-const WHITELIST_NS: &[u8] = b"whitelist";
-const WHITELIST: Map<String, bool> = Map::new("whitelist");
+pub const WHITELIST: Map<String, bool> = Map::new("whitelist");
 
 pub struct Whitelist {
     pub moderators: Vec<String>,

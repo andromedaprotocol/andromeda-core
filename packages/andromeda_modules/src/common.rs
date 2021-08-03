@@ -36,9 +36,7 @@ pub fn deduct_funds(coins: &mut Vec<Coin>, funds: Coin) -> StdResult<bool> {
             c.amount = c.amount - funds.amount;
             Ok(true)
         }
-        None => Err(StdError::generic_err(
-            "Not enough funds to deduct required payment",
-        )),
+        None => Err(StdError::generic_err("Not enough funds to deduct payment")),
     }
 }
 
@@ -50,32 +48,27 @@ pub fn add_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) {
     payments.push(payment);
 }
 
-// pub fn deduct_payment(
-//     payments: &mut Vec<BankMsg>,
-//     from: String,
-//     to: String,
-//     amount: Coin,
-// ) -> StdResult<bool> {
-//     let payment = payments.iter_mut().find(|m| match m {
-//         BankMsg::Send { to_address, .. } => {
-//             from_address.clone().eq(&from) && to_address.clone().eq(&to)
-//         }
-//     });
+pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> StdResult<bool> {
+    let payment = payments.iter_mut().find(|m| match m {
+        BankMsg::Send { to_address, .. } => to_address.clone().eq(&to),
+        _ => false,
+    });
 
-//     match payment {
-//         Some(p) => {
-//             match p {
-//                 BankMsg::Send { amount: am, .. } => {
-//                     deduct_funds(am, amount)?;
-//                 }
-//             }
-//             Ok(true)
-//         }
-//         None => Err(StdError::generic_err(
-//             "Not enough funds to deduct required payment!",
-//         )),
-//     }
-// }
+    match payment {
+        Some(p) => {
+            match p {
+                BankMsg::Send { amount: am, .. } => {
+                    deduct_funds(am, amount)?;
+                }
+                _ => {}
+            }
+            Ok(true)
+        }
+        None => Err(StdError::generic_err(
+            "Not enough funds to deduct required payment!",
+        )),
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -129,7 +122,7 @@ mod tests {
         let e = deduct_funds(&mut funds, coin(10, "uluna")).unwrap_err();
 
         assert_eq!(
-            StdError::generic_err("Not enough funds to deduct required payment"),
+            StdError::generic_err("Not enough funds to deduct payment"),
             e
         );
     }
@@ -153,31 +146,28 @@ mod tests {
         assert_eq!(expected_payment, payments[0]);
     }
 
-    // #[test]
-    // fn deduct_payment_test() {
-    //     let from = String::from("from");
-    //     let to = String::from("to");
+    #[test]
+    fn deduct_payment_test() {
+        let to = String::from("to");
 
-    //     let mut payments: Vec<BankMsg> = vec![BankMsg::Send {
-    //         from_address: from.clone(),
-    //         to_address: to.clone(),
-    //         amount: vec![Coin {
-    //             amount: Uint128(100),
-    //             denom: String::from("uluna"),
-    //         }],
-    //     }];
+        let mut payments: Vec<BankMsg> = vec![BankMsg::Send {
+            to_address: to.clone(),
+            amount: vec![Coin {
+                amount: Uint128::from(100 as u64),
+                denom: String::from("uluna"),
+            }],
+        }];
 
-    //     let expected_payment = BankMsg::Send {
-    //         from_address: from.clone(),
-    //         to_address: to.clone(),
-    //         amount: vec![Coin {
-    //             amount: Uint128(90),
-    //             denom: String::from("uluna"),
-    //         }],
-    //     };
+        let expected_payment = BankMsg::Send {
+            to_address: to.clone(),
+            amount: vec![Coin {
+                amount: Uint128::from(90 as u64),
+                denom: String::from("uluna"),
+            }],
+        };
 
-    //     deduct_payment(&mut payments, from, to, coin(10, "uluna")).unwrap();
+        deduct_payment(&mut payments, to, coin(10, "uluna")).unwrap();
 
-    //     assert_eq!(expected_payment, payments[0]);
-    // }
+        assert_eq!(expected_payment, payments[0]);
+    }
 }
