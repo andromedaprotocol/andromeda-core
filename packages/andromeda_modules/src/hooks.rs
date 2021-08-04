@@ -1,4 +1,5 @@
 use cosmwasm_std::{BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, StdResult};
+use cw721::Expiration;
 
 #[derive(Debug, PartialEq)]
 pub struct HookResponse {
@@ -25,9 +26,37 @@ pub trait PreHooks {
     }
     fn pre_transfer(
         &self,
-        _deps: DepsMut,
+        _deps: &DepsMut,
         _env: Env,
         _recipient: String,
+        _token_id: i64,
+    ) -> StdResult<HookResponse> {
+        Ok(HookResponse::default())
+    }
+    fn pre_send(
+        &self,
+        _deps: &DepsMut,
+        _env: Env,
+        _contract: String,
+        _token_id: i64,
+    ) -> StdResult<HookResponse> {
+        Ok(HookResponse::default())
+    }
+    fn pre_approve(
+        &self,
+        _deps: &DepsMut,
+        _env: Env,
+        _sender: String,
+        _token_id: i64,
+        _expires: Option<Expiration>,
+    ) -> StdResult<HookResponse> {
+        Ok(HookResponse::default())
+    }
+    fn pre_revoke(
+        &self,
+        _deps: &DepsMut,
+        _env: Env,
+        _sender: String,
         _token_id: i64,
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())

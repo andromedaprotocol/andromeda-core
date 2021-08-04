@@ -1,11 +1,47 @@
 use crate::hook::InitHook;
 
 use andromeda_modules::modules::ModuleDefinition;
-use cosmwasm_std::{Coin, StdResult};
+use cosmwasm_std::{Addr, Binary, BlockInfo, Coin, StdResult};
+use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub type TokenId = i64;
+
+//Duplicate Approval struct from CW721-base contract: https://github.com/CosmWasm/cosmwasm-plus/blob/main/contracts/cw721-base/src/state.rs
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct Approval {
+    /// Account that can transfer/send the token
+    pub spender: Addr,
+    /// When the Approval expires (maybe Expiration::never)
+    pub expires: Expiration,
+}
+
+impl Approval {
+    pub fn is_expired(&self, block: &BlockInfo) -> bool {
+        self.expires.is_expired(block)
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct Token {
+    pub token_id: TokenId,
+    pub owner: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub approvals: Vec<Approval>,
+}
+
+impl Token {
+    pub fn filter_approval(&mut self, spender: &Addr) {
+        self.approvals = self
+            .approvals
+            .clone()
+            .into_iter()
+            .filter(|a| !a.spender.eq(spender))
+            .collect();
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TransferAgreement {
@@ -55,6 +91,23 @@ pub enum ExecuteMsg {
         recipient: String,
         token_id: TokenId,
     },
+    SendNft {
+        contract: String,
+        token_id: TokenId,
+        msg: Binary,
+    },
+    /// Allows operator to transfer / send the token from the owner's account.
+    /// If expiration is set, then this allowance has a time/height limit
+    Approve {
+        spender: String,
+        token_id: TokenId,
+        expires: Option<Expiration>,
+    },
+    /// Remove previously granted Approval
+    Revoke {
+        spender: String,
+        token_id: TokenId,
+    },
     // Burn {
     //     collection_symbol: String,
     //     token_id: TokenId,
@@ -77,7 +130,7 @@ pub enum ExecuteMsg {
     // Dewhitelist {
     //     collection_symbol: String,
     //     address: String,
-    // },
+    // }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

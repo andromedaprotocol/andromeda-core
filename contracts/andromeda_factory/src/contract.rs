@@ -154,13 +154,13 @@ mod tests {
     #[test]
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
-
+        let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             token_code_id: TOKEN_CODE_ID,
         };
         let env = mock_env();
 
-        let res = instantiate(deps.as_mut(), env, msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
 
@@ -174,7 +174,7 @@ mod tests {
             token_code_id: TOKEN_CODE_ID,
         };
 
-        let res = instantiate(deps.as_mut(), env.clone(), init_msg).unwrap();
+        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), init_msg).unwrap();
         assert_eq!(0, res.messages.len());
 
         let msg = ExecuteMsg::Create {
