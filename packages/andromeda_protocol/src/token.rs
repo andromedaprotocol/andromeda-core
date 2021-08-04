@@ -108,6 +108,14 @@ pub enum ExecuteMsg {
         spender: String,
         token_id: TokenId,
     },
+    ApproveAll {
+        operator: String,
+        expires: Option<Expiration>,
+    },
+    /// Remove previously granted ApproveAll permission
+    RevokeAll {
+        operator: String,
+    },
     // Burn {
     //     collection_symbol: String,
     //     token_id: TokenId,

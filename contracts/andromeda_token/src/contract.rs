@@ -12,7 +12,7 @@ use cosmwasm_std::{
 };
 use cw721::{Cw721ReceiveMsg, Expiration};
 
-use crate::state::{has_transfer_rights, TokenConfig, CONFIG, TOKENS};
+use crate::state::{has_transfer_rights, TokenConfig, CONFIG, OPERATOR, TOKENS};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -67,6 +67,10 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::Revoke { spender, token_id } => {
             execute_revoke(deps, env, info, token_id, spender)
         }
+        ExecuteMsg::ApproveAll { operator, expires } => {
+            execute_approve_all(deps, env, info, operator, expires)
+        }
+        ExecuteMsg::RevokeAll { operator } => execute_revoke_all(deps, env, info, operator),
     }
 }
 
@@ -170,6 +174,33 @@ pub fn execute_revoke(
     Ok(Response::default())
 }
 
+fn execute_approve_all(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    operator: String,
+    expires: Option<Expiration>,
+) -> StdResult<Response> {
+    OPERATOR.save(
+        deps.storage,
+        (info.sender.to_string(), operator.clone()),
+        &expires.unwrap_or_default(),
+    )?;
+
+    Ok(Response::default())
+}
+
+fn execute_revoke_all(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    operator: String,
+) -> StdResult<Response> {
+    OPERATOR.remove(deps.storage, (info.sender.to_string(), operator.clone()));
+
+    Ok(Response::default())
+}
+
 fn transfer_nft(
     deps: DepsMut,
     env: &Env,
@@ -179,7 +210,7 @@ fn transfer_nft(
 ) -> StdResult<()> {
     let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
     require(
-        has_transfer_rights(env, info.sender.to_string(), &token)?,
+        has_transfer_rights(deps.storage, env, info.sender.to_string(), &token)?,
         StdError::generic_err("Address does not have transfer rights for this token"),
     )?;
 
@@ -507,5 +538,124 @@ mod tests {
             .unwrap();
 
         assert_eq!(0, token.approvals.len());
+    }
+
+    #[test]
+    fn test_approve_all() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = 1;
+        let operator = "operator";
+        let operator_info = mock_info(operator.clone(), &[]);
+
+        let mint_msg = ExecuteMsg::Mint(MintMsg {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: "Some Token".to_string(),
+        });
+        execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
+
+        let transfer_msg = ExecuteMsg::TransferNft {
+            recipient: operator.to_string(),
+            token_id: token_id.clone(),
+        };
+        let err = execute(
+            deps.as_mut(),
+            env.clone(),
+            operator_info.clone(),
+            transfer_msg,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            err,
+            StdError::generic_err("Address does not have transfer rights for this token"),
+        );
+
+        let approve_all_msg = ExecuteMsg::ApproveAll {
+            operator: operator.to_string(),
+            expires: None,
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), approve_all_msg).unwrap();
+
+        let transfer_msg = ExecuteMsg::TransferNft {
+            recipient: operator.to_string(),
+            token_id: token_id.clone(),
+        };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            operator_info.clone(),
+            transfer_msg,
+        )
+        .unwrap();
+
+        let token = TOKENS
+            .load(deps.as_ref().storage, token_id.to_string())
+            .unwrap();
+
+        assert_eq!(token.owner, operator.to_string());
+    }
+
+    #[test]
+    fn test_revoke_all() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = 1;
+        let operator = "operator";
+        let operator_info = mock_info(operator.clone(), &[]);
+
+        let mint_msg = ExecuteMsg::Mint(MintMsg {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: "Some Token".to_string(),
+        });
+        execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
+
+        let approve_all_msg = ExecuteMsg::ApproveAll {
+            operator: operator.to_string(),
+            expires: None,
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), approve_all_msg).unwrap();
+
+        let transfer_msg = ExecuteMsg::TransferNft {
+            recipient: minter.to_string(),
+            token_id: token_id.clone(),
+        };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            operator_info.clone(),
+            transfer_msg,
+        )
+        .unwrap();
+
+        let revoke_msg = ExecuteMsg::RevokeAll {
+            operator: operator.to_string(),
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), revoke_msg).unwrap();
+
+        let transfer_msg = ExecuteMsg::TransferNft {
+            recipient: minter.to_string(),
+            token_id: token_id.clone(),
+        };
+        let err = execute(
+            deps.as_mut(),
+            env.clone(),
+            operator_info.clone(),
+            transfer_msg,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            err,
+            StdError::generic_err("Address does not have transfer rights for this token"),
+        );
     }
 }
