@@ -1,13 +1,14 @@
-use andromeda_modules::modules::{read_modules, store_modules};
+use andromeda_modules::modules::{read_modules, MODULES};
 use andromeda_protocol::token::{
     ExecuteMsg, InstantiateMsg, MintMsg, OwnerResponse, QueryMsg, TokenId,
 };
+#[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
-use crate::state::{get_owner, store_config, store_owner, TokenConfig};
+use crate::state::{TokenConfig, CONFIG, OWNERSHIP};
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -22,8 +23,8 @@ pub fn instantiate(
         minter: msg.minter,
     };
 
-    store_config(deps.storage, &config)?;
-    store_modules(deps.storage, &msg.modules)?;
+    CONFIG.save(deps.storage, &config)?;
+    MODULES.save(deps.storage, &msg.modules)?;
 
     match msg.init_hook {
         Some(hook) => {
@@ -34,7 +35,7 @@ pub fn instantiate(
     }
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
     for module in modules {
@@ -42,23 +43,52 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
     }
 
     match msg {
-        ExecuteMsg::Mint(msg) => mint(deps, env, info, msg),
+        ExecuteMsg::Mint(msg) => execute_mint(deps, env, info, msg),
     }
 }
 
-pub fn mint(deps: DepsMut, env: Env, info: MessageInfo, msg: MintMsg) -> StdResult<Response> {
+pub fn execute_mint(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: MintMsg,
+) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
     for module in modules {
         module.pre_publish(&deps, env.clone(), msg.token_id.clone())?;
     }
 
-    let sender = info.sender.to_string();
+    OWNERSHIP.save(
+        deps.storage,
+        msg.token_id.to_string(),
+        &info.sender.to_string(),
+    )?;
 
-    store_owner(deps.storage, &msg.token_id.clone(), &sender.clone())?;
     Ok(Response::default())
 }
 
-#[entry_point]
+pub fn execute_transfer(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    recipient: String,
+    token_id: i64,
+) -> StdResult<Response> {
+    let modules = read_modules(deps.storage)?;
+    for module in modules {
+        module.pre_transfer(&deps, env.clone(), recipient.clone(), token_id.clone())?;
+    }
+
+    OWNERSHIP.save(
+        deps.storage,
+        msg.token_id.to_string(),
+        &info.sender.to_string(),
+    )?;
+
+    Ok(Response::default())
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetOwner { token_id } => to_binary(&query_owner(deps, token_id)?),
@@ -66,10 +96,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_owner(deps: Deps, token_id: TokenId) -> StdResult<OwnerResponse> {
-    let owner = get_owner(deps.storage, &token_id)?;
-    Ok(OwnerResponse {
-        owner: owner.clone(),
-    })
+    let owner = OWNERSHIP.load(deps.storage, token_id.to_string())?;
+    Ok(OwnerResponse { owner })
 }
 
 #[cfg(test)]

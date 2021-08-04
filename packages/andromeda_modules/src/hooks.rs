@@ -27,9 +27,8 @@ pub trait PreHooks {
         &self,
         _deps: DepsMut,
         _env: Env,
+        _recipient: String,
         _token_id: i64,
-        _from: String,
-        _to: String,
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }

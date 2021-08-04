@@ -51,12 +51,10 @@ pub struct MintMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Mint(MintMsg),
-    // Transfer {
-    //     collection_symbol: String,
-    //     from: String,
-    //     to: String,
-    //     token_id: TokenId,
-    // },
+    TransferNft {
+        recipient: String,
+        token_id: TokenId,
+    },
     // Burn {
     //     collection_symbol: String,
     //     token_id: TokenId,

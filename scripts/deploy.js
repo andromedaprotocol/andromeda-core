@@ -6,6 +6,7 @@ import {
   getContractAddress,
   MsgExecuteContract,
   LCDClient,
+  Coin,
   MnemonicKey,
 } from "@terra-money/terra.js";
 import { readFileSync } from "fs";
@@ -28,15 +29,13 @@ async function storeCodeId(path) {
     const storeCode = new MsgStoreCode(deployer.key.accAddress, "");
 
     const tx = await deployer.createAndSignTx({
-      msgs: [storeCode],
-      feeDenoms: ["uluna"],
-      gasPrices: { uluna: "0.015" },
+      msgs: [],
     });
 
-    const result = await terra.tx.broadcast(tx);
-    return getCodeId(result);
+    // const result = await terra.tx.broadcast(tx);
+    // return getCodeId(result);
   } catch (error) {
-    console.error(error);
+    // console.error(error);
     console.error("ERROR", error.response ? error.response.data.error : error);
     return undefined;
   }
@@ -93,7 +92,7 @@ async function queryTokenAddr(addr) {
 
 async function main() {
   const factoryCode = await storeFactoryCode();
-  const tokenCode = await storeTokenCode();
+  // const tokenCode = await storeTokenCode();
 
   // const factoryAddr = await initFactory(factoryCode, tokenCode);
   // await initToken(factoryAddr);
