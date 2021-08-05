@@ -3,16 +3,23 @@ use andromeda_modules::{
     modules::{read_modules, MODULES},
 };
 use andromeda_protocol::token::{
-    Approval, ExecuteMsg, InstantiateMsg, MintMsg, OwnerResponse, QueryMsg, Token, TokenId,
+    Approval, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, Token, TokenId,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair, Response, StdError,
+    StdResult,
 };
-use cw721::{Cw721ReceiveMsg, Expiration};
+use cw721::{
+    AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
+    NftInfoResponse, NumTokensResponse, OwnerOfResponse,
+};
+use cw_storage_plus::Bound;
 
-use crate::state::{has_transfer_rights, TokenConfig, CONFIG, OPERATOR, TOKENS};
+use crate::state::{
+    has_transfer_rights, increment_num_tokens, TokenConfig, CONFIG, NUM_TOKENS, OPERATOR, TOKENS,
+};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -94,6 +101,7 @@ pub fn execute_mint(
     };
 
     TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
+    increment_num_tokens(deps.storage)?;
 
     Ok(Response::default())
 }
@@ -103,7 +111,7 @@ pub fn execute_transfer(
     env: Env,
     info: MessageInfo,
     recipient: String,
-    token_id: i64,
+    token_id: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
     for module in modules {
@@ -120,7 +128,7 @@ pub fn execute_send_nft(
     env: Env,
     info: MessageInfo,
     contract: String,
-    token_id: i64,
+    token_id: String,
     msg: Binary,
 ) -> StdResult<Response> {
     // Transfer token
@@ -145,7 +153,7 @@ pub fn execute_approve(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    token_id: i64,
+    token_id: String,
     spender: String,
     expires: Option<Expiration>,
 ) -> StdResult<Response> {
@@ -164,7 +172,7 @@ pub fn execute_revoke(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    token_id: i64,
+    token_id: String,
     spender: String,
 ) -> StdResult<Response> {
     let spender_addr = deps.api.addr_validate(&spender)?;
@@ -206,7 +214,7 @@ fn transfer_nft(
     env: &Env,
     info: &MessageInfo,
     recipient: &String,
-    token_id: &i64,
+    token_id: &String,
 ) -> StdResult<()> {
     let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
     require(
@@ -259,15 +267,113 @@ fn remove_approval(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetOwner { token_id } => to_binary(&query_owner(deps, token_id)?),
+        QueryMsg::OwnerOf { token_id } => to_binary(&query_owner(deps, env, token_id)?),
+        QueryMsg::ApprovedForAll {
+            start_after,
+            owner,
+            include_expired,
+            limit,
+        } => to_binary(&query_all_approvals(
+            deps,
+            env,
+            owner,
+            include_expired.unwrap_or_default(),
+            start_after,
+            limit,
+        )?),
+        QueryMsg::NumTokens {} => to_binary(&query_num_tokens(deps, env)?),
+        QueryMsg::NftInfo { token_id } => to_binary(&query_nft_info(deps, token_id)?),
+        QueryMsg::AllNftInfo { token_id } => to_binary(&query_all_nft_info(deps, env, token_id)?),
+        QueryMsg::ContractInfo {} => to_binary(&query_contract_info(deps)?),
     }
 }
 
-fn query_owner(deps: Deps, token_id: TokenId) -> StdResult<OwnerResponse> {
-    let owner = TOKENS.load(deps.storage, token_id.to_string())?.owner;
-    Ok(OwnerResponse { owner })
+fn query_owner(deps: Deps, _env: Env, token_id: TokenId) -> StdResult<OwnerOfResponse> {
+    let token = TOKENS.load(deps.storage, token_id.to_string())?;
+    Ok(OwnerOfResponse {
+        owner: token.clone().owner,
+        approvals: humanize_approvals(&token.clone()),
+    })
+}
+
+const DEFAULT_LIMIT: u32 = 10;
+const MAX_LIMIT: u32 = 30;
+
+fn query_all_approvals(
+    deps: Deps,
+    env: Env,
+    owner: String,
+    include_expired: bool,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<ApprovedForAllResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start_addr = maybe_addr(deps.api, start_after)?;
+    let start = start_addr.map(|addr| Bound::exclusive(addr.as_ref()));
+
+    let res: StdResult<Vec<_>> = OPERATOR
+        .prefix(owner.clone())
+        .range(deps.storage, start, None, Order::Ascending)
+        .filter(|r| include_expired || r.is_err() || !r.as_ref().unwrap().1.is_expired(&env.block))
+        .take(limit)
+        .map(parse_approval)
+        .collect();
+    Ok(ApprovedForAllResponse { operators: res? })
+}
+
+fn query_num_tokens(deps: Deps, _env: Env) -> StdResult<NumTokensResponse> {
+    let num_tokens = NUM_TOKENS.load(deps.storage).unwrap_or_default();
+    Ok(NumTokensResponse { count: num_tokens })
+}
+
+fn query_nft_info(deps: Deps, token_id: String) -> StdResult<NftInfoResponse> {
+    let token = TOKENS.load(deps.storage, token_id.clone())?;
+
+    Ok(NftInfoResponse {
+        name: token.name,
+        description: token.description.unwrap_or_default(),
+        image: None,
+    })
+}
+
+fn query_all_nft_info(deps: Deps, env: Env, token_id: String) -> StdResult<AllNftInfoResponse> {
+    let access = query_owner(deps, env, token_id.clone())?;
+    let info = query_nft_info(deps, token_id.clone())?;
+
+    Ok(AllNftInfoResponse { access, info })
+}
+
+fn query_contract_info(deps: Deps) -> StdResult<ContractInfoResponse> {
+    let config = CONFIG.load(deps.storage)?;
+    Ok(ContractInfoResponse {
+        name: config.name,
+        symbol: config.symbol,
+    })
+}
+
+fn parse_approval(item: StdResult<Pair<Expiration>>) -> StdResult<cw721::Approval> {
+    item.and_then(|(k, expires)| {
+        let spender = String::from_utf8(k)?;
+        Ok(cw721::Approval { spender, expires })
+    })
+}
+
+// This is used for pagination. Maybe we move it into the std lib one day?
+pub fn maybe_addr(api: &dyn Api, human: Option<String>) -> StdResult<Option<Addr>> {
+    human.map(|x| api.addr_validate(&x)).transpose()
+}
+
+fn humanize_approvals(info: &Token) -> Vec<cw721::Approval> {
+    info.approvals.iter().map(humanize_approval).collect()
+}
+
+fn humanize_approval(approval: &Approval) -> cw721::Approval {
+    cw721::Approval {
+        spender: approval.spender.to_string(),
+        expires: approval.expires,
+    }
 }
 
 #[cfg(test)]
@@ -304,11 +410,11 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
-        let token_id = 1;
+        let token_id = String::default();
         let creator = "creator".to_string();
 
         let mint_msg = MintMsg {
-            token_id,
+            token_id: token_id.clone(),
             owner: creator.clone(),
             description: Some("Test Token".to_string()),
             name: "TestToken".to_string(),
@@ -318,10 +424,10 @@ mod tests {
 
         execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        let query_msg = QueryMsg::GetOwner { token_id };
+        let query_msg = QueryMsg::OwnerOf { token_id };
 
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let query_val: OwnerResponse = from_binary(&query_res).unwrap();
+        let query_val: OwnerOfResponse = from_binary(&query_res).unwrap();
 
         assert_eq!(query_val.owner, creator)
     }
@@ -333,7 +439,7 @@ mod tests {
         let minter = "minter";
         let recipient = "recipient";
         let info = mock_info(minter.clone(), &[]);
-        let token_id = 1;
+        let token_id = String::default();
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
             token_id: token_id.clone(),
@@ -362,7 +468,7 @@ mod tests {
 
         let notfound_msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
-            token_id: 2,
+            token_id: String::from("2"),
         };
         let notfound_res = execute(
             deps.as_mut(),
@@ -390,7 +496,7 @@ mod tests {
             spender: approval_info.sender.clone(),
             expires: cw721::Expiration::Never {},
         };
-        let approval_token_id = 2;
+        let approval_token_id = String::from("2");
         let approval_token = Token {
             token_id: approval_token_id.clone(),
             owner: minter.to_string(),
@@ -430,7 +536,7 @@ mod tests {
             spender: approval_info.sender.clone(),
             expires: cw721::Expiration::Never {},
         };
-        let approval_token_id = 2;
+        let approval_token_id = String::from("2");
         let approval_token = Token {
             token_id: approval_token_id.clone(),
             owner: minter.to_string(),
@@ -472,13 +578,13 @@ mod tests {
         let env = mock_env();
         let sender = "sender";
         let info = mock_info(sender.clone(), &[]);
-        let token_id = 1;
+        let token_id = String::default();
         let approvee = "aprovee";
 
         let msg = ExecuteMsg::Approve {
             spender: approvee.to_string(),
             expires: None,
-            token_id: 1,
+            token_id: String::default(),
         };
 
         let token = Token {
@@ -508,7 +614,7 @@ mod tests {
         let env = mock_env();
         let sender = "sender";
         let info = mock_info(sender.clone(), &[]);
-        let token_id = 1;
+        let token_id = String::default();
         let approvee = "aprovee";
         let approval = Approval {
             expires: Expiration::Never {},
@@ -517,7 +623,7 @@ mod tests {
 
         let msg = ExecuteMsg::Revoke {
             spender: approvee.to_string(),
-            token_id: 1,
+            token_id: String::default(),
         };
 
         let token = Token {
@@ -546,7 +652,7 @@ mod tests {
         let env = mock_env();
         let minter = "minter";
         let info = mock_info(minter.clone(), &[]);
-        let token_id = 1;
+        let token_id = String::default();
         let operator = "operator";
         let operator_info = mock_info(operator.clone(), &[]);
 
@@ -606,7 +712,7 @@ mod tests {
         let env = mock_env();
         let minter = "minter";
         let info = mock_info(minter.clone(), &[]);
-        let token_id = 1;
+        let token_id = String::default();
         let operator = "operator";
         let operator_info = mock_info(operator.clone(), &[]);
 

@@ -10,7 +10,7 @@ pub fn required_payment(
     storage: &dyn Storage,
     _env: &Env,
     collection_symbol: &String,
-    token_id: &i64,
+    token_id: &String,
     receivers: &Vec<String>,
     royalty_fee: i64,
 ) -> StdResult<Vec<Coin>> {
@@ -45,7 +45,7 @@ pub fn post_transfer_payments(
     storage: &dyn Storage,
     env: &Env,
     collection_symbol: &String,
-    token_id: &i64,
+    token_id: &String,
     receivers: &Vec<String>,
     royalty_fee: i64,
     payments: &mut Vec<BankMsg>,
@@ -142,7 +142,7 @@ mod test {
         let transfer_env = mock_env("creator", &coins(2, "token"));
         let msg = ExecuteMsg::CreateTransferAgreement {
             collection_symbol: String::from("TT"),
-            token_id: 1,
+            token_id: String::default(),
             amount: Uint128(100),
             denom: String::from("uluna"),
             purchaser: String::from("purchaser"),
@@ -185,7 +185,7 @@ mod test {
         let transfer_env = mock_env("creator", &coins(2, "token"));
         let msg = ExecuteMsg::CreateTransferAgreement {
             collection_symbol: String::from("TT"),
-            token_id: 1,
+            token_id: String::default(),
             amount: Uint128(100),
             denom: String::from("uluna"),
             purchaser: String::from("purchaser"),

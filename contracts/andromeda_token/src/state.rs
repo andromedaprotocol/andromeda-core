@@ -15,6 +15,7 @@ pub struct TokenConfig {
 pub const CONFIG: Item<TokenConfig> = Item::new("config");
 pub const TOKENS: Map<String, Token> = Map::new("ownership");
 pub const OPERATOR: Map<(String, String), Expiration> = Map::new("operator");
+pub const NUM_TOKENS: Item<u64> = Item::new("numtokens");
 
 pub fn has_transfer_rights(
     storage: &dyn Storage,
@@ -46,4 +47,9 @@ pub fn is_operator(
         None => Ok(false),
         Some(e) => Ok(!e.is_expired(&env.block)),
     }
+}
+
+pub fn increment_num_tokens(storage: &mut dyn Storage) -> StdResult<()> {
+    let token_count = NUM_TOKENS.load(storage).unwrap_or_default();
+    NUM_TOKENS.save(storage, &(token_count + 1))
 }

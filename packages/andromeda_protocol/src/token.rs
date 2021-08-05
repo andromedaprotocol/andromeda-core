@@ -6,7 +6,7 @@ use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub type TokenId = i64;
+pub type TokenId = String;
 
 //Duplicate Approval struct from CW721-base contract: https://github.com/CosmWasm/cosmwasm-plus/blob/main/contracts/cw721-base/src/state.rs
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -144,38 +144,24 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // GetBalance {
-    //     collection_symbol: String,
-    //     address: String,
-    // },
-    GetOwner { token_id: TokenId },
-    // GetArchived {
-    //     collection_symbol: String,
-    //     token_id: TokenId,
-    // },
-    // GetTransferAgreement {
-    //     collection_symbol: String,
-    //     token_id: TokenId,
-    // },
-    // GetExtensions {
-    //     collection_symbol: String,
-    // },
-    // GetWhitelisted {
-    //     collection_symbol: String,
-    //     address: String,
-    // },
+    OwnerOf {
+        token_id: String,
+    },
+    ApprovedForAll {
+        owner: String,
+        include_expired: Option<bool>,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    NumTokens {},
+    NftInfo {
+        token_id: TokenId,
+    },
+    AllNftInfo {
+        token_id: TokenId,
+    },
+    ContractInfo {},
 }
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct BalanceResponse {
-    pub balance: i32,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct OwnerResponse {
-    pub owner: String,
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchivedResponse {
     pub archived: bool,
