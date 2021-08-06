@@ -3,7 +3,7 @@ use cw_storage_plus::Map;
 
 use crate::{
     common::{is_unique, require},
-    hooks::{HookResponse, Payments, PreHooks},
+    hooks::{HookResponse, MessageHooks},
     modules::{Module, ModuleDefinition},
 };
 
@@ -34,8 +34,8 @@ impl Whitelist {
     }
 }
 
-impl PreHooks for Whitelist {
-    fn pre_execute(&self, deps: &DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
+impl MessageHooks for Whitelist {
+    fn on_execute(&self, deps: &DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
         require(
             self.is_whitelisted(deps.storage, &info.sender.to_string())?,
             StdError::generic_err("Address is not whitelisted"),
@@ -44,8 +44,6 @@ impl PreHooks for Whitelist {
         Ok(HookResponse::default())
     }
 }
-
-impl Payments for Whitelist {}
 
 impl Module for Whitelist {
     fn validate(&self, all_modules: Vec<ModuleDefinition>) -> StdResult<bool> {
@@ -90,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pre_execute() {
+    fn test_on_execute() {
         let sender = String::from("sender");
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
@@ -98,7 +96,7 @@ mod tests {
         let wl = Whitelist { moderators: vec![] };
 
         let resp = wl
-            .pre_execute(&deps.as_mut(), info.clone(), env.clone())
+            .on_execute(&deps.as_mut(), info.clone(), env.clone())
             .unwrap_err();
 
         assert_eq!(resp, StdError::generic_err("Address is not whitelisted"));
@@ -107,7 +105,7 @@ mod tests {
             .unwrap();
 
         let resp = wl
-            .pre_execute(&deps.as_mut(), info.clone(), env.clone())
+            .on_execute(&deps.as_mut(), info.clone(), env.clone())
             .unwrap();
 
         assert_eq!(resp, HookResponse::default());

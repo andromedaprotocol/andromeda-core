@@ -1,8 +1,5 @@
 use crate::taxable::Taxable;
-use crate::{
-    hooks::{Payments, PreHooks},
-    whitelist::Whitelist,
-};
+use crate::{hooks::MessageHooks, whitelist::Whitelist};
 use cosmwasm_std::{StdResult, Storage};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
@@ -32,7 +29,7 @@ pub fn as_module(definition: ModuleDefinition) -> Box<dyn Module> {
 pub fn as_modules(definitions: Vec<ModuleDefinition>) -> Vec<Box<dyn Module>> {
     definitions.into_iter().map(|d| as_module(d)).collect()
 }
-pub trait Module: PreHooks + Payments {
+pub trait Module: MessageHooks {
     fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
 }

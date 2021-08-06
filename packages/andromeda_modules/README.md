@@ -15,7 +15,7 @@ This package contains the definition of an Andromeda Module, alongside any behav
       <td><a href="https://github.com/andromedaprotocol/andromeda-contracts/blob/extensions/packages/andromeda_modules/src/whitelist.rs" target="_blank">Whitelist</a></td>
       <td>
         <pre>struct Whitelist {
-  moderators: Vec&lt;HumanAddr&gt;,
+  moderators: Vec&lt;String&gt;,
 }</pre>
       </td>
       <td>Enables a whitelist of addresses that are authorised to interact with the contract's functions.</td>
@@ -25,7 +25,7 @@ This package contains the definition of an Andromeda Module, alongside any behav
       <td>
         <pre>struct Taxable {
   tax: u128,
-  receivers: Vec&lt;HumanAddr&gt;,
+  receivers: Vec&lt;String&gt;,
 }</pre>
       </td>
       <td>Adds a percentage (rounded) tax to any agreed transfer between ADOs. The tax is then sent to each address in the receiver vector (non-split).</td>
@@ -39,9 +39,9 @@ Each module is defined using the `ModuleDefinition` enum which contains what dat
 
 ```rust
 enum ModuleDefinition {
-    WhiteList { moderators: Vec<HumanAddr> },
-    Taxable { tax: Fee, receivers: Vec<HumanAddr> },
-    Royalties { fee: Fee, receivers: Vec<HumanAddr> },
+    WhiteList { moderators: Vec<String> },
+    Taxable { tax: Fee, receivers: Vec<String> },
+    Royalties { fee: Fee, receivers: Vec<String> },
 }
 ```
 
@@ -90,72 +90,184 @@ Returns the module as a `ModuleDefinition` enum.
 fn as_definition(&self) -> ModuleDefinition
 ```
 
-### Pre Handle
+### On Execute
 
-A hook allowing access to any handle message. This hook is called when any `HandleMsg` message is received.
+A hook allowing access to any handle message. This hook is called when any `ExecuteMsg` message is received.
 
 ```rust
-fn pre_publish<S: Storage, A: Api, Q: Querier>(
+fn on_execute(
     &self,
-    deps: &mut Extern<S, A, Q>,
+    deps: &DepsMut,
+    info: MessageInfo,
     env: Env,
-) -> StdResult<()>
+) -> StdResult<HookResponse>
 ```
 
-### Pre Publish
+### On Mint
 
-A hook allowing access to data related to an ADO being published. This hook is called when a `HandleMsg::Publish` message is received.
+A hook allowing access to data related to an ADO being minted. This hook is called when a `ExecuteMsg::Mint` message is received.
 
 ```rust
-fn pre_publish<S: Storage, A: Api, Q: Querier>(
+fn on_mint(
     &self,
-    deps: &mut Extern<S, A, Q>,
+    deps: &DepsMut,
+    info: MessageInfo,
     env: Env,
-    token_id: i64,
+    token_id: String,
 ) -> StdResult<HookResponse>
 ```
 
 #### Parameters
 
-| Parameter  | Type  | Description                        |
-| ---------- | ----- | ---------------------------------- |
-| `token_id` | `i64` | The ID of the ADO to be published. |
+| Parameter  | Type     | Description                     |
+| ---------- | -------- | ------------------------------- |
+| `token_id` | `String` | The ID of the ADO to be minted. |
 
-### Pre Transfer
+### On Transfer
 
-A hook allowing access to data related to an ADO being transferred. This hook is called when a `HandleMsg::Transfer` message is received.
+A hook allowing access to data related to an ADO being transferred. This hook is called when a `ExecuteMsg::TransferNft` message is received.
 
 ```rust
-fn pre_transfer<S: Storage, A: Api, Q: Querier>(
+fn on_transfer(
     &self,
-    deps: &mut Extern<S, A, Q>,
+    deps: &DepsMut,
+    info: MessageInfo,
     env: Env,
-    token_id: i64,
-    from: HumanAddr,
-    to: HumanAddr,
+    recipient: String,
+    token_id: String,
 ) -> StdResult<HookResponse>
 ```
 
 #### Parameters
 
-| Parameter  | Type        | Description                             |
-| ---------- | ----------- | --------------------------------------- |
-| `token_id` | `i64`       | The ID of the ADO to be transferred.    |
-| `from`     | `HumanAddr` | The current owner of the published ADO. |
-| `to`       | `HumanAddr` | The receiver of the published ADO.      |
+| Parameter   | Type     | Description                          |
+| ----------- | -------- | ------------------------------------ |
+| `token_id`  | `String` | The ID of the ADO to be transferred. |
+| `recipient` | `String` | The recipient of the ADO.            |
 
-### Pre Transfer Agreement
+### On Send
 
-A hook allowing access to data related to a transfer agreement between the ADO owner and a purchaser. This hook is called when a `HandleMsg::TransferAgreement` message is received.
+A hook allowing access to data related to an ADO being sent to another CW721 contract. This hook is called when a `ExecuteMsg::SendNft` message is received.
 
 ```rust
-fn pre_transfer_agreement<S: Storage, A: Api, Q: Querier>(
+fn on_send(
     &self,
-    deps: &mut Extern<S, A, Q>,
+    deps: &DepsMut,
+    info: MessageInfo,
     env: Env,
-    token_id: i64,
+    contract: String,
+    token_id: String,
+) -> StdResult<HookResponse>
+```
+
+#### Parameters
+
+| Parameter  | Type     | Description                     |
+| ---------- | -------- | ------------------------------- |
+| `token_id` | `String` | The ID of the ADO to be sent.   |
+| `contract` | `String` | The recieving contract address. |
+
+### On Approve
+
+A hook allowing access to data related to any approval being assigned for an NFT. This hook is called when a `ExecuteMsg::Approve` message is received.
+
+```rust
+fn on_approve(
+    &self,
+    deps: &DepsMut,
+    info: MessageInfo,
+    env: Env,
+    sender: String,
+    token_id: String,
+    expires: Option<Expiration>,
+) -> StdResult<HookResponse>
+```
+
+#### Parameters
+
+| Parameter  | Type                        | Description                                                                                   |
+| ---------- | --------------------------- | --------------------------------------------------------------------------------------------- |
+| `token_id` | `String`                    | The ID of the ADO to be sent.                                                                 |
+| `sender`   | `String`                    | The address to be approved for given token                                                    |
+| `expires`  | `Option<CW721::Expiration>` | An optional expiration time, defined in the CW721 package. Defaults to `Expiration::Never{}`. |
+
+### On Revoke
+
+A hook allowing access to data related to any approval being revoked for an NFT. This hook is called when a `ExecuteMsg::Revoke` message is received.
+
+```rust
+fn on_revoke(
+    &self,
+    deps: &DepsMut,
+    info: MessageInfo,
+    env: Env,
+    sender: String,
+    token_id: String,
+) -> StdResult<HookResponse>
+```
+
+#### Parameters
+
+| Parameter  | Type     | Description                                |
+| ---------- | -------- | ------------------------------------------ |
+| `token_id` | `String` | The ID of the ADO to be sent.              |
+| `sender`   | `String` | The address to be approved for given token |
+
+### On Approve All
+
+A hook allowing access to data related to any operator being assigned. This hook is called when a `ExecuteMsg::ApproveAll` message is received.
+
+```rust
+fn on_approve_all(
+    &self,
+    deps: &DepsMut,
+    info: MessageInfo,
+    env: Env,
+    operator: String,
+    expires: Option<Expiration>
+) -> StdResult<HookResponse>
+```
+
+#### Parameters
+
+| Parameter  | Type                        | Description                                                                                   |
+| ---------- | --------------------------- | --------------------------------------------------------------------------------------------- |
+| `operator` | `String`                    | The address to be assigned as an operator for the message sender                              |
+| `expires`  | `Option<CW721::Expiration>` | An optional expiration time, defined in the CW721 package. Defaults to `Expiration::Never{}`. |
+
+### On Approve All
+
+A hook allowing access to data related to any operator privileges being revoked. This hook is called when a `ExecuteMsg::RevokeAll` message is received.
+
+```rust
+fn on_revoke_all(
+    &self,
+    deps: &DepsMut,
+    info: MessageInfo,
+    env: Env,
+    operator: String,
+) -> StdResult<HookResponse>
+```
+
+#### Parameters
+
+| Parameter  | Type     | Description                                                      |
+| ---------- | -------- | ---------------------------------------------------------------- |
+| `operator` | `String` | The address to be assigned as an operator for the message sender |
+
+### On Transfer Agreement
+
+A hook allowing access to data related to a transfer agreement between the ADO owner and a purchaser. This hook is called when a `ExecuteMsg::TransferAgreement` message is received.
+
+```rust
+fn on_transfer_agreement(
+    &self,
+    deps: &DepsMut,
+    info: MessageInfo,
+    env: Env,
+    token_id: String,
     amount: Coin,
-    purchaser: HumanAddr,
+    purchaser: String,
 ) -> StdResult<HookResponse>
 ```
 
@@ -163,59 +275,61 @@ fn pre_transfer_agreement<S: Storage, A: Api, Q: Querier>(
 
 | Parameter   | Type                 | Description                                 |
 | ----------- | -------------------- | ------------------------------------------- |
-| `token_id`  | `i64`                | The ID of the ADO the agreement relates to. |
+| `token_id`  | `String`             | The ID of the ADO the agreement relates to. |
 | `amount`    | `cosmwasm_std::Coin` | The agreed transfer amount.                 |
-| `purchaser` | `HumanAddr`          | The agreed purchaser of the ADO.            |
+| `purchaser` | `String`             | The agreed purchaser of the ADO.            |
 
-### Pre Burn
+### On Burn
 
-A hook allowing access to data related to an ADO being burnt. This hook is called when a `HandleMsg::Burn` message is received.
+A hook allowing access to data related to an ADO being burnt. This hook is called when a `ExecuteMsg::Burn` message is received.
 
 ```rust
-fn pre_burn<S: Storage, A: Api, Q: Querier>(
+fn on_burn(
     &self,
-    deps: &mut Extern<S, A, Q>,
+    deps: &DepsMut,
+    info: MessageInfo,
     env: Env,
-    token_id: i64,
+    token_id: String,
 ) -> StdResult<HookResponse>
 ```
 
 #### Parameters
 
-| Parameter  | Type  | Description                        |
-| ---------- | ----- | ---------------------------------- |
-| `token_id` | `i64` | The ID of the ADO to be published. |
+| Parameter  | Type     | Description                        |
+| ---------- | -------- | ---------------------------------- |
+| `token_id` | `String` | The ID of the ADO to be published. |
 
-### Pre Archive
+### On Archive
 
-A hook allowing access to data related to an ADO being archived. This hook is called when a `HandleMsg::Archive` message is received.
+A hook allowing access to data related to an ADO being archived. This hook is called when a `ExecuteMsg::Archive` message is received.
 
 ```rust
-fn pre_archive<S: Storage, A: Api, Q: Querier>(
+fn on_archive(
     &self,
-    deps: &mut Extern<S, A, Q>,
+    deps: &DepsMut,
+    info: MessageInfo,
     env: Env,
-    token_id: i64,
+    token_id: String,
 ) -> StdResult<HookResponse>
 ```
 
 #### Parameters
 
-| Parameter  | Type  | Description                        |
-| ---------- | ----- | ---------------------------------- |
-| `token_id` | `i64` | The ID of the ADO to be published. |
+| Parameter  | Type     | Description                        |
+| ---------- | -------- | ---------------------------------- |
+| `token_id` | `String` | The ID of the ADO to be published. |
 
 ### On Agreed Transfer
 
-A hook allowing access to data related to an ADO being transfered via an agreement. This hook is called when a `HandleMsg::Transfer` message is received for an ADO with a transfer agreement.
+A hook allowing access to data related to an ADO being transfered via an agreement. This hook is called when a `ExecuteMsg::Transfer` message is received for an ADO with a transfer agreement.
 
 ```rust
  fn on_agreed_transfer(
     &self,
     env: Env,
     payments: &mut Vec<BankMsg>,
-    owner: HumanAddr,
-    purchaser: HumanAddr,
+    owner: String,
+    purchaser: String,
     amount: Coin,
 ) -> StdResult<bool>
 ```
@@ -225,6 +339,6 @@ A hook allowing access to data related to an ADO being transfered via an agreeme
 | Parameter   | Type                | Description                                                                                                                                                                                                               |
 | ----------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `payments`  | `&mut Vec<BankMsg>` | A mutable vector of payment messages, this is passed between every registered module that may interact with the outgoing payments from the transfer, as such ordering of registered modules may impact outgoing payments. |
-| `owner`     | `HumanAddr`         | The address of the ADO owner.                                                                                                                                                                                             |
-| `purchaser` | `HumanAddr`         | The address of the ADO purchaser.                                                                                                                                                                                         |
+| `owner`     | `String`            | The address of the ADO owner.                                                                                                                                                                                             |
+| `purchaser` | `String`            | The address of the ADO purchaser.                                                                                                                                                                                         |
 | `amount`    | `Coin`              | The agreed purchase amount.                                                                                                                                                                                               |

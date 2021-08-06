@@ -12,8 +12,8 @@ impl HookResponse {
     }
 }
 
-pub trait PreHooks {
-    fn pre_execute(
+pub trait MessageHooks {
+    fn on_execute(
         &self,
         _deps: &DepsMut,
         _info: MessageInfo,
@@ -21,35 +21,33 @@ pub trait PreHooks {
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_publish(
-        &self,
-        _deps: &DepsMut,
-        _env: Env,
-        _token_id: String,
-    ) -> StdResult<HookResponse> {
+    fn on_mint(&self, _deps: &DepsMut, _env: Env, _token_id: String) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_transfer(
+    fn on_transfer(
         &self,
         _deps: &DepsMut,
+        _info: MessageInfo,
         _env: Env,
         _recipient: String,
         _token_id: String,
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_send(
+    fn on_send(
         &self,
         _deps: &DepsMut,
+        _info: MessageInfo,
         _env: Env,
         _contract: String,
         _token_id: String,
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_approve(
+    fn on_approve(
         &self,
         _deps: &DepsMut,
+        _info: MessageInfo,
         _env: Env,
         _sender: String,
         _token_id: String,
@@ -57,18 +55,39 @@ pub trait PreHooks {
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_revoke(
+    fn on_revoke(
         &self,
         _deps: &DepsMut,
+        _info: MessageInfo,
         _env: Env,
         _sender: String,
         _token_id: String,
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_transfer_agreement(
+    fn on_approve_all(
         &self,
-        _deps: DepsMut,
+        _deps: &DepsMut,
+        _info: MessageInfo,
+        _env: Env,
+        _operator: String,
+        _expires: Option<Expiration>,
+    ) -> StdResult<HookResponse> {
+        Ok(HookResponse::default())
+    }
+    fn on_revoke_all(
+        &self,
+        _deps: &DepsMut,
+        _info: MessageInfo,
+        _env: Env,
+        _operator: String,
+    ) -> StdResult<HookResponse> {
+        Ok(HookResponse::default())
+    }
+    fn on_transfer_agreement(
+        &self,
+        _deps: &DepsMut,
+        _info: MessageInfo,
         _env: Env,
         _token_id: String,
         _amount: Coin,
@@ -76,17 +95,28 @@ pub trait PreHooks {
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_burn(&self, _deps: DepsMut, _env: Env, _token_id: String) -> StdResult<HookResponse> {
+    fn on_burn(
+        &self,
+        _deps: &DepsMut,
+        _info: MessageInfo,
+        _env: Env,
+        _token_id: String,
+    ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn pre_archive(&self, _deps: DepsMut, _env: Env, _token_id: String) -> StdResult<HookResponse> {
+    fn on_archive(
+        &self,
+        _deps: &DepsMut,
+        _info: MessageInfo,
+        _env: Env,
+        _token_id: String,
+    ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-}
-
-pub trait Payments {
     fn on_agreed_transfer(
         &self,
+        _deps: &DepsMut,
+        _info: MessageInfo,
         _env: Env,
         _payments: &mut Vec<BankMsg>,
         _owner: String,

@@ -1,8 +1,8 @@
-use cosmwasm_std::{coin, Coin, Env, StdError, StdResult, Uint128};
+use cosmwasm_std::{coin, Coin, DepsMut, Env, MessageInfo, StdError, StdResult, Uint128};
 
 use crate::{
     common::{add_payment, require},
-    hooks::{Payments, PreHooks},
+    hooks::MessageHooks,
     modules::{Fee, Module, ModuleDefinition},
 };
 
@@ -11,11 +11,29 @@ pub struct Taxable {
     pub receivers: Vec<String>,
 }
 
-impl PreHooks for Taxable {}
+impl Module for Taxable {
+    fn validate(&self, _extensions: Vec<crate::modules::ModuleDefinition>) -> StdResult<bool> {
+        require(
+            self.receivers.len() > 0,
+            StdError::generic_err("Cannot apply a tax with no receiving addresses"),
+        )?;
+        require(self.tax > 0, StdError::generic_err("Tax must be non-zero"))?;
 
-impl Payments for Taxable {
+        Ok(true)
+    }
+    fn as_definition(&self) -> ModuleDefinition {
+        ModuleDefinition::Taxable {
+            tax: self.tax,
+            receivers: self.receivers.clone(),
+        }
+    }
+}
+
+impl MessageHooks for Taxable {
     fn on_agreed_transfer(
         &self,
+        _deps: &DepsMut,
+        _info: MessageInfo,
         env: Env,
         payments: &mut Vec<cosmwasm_std::BankMsg>,
         _owner: String,
@@ -37,27 +55,13 @@ impl Payments for Taxable {
     }
 }
 
-impl Module for Taxable {
-    fn validate(&self, _extensions: Vec<crate::modules::ModuleDefinition>) -> StdResult<bool> {
-        require(
-            self.receivers.len() > 0,
-            StdError::generic_err("Cannot apply a tax with no receiving addresses"),
-        )?;
-        require(self.tax > 0, StdError::generic_err("Tax must be non-zero"))?;
-
-        Ok(true)
-    }
-    fn as_definition(&self) -> ModuleDefinition {
-        ModuleDefinition::Taxable {
-            tax: self.tax,
-            receivers: self.receivers.clone(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{coins, testing::mock_env, BankMsg};
+    use cosmwasm_std::{
+        coins,
+        testing::{mock_dependencies, mock_env, mock_info},
+        BankMsg,
+    };
 
     use super::*;
 
@@ -94,6 +98,8 @@ mod tests {
     #[test]
 
     fn test_taxable_on_agreed_transfer() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("sender", &[]);
         let env = mock_env();
         let receivers = vec![String::from("recv1"), String::from("recv2")];
         let t = Taxable {
@@ -108,6 +114,8 @@ mod tests {
         let mut payments = vec![];
 
         t.on_agreed_transfer(
+            &deps.as_mut(),
+            info.clone(),
             env.clone(),
             &mut payments,
             owner.clone(),

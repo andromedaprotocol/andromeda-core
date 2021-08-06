@@ -52,7 +52,7 @@ pub fn instantiate(
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
     for module in modules {
-        module.pre_execute(&deps, info.clone(), env.clone())?;
+        module.on_execute(&deps, info.clone(), env.clone())?;
     }
 
     match msg {
@@ -89,7 +89,7 @@ pub fn execute_mint(
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
     for module in modules {
-        module.pre_publish(&deps, env.clone(), msg.token_id.clone())?;
+        module.on_mint(&deps, env.clone(), msg.token_id.clone())?;
     }
 
     let token = Token {
@@ -115,7 +115,13 @@ pub fn execute_transfer(
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
     for module in modules {
-        module.pre_transfer(&deps, env.clone(), recipient.clone(), token_id.clone())?;
+        module.on_transfer(
+            &deps,
+            info.clone(),
+            env.clone(),
+            recipient.clone(),
+            token_id.clone(),
+        )?;
     }
 
     transfer_nft(deps, &env, &info, &recipient, &token_id)?;
