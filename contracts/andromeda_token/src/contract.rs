@@ -1,15 +1,13 @@
-use andromeda_modules::{
-    common::require,
-    modules::{read_modules, store_modules},
-};
+use andromeda_protocol::modules::{common::require, read_modules, store_modules};
 use andromeda_protocol::token::{
-    Approval, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, Token, TokenId,
+    Approval, ExecuteMsg, InstantiateMsg, MintMsg, NftTransferAgreementResponse, QueryMsg, Token,
+    TokenId, TransferAgreement,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair, Response, StdError,
-    StdResult,
+    coin, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair, Response,
+    StdError, StdResult,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
@@ -51,7 +49,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_execute(&deps, info.clone(), env.clone())?;
+    modules.on_execute(&deps, info.clone(), env.clone(), msg.clone())?;
 
     match msg {
         ExecuteMsg::Mint(msg) => execute_mint(deps, env, info, msg),
@@ -76,6 +74,12 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             execute_approve_all(deps, env, info, operator, expires)
         }
         ExecuteMsg::RevokeAll { operator } => execute_revoke_all(deps, env, info, operator),
+        ExecuteMsg::TransferAgreement {
+            token_id,
+            denom,
+            amount,
+            purchaser,
+        } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount, denom),
     }
 }
 
@@ -91,6 +95,7 @@ pub fn execute_mint(
         description: msg.description,
         name: msg.name,
         approvals: vec![],
+        transfer_agreement: None,
     };
 
     TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
@@ -249,6 +254,43 @@ fn execute_revoke_all(
     Ok(Response::default())
 }
 
+fn execute_transfer_agreement(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+    purchaser: String,
+    amount: u128,
+    denom: String,
+) -> StdResult<Response> {
+    let modules = read_modules(deps.storage)?;
+    modules.on_transfer_agreement(
+        &deps,
+        info.clone(),
+        env.clone(),
+        token_id.clone(),
+        purchaser.clone(),
+        amount.clone(),
+        denom.clone(),
+    )?;
+    let mut token = TOKENS.load(deps.storage, token_id.clone())?;
+
+    require(
+        info.sender.to_string().eq(&token.owner.clone()),
+        StdError::generic_err("Only the token owner can create a transfer agreement"),
+    )?;
+
+    let agreement = TransferAgreement {
+        purchaser: purchaser.clone(),
+        amount: coin(amount, denom),
+    };
+    token.transfer_agreement = Some(agreement);
+
+    TOKENS.save(deps.storage, token_id.clone(), &token)?;
+
+    Ok(Response::default())
+}
+
 fn transfer_nft(
     deps: DepsMut,
     env: &Env,
@@ -327,6 +369,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::NftInfo { token_id } => to_binary(&query_nft_info(deps, token_id)?),
         QueryMsg::AllNftInfo { token_id } => to_binary(&query_all_nft_info(deps, env, token_id)?),
         QueryMsg::ContractInfo {} => to_binary(&query_contract_info(deps)?),
+        QueryMsg::NftTransferAgreementInfo { token_id } => {
+            to_binary(&query_transfer_agreement(deps, token_id)?)
+        }
     }
 }
 
@@ -393,6 +438,17 @@ fn query_contract_info(deps: Deps) -> StdResult<ContractInfoResponse> {
     })
 }
 
+fn query_transfer_agreement(
+    deps: Deps,
+    token_id: String,
+) -> StdResult<NftTransferAgreementResponse> {
+    let token = TOKENS.load(deps.storage, token_id)?;
+
+    Ok(NftTransferAgreementResponse {
+        agreement: token.transfer_agreement,
+    })
+}
+
 fn parse_approval(item: StdResult<Pair<Expiration>>) -> StdResult<cw721::Approval> {
     item.and_then(|(k, expires)| {
         let spender = String::from_utf8(k)?;
@@ -420,6 +476,7 @@ fn humanize_approval(approval: &Approval) -> cw721::Approval {
 mod tests {
     use super::*;
     use andromeda_protocol::token::Approval;
+    use andromeda_protocol::token::ExecuteMsg;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{from_binary, Api};
 
@@ -491,6 +548,7 @@ mod tests {
             description: None,
             name: String::default(),
             approvals: vec![],
+            transfer_agreement: None,
         };
 
         TOKENS
@@ -543,6 +601,7 @@ mod tests {
             description: None,
             name: String::default(),
             approvals: vec![approval],
+            transfer_agreement: None,
         };
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -583,6 +642,7 @@ mod tests {
             description: None,
             name: String::default(),
             approvals: vec![approval],
+            transfer_agreement: None,
         };
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -633,6 +693,7 @@ mod tests {
             name: String::default(),
             approvals: vec![],
             owner: sender.to_string(),
+            transfer_agreement: None,
         };
 
         TOKENS
@@ -672,6 +733,7 @@ mod tests {
             name: String::default(),
             approvals: vec![approval],
             owner: sender.to_string(),
+            transfer_agreement: None,
         };
 
         TOKENS
@@ -803,5 +865,49 @@ mod tests {
             err,
             StdError::generic_err("Address does not have transfer rights for this token"),
         );
+    }
+
+    #[test]
+    fn test_transfer_agreement() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let purchaser = "purchaser";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = String::default();
+        let denom = "uluna";
+        let amount = 100 as u128;
+
+        let mint_msg = ExecuteMsg::Mint(MintMsg {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: "Some Token".to_string(),
+        });
+        execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
+
+        let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
+            token_id: token_id.clone(),
+            denom: denom.to_string(),
+            amount: amount.clone(),
+            purchaser: purchaser.to_string(),
+        };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            transfer_agreement_msg,
+        )
+        .unwrap();
+
+        let agreement_query = QueryMsg::NftTransferAgreementInfo {
+            token_id: token_id.clone(),
+        };
+        let res = query(deps.as_ref(), env.clone(), agreement_query).unwrap();
+        let agreement_res: NftTransferAgreementResponse = from_binary(&res).unwrap();
+        let agreement = agreement_res.agreement.unwrap();
+
+        assert_eq!(agreement.purchaser, purchaser.clone());
+        assert_eq!(agreement.amount, coin(amount, denom))
     }
 }

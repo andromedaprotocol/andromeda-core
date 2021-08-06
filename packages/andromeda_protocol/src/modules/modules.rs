@@ -1,5 +1,5 @@
-use crate::taxable::Taxable;
-use crate::{hooks::MessageHooks, whitelist::Whitelist};
+use crate::modules::taxable::Taxable;
+use crate::modules::{hooks::MessageHooks, whitelist::Whitelist};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult, Storage};
 use cw721::Expiration;
 use cw_storage_plus::Item;

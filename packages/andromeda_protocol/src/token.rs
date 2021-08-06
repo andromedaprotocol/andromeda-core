@@ -1,7 +1,7 @@
 use crate::hook::InitHook;
 
-use andromeda_modules::modules::ModuleDefinition;
-use cosmwasm_std::{Addr, Binary, BlockInfo, Coin, StdResult};
+use crate::modules::{Fee, ModuleDefinition};
+use cosmwasm_std::{coin, Addr, BankMsg, Binary, BlockInfo, Coin, StdResult, Uint128};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,7 @@ pub struct Token {
     pub name: String,
     pub description: Option<String>,
     pub approvals: Vec<Approval>,
+    pub transfer_agreement: Option<TransferAgreement>,
 }
 
 impl Token {
@@ -47,6 +48,27 @@ impl Token {
 pub struct TransferAgreement {
     pub amount: Coin,
     pub purchaser: String,
+}
+
+impl TransferAgreement {
+    pub fn generate_payment(&self, to_address: String) -> BankMsg {
+        BankMsg::Send {
+            to_address,
+            amount: vec![self.amount.clone()],
+        }
+    }
+    pub fn calculate_fee(&self, fee: Fee) -> Coin {
+        let amount = self.amount.amount;
+        let fee_amount = amount.multiply_ratio(Uint128::from(fee as u128), 100 as u128);
+
+        coin(fee_amount.u128(), self.amount.denom.clone())
+    }
+    pub fn generate_fee_payment(&self, to_address: String, fee: Fee) -> BankMsg {
+        BankMsg::Send {
+            to_address,
+            amount: vec![self.calculate_fee(fee)],
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -124,13 +146,12 @@ pub enum ExecuteMsg {
     //     collection_symbol: String,
     //     token_id: TokenId,
     // },
-    // CreateTransferAgreement {
-    //     collection_symbol: String,
-    //     token_id: TokenId,
-    //     denom: String,
-    //     amount: Uint128,
-    //     purchaser: String,
-    // },
+    TransferAgreement {
+        token_id: TokenId,
+        denom: String,
+        amount: u128,
+        purchaser: String,
+    },
     // Whitelist {
     //     collection_symbol: String,
     //     address: String,
@@ -160,6 +181,9 @@ pub enum QueryMsg {
     AllNftInfo {
         token_id: TokenId,
     },
+    NftTransferAgreementInfo {
+        token_id: TokenId,
+    },
     ContractInfo {},
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -173,8 +197,8 @@ pub struct ExtensionsResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AgreementResponse {
-    pub agreement: TransferAgreement,
+pub struct NftTransferAgreementResponse {
+    pub agreement: Option<TransferAgreement>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

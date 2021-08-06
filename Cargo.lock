@@ -4,7 +4,6 @@
 name = "andromeda-factory"
 version = "0.1.0"
 dependencies = [
- "andromeda-modules",
  "andromeda-protocol",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -29,8 +28,8 @@ dependencies = [
 name = "andromeda-protocol"
 version = "0.1.0"
 dependencies = [
- "andromeda-modules",
  "cosmwasm-std",
+ "cw-storage-plus",
  "cw721",
  "schemars",
  "serde",
@@ -40,7 +39,6 @@ dependencies = [
 name = "andromeda-token"
 version = "0.1.0"
 dependencies = [
- "andromeda-modules",
  "andromeda-protocol",
  "cosmwasm-schema",
  "cosmwasm-std",

@@ -1,7 +1,7 @@
-use andromeda_modules::modules::ModuleDefinition;
 use andromeda_protocol::{
     factory::{AddressResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     hook::InitHook,
+    modules::ModuleDefinition,
     require::require,
     token::InstantiateMsg as TokenInstantiateMsg,
 };

@@ -1,5 +1,13 @@
-use crate::taxable::Taxable;
-use crate::{hooks::MessageHooks, whitelist::Whitelist};
+// pub mod modules;
+// pub mod royalties;
+pub mod common;
+pub mod hooks;
+pub mod taxable;
+pub mod whitelist;
+
+use crate::modules::taxable::Taxable;
+use crate::modules::{hooks::MessageHooks, whitelist::Whitelist};
+use crate::token::ExecuteMsg;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult, Storage};
 use cw721::Expiration;
 use cw_storage_plus::Item;
@@ -66,10 +74,16 @@ impl Modules {
 
         Ok(true)
     }
-    pub fn on_execute(&self, deps: &DepsMut, info: MessageInfo, env: Env) -> StdResult<()> {
+    pub fn on_execute(
+        &self,
+        deps: &DepsMut,
+        info: MessageInfo,
+        env: Env,
+        msg: ExecuteMsg,
+    ) -> StdResult<()> {
         let modules = self.to_modules();
         for module in modules {
-            module.on_execute(&deps, info.clone(), env.clone())?;
+            module.on_execute(&deps, info.clone(), env.clone(), msg.clone())?;
         }
 
         Ok(())

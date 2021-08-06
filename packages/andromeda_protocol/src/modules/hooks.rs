@@ -1,6 +1,8 @@
 use cosmwasm_std::{BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, StdResult};
 use cw721::Expiration;
 
+use crate::token::ExecuteMsg;
+
 #[derive(Debug, PartialEq)]
 pub struct HookResponse {
     pub msgs: Vec<CosmosMsg>,
@@ -18,7 +20,15 @@ pub trait MessageHooks {
         _deps: &DepsMut,
         _info: MessageInfo,
         _env: Env,
+        _msg: ExecuteMsg,
     ) -> StdResult<HookResponse> {
+        // match msg {
+        //     ExecuteMsg::Approve {
+        //         spender,
+        //         expires,
+        //         token_id,
+        //     } => self.on_approve(deps, info, env, spender, token_id, expires),
+        // }
         Ok(HookResponse::default())
     }
     fn on_mint(
@@ -55,7 +65,7 @@ pub trait MessageHooks {
         _deps: &DepsMut,
         _info: MessageInfo,
         _env: Env,
-        _sender: String,
+        _spender: String,
         _token_id: String,
         _expires: Option<Expiration>,
     ) -> StdResult<HookResponse> {

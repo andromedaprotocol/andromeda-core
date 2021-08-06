@@ -2,9 +2,12 @@ use cosmwasm_std::{DepsMut, Env, MessageInfo, StdError, StdResult, Storage};
 use cw_storage_plus::Map;
 
 use crate::{
-    common::{is_unique, require},
-    hooks::{HookResponse, MessageHooks},
-    modules::{Module, ModuleDefinition},
+    modules::{
+        common::{is_unique, require},
+        hooks::{HookResponse, MessageHooks},
+        {Module, ModuleDefinition},
+    },
+    token::ExecuteMsg,
 };
 
 pub const WHITELIST: Map<String, bool> = Map::new("whitelist");
@@ -51,7 +54,13 @@ impl Module for Whitelist {
 }
 
 impl MessageHooks for Whitelist {
-    fn on_execute(&self, deps: &DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
+    fn on_execute(
+        &self,
+        deps: &DepsMut,
+        info: MessageInfo,
+        _env: Env,
+        _msg: ExecuteMsg,
+    ) -> StdResult<HookResponse> {
         require(
             self.is_whitelisted(deps.storage, &info.sender.to_string())?,
             StdError::generic_err("Address is not whitelisted"),
@@ -94,9 +103,13 @@ mod tests {
         let env = mock_env();
         let info = mock_info("sender", &[]);
         let wl = Whitelist { moderators: vec![] };
+        let msg = ExecuteMsg::Revoke {
+            spender: String::default(),
+            token_id: String::default(),
+        };
 
         let resp = wl
-            .on_execute(&deps.as_mut(), info.clone(), env.clone())
+            .on_execute(&deps.as_mut(), info.clone(), env.clone(), msg.clone())
             .unwrap_err();
 
         assert_eq!(resp, StdError::generic_err("Address is not whitelisted"));
@@ -105,7 +118,7 @@ mod tests {
             .unwrap();
 
         let resp = wl
-            .on_execute(&deps.as_mut(), info.clone(), env.clone())
+            .on_execute(&deps.as_mut(), info.clone(), env.clone(), msg.clone())
             .unwrap();
 
         assert_eq!(resp, HookResponse::default());

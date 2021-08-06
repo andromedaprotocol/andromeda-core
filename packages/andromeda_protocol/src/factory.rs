@@ -1,4 +1,4 @@
-use andromeda_modules::modules::ModuleDefinition;
+use crate::modules::ModuleDefinition;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
