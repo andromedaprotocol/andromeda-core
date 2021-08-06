@@ -1,6 +1,6 @@
 # Andromeda Modules
 
-This package contains the definition of an Andromeda Module, alongside any behaviour that a module should implement.
+This package contains the definition of an Andromeda Module, alongside any behaviour that a module should implement. Each module is built upon the [CW721 Spec](https://github.com/CosmWasm/cosmwasm-plus/blob/main/packages/cw721/README.md).
 
 ## Modules
 
@@ -65,7 +65,7 @@ impl HookResponse {
 
 ## Module Trait
 
-A module is sent with the contract's `InitMsg`, the definitions of these modules is then stored. To operate a module is first converted to a struct which implements `trait Module`. Each module implements the following methods:
+A module is sent with the contract's `InstantiateMsg`, the definitions of these modules is then stored. To operate a module is first converted to a struct which implements `trait Module`. The `Module` trait implements several hooks that provide data related to each message type. Every base message type defined in the [CW721 Spec](https://github.com/CosmWasm/cosmwasm-plus/blob/main/packages/cw721/README.md) has a related hook the provides the message data as parameters. Each module implements the following methods:
 <br />
 
 ### Validate
