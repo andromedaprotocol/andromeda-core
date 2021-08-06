@@ -21,7 +21,13 @@ pub trait MessageHooks {
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
-    fn on_mint(&self, _deps: &DepsMut, _env: Env, _token_id: String) -> StdResult<HookResponse> {
+    fn on_mint(
+        &self,
+        _deps: &DepsMut,
+        _info: MessageInfo,
+        _env: Env,
+        _token_id: String,
+    ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
     fn on_transfer(

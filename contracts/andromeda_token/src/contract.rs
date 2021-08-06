@@ -1,6 +1,6 @@
 use andromeda_modules::{
     common::require,
-    modules::{read_modules, MODULES},
+    modules::{read_modules, store_modules},
 };
 use andromeda_protocol::token::{
     Approval, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, Token, TokenId,
@@ -37,7 +37,7 @@ pub fn instantiate(
     };
 
     CONFIG.save(deps.storage, &config)?;
-    MODULES.save(deps.storage, &msg.modules)?;
+    store_modules(deps.storage, msg.modules)?;
 
     match msg.init_hook {
         Some(hook) => {
@@ -51,9 +51,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    for module in modules {
-        module.on_execute(&deps, info.clone(), env.clone())?;
-    }
+    modules.on_execute(&deps, info.clone(), env.clone())?;
 
     match msg {
         ExecuteMsg::Mint(msg) => execute_mint(deps, env, info, msg),
@@ -87,11 +85,6 @@ pub fn execute_mint(
     info: MessageInfo,
     msg: MintMsg,
 ) -> StdResult<Response> {
-    let modules = read_modules(deps.storage)?;
-    for module in modules {
-        module.on_mint(&deps, env.clone(), msg.token_id.clone())?;
-    }
-
     let token = Token {
         token_id: msg.token_id.clone(),
         owner: info.sender.to_string(),
@@ -102,6 +95,9 @@ pub fn execute_mint(
 
     TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
     increment_num_tokens(deps.storage)?;
+
+    let modules = read_modules(deps.storage)?;
+    modules.on_mint(&deps, info.clone(), env.clone(), msg.token_id.clone())?;
 
     Ok(Response::default())
 }
@@ -114,15 +110,13 @@ pub fn execute_transfer(
     token_id: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    for module in modules {
-        module.on_transfer(
-            &deps,
-            info.clone(),
-            env.clone(),
-            recipient.clone(),
-            token_id.clone(),
-        )?;
-    }
+    modules.on_transfer(
+        &deps,
+        info.clone(),
+        env.clone(),
+        recipient.clone(),
+        token_id.clone(),
+    )?;
 
     transfer_nft(deps, &env, &info, &recipient, &token_id)?;
 
@@ -137,6 +131,15 @@ pub fn execute_send_nft(
     token_id: String,
     msg: Binary,
 ) -> StdResult<Response> {
+    let modules = read_modules(deps.storage)?;
+    modules.on_send(
+        &deps,
+        info.clone(),
+        env.clone(),
+        contract.clone(),
+        token_id.clone(),
+    )?;
+
     // Transfer token
     transfer_nft(deps, &env, &info, &contract, &token_id)?;
 
@@ -157,12 +160,22 @@ pub fn execute_send_nft(
 
 pub fn execute_approve(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     token_id: String,
     spender: String,
     expires: Option<Expiration>,
 ) -> StdResult<Response> {
+    let modules = read_modules(deps.storage)?;
+    modules.on_approve(
+        &deps,
+        info.clone(),
+        env.clone(),
+        spender.clone(),
+        token_id.clone(),
+        expires.clone(),
+    )?;
+
     let spender_addr = deps.api.addr_validate(&spender)?;
     let approval = Approval {
         spender: spender_addr,
@@ -176,11 +189,20 @@ pub fn execute_approve(
 
 pub fn execute_revoke(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     token_id: String,
     spender: String,
 ) -> StdResult<Response> {
+    let modules = read_modules(deps.storage)?;
+    modules.on_revoke(
+        &deps,
+        info.clone(),
+        env.clone(),
+        spender.clone(),
+        token_id.clone(),
+    )?;
+
     let spender_addr = deps.api.addr_validate(&spender)?;
 
     remove_approval(deps, &info, token_id, &spender_addr)?;
@@ -190,11 +212,20 @@ pub fn execute_revoke(
 
 fn execute_approve_all(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     operator: String,
     expires: Option<Expiration>,
 ) -> StdResult<Response> {
+    let modules = read_modules(deps.storage)?;
+    modules.on_approve_all(
+        &deps,
+        info.clone(),
+        env.clone(),
+        operator.clone(),
+        expires.clone(),
+    )?;
+
     OPERATOR.save(
         deps.storage,
         (info.sender.to_string(), operator.clone()),
@@ -206,10 +237,13 @@ fn execute_approve_all(
 
 fn execute_revoke_all(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     operator: String,
 ) -> StdResult<Response> {
+    let modules = read_modules(deps.storage)?;
+    modules.on_revoke_all(&deps, info.clone(), env.clone(), operator.clone())?;
+
     OPERATOR.remove(deps.storage, (info.sender.to_string(), operator.clone()));
 
     Ok(Response::default())
