@@ -22,13 +22,6 @@ pub trait MessageHooks {
         _env: Env,
         _msg: ExecuteMsg,
     ) -> StdResult<HookResponse> {
-        // match msg {
-        //     ExecuteMsg::Approve {
-        //         spender,
-        //         expires,
-        //         token_id,
-        //     } => self.on_approve(deps, info, env, spender, token_id, expires),
-        // }
         Ok(HookResponse::default())
     }
     fn on_mint(

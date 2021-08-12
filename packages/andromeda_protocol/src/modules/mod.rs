@@ -1,7 +1,6 @@
-// pub mod modules;
-// pub mod royalties;
 pub mod common;
 pub mod hooks;
+pub mod royalties;
 pub mod taxable;
 pub mod whitelist;
 
@@ -14,6 +13,8 @@ use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use self::royalties::Royalty;
+
 // const KEY_MODULES: &[u8] = b"modules";
 pub const MODULES: Item<Modules> = Item::new("modules");
 
@@ -22,9 +23,18 @@ pub type Fee = u128;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ModuleDefinition {
-    WhiteList { moderators: Vec<String> },
-    Taxable { tax: Fee, receivers: Vec<String> },
-    // Royalties { fee: Fee, receivers: Vec<String> },
+    WhiteList {
+        moderators: Vec<String>,
+    },
+    Taxable {
+        tax: Fee,
+        receivers: Vec<String>,
+    },
+    Royalties {
+        fee: Fee,
+        receivers: Vec<String>,
+        description: Option<String>,
+    },
 }
 
 pub trait Module: MessageHooks {
@@ -41,6 +51,15 @@ impl ModuleDefinition {
             ModuleDefinition::Taxable { tax, receivers } => Box::from(Taxable {
                 tax: tax.clone(),
                 receivers: receivers.clone(),
+            }),
+            ModuleDefinition::Royalties {
+                fee,
+                receivers,
+                description,
+            } => Box::from(Royalty {
+                fee: fee.clone(),
+                receivers: receivers.to_vec(),
+                description: description.clone(),
             }),
         }
     }
