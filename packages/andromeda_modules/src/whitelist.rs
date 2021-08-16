@@ -40,11 +40,10 @@ impl Module for Whitelist {
             is_unique(self, &all_modules),
             StdError::generic_err("Whitelist module must be unique"),
         )?;
-
         Ok(true)
     }
     fn as_definition(&self) -> ModuleDefinition {
-        ModuleDefinition::WhiteList {
+        ModuleDefinition::Whitelist {
             moderators: self.moderators.to_vec(),
         }
     }
@@ -79,7 +78,7 @@ mod tests {
 
         assert_eq!(wl.validate(modules.to_vec()), Ok(true));
 
-        modules.push(ModuleDefinition::WhiteList { moderators: vec![] });
+        modules.push(ModuleDefinition::Whitelist { moderators: vec![] });
 
         assert_eq!(
             wl.validate(modules.to_vec()),

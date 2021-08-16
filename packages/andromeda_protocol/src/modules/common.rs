@@ -81,8 +81,8 @@ mod tests {
     #[test]
     fn test_is_unique() {
         let module = Whitelist { moderators: vec![] };
-        let duplicate_module = ModuleDefinition::WhiteList { moderators: vec![] };
-        let similar_module = ModuleDefinition::WhiteList {
+        let duplicate_module = ModuleDefinition::Whitelist { moderators: vec![] };
+        let similar_module = ModuleDefinition::Whitelist {
             moderators: vec![String::default()],
         };
         let other_module = ModuleDefinition::Taxable {

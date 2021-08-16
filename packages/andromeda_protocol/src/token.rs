@@ -152,12 +152,16 @@ pub enum ExecuteMsg {
         amount: u128,
         purchaser: String,
     },
-    // Whitelist {
-    //     collection_symbol: String,
+    Whitelist {
+        address: String,
+    },
+    // Dewhitelist {
+    //     address: String,
+    // }
+    // Blacklist {
     //     address: String,
     // },
-    // Dewhitelist {
-    //     collection_symbol: String,
+    // Deblacklist {
     //     address: String,
     // }
 }

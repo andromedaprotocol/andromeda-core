@@ -1,3 +1,4 @@
+pub mod blacklist;
 pub mod common;
 pub mod hooks;
 pub mod royalties;
@@ -13,6 +14,7 @@ use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use self::blacklist::Blacklist;
 use self::royalties::Royalty;
 
 // const KEY_MODULES: &[u8] = b"modules";
@@ -23,7 +25,10 @@ pub type Fee = u128;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ModuleDefinition {
-    WhiteList {
+    Whitelist {
+        moderators: Vec<String>,
+    },
+    Blacklist {
         moderators: Vec<String>,
     },
     Taxable {
@@ -45,7 +50,10 @@ pub trait Module: MessageHooks {
 impl ModuleDefinition {
     pub fn as_module(&self) -> Box<dyn Module> {
         match self {
-            ModuleDefinition::WhiteList { moderators } => Box::from(Whitelist {
+            ModuleDefinition::Whitelist { moderators } => Box::from(Whitelist {
+                moderators: moderators.clone(),
+            }),
+            ModuleDefinition::Blacklist { moderators } => Box::from(Blacklist {
                 moderators: moderators.clone(),
             }),
             ModuleDefinition::Taxable { tax, receivers } => Box::from(Taxable {

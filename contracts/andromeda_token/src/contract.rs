@@ -80,6 +80,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             amount,
             purchaser,
         } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount, denom),
+        ExecuteMsg::Whitelist { address } => Ok(Response::default()),
     }
 }
 
@@ -508,6 +509,7 @@ mod tests {
     use andromeda_protocol::token::Approval;
     use andromeda_protocol::token::ExecuteMsg;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::BankMsg;
     use cosmwasm_std::{from_binary, Api};
 
     const TOKEN_NAME: &str = "test";
@@ -703,7 +705,44 @@ mod tests {
     }
 
     #[test]
-    fn test_agreed_transfer() {}
+    fn test_agreed_transfer() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let recipient = "recipient";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = String::default();
+        let msg = ExecuteMsg::TransferNft {
+            recipient: recipient.to_string(),
+            token_id: token_id.clone(),
+        };
+        let amount = coin(100, "uluna");
+
+        let token = Token {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: String::default(),
+            approvals: vec![],
+            transfer_agreement: Some(TransferAgreement {
+                purchaser: recipient.to_string(),
+                amount: amount.clone(),
+            }),
+        };
+
+        TOKENS
+            .save(deps.as_mut().storage, token_id.to_string(), &token)
+            .unwrap();
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(
+            Response::new().add_message(BankMsg::Send {
+                to_address: minter.to_string(),
+                amount: vec![amount.clone()]
+            }),
+            res
+        );
+    }
 
     #[test]
     fn test_approve() {

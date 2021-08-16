@@ -14,7 +14,7 @@ pub type Fee = u128;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ModuleDefinition {
-    WhiteList { moderators: Vec<String> },
+    Whitelist { moderators: Vec<String> },
     Taxable { tax: Fee, receivers: Vec<String> },
     // Royalties { fee: Fee, receivers: Vec<String> },
 }
@@ -27,7 +27,7 @@ pub trait Module: MessageHooks {
 impl ModuleDefinition {
     pub fn as_module(&self) -> Box<dyn Module> {
         match self {
-            ModuleDefinition::WhiteList { moderators } => Box::from(Whitelist {
+            ModuleDefinition::Whitelist { moderators } => Box::from(Whitelist {
                 moderators: moderators.clone(),
             }),
             ModuleDefinition::Taxable { tax, receivers } => Box::from(Taxable {

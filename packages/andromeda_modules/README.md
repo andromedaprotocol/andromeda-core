@@ -39,7 +39,7 @@ Each module is defined using the `ModuleDefinition` enum which contains what dat
 
 ```rust
 enum ModuleDefinition {
-    WhiteList { moderators: Vec<String> },
+    Whitelist { moderators: Vec<String> },
     Taxable { tax: Fee, receivers: Vec<String> },
     Royalties { fee: Fee, receivers: Vec<String> },
 }
