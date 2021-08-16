@@ -205,3 +205,6 @@ pub struct NftTransferAgreementResponse {
 pub struct WhitelistedResponse {
     pub whitelisted: bool,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MigrateMsg {}

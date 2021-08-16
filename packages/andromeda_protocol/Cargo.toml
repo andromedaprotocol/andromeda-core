@@ -9,8 +9,8 @@ edition = "2018"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = { version = "0.16.0-rc5" }
+cosmwasm-std = { version = "0.16.0" }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-schemars = "0.8.1"
-cw721 = "0.8.0-rc1"
-cw-storage-plus = "0.8.0-rc1"
+schemars = "0.8.3"
+cw721 = "0.8.0"
+cw-storage-plus = "0.8.0"

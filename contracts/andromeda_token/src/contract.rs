@@ -1,7 +1,7 @@
 use andromeda_protocol::modules::{common::require, read_modules, store_modules};
 use andromeda_protocol::token::{
-    Approval, ExecuteMsg, InstantiateMsg, MintMsg, NftTransferAgreementResponse, QueryMsg, Token,
-    TokenId, TransferAgreement,
+    Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, NftTransferAgreementResponse,
+    QueryMsg, Token, TokenId, TransferAgreement,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -495,6 +495,11 @@ fn humanize_approval(approval: &Approval) -> cw721::Approval {
         spender: approval.spender.to_string(),
         expires: approval.expires,
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    Ok(Response::default())
 }
 
 #[cfg(test)]
