@@ -123,9 +123,9 @@ pub fn execute_transfer(
         token_id.clone(),
     )?;
 
-    transfer_nft(deps, &env, &info, &recipient, &token_id)?;
+    let res = transfer_nft(deps, &env, &info, &recipient, &token_id)?;
 
-    Ok(Response::default())
+    Ok(res)
 }
 
 pub fn execute_send_nft(
@@ -297,18 +297,43 @@ fn transfer_nft(
     info: &MessageInfo,
     recipient: &String,
     token_id: &String,
-) -> StdResult<()> {
+) -> StdResult<Response> {
+    let modules = read_modules(deps.storage)?;
     let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
     require(
         has_transfer_rights(deps.storage, env, info.sender.to_string(), &token)?,
         StdError::generic_err("Address does not have transfer rights for this token"),
     )?;
+    let owner = token.owner;
 
     token.owner = recipient.to_string();
     token.approvals = vec![];
 
+    let res = match token.transfer_agreement.clone() {
+        Some(a) => {
+            let mut res = Response::new();
+            let payment_message = a.generate_payment(owner.clone());
+            let mut payments = vec![payment_message];
+            modules.on_agreed_transfer(
+                &deps,
+                info.clone(),
+                env.clone(),
+                &mut payments,
+                owner.clone(),
+                a.purchaser.clone(),
+                a.amount.clone(),
+            )?;
+            for payment in payments {
+                res = res.add_message(payment);
+            }
+
+            res
+        }
+        None => Response::default(),
+    };
+
     TOKENS.save(deps.storage, token_id.to_string(), &token)?;
-    Ok(())
+    Ok(res)
 }
 
 fn add_approval(
@@ -671,6 +696,9 @@ mod tests {
             .owner;
         assert_eq!(recipient.to_string(), owner);
     }
+
+    #[test]
+    fn test_agreed_transfer() {}
 
     #[test]
     fn test_approve() {

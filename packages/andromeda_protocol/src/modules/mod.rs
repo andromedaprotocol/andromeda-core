@@ -7,7 +7,7 @@ pub mod whitelist;
 use crate::modules::taxable::Taxable;
 use crate::modules::{hooks::MessageHooks, whitelist::Whitelist};
 use crate::token::ExecuteMsg;
-use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult, Storage};
+use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, Storage};
 use cw721::Expiration;
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
@@ -162,6 +162,31 @@ impl Modules {
                 purchaser.clone(),
                 amount.clone(),
                 denom.clone(),
+            )?;
+        }
+
+        Ok(())
+    }
+    pub fn on_agreed_transfer(
+        &self,
+        deps: &DepsMut,
+        info: MessageInfo,
+        env: Env,
+        payments: &mut Vec<BankMsg>,
+        owner: String,
+        purchaser: String,
+        amount: Coin,
+    ) -> StdResult<()> {
+        let modules = self.to_modules();
+        for module in modules {
+            module.on_agreed_transfer(
+                &deps,
+                info.clone(),
+                env.clone(),
+                payments,
+                owner.clone(),
+                purchaser.clone(),
+                amount.clone(),
             )?;
         }
 
