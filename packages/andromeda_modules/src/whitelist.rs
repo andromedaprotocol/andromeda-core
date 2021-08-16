@@ -52,7 +52,8 @@ impl Module for Whitelist {
 impl MessageHooks for Whitelist {
     fn on_execute(&self, deps: &DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
         require(
-            self.is_whitelisted(deps.storage, &info.sender.to_string())?,
+            self.is_whitelisted(deps.storage, &info.sender.to_string())?
+                || self.is_moderator(&info.sender.to_string()),
             StdError::generic_err("Address is not whitelisted"),
         )?;
 

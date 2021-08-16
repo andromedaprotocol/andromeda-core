@@ -1,3 +1,5 @@
+use andromeda_protocol::modules::blacklist::execute_blacklist;
+use andromeda_protocol::modules::whitelist::execute_whitelist;
 use andromeda_protocol::modules::{common::require, read_modules, store_modules};
 use andromeda_protocol::token::{
     Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, NftTransferAgreementResponse,
@@ -80,7 +82,14 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             amount,
             purchaser,
         } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount, denom),
-        ExecuteMsg::Whitelist { address } => Ok(Response::default()),
+        ExecuteMsg::Whitelist {
+            address,
+            whitelisted,
+        } => execute_whitelist(deps, env, info, address, whitelisted),
+        ExecuteMsg::Blacklist {
+            address,
+            blacklisted,
+        } => execute_blacklist(deps, env, info, address, blacklisted),
     }
 }
 
@@ -506,6 +515,11 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_protocol::modules::blacklist::BLACKLIST;
+    use andromeda_protocol::modules::whitelist::WHITELIST;
+    use andromeda_protocol::modules::ModuleDefinition;
+    use andromeda_protocol::modules::Modules;
+    use andromeda_protocol::modules::MODULES;
     use andromeda_protocol::token::Approval;
     use andromeda_protocol::token::ExecuteMsg;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -981,5 +995,141 @@ mod tests {
 
         assert_eq!(agreement.purchaser, purchaser.clone());
         assert_eq!(agreement.amount, coin(amount, denom))
+    }
+
+    #[test]
+    fn test_whitelist() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let moderator = "minter";
+        let whitelistee = "whitelistee";
+        let info = mock_info(moderator.clone(), &[]);
+
+        let module_defs = vec![ModuleDefinition::Whitelist {
+            moderators: vec![moderator.to_string()],
+        }];
+        let modules = Modules { module_defs };
+
+        MODULES.save(deps.as_mut().storage, &modules).unwrap();
+
+        let msg = ExecuteMsg::Whitelist {
+            address: whitelistee.to_string(),
+            whitelisted: true,
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(Response::default(), res);
+
+        let whitelisted = WHITELIST
+            .load(deps.as_ref().storage, whitelistee.to_string())
+            .unwrap();
+
+        assert_eq!(true, whitelisted);
+
+        let unauth_info = mock_info("anyone", &[]);
+        let res =
+            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        assert_eq!(StdError::generic_err("Address is not whitelisted"), res);
+
+        let whitelisted_info = mock_info(whitelistee.clone(), &[]);
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            whitelisted_info.clone(),
+            msg.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            StdError::generic_err("Must be a moderator to whitelist an address"),
+            res
+        );
+
+        let dewhitelist_msg = ExecuteMsg::Whitelist {
+            address: whitelistee.to_string(),
+            whitelisted: false,
+        };
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            dewhitelist_msg.clone(),
+        )
+        .unwrap();
+        assert_eq!(Response::default(), res);
+
+        let whitelisted = WHITELIST
+            .load(deps.as_ref().storage, whitelistee.to_string())
+            .unwrap();
+
+        assert_eq!(false, whitelisted);
+    }
+
+    #[test]
+    fn test_blacklist() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let moderator = "minter";
+        let blacklistee = "blacklistee";
+        let info = mock_info(moderator.clone(), &[]);
+
+        let module_defs = vec![ModuleDefinition::Blacklist {
+            moderators: vec![moderator.to_string()],
+        }];
+        let modules = Modules { module_defs };
+
+        MODULES.save(deps.as_mut().storage, &modules).unwrap();
+
+        let msg = ExecuteMsg::Blacklist {
+            address: blacklistee.to_string(),
+            blacklisted: true,
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(Response::default(), res);
+
+        let whitelisted = BLACKLIST
+            .load(deps.as_ref().storage, blacklistee.to_string())
+            .unwrap();
+
+        assert_eq!(true, whitelisted);
+
+        let unauth_info = mock_info(blacklistee.clone(), &[]);
+        let res =
+            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        assert_eq!(StdError::generic_err("Address is blacklisted"), res);
+
+        let whitelisted_info = mock_info("anyone", &[]);
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            whitelisted_info.clone(),
+            msg.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            StdError::generic_err("Must be a moderator to blacklist an address"),
+            res
+        );
+
+        let deblacklist_msg = ExecuteMsg::Blacklist {
+            address: blacklistee.to_string(),
+            blacklisted: false,
+        };
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            deblacklist_msg.clone(),
+        )
+        .unwrap();
+        assert_eq!(Response::default(), res);
+
+        let blacklisted = BLACKLIST
+            .load(deps.as_ref().storage, blacklistee.to_string())
+            .unwrap();
+
+        assert_eq!(false, blacklisted);
     }
 }

@@ -154,16 +154,12 @@ pub enum ExecuteMsg {
     },
     Whitelist {
         address: String,
+        whitelisted: bool,
     },
-    // Dewhitelist {
-    //     address: String,
-    // }
-    // Blacklist {
-    //     address: String,
-    // },
-    // Deblacklist {
-    //     address: String,
-    // }
+    Blacklist {
+        address: String,
+        blacklisted: bool,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

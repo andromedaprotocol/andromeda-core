@@ -1,4 +1,4 @@
-use cosmwasm_std::{DepsMut, Env, MessageInfo, StdError, StdResult, Storage};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdError, StdResult, Storage};
 use cw_storage_plus::Map;
 
 use crate::{
@@ -9,6 +9,8 @@ use crate::{
     },
     token::ExecuteMsg,
 };
+
+use super::read_modules;
 
 pub const WHITELIST: Map<String, bool> = Map::new("whitelist");
 
@@ -71,12 +73,60 @@ impl MessageHooks for Whitelist {
         _msg: ExecuteMsg,
     ) -> StdResult<HookResponse> {
         require(
-            self.is_whitelisted(deps.storage, &info.sender.to_string())?,
+            self.is_whitelisted(deps.storage, &info.sender.to_string())?
+                || self.is_moderator(&info.sender.to_string()),
             StdError::generic_err("Address is not whitelisted"),
         )?;
 
         Ok(HookResponse::default())
     }
+}
+
+pub fn execute_whitelist(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+    whitelisted: bool,
+) -> StdResult<Response> {
+    let whitelist_def = get_whitelist_module(deps.storage)?;
+
+    match whitelist_def {
+        ModuleDefinition::Whitelist { moderators } => {
+            let whitelist = Whitelist {
+                moderators: moderators.to_vec(),
+            };
+
+            require(
+                whitelist.is_moderator(&info.sender.to_string()),
+                StdError::generic_err("Must be a moderator to whitelist an address"),
+            )?;
+
+            match whitelisted {
+                true => whitelist.whitelist_addr(deps.storage, &address.to_string())?,
+                false => whitelist.remove_whitelist(deps.storage, &address.to_string())?,
+            };
+
+            Ok(Response::default())
+        }
+        _ => Err(StdError::generic_err("Whitelist is improperly defined")),
+    }
+}
+
+pub fn get_whitelist_module(storage: &dyn Storage) -> StdResult<ModuleDefinition> {
+    let modules = read_modules(storage)?;
+    let whitelist_def = modules
+        .module_defs
+        .iter()
+        .find(|m| match m {
+            ModuleDefinition::Whitelist { .. } => true,
+            _ => false,
+        })
+        .ok_or(StdError::generic_err(
+            "Token does not implement the whitelist module",
+        ))?;
+
+    Ok(whitelist_def.clone())
 }
 
 #[cfg(test)]

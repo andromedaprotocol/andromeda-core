@@ -1,4 +1,4 @@
-use cosmwasm_std::{DepsMut, Env, MessageInfo, StdError, StdResult, Storage};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdError, StdResult, Storage};
 use cw_storage_plus::Map;
 
 use crate::{
@@ -9,6 +9,8 @@ use crate::{
     },
     token::ExecuteMsg,
 };
+
+use super::read_modules;
 
 pub const BLACKLIST: Map<String, bool> = Map::new("blacklist");
 
@@ -77,6 +79,53 @@ impl MessageHooks for Blacklist {
 
         Ok(HookResponse::default())
     }
+}
+
+pub fn execute_blacklist(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+    blacklisted: bool,
+) -> StdResult<Response> {
+    let blacklist_def = get_blacklist_module(deps.storage)?;
+
+    match blacklist_def {
+        ModuleDefinition::Blacklist { moderators } => {
+            let blacklist = Blacklist {
+                moderators: moderators.to_vec(),
+            };
+
+            require(
+                blacklist.is_moderator(&info.sender.to_string()),
+                StdError::generic_err("Must be a moderator to blacklist an address"),
+            )?;
+
+            match blacklisted {
+                true => blacklist.blacklist_addr(deps.storage, &address.to_string())?,
+                false => blacklist.remove_blacklist(deps.storage, &address.to_string())?,
+            };
+
+            Ok(Response::default())
+        }
+        _ => Err(StdError::generic_err("Blacklist is improperly defined")),
+    }
+}
+
+pub fn get_blacklist_module(storage: &dyn Storage) -> StdResult<ModuleDefinition> {
+    let modules = read_modules(storage)?;
+    let blacklist_def = modules
+        .module_defs
+        .iter()
+        .find(|m| match m {
+            ModuleDefinition::Blacklist { .. } => true,
+            _ => false,
+        })
+        .ok_or(StdError::generic_err(
+            "Token does not implement the blacklist module",
+        ))?;
+
+    Ok(blacklist_def.clone())
 }
 
 #[cfg(test)]
