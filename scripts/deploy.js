@@ -15,7 +15,7 @@ const mk = new MnemonicKey({
   mnemonic:
     "notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius",
 });
-// const lt = new LocalTerra();
+// const terra = new LocalTerra();
 const terra = new LCDClient({
   URL: "http://localhost:1317",
   chainID: "localterra",
@@ -26,10 +26,10 @@ async function storeCodeId(path) {
   try {
     const fileBytes = readFileSync(path).toString("base64");
 
-    const storeCode = new MsgStoreCode(deployer.key.accAddress, "");
+    const storeCode = new MsgStoreCode(deployer.key.accAddress, fileBytes);
 
     const tx = await deployer.createAndSignTx({
-      msgs: [],
+      msgs: [storeCode],
     });
 
     // const result = await terra.tx.broadcast(tx);

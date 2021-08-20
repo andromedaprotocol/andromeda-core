@@ -25,7 +25,7 @@ use crate::state::{
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     msg.validate()?;
@@ -41,7 +41,7 @@ pub fn instantiate(
 
     match msg.init_hook {
         Some(hook) => {
-            let resp = Response::new().add_message(hook.into_cosmos_msg()?);
+            let resp = Response::new().add_message(hook.into_cosmos_msg(info.sender.to_string())?);
             Ok(resp)
         }
         None => Ok(Response::default()),
