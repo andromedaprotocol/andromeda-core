@@ -67,16 +67,13 @@ fn execute_whitelist(
         return Err(ContractError::Unauthorized {});
     }
 
-    // state.moderators.push(address);
     state
         .whitelist
         .whitelist_addr(deps.storage, &address)
         .unwrap();
+
     STATE.save(deps.storage, &state)?;
 
-    // Ok(Response::new()
-    //     .add_attribute("action", "whitelist")
-    // )
     Ok(Response::new())
 }
 
@@ -94,21 +91,8 @@ fn execute_remove_whitelist(
         .whitelist
         .remove_whitelist(deps.storage, &address)
         .unwrap();
-
-    // let index = state.moderators.iter().position(|x| *x == address);
-    // match index {
-    //     Some(index_num) =>{
-    //         state.moderators.remove(index_num);
-    //     },
-    //     None =>{
-    //         return Err(ContractError::NotExisted {});
-    //     }
-    // }
     STATE.save(deps.storage, &state)?;
 
-    // Ok(Response::new()
-    //     .add_attribute("action", "removewhitelist")
-    // )
     Ok(Response::new())
 }
 
