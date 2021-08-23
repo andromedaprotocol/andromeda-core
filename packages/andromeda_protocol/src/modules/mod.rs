@@ -1,6 +1,7 @@
 pub mod blacklist;
 pub mod common;
 pub mod hooks;
+pub mod metadata;
 pub mod royalties;
 pub mod taxable;
 pub mod whitelist;
@@ -15,6 +16,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use self::blacklist::Blacklist;
+use self::metadata::MetadataStorage;
 use self::royalties::Royalty;
 
 // const KEY_MODULES: &[u8] = b"modules";
@@ -38,6 +40,10 @@ pub enum ModuleDefinition {
     Royalties {
         fee: Fee,
         receivers: Vec<String>,
+        description: Option<String>,
+    },
+    MetadataStorage {
+        size_limit: Option<u128>,
         description: Option<String>,
     },
 }
@@ -67,6 +73,13 @@ impl ModuleDefinition {
             } => Box::from(Royalty {
                 fee: fee.clone(),
                 receivers: receivers.to_vec(),
+                description: description.clone(),
+            }),
+            ModuleDefinition::MetadataStorage {
+                size_limit,
+                description,
+            } => Box::from(MetadataStorage {
+                size_limit: size_limit.clone(),
                 description: description.clone(),
             }),
         }

@@ -1,5 +1,7 @@
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdError, StdResult, Storage};
 use cw_storage_plus::Map;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     modules::{
@@ -14,6 +16,7 @@ use super::read_modules;
 
 pub const WHITELIST: Map<String, bool> = Map::new("whitelist");
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Whitelist {
     pub moderators: Vec<String>,
 }
