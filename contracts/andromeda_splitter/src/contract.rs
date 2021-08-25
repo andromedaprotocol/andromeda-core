@@ -22,15 +22,14 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> StdResult<Response> {
-
     let state = State {
         owner: info.sender,
     };
 
     let splitter = Splitter{
-        // recipient: HashMap::new(),
         recipient: vec![],
         is_lock: false,
+        is_use_whitelist: false,
         sender_whitelist: Whitelist {
             moderators: vec![]
         },
@@ -49,6 +48,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> StdResult<Response> {
     match msg {
+        ExecuteMsg::UpdateUseWhitelist{ is_use_whitelist } => execute_update_isusewhitelist(deps, info, is_use_whitelist ),
         ExecuteMsg::UpdateRecipient { recipient } => execute_update_recipient( deps, info, recipient ),
         ExecuteMsg::UpdateLock { lock } => execute_update_lock( deps, info, lock ),
         ExecuteMsg::UpdateTokenList { accepted_tokenlist } => execute_update_token_list( deps, info, accepted_tokenlist ),
@@ -57,6 +57,27 @@ pub fn execute(
     }
 }
 
+fn execute_update_isusewhitelist(
+    deps: DepsMut,
+    info: MessageInfo,
+    is_use_whitelist: bool
+) -> StdResult<Response>{
+    let state = STATE.load(deps.storage)?;
+    require(state.owner == info.sender,
+        StdError::generic_err("Only use by owner")
+    )?;
+
+    let mut splitter = SPLITTER.load(deps.storage)?;
+
+    if splitter.is_lock == true {
+        StdError::generic_err("Not allow to change recipient");
+    }
+
+    splitter.is_use_whitelist = is_use_whitelist;
+
+    SPLITTER.save(deps.storage, &splitter)?;
+    Ok(Response::default())
+}
 fn execute_send( deps: DepsMut, info: MessageInfo ) -> StdResult<Response>{
     let sent_funds:Vec<Coin> = info.funds.clone();
 
@@ -66,16 +87,11 @@ fn execute_send( deps: DepsMut, info: MessageInfo ) -> StdResult<Response>{
 
     let splitter = SPLITTER.load(deps.storage)?;
 
-    // require( splitter.sender_whitelist.contains(&info.sender.to_string()),
-    //     StdError::generic_err("Not allow to send funds")
-    // )?;
+    if splitter.is_use_whitelist == true {
     require ( splitter.sender_whitelist.is_whitelisted(deps.storage, &info.sender.to_string())?,
         StdError::generic_err("Not allow to send funds")
     )?;
-
-    // require( splitter.sender_whitelist.is_whitelisted(deps.storage, address)?,
-    //     StdError::generic_err("Not allow to send funds")
-    // )?;
+    }
 
     require( splitter.recipient.len() > 0,
         StdError::generic_err("No recipient received")
@@ -120,10 +136,6 @@ fn execute_update_recipient(
     splitter.recipient.clear();
 
     splitter.recipient = recipient.clone();
-    // for r in recipient {
-    //     splitter.recipient.insert(r.addr, r.percent);
-    // }
-
     SPLITTER.save(deps.storage, &splitter)?;
     Ok(Response::default())
 }
@@ -242,7 +254,6 @@ mod tests {
         let info = mock_info(owner.clone(), &[]);
 
         let lock = true;
-
         let msg = ExecuteMsg::UpdateLock {
             lock: lock,
         };
@@ -267,6 +278,7 @@ mod tests {
         let splitter = Splitter {
             recipient: vec![],
             is_lock: false,
+            is_use_whitelist: true,
             sender_whitelist: Whitelist {
                     moderators: vec![]
                 },
@@ -282,6 +294,57 @@ mod tests {
         let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
         assert_eq!(splitter.is_lock, lock);
     }
+
+    #[test]
+    fn test_execute_update_isusewhitelist() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+
+        let owner = "creator";
+        let info = mock_info(owner.clone(), &[]);
+
+        let is_use_whitelist = true;
+        let msg = ExecuteMsg::UpdateUseWhitelist {
+            is_use_whitelist,
+        };
+
+        //incorrect owner
+        let state = State {
+            owner: Addr::unchecked("incorrect_owner".to_string())
+        };
+        STATE.save(deps.as_mut().storage, &state).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        match res{
+            Ok(_ret) => assert!(false),
+            _ => {}
+        }
+
+        let state = State {
+            owner: Addr::unchecked(owner.to_string())
+        };
+
+        STATE.save(deps.as_mut().storage, &state).unwrap();
+
+        let splitter = Splitter {
+            recipient: vec![],
+            is_lock: false,
+            is_use_whitelist: false,
+            sender_whitelist: Whitelist {
+                    moderators: vec![]
+                },
+            accepted_tokenlist: vec![],
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(Response::default(), res);
+
+        //check result
+        let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+        assert_eq!(splitter.is_use_whitelist, is_use_whitelist);
+    }
+
 
     #[test]
     fn test_execute_update_token_list() {
@@ -316,6 +379,7 @@ mod tests {
         let splitter = Splitter {
             recipient: vec![],
             is_lock: false,
+            is_use_whitelist: true,
             sender_whitelist: Whitelist {
                 moderators: vec![]
             },
@@ -365,6 +429,7 @@ mod tests {
         let splitter = Splitter {
             recipient: vec![],
             is_lock: false,
+            is_use_whitelist: true,
             sender_whitelist: Whitelist {
                 moderators: vec![]
             },
@@ -377,13 +442,11 @@ mod tests {
         assert_eq!(Response::default(), res);
 
         //check result
-        // let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
         let whitelisted = WHITELIST
             .load(deps.as_ref().storage, "11".to_string())
             .unwrap();
         assert_eq!(true, whitelisted);
 
-        // assert_eq!(splitter.sender_whitelist, sender_whitelist.clone());
     }
 
     #[test]
@@ -422,6 +485,7 @@ mod tests {
         let splitter = Splitter {
             recipient: vec![],
             is_lock: false,
+            is_use_whitelist: true,
             sender_whitelist: Whitelist {
                 moderators: vec![]
             },
@@ -472,7 +536,7 @@ mod tests {
         let splitter = Splitter {
             recipient: recipient,
             is_lock: false,
-            // sender_whitelist: vec![owner.to_string().clone()],
+            is_use_whitelist: true,
             sender_whitelist: Whitelist {
                 moderators: vec![]
             },
@@ -480,11 +544,9 @@ mod tests {
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
-
         WHITELIST.save(deps.as_mut().storage, owner.to_string().clone(), &true).unwrap();
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_ne!(Response::default(), res);
     }
-
 }

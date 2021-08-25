@@ -26,7 +26,7 @@ pub struct Splitter{
     // pub recipient: HashMap<String, u16>,   //Map for Address and Percentage
     pub recipient: Vec<AddressPercent>,   //Map for Address and Percentage
     pub is_lock: bool,                     //Lock
-    // pub sender_whitelist: Vec<String>,       //Address List allowing to receive funds
+    pub is_use_whitelist: bool,
     pub sender_whitelist: Whitelist,       //Address List allowing to receive funds
     pub accepted_tokenlist: Vec<TokenId>,  //Token List allowing to accept
 }

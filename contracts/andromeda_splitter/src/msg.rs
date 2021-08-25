@@ -16,6 +16,9 @@ pub enum ExecuteMsg {
     UpdateLock {
         lock: bool,
     },
+    UpdateUseWhitelist {
+        is_use_whitelist: bool,
+    },
     UpdateTokenList {
         accepted_tokenlist: Vec<TokenId>
     },
