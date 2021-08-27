@@ -5,6 +5,7 @@ use crate::state::AddressPercent;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
+    pub use_whitelist: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -17,7 +18,7 @@ pub enum ExecuteMsg {
         lock: bool,
     },
     UpdateUseWhitelist {
-        is_use_whitelist: bool,
+        use_whitelist: bool,
     },
     UpdateTokenList {
         accepted_tokenlist: Vec<TokenId>
