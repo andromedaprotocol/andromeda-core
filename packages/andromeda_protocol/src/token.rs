@@ -31,6 +31,7 @@ pub struct Token {
     pub description: Option<String>,
     pub approvals: Vec<Approval>,
     pub transfer_agreement: Option<TransferAgreement>,
+    pub metadata: Option<Binary>,
 }
 
 impl Token {
@@ -89,6 +90,8 @@ pub struct InstantiateMsg {
 
     //A hook for if the contract is instantiated by the factory
     pub init_hook: Option<InitHook>,
+    //An optional limit for token metadata size
+    pub metadata_limit: Option<u64>,
 }
 
 impl InstantiateMsg {
@@ -103,6 +106,7 @@ pub struct MintMsg {
     pub owner: String,
     pub name: String,
     pub description: Option<String>,
+    pub metadata: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -184,6 +188,9 @@ pub enum QueryMsg {
     NftTransferAgreementInfo {
         token_id: TokenId,
     },
+    NftMetadata {
+        token_id: TokenId,
+    },
     ContractInfo {},
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -204,6 +211,11 @@ pub struct NftTransferAgreementResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct WhitelistedResponse {
     pub whitelisted: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct NftMetadataResponse {
+    pub metadata: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

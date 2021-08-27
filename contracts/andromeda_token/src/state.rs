@@ -1,15 +1,36 @@
-use andromeda_protocol::token::Token;
-use cosmwasm_std::{Env, StdResult, Storage};
+use andromeda_protocol::{require::require, token::Token};
+use cosmwasm_std::{to_binary, Env, StdError, StdResult, Storage};
 use cw721::Expiration;
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TokenConfig {
     pub name: String,
     pub symbol: String,
     pub minter: String,
+    pub metadata_limit: Option<u64>,
+}
+
+impl TokenConfig {
+    pub fn validate_metadata_size(&self, data: String) -> StdResult<bool> {
+        match self.metadata_limit {
+            None => Ok(true),
+            Some(limit) => {
+                let binary = to_binary(&data)?;
+                let error_string = "Metadata length must be less than or equal to ".to_owned();
+                let limit_string = limit.to_string();
+                require(
+                    u64::try_from(binary.len()).unwrap() <= limit,
+                    StdError::generic_err(error_string + &limit_string),
+                )?;
+
+                Ok(true)
+            }
+        }
+    }
 }
 
 pub const CONFIG: Item<TokenConfig> = Item::new("config");

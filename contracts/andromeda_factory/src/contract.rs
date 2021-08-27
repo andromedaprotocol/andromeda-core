@@ -40,7 +40,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             symbol,
             name,
             extensions,
-        } => create(deps, env, info, name, symbol, extensions),
+            metadata_limit,
+        } => create(deps, env, info, name, symbol, extensions, metadata_limit),
         ExecuteMsg::TokenCreationHook { symbol, creator } => {
             token_creation(deps, env, info, symbol, creator)
         }
@@ -58,6 +59,7 @@ pub fn create(
     name: String,
     symbol: String,
     modules: Vec<ModuleDefinition>,
+    metadata_limit: Option<u64>,
 ) -> StdResult<Response> {
     let config = read_config(deps.storage)?;
 
@@ -83,6 +85,7 @@ pub fn create(
                 })?,
                 contract_addr: info.sender.to_string(),
             }),
+            metadata_limit,
         })?,
     });
 
@@ -181,6 +184,7 @@ mod tests {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             extensions: vec![],
+            metadata_limit: None,
         };
 
         let expected_msg = WasmMsg::Instantiate {
@@ -201,6 +205,7 @@ mod tests {
                     .unwrap(),
                     contract_addr: info.sender.to_string(),
                 }),
+                metadata_limit: None,
             })
             .unwrap(),
         };
