@@ -1,7 +1,10 @@
 use crate::hook::InitHook;
 
-use crate::modules::{Fee, ModuleDefinition};
-use cosmwasm_std::{coin, Addr, BankMsg, Binary, BlockInfo, Coin, StdResult, Uint128};
+use crate::modules::{
+    hooks::{PaymentAttribute, ATTR_PAYMENT},
+    Fee, ModuleDefinition,
+};
+use cosmwasm_std::{coin, Addr, BankMsg, Binary, BlockInfo, Coin, Event, StdResult, Uint128};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -69,6 +72,16 @@ impl TransferAgreement {
             to_address,
             amount: vec![self.calculate_fee(fee)],
         }
+    }
+    pub fn generate_event(self) -> Event {
+        Event::new("agreed_transfer").add_attribute(
+            ATTR_PAYMENT,
+            PaymentAttribute {
+                receiver: self.purchaser.clone(),
+                amount: self.amount.clone(),
+            }
+            .to_string(),
+        )
     }
 }
 

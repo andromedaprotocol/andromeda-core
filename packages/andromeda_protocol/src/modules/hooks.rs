@@ -1,16 +1,49 @@
-use cosmwasm_std::{BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, StdResult};
+use cosmwasm_std::{BankMsg, Coin, CosmosMsg, DepsMut, Env, Event, MessageInfo, StdResult};
 use cw721::Expiration;
 
 use crate::token::ExecuteMsg;
 
+pub const ATTR_DESC: &str = "description";
+pub const ATTR_PAYMENT: &str = "payment";
+pub const ATTR_DEDUCTED: &str = "deducted";
+
 #[derive(Debug, PartialEq)]
 pub struct HookResponse {
     pub msgs: Vec<CosmosMsg>,
+    pub events: Vec<Event>,
 }
 
 impl HookResponse {
     pub fn default() -> Self {
-        HookResponse { msgs: vec![] }
+        HookResponse {
+            msgs: vec![],
+            events: vec![],
+        }
+    }
+    pub fn add_event(mut self, event: Event) -> Self {
+        self.events.push(event);
+        self
+    }
+    pub fn add_message(mut self, message: CosmosMsg) -> Self {
+        self.msgs.push(message);
+        self
+    }
+    pub fn add_resp(mut self, resp: HookResponse) -> Self {
+        for event in resp.events {
+            self.events.push(event);
+        }
+        self
+    }
+}
+
+pub struct PaymentAttribute {
+    pub amount: Coin,
+    pub receiver: String,
+}
+
+impl ToString for PaymentAttribute {
+    fn to_string(&self) -> String {
+        format!("{}<{}", self.receiver, self.amount)
     }
 }
 
@@ -132,7 +165,7 @@ pub trait MessageHooks {
         _owner: String,
         _purchaser: String,
         _amount: Coin,
-    ) -> StdResult<bool> {
-        Ok(true)
+    ) -> StdResult<HookResponse> {
+        Ok(HookResponse::default())
     }
 }

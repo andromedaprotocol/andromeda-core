@@ -1,4 +1,5 @@
 use andromeda_protocol::modules::blacklist::execute_blacklist;
+use andromeda_protocol::modules::hooks::{PaymentAttribute, ATTR_PAYMENT};
 use andromeda_protocol::modules::whitelist::execute_whitelist;
 use andromeda_protocol::modules::{common::require, read_modules, store_modules};
 use andromeda_protocol::token::{
@@ -8,8 +9,8 @@ use andromeda_protocol::token::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair,
-    Response, StdError, StdResult,
+    coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, Event, MessageInfo, Order,
+    Pair, Response, StdError, StdResult,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
@@ -334,22 +335,29 @@ fn transfer_nft(
     token.approvals = vec![];
 
     let res = match token.transfer_agreement.clone() {
-        Some(a) => {
+        Some(agreement) => {
             let mut res = Response::new();
-            let payment_message = a.generate_payment(owner.clone());
+            let payment_message = agreement.generate_payment(owner.clone());
             let mut payments = vec![payment_message];
-            modules.on_agreed_transfer(
+            let mod_resp = modules.on_agreed_transfer(
                 &deps,
                 info.clone(),
                 env.clone(),
                 &mut payments,
                 owner.clone(),
-                a.purchaser.clone(),
-                a.amount.clone(),
+                agreement.purchaser.clone(),
+                agreement.amount.clone(),
             )?;
+
             for payment in payments {
                 res = res.add_message(payment);
             }
+
+            for event in mod_resp.events {
+                res = res.add_event(event)
+            }
+
+            res = res.add_event(agreement.generate_event());
 
             res
         }
@@ -781,10 +789,12 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(
-            Response::new().add_message(BankMsg::Send {
-                to_address: minter.to_string(),
-                amount: vec![amount.clone()]
-            }),
+            Response::new()
+                .add_message(BankMsg::Send {
+                    to_address: minter.to_string(),
+                    amount: vec![amount.clone()]
+                })
+                .add_event(token.transfer_agreement.unwrap().generate_event()),
             res
         );
     }
