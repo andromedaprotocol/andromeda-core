@@ -24,6 +24,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-splitter"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "andromeda-timelock"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw721",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-token"
 version = "0.1.0"
 dependencies = [

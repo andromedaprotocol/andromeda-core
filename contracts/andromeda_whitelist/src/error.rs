@@ -5,13 +5,10 @@ use thiserror::Error;
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
-    
     #[error("{0}")]
     OverflowError(#[from] OverflowError),
-    
     #[error("unauthorized")]
     Unauthorized {},
-    
     #[error("not existed address")]
     NotExisted {},
 
