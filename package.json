@@ -6,6 +6,6 @@
   "author": "William Chen <wchen298@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@terra-money/terra.js": "1.7.0"
+    "@terra-money/terra.js": "2.0.5"
   }
 }
