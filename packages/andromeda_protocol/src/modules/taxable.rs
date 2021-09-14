@@ -32,6 +32,13 @@ impl Module for Taxable {
         )?;
         require(self.tax > 0, StdError::generic_err("Tax must be non-zero"))?;
 
+        if self.description.clone().is_some() {
+            require(
+                self.description.clone().unwrap().len() <= 200,
+                StdError::generic_err("Module description can be at most 200 characters long"),
+            )?;
+        }
+
         Ok(true)
     }
     fn as_definition(&self) -> ModuleDefinition {

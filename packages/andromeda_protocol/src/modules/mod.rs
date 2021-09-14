@@ -1,6 +1,7 @@
 pub mod blacklist;
 pub mod common;
 pub mod hooks;
+pub mod receipt;
 pub mod royalties;
 pub mod taxable;
 pub mod whitelist;

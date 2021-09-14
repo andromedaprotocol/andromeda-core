@@ -1,4 +1,6 @@
-use cosmwasm_std::{coin, Coin, DepsMut, Env, Event, MessageInfo, StdResult, Uint128};
+use cosmwasm_std::{coin, Coin, DepsMut, Env, Event, MessageInfo, StdError, StdResult, Uint128};
+
+use crate::require::require;
 
 use super::{
     common::{add_payment, deduct_payment},
@@ -66,6 +68,13 @@ impl MessageHooks for Royalty {
 
 impl Module for Royalty {
     fn validate(&self, _extensions: Vec<super::ModuleDefinition>) -> StdResult<bool> {
+        if self.description.clone().is_some() {
+            require(
+                self.description.clone().unwrap().len() <= 200,
+                StdError::generic_err("Module description can be at most 200 characters long"),
+            )?;
+        }
+
         Ok(true)
     }
     fn as_definition(&self) -> ModuleDefinition {

@@ -1,5 +1,4 @@
 use andromeda_protocol::modules::blacklist::execute_blacklist;
-use andromeda_protocol::modules::hooks::{PaymentAttribute, ATTR_PAYMENT};
 use andromeda_protocol::modules::whitelist::execute_whitelist;
 use andromeda_protocol::modules::{common::require, read_modules, store_modules};
 use andromeda_protocol::token::{
@@ -9,8 +8,8 @@ use andromeda_protocol::token::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, Event, MessageInfo, Order,
-    Pair, Response, StdError, StdResult,
+    coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair,
+    Response, StdError, StdResult,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
