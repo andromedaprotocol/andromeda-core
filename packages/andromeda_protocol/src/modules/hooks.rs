@@ -1,7 +1,7 @@
 use cosmwasm_std::{BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, StdResult};
 use cw721::Expiration;
 
-use crate::token::ExecuteMsg;
+use crate::token::{ ExecuteMsg, TokenId };
 
 #[derive(Debug, PartialEq)]
 pub struct HookResponse {
@@ -11,6 +11,15 @@ pub struct HookResponse {
 impl HookResponse {
     pub fn default() -> Self {
         HookResponse { msgs: vec![] }
+    }
+    pub fn add_message(&mut self, msg: &CosmosMsg){
+        self.msgs.push(msg.clone());
+    }
+
+    pub fn add_messages(&mut self, msgs: &Vec<CosmosMsg>){
+        for msg in msgs{
+            self.msgs.push(msg.clone());
+        }
     }
 }
 
@@ -134,5 +143,15 @@ pub trait MessageHooks {
         _amount: Coin,
     ) -> StdResult<bool> {
         Ok(true)
+    }
+    fn on_store_receipt(
+        &self,
+        _env: Env,
+        _token_id: TokenId,
+        _owner: String,        
+        _purchaser: String,
+        _payments: &Vec<BankMsg>
+    ) -> StdResult<HookResponse>{
+        Ok(HookResponse::default())
     }
 }

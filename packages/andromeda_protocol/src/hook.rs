@@ -9,10 +9,10 @@ pub struct InitHook {
 }
 
 impl InitHook {
-    pub fn into_cosmos_msg(self, contract_addr: String) -> StdResult<CosmosMsg> {
+    pub fn into_cosmos_msg(&self) -> StdResult<CosmosMsg> {
         let execute = WasmMsg::Execute {
-            contract_addr,
-            msg: self.msg,
+            contract_addr: self.contract_addr.clone(),
+            msg: self.msg.clone(),
             funds: vec![],
         };
         Ok(execute.into())

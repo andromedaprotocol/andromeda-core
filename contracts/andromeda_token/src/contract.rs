@@ -1,5 +1,7 @@
 use andromeda_protocol::modules::blacklist::execute_blacklist;
 use andromeda_protocol::modules::whitelist::execute_whitelist;
+use andromeda_protocol::modules::receipt::{ execute_receipt, query_receipt, };
+use andromeda_protocol::modules::hooks::{ HookResponse };
 use andromeda_protocol::modules::{common::require, read_modules, store_modules};
 use andromeda_protocol::token::{
     Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, NftMetadataResponse,
@@ -25,7 +27,7 @@ use crate::state::{
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     msg.validate()?;
@@ -42,7 +44,7 @@ pub fn instantiate(
 
     match msg.init_hook {
         Some(hook) => {
-            let resp = Response::new().add_message(hook.into_cosmos_msg(info.sender.to_string())?);
+            let resp = Response::new().add_message(hook.into_cosmos_msg()?);
             Ok(resp)
         }
         None => Ok(Response::default()),
@@ -91,6 +93,12 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             address,
             blacklisted,
         } => execute_blacklist(deps, env, info, address, blacklisted),
+        ExecuteMsg::Receipt {
+            token_id,            
+            seller,
+            purchaser,
+            transfer_data,
+        } => execute_receipt(deps, env, info, token_id, seller, purchaser, transfer_data)
     }
 }
 
@@ -297,6 +305,7 @@ fn execute_transfer_agreement(
         amount.clone(),
         denom.clone(),
     )?;
+
     let mut token = TOKENS.load(deps.storage, token_id.clone())?;
 
     require(
@@ -347,11 +356,19 @@ fn transfer_nft(
                 a.purchaser.clone(),
                 a.amount.clone(),
             )?;
-            for payment in payments {
+            for payment in payments.clone() {
                 res = res.add_message(payment);
             }
 
-            res
+            let hook_response:HookResponse = modules.on_store_receipt(                
+                env.clone(),
+                token_id.clone(),
+                owner.clone(),
+                a.purchaser.clone(),
+                &payments,
+            )?;
+            res.add_messages(hook_response.msgs)            
+
         }
         None => Response::default(),
     };
@@ -422,6 +439,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_transfer_agreement(deps, token_id)?)
         }
         QueryMsg::NftMetadata { token_id } => to_binary(&query_token_metadata(deps, token_id)?),
+
+        QueryMsg::Receipt { receipt_id } => to_binary(&query_receipt(deps.storage, receipt_id)?),
+
     }
 }
 

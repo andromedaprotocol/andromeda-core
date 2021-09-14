@@ -1,27 +1,12 @@
-pub mod blacklist;
-pub mod common;
-pub mod hooks;
-pub mod metadata;
-pub mod royalties;
-pub mod taxable;
-pub mod whitelist;
-pub mod receipt;
-
 use crate::modules::taxable::Taxable;
-use crate::modules::{hooks::{ MessageHooks, HookResponse}, whitelist::Whitelist};
-use crate::token::ExecuteMsg;
-use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, Storage};
+use crate::modules::{hooks::MessageHooks, whitelist::Whitelist};
+use crate::modules::receipt::Receipt;
+
+use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult, Storage};
 use cw721::Expiration;
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use crate::token::TokenId;
-use self::blacklist::Blacklist;
-use self::metadata::MetadataStorage;
-use self::royalties::Royalty;
-use self::receipt::Receipt;
-
 
 // const KEY_MODULES: &[u8] = b"modules";
 pub const MODULES: Item<Modules> = Item::new("modules");
@@ -31,26 +16,10 @@ pub type Fee = u128;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ModuleDefinition {
-    Whitelist {
-        moderators: Vec<String>,
-    },
-    Blacklist {
-        moderators: Vec<String>,
-    },
-    Taxable {
-        tax: Fee,
-        receivers: Vec<String>,
-    },
-    Royalties {
-        fee: Fee,
-        receivers: Vec<String>,
-        description: Option<String>,
-    },
-    MetadataStorage {
-        size_limit: Option<u128>,
-        description: Option<String>,
-    },
+    Whitelist { moderators: Vec<String> },
+    Taxable { tax: Fee, receivers: Vec<String> },
     Receipt,
+    // Royalties { fee: Fee, receivers: Vec<String> },
 }
 
 pub trait Module: MessageHooks {
@@ -64,28 +33,9 @@ impl ModuleDefinition {
             ModuleDefinition::Whitelist { moderators } => Box::from(Whitelist {
                 moderators: moderators.clone(),
             }),
-            ModuleDefinition::Blacklist { moderators } => Box::from(Blacklist {
-                moderators: moderators.clone(),
-            }),
             ModuleDefinition::Taxable { tax, receivers } => Box::from(Taxable {
                 tax: tax.clone(),
                 receivers: receivers.clone(),
-            }),
-            ModuleDefinition::Royalties {
-                fee,
-                receivers,
-                description,
-            } => Box::from(Royalty {
-                fee: fee.clone(),
-                receivers: receivers.to_vec(),
-                description: description.clone(),
-            }),
-            ModuleDefinition::MetadataStorage {
-                size_limit,
-                description,
-            } => Box::from(MetadataStorage {
-                size_limit: size_limit.clone(),
-                description: description.clone(),
             }),
             ModuleDefinition::Receipt => Box::from(Receipt{}),
         }
@@ -120,16 +70,10 @@ impl Modules {
 
         Ok(true)
     }
-    pub fn on_execute(
-        &self,
-        deps: &DepsMut,
-        info: MessageInfo,
-        env: Env,
-        msg: ExecuteMsg,
-    ) -> StdResult<()> {
+    pub fn on_execute(&self, deps: &DepsMut, info: MessageInfo, env: Env) -> StdResult<()> {
         let modules = self.to_modules();
         for module in modules {
-            module.on_execute(&deps, info.clone(), env.clone(), msg.clone())?;
+            module.on_execute(&deps, info.clone(), env.clone())?;
         }
 
         Ok(())
@@ -145,6 +89,7 @@ impl Modules {
         for module in modules {
             module.on_mint(&deps, info.clone(), env.clone(), token_id.clone())?;
         }
+
         Ok(())
     }
     pub fn on_transfer(
@@ -193,57 +138,6 @@ impl Modules {
 
         Ok(())
     }
-    pub fn on_agreed_transfer(
-        &self,
-        deps: &DepsMut,
-        info: MessageInfo,
-        env: Env,
-        payments: &mut Vec<BankMsg>,
-        owner: String,
-        purchaser: String,
-        amount: Coin,
-    ) -> StdResult<()> {
-        let modules = self.to_modules();
-        for module in modules {
-            module.on_agreed_transfer(
-                &deps,
-                info.clone(),
-                env.clone(),
-                payments,
-                owner.clone(),
-                purchaser.clone(),
-                amount.clone(),
-            )?;
-        }
-
-        Ok(())
-    }
-
-    pub fn on_store_receipt(
-        &self,        
-        env: Env,
-        token_id: TokenId,
-        owner: String,
-        purchaser: String,
-        payments: &Vec<BankMsg>,
-    ) -> StdResult<HookResponse>{
-        let modules = self.to_modules();
-
-        let mut hook_response:HookResponse = HookResponse::default();
-
-        for module in modules {
-            let hook_response_module = module.on_store_receipt(
-                env.clone(),
-                token_id.clone(),
-                owner.clone(),
-                purchaser.clone(),
-                payments,                
-            )?;
-            hook_response.add_messages(&hook_response_module.msgs);
-        }
-        Ok(hook_response)
-    }
-
     pub fn on_send(
         &self,
         deps: &DepsMut,

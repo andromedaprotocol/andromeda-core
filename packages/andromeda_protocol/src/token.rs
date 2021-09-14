@@ -1,6 +1,8 @@
 use crate::hook::InitHook;
 
 use crate::modules::{Fee, ModuleDefinition};
+use crate::modules::receipt::{ TransferData };
+
 use cosmwasm_std::{coin, Addr, BankMsg, Binary, BlockInfo, Coin, StdResult, Uint128};
 use cw721::Expiration;
 use schemars::JsonSchema;
@@ -164,6 +166,12 @@ pub enum ExecuteMsg {
         address: String,
         blacklisted: bool,
     },
+    Receipt {
+        token_id: TokenId,        
+        seller: String,
+        purchaser: String,
+        transfer_data: Vec<TransferData>
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -192,6 +200,9 @@ pub enum QueryMsg {
         token_id: TokenId,
     },
     ContractInfo {},
+    Receipt {
+        receipt_id: u128
+    },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchivedResponse {

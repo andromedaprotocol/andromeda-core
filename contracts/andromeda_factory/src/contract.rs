@@ -54,7 +54,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
 
 pub fn create(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     name: String,
     symbol: String,
@@ -83,7 +83,7 @@ pub fn create(
                     symbol: symbol.to_string(),
                     creator: info.sender.to_string(),
                 })?,
-                contract_addr: info.sender.to_string(),
+                contract_addr: env.contract.address.to_string(),
             }),
             metadata_limit,
         })?,
@@ -203,7 +203,7 @@ mod tests {
                         creator: String::from("creator"),
                     })
                     .unwrap(),
-                    contract_addr: info.sender.to_string(),
+                    contract_addr: env.contract.address.to_string()
                 }),
                 metadata_limit: None,
             })
