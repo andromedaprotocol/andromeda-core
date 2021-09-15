@@ -88,6 +88,7 @@ mod tests {
         let other_module = ModuleDefinition::Taxable {
             tax: 2,
             receivers: vec![],
+            description: None,
         };
 
         let valid = vec![module.as_definition().clone(), other_module.clone()];

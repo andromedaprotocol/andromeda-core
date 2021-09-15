@@ -26,6 +26,7 @@ pub fn instantiate(
         deps.storage,
         &Config {
             token_code_id: msg.token_code_id,
+            receipt_code_id: msg.receipt_code_id,
             owner: String::default(),
         },
     )?;
@@ -54,7 +55,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
 
 pub fn create(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     name: String,
     symbol: String,
@@ -68,7 +69,7 @@ pub fn create(
         StdError::generic_err("Symbol is in use"),
     )?;
 
-    let resp = Response::new().add_message(WasmMsg::Instantiate {
+    Ok(Response::new().add_message(WasmMsg::Instantiate {
         code_id: config.token_code_id,
         funds: vec![],
         label: "".to_string(),
@@ -78,18 +79,17 @@ pub fn create(
             symbol: symbol.to_string(),
             minter: info.sender.to_string(),
             modules,
+            receipt_code_id: config.receipt_code_id,
             init_hook: Some(InitHook {
                 msg: to_binary(&ExecuteMsg::TokenCreationHook {
                     symbol: symbol.to_string(),
                     creator: info.sender.to_string(),
                 })?,
-                contract_addr: env.contract.address.to_string(),
+                contract_addr: info.sender.to_string(),
             }),
             metadata_limit,
         })?,
-    });
-
-    Ok(resp)
+    }))
 }
 
 pub fn token_creation(
@@ -151,6 +151,8 @@ mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     static TOKEN_CODE_ID: u64 = 0;
+    static RECEIPT_CODE_ID: u64 = 1;
+
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
 
@@ -160,6 +162,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             token_code_id: TOKEN_CODE_ID,
+            receipt_code_id: RECEIPT_CODE_ID,
         };
         let env = mock_env();
 
@@ -175,6 +178,7 @@ mod tests {
 
         let init_msg = InstantiateMsg {
             token_code_id: TOKEN_CODE_ID,
+            receipt_code_id: RECEIPT_CODE_ID,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), init_msg).unwrap();
@@ -197,13 +201,14 @@ mod tests {
                 symbol: TOKEN_SYMBOL.to_string(),
                 minter: String::from("creator"),
                 modules: vec![],
+                receipt_code_id: RECEIPT_CODE_ID,
                 init_hook: Some(InitHook {
                     msg: to_binary(&ExecuteMsg::TokenCreationHook {
                         symbol: TOKEN_SYMBOL.to_string(),
                         creator: String::from("creator"),
                     })
                     .unwrap(),
-                    contract_addr: env.contract.address.to_string()
+                    contract_addr: info.sender.to_string(),
                 }),
                 metadata_limit: None,
             })

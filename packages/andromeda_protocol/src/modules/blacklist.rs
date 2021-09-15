@@ -141,6 +141,7 @@ mod tests {
             ModuleDefinition::Taxable {
                 tax: 2,
                 receivers: vec![],
+                description: None,
             },
         ];
 
@@ -158,6 +159,7 @@ mod tests {
             ModuleDefinition::Taxable {
                 tax: 2,
                 receivers: vec![],
+                description: None,
             },
             ModuleDefinition::Whitelist { moderators: vec![] },
         ];

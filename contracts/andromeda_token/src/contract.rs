@@ -1,33 +1,41 @@
 use andromeda_protocol::modules::blacklist::execute_blacklist;
+use andromeda_protocol::modules::hooks::{ ATTR_PAYMENT, ATTR_DESC};
 use andromeda_protocol::modules::whitelist::execute_whitelist;
-use andromeda_protocol::modules::receipt::{ execute_receipt, query_receipt, };
-use andromeda_protocol::modules::hooks::{ HookResponse };
 use andromeda_protocol::modules::{common::require, read_modules, store_modules};
+use andromeda_protocol::modules::taxable::TAX_EVENT_ID;
 use andromeda_protocol::token::{
     Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, NftMetadataResponse,
     NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
 };
+
+use andromeda_protocol::receipt::{InstantiateMsg as ReceiptInstantiateMsg,
+     ExecuteMsg as ReceiptExecuteMsg, QueryMsg as  ReceiptQueryMsg, ReceiptResponse, Receipt};
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
+
 use cosmwasm_std::{
-    coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair,
-    Response, StdError, StdResult,
+    coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order,
+    Pair, Response, StdError, StdResult, QueryRequest, WasmQuery, WasmMsg, SubMsg, ReplyOn, Reply,
+    Uint128, CosmosMsg,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
     NftInfoResponse, NumTokensResponse, OwnerOfResponse,
 };
+use protobuf::Message;
 use cw_storage_plus::Bound;
 
 use crate::state::{
-    has_transfer_rights, increment_num_tokens, TokenConfig, CONFIG, NUM_TOKENS, OPERATOR, TOKENS,
+    has_transfer_rights, increment_num_tokens, store_config, read_config, TokenConfig, CONFIG, NUM_TOKENS, OPERATOR, TOKENS,
 };
+use crate::response::MsgInstantiateContractResponse;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     msg.validate()?;
@@ -36,21 +44,57 @@ pub fn instantiate(
         name: msg.name,
         symbol: msg.symbol,
         minter: msg.minter,
+        receipt_addr: String::default(),
         metadata_limit: msg.metadata_limit,
     };
-
-    CONFIG.save(deps.storage, &config)?;
+    store_config(deps.storage, &config)?;
     store_modules(deps.storage, msg.modules)?;
+
+    let mut resp = Response::new();
 
     match msg.init_hook {
         Some(hook) => {
-            let resp = Response::new().add_message(hook.into_cosmos_msg()?);
-            Ok(resp)
+            resp = resp.add_message(hook.into_cosmos_msg(info.sender.to_string())?);
         }
-        None => Ok(Response::default()),
+        None => {}
     }
+    // create receipt contract
+    resp = resp.add_submessage( SubMsg {
+            msg: WasmMsg::Instantiate{
+                admin: None,
+                code_id: msg.receipt_code_id,
+                funds: vec![],
+                label: "".to_string(),
+                msg: to_binary(&ReceiptInstantiateMsg {
+                    owner: String::default()
+                })?,
+            }.into(),
+            gas_limit: None,
+            id: 1,
+            reply_on: ReplyOn::Success,
+    });
+    Ok(resp)
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+    match msg.id {
+        1 => { // callback after creating receipt contract.
+            let data = msg.result.unwrap().data.unwrap();
+            let res: MsgInstantiateContractResponse =
+                Message::parse_from_bytes(data.as_slice()).map_err(|_| {
+                    StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
+                })?;
+            let receipt_addr = res.get_contract_address();
+
+            let mut config:TokenConfig = read_config(deps.storage)?;
+            config.receipt_addr = receipt_addr.to_string();
+            store_config(deps.storage, &config)?;
+            Ok(Response::new())
+        },
+        _ => Err(StdError::generic_err("reply id is invalid"))
+    }
+}
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
@@ -93,12 +137,6 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             address,
             blacklisted,
         } => execute_blacklist(deps, env, info, address, blacklisted),
-        ExecuteMsg::Receipt {
-            token_id,            
-            seller,
-            purchaser,
-            transfer_data,
-        } => execute_receipt(deps, env, info, token_id, seller, purchaser, transfer_data)
     }
 }
 
@@ -305,7 +343,6 @@ fn execute_transfer_agreement(
         amount.clone(),
         denom.clone(),
     )?;
-
     let mut token = TOKENS.load(deps.storage, token_id.clone())?;
 
     require(
@@ -332,6 +369,7 @@ fn transfer_nft(
     token_id: &String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
+    let config = read_config(deps.storage)?;
     let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
     require(
         has_transfer_rights(deps.storage, env, info.sender.to_string(), &token)?,
@@ -343,32 +381,70 @@ fn transfer_nft(
     token.approvals = vec![];
 
     let res = match token.transfer_agreement.clone() {
-        Some(a) => {
+        Some(agreement) => {
             let mut res = Response::new();
-            let payment_message = a.generate_payment(owner.clone());
+            let agreement_amount =  agreement.amount.clone();
+            let payment_message = agreement.generate_payment(owner.clone());
             let mut payments = vec![payment_message];
-            modules.on_agreed_transfer(
+            let mod_resp = modules.on_agreed_transfer(
                 &deps,
                 info.clone(),
                 env.clone(),
                 &mut payments,
                 owner.clone(),
-                a.purchaser.clone(),
-                a.amount.clone(),
+                agreement.purchaser.clone(),
+                agreement.amount.clone(),
             )?;
-            for payment in payments.clone() {
+
+            for payment in payments {
                 res = res.add_message(payment);
             }
 
-            let hook_response:HookResponse = modules.on_store_receipt(                
-                env.clone(),
-                token_id.clone(),
-                owner.clone(),
-                a.purchaser.clone(),
-                &payments,
-            )?;
-            res.add_messages(hook_response.msgs)            
+            for event in &mod_resp.events {
+                res = res.add_event(event.clone())
+            }
 
+            res = res.add_event(agreement.generate_event());
+
+            // send tax event to receipt contract
+            let mut payments_info = vec![];
+            let mut payment_desc = String::default();
+
+            for event in mod_resp.events {
+                if event.ty == TAX_EVENT_ID {
+                    for event_attr in event.attributes{
+                        if event_attr.key == ATTR_PAYMENT {
+                            payments_info.push(event_attr.value.clone())
+                        }
+                        if event_attr.key == ATTR_DESC{
+                            payment_desc = event_attr.key.clone();
+                        }
+                    }
+                }
+            }
+
+            let receipt: Receipt = Receipt{
+                token_id: token_id.clone(),
+                seller: owner.clone(),
+                purchaser: recipient.clone(),
+                amount: agreement_amount.amount,
+                payments_info,
+                payment_desc,
+            };
+
+            res = res.add_message(
+                CosmosMsg::Wasm(
+                    WasmMsg::Execute{
+                        contract_addr: config.receipt_addr,
+                        msg: to_binary(&ReceiptExecuteMsg::StoreReceipt{
+                            receipt
+                        })?,
+                        funds: vec![],
+                    }
+                )
+            );
+
+            res
         }
         None => Response::default(),
     };
@@ -439,9 +515,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_transfer_agreement(deps, token_id)?)
         }
         QueryMsg::NftMetadata { token_id } => to_binary(&query_token_metadata(deps, token_id)?),
-
-        QueryMsg::Receipt { receipt_id } => to_binary(&query_receipt(deps.storage, receipt_id)?),
-
+        QueryMsg::ReceiptInfo { receipt_id } => to_binary(&query_receipt_info(deps, receipt_id)?),
     }
 }
 
@@ -528,6 +602,18 @@ fn query_token_metadata(deps: Deps, token_id: String) -> StdResult<NftMetadataRe
 
     Ok(NftMetadataResponse { metadata })
 }
+fn query_receipt_info(deps: Deps, receipt_id: Uint128) -> StdResult<ReceiptResponse>{
+    let config = read_config(deps.storage)?;
+    let receipt_response = deps.querier.query(
+        &QueryRequest::Wasm(
+            WasmQuery::Smart {
+                contract_addr: config.receipt_addr,
+                msg: to_binary(&ReceiptQueryMsg::Receipt{ receipt_id})?,
+            }
+        )
+    )?;
+    Ok(receipt_response)
+}
 
 fn parse_approval(item: StdResult<Pair<Expiration>>) -> StdResult<cw721::Approval> {
     item.and_then(|(k, expires)| {
@@ -573,7 +659,7 @@ mod tests {
 
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
-
+    static RECEIPT_CODE_ID: u64 = 1;
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies(&[]);
@@ -583,6 +669,7 @@ mod tests {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             modules: vec![],
+            receipt_code_id: RECEIPT_CODE_ID,
             minter: String::from("creator"),
             init_hook: None,
             metadata_limit: None,
@@ -591,7 +678,7 @@ mod tests {
         let env = mock_env();
 
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
-        assert_eq!(0, res.messages.len());
+        assert_eq!(1, res.messages.len());
     }
 
     #[test]
@@ -628,12 +715,24 @@ mod tests {
         let env = mock_env();
         let minter = "minter";
         let recipient = "recipient";
+        let receipt_addr = String::from("receipt_addr");
         let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
             token_id: token_id.clone(),
         };
+
+        //store config
+        store_config(
+            deps.as_mut().storage, &TokenConfig{
+                name: TOKEN_NAME.to_string(),
+                symbol: TOKEN_SYMBOL.to_string(),
+                minter: String::from("creator"),
+                receipt_addr: receipt_addr.clone(),
+                metadata_limit: None,
+            }
+        ).unwrap();
 
         let token = Token {
             token_id: token_id.clone(),
@@ -774,8 +873,20 @@ mod tests {
         let env = mock_env();
         let minter = "minter";
         let recipient = "recipient";
+        let receipt_addr = String::from("receipt_addr");
         let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
+        //store config
+        store_config(
+            deps.as_mut().storage, &TokenConfig{
+                name: TOKEN_NAME.to_string(),
+                symbol: TOKEN_SYMBOL.to_string(),
+                minter: String::from("creator"),
+                receipt_addr: receipt_addr.clone(),
+                metadata_limit: None,
+            }
+        ).unwrap();
+
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
             token_id: token_id.clone(),
@@ -801,13 +912,32 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(
-            Response::new().add_message(BankMsg::Send {
-                to_address: minter.to_string(),
-                amount: vec![amount.clone()]
-            }),
+            Response::new()
+                .add_message(BankMsg::Send {
+                    to_address: minter.to_string(),
+                    amount: vec![amount.clone()]
+                }).add_message(
+                    CosmosMsg::Wasm(
+                        WasmMsg::Execute{
+                            contract_addr: receipt_addr.clone(),
+                            msg: to_binary(&ReceiptExecuteMsg::StoreReceipt{
+                                receipt:Receipt{
+                                    token_id: token_id.clone(),
+                                    seller: minter.to_string(),
+                                    purchaser: recipient.to_string(),
+                                    amount: amount.amount,
+                                    payments_info: vec![],
+                                    payment_desc: String::from(""),
+                                }
+                            }).unwrap(),
+                            funds: vec![],
+                        }
+                    )
+                ).add_event(token.transfer_agreement.unwrap().generate_event()),
             res
         );
     }
+
 
     #[test]
     fn test_approve() {
@@ -896,6 +1026,16 @@ mod tests {
         let token_id = String::default();
         let operator = "operator";
         let operator_info = mock_info(operator.clone(), &[]);
+        //store config
+        store_config(
+            deps.as_mut().storage, &TokenConfig{
+                name: TOKEN_NAME.to_string(),
+                symbol: TOKEN_SYMBOL.to_string(),
+                minter: String::from("creator"),
+                receipt_addr: String::from("receipt_addr"),
+                metadata_limit: None,
+            }
+        ).unwrap();
 
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
@@ -957,6 +1097,17 @@ mod tests {
         let token_id = String::default();
         let operator = "operator";
         let operator_info = mock_info(operator.clone(), &[]);
+
+        //store config
+        store_config(
+            deps.as_mut().storage, &TokenConfig{
+                name: TOKEN_NAME.to_string(),
+                symbol: TOKEN_SYMBOL.to_string(),
+                minter: String::from("creator"),
+                receipt_addr: String::from("receipt_addr"),
+                metadata_limit: None,
+            }
+        ).unwrap();
 
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
@@ -1202,6 +1353,7 @@ mod tests {
             symbol: "T".to_string(),
             minter: minter.to_string(),
             modules: vec![],
+            receipt_code_id: RECEIPT_CODE_ID,
             init_hook: None,
             metadata_limit: Some(4),
         };

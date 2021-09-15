@@ -42,7 +42,6 @@ enum ModuleDefinition {
     Whitelist { moderators: Vec<String> },
     Taxable { tax: Fee, receivers: Vec<String> },
     Royalties { fee: Fee, receivers: Vec<String> },
-    Receipt,
 }
 ```
 

@@ -1,14 +1,12 @@
 pub mod blacklist;
 pub mod common;
 pub mod hooks;
-pub mod metadata;
 pub mod royalties;
 pub mod taxable;
 pub mod whitelist;
-pub mod receipt;
 
 use crate::modules::taxable::Taxable;
-use crate::modules::{hooks::{ MessageHooks, HookResponse}, whitelist::Whitelist};
+use crate::modules::{hooks::MessageHooks, whitelist::Whitelist};
 use crate::token::ExecuteMsg;
 use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, Storage};
 use cw721::Expiration;
@@ -16,14 +14,10 @@ use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::token::TokenId;
 use self::blacklist::Blacklist;
-use self::metadata::MetadataStorage;
+use self::hooks::HookResponse;
 use self::royalties::Royalty;
-use self::receipt::Receipt;
 
-
-// const KEY_MODULES: &[u8] = b"modules";
 pub const MODULES: Item<Modules> = Item::new("modules");
 
 pub type Fee = u128;
@@ -40,17 +34,13 @@ pub enum ModuleDefinition {
     Taxable {
         tax: Fee,
         receivers: Vec<String>,
+        description: Option<String>,
     },
     Royalties {
         fee: Fee,
         receivers: Vec<String>,
         description: Option<String>,
     },
-    MetadataStorage {
-        size_limit: Option<u128>,
-        description: Option<String>,
-    },
-    Receipt,
 }
 
 pub trait Module: MessageHooks {
@@ -67,9 +57,14 @@ impl ModuleDefinition {
             ModuleDefinition::Blacklist { moderators } => Box::from(Blacklist {
                 moderators: moderators.clone(),
             }),
-            ModuleDefinition::Taxable { tax, receivers } => Box::from(Taxable {
+            ModuleDefinition::Taxable {
+                tax,
+                receivers,
+                description,
+            } => Box::from(Taxable {
                 tax: tax.clone(),
                 receivers: receivers.clone(),
+                description: description.clone(),
             }),
             ModuleDefinition::Royalties {
                 fee,
@@ -80,14 +75,6 @@ impl ModuleDefinition {
                 receivers: receivers.to_vec(),
                 description: description.clone(),
             }),
-            ModuleDefinition::MetadataStorage {
-                size_limit,
-                description,
-            } => Box::from(MetadataStorage {
-                size_limit: size_limit.clone(),
-                description: description.clone(),
-            }),
-            ModuleDefinition::Receipt => Box::from(Receipt{}),
         }
     }
 }
@@ -145,6 +132,7 @@ impl Modules {
         for module in modules {
             module.on_mint(&deps, info.clone(), env.clone(), token_id.clone())?;
         }
+
         Ok(())
     }
     pub fn on_transfer(
@@ -202,10 +190,11 @@ impl Modules {
         owner: String,
         purchaser: String,
         amount: Coin,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_agreed_transfer(
+            let mod_resp = module.on_agreed_transfer(
                 &deps,
                 info.clone(),
                 env.clone(),
@@ -214,36 +203,12 @@ impl Modules {
                 purchaser.clone(),
                 amount.clone(),
             )?;
+
+            resp = resp.add_resp(mod_resp);
         }
 
-        Ok(())
+        Ok(resp)
     }
-
-    pub fn on_store_receipt(
-        &self,        
-        env: Env,
-        token_id: TokenId,
-        owner: String,
-        purchaser: String,
-        payments: &Vec<BankMsg>,
-    ) -> StdResult<HookResponse>{
-        let modules = self.to_modules();
-
-        let mut hook_response:HookResponse = HookResponse::default();
-
-        for module in modules {
-            let hook_response_module = module.on_store_receipt(
-                env.clone(),
-                token_id.clone(),
-                owner.clone(),
-                purchaser.clone(),
-                payments,                
-            )?;
-            hook_response.add_messages(&hook_response_module.msgs);
-        }
-        Ok(hook_response)
-    }
-
     pub fn on_send(
         &self,
         deps: &DepsMut,
@@ -345,8 +310,6 @@ impl Modules {
         Ok(())
     }
 }
-
-//Converts a ModuleDefinition to a Module struct
 
 pub fn store_modules(
     storage: &mut dyn Storage,
