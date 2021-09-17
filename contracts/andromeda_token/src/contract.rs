@@ -408,7 +408,7 @@ fn transfer_nft(
 
             // send tax event to receipt contract
             let mut payments_info = vec![];
-            let mut payment_desc = String::default();
+            let mut payment_desc = vec![];
 
             for event in mod_resp.events {
                 if event.ty == TAX_EVENT_ID {
@@ -416,8 +416,8 @@ fn transfer_nft(
                         if event_attr.key == ATTR_PAYMENT {
                             payments_info.push(event_attr.value.clone())
                         }
-                        if event_attr.key == ATTR_DESC{
-                            payment_desc = event_attr.key.clone();
+                        if event_attr.key == ATTR_DESC {
+                            payment_desc.push(event_attr.value.clone());
                         }
                     }
                 }

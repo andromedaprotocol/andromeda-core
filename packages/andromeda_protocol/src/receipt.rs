@@ -10,7 +10,7 @@ pub struct Receipt {
     pub purchaser: String,
     pub amount: Uint128,
     pub payments_info: Vec<String>,
-    pub payment_desc: String,
+    pub payment_desc: Vec<String>,
 }
 
 // #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
