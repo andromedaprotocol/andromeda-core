@@ -15,8 +15,8 @@ pub type Fee = u128;
 #[serde(rename_all = "snake_case")]
 pub enum ModuleDefinition {
     Whitelist { moderators: Vec<String> },
-    Taxable { tax: Fee, receivers: Vec<String> },
-    // Royalties { fee: Fee, receivers: Vec<String> },
+    Taxable { rate: Rate, receivers: Vec<String> },
+    // Royalties { rate: Rate, receivers: Vec<String> },
 }
 
 pub trait Module: MessageHooks {
@@ -31,7 +31,7 @@ impl ModuleDefinition {
                 moderators: moderators.clone(),
             }),
             ModuleDefinition::Taxable { tax, receivers } => Box::from(Taxable {
-                tax: tax.clone(),
+                rate: tax.clone(),
                 receivers: receivers.clone(),
             }),
         }

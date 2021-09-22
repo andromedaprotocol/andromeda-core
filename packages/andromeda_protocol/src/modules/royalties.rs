@@ -3,11 +3,11 @@ use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult};
 use super::{
     common::{add_payment, calculate_fee, deduct_payment},
     hooks::MessageHooks,
-    Fee, Module, ModuleDefinition,
+    Module, ModuleDefinition, Rate,
 };
 
 pub struct Royalty {
-    pub fee: Fee,
+    pub rate: Rate,
     pub receivers: Vec<String>,
     pub description: Option<String>,
 }
@@ -23,7 +23,7 @@ impl MessageHooks for Royalty {
         _purchaser: String,
         amount: cosmwasm_std::Coin,
     ) -> StdResult<bool> {
-        let fee_payment = calculate_fee(self.fee.clone(), amount);
+        let fee_payment = calculate_fee(self.rate.clone(), amount);
         for receiver in self.receivers.to_vec() {
             deduct_payment(payments, owner.clone(), fee_payment.clone())?;
             add_payment(payments, receiver, fee_payment.clone());
@@ -39,7 +39,7 @@ impl Module for Royalty {
     }
     fn as_definition(&self) -> ModuleDefinition {
         ModuleDefinition::Royalties {
-            fee: self.fee.clone(),
+            rate: self.rate.clone(),
             receivers: self.receivers.to_vec(),
             description: self.description.clone(),
         }
@@ -71,7 +71,7 @@ mod tests {
             amount: vec![agreed_amount.clone()],
         }];
         let royalty = Royalty {
-            fee: Fee::Percent(2),
+            rate: Rate::Percent(2),
             receivers: vec![receiver_one.to_string(), receiver_two.to_string()],
             description: None,
         };

@@ -2,12 +2,12 @@ use crate::modules::{Module, ModuleDefinition};
 
 use cosmwasm_std::{coin, BankMsg, Coin, StdError, StdResult};
 
-use super::Fee;
+use super::Rate;
 
-pub fn calculate_fee(fee_rate: Fee, payment: Coin) -> Coin {
+pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
     match fee_rate {
-        Fee::Flat(rate) => coin(rate.amount, rate.denom),
-        Fee::Percent(rate) => {
+        Rate::Flat(rate) => coin(rate.amount, rate.denom),
+        Rate::Percent(rate) => {
             let mut fee_amount = payment.amount.multiply_ratio(rate, 100 as u128).u128();
 
             //Always round any remainder up and prioritise the fee receiver
@@ -93,7 +93,7 @@ pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modules::Fee;
+    use crate::modules::Rate;
     use crate::modules::{whitelist::Whitelist, FlatRate};
     use cosmwasm_std::{coin, Uint128};
 
@@ -105,8 +105,9 @@ mod tests {
             moderators: vec![String::default()],
         };
         let other_module = ModuleDefinition::Taxable {
-            tax: Fee::Percent(2),
+            rate: Rate::Percent(2),
             receivers: vec![],
+            description: None,
         };
 
         let valid = vec![module.as_definition().clone(), other_module.clone()];
@@ -194,7 +195,7 @@ mod tests {
     fn test_calculate_fee() {
         let payment = coin(101, "uluna");
         let expected = coin(5, "uluna");
-        let fee = Fee::Percent(4);
+        let fee = Rate::Percent(4);
 
         let received = calculate_fee(fee, payment);
 
@@ -202,7 +203,7 @@ mod tests {
 
         let payment = coin(125, "uluna");
         let expected = coin(5, "uluna");
-        let fee = Fee::Flat(FlatRate {
+        let fee = Rate::Flat(FlatRate {
             amount: 5,
             denom: "uluna".to_string(),
         });

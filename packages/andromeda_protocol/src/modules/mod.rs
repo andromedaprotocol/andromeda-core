@@ -31,7 +31,7 @@ pub struct FlatRate {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum Fee {
+pub enum Rate {
     Flat(FlatRate),
     Percent(u128),
 }
@@ -46,11 +46,12 @@ pub enum ModuleDefinition {
         moderators: Vec<String>,
     },
     Taxable {
-        tax: Fee,
+        rate: Rate,
         receivers: Vec<String>,
+        description: Option<String>,
     },
     Royalties {
-        fee: Fee,
+        rate: Rate,
         receivers: Vec<String>,
         description: Option<String>,
     },
@@ -74,16 +75,21 @@ impl ModuleDefinition {
             ModuleDefinition::Blacklist { moderators } => Box::from(Blacklist {
                 moderators: moderators.clone(),
             }),
-            ModuleDefinition::Taxable { tax, receivers } => Box::from(Taxable {
-                tax: tax.clone(),
+            ModuleDefinition::Taxable {
+                rate,
+                receivers,
+                description,
+            } => Box::from(Taxable {
+                rate: rate.clone(),
                 receivers: receivers.clone(),
+                description: description.clone(),
             }),
             ModuleDefinition::Royalties {
-                fee,
+                rate,
                 receivers,
                 description,
             } => Box::from(Royalty {
-                fee: fee.clone(),
+                rate: rate.clone(),
                 receivers: receivers.to_vec(),
                 description: description.clone(),
             }),

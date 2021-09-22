@@ -1,6 +1,6 @@
 use crate::hook::InitHook;
 
-use crate::modules::{common::calculate_fee, Fee, ModuleDefinition};
+use crate::modules::{common::calculate_fee, ModuleDefinition, Rate};
 use cosmwasm_std::{Addr, BankMsg, Binary, BlockInfo, Coin, StdResult};
 use cw721::Expiration;
 use schemars::JsonSchema;
@@ -59,10 +59,10 @@ impl TransferAgreement {
             amount: vec![self.amount.clone()],
         }
     }
-    pub fn generate_fee_payment(&self, to_address: String, fee: Fee) -> BankMsg {
+    pub fn generate_fee_payment(&self, to_address: String, rate: Rate) -> BankMsg {
         BankMsg::Send {
             to_address,
-            amount: vec![calculate_fee(fee, self.amount.clone())],
+            amount: vec![calculate_fee(rate, self.amount.clone())],
         }
     }
 }

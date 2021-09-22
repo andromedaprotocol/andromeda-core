@@ -3,12 +3,13 @@ use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, StdError, StdResult};
 use crate::{
     modules::common::{add_payment, calculate_fee, require},
     modules::hooks::MessageHooks,
-    modules::{Fee, Module, ModuleDefinition},
+    modules::{Module, ModuleDefinition, Rate},
 };
 
 pub struct Taxable {
-    pub tax: Fee,
+    pub rate: Rate,
     pub receivers: Vec<String>,
+    pub description: Option<String>,
 }
 
 impl Module for Taxable {
@@ -17,15 +18,15 @@ impl Module for Taxable {
             self.receivers.len() > 0,
             StdError::generic_err("Cannot apply a tax with no receiving addresses"),
         )?;
-        // require(self.tax > 0, StdError::generic_err("Tax must be non-zero"))?;
-        match self.tax.clone() {
-            Fee::Flat(rate) => {
+        // require(self.rate > 0, StdError::generic_err("Tax must be non-zero"))?;
+        match self.rate.clone() {
+            Rate::Flat(rate) => {
                 require(
                     rate.amount > 0,
                     StdError::generic_err("Tax must be non-zero"),
                 )?;
             }
-            Fee::Percent(rate) => {
+            Rate::Percent(rate) => {
                 require(rate > 0, StdError::generic_err("Tax must be non-zero"))?;
             }
         }
@@ -34,8 +35,9 @@ impl Module for Taxable {
     }
     fn as_definition(&self) -> ModuleDefinition {
         ModuleDefinition::Taxable {
-            tax: self.tax.clone(),
+            rate: self.rate.clone(),
             receivers: self.receivers.clone(),
+            description: None,
         }
     }
 }
@@ -52,7 +54,7 @@ impl MessageHooks for Taxable {
         agreed_payment: Coin,
     ) -> StdResult<bool> {
         let _contract_addr = env.contract.address;
-        let tax_amount = calculate_fee(self.tax.clone(), agreed_payment);
+        let tax_amount = calculate_fee(self.rate.clone(), agreed_payment);
 
         for receiver in self.receivers.to_vec() {
             add_payment(payments, receiver.clone(), tax_amount.clone());
@@ -75,15 +77,17 @@ mod tests {
     #[test]
     fn test_taxable_validate() {
         let t = Taxable {
-            tax: Fee::Percent(2),
+            rate: Rate::Percent(2),
             receivers: vec![String::default()],
+            description: None,
         };
 
         assert_eq!(t.validate(vec![]).unwrap(), true);
 
         let t_invalidtax = Taxable {
-            tax: Fee::Percent(0),
+            rate: Rate::Percent(0),
             receivers: vec![String::default()],
+            description: None,
         };
 
         assert_eq!(
@@ -92,8 +96,9 @@ mod tests {
         );
 
         let t_invalidrecv = Taxable {
-            tax: Fee::Percent(2),
+            rate: Rate::Percent(2),
             receivers: vec![],
+            description: None,
         };
 
         assert_eq!(
@@ -110,8 +115,9 @@ mod tests {
         let env = mock_env();
         let receivers = vec![String::from("recv1"), String::from("recv2")];
         let t = Taxable {
-            tax: Fee::Percent(3),
+            rate: Rate::Percent(3),
             receivers: receivers.clone(),
+            description: None,
         };
 
         let agreed_transfer_amount = coin(117, "uluna");
