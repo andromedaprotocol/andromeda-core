@@ -101,6 +101,9 @@ pub struct InstantiateMsg {
     //The attached Andromeda modules
     pub modules: Vec<ModuleDefinition>,
 
+    //code id for receipt contract
+    pub receipt_code_id: u64,
+
     //A hook for if the contract is instantiated by the factory
     pub init_hook: Option<InitHook>,
     //An optional limit for token metadata size
@@ -205,6 +208,9 @@ pub enum QueryMsg {
         token_id: TokenId,
     },
     ContractInfo {},
+    ReceiptInfo{
+        receipt_id: Uint128
+    }
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchivedResponse {

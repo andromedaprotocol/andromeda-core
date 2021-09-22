@@ -8,6 +8,8 @@ use crate::{
 
 use super::hooks::{HookResponse, ATTR_DESC, ATTR_PAYMENT};
 
+pub const TAX_EVENT_ID: &str = "tax";
+
 pub struct Taxable {
     pub tax: Fee,
     pub receivers: Vec<String>,
@@ -65,7 +67,7 @@ impl MessageHooks for Taxable {
         let tax = self.calculate_fee(agreed_payment);
 
         let mut resp = HookResponse::default();
-        let mut event = Event::new("tax");
+        let mut event = Event::new(TAX_EVENT_ID);
 
         match self.description.clone() {
             Some(desc) => {
