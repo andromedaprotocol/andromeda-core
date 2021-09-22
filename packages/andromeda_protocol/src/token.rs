@@ -1,7 +1,7 @@
 use crate::hook::InitHook;
 
-use crate::modules::{Fee, ModuleDefinition};
-use cosmwasm_std::{coin, Addr, BankMsg, Binary, BlockInfo, Coin, StdResult, Uint128};
+use crate::modules::{common::calculate_fee, Fee, ModuleDefinition};
+use cosmwasm_std::{Addr, BankMsg, Binary, BlockInfo, Coin, StdResult};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -59,16 +59,10 @@ impl TransferAgreement {
             amount: vec![self.amount.clone()],
         }
     }
-    pub fn calculate_fee(&self, fee: Fee) -> Coin {
-        let amount = self.amount.amount;
-        let fee_amount = amount.multiply_ratio(Uint128::from(fee as u128), 100 as u128);
-
-        coin(fee_amount.u128(), self.amount.denom.clone())
-    }
     pub fn generate_fee_payment(&self, to_address: String, fee: Fee) -> BankMsg {
         BankMsg::Send {
             to_address,
-            amount: vec![self.calculate_fee(fee)],
+            amount: vec![calculate_fee(fee, self.amount.clone())],
         }
     }
 }

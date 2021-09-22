@@ -1,6 +1,17 @@
 use crate::modules::{Module, ModuleDefinition};
 
-use cosmwasm_std::{BankMsg, Coin, StdError, StdResult};
+use cosmwasm_std::{coin, BankMsg, Coin, StdError, StdResult};
+
+use super::Fee;
+
+pub fn calculate_fee(fee_rate: Fee, payment: Coin) -> Coin {
+    let fee_amount = match fee_rate {
+        Fee::Flat(rate) => rate,
+        Fee::Percent(rate) => payment.amount.multiply_ratio(rate, 100 as u128).u128(),
+    };
+
+    coin(fee_amount, payment.denom)
+}
 
 pub fn require(precond: bool, err: StdError) -> StdResult<bool> {
     match precond {
@@ -12,7 +23,6 @@ pub fn require(precond: bool, err: StdError) -> StdResult<bool> {
 pub fn is_unique<M: Module>(module: &M, all_modules: &Vec<ModuleDefinition>) -> bool {
     let definition = module.as_definition();
     let mut total = 0;
-
     all_modules.into_iter().for_each(|d| {
         //Compares enum values of given definitions
         if std::mem::discriminant(d) == std::mem::discriminant(&definition) {
@@ -76,6 +86,7 @@ pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> 
 mod tests {
     use super::*;
     use crate::modules::whitelist::Whitelist;
+    use crate::modules::Fee;
     use cosmwasm_std::{coin, Uint128};
 
     #[test]
@@ -86,7 +97,7 @@ mod tests {
             moderators: vec![String::default()],
         };
         let other_module = ModuleDefinition::Taxable {
-            tax: 2,
+            tax: Fee::Percent(2),
             receivers: vec![],
         };
 
@@ -170,4 +181,7 @@ mod tests {
 
         assert_eq!(expected_payment, payments[0]);
     }
+
+    #[test]
+    fn test_calculate_fee() {}
 }
