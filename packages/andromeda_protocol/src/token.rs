@@ -32,6 +32,7 @@ pub struct Token {
     pub approvals: Vec<Approval>,
     pub transfer_agreement: Option<TransferAgreement>,
     pub metadata: Option<Binary>,
+    pub archived: bool,
 }
 
 impl Token {
@@ -142,14 +143,12 @@ pub enum ExecuteMsg {
     RevokeAll {
         operator: String,
     },
-    // Burn {
-    //     collection_symbol: String,
-    //     token_id: TokenId,
-    // },
-    // Archive {
-    //     collection_symbol: String,
-    //     token_id: TokenId,
-    // },
+    Burn {
+        token_id: TokenId,
+    },
+    Archive {
+        token_id: TokenId,
+    },
     TransferAgreement {
         token_id: TokenId,
         denom: String,
@@ -191,6 +190,9 @@ pub enum QueryMsg {
     NftMetadata {
         token_id: TokenId,
     },
+    NftArchiveStatus {
+        token_id: TokenId,
+    },
     ContractInfo {},
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -216,6 +218,11 @@ pub struct WhitelistedResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct NftMetadataResponse {
     pub metadata: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct NftArchivedResponse {
+    pub archived: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

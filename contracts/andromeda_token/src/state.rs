@@ -74,3 +74,14 @@ pub fn increment_num_tokens(storage: &mut dyn Storage) -> StdResult<()> {
     let token_count = NUM_TOKENS.load(storage).unwrap_or_default();
     NUM_TOKENS.save(storage, &(token_count + 1))
 }
+
+pub fn decrement_num_tokens(storage: &mut dyn Storage) -> StdResult<()> {
+    let token_count = NUM_TOKENS.load(storage).unwrap_or_default();
+    if token_count == 0 {
+        Err(StdError::generic_err(
+            "Cannot decrement token count below 0",
+        ))
+    } else {
+        NUM_TOKENS.save(storage, &(token_count - 1))
+    }
+}
