@@ -313,6 +313,34 @@ impl Modules {
 
         Ok(())
     }
+    pub fn on_burn(
+        &self,
+        deps: &DepsMut,
+        info: MessageInfo,
+        env: Env,
+        token_id: String,
+    ) -> StdResult<()> {
+        let modules = self.to_modules();
+        for module in modules {
+            module.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
+        }
+
+        Ok(())
+    }
+    pub fn on_archive(
+        &self,
+        deps: &DepsMut,
+        info: MessageInfo,
+        env: Env,
+        token_id: String,
+    ) -> StdResult<()> {
+        let modules = self.to_modules();
+        for module in modules {
+            module.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
+        }
+
+        Ok(())
+    }
 }
 
 //Converts a ModuleDefinition to a Module struct
