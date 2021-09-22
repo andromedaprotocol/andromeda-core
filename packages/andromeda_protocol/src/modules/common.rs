@@ -5,12 +5,20 @@ use cosmwasm_std::{coin, BankMsg, Coin, StdError, StdResult};
 use super::Fee;
 
 pub fn calculate_fee(fee_rate: Fee, payment: Coin) -> Coin {
-    let fee_amount = match fee_rate {
-        Fee::Flat(rate) => rate,
-        Fee::Percent(rate) => payment.amount.multiply_ratio(rate, 100 as u128).u128(),
-    };
+    match fee_rate {
+        Fee::Flat(rate) => coin(rate.amount, rate.denom),
+        Fee::Percent(rate) => {
+            let mut fee_amount = payment.amount.multiply_ratio(rate, 100 as u128).u128();
 
-    coin(fee_amount, payment.denom)
+            //Always round any remainder up and prioritise the fee receiver
+            let reversed_fee = (fee_amount * 100) / rate;
+            if payment.amount.u128() > reversed_fee {
+                fee_amount += 1
+            }
+
+            coin(fee_amount, payment.denom)
+        }
+    }
 }
 
 pub fn require(precond: bool, err: StdError) -> StdResult<bool> {
@@ -85,8 +93,8 @@ pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modules::whitelist::Whitelist;
     use crate::modules::Fee;
+    use crate::modules::{whitelist::Whitelist, FlatRate};
     use cosmwasm_std::{coin, Uint128};
 
     #[test]
@@ -183,5 +191,24 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_fee() {}
+    fn test_calculate_fee() {
+        let payment = coin(101, "uluna");
+        let expected = coin(5, "uluna");
+        let fee = Fee::Percent(4);
+
+        let received = calculate_fee(fee, payment);
+
+        assert_eq!(expected, received);
+
+        let payment = coin(125, "uluna");
+        let expected = coin(5, "uluna");
+        let fee = Fee::Flat(FlatRate {
+            amount: 5,
+            denom: "uluna".to_string(),
+        });
+
+        let received = calculate_fee(fee, payment);
+
+        assert_eq!(expected, received);
+    }
 }

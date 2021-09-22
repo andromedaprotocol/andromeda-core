@@ -18,9 +18,12 @@ impl Module for Taxable {
             StdError::generic_err("Cannot apply a tax with no receiving addresses"),
         )?;
         // require(self.tax > 0, StdError::generic_err("Tax must be non-zero"))?;
-        match self.tax {
+        match self.tax.clone() {
             Fee::Flat(rate) => {
-                require(rate > 0, StdError::generic_err("Tax must be non-zero"))?;
+                require(
+                    rate.amount > 0,
+                    StdError::generic_err("Tax must be non-zero"),
+                )?;
             }
             Fee::Percent(rate) => {
                 require(rate > 0, StdError::generic_err("Tax must be non-zero"))?;

@@ -24,8 +24,15 @@ pub const MODULES: Item<Modules> = Item::new("modules");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
+pub struct FlatRate {
+    amount: u128,
+    denom: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum Fee {
-    Flat(u128),
+    Flat(FlatRate),
     Percent(u128),
 }
 
