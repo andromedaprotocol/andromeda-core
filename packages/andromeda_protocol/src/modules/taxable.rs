@@ -1,14 +1,15 @@
-use cosmwasm_std::{coin, Coin, DepsMut, Env, MessageInfo, StdError, StdResult, Uint128};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, StdError, StdResult};
 
 use crate::{
-    modules::common::{add_payment, require},
+    modules::common::{add_payment, calculate_fee, require},
     modules::hooks::MessageHooks,
-    modules::{Fee, Module, ModuleDefinition},
+    modules::{Module, ModuleDefinition, Rate},
 };
 
 pub struct Taxable {
-    pub tax: Fee,
+    pub rate: Rate,
     pub receivers: Vec<String>,
+    pub description: Option<String>,
 }
 
 impl Module for Taxable {
@@ -17,14 +18,26 @@ impl Module for Taxable {
             self.receivers.len() > 0,
             StdError::generic_err("Cannot apply a tax with no receiving addresses"),
         )?;
-        require(self.tax > 0, StdError::generic_err("Tax must be non-zero"))?;
+        // require(self.rate > 0, StdError::generic_err("Tax must be non-zero"))?;
+        match self.rate.clone() {
+            Rate::Flat(rate) => {
+                require(
+                    rate.amount > 0,
+                    StdError::generic_err("Tax must be non-zero"),
+                )?;
+            }
+            Rate::Percent(rate) => {
+                require(rate > 0, StdError::generic_err("Tax must be non-zero"))?;
+            }
+        }
 
         Ok(true)
     }
     fn as_definition(&self) -> ModuleDefinition {
         ModuleDefinition::Taxable {
-            tax: self.tax,
+            rate: self.rate.clone(),
             receivers: self.receivers.clone(),
+            description: None,
         }
     }
 }
@@ -41,14 +54,10 @@ impl MessageHooks for Taxable {
         agreed_payment: Coin,
     ) -> StdResult<bool> {
         let _contract_addr = env.contract.address;
-        let tax_amount: Uint128 = agreed_payment
-            .amount
-            .multiply_ratio(Uint128::from(self.tax), 100 as u128);
-
-        let tax = coin(tax_amount.u128(), &agreed_payment.denom.to_string());
+        let tax_amount = calculate_fee(self.rate.clone(), agreed_payment);
 
         for receiver in self.receivers.to_vec() {
-            add_payment(payments, receiver.clone(), tax.clone());
+            add_payment(payments, receiver.clone(), tax_amount.clone());
         }
 
         Ok(true)
@@ -58,7 +67,7 @@ impl MessageHooks for Taxable {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{
-        coins,
+        coin, coins,
         testing::{mock_dependencies, mock_env, mock_info},
         BankMsg,
     };
@@ -68,15 +77,17 @@ mod tests {
     #[test]
     fn test_taxable_validate() {
         let t = Taxable {
-            tax: 2,
+            rate: Rate::Percent(2),
             receivers: vec![String::default()],
+            description: None,
         };
 
         assert_eq!(t.validate(vec![]).unwrap(), true);
 
         let t_invalidtax = Taxable {
-            tax: 0,
+            rate: Rate::Percent(0),
             receivers: vec![String::default()],
+            description: None,
         };
 
         assert_eq!(
@@ -85,8 +96,9 @@ mod tests {
         );
 
         let t_invalidrecv = Taxable {
-            tax: 2,
+            rate: Rate::Percent(2),
             receivers: vec![],
+            description: None,
         };
 
         assert_eq!(
@@ -103,12 +115,13 @@ mod tests {
         let env = mock_env();
         let receivers = vec![String::from("recv1"), String::from("recv2")];
         let t = Taxable {
-            tax: 1,
+            rate: Rate::Percent(3),
             receivers: receivers.clone(),
+            description: None,
         };
 
-        let agreed_transfer_amount = coin(100, "uluna");
-        let tax_amount = 1;
+        let agreed_transfer_amount = coin(117, "uluna");
+        let tax_amount = 4;
         let owner = String::from("owner");
         let purchaser = String::from("purchaser");
         let mut payments = vec![];

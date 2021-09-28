@@ -1,6 +1,25 @@
 use crate::modules::{Module, ModuleDefinition};
 
-use cosmwasm_std::{BankMsg, Coin, StdError, StdResult};
+use cosmwasm_std::{coin, BankMsg, Coin, StdError, StdResult};
+
+use super::Rate;
+
+pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
+    match fee_rate {
+        Rate::Flat(rate) => coin(rate.amount, rate.denom),
+        Rate::Percent(rate) => {
+            let mut fee_amount = payment.amount.multiply_ratio(rate, 100 as u128).u128();
+
+            //Always round any remainder up and prioritise the fee receiver
+            let reversed_fee = (fee_amount * 100) / rate;
+            if payment.amount.u128() > reversed_fee {
+                fee_amount += 1
+            }
+
+            coin(fee_amount, payment.denom)
+        }
+    }
+}
 
 pub fn require(precond: bool, err: StdError) -> StdResult<bool> {
     match precond {
@@ -12,7 +31,6 @@ pub fn require(precond: bool, err: StdError) -> StdResult<bool> {
 pub fn is_unique<M: Module>(module: &M, all_modules: &Vec<ModuleDefinition>) -> bool {
     let definition = module.as_definition();
     let mut total = 0;
-
     all_modules.into_iter().for_each(|d| {
         //Compares enum values of given definitions
         if std::mem::discriminant(d) == std::mem::discriminant(&definition) {
@@ -75,7 +93,8 @@ pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modules::whitelist::Whitelist;
+    use crate::modules::Rate;
+    use crate::modules::{whitelist::Whitelist, FlatRate};
     use cosmwasm_std::{coin, Uint128};
 
     #[test]
@@ -86,8 +105,9 @@ mod tests {
             moderators: vec![String::default()],
         };
         let other_module = ModuleDefinition::Taxable {
-            tax: 2,
+            rate: Rate::Percent(2),
             receivers: vec![],
+            description: None,
         };
 
         let valid = vec![module.as_definition().clone(), other_module.clone()];
@@ -169,5 +189,27 @@ mod tests {
         deduct_payment(&mut payments, to, coin(10, "uluna")).unwrap();
 
         assert_eq!(expected_payment, payments[0]);
+    }
+
+    #[test]
+    fn test_calculate_fee() {
+        let payment = coin(101, "uluna");
+        let expected = coin(5, "uluna");
+        let fee = Rate::Percent(4);
+
+        let received = calculate_fee(fee, payment);
+
+        assert_eq!(expected, received);
+
+        let payment = coin(125, "uluna");
+        let expected = coin(5, "uluna");
+        let fee = Rate::Flat(FlatRate {
+            amount: 5,
+            denom: "uluna".to_string(),
+        });
+
+        let received = calculate_fee(fee, payment);
+
+        assert_eq!(expected, received);
     }
 }
