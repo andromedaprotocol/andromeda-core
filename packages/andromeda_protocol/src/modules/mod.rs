@@ -9,7 +9,7 @@ pub mod whitelist;
 use crate::modules::taxable::Taxable;
 use crate::modules::{hooks::MessageHooks, whitelist::Whitelist};
 use crate::token::ExecuteMsg;
-use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, Storage};
+use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, Storage, Uint128};
 use cw721::Expiration;
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
@@ -25,7 +25,7 @@ pub const MODULES: Item<Modules> = Item::new("modules");
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct FlatRate {
-    amount: u128,
+    amount: Uint128,
     denom: String,
 }
 
@@ -33,7 +33,7 @@ pub struct FlatRate {
 #[serde(rename_all = "snake_case")]
 pub enum Rate {
     Flat(FlatRate),
-    Percent(u128),
+    Percent(u64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
@@ -62,7 +62,7 @@ pub enum ModuleDefinition {
 }
 
 pub trait Module: MessageHooks {
-    fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
+    fn validate(&self, modules: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
 }
 

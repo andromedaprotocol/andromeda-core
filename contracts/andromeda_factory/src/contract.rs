@@ -39,9 +39,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::Create {
             symbol,
             name,
-            extensions,
+            modules,
             metadata_limit,
-        } => create(deps, env, info, name, symbol, extensions, metadata_limit),
+        } => create(deps, env, info, name, symbol, modules, metadata_limit),
         ExecuteMsg::TokenCreationHook { symbol, creator } => {
             token_creation(deps, env, info, symbol, creator)
         }
@@ -183,7 +183,7 @@ mod tests {
         let msg = ExecuteMsg::Create {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
-            extensions: vec![],
+            modules: vec![],
             metadata_limit: None,
         };
 

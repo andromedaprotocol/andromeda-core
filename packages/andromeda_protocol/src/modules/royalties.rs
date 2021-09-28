@@ -34,7 +34,7 @@ impl MessageHooks for Royalty {
 }
 
 impl Module for Royalty {
-    fn validate(&self, _extensions: Vec<super::ModuleDefinition>) -> StdResult<bool> {
+    fn validate(&self, _modules: Vec<super::ModuleDefinition>) -> StdResult<bool> {
         Ok(true)
     }
     fn as_definition(&self) -> ModuleDefinition {

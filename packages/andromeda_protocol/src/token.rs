@@ -1,7 +1,7 @@
 use crate::hook::InitHook;
 
 use crate::modules::{common::calculate_fee, ModuleDefinition, Rate};
-use cosmwasm_std::{Addr, BankMsg, Binary, BlockInfo, Coin, StdResult};
+use cosmwasm_std::{Addr, BankMsg, Binary, BlockInfo, Coin, StdResult, Uint128};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -146,7 +146,7 @@ pub enum ExecuteMsg {
     TransferAgreement {
         token_id: TokenId,
         denom: String,
-        amount: u128,
+        amount: Uint128,
         purchaser: String,
     },
     Whitelist {
@@ -195,8 +195,8 @@ pub struct ArchivedResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ExtensionsResponse {
-    pub extensions: Vec<ModuleDefinition>,
+pub struct ModulesResponse {
+    pub modules: Vec<ModuleDefinition>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
