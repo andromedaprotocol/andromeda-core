@@ -20,7 +20,7 @@ pub enum ModuleDefinition {
 }
 
 pub trait Module: MessageHooks {
-    fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
+    fn validate(&self, modules: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
 }
 
@@ -116,7 +116,7 @@ impl Modules {
         env: Env,
         token_id: String,
         purchaser: String,
-        amount: u128,
+        amount: Uint128,
         denom: String,
     ) -> StdResult<()> {
         let modules = self.to_modules();

@@ -83,7 +83,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             denom,
             amount,
             purchaser,
-        } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount, denom),
+        } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount.u128(), denom),
         ExecuteMsg::Whitelist {
             address,
             whitelisted,
@@ -635,7 +635,7 @@ mod tests {
     use andromeda_protocol::token::NftArchivedResponse;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::BankMsg;
-    use cosmwasm_std::{from_binary, Api};
+    use cosmwasm_std::{from_binary, Api, Uint128};
 
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
@@ -1089,7 +1089,7 @@ mod tests {
         let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
         let denom = "uluna";
-        let amount = 100 as u128;
+        let amount = Uint128::from(100 as u64);
 
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
@@ -1122,7 +1122,20 @@ mod tests {
         let agreement = agreement_res.agreement.unwrap();
 
         assert_eq!(agreement.purchaser, purchaser.clone());
-        assert_eq!(agreement.amount, coin(amount, denom))
+        assert_eq!(agreement.amount, coin(amount.u128(), denom));
+
+        let purchaser_info = mock_info(purchaser.clone(), &[]);
+        let transfer_msg = ExecuteMsg::TransferNft {
+            token_id: token_id.clone(),
+            recipient: purchaser.to_string(),
+        };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            purchaser_info.clone(),
+            transfer_msg,
+        )
+        .unwrap();
     }
 
     #[test]

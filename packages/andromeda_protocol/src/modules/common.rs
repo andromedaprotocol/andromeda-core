@@ -1,17 +1,17 @@
 use crate::modules::{Module, ModuleDefinition};
 
-use cosmwasm_std::{coin, BankMsg, Coin, StdError, StdResult};
+use cosmwasm_std::{coin, BankMsg, Coin, StdError, StdResult, Uint128};
 
 use super::Rate;
 
 pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
     match fee_rate {
-        Rate::Flat(rate) => coin(rate.amount, rate.denom),
+        Rate::Flat(rate) => coin(Uint128::from(rate.amount).u128(), rate.denom),
         Rate::Percent(rate) => {
             let mut fee_amount = payment.amount.multiply_ratio(rate, 100 as u128).u128();
 
             //Always round any remainder up and prioritise the fee receiver
-            let reversed_fee = (fee_amount * 100) / rate;
+            let reversed_fee = (fee_amount * 100) / Uint128::from(rate).u128();
             if payment.amount.u128() > reversed_fee {
                 fee_amount += 1
             }
@@ -204,7 +204,7 @@ mod tests {
         let payment = coin(125, "uluna");
         let expected = coin(5, "uluna");
         let fee = Rate::Flat(FlatRate {
-            amount: 5,
+            amount: Uint128::from(5 as u128),
             denom: "uluna".to_string(),
         });
 

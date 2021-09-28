@@ -13,7 +13,7 @@ pub struct Taxable {
 }
 
 impl Module for Taxable {
-    fn validate(&self, _extensions: Vec<crate::modules::ModuleDefinition>) -> StdResult<bool> {
+    fn validate(&self, _modules: Vec<crate::modules::ModuleDefinition>) -> StdResult<bool> {
         require(
             self.receivers.len() > 0,
             StdError::generic_err("Cannot apply a tax with no receiving addresses"),
@@ -22,7 +22,7 @@ impl Module for Taxable {
         match self.rate.clone() {
             Rate::Flat(rate) => {
                 require(
-                    rate.amount > 0,
+                    rate.amount.u128() > 0,
                     StdError::generic_err("Tax must be non-zero"),
                 )?;
             }
