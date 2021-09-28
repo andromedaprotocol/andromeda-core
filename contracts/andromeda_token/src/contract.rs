@@ -4,8 +4,8 @@ use andromeda_protocol::modules::taxable::TAX_EVENT_ID;
 use andromeda_protocol::modules::whitelist::execute_whitelist;
 use andromeda_protocol::modules::{common::require, read_modules, store_modules};
 use andromeda_protocol::token::{
-    Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, NftMetadataResponse,
-    NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
+    Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, NftArchivedResponse,
+    NftMetadataResponse, NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
 };
 
 use andromeda_protocol::receipt::{
@@ -30,8 +30,8 @@ use protobuf::Message;
 
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{
-    has_transfer_rights, increment_num_tokens, read_config, store_config, TokenConfig, CONFIG,
-    NUM_TOKENS, OPERATOR, TOKENS,
+    decrement_num_tokens, has_transfer_rights, increment_num_tokens, read_config, store_config,
+    TokenConfig, CONFIG, NUM_TOKENS, OPERATOR, TOKENS,
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -133,7 +133,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             denom,
             amount,
             purchaser,
-        } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount, denom),
+        } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount.u128(), denom),
         ExecuteMsg::Whitelist {
             address,
             whitelisted,
@@ -142,6 +142,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             address,
             blacklisted,
         } => execute_blacklist(deps, env, info, address, blacklisted),
+        ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
+        ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
     }
 }
 
@@ -171,6 +173,7 @@ pub fn execute_mint(
         approvals: vec![],
         transfer_agreement: None,
         metadata,
+        archived: false,
     };
 
     TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
@@ -354,6 +357,10 @@ fn execute_transfer_agreement(
         info.sender.to_string().eq(&token.owner.clone()),
         StdError::generic_err("Only the token owner can create a transfer agreement"),
     )?;
+    require(
+        !token.archived,
+        StdError::generic_err("This token is archived and cannot be changed in any way."),
+    )?;
 
     let agreement = TransferAgreement {
         purchaser: purchaser.clone(),
@@ -362,6 +369,57 @@ fn execute_transfer_agreement(
     token.transfer_agreement = Some(agreement);
 
     TOKENS.save(deps.storage, token_id.clone(), &token)?;
+
+    Ok(Response::default())
+}
+
+fn execute_burn(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+) -> StdResult<Response> {
+    let token = TOKENS.load(deps.storage, token_id.clone())?;
+    require(
+        token.owner.eq(&info.sender.to_string()),
+        StdError::generic_err("Cannot burn a token you do not own"),
+    )?;
+    require(
+        !token.archived,
+        StdError::generic_err("This token is archived and cannot be changed in any way."),
+    )?;
+
+    let modules = read_modules(deps.storage)?;
+    modules.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
+
+    TOKENS.remove(deps.storage, token_id.clone());
+    decrement_num_tokens(deps.storage)?;
+
+    Ok(Response::default())
+}
+
+fn execute_archive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+) -> StdResult<Response> {
+    let mut token = TOKENS.load(deps.storage, token_id.clone())?;
+    require(
+        token.owner.eq(&info.sender.to_string()),
+        StdError::generic_err("Cannot archive a token you do not own"),
+    )?;
+    require(
+        !token.archived,
+        StdError::generic_err("This token is archived and cannot be changed in any way."),
+    )?;
+
+    let modules = read_modules(deps.storage)?;
+    modules.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
+
+    token.archived = true;
+    TOKENS.save(deps.storage, token_id.clone(), &token)?;
+    decrement_num_tokens(deps.storage)?;
 
     Ok(Response::default())
 }
@@ -379,6 +437,10 @@ fn transfer_nft(
     require(
         has_transfer_rights(deps.storage, env, info.sender.to_string(), &token)?,
         StdError::generic_err("Address does not have transfer rights for this token"),
+    )?;
+    require(
+        !token.archived,
+        StdError::generic_err("This token is archived and cannot be changed in any way."),
     )?;
     let owner = token.owner;
 
@@ -463,6 +525,10 @@ fn add_approval(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Only the token owner can add approvals"),
     )?;
+    require(
+        !token.archived,
+        StdError::generic_err("This token is archived and cannot be changed in any way."),
+    )?;
 
     token.filter_approval(&approval.spender.clone());
 
@@ -481,6 +547,10 @@ fn remove_approval(
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Only the token owner can add approvals"),
+    )?;
+    require(
+        !token.archived,
+        StdError::generic_err("This token is archived and cannot be changed in any way."),
     )?;
 
     token.filter_approval(spender);
@@ -515,6 +585,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::NftMetadata { token_id } => to_binary(&query_token_metadata(deps, token_id)?),
         QueryMsg::ReceiptInfo { receipt_id } => to_binary(&query_receipt_info(deps, receipt_id)?),
+        QueryMsg::NftArchiveStatus { token_id } => {
+            to_binary(&query_token_archive_status(deps, token_id)?)
+        }
     }
 }
 
@@ -610,6 +683,18 @@ fn query_receipt_info(deps: Deps, receipt_id: Uint128) -> StdResult<ReceiptRespo
     Ok(receipt_response)
 }
 
+fn query_token_archive_status(deps: Deps, token_id: String) -> StdResult<NftArchivedResponse> {
+    let token = TOKENS.load(deps.storage, token_id)?;
+
+    Ok(NftArchivedResponse {
+        archived: token.archived,
+    })
+}
+
+/**
+The next few functions are taken from the CW721-base contract:
+https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw721-base
+*/
 fn parse_approval(item: StdResult<Pair<Expiration>>) -> StdResult<cw721::Approval> {
     item.and_then(|(k, expires)| {
         let spender = String::from_utf8(k)?;
@@ -617,7 +702,6 @@ fn parse_approval(item: StdResult<Pair<Expiration>>) -> StdResult<cw721::Approva
     })
 }
 
-// This is used for pagination. Maybe we move it into the std lib one day?
 pub fn maybe_addr(api: &dyn Api, human: Option<String>) -> StdResult<Option<Addr>> {
     human.map(|x| api.addr_validate(&x)).transpose()
 }
@@ -648,9 +732,10 @@ mod tests {
     use andromeda_protocol::modules::MODULES;
     use andromeda_protocol::token::Approval;
     use andromeda_protocol::token::ExecuteMsg;
+    use andromeda_protocol::token::NftArchivedResponse;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::BankMsg;
-    use cosmwasm_std::{from_binary, Api};
+    use cosmwasm_std::{from_binary, Api, Uint128};
 
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
@@ -739,6 +824,7 @@ mod tests {
             approvals: vec![],
             transfer_agreement: None,
             metadata: None,
+            archived: false,
         };
 
         TOKENS
@@ -793,6 +879,7 @@ mod tests {
             approvals: vec![approval],
             transfer_agreement: None,
             metadata: None,
+            archived: false,
         };
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -835,6 +922,7 @@ mod tests {
             approvals: vec![approval],
             transfer_agreement: None,
             metadata: None,
+            archived: false,
         };
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -903,6 +991,7 @@ mod tests {
                 amount: amount.clone(),
             }),
             metadata: None,
+            archived: false,
         };
 
         TOKENS
@@ -959,6 +1048,7 @@ mod tests {
             owner: sender.to_string(),
             transfer_agreement: None,
             metadata: None,
+            archived: false,
         };
 
         TOKENS
@@ -1000,6 +1090,7 @@ mod tests {
             owner: sender.to_string(),
             transfer_agreement: None,
             metadata: None,
+            archived: false,
         };
 
         TOKENS
@@ -1169,7 +1260,18 @@ mod tests {
         let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
         let denom = "uluna";
-        let amount = 100 as u128;
+        let amount = Uint128::from(100 as u64);
+
+        let instantiate_msg = InstantiateMsg {
+            name: "Token Name".to_string(),
+            symbol: "TS".to_string(),
+            minter: minter.to_string(),
+            init_hook: None,
+            metadata_limit: None,
+            modules: vec![],
+            receipt_code_id: 1,
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
 
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
@@ -1202,7 +1304,20 @@ mod tests {
         let agreement = agreement_res.agreement.unwrap();
 
         assert_eq!(agreement.purchaser, purchaser.clone());
-        assert_eq!(agreement.amount, coin(amount, denom))
+        assert_eq!(agreement.amount, coin(amount.u128(), denom));
+
+        let purchaser_info = mock_info(purchaser.clone(), &[]);
+        let transfer_msg = ExecuteMsg::TransferNft {
+            token_id: token_id.clone(),
+            recipient: purchaser.to_string(),
+        };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            purchaser_info.clone(),
+            transfer_msg,
+        )
+        .unwrap();
     }
 
     #[test]
@@ -1406,5 +1521,113 @@ mod tests {
         let query_val: NftMetadataResponse = from_binary(&query_res).unwrap();
 
         assert_eq!(query_val.metadata, Some(metadata.clone()))
+    }
+
+    #[test]
+    fn test_execute_burn() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = "1";
+
+        let mint_msg = MintMsg {
+            token_id: token_id.to_string(),
+            owner: minter.to_string(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
+        };
+
+        let msg = ExecuteMsg::Mint(mint_msg);
+
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let unauth_info = mock_info("anyone", &[]);
+        let burn_msg = ExecuteMsg::Burn {
+            token_id: token_id.to_string(),
+        };
+
+        let resp = execute(deps.as_mut(), env.clone(), unauth_info, burn_msg.clone()).unwrap_err();
+
+        assert_eq!(
+            resp,
+            StdError::generic_err("Cannot burn a token you do not own")
+        );
+
+        execute(deps.as_mut(), env.clone(), info.clone(), burn_msg.clone()).unwrap();
+
+        let query_msg = QueryMsg::OwnerOf {
+            token_id: token_id.to_string(),
+        };
+
+        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap_err();
+
+        assert_eq!(
+            query_res,
+            StdError::not_found("andromeda_protocol::token::Token")
+        )
+    }
+
+    #[test]
+    fn test_execute_archive() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = "1";
+
+        let mint_msg = MintMsg {
+            token_id: token_id.to_string(),
+            owner: minter.to_string(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
+        };
+
+        let msg = ExecuteMsg::Mint(mint_msg);
+
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let unauth_info = mock_info("anyone", &[]);
+        let archive_msg = ExecuteMsg::Archive {
+            token_id: token_id.to_string(),
+        };
+
+        let resp =
+            execute(deps.as_mut(), env.clone(), unauth_info, archive_msg.clone()).unwrap_err();
+
+        assert_eq!(
+            resp,
+            StdError::generic_err("Cannot archive a token you do not own")
+        );
+
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            archive_msg.clone(),
+        )
+        .unwrap();
+
+        let archived_resp = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            archive_msg.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            archived_resp,
+            StdError::generic_err("This token is archived and cannot be changed in any way.")
+        );
+
+        let query_msg = QueryMsg::NftArchiveStatus {
+            token_id: token_id.to_string(),
+        };
+
+        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let query_val: NftArchivedResponse = from_binary(&query_res).unwrap();
+        assert!(query_val.archived)
     }
 }

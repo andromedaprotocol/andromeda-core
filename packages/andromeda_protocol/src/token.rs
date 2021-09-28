@@ -1,10 +1,11 @@
 use crate::hook::InitHook;
 
 use crate::modules::{
+    common::calculate_fee,
     hooks::{PaymentAttribute, ATTR_PAYMENT},
-    Fee, ModuleDefinition,
+    ModuleDefinition, Rate,
 };
-use cosmwasm_std::{coin, Addr, BankMsg, Binary, BlockInfo, Coin, Event, StdResult, Uint128};
+use cosmwasm_std::{Addr, BankMsg, Binary, BlockInfo, Coin, Event, StdResult, Uint128};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -35,6 +36,7 @@ pub struct Token {
     pub approvals: Vec<Approval>,
     pub transfer_agreement: Option<TransferAgreement>,
     pub metadata: Option<Binary>,
+    pub archived: bool,
 }
 
 impl Token {
@@ -61,16 +63,10 @@ impl TransferAgreement {
             amount: vec![self.amount.clone()],
         }
     }
-    pub fn calculate_fee(&self, fee: Fee) -> Coin {
-        let amount = self.amount.amount;
-        let fee_amount = amount.multiply_ratio(Uint128::from(fee as u128), 100 as u128);
-
-        coin(fee_amount.u128(), self.amount.denom.clone())
-    }
-    pub fn generate_fee_payment(&self, to_address: String, fee: Fee) -> BankMsg {
+    pub fn generate_fee_payment(&self, to_address: String, rate: Rate) -> BankMsg {
         BankMsg::Send {
             to_address,
-            amount: vec![self.calculate_fee(fee)],
+            amount: vec![calculate_fee(rate, self.amount.clone())],
         }
     }
     pub fn generate_event(self) -> Event {
@@ -158,18 +154,16 @@ pub enum ExecuteMsg {
     RevokeAll {
         operator: String,
     },
-    // Burn {
-    //     collection_symbol: String,
-    //     token_id: TokenId,
-    // },
-    // Archive {
-    //     collection_symbol: String,
-    //     token_id: TokenId,
-    // },
+    Burn {
+        token_id: TokenId,
+    },
+    Archive {
+        token_id: TokenId,
+    },
     TransferAgreement {
         token_id: TokenId,
         denom: String,
-        amount: u128,
+        amount: Uint128,
         purchaser: String,
     },
     Whitelist {
@@ -207,10 +201,13 @@ pub enum QueryMsg {
     NftMetadata {
         token_id: TokenId,
     },
+    NftArchiveStatus {
+        token_id: TokenId,
+    },
     ContractInfo {},
-    ReceiptInfo{
-        receipt_id: Uint128
-    }
+    ReceiptInfo {
+        receipt_id: Uint128,
+    },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchivedResponse {
@@ -218,8 +215,8 @@ pub struct ArchivedResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ExtensionsResponse {
-    pub extensions: Vec<ModuleDefinition>,
+pub struct ModulesResponse {
+    pub modules: Vec<ModuleDefinition>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -235,6 +232,11 @@ pub struct WhitelistedResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct NftMetadataResponse {
     pub metadata: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct NftArchivedResponse {
+    pub archived: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

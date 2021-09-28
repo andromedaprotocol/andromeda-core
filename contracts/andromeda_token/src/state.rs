@@ -47,7 +47,8 @@ pub fn has_transfer_rights(
 ) -> StdResult<bool> {
     Ok(token.owner.eq(&addr)
         || has_approval(env, &addr, token)
-        || is_operator(storage, env, token.owner.clone(), addr)?)
+        || is_operator(storage, env, token.owner.clone(), addr.clone())?
+        || has_transfer_agreement(addr.clone(), token))
 }
 
 pub fn has_approval(env: &Env, addr: &String, token: &Token) -> bool {
@@ -55,6 +56,13 @@ pub fn has_approval(env: &Env, addr: &String, token: &Token) -> bool {
         .approvals
         .iter()
         .any(|a| a.spender.to_string().eq(addr) && !a.is_expired(&env.block))
+}
+
+pub fn has_transfer_agreement(addr: String, token: &Token) -> bool {
+    match token.transfer_agreement.clone() {
+        None => false,
+        Some(ag) => ag.purchaser.eq(&addr),
+    }
 }
 
 pub fn is_operator(
@@ -82,4 +90,15 @@ pub fn read_config(storage: &dyn Storage) -> StdResult<TokenConfig> {
 
 pub fn store_config(storage: &mut dyn Storage, config: &TokenConfig) -> StdResult<()> {
     CONFIG.save(storage, config)
+}
+
+pub fn decrement_num_tokens(storage: &mut dyn Storage) -> StdResult<()> {
+    let token_count = NUM_TOKENS.load(storage).unwrap_or_default();
+    if token_count == 0 {
+        Err(StdError::generic_err(
+            "Cannot decrement token count below 0",
+        ))
+    } else {
+        NUM_TOKENS.save(storage, &(token_count - 1))
+    }
 }

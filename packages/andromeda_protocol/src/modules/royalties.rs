@@ -1,27 +1,17 @@
-use cosmwasm_std::{coin, Coin, DepsMut, Env, Event, MessageInfo, StdError, StdResult, Uint128};
+use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, StdError, StdResult};
 
 use crate::require::require;
 
 use super::{
-    common::{add_payment, deduct_payment},
+    common::{add_payment, calculate_fee, deduct_payment},
     hooks::{HookResponse, MessageHooks, PaymentAttribute, ATTR_DEDUCTED, ATTR_DESC, ATTR_PAYMENT},
-    Fee, Module, ModuleDefinition,
+    Module, ModuleDefinition, Rate,
 };
 
 pub struct Royalty {
-    pub fee: Fee,
+    pub rate: Rate,
     pub receivers: Vec<String>,
     pub description: Option<String>,
-}
-
-impl Royalty {
-    pub fn calculate_fee(&self, payment: Coin) -> Coin {
-        let fee_amount = payment
-            .amount
-            .multiply_ratio(Uint128::from(self.fee), 100 as u128);
-
-        coin(fee_amount.u128(), payment.denom)
-    }
 }
 
 impl MessageHooks for Royalty {
@@ -35,7 +25,7 @@ impl MessageHooks for Royalty {
         _purchaser: String,
         amount: cosmwasm_std::Coin,
     ) -> StdResult<HookResponse> {
-        let fee_payment = self.calculate_fee(amount);
+        let fee_payment = calculate_fee(self.rate.clone(), amount);
         let mut resp = HookResponse::default();
         let mut event = Event::new("royalty");
 
@@ -79,7 +69,7 @@ impl Module for Royalty {
     }
     fn as_definition(&self) -> ModuleDefinition {
         ModuleDefinition::Royalties {
-            fee: self.fee,
+            rate: self.rate.clone(),
             receivers: self.receivers.to_vec(),
             description: self.description.clone(),
         }
@@ -89,6 +79,7 @@ impl Module for Royalty {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{
+        coin,
         testing::{mock_dependencies, mock_env, mock_info},
         BankMsg,
     };
@@ -110,7 +101,7 @@ mod tests {
             amount: vec![agreed_amount.clone()],
         }];
         let royalty = Royalty {
-            fee: 2,
+            rate: Rate::Percent(2),
             receivers: vec![receiver_one.to_string(), receiver_two.to_string()],
             description: None,
         };
@@ -160,7 +151,7 @@ mod tests {
             amount: vec![agreed_amount.clone()],
         }];
         let royalty = Royalty {
-            fee: 2,
+            rate: Rate::Percent(2),
             receivers: vec![receiver_one.to_string(), receiver_two.to_string()],
             description: Some(desc.to_string()),
         };
@@ -188,14 +179,14 @@ mod tests {
         assert_eq!(resp.events[0].attributes[1].key, ATTR_DEDUCTED);
         assert_eq!(
             resp.events[0].attributes[1].value,
-            royalty.calculate_fee(agreed_amount.clone()).to_string()
+            calculate_fee(royalty.rate.clone(), agreed_amount.clone()).to_string()
         );
         assert_eq!(resp.events[0].attributes[2].key, ATTR_PAYMENT);
         assert_eq!(
             resp.events[0].attributes[2].value,
             PaymentAttribute {
                 receiver: royalty.receivers[0].clone(),
-                amount: royalty.calculate_fee(agreed_amount.clone())
+                amount: calculate_fee(royalty.rate.clone(), agreed_amount.clone())
             }
             .to_string()
         );

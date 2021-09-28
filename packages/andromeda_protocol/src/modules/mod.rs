@@ -5,10 +5,11 @@ pub mod royalties;
 pub mod taxable;
 pub mod whitelist;
 
-use crate::modules::taxable::Taxable;
-use crate::modules::{hooks::MessageHooks, whitelist::Whitelist};
+use crate::modules::{
+    hooks::MessageHooks, royalties::Royalty, taxable::Taxable, whitelist::Whitelist,
+};
 use crate::token::ExecuteMsg;
-use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, Storage};
+use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, Storage, Uint128};
 use cw721::Expiration;
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
@@ -16,11 +17,22 @@ use serde::{Deserialize, Serialize};
 
 use self::blacklist::Blacklist;
 use self::hooks::HookResponse;
-use self::royalties::Royalty;
 
 pub const MODULES: Item<Modules> = Item::new("modules");
 
-pub type Fee = u128;
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
+#[serde(rename_all = "snake_case")]
+pub struct FlatRate {
+    amount: Uint128,
+    denom: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Rate {
+    Flat(FlatRate),
+    Percent(u64),
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -32,19 +44,19 @@ pub enum ModuleDefinition {
         moderators: Vec<String>,
     },
     Taxable {
-        tax: Fee,
+        rate: Rate,
         receivers: Vec<String>,
         description: Option<String>,
     },
     Royalties {
-        fee: Fee,
+        rate: Rate,
         receivers: Vec<String>,
         description: Option<String>,
     },
 }
 
 pub trait Module: MessageHooks {
-    fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
+    fn validate(&self, modules: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
 }
 
@@ -58,20 +70,20 @@ impl ModuleDefinition {
                 moderators: moderators.clone(),
             }),
             ModuleDefinition::Taxable {
-                tax,
+                rate,
                 receivers,
                 description,
             } => Box::from(Taxable {
-                tax: tax.clone(),
+                rate: rate.clone(),
                 receivers: receivers.clone(),
                 description: description.clone(),
             }),
             ModuleDefinition::Royalties {
-                fee,
+                rate,
                 receivers,
                 description,
             } => Box::from(Royalty {
-                fee: fee.clone(),
+                rate: rate.clone(),
                 receivers: receivers.to_vec(),
                 description: description.clone(),
             }),
@@ -305,6 +317,34 @@ impl Modules {
         let modules = self.to_modules();
         for module in modules {
             module.on_revoke_all(&deps, info.clone(), env.clone(), operator.clone())?;
+        }
+
+        Ok(())
+    }
+    pub fn on_burn(
+        &self,
+        deps: &DepsMut,
+        info: MessageInfo,
+        env: Env,
+        token_id: String,
+    ) -> StdResult<()> {
+        let modules = self.to_modules();
+        for module in modules {
+            module.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
+        }
+
+        Ok(())
+    }
+    pub fn on_archive(
+        &self,
+        deps: &DepsMut,
+        info: MessageInfo,
+        env: Env,
+        token_id: String,
+    ) -> StdResult<()> {
+        let modules = self.to_modules();
+        for module in modules {
+            module.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
         }
 
         Ok(())

@@ -1,6 +1,6 @@
+use crate::modules::receipt::Receipt;
 use crate::modules::taxable::Taxable;
 use crate::modules::{hooks::MessageHooks, whitelist::Whitelist};
-use crate::modules::receipt::Receipt;
 
 use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult, Storage};
 use cw721::Expiration;
@@ -23,7 +23,7 @@ pub enum ModuleDefinition {
 }
 
 pub trait Module: MessageHooks {
-    fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
+    fn validate(&self, modules: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
 }
 
@@ -34,10 +34,10 @@ impl ModuleDefinition {
                 moderators: moderators.clone(),
             }),
             ModuleDefinition::Taxable { tax, receivers } => Box::from(Taxable {
-                tax: tax.clone(),
+                rate: tax.clone(),
                 receivers: receivers.clone(),
             }),
-            ModuleDefinition::Receipt => Box::from(Receipt{}),
+            ModuleDefinition::Receipt => Box::from(Receipt {}),
         }
     }
 }
@@ -120,7 +120,7 @@ impl Modules {
         env: Env,
         token_id: String,
         purchaser: String,
-        amount: u128,
+        amount: Uint128,
         denom: String,
     ) -> StdResult<()> {
         let modules = self.to_modules();
