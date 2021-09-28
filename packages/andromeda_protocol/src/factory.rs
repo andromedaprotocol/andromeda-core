@@ -14,7 +14,7 @@ pub enum ExecuteMsg {
     Create {
         name: String,
         symbol: String,
-        extensions: Vec<ModuleDefinition>,
+        modules: Vec<ModuleDefinition>,
         metadata_limit: Option<u64>,
     },
     //Called by instantiated token contract to store address

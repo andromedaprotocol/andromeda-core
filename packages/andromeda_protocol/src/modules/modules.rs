@@ -15,12 +15,12 @@ pub type Fee = u64;
 #[serde(rename_all = "snake_case")]
 pub enum ModuleDefinition {
     Whitelist { moderators: Vec<String> },
-    Taxable { tax: Fee, receivers: Vec<String> },
-    // Royalties { fee: Fee, receivers: Vec<String> },
+    Taxable { rate: Rate, receivers: Vec<String> },
+    // Royalties { rate: Rate, receivers: Vec<String> },
 }
 
 pub trait Module: MessageHooks {
-    fn validate(&self, extensions: Vec<ModuleDefinition>) -> StdResult<bool>;
+    fn validate(&self, modules: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
 }
 
@@ -31,7 +31,7 @@ impl ModuleDefinition {
                 moderators: moderators.clone(),
             }),
             ModuleDefinition::Taxable { tax, receivers } => Box::from(Taxable {
-                tax: tax.clone(),
+                rate: tax.clone(),
                 receivers: receivers.clone(),
             }),
         }
@@ -116,7 +116,7 @@ impl Modules {
         env: Env,
         token_id: String,
         purchaser: String,
-        amount: u128,
+        amount: Uint128,
         denom: String,
     ) -> StdResult<()> {
         let modules = self.to_modules();

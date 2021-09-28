@@ -1,25 +1,15 @@
-use cosmwasm_std::{coin, Coin, DepsMut, Env, MessageInfo, StdResult, Uint128};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult};
 
 use super::{
-    common::{add_payment, deduct_payment},
+    common::{add_payment, calculate_fee, deduct_payment},
     hooks::MessageHooks,
-    Fee, Module, ModuleDefinition,
+    Module, ModuleDefinition, Rate,
 };
 
 pub struct Royalty {
-    pub fee: Fee,
+    pub rate: Rate,
     pub receivers: Vec<String>,
     pub description: Option<String>,
-}
-
-impl Royalty {
-    pub fn calculate_fee(&self, payment: Coin) -> Coin {
-        let fee_amount = payment
-            .amount
-            .multiply_ratio(Uint128::from(self.fee), 100 as u128);
-
-        coin(fee_amount.u128(), payment.denom)
-    }
 }
 
 impl MessageHooks for Royalty {
@@ -33,7 +23,7 @@ impl MessageHooks for Royalty {
         _purchaser: String,
         amount: cosmwasm_std::Coin,
     ) -> StdResult<bool> {
-        let fee_payment = self.calculate_fee(amount);
+        let fee_payment = calculate_fee(self.rate.clone(), amount);
         for receiver in self.receivers.to_vec() {
             deduct_payment(payments, owner.clone(), fee_payment.clone())?;
             add_payment(payments, receiver, fee_payment.clone());
@@ -44,12 +34,12 @@ impl MessageHooks for Royalty {
 }
 
 impl Module for Royalty {
-    fn validate(&self, _extensions: Vec<super::ModuleDefinition>) -> StdResult<bool> {
+    fn validate(&self, _modules: Vec<super::ModuleDefinition>) -> StdResult<bool> {
         Ok(true)
     }
     fn as_definition(&self) -> ModuleDefinition {
         ModuleDefinition::Royalties {
-            fee: self.fee,
+            rate: self.rate.clone(),
             receivers: self.receivers.to_vec(),
             description: self.description.clone(),
         }
@@ -59,6 +49,7 @@ impl Module for Royalty {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{
+        coin,
         testing::{mock_dependencies, mock_env, mock_info},
         BankMsg,
     };
@@ -80,7 +71,7 @@ mod tests {
             amount: vec![agreed_amount.clone()],
         }];
         let royalty = Royalty {
-            fee: 2,
+            rate: Rate::Percent(2),
             receivers: vec![receiver_one.to_string(), receiver_two.to_string()],
             description: None,
         };

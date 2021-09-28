@@ -131,6 +131,7 @@ pub fn get_blacklist_module(storage: &dyn Storage) -> StdResult<ModuleDefinition
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::modules::Rate;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
@@ -139,8 +140,9 @@ mod tests {
         let mut modules = vec![
             bl.as_definition().clone(),
             ModuleDefinition::Taxable {
-                tax: 2,
+                rate: Rate::Percent(2),
                 receivers: vec![],
+                description: None,
             },
         ];
 
@@ -156,8 +158,9 @@ mod tests {
         let modules = vec![
             bl.as_definition().clone(),
             ModuleDefinition::Taxable {
-                tax: 2,
+                rate: Rate::Percent(2),
                 receivers: vec![],
+                description: None,
             },
             ModuleDefinition::Whitelist { moderators: vec![] },
         ];

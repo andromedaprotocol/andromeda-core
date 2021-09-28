@@ -83,7 +83,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             denom,
             amount,
             purchaser,
-        } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount, denom),
+        } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount.u128(), denom),
         ExecuteMsg::Whitelist {
             address,
             whitelisted,
@@ -628,12 +628,12 @@ mod tests {
     use andromeda_protocol::modules::blacklist::BLACKLIST;
     use andromeda_protocol::modules::whitelist::WHITELIST;
     use andromeda_protocol::modules::ModuleDefinition;
+    use andromeda_protocol::modules::Rate;
     use andromeda_protocol::token::Approval;
     use andromeda_protocol::token::ExecuteMsg;
     use andromeda_protocol::token::NftArchivedResponse;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::BankMsg;
-    use cosmwasm_std::{from_binary, Api, CosmosMsg, SubMsg};
+    use cosmwasm_std::{from_binary, Api, CosmosMsg, SubMsg, BankMsg, Uint128};
 
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
@@ -643,9 +643,9 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("creator", &[]);
         let whitelist_moderators = "whitelist_moderator1".to_string();
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -653,11 +653,12 @@ mod tests {
                 moderators: vec![whitelist_moderators]
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -691,9 +692,9 @@ mod tests {
 
         //Instantiate
         let whitelist_moderators = vec!["creator".to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -701,11 +702,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -754,9 +756,9 @@ mod tests {
         let info = mock_info(minter.clone(), &[]);
         //Instantiate
         let whitelist_moderators = vec!["minter".to_string(), "anyone".to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -764,11 +766,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -940,9 +943,9 @@ mod tests {
         let token_id = String::default();
         //Instantiate
         let whitelist_moderators = vec!["minter".to_string(), "anyone".to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -950,11 +953,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -1014,7 +1018,7 @@ mod tests {
             SubMsg::new(
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: "tax_recever1".to_string(),
-                    amount: vec![coin(amount.amount.u128()* (tax_fee as u128)/100u128, "uluna")] // coin.amount / 100 *tax_fee
+                    amount: vec![coin(amount.amount.u128()* (1u128)/100u128, "uluna")] // coin.amount / 100 *tax_fee
                 }
                 )
             )
@@ -1024,7 +1028,7 @@ mod tests {
             SubMsg::new(
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: "royality_recever1".to_string(),
-                    amount: vec![coin(amount.amount.u128()* (tax_fee as u128)/100u128, "uluna")] // coin.amount / 100 *tax_fee
+                    amount: vec![coin(amount.amount.u128()* (1u128)/100u128, "uluna")] // coin.amount / 100 *tax_fee
                 }
                 )
             )
@@ -1040,9 +1044,9 @@ mod tests {
 
         //Instantiate
         let whitelist_moderators = vec!["sender".to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -1050,11 +1054,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -1114,9 +1119,9 @@ mod tests {
 
         //Instantiate
         let whitelist_moderators = vec!["sender".to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -1124,11 +1129,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -1193,9 +1199,9 @@ mod tests {
 
         //Instantiate
         let whitelist_moderators = vec![minter.to_string(), operator.to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -1203,11 +1209,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -1289,9 +1296,9 @@ mod tests {
         let operator_info = mock_info(operator.clone(), &[]);
         //Instantiate
         let whitelist_moderators = vec![minter.to_string(), operator.to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -1299,11 +1306,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -1383,10 +1391,10 @@ mod tests {
         let denom = "uluna";
         let amount = 100 as u128;
         //Instantiate
-        let whitelist_moderators = vec![minter.to_string()];
-        let tax_fee:u64 = 1;
+        let whitelist_moderators = vec![minter.to_string(), purchaser.to_string()];
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -1394,11 +1402,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -1430,7 +1439,7 @@ mod tests {
         let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
             token_id: token_id.clone(),
             denom: denom.to_string(),
-            amount: amount.clone(),
+            amount: Uint128::from(amount),
             purchaser: purchaser.to_string(),
         };
         execute(
@@ -1449,7 +1458,20 @@ mod tests {
         let agreement = agreement_res.agreement.unwrap();
 
         assert_eq!(agreement.purchaser, purchaser.clone());
-        assert_eq!(agreement.amount, coin(amount, denom))
+        assert_eq!(agreement.amount, coin(amount, denom));
+
+        let purchaser_info = mock_info(purchaser.clone(), &[]);
+        let transfer_msg = ExecuteMsg::TransferNft {
+            token_id: token_id.clone(),
+            recipient: purchaser.to_string(),
+        };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            purchaser_info.clone(),
+            transfer_msg,
+        )
+        .unwrap();
     }
 
     #[test]
@@ -1461,9 +1483,9 @@ mod tests {
         let info = mock_info(moderator.clone(), &[]);
         //Instantiate
         let whitelist_moderators = vec![moderator.to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -1471,11 +1493,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
         },
         ModuleDefinition::Royalties{
-            fee: royality_fee,
+            rate: royality_fee,
             receivers: royality_receivers,
             description: None,
         },
@@ -1556,9 +1579,9 @@ mod tests {
         let info = mock_info(moderator.clone(), &[]);
         //Instantiate
         let blacklist_moderators = vec![moderator.to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -1566,11 +1589,12 @@ mod tests {
                 moderators: blacklist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -1652,9 +1676,9 @@ mod tests {
         let token_id = "1";
         //Instantiate
         let whitelist_moderators = vec!["minter".to_string(), "anyone".to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -1662,11 +1686,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -1737,9 +1762,9 @@ mod tests {
         let token_id = "1";
         //Instantiate
         let whitelist_moderators = vec!["minter".to_string(), "anyone".to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -1747,11 +1772,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -1816,9 +1842,9 @@ mod tests {
         let token_id = "1";
         //Instantiate
         let whitelist_moderators = vec!["minter".to_string(), "anyone".to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -1826,11 +1852,12 @@ mod tests {
                 moderators: whitelist_moderators,
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },

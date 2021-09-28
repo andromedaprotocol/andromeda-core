@@ -1,7 +1,7 @@
 use crate::hook::InitHook;
 
-use crate::modules::{Fee, ModuleDefinition};
-use cosmwasm_std::{coin, Addr, BankMsg, Binary, BlockInfo, Coin, StdResult };
+use crate::modules::{common::calculate_fee, ModuleDefinition, Rate};
+use cosmwasm_std::{Addr, BankMsg, Binary, BlockInfo, Coin, StdResult, Uint128, coin};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -59,16 +59,19 @@ impl TransferAgreement {
             amount: vec![self.amount.clone()],
         }
     }
-    pub fn calculate_fee(&self, fee: Fee) -> Coin {
+    pub fn calculate_fee(&self, fee: Rate) -> Coin {
         let amount = self.amount.amount;
-        let fee_amount = amount.multiply_ratio(fee, 100 as u128);
+        let fee_amount = match fee{
+            Rate::Flat(flat_rate) => amount.multiply_ratio(flat_rate.amount, flat_rate.denom.parse::<u128>().unwrap()),
+            Rate::Percent(fee) => amount.multiply_ratio(fee, 100 as u128),
+        };
 
         coin(fee_amount.u128(), self.amount.denom.clone())
     }
-    pub fn generate_fee_payment(&self, to_address: String, fee: Fee) -> BankMsg {
+    pub fn generate_fee_payment(&self, to_address: String, rate: Rate) -> BankMsg {
         BankMsg::Send {
             to_address,
-            amount: vec![self.calculate_fee(fee)],
+            amount: vec![calculate_fee(rate, self.amount.clone())],
         }
     }
 }
@@ -152,7 +155,7 @@ pub enum ExecuteMsg {
     TransferAgreement {
         token_id: TokenId,
         denom: String,
-        amount: u128,
+        amount: Uint128,
         purchaser: String,
     },
     Whitelist {
@@ -201,8 +204,8 @@ pub struct ArchivedResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ExtensionsResponse {
-    pub extensions: Vec<ModuleDefinition>,
+pub struct ModulesResponse {
+    pub modules: Vec<ModuleDefinition>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

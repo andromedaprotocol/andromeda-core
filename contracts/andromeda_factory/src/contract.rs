@@ -39,9 +39,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::Create {
             symbol,
             name,
-            extensions,
+            modules,
             metadata_limit,
-        } => create(deps, env, info, name, symbol, extensions, metadata_limit),
+        } => create(deps, env, info, name, symbol, modules, metadata_limit),
         ExecuteMsg::TokenCreationHook { symbol, creator } => {
             token_creation(deps, env, info, symbol, creator)
         }
@@ -149,6 +149,7 @@ mod tests {
     use crate::state::read_creator;
     use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use andromeda_protocol::modules::Rate;
 
     static TOKEN_CODE_ID: u64 = 0;
     const TOKEN_NAME: &str = "test";
@@ -174,9 +175,9 @@ mod tests {
         let info = mock_info("creator", &[]);
 
         let whitelist_moderators = vec!["whitelist_moderator1".to_string()];
-        let tax_fee:u64 = 1;
+        let tax_fee:Rate = Rate::Percent(1u64);
         let tax_receivers = vec!["tax_recever1".to_string()];
-        let royality_fee:u64 = 1;
+        let royality_fee:Rate = Rate::Percent(1u64);
         let royality_receivers = vec!["royality_recever1".to_string()];
         let size_limit = 100u64;
         let modules = vec![
@@ -184,11 +185,12 @@ mod tests {
                 moderators: whitelist_moderators
             },
             ModuleDefinition::Taxable{
-                tax: tax_fee,
-                receivers: tax_receivers
+                rate: tax_fee,
+                receivers: tax_receivers,
+                description: None,
             },
             ModuleDefinition::Royalties{
-                fee: royality_fee,
+                rate: royality_fee,
                 receivers: royality_receivers,
                 description: None,
             },
@@ -208,7 +210,7 @@ mod tests {
         let msg = ExecuteMsg::Create {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
-            extensions: modules.clone(),
+            modules: modules.clone(),
             metadata_limit: None,
         };
 
