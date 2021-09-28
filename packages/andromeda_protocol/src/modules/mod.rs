@@ -22,7 +22,7 @@ use self::royalties::Royalty;
 // const KEY_MODULES: &[u8] = b"modules";
 pub const MODULES: Item<Modules> = Item::new("modules");
 
-pub type Fee = u128;
+pub type Fee = u64;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -43,7 +43,7 @@ pub enum ModuleDefinition {
         description: Option<String>,
     },
     MetadataStorage {
-        size_limit: Option<u128>,
+        size_limit: Option<u64>,
         description: Option<String>,
     },
 }

@@ -1,7 +1,7 @@
 use crate::hook::InitHook;
 
 use crate::modules::{Fee, ModuleDefinition};
-use cosmwasm_std::{coin, Addr, BankMsg, Binary, BlockInfo, Coin, StdResult, Uint128};
+use cosmwasm_std::{coin, Addr, BankMsg, Binary, BlockInfo, Coin, StdResult };
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,7 @@ impl TransferAgreement {
     }
     pub fn calculate_fee(&self, fee: Fee) -> Coin {
         let amount = self.amount.amount;
-        let fee_amount = amount.multiply_ratio(Uint128::from(fee as u128), 100 as u128);
+        let fee_amount = amount.multiply_ratio(fee, 100 as u128);
 
         coin(fee_amount.u128(), self.amount.denom.clone())
     }

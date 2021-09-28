@@ -7,7 +7,7 @@ use super::{
 };
 
 pub struct MetadataStorage {
-    pub size_limit: Option<u128>,
+    pub size_limit: Option<u64>,
     pub description: Option<String>,
 }
 

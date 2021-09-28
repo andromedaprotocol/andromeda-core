@@ -173,6 +173,31 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
 
+        let whitelist_moderators = vec!["whitelist_moderator1".to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
+
         let init_msg = InstantiateMsg {
             token_code_id: TOKEN_CODE_ID,
         };
@@ -183,7 +208,7 @@ mod tests {
         let msg = ExecuteMsg::Create {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
-            extensions: vec![],
+            extensions: modules.clone(),
             metadata_limit: None,
         };
 
@@ -196,7 +221,7 @@ mod tests {
                 name: TOKEN_NAME.to_string(),
                 symbol: TOKEN_SYMBOL.to_string(),
                 minter: String::from("creator"),
-                modules: vec![],
+                modules: modules.clone(),
                 init_hook: Some(InitHook {
                     msg: to_binary(&ExecuteMsg::TokenCreationHook {
                         symbol: TOKEN_SYMBOL.to_string(),

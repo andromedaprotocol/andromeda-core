@@ -628,14 +628,12 @@ mod tests {
     use andromeda_protocol::modules::blacklist::BLACKLIST;
     use andromeda_protocol::modules::whitelist::WHITELIST;
     use andromeda_protocol::modules::ModuleDefinition;
-    use andromeda_protocol::modules::Modules;
-    use andromeda_protocol::modules::MODULES;
     use andromeda_protocol::token::Approval;
     use andromeda_protocol::token::ExecuteMsg;
     use andromeda_protocol::token::NftArchivedResponse;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::BankMsg;
-    use cosmwasm_std::{from_binary, Api};
+    use cosmwasm_std::{from_binary, Api, CosmosMsg, SubMsg};
 
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
@@ -644,11 +642,34 @@ mod tests {
     fn test_instantiate() {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("creator", &[]);
-
+        let whitelist_moderators = "whitelist_moderator1".to_string();
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: vec![whitelist_moderators]
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
         let msg = InstantiateMsg {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
-            modules: vec![],
+            modules,
             minter: String::from("creator"),
             init_hook: None,
             metadata_limit: None,
@@ -668,6 +689,42 @@ mod tests {
         let token_id = String::default();
         let creator = "creator".to_string();
 
+        //Instantiate
+        let whitelist_moderators = vec!["creator".to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("creator"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+
         let mint_msg = MintMsg {
             token_id: token_id.clone(),
             owner: creator.clone(),
@@ -685,7 +742,7 @@ mod tests {
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let query_val: OwnerOfResponse = from_binary(&query_res).unwrap();
 
-        assert_eq!(query_val.owner, creator)
+        assert_eq!(query_val.owner, creator);
     }
 
     #[test]
@@ -695,6 +752,42 @@ mod tests {
         let minter = "minter";
         let recipient = "recipient";
         let info = mock_info(minter.clone(), &[]);
+        //Instantiate
+        let whitelist_moderators = vec!["minter".to_string(), "anyone".to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+         ];
+
+
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("minter"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let token_id = String::default();
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -750,7 +843,7 @@ mod tests {
             .owner;
         assert_eq!(recipient.to_string(), owner);
 
-        let approval_info = mock_info("spender", &[]);
+        let approval_info = mock_info("minter", &[]);
         let approval = Approval {
             spender: approval_info.sender.clone(),
             expires: cw721::Expiration::Never {},
@@ -793,7 +886,7 @@ mod tests {
             .owner;
         assert_eq!(recipient.to_string(), owner);
 
-        let approval_info = mock_info("spender", &[]);
+        let approval_info = mock_info("minter", &[]);
         let approval = Approval {
             spender: approval_info.sender.clone(),
             expires: cw721::Expiration::Never {},
@@ -845,6 +938,42 @@ mod tests {
         let recipient = "recipient";
         let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
+        //Instantiate
+        let whitelist_moderators = vec!["minter".to_string(), "anyone".to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
+
+
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("minter"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
             token_id: token_id.clone(),
@@ -871,11 +1000,34 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(
-            Response::new().add_message(BankMsg::Send {
+            res.messages[0],
+            SubMsg::new(
+                CosmosMsg::Bank(BankMsg::Send {
                 to_address: minter.to_string(),
-                amount: vec![amount.clone()]
-            }),
-            res
+                    amount: vec![coin(100-1, "uluna")] // amount - royality
+                }
+                )
+            )
+        );
+        assert_eq!(
+            res.messages[1],
+            SubMsg::new(
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: "tax_recever1".to_string(),
+                    amount: vec![coin(amount.amount.u128()* (tax_fee as u128)/100u128, "uluna")] // coin.amount / 100 *tax_fee
+                }
+                )
+            )
+        );
+        assert_eq!(
+            res.messages[2],
+            SubMsg::new(
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: "royality_recever1".to_string(),
+                    amount: vec![coin(amount.amount.u128()* (tax_fee as u128)/100u128, "uluna")] // coin.amount / 100 *tax_fee
+                }
+                )
+            )
         );
     }
 
@@ -885,6 +1037,41 @@ mod tests {
         let env = mock_env();
         let sender = "sender";
         let info = mock_info(sender.clone(), &[]);
+
+        //Instantiate
+        let whitelist_moderators = vec!["sender".to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("minter"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let token_id = String::default();
         let approvee = "aprovee";
 
@@ -924,6 +1111,42 @@ mod tests {
         let env = mock_env();
         let sender = "sender";
         let info = mock_info(sender.clone(), &[]);
+
+        //Instantiate
+        let whitelist_moderators = vec!["sender".to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("minter"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
         let token_id = String::default();
         let approvee = "aprovee";
         let approval = Approval {
@@ -967,6 +1190,41 @@ mod tests {
         let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
         let operator = "operator";
+
+        //Instantiate
+        let whitelist_moderators = vec![minter.to_string(), operator.to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("minter"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let operator_info = mock_info(operator.clone(), &[]);
 
         let mint_msg = ExecuteMsg::Mint(MintMsg {
@@ -1029,7 +1287,41 @@ mod tests {
         let token_id = String::default();
         let operator = "operator";
         let operator_info = mock_info(operator.clone(), &[]);
+        //Instantiate
+        let whitelist_moderators = vec![minter.to_string(), operator.to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
 
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("minter"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
@@ -1090,6 +1382,41 @@ mod tests {
         let token_id = String::default();
         let denom = "uluna";
         let amount = 100 as u128;
+        //Instantiate
+        let whitelist_moderators = vec![minter.to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: minter.to_string(),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
 
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
@@ -1132,13 +1459,42 @@ mod tests {
         let moderator = "minter";
         let whitelistee = "whitelistee";
         let info = mock_info(moderator.clone(), &[]);
+        //Instantiate
+        let whitelist_moderators = vec![moderator.to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+        },
+        ModuleDefinition::Royalties{
+            fee: royality_fee,
+            receivers: royality_receivers,
+            description: None,
+        },
+        ModuleDefinition::MetadataStorage {
+            size_limit: Some(size_limit),
+            description: None,
+        },
+        ];
 
-        let module_defs = vec![ModuleDefinition::Whitelist {
-            moderators: vec![moderator.to_string()],
-        }];
-        let modules = Modules { module_defs };
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("minter"),
+            init_hook: None,
+            metadata_limit: None,
+        };
 
-        MODULES.save(deps.as_mut().storage, &modules).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::Whitelist {
             address: whitelistee.to_string(),
@@ -1155,8 +1511,7 @@ mod tests {
         assert_eq!(true, whitelisted);
 
         let unauth_info = mock_info("anyone", &[]);
-        let res =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        let res = execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
         assert_eq!(StdError::generic_err("Address is not whitelisted"), res);
 
         let whitelisted_info = mock_info(whitelistee.clone(), &[]);
@@ -1189,7 +1544,6 @@ mod tests {
         let whitelisted = WHITELIST
             .load(deps.as_ref().storage, whitelistee.to_string())
             .unwrap();
-
         assert_eq!(false, whitelisted);
     }
 
@@ -1200,14 +1554,42 @@ mod tests {
         let moderator = "minter";
         let blacklistee = "blacklistee";
         let info = mock_info(moderator.clone(), &[]);
+        //Instantiate
+        let blacklist_moderators = vec![moderator.to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Blacklist{
+                moderators: blacklist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
 
-        let module_defs = vec![ModuleDefinition::Blacklist {
-            moderators: vec![moderator.to_string()],
-        }];
-        let modules = Modules { module_defs };
 
-        MODULES.save(deps.as_mut().storage, &modules).unwrap();
-
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("minter"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let msg = ExecuteMsg::Blacklist {
             address: blacklistee.to_string(),
             blacklisted: true,
@@ -1268,12 +1650,37 @@ mod tests {
         let minter = "minter";
         let info = mock_info(minter.clone(), &[]);
         let token_id = "1";
+        //Instantiate
+        let whitelist_moderators = vec!["minter".to_string(), "anyone".to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
 
         let instantiate_message = InstantiateMsg {
             name: "Token".to_string(),
             symbol: "T".to_string(),
             minter: minter.to_string(),
-            modules: vec![],
+            modules: modules,
             init_hook: None,
             metadata_limit: Some(4),
         };
@@ -1285,9 +1692,7 @@ mod tests {
             instantiate_message,
         )
         .unwrap();
-
         let metadata = "really long metadata message, too long for the storage".to_string();
-
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.to_string(),
             owner: minter.to_string(),
@@ -1295,16 +1700,12 @@ mod tests {
             description: None,
             metadata: Some(metadata.clone()),
         });
-
         let res = execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap_err();
-
         assert_eq!(
             res,
             StdError::generic_err("Metadata length must be less than or equal to 4")
         );
-
         let metadata = "s".to_string();
-
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.to_string(),
             owner: minter.to_string(),
@@ -1334,7 +1735,40 @@ mod tests {
         let minter = "minter";
         let info = mock_info(minter.clone(), &[]);
         let token_id = "1";
-
+        //Instantiate
+        let whitelist_moderators = vec!["minter".to_string(), "anyone".to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("minter"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let mint_msg = MintMsg {
             token_id: token_id.to_string(),
             owner: minter.to_string(),
@@ -1380,7 +1814,40 @@ mod tests {
         let minter = "minter";
         let info = mock_info(minter.clone(), &[]);
         let token_id = "1";
-
+        //Instantiate
+        let whitelist_moderators = vec!["minter".to_string(), "anyone".to_string()];
+        let tax_fee:u64 = 1;
+        let tax_receivers = vec!["tax_recever1".to_string()];
+        let royality_fee:u64 = 1;
+        let royality_receivers = vec!["royality_recever1".to_string()];
+        let size_limit = 100u64;
+        let modules = vec![
+            ModuleDefinition::Whitelist{
+                moderators: whitelist_moderators,
+            },
+            ModuleDefinition::Taxable{
+                tax: tax_fee,
+                receivers: tax_receivers
+            },
+            ModuleDefinition::Royalties{
+                fee: royality_fee,
+                receivers: royality_receivers,
+                description: None,
+            },
+            ModuleDefinition::MetadataStorage {
+                size_limit: Some(size_limit),
+                description: None,
+            },
+        ];
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules,
+            minter: String::from("minter"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let mint_msg = MintMsg {
             token_id: token_id.to_string(),
             owner: minter.to_string(),
