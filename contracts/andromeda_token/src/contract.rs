@@ -46,7 +46,7 @@ pub fn instantiate(
     let config = TokenConfig {
         name: msg.name,
         symbol: msg.symbol,
-        minter: msg.minter,
+        minter: msg.minter.to_string(),
         receipt_addr: String::default(),
         metadata_limit: msg.metadata_limit,
     };
@@ -69,7 +69,7 @@ pub fn instantiate(
             funds: vec![],
             label: "".to_string(),
             msg: to_binary(&ReceiptInstantiateMsg {
-                owner: String::default(),
+                minter: msg.minter.to_string(),
             })?,
         }
         .into(),

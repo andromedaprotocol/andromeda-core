@@ -1,8 +1,8 @@
-use cosmwasm_std::{Storage, Uint128, StdResult};
-use cw_storage_plus::{Item, U128Key, Map};
+use andromeda_protocol::receipt::Receipt;
+use cosmwasm_std::{StdResult, Storage, Uint128};
+use cw_storage_plus::{Item, Map, U128Key};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use andromeda_protocol::receipt::Receipt;
 
 const CONFIG: Item<Config> = Item::new("config");
 const RECEIPT: Map<U128Key, Receipt> = Map::new("receipt");
@@ -10,11 +10,17 @@ const NUM_RECEIPT: Item<Uint128> = Item::new("num_receipt");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
+    pub minter: String,
     pub owner: String,
 }
 
 pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()> {
     CONFIG.save(storage, config)
+}
+
+pub fn can_mint_receipt(storage: &dyn Storage, addr: &String) -> StdResult<bool> {
+    let config = CONFIG.load(storage)?;
+    Ok(addr.eq(&config.owner) || addr.eq(&config.minter))
 }
 
 // increase receipt ID
@@ -25,9 +31,13 @@ pub fn increment_num_receipt(storage: &mut dyn Storage) -> StdResult<Uint128> {
     Ok(receipt_count)
 }
 
-pub fn store_receipt(storage: &mut dyn Storage, receipt_id: Uint128, receipt: &Receipt)->StdResult<()>{
+pub fn store_receipt(
+    storage: &mut dyn Storage,
+    receipt_id: Uint128,
+    receipt: &Receipt,
+) -> StdResult<()> {
     RECEIPT.save(storage, U128Key::from(receipt_id.u128()), receipt)
 }
-pub fn read_receipt(storage: &dyn Storage, receipt_id:Uint128)->StdResult<Receipt>{
+pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Receipt> {
     RECEIPT.load(storage, U128Key::from(receipt_id.u128()))
 }

@@ -1,7 +1,7 @@
+use crate::token::TokenId;
+use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::Uint128;
-use crate::token::TokenId;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Receipt {
@@ -20,13 +20,13 @@ pub struct Receipt {
 // }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ReceiptResponse{
+pub struct ReceiptResponse {
     pub receipt: Receipt,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub owner: String,
+    pub minter: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -34,14 +34,15 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     StoreReceipt {
         receipt: Receipt,
-    }
+    },
+    EditReceipt {
+        receipt_id: Uint128,
+        receipt: Receipt,
+    },
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    Receipt {
-        receipt_id: Uint128,
-    }
+    Receipt { receipt_id: Uint128 },
 }
