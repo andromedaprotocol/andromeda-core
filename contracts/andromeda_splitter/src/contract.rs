@@ -5,7 +5,8 @@ use andromeda_protocol::token::TokenId;
 use andromeda_protocol::{
     require::require,
     splitter::{
-        AddressPercent, ExecuteMsg, InstantiateMsg, IsWhitelistedResponse, QueryMsg, Splitter,
+        validate_recipient_list, AddressPercent, ExecuteMsg, InstantiateMsg, IsWhitelistedResponse,
+        QueryMsg, Splitter,
     },
 };
 use cosmwasm_std::{
@@ -48,7 +49,7 @@ pub fn execute(
             execute_update_isusewhitelist(deps, info, use_whitelist)
         }
         ExecuteMsg::UpdateRecipients { recipients } => {
-            execute_update_recipient(deps, info, recipients)
+            execute_update_recipients(deps, info, recipients)
         }
         ExecuteMsg::UpdateLock { lock } => execute_update_lock(deps, info, lock),
         ExecuteMsg::UpdateTokenList { accepted_tokenlist } => {
@@ -69,7 +70,7 @@ fn execute_update_isusewhitelist(
     let state = STATE.load(deps.storage)?;
     require(
         state.owner == info.sender,
-        StdError::generic_err("Only use by owner"),
+        StdError::generic_err("May only be used by the contract owner"),
     )?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
@@ -123,16 +124,18 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     Ok(Response::new().add_submessages(submsg))
 }
 
-fn execute_update_recipient(
+fn execute_update_recipients(
     deps: DepsMut,
     info: MessageInfo,
-    recipient: Vec<AddressPercent>,
+    recipients: Vec<AddressPercent>,
 ) -> StdResult<Response> {
     let state = STATE.load(deps.storage)?;
     require(
         state.owner == info.sender,
-        StdError::generic_err("Only use by owner"),
+        StdError::generic_err("May only be used by the contract owner"),
     )?;
+
+    validate_recipient_list(recipients.clone())?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
@@ -142,7 +145,7 @@ fn execute_update_recipient(
 
     splitter.recipients.clear();
 
-    splitter.recipients = recipient.clone();
+    splitter.recipients = recipients.clone();
     SPLITTER.save(deps.storage, &splitter)?;
     Ok(Response::default())
 }
@@ -151,7 +154,7 @@ fn execute_update_lock(deps: DepsMut, info: MessageInfo, lock: bool) -> StdResul
     let state = STATE.load(deps.storage)?;
     require(
         state.owner == info.sender,
-        StdError::generic_err("Only use by owner"),
+        StdError::generic_err("May only be used by the contract owner"),
     )?;
     let mut splitter = SPLITTER.load(deps.storage)?;
     splitter.locked = lock;
@@ -168,7 +171,7 @@ fn execute_update_token_list(
     let state = STATE.load(deps.storage)?;
     require(
         state.owner == info.sender,
-        StdError::generic_err("Only use by owner"),
+        StdError::generic_err("May only be used by the contract owner"),
     )?;
     let mut splitter = SPLITTER.load(deps.storage)?;
 
@@ -190,7 +193,7 @@ fn execute_update_sender_whitelist(
     let state = STATE.load(deps.storage)?;
     require(
         state.owner == info.sender,
-        StdError::generic_err("Only use by owner"),
+        StdError::generic_err("May only be used by the contract owner"),
     )?;
     let splitter = SPLITTER.load(deps.storage)?;
 
@@ -249,9 +252,12 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             use_whitelist: true,
-            recipients: vec![],
+            recipients: vec![AddressPercent {
+                addr: String::from("Some Address"),
+                percent: Uint128::from(100 as u128),
+            }],
         };
-        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
 
@@ -446,7 +452,7 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_update_recipient() {
+    fn test_execute_update_recipients() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
@@ -456,11 +462,11 @@ mod tests {
         let recipient = vec![
             AddressPercent {
                 addr: "address1".to_string(),
-                percent: Uint128::from(10 as u128),
+                percent: Uint128::from(40 as u128),
             },
             AddressPercent {
                 addr: "address1".to_string(),
-                percent: Uint128::from(20 as u128),
+                percent: Uint128::from(60 as u128),
             },
         ];
         let msg = ExecuteMsg::UpdateRecipients {
