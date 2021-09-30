@@ -1,12 +1,10 @@
 use crate::state::{State, SPLITTER, STATE};
-use andromeda_protocol::modules::whitelist::Whitelist;
+use andromeda_protocol::modules::address_list::AddressListModule;
 use andromeda_protocol::splitter::GetSplitterConfigResponse;
-use andromeda_protocol::token::TokenId;
 use andromeda_protocol::{
     require::require,
     splitter::{
-        validate_recipient_list, AddressPercent, ExecuteMsg, InstantiateMsg, IsWhitelistedResponse,
-        QueryMsg, Splitter,
+        validate_recipient_list, AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg, Splitter,
     },
 };
 use cosmwasm_std::{
@@ -28,9 +26,7 @@ pub fn instantiate(
     let splitter = Splitter {
         recipients: msg.recipients,
         locked: false,
-        use_whitelist: msg.use_whitelist,
-        sender_whitelist: Whitelist { moderators: vec![] },
-        accepted_tokenlist: vec![],
+        address_list: msg.address_list,
     };
     STATE.save(deps.storage, &state)?;
     SPLITTER.save(deps.storage, &splitter)?;
@@ -45,45 +41,17 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> StdResult<Response> {
     match msg {
-        ExecuteMsg::UpdateUseWhitelist { use_whitelist } => {
-            execute_update_isusewhitelist(deps, info, use_whitelist)
-        }
         ExecuteMsg::UpdateRecipients { recipients } => {
             execute_update_recipients(deps, info, recipients)
         }
         ExecuteMsg::UpdateLock { lock } => execute_update_lock(deps, info, lock),
-        ExecuteMsg::UpdateTokenList { accepted_tokenlist } => {
-            execute_update_token_list(deps, info, accepted_tokenlist)
-        }
-        ExecuteMsg::UpdateSenderWhitelist { sender_whitelist } => {
-            execute_update_sender_whitelist(deps, info, sender_whitelist)
+        ExecuteMsg::UpdateAddressList { address_list } => {
+            execute_update_address_list(deps, info, address_list)
         }
         ExecuteMsg::Send {} => execute_send(deps, info),
     }
 }
 
-fn execute_update_isusewhitelist(
-    deps: DepsMut,
-    info: MessageInfo,
-    use_whitelist: bool,
-) -> StdResult<Response> {
-    let state = STATE.load(deps.storage)?;
-    require(
-        state.owner == info.sender,
-        StdError::generic_err("May only be used by the contract owner"),
-    )?;
-
-    let mut splitter = SPLITTER.load(deps.storage)?;
-
-    if splitter.locked == true {
-        StdError::generic_err("Not allow to change recipient");
-    }
-
-    splitter.use_whitelist = use_whitelist;
-
-    SPLITTER.save(deps.storage, &splitter)?;
-    Ok(Response::default())
-}
 fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     let sent_funds: Vec<Coin> = info.funds.clone();
 
@@ -91,13 +59,11 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
 
     let splitter = SPLITTER.load(deps.storage)?;
 
-    if splitter.use_whitelist == true {
-        require(
-            splitter
-                .sender_whitelist
-                .is_whitelisted(deps.storage, &info.sender.to_string())?,
-            StdError::generic_err("Not allow to send funds"),
-        )?;
+    if splitter.address_list.is_some() {
+        splitter
+            .address_list
+            .unwrap()
+            .is_authorized(deps.querier, info.sender.to_string())?;
     }
 
     require(
@@ -163,10 +129,10 @@ fn execute_update_lock(deps: DepsMut, info: MessageInfo, lock: bool) -> StdResul
     Ok(Response::default())
 }
 
-fn execute_update_token_list(
+fn execute_update_address_list(
     deps: DepsMut,
     info: MessageInfo,
-    accepted_tokenlist: Vec<TokenId>,
+    address_list: AddressListModule,
 ) -> StdResult<Response> {
     let state = STATE.load(deps.storage)?;
     require(
@@ -176,38 +142,10 @@ fn execute_update_token_list(
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     if splitter.locked == true {
-        StdError::generic_err("Not allow to change token list");
-    }
-
-    splitter.accepted_tokenlist.clear();
-    splitter.accepted_tokenlist = accepted_tokenlist.clone();
-    SPLITTER.save(deps.storage, &splitter)?;
-    Ok(Response::default())
-}
-
-fn execute_update_sender_whitelist(
-    deps: DepsMut,
-    info: MessageInfo,
-    sender_whitelist: Vec<String>,
-) -> StdResult<Response> {
-    let state = STATE.load(deps.storage)?;
-    require(
-        state.owner == info.sender,
-        StdError::generic_err("May only be used by the contract owner"),
-    )?;
-    let splitter = SPLITTER.load(deps.storage)?;
-
-    if splitter.locked == true {
         StdError::generic_err("Not allow to change whitelist");
     }
 
-    // splitter.sender_whitelist.clear();
-    for whitelist_item in sender_whitelist {
-        splitter
-            .sender_whitelist
-            .whitelist_addr(deps.storage, &whitelist_item)
-            .unwrap();
-    }
+    splitter.address_list = Some(address_list);
 
     SPLITTER.save(deps.storage, &splitter)?;
 
@@ -218,19 +156,7 @@ fn execute_update_sender_whitelist(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetSplitterConfig {} => to_binary(&query_splitter(deps)?),
-        QueryMsg::IsWhitelisted { address } => {
-            to_binary(&query_splitter_whitelist(deps, &address)?)
-        }
     }
-}
-fn query_splitter_whitelist(deps: Deps, address: &String) -> StdResult<IsWhitelistedResponse> {
-    let splitter = SPLITTER.load(deps.storage)?;
-
-    Ok(IsWhitelistedResponse {
-        whitelisted: splitter
-            .sender_whitelist
-            .is_whitelisted(deps.storage, address)?,
-    })
 }
 
 fn query_splitter(deps: Deps) -> StdResult<GetSplitterConfigResponse> {
@@ -241,7 +167,7 @@ fn query_splitter(deps: Deps) -> StdResult<GetSplitterConfigResponse> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::modules::whitelist::WHITELIST;
+    use andromeda_protocol::modules::address_list::AddressListModule;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{Addr, Coin, Uint128};
 
@@ -251,7 +177,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            use_whitelist: true,
+            address_list: None,
             recipients: vec![AddressPercent {
                 addr: String::from("Some Address"),
                 percent: Uint128::from(100 as u128),
@@ -292,9 +218,7 @@ mod tests {
         let splitter = Splitter {
             recipients: vec![],
             locked: false,
-            use_whitelist: true,
-            sender_whitelist: Whitelist { moderators: vec![] },
-            accepted_tokenlist: vec![],
+            address_list: None,
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -308,147 +232,47 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_update_isusewhitelist() {
+    fn test_execute_update_address_list() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
-
         let owner = "creator";
-        let info = mock_info(owner.clone(), &[]);
-
-        let use_whitelist = true;
-        let msg = ExecuteMsg::UpdateUseWhitelist { use_whitelist };
-
-        //incorrect owner
-        let state = State {
-            owner: Addr::unchecked("incorrect_owner".to_string()),
-        };
-        STATE.save(deps.as_mut().storage, &state).unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        match res {
-            Ok(_ret) => assert!(false),
-            _ => {}
-        }
 
         let state = State {
             owner: Addr::unchecked(owner.to_string()),
         };
-
         STATE.save(deps.as_mut().storage, &state).unwrap();
 
         let splitter = Splitter {
             recipients: vec![],
             locked: false,
-            use_whitelist: false,
-            sender_whitelist: Whitelist { moderators: vec![] },
-            accepted_tokenlist: vec![],
+            address_list: None,
         };
-
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
+        let address_list = AddressListModule {
+            address: Some(String::from("terra1contractaddress")),
+            code_id: None,
+            moderators: None,
+            inclusive: true,
+        };
+        let msg = ExecuteMsg::UpdateAddressList {
+            address_list: address_list.clone(),
+        };
 
-        //check result
-        let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
-        assert_eq!(splitter.use_whitelist, use_whitelist);
-    }
+        let unauth_info = mock_info("anyone", &[]);
+        let err_res =
+            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        assert_eq!(
+            err_res,
+            StdError::generic_err("May only be used by the contract owner")
+        );
 
-    #[test]
-    fn test_execute_update_token_list() {
-        let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
-
-        let owner = "creator";
         let info = mock_info(owner.clone(), &[]);
+        execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-        let tokenlist = vec!["11".to_string(), "22".to_string(), "33".to_string()];
-        let msg = ExecuteMsg::UpdateTokenList {
-            accepted_tokenlist: tokenlist.clone(),
-        };
+        let updated = SPLITTER.load(deps.as_mut().storage).unwrap();
 
-        //incorrect owner
-        let state = State {
-            owner: Addr::unchecked("incorrect_owner".to_string()),
-        };
-        STATE.save(deps.as_mut().storage, &state).unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        match res {
-            Ok(_ret) => assert!(false),
-            _ => {}
-        }
-
-        let state = State {
-            owner: Addr::unchecked(owner.to_string()),
-        };
-
-        STATE.save(deps.as_mut().storage, &state).unwrap();
-
-        let splitter = Splitter {
-            recipients: vec![],
-            locked: false,
-            use_whitelist: true,
-            sender_whitelist: Whitelist { moderators: vec![] },
-            accepted_tokenlist: vec![],
-        };
-
-        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
-
-        //check result
-        let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
-        assert_eq!(splitter.accepted_tokenlist, tokenlist.clone());
-    }
-
-    #[test]
-    fn test_execute_update_sender_whitelist() {
-        let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
-
-        let owner = "creator";
-        let info = mock_info(owner.clone(), &[]);
-
-        let sender_whitelist = vec!["11".to_string(), "22".to_string(), "33".to_string()];
-        let msg = ExecuteMsg::UpdateSenderWhitelist {
-            sender_whitelist: sender_whitelist.clone(),
-        };
-
-        //incorrect owner
-        let state = State {
-            owner: Addr::unchecked("incorrect_owner".to_string()),
-        };
-        STATE.save(deps.as_mut().storage, &state).unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        match res {
-            Ok(_ret) => assert!(false),
-            _ => {}
-        }
-
-        let state = State {
-            owner: Addr::unchecked(owner.to_string()),
-        };
-
-        STATE.save(deps.as_mut().storage, &state).unwrap();
-
-        let splitter = Splitter {
-            recipients: vec![],
-            locked: false,
-            use_whitelist: true,
-            sender_whitelist: Whitelist { moderators: vec![] },
-            accepted_tokenlist: vec![],
-        };
-
-        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
-
-        //check result
-        let whitelisted = WHITELIST
-            .load(deps.as_ref().storage, "11".to_string())
-            .unwrap();
-        assert_eq!(true, whitelisted);
+        assert_eq!(updated.address_list.unwrap(), address_list);
     }
 
     #[test]
@@ -493,9 +317,7 @@ mod tests {
         let splitter = Splitter {
             recipients: vec![],
             locked: false,
-            use_whitelist: true,
-            sender_whitelist: Whitelist { moderators: vec![] },
-            accepted_tokenlist: vec![],
+            address_list: None,
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -548,15 +370,10 @@ mod tests {
         let splitter = Splitter {
             recipients: recipient,
             locked: false,
-            use_whitelist: true,
-            sender_whitelist: Whitelist { moderators: vec![] },
-            accepted_tokenlist: vec![],
+            address_list: None,
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
-        WHITELIST
-            .save(deps.as_mut().storage, owner.to_string().clone(), &true)
-            .unwrap();
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_ne!(Response::default(), res);
