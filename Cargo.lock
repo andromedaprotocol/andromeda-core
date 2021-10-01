@@ -53,6 +53,7 @@ dependencies = [
 name = "andromeda-timelock"
 version = "0.1.0"
 dependencies = [
+ "andromeda-protocol",
  "cosmwasm-std",
  "cw-storage-plus",
  "cw721",

@@ -1,5 +1,9 @@
 use crate::state::{State, SPLITTER, STATE};
-use andromeda_protocol::modules::address_list::AddressListModule;
+use andromeda_protocol::modules::address_list::{
+    on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST,
+};
+use andromeda_protocol::modules::hooks::MessageHooks;
+use andromeda_protocol::modules::Module;
 use andromeda_protocol::splitter::GetSplitterConfigResponse;
 use andromeda_protocol::{
     require::require,
@@ -9,28 +13,42 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, StdResult, SubMsg,
+    Reply, Response, StdError, StdResult, SubMsg,
 };
 // use std::collections::HashMap;
 
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     msg.validate()?;
-    let state = State { owner: info.sender };
+    let state = State {
+        owner: info.clone().sender,
+    };
 
     let splitter = Splitter {
         recipients: msg.recipients,
         locked: false,
-        address_list: msg.address_list,
+        address_list: msg.address_list.clone(),
     };
+
+    let mut res = Response::default();
+
+    if msg.address_list.is_some() {
+        let addr_res =
+            msg.address_list
+                .clone()
+                .unwrap()
+                .on_instantiate(&deps, info.clone(), env.clone())?;
+        res = res.add_submessages(addr_res.msgs);
+    }
+
     STATE.save(deps.storage, &state)?;
     SPLITTER.save(deps.storage, &splitter)?;
-    Ok(Response::default())
+    Ok(res)
 }
 
 #[entry_point]
@@ -52,6 +70,14 @@ pub fn execute(
     }
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+    match msg.id {
+        REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
+        _ => Err(StdError::generic_err("reply id is invalid")),
+    }
+}
+
 fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     let sent_funds: Vec<Coin> = info.funds.clone();
 
@@ -63,7 +89,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
         splitter
             .address_list
             .unwrap()
-            .is_authorized(deps.querier, info.sender.to_string())?;
+            .is_authorized(&deps, info.sender.to_string())?;
     }
 
     require(
@@ -161,7 +187,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 fn query_splitter(deps: Deps) -> StdResult<GetSplitterConfigResponse> {
     let splitter = SPLITTER.load(deps.storage)?;
-    Ok(GetSplitterConfigResponse { config: splitter })
+    let address_list_contract = match splitter.clone().address_list {
+        Some(addr_list) => addr_list.get_contract_address(deps.storage),
+        None => None,
+    };
+
+    Ok(GetSplitterConfigResponse {
+        config: splitter,
+        address_list_contract,
+    })
 }
 
 #[cfg(test)]
@@ -169,7 +203,7 @@ mod tests {
     use super::*;
     use andromeda_protocol::modules::address_list::AddressListModule;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{Addr, Coin, Uint128};
+    use cosmwasm_std::{from_binary, Addr, Coin, Uint128};
 
     #[test]
     fn test_instantiate() {
@@ -377,5 +411,35 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_ne!(Response::default(), res);
+    }
+
+    #[test]
+    fn test_query_splitter() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let splitter = Splitter {
+            recipients: vec![],
+            locked: false,
+            address_list: Some(AddressListModule {
+                address: Some(String::from("somecontractaddress")),
+                code_id: None,
+                moderators: None,
+                inclusive: false,
+            }),
+        };
+
+        SPLITTER
+            .save(deps.as_mut().storage, &splitter.clone())
+            .unwrap();
+
+        let query_msg = QueryMsg::GetSplitterConfig {};
+        let res = query(deps.as_ref(), env, query_msg).unwrap();
+        let val: GetSplitterConfigResponse = from_binary(&res).unwrap();
+
+        assert_eq!(val.config, splitter);
+        assert_eq!(
+            val.address_list_contract.unwrap(),
+            splitter.address_list.unwrap().address.unwrap()
+        );
     }
 }

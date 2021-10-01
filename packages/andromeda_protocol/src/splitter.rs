@@ -66,6 +66,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 pub struct GetSplitterConfigResponse {
     pub config: Splitter,
+    pub address_list_contract: Option<String>,
 }
 
 #[cfg(test)]

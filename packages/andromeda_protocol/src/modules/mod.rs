@@ -66,6 +66,9 @@ pub enum ModuleDefinition {
 pub trait Module: MessageHooks {
     fn validate(&self, modules: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
+    fn get_contract_address(&self, _storage: &dyn Storage) -> Option<String> {
+        None
+    }
 }
 
 impl ModuleDefinition {
@@ -157,7 +160,7 @@ impl Modules {
         let modules = self.to_modules();
         let mut resp = HookResponse::default();
         for module in modules {
-            let mod_res = module.on_instantiate(&deps, info.clone(), env.clone())?;
+            let mod_res = module.on_instantiate(deps, info.clone(), env.clone())?;
             resp = resp.add_resp(mod_res);
         }
 

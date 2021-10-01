@@ -5,4 +5,5 @@ pub mod modules;
 pub mod require;
 pub mod response;
 pub mod splitter;
+pub mod timelock;
 pub mod token;

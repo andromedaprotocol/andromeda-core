@@ -1,3 +1,4 @@
+use andromeda_protocol::modules::address_list::REPLY_ADDRESS_LIST;
 use andromeda_protocol::modules::{
     address_list::on_address_list_reply, common::require, read_modules, store_modules, Modules,
 };
@@ -59,7 +60,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     match msg.id {
-        2 => on_address_list_reply(deps, msg),
+        REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
         _ => Err(StdError::generic_err("reply id is invalid")),
     }
 }

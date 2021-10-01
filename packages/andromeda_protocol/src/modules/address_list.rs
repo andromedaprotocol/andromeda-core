@@ -1,8 +1,8 @@
 use cosmwasm_std::{
-    to_binary, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, ReplyOn, Response, StdError,
-    StdResult, Storage, SubMsg, WasmMsg,
+    to_binary, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult, Storage,
+    SubMsg, WasmMsg,
 };
-use cw_storage_plus::Map;
+use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +12,7 @@ use crate::{
     modules::{
         common::is_unique,
         hooks::{HookResponse, MessageHooks},
-        store_modules, {Module, ModuleDefinition},
+        {Module, ModuleDefinition},
     },
     require::require,
     token::ExecuteMsg,
@@ -21,7 +21,8 @@ use protobuf::Message;
 
 use super::read_modules;
 
-pub const WHITELIST: Map<String, bool> = Map::new("whitelist");
+pub const ADDRESS_LIST_CONTRACT: Item<String> = Item::new("addresslistcontract");
+pub const REPLY_ADDRESS_LIST: u64 = 2;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AddressListModule {
@@ -32,14 +33,15 @@ pub struct AddressListModule {
 }
 
 impl AddressListModule {
-    pub fn is_authorized(self, querier: QuerierWrapper, address: String) -> StdResult<bool> {
+    pub fn is_authorized(self, deps: &DepsMut, address: String) -> StdResult<bool> {
+        let contract_addr = self.get_contract_address(deps.storage);
         require(
-            self.address.clone().is_some(),
+            contract_addr.is_some(),
             StdError::generic_err("Address list does not have an assigned contract address"),
         )?;
 
-        let contract_addr = self.address.clone().unwrap();
-        let includes_address = query_includes_address(querier, contract_addr, address.clone())?;
+        let includes_address =
+            query_includes_address(deps.querier, contract_addr.unwrap(), address.clone())?;
         require(
             includes_address == self.inclusive,
             StdError::generic_err("Address is not authorized"),
@@ -92,6 +94,12 @@ impl Module for AddressListModule {
             },
         }
     }
+    fn get_contract_address(&self, storage: &dyn Storage) -> Option<String> {
+        if self.address.clone().is_some() {
+            return Some(self.address.clone().unwrap());
+        }
+        ADDRESS_LIST_CONTRACT.may_load(storage).unwrap()
+    }
 }
 
 impl MessageHooks for AddressListModule {
@@ -116,7 +124,7 @@ impl MessageHooks for AddressListModule {
             let msg = SubMsg {
                 msg: inst_msg.into(),
                 gas_limit: None,
-                id: 2,
+                id: REPLY_ADDRESS_LIST,
                 reply_on: ReplyOn::Success,
             };
 
@@ -132,8 +140,7 @@ impl MessageHooks for AddressListModule {
         _env: Env,
         _msg: ExecuteMsg,
     ) -> StdResult<HookResponse> {
-        self.clone()
-            .is_authorized(deps.querier, info.sender.to_string())?;
+        self.clone().is_authorized(deps, info.sender.to_string())?;
 
         Ok(HookResponse::default())
     }
@@ -181,41 +188,7 @@ pub fn on_address_list_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
         })?;
     let receipt_addr = res.get_contract_address();
 
-    let mut modules = read_modules(deps.storage)?;
-    let addr_list_index = get_address_list_module_index(deps.storage)?;
-    let addr_list = get_address_list_module(deps.storage)?;
-
-    match addr_list {
-        ModuleDefinition::Whitelist {
-            address: _,
-            code_id,
-            moderators,
-        } => {
-            let new_address_list = AddressListModule {
-                address: Some(String::from(receipt_addr)),
-                code_id: code_id.clone(),
-                moderators: moderators.clone(),
-                inclusive: true,
-            };
-            modules.module_defs[addr_list_index] = new_address_list.as_definition();
-        }
-        ModuleDefinition::Blacklist {
-            address: _,
-            code_id,
-            moderators,
-        } => {
-            let new_address_list = AddressListModule {
-                address: Some(String::from(receipt_addr)),
-                code_id: code_id.clone(),
-                moderators: moderators.clone(),
-                inclusive: false,
-            };
-            modules.module_defs[addr_list_index] = new_address_list.as_definition();
-        }
-        _ => {}
-    }
-
-    store_modules(deps.storage, modules)?;
+    ADDRESS_LIST_CONTRACT.save(deps.storage, &receipt_addr.to_string())?;
 
     Ok(Response::new())
 }
