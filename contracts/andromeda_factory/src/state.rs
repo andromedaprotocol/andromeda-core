@@ -12,6 +12,7 @@ pub struct Config {
     pub owner: String,
     pub token_code_id: u64,
     pub receipt_code_id: u64,
+    pub address_list_code_id: u64,
 }
 
 pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()> {

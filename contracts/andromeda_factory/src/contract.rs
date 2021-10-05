@@ -27,6 +27,7 @@ pub fn instantiate(
         &Config {
             token_code_id: msg.token_code_id,
             receipt_code_id: msg.receipt_code_id,
+            address_list_code_id: msg.address_list_code_id,
             owner: String::default(),
         },
     )?;
@@ -69,7 +70,32 @@ pub fn create(
         StdError::generic_err("Symbol is in use"),
     )?;
 
-    Ok(Response::new().add_message(WasmMsg::Instantiate {
+    let updated_modules: Vec<ModuleDefinition> = modules
+        .iter()
+        .map(|m| match m {
+            ModuleDefinition::Whitelist {
+                address,
+                moderators,
+                code_id: _,
+            } => ModuleDefinition::Whitelist {
+                address: address.clone(),
+                moderators: moderators.clone(),
+                code_id: Some(config.address_list_code_id.clone()),
+            },
+            ModuleDefinition::Blacklist {
+                address,
+                moderators,
+                code_id: _,
+            } => ModuleDefinition::Blacklist {
+                address: address.clone(),
+                moderators: moderators.clone(),
+                code_id: Some(config.address_list_code_id.clone()),
+            },
+            _ => m.clone(),
+        })
+        .collect();
+
+    let resp = Response::new().add_message(WasmMsg::Instantiate {
         code_id: config.token_code_id,
         funds: vec![],
         label: "".to_string(),
@@ -78,8 +104,8 @@ pub fn create(
             name: name.to_string(),
             symbol: symbol.to_string(),
             minter: info.sender.to_string(),
-            modules,
             receipt_code_id: config.receipt_code_id,
+            modules: updated_modules,
             init_hook: Some(InitHook {
                 msg: to_binary(&ExecuteMsg::TokenCreationHook {
                     symbol: symbol.to_string(),
@@ -87,9 +113,12 @@ pub fn create(
                 })?,
                 contract_addr: info.sender.to_string(),
             }),
+            address_list_code_id: Some(config.address_list_code_id),
             metadata_limit,
         })?,
-    }))
+    });
+
+    Ok(resp)
 }
 
 pub fn token_creation(
@@ -153,6 +182,7 @@ mod tests {
     static TOKEN_CODE_ID: u64 = 0;
     static RECEIPT_CODE_ID: u64 = 1;
 
+    static ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
 
@@ -163,6 +193,7 @@ mod tests {
         let msg = InstantiateMsg {
             token_code_id: TOKEN_CODE_ID,
             receipt_code_id: RECEIPT_CODE_ID,
+            address_list_code_id: ADDRESS_LIST_CODE_ID,
         };
         let env = mock_env();
 
@@ -179,6 +210,7 @@ mod tests {
         let init_msg = InstantiateMsg {
             token_code_id: TOKEN_CODE_ID,
             receipt_code_id: RECEIPT_CODE_ID,
+            address_list_code_id: ADDRESS_LIST_CODE_ID,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), init_msg).unwrap();
@@ -210,6 +242,7 @@ mod tests {
                     .unwrap(),
                     contract_addr: info.sender.to_string(),
                 }),
+                address_list_code_id: Some(ADDRESS_LIST_CODE_ID),
                 metadata_limit: None,
             })
             .unwrap(),

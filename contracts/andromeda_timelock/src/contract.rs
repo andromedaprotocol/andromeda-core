@@ -1,147 +1,190 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo,
-    Response, StdResult, StdError, Coin, BankMsg,
+    entry_point, to_binary, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, StdResult,
 };
 
-use cw721::{ Expiration };
+use cw721::Expiration;
 
-use crate::{
-    msg::{ ExecuteMsg, InstantiateMsg, QueryMsg, },
-    state::{ State, STATE, HoldFunds, },
+use crate::state::{State, STATE};
+use andromeda_protocol::{
+    modules::address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
+    modules::{hooks::MessageHooks, Module},
+    require::require,
+    timelock::{
+        get_funds, hold_funds, release_funds, Escrow, ExecuteMsg, GetLockedFundsResponse,
+        GetTimelockConfigResponse, InstantiateMsg, QueryMsg,
+    },
 };
 
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let state = State {
-        owner: info.sender,
+        owner: info.sender.clone(),
+        address_list: msg.address_list.clone(),
     };
+
+    let mut res = Response::default();
+
+    if msg.address_list.is_some() {
+        let addr_res =
+            msg.address_list
+                .clone()
+                .unwrap()
+                .on_instantiate(&deps, info.clone(), env.clone())?;
+        res = res.add_submessages(addr_res.msgs);
+    }
+
     STATE.save(deps.storage, &state)?;
-    Ok(Response::default())
+    Ok(res)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+    match msg.id {
+        REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
+        _ => Err(StdError::generic_err("reply id is invalid")),
+    }
 }
 
 #[entry_point]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> StdResult<Response> {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+    let state = STATE.load(deps.storage)?;
+
+    if state.address_list.is_some() {
+        let addr_list = state.address_list.unwrap();
+        addr_list.on_execute(&deps, info.clone(), env.clone())?;
+    }
+
     match msg {
-        ExecuteMsg::HoldFunds { expire } => execute_hold_funds(deps, info, expire),
-        ExecuteMsg::ReleaseFunds { } => execute_release_funds(deps, env, info),
+        ExecuteMsg::HoldFunds {
+            expiration,
+            recipient,
+        } => execute_hold_funds(deps, info, expiration, recipient),
+        ExecuteMsg::ReleaseFunds {} => execute_release_funds(deps, env, info),
     }
 }
 
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetLockedFunds { address } => query_process(deps, address),
+        QueryMsg::GetLockedFunds { address } => to_binary(&query_held_funds(deps, address)?),
+        QueryMsg::GetTimelockConfig {} => to_binary(&query_config(deps)?),
     }
 }
 
-fn query_process(deps: Deps, address: String) -> StdResult<Binary> {
+fn query_held_funds(deps: Deps, address: String) -> StdResult<GetLockedFundsResponse> {
+    let hold_funds = get_funds(deps.storage, address.clone())?;
+    Ok(GetLockedFundsResponse { funds: hold_funds })
+}
 
-    let hold_funds = HoldFunds::get_funds( deps.storage, address.clone())?; // StdResult<Option<HoldFunds>>
-    match hold_funds {
-        None => Err(StdError::generic_err("No locked funds for your account")),
-        Some(f) => {
-            to_binary(&f) //HoldFunds
-        }
-    }
+fn query_config(deps: Deps) -> StdResult<GetTimelockConfigResponse> {
+    let state = STATE.load(deps.storage)?;
+
+    let address_list_contract = match state.address_list.clone() {
+        None => None,
+        Some(addr_list) => addr_list.get_contract_address(deps.storage),
+    };
+
+    Ok(GetTimelockConfigResponse {
+        address_list: state.address_list,
+        address_list_contract,
+    })
 }
 
 fn execute_hold_funds(
     deps: DepsMut,
     info: MessageInfo,
-    expire: Expiration
-) ->  StdResult<Response> {
+    expiration: Expiration,
+    recipient: Option<String>,
+) -> StdResult<Response> {
+    let result: Option<Escrow> = get_funds(deps.storage, info.sender.to_string())?;
+    require(
+        result.is_none(),
+        StdError::generic_err("Funds are already being held for this address"),
+    )?;
 
-    let result:Option<HoldFunds> = HoldFunds::get_funds( deps.storage, info.sender.to_string())?;  // StdResult<Option<HoldFunds>>
-
-    let sent_funds:Vec<Coin> = info.funds.clone();
-
+    let sent_funds: Vec<Coin> = info.funds.clone();
     if sent_funds.len() == 0 {
-        return Err(StdError::generic_err("Need funds to hold on"));
+        return Err(StdError::generic_err("No funds provided"));
     }
 
-    // locked
-    if let Some( _ ) = result {
-        return Ok( Response::new().add_message(
-            BankMsg::Send {
-                to_address: info.sender.to_string(),
-                amount: sent_funds,
-            }
-            ).add_attribute("action", "return coins")
-        );
-    }
+    let rec = recipient.unwrap_or(info.sender.to_string());
 
-    let hold_funds = HoldFunds{
+    let escrow = Escrow {
         coins: sent_funds,
-        expire,
+        expiration,
+        recipient: rec,
     };
-    hold_funds.hold_funds(deps.storage, info.sender.to_string())?;
+    hold_funds(escrow, deps.storage, info.sender.to_string())?;
 
     Ok(Response::default())
 }
 
-fn execute_release_funds(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo
-) -> StdResult<Response> {
-    let result:Option<HoldFunds> = HoldFunds::get_funds( deps.storage, info.sender.to_string())?;  // StdResult<Option<HoldFunds>>
+fn execute_release_funds(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
+    let result: Option<Escrow> = get_funds(deps.storage, info.sender.to_string())?; // StdResult<Option<HoldFunds>>
 
-    if result == None {
-        return Err(StdError::generic_err("No locked funds for your account"));
+    if result.is_none() {
+        return Err(StdError::generic_err("No locked funds for your address"));
     }
-    let funds: HoldFunds = result.unwrap();
 
-    match funds.expire {
+    let funds: Escrow = result.unwrap();
+
+    match funds.expiration {
         Expiration::AtTime(t) => {
             if t > env.block.time {
-                return Err(StdError::generic_err("locked funds for your account"));
+                return Err(StdError::generic_err("Your funds are still locked"));
             }
-        },
+        }
         Expiration::AtHeight(h) => {
             if h > env.block.height {
-                return Err(StdError::generic_err("locked funds for your account"));
+                return Err(StdError::generic_err("Your funds are still locked"));
             }
-        },
-        Expiration::Never{} => { }
+        }
+        Expiration::Never {} => {}
     }
 
-    HoldFunds::relase_hold_funds(deps.storage, info.sender.to_string());
-    Ok( Response::new().add_message(
-        BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: funds.coins,
-        }
-    ))
+    release_funds(deps.storage, info.sender.to_string());
+    Ok(Response::new().add_message(BankMsg::Send {
+        to_address: funds.recipient,
+        amount: funds.coins,
+    }))
 }
-
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{
+        from_binary,
+        testing::{mock_dependencies, mock_env, mock_info},
+        Addr,
+    };
+
+    fn mock_state() -> State {
+        State {
+            owner: Addr::unchecked("owner"),
+            address_list: None,
+        }
+    }
+
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { address_list: None };
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+
         assert_eq!(0, res.messages.len());
+
         //checking
         let state = STATE.load(deps.as_ref().storage).unwrap();
-        assert!( state.owner == owner );
+        assert_eq!(state.owner, owner);
     }
 
     #[test]
@@ -149,15 +192,34 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
-        let info = mock_info(owner, &vec![Coin::new(1000, "uusd")]);
+        let funds = vec![Coin::new(1000, "uusd")];
+        let expiration = Expiration::Never {};
+        let info = mock_info(owner, &funds.clone());
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
+
         let msg = ExecuteMsg::HoldFunds {
-            expire: Expiration::Never{}
+            expiration: Expiration::Never {},
+            recipient: None,
         };
 
         //add address for registered moderator
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!( Response::default(), res );
+        assert_eq!(Response::default(), res);
+
+        let query_msg = QueryMsg::GetLockedFunds {
+            address: owner.to_string(),
+        };
+
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let val: GetLockedFundsResponse = from_binary(&res).unwrap();
+        let expected = Escrow {
+            coins: funds.clone(),
+            expiration: expiration.clone(),
+            recipient: owner.to_string(),
+        };
+
+        assert_eq!(val.funds.unwrap(), expected);
     }
 
     #[test]
@@ -165,10 +227,13 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
+        let funds = vec![Coin::new(1000, "uusd")];
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
-        let info = mock_info(owner, &vec![Coin::new(1000, "uusd")]);
+        let info = mock_info(owner, &funds.clone());
         let msg = ExecuteMsg::HoldFunds {
-            expire: Expiration::Never{}
+            expiration: Expiration::Never {},
+            recipient: None,
         };
 
         //add address for registered moderator
@@ -177,14 +242,13 @@ mod tests {
         let info = mock_info(owner, &[]);
         let msg = ExecuteMsg::ReleaseFunds {};
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_ne!( Response::default(), res );
+        let bank_msg = BankMsg::Send {
+            to_address: owner.to_string(),
+            amount: funds.clone(),
+        };
+
+        let expected = Response::default().add_message(bank_msg);
+
+        assert_eq!(res, expected);
     }
-
-
-
-
-
 }
-
-
-

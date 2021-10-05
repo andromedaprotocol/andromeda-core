@@ -1,22 +1,20 @@
-pub mod blacklist;
+pub mod address_list;
 pub mod common;
 pub mod hooks;
 pub mod royalties;
 pub mod taxable;
-pub mod whitelist;
 
 use crate::modules::{
-    hooks::MessageHooks, royalties::Royalty, taxable::Taxable, whitelist::Whitelist,
+    address_list::AddressListModule,
+    hooks::{HookResponse, MessageHooks},
+    royalties::Royalty,
+    taxable::Taxable,
 };
-use crate::token::ExecuteMsg;
 use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, Storage, Uint128};
 use cw721::Expiration;
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use self::blacklist::Blacklist;
-use self::hooks::HookResponse;
 
 pub const MODULES: Item<Modules> = Item::new("modules");
 
@@ -38,10 +36,14 @@ pub enum Rate {
 #[serde(rename_all = "snake_case")]
 pub enum ModuleDefinition {
     Whitelist {
-        moderators: Vec<String>,
+        address: Option<String>,
+        code_id: Option<u64>,
+        moderators: Option<Vec<String>>,
     },
     Blacklist {
-        moderators: Vec<String>,
+        address: Option<String>,
+        code_id: Option<u64>,
+        moderators: Option<Vec<String>>,
     },
     Taxable {
         rate: Rate,
@@ -58,16 +60,33 @@ pub enum ModuleDefinition {
 pub trait Module: MessageHooks {
     fn validate(&self, modules: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
+    fn get_contract_address(&self, _storage: &dyn Storage) -> Option<String> {
+        None
+    }
 }
 
 impl ModuleDefinition {
     pub fn as_module(&self) -> Box<dyn Module> {
         match self {
-            ModuleDefinition::Whitelist { moderators } => Box::from(Whitelist {
+            ModuleDefinition::Whitelist {
+                address,
+                code_id,
+                moderators,
+            } => Box::from(AddressListModule {
                 moderators: moderators.clone(),
+                address: address.clone(),
+                code_id: code_id.clone(),
+                inclusive: true,
             }),
-            ModuleDefinition::Blacklist { moderators } => Box::from(Blacklist {
+            ModuleDefinition::Blacklist {
+                address,
+                code_id,
+                moderators,
+            } => Box::from(AddressListModule {
                 moderators: moderators.clone(),
+                address: address.clone(),
+                code_id: code_id.clone(),
+                inclusive: false,
             }),
             ModuleDefinition::Taxable {
                 rate,
@@ -119,16 +138,25 @@ impl Modules {
 
         Ok(true)
     }
-    pub fn on_execute(
+    pub fn on_instantiate(
         &self,
         deps: &DepsMut,
         info: MessageInfo,
         env: Env,
-        msg: ExecuteMsg,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
+        let modules = self.to_modules();
+        let mut resp = HookResponse::default();
+        for module in modules {
+            let mod_res = module.on_instantiate(deps, info.clone(), env.clone())?;
+            resp = resp.add_resp(mod_res);
+        }
+
+        Ok(resp)
+    }
+    pub fn on_execute(&self, deps: &DepsMut, info: MessageInfo, env: Env) -> StdResult<()> {
         let modules = self.to_modules();
         for module in modules {
-            module.on_execute(&deps, info.clone(), env.clone(), msg.clone())?;
+            module.on_execute(&deps, info.clone(), env.clone())?;
         }
 
         Ok(())
@@ -351,12 +379,10 @@ impl Modules {
     }
 }
 
-pub fn store_modules(
-    storage: &mut dyn Storage,
-    module_defs: Vec<ModuleDefinition>,
-) -> StdResult<()> {
+//Converts a ModuleDefinition to a Module struct
+
+pub fn store_modules(storage: &mut dyn Storage, modules: Modules) -> StdResult<()> {
     //Validate each module before storing
-    let modules = Modules::new(module_defs);
     modules.validate()?;
 
     MODULES.save(storage, &modules)

@@ -1,11 +1,13 @@
-use andromeda_protocol::modules::whitelist::Whitelist;
+use andromeda_protocol::{
+    address_list::{AddressList, ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg},
+    require::require,
+};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
 };
 
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, IsWhitelistedResponse, QueryMsg},
     state::{State, STATE},
 };
 
@@ -18,7 +20,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let state = State {
         creator: info.sender.to_string(),
-        whitelist: Whitelist {
+        address_list: AddressList {
             moderators: msg.moderators.clone(),
         },
     };
@@ -34,42 +36,39 @@ pub fn execute(
     _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> StdResult<Response> {
     match msg {
-        ExecuteMsg::Whitelist { address } => execute_whitelist(deps, info, address),
-        ExecuteMsg::RemoveWhitelist { address } => execute_remove_whitelist(deps, info, address),
+        ExecuteMsg::AddAddress { address } => execute_add_address(deps, info, address),
+        ExecuteMsg::RemoveAddress { address } => execute_remove_address(deps, info, address),
     }
 }
 
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::IsWhitelisted { address } => query_process(deps, &address),
+        QueryMsg::IncludesAddress { address } => to_binary(&query_address(deps, &address)?),
     }
 }
 
-fn query_process(deps: Deps, address: &String) -> StdResult<Binary> {
+fn query_address(deps: Deps, address: &String) -> StdResult<IncludesAddressResponse> {
     let state = STATE.load(deps.storage)?;
 
-    to_binary(&IsWhitelistedResponse {
-        whitelisted: state.whitelist.is_whitelisted(deps.storage, address)?,
+    Ok(IncludesAddressResponse {
+        included: state.address_list.includes_address(deps.storage, address)?,
     })
 }
 
-fn execute_whitelist(
-    deps: DepsMut,
-    info: MessageInfo,
-    address: String,
-) -> Result<Response, ContractError> {
+fn execute_add_address(deps: DepsMut, info: MessageInfo, address: String) -> StdResult<Response> {
     let state = STATE.load(deps.storage)?;
 
-    if state.whitelist.is_moderator(&info.sender.to_string()) == false {
-        return Err(ContractError::Unauthorized {});
-    }
+    require(
+        state.address_list.is_moderator(&info.sender.to_string()),
+        StdError::generic_err("Only a moderator can add an address to the address list"),
+    )?;
 
     state
-        .whitelist
-        .whitelist_addr(deps.storage, &address)
+        .address_list
+        .add_address(deps.storage, &address)
         .unwrap();
 
     STATE.save(deps.storage, &state)?;
@@ -77,19 +76,20 @@ fn execute_whitelist(
     Ok(Response::new())
 }
 
-fn execute_remove_whitelist(
+fn execute_remove_address(
     deps: DepsMut,
     info: MessageInfo,
     address: String,
-) -> Result<Response, ContractError> {
+) -> StdResult<Response> {
     let state = STATE.load(deps.storage)?;
-    if state.whitelist.is_moderator(&info.sender.to_string()) == false {
-        return Err(ContractError::Unauthorized {});
-    }
+    require(
+        state.address_list.is_moderator(&info.sender.to_string()),
+        StdError::generic_err("Only a moderator can remove an address from the address list"),
+    )?;
 
     state
-        .whitelist
-        .remove_whitelist(deps.storage, &address)
+        .address_list
+        .remove_address(deps.storage, &address)
         .unwrap();
     STATE.save(deps.storage, &state)?;
 
@@ -99,7 +99,7 @@ fn execute_remove_whitelist(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::modules::whitelist::WHITELIST;
+    use andromeda_protocol::address_list::ADDRESS_LIST;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
@@ -108,7 +108,6 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            creator: String::from("creator"),
             moderators: vec!["11".to_string(), "22".to_string()],
         };
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
@@ -116,28 +115,28 @@ mod tests {
     }
 
     #[test]
-    fn test_whitelist() {
+    fn test_add_address() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
         let moderator = "creator";
         let info = mock_info(moderator.clone(), &[]);
 
-        let whitelistee = "whitelistee";
+        let address = "whitelistee";
 
         //input moderator for test
 
         let state = State {
             creator: moderator.to_string(),
-            whitelist: Whitelist {
+            address_list: AddressList {
                 moderators: vec![moderator.to_string()],
             },
         };
 
         STATE.save(deps.as_mut().storage, &state).unwrap();
 
-        let msg = ExecuteMsg::Whitelist {
-            address: whitelistee.to_string(),
+        let msg = ExecuteMsg::AddAddress {
+            address: address.to_string(),
         };
 
         //add address for registered moderator
@@ -145,16 +144,16 @@ mod tests {
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(Response::default(), res);
 
-        let whitelisted = WHITELIST
-            .load(deps.as_ref().storage, whitelistee.to_string())
+        let whitelisted = ADDRESS_LIST
+            .load(deps.as_ref().storage, address.to_string())
             .unwrap();
         assert_eq!(true, whitelisted);
 
-        let whitelisted = WHITELIST
+        let included = ADDRESS_LIST
             .load(deps.as_ref().storage, "111".to_string())
             .unwrap_err();
 
-        match whitelisted {
+        match included {
             cosmwasm_std::StdError::NotFound { .. } => {
                 assert_eq!(false, false);
             }
@@ -163,17 +162,18 @@ mod tests {
             }
         }
 
-        // assert_eq!(cosmwasm_std::StdError::NotFound {kind: }, whitelisted);
-
         //add address for unregistered moderator
         let unauth_info = mock_info("anyone", &[]);
         let res =
             execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
-        assert_eq!(ContractError::Unauthorized {}, res);
+        assert_eq!(
+            StdError::generic_err("Only a moderator can add an address to the address list"),
+            res
+        );
     }
 
     #[test]
-    fn test_remove_whitelist() {
+    fn test_remove_address() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
@@ -186,14 +186,14 @@ mod tests {
 
         let state = State {
             creator: moderator.to_string(),
-            whitelist: Whitelist {
+            address_list: AddressList {
                 moderators: vec![moderator.to_string()],
             },
         };
 
         STATE.save(deps.as_mut().storage, &state).unwrap();
 
-        let msg = ExecuteMsg::RemoveWhitelist {
+        let msg = ExecuteMsg::RemoveAddress {
             address: whitelistee.to_string(),
         };
 
@@ -201,7 +201,7 @@ mod tests {
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(Response::default(), res);
 
-        let whitelisted = WHITELIST
+        let whitelisted = ADDRESS_LIST
             .load(deps.as_ref().storage, whitelistee.to_string())
             .unwrap();
         assert_eq!(false, whitelisted);
@@ -210,6 +210,9 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
         let res =
             execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
-        assert_eq!(ContractError::Unauthorized {}, res);
+        assert_eq!(
+            StdError::generic_err("Only a moderator can remove an address from the address list"),
+            res
+        );
     }
 }

@@ -99,6 +99,7 @@ pub struct InstantiateMsg {
 
     //code id for receipt contract
     pub receipt_code_id: u64,
+    pub address_list_code_id: Option<u64>,
 
     //A hook for if the contract is instantiated by the factory
     pub init_hook: Option<InitHook>,
@@ -165,14 +166,6 @@ pub enum ExecuteMsg {
         denom: String,
         amount: Uint128,
         purchaser: String,
-    },
-    Whitelist {
-        address: String,
-        whitelisted: bool,
-    },
-    Blacklist {
-        address: String,
-        blacklisted: bool,
     },
 }
 
