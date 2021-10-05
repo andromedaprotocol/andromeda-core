@@ -1,8 +1,9 @@
-use andromeda_protocol::address_list::{
-    AddressList, ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg,
+use andromeda_protocol::{
+    address_list::{AddressList, ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg},
+    require::require,
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
 };
 
 use crate::{
@@ -35,7 +36,7 @@ pub fn execute(
     _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> StdResult<Response> {
     match msg {
         ExecuteMsg::AddAddress { address } => execute_add_address(deps, info, address),
         ExecuteMsg::RemoveAddress { address } => execute_remove_address(deps, info, address),
@@ -57,16 +58,13 @@ fn query_address(deps: Deps, address: &String) -> StdResult<IncludesAddressRespo
     })
 }
 
-fn execute_add_address(
-    deps: DepsMut,
-    info: MessageInfo,
-    address: String,
-) -> Result<Response, ContractError> {
+fn execute_add_address(deps: DepsMut, info: MessageInfo, address: String) -> StdResult<Response> {
     let state = STATE.load(deps.storage)?;
 
-    if state.address_list.is_moderator(&info.sender.to_string()) == false {
-        return Err(ContractError::Unauthorized {});
-    }
+    require(
+        state.address_list.is_moderator(&info.sender.to_string()),
+        StdError::generic_err("Only a moderator can add an address to the address list"),
+    )?;
 
     state
         .address_list
@@ -82,11 +80,12 @@ fn execute_remove_address(
     deps: DepsMut,
     info: MessageInfo,
     address: String,
-) -> Result<Response, ContractError> {
+) -> StdResult<Response> {
     let state = STATE.load(deps.storage)?;
-    if state.address_list.is_moderator(&info.sender.to_string()) == false {
-        return Err(ContractError::Unauthorized {});
-    }
+    require(
+        state.address_list.is_moderator(&info.sender.to_string()),
+        StdError::generic_err("Only a moderator can remove an address from the address list"),
+    )?;
 
     state
         .address_list
@@ -167,7 +166,10 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
         let res =
             execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
-        assert_eq!(ContractError::Unauthorized {}, res);
+        assert_eq!(
+            StdError::generic_err("Only a moderator can add an address to the address list"),
+            res
+        );
     }
 
     #[test]
@@ -208,6 +210,9 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
         let res =
             execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
-        assert_eq!(ContractError::Unauthorized {}, res);
+        assert_eq!(
+            StdError::generic_err("Only a moderator can remove an address from the address list"),
+            res
+        );
     }
 }

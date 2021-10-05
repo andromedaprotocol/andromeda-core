@@ -7,7 +7,6 @@ pub mod taxable;
 
 use crate::modules::taxable::Taxable;
 use crate::modules::{address_list::AddressListModule, hooks::MessageHooks};
-use crate::token::ExecuteMsg;
 use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, Storage, Uint128};
 use cw721::Expiration;
 use cw_storage_plus::Item;
@@ -166,16 +165,10 @@ impl Modules {
 
         Ok(resp)
     }
-    pub fn on_execute(
-        &self,
-        deps: &DepsMut,
-        info: MessageInfo,
-        env: Env,
-        msg: ExecuteMsg,
-    ) -> StdResult<()> {
+    pub fn on_execute(&self, deps: &DepsMut, info: MessageInfo, env: Env) -> StdResult<()> {
         let modules = self.to_modules();
         for module in modules {
-            module.on_execute(&deps, info.clone(), env.clone(), msg.clone())?;
+            module.on_execute(&deps, info.clone(), env.clone())?;
         }
 
         Ok(())

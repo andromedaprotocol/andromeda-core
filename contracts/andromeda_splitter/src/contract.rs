@@ -52,12 +52,14 @@ pub fn instantiate(
 }
 
 #[entry_point]
-pub fn execute(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> StdResult<Response> {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+    let splitter = SPLITTER.load(deps.storage)?;
+
+    if splitter.address_list.is_some() {
+        let addr_list = splitter.address_list.unwrap();
+        addr_list.on_execute(&deps, info.clone(), env.clone())?;
+    }
+
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => {
             execute_update_recipients(deps, info, recipients)

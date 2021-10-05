@@ -68,7 +68,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_execute(&deps, info.clone(), env.clone(), msg.clone())?;
+    modules.on_execute(&deps, info.clone(), env.clone())?;
 
     match msg {
         ExecuteMsg::Mint(msg) => execute_mint(deps, env, info, msg),

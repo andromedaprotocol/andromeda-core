@@ -15,7 +15,6 @@ use crate::{
         {Module, ModuleDefinition},
     },
     require::require,
-    token::ExecuteMsg,
 };
 use protobuf::Message;
 
@@ -133,13 +132,7 @@ impl MessageHooks for AddressListModule {
 
         Ok(res)
     }
-    fn on_execute(
-        &self,
-        deps: &DepsMut,
-        info: MessageInfo,
-        _env: Env,
-        _msg: ExecuteMsg,
-    ) -> StdResult<HookResponse> {
+    fn on_execute(&self, deps: &DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
         self.clone().is_authorized(deps, info.sender.to_string())?;
 
         Ok(HookResponse::default())

@@ -1,8 +1,6 @@
 use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, SubMsg};
 use cw721::Expiration;
 
-use crate::token::ExecuteMsg;
-
 #[derive(Debug, PartialEq)]
 pub struct HookResponse {
     pub msgs: Vec<SubMsg>,
@@ -38,7 +36,6 @@ pub trait MessageHooks {
         _deps: &DepsMut,
         _info: MessageInfo,
         _env: Env,
-        _msg: ExecuteMsg,
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }
