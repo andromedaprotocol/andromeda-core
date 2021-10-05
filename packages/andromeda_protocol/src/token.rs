@@ -83,6 +83,9 @@ pub struct InstantiateMsg {
     //The attached Andromeda modules
     pub modules: Vec<ModuleDefinition>,
 
+    //code id for receipt contract
+    pub address_list_code_id: Option<u64>,
+
     //A hook for if the contract is instantiated by the factory
     pub init_hook: Option<InitHook>,
     //An optional limit for token metadata size
@@ -148,14 +151,6 @@ pub enum ExecuteMsg {
         denom: String,
         amount: Uint128,
         purchaser: String,
-    },
-    Whitelist {
-        address: String,
-        whitelisted: bool,
-    },
-    Blacklist {
-        address: String,
-        blacklisted: bool,
     },
 }
 

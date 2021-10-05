@@ -40,7 +40,7 @@ pub fn is_unique<M: Module>(module: &M, all_modules: &Vec<ModuleDefinition>) -> 
         }
     });
 
-    total == 1
+    total <= 1
 }
 
 pub fn deduct_funds(coins: &mut Vec<Coin>, funds: Coin) -> StdResult<bool> {
@@ -93,16 +93,28 @@ pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::modules::address_list::AddressListModule;
+    use crate::modules::FlatRate;
     use crate::modules::Rate;
-    use crate::modules::{whitelist::Whitelist, FlatRate};
     use cosmwasm_std::{coin, Uint128};
 
     #[test]
     fn test_is_unique() {
-        let module = Whitelist { moderators: vec![] };
-        let duplicate_module = ModuleDefinition::Whitelist { moderators: vec![] };
+        let module = AddressListModule {
+            moderators: Some(vec![]),
+            address: None,
+            code_id: None,
+            inclusive: true,
+        };
+        let duplicate_module = ModuleDefinition::Whitelist {
+            moderators: Some(vec![]),
+            address: None,
+            code_id: None,
+        };
         let similar_module = ModuleDefinition::Whitelist {
-            moderators: vec![String::default()],
+            moderators: Some(vec![String::default()]),
+            address: None,
+            code_id: None,
         };
         let other_module = ModuleDefinition::Taxable {
             rate: Rate::Percent(2),

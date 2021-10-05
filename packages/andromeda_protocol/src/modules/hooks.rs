@@ -1,26 +1,41 @@
-use cosmwasm_std::{BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, StdResult};
+use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, SubMsg};
 use cw721::Expiration;
-
-use crate::token::ExecuteMsg;
 
 #[derive(Debug, PartialEq)]
 pub struct HookResponse {
-    pub msgs: Vec<CosmosMsg>,
+    pub msgs: Vec<SubMsg>,
 }
 
 impl HookResponse {
     pub fn default() -> Self {
         HookResponse { msgs: vec![] }
     }
+    pub fn add_message(mut self, message: SubMsg) -> Self {
+        self.msgs.push(message);
+        self
+    }
+    pub fn add_resp(mut self, resp: HookResponse) -> Self {
+        for msg in resp.msgs {
+            self.msgs.push(msg)
+        }
+        self
+    }
 }
 
 pub trait MessageHooks {
+    fn on_instantiate(
+        &self,
+        _deps: &DepsMut,
+        _info: MessageInfo,
+        _env: Env,
+    ) -> StdResult<HookResponse> {
+        Ok(HookResponse::default())
+    }
     fn on_execute(
         &self,
         _deps: &DepsMut,
         _info: MessageInfo,
         _env: Env,
-        _msg: ExecuteMsg,
     ) -> StdResult<HookResponse> {
         Ok(HookResponse::default())
     }

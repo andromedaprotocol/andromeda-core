@@ -1,15 +1,17 @@
-use andromeda_protocol::modules::blacklist::execute_blacklist;
-use andromeda_protocol::modules::whitelist::execute_whitelist;
-use andromeda_protocol::modules::{common::require, read_modules, store_modules};
+use andromeda_protocol::modules::address_list::REPLY_ADDRESS_LIST;
+use andromeda_protocol::modules::{
+    address_list::on_address_list_reply, common::require, read_modules, store_modules, Modules,
+};
 use andromeda_protocol::token::{
     Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, NftArchivedResponse,
     NftMetadataResponse, NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
 };
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair,
-    Response, StdError, StdResult,
+    Reply, Response, StdError, StdResult,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
@@ -25,7 +27,7 @@ use crate::state::{
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
@@ -39,21 +41,34 @@ pub fn instantiate(
     };
 
     CONFIG.save(deps.storage, &config)?;
-    store_modules(deps.storage, msg.modules)?;
+    let modules = Modules::new(msg.modules);
+    store_modules(deps.storage, modules.clone())?;
 
-    match msg.init_hook {
-        Some(hook) => {
-            let resp = Response::new().add_message(hook.into_cosmos_msg(info.sender.to_string())?);
-            Ok(resp)
-        }
-        None => Ok(Response::default()),
+    let mut resp = Response::new();
+
+    let mod_res = modules.on_instantiate(&deps, info.clone(), env)?;
+    resp = resp.add_submessages(mod_res.msgs);
+
+    if msg.init_hook.is_some() {
+        let hook = msg.init_hook.unwrap();
+        resp = resp.add_message(hook.into_cosmos_msg(info.sender.to_string())?);
+    }
+
+    Ok(resp)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+    match msg.id {
+        REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
+        _ => Err(StdError::generic_err("reply id is invalid")),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_execute(&deps, info.clone(), env.clone(), msg.clone())?;
+    modules.on_execute(&deps, info.clone(), env.clone())?;
 
     match msg {
         ExecuteMsg::Mint(msg) => execute_mint(deps, env, info, msg),
@@ -84,14 +99,6 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             amount,
             purchaser,
         } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount.u128(), denom),
-        ExecuteMsg::Whitelist {
-            address,
-            whitelisted,
-        } => execute_whitelist(deps, env, info, address, whitelisted),
-        ExecuteMsg::Blacklist {
-            address,
-            blacklisted,
-        } => execute_blacklist(deps, env, info, address, blacklisted),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
     }
@@ -625,11 +632,6 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::modules::blacklist::BLACKLIST;
-    use andromeda_protocol::modules::whitelist::WHITELIST;
-    use andromeda_protocol::modules::ModuleDefinition;
-    use andromeda_protocol::modules::Modules;
-    use andromeda_protocol::modules::MODULES;
     use andromeda_protocol::token::Approval;
     use andromeda_protocol::token::ExecuteMsg;
     use andromeda_protocol::token::NftArchivedResponse;
@@ -637,6 +639,7 @@ mod tests {
     use cosmwasm_std::BankMsg;
     use cosmwasm_std::{from_binary, Api, Uint128};
 
+    const ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
 
@@ -652,6 +655,7 @@ mod tests {
             minter: String::from("creator"),
             init_hook: None,
             metadata_limit: None,
+            address_list_code_id: Some(ADDRESS_LIST_CODE_ID),
         };
 
         let env = mock_env();
@@ -1139,142 +1143,6 @@ mod tests {
     }
 
     #[test]
-    fn test_whitelist() {
-        let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
-        let moderator = "minter";
-        let whitelistee = "whitelistee";
-        let info = mock_info(moderator.clone(), &[]);
-
-        let module_defs = vec![ModuleDefinition::Whitelist {
-            moderators: vec![moderator.to_string()],
-        }];
-        let modules = Modules { module_defs };
-
-        MODULES.save(deps.as_mut().storage, &modules).unwrap();
-
-        let msg = ExecuteMsg::Whitelist {
-            address: whitelistee.to_string(),
-            whitelisted: true,
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
-
-        let whitelisted = WHITELIST
-            .load(deps.as_ref().storage, whitelistee.to_string())
-            .unwrap();
-
-        assert_eq!(true, whitelisted);
-
-        let unauth_info = mock_info("anyone", &[]);
-        let res =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
-        assert_eq!(StdError::generic_err("Address is not whitelisted"), res);
-
-        let whitelisted_info = mock_info(whitelistee.clone(), &[]);
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            whitelisted_info.clone(),
-            msg.clone(),
-        )
-        .unwrap_err();
-        assert_eq!(
-            StdError::generic_err("Must be a moderator to whitelist an address"),
-            res
-        );
-
-        let dewhitelist_msg = ExecuteMsg::Whitelist {
-            address: whitelistee.to_string(),
-            whitelisted: false,
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            dewhitelist_msg.clone(),
-        )
-        .unwrap();
-        assert_eq!(Response::default(), res);
-
-        let whitelisted = WHITELIST
-            .load(deps.as_ref().storage, whitelistee.to_string())
-            .unwrap();
-
-        assert_eq!(false, whitelisted);
-    }
-
-    #[test]
-    fn test_blacklist() {
-        let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
-        let moderator = "minter";
-        let blacklistee = "blacklistee";
-        let info = mock_info(moderator.clone(), &[]);
-
-        let module_defs = vec![ModuleDefinition::Blacklist {
-            moderators: vec![moderator.to_string()],
-        }];
-        let modules = Modules { module_defs };
-
-        MODULES.save(deps.as_mut().storage, &modules).unwrap();
-
-        let msg = ExecuteMsg::Blacklist {
-            address: blacklistee.to_string(),
-            blacklisted: true,
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
-
-        let whitelisted = BLACKLIST
-            .load(deps.as_ref().storage, blacklistee.to_string())
-            .unwrap();
-
-        assert_eq!(true, whitelisted);
-
-        let unauth_info = mock_info(blacklistee.clone(), &[]);
-        let res =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
-        assert_eq!(StdError::generic_err("Address is blacklisted"), res);
-
-        let whitelisted_info = mock_info("anyone", &[]);
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            whitelisted_info.clone(),
-            msg.clone(),
-        )
-        .unwrap_err();
-        assert_eq!(
-            StdError::generic_err("Must be a moderator to blacklist an address"),
-            res
-        );
-
-        let deblacklist_msg = ExecuteMsg::Blacklist {
-            address: blacklistee.to_string(),
-            blacklisted: false,
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            deblacklist_msg.clone(),
-        )
-        .unwrap();
-        assert_eq!(Response::default(), res);
-
-        let blacklisted = BLACKLIST
-            .load(deps.as_ref().storage, blacklistee.to_string())
-            .unwrap();
-
-        assert_eq!(false, blacklisted);
-    }
-
-    #[test]
     fn test_metadata() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
@@ -1289,6 +1157,7 @@ mod tests {
             modules: vec![],
             init_hook: None,
             metadata_limit: Some(4),
+            address_list_code_id: Some(ADDRESS_LIST_CODE_ID),
         };
 
         instantiate(

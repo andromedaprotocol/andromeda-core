@@ -1,5 +1,4 @@
-use crate::modules::whitelist::Whitelist;
-use crate::require::require;
+use crate::{modules::address_list::AddressListModule, require::require};
 use cosmwasm_std::{StdError, StdResult, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -33,15 +32,13 @@ pub struct AddressPercent {
 pub struct Splitter {
     pub recipients: Vec<AddressPercent>, //Map for address and percentage
     pub locked: bool,                    //Lock
-    pub use_whitelist: bool,             //Use whitelist
-    pub sender_whitelist: Whitelist,     //Address list allowing to receive funds
-    pub accepted_tokenlist: Vec<String>, //Token list allowing to accept
+    pub address_list: Option<AddressListModule>, //Address list allowing to receive funds
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub recipients: Vec<AddressPercent>,
-    pub use_whitelist: bool,
+    pub address_list: Option<AddressListModule>,
 }
 
 impl InstantiateMsg {
@@ -56,9 +53,7 @@ impl InstantiateMsg {
 pub enum ExecuteMsg {
     UpdateRecipients { recipients: Vec<AddressPercent> },
     UpdateLock { lock: bool },
-    UpdateUseWhitelist { use_whitelist: bool },
-    UpdateTokenList { accepted_tokenlist: Vec<String> },
-    UpdateSenderWhitelist { sender_whitelist: Vec<String> },
+    UpdateAddressList { address_list: AddressListModule },
     Send {},
 }
 
@@ -66,17 +61,12 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     GetSplitterConfig {},
-    IsWhitelisted { address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 pub struct GetSplitterConfigResponse {
     pub config: Splitter,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-pub struct IsWhitelistedResponse {
-    pub whitelisted: bool,
+    pub address_list_contract: Option<String>,
 }
 
 #[cfg(test)]
