@@ -1,12 +1,14 @@
 pub mod address_list;
 pub mod common;
 pub mod hooks;
+pub mod receipt;
 pub mod royalties;
 pub mod taxable;
 
 use crate::modules::{
     address_list::AddressListModule,
     hooks::{HookResponse, MessageHooks},
+    receipt::ReceiptModule,
     royalties::Royalty,
     taxable::Taxable,
 };
@@ -54,6 +56,11 @@ pub enum ModuleDefinition {
         rate: Rate,
         receivers: Vec<String>,
         description: Option<String>,
+    },
+    Receipt {
+        address: Option<String>,
+        code_id: Option<u64>,
+        moderators: Option<Vec<String>>,
     },
 }
 
@@ -105,6 +112,15 @@ impl ModuleDefinition {
                 rate: rate.clone(),
                 receivers: receivers.to_vec(),
                 description: description.clone(),
+            }),
+            ModuleDefinition::Receipt {
+                moderators,
+                address,
+                code_id,
+            } => Box::from(ReceiptModule {
+                moderators: moderators.clone(),
+                address: address.clone(),
+                code_id: code_id.clone(),
             }),
         }
     }

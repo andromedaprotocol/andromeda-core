@@ -198,9 +198,6 @@ pub enum QueryMsg {
         token_id: TokenId,
     },
     ContractInfo {},
-    ReceiptInfo {
-        receipt_id: Uint128,
-    },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchivedResponse {

@@ -1,23 +1,11 @@
-use crate::token::TokenId;
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Event, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Receipt {
-    pub token_id: TokenId,
-    pub seller: String,
-    pub purchaser: String,
-    pub amount: Uint128,
-    pub payments_info: Vec<String>,
-    pub payment_desc: Vec<String>,
+    pub events: Vec<Event>,
 }
-
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// pub struct Transfer {
-//     pub amount: Uint128,
-//     pub receiver: String
-// }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ReceiptResponse {

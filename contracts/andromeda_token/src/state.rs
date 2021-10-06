@@ -12,7 +12,6 @@ pub struct TokenConfig {
     pub symbol: String,
     pub minter: String,
     pub metadata_limit: Option<u64>,
-    pub receipt_addr: String,
 }
 
 impl TokenConfig {
