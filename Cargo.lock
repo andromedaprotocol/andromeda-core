@@ -21,6 +21,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus",
+ "cw721",
+ "protobuf",
  "schemars",
  "serde",
 ]

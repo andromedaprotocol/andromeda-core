@@ -1,5 +1,3 @@
-use crate::hook::InitHook;
-
 use crate::modules::{
     common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
 };
@@ -143,9 +141,6 @@ pub struct InstantiateMsg {
     //code id for receipt contract
     pub receipt_code_id: u64,
     pub address_list_code_id: Option<u64>,
-
-    //A hook for if the contract is instantiated by the factory
-    pub init_hook: Option<InitHook>,
     //An optional limit for token metadata size
     pub metadata_limit: Option<u64>,
 }
