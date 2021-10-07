@@ -33,3 +33,39 @@ pub fn store_receipt(
 pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Receipt> {
     RECEIPT.load(storage, U128Key::from(receipt_id.u128()))
 }
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::testing::mock_dependencies;
+
+    use super::*;
+
+    #[test]
+    fn test_can_mint() {
+        let minter = String::from("minter");
+        let moderator = String::from("moderator");
+        let owner = String::from("owner");
+        let anyone = String::from("anyone");
+
+        let config = Config {
+            minter: minter.clone(),
+            moderators: vec![moderator.clone()],
+            owner: owner.clone(),
+        };
+        let mut deps = mock_dependencies(&[]);
+
+        CONFIG.save(deps.as_mut().storage, &config).unwrap();
+
+        let anyone_resp = can_mint_receipt(deps.as_ref().storage, &anyone).unwrap();
+        assert!(!anyone_resp);
+
+        let owner_resp = can_mint_receipt(deps.as_ref().storage, &owner).unwrap();
+        assert!(owner_resp);
+
+        let minter_resp = can_mint_receipt(deps.as_ref().storage, &minter).unwrap();
+        assert!(minter_resp);
+
+        let moderator_resp = can_mint_receipt(deps.as_ref().storage, &moderator).unwrap();
+        assert!(moderator_resp);
+    }
+}
