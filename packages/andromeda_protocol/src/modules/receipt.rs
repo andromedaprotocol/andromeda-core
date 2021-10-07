@@ -104,7 +104,7 @@ impl MessageHooks for ReceiptModule {
                 msg: inst_msg.into(),
                 gas_limit: None,
                 id: REPLY_RECEIPT,
-                reply_on: ReplyOn::Success,
+                reply_on: ReplyOn::Always,
             };
 
             res = res.add_message(msg);

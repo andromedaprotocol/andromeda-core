@@ -60,6 +60,10 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+    if msg.result.is_err() {
+        return Err(StdError::generic_err(msg.result.unwrap_err()));
+    }
+
     match msg.id {
         REPLY_RECEIPT => on_receipt_reply(deps, msg),
         REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),

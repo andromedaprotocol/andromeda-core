@@ -36,6 +36,10 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+    if msg.result.is_err() {
+        return Err(StdError::generic_err(msg.result.unwrap_err()));
+    }
+
     match msg.id {
         REPLY_CREATE_TOKEN => on_token_creation_reply(deps, msg),
         _ => Err(StdError::generic_err("reply id is invalid")),
@@ -131,7 +135,7 @@ pub fn create(
         msg: inst_msg.into(),
         gas_limit: None,
         id: REPLY_CREATE_TOKEN,
-        reply_on: ReplyOn::Success,
+        reply_on: ReplyOn::Always,
     };
 
     Ok(Response::new().add_submessage(msg))
@@ -239,7 +243,7 @@ mod tests {
             msg: inst_msg.into(),
             gas_limit: None,
             id: REPLY_CREATE_TOKEN,
-            reply_on: ReplyOn::Success,
+            reply_on: ReplyOn::Always,
         };
 
         let expected_res = Response::new().add_submessage(expected_msg);

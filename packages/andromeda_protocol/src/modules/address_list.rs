@@ -122,7 +122,7 @@ impl MessageHooks for AddressListModule {
                 msg: inst_msg.into(),
                 gas_limit: None,
                 id: REPLY_ADDRESS_LIST,
-                reply_on: ReplyOn::Success,
+                reply_on: ReplyOn::Always,
             };
 
             res = res.add_message(msg);
