@@ -146,7 +146,7 @@ mod tests {
         assert_eq!(
             res_unauth,
             StdError::generic_err(
-                "Only the contract owner or the assigned minter can mint a receipt"
+                "Only the contract owner, the assigned minter or a moderator can mint a receipt"
             )
         );
 
@@ -185,7 +185,7 @@ mod tests {
         assert_eq!(
             res_unauth,
             StdError::generic_err(
-                "Only the contract owner or the assigned minter can edit a receipt"
+                "Only the contract owner, the assigned minter or a moderator can edit a receipt"
             )
         );
 

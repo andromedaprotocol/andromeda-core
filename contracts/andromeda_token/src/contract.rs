@@ -3,7 +3,7 @@ use andromeda_protocol::{
         address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
         common::require,
         read_modules,
-        receipt::{get_receipt_module, on_receipt_reply, REPLY_RECEIPT},
+        receipt::{on_receipt_reply, REPLY_RECEIPT},
         store_modules, Modules,
     },
     token::{
@@ -395,7 +395,6 @@ fn transfer_nft(
     recipient: &String,
     token_id: &String,
 ) -> StdResult<Response> {
-    let modules = read_modules(deps.storage)?;
     let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
     require(
         has_transfer_rights(deps.storage, env, info.sender.to_string(), &token)?,
@@ -410,50 +409,20 @@ fn transfer_nft(
     token.owner = recipient.to_string();
     token.approvals = vec![];
 
-    let mut res = match token.transfer_agreement.clone() {
-        Some(agreement) => {
-            let mut res = Response::new();
-            let payment_message = agreement.generate_payment(owner.clone());
-            let mut payments = vec![payment_message];
-            let mod_resp = modules.on_agreed_transfer(
-                &deps,
-                info.clone(),
-                env.clone(),
-                &mut payments,
-                owner.clone(),
-                agreement.purchaser.clone(),
-                agreement.amount.clone(),
-            )?;
-
-            for payment in payments {
-                res = res.add_message(payment);
-            }
-
-            for event in &mod_resp.events {
-                res = res.add_event(event.clone())
-            }
-            res = res.add_event(agreement.generate_event());
-
-            let recpt_opt = get_receipt_module(deps.storage)?;
-            match recpt_opt {
-                Some(recpt_mod) => {
-                    let recpt_msg =
-                        recpt_mod.generate_receipt_message(deps.storage, res.events.clone())?;
-                    res = res.add_message(recpt_msg);
-                }
-                None => {}
-            }
-
-            res
-        }
-        None => Response::default(),
-    };
-
-    res = res.add_attributes(vec![
+    let mut res = Response::new().add_attributes(vec![
         attr("action", "transfer"),
         attr("owner", owner.clone()),
         attr("recipient", recipient.clone()),
     ]);
+
+    if token.transfer_agreement.is_some() {
+        //Attach any transfer agreement messages/events
+        res = token
+            .transfer_agreement
+            .clone()
+            .unwrap()
+            .on_transfer(&deps, info, env, owner, res)?;
+    }
 
     TOKENS.save(deps.storage, token_id.to_string(), &token)?;
     Ok(res)

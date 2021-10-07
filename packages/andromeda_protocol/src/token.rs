@@ -1,11 +1,12 @@
 use crate::hook::InitHook;
 
 use crate::modules::{
-    common::calculate_fee,
-    hooks::{PaymentAttribute, ATTR_PAYMENT},
-    ModuleDefinition, Rate,
+    common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
 };
-use cosmwasm_std::{Addr, BankMsg, Binary, BlockInfo, Coin, Event, StdResult, Uint128};
+use cosmwasm_std::{
+    attr, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
+    StdResult, Uint128,
+};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -70,14 +71,56 @@ impl TransferAgreement {
         }
     }
     pub fn generate_event(self) -> Event {
-        Event::new("agreed_transfer").add_attribute(
-            ATTR_PAYMENT,
-            PaymentAttribute {
-                receiver: self.purchaser.clone(),
-                amount: self.amount.clone(),
+        Event::new("agreed_transfer").add_attributes(vec![
+            attr("amount", self.amount.to_string()),
+            attr("purchaser", self.purchaser.clone()),
+        ])
+    }
+    /*
+        Adds generated module events and messages to the response object
+    */
+    pub fn on_transfer(
+        self,
+        deps: &DepsMut,
+        info: &MessageInfo,
+        env: &Env,
+        owner: String,
+        res_in: Response,
+    ) -> StdResult<Response> {
+        let mut res = res_in.clone();
+        let modules = read_modules(deps.storage)?;
+        let payment_message = self.generate_payment(owner.clone());
+        let mut payments = vec![payment_message];
+        let mod_resp = modules.on_agreed_transfer(
+            &deps,
+            info.clone(),
+            env.clone(),
+            &mut payments,
+            owner.clone(),
+            self.purchaser.clone(),
+            self.amount.clone(),
+        )?;
+
+        for payment in payments {
+            res = res.add_message(payment);
+        }
+
+        for event in &mod_resp.events {
+            res = res.add_event(event.clone());
+        }
+        res = res.add_event(self.generate_event());
+
+        let recpt_opt = get_receipt_module(deps.storage)?;
+        match recpt_opt {
+            Some(recpt_mod) => {
+                let recpt_msg =
+                    recpt_mod.generate_receipt_message(deps.storage, res.events.clone())?;
+                res = res.add_message(recpt_msg);
             }
-            .to_string(),
-        )
+            None => {}
+        }
+
+        Ok(res)
     }
 }
 
