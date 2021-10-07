@@ -30,6 +30,9 @@ impl HookResponse {
         for event in resp.events {
             self.events.push(event);
         }
+        for msg in resp.msgs {
+            self.msgs.push(msg)
+        }
         self
     }
 }

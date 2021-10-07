@@ -197,6 +197,8 @@ pub enum QueryMsg {
     NftArchiveStatus {
         token_id: TokenId,
     },
+    ModuleInfo {},
+    ModuleContracts {},
     ContractInfo {},
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -227,6 +229,22 @@ pub struct NftMetadataResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct NftArchivedResponse {
     pub archived: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ModuleInfoResponse {
+    pub modules: Vec<ModuleDefinition>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ModuleContract {
+    pub module: String,
+    pub contract: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ModuleContractsResponse {
+    pub contracts: Vec<ModuleContract>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

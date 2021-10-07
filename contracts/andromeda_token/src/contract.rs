@@ -7,9 +7,9 @@ use andromeda_protocol::{
         store_modules, Modules,
     },
     token::{
-        Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, NftArchivedResponse,
-        NftMetadataResponse, NftTransferAgreementResponse, QueryMsg, Token, TokenId,
-        TransferAgreement,
+        Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
+        ModuleContractsResponse, ModuleInfoResponse, NftArchivedResponse, NftMetadataResponse,
+        NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
     },
 };
 
@@ -532,6 +532,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::NftArchiveStatus { token_id } => {
             to_binary(&query_token_archive_status(deps, token_id)?)
         }
+        QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
+        QueryMsg::ModuleContracts {} => to_binary(&query_module_contracts(deps)?),
     }
 }
 
@@ -625,6 +627,33 @@ fn query_token_archive_status(deps: Deps, token_id: String) -> StdResult<NftArch
     Ok(NftArchivedResponse {
         archived: token.archived,
     })
+}
+
+fn query_module_info(deps: Deps) -> StdResult<ModuleInfoResponse> {
+    let modules = read_modules(deps.storage)?;
+
+    Ok(ModuleInfoResponse {
+        modules: modules.module_defs,
+    })
+}
+
+fn query_module_contracts(deps: Deps) -> StdResult<ModuleContractsResponse> {
+    let modules = read_modules(deps.storage)?;
+    let contracts: Vec<ModuleContract> = modules
+        .module_defs
+        .iter()
+        .map(|def| {
+            let name = def.name();
+            let addr = def.as_module().get_contract_address(deps.storage);
+
+            ModuleContract {
+                module: name,
+                contract: addr,
+            }
+        })
+        .collect();
+
+    Ok(ModuleContractsResponse { contracts })
 }
 
 /**

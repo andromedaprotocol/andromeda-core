@@ -73,6 +73,16 @@ pub trait Module: MessageHooks {
 }
 
 impl ModuleDefinition {
+    pub fn name(&self) -> String {
+        String::from(match self {
+            ModuleDefinition::Receipt { .. } => "receipt",
+            ModuleDefinition::Royalties { .. } => "royalty",
+            ModuleDefinition::Whitelist { .. } => "whitelist",
+            ModuleDefinition::Blacklist { .. } => "blacklist",
+            ModuleDefinition::Taxable { .. } => "tax",
+            // _ => "unknown",
+        })
+    }
     pub fn as_module(&self) -> Box<dyn Module> {
         match self {
             ModuleDefinition::Whitelist {

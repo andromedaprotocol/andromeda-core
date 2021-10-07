@@ -70,6 +70,7 @@ pub fn create(
         StdError::generic_err("Symbol is in use"),
     )?;
 
+    //Assign Code IDs to Modules
     let updated_modules: Vec<ModuleDefinition> = modules
         .iter()
         .map(|m| match m {
@@ -90,6 +91,15 @@ pub fn create(
                 address: address.clone(),
                 moderators: moderators.clone(),
                 code_id: Some(config.address_list_code_id.clone()),
+            },
+            ModuleDefinition::Receipt {
+                address,
+                moderators,
+                code_id: _,
+            } => ModuleDefinition::Receipt {
+                address: address.clone(),
+                moderators: moderators.clone(),
+                code_id: Some(config.receipt_code_id.clone()),
             },
             _ => m.clone(),
         })
