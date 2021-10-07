@@ -19,6 +19,9 @@
 #![allow(unused_results)]
 //! Generated file from `src/response.proto`
 
+use cosmwasm_std::{Reply, StdError, StdResult};
+use protobuf::Message;
+
 /// Generated files are compatible only with the same version
 /// of protobuf runtime.
 // const _PROTOBUF_VERSION_CHECK: () = ::protobuf::VERSION_2_23_0;
@@ -252,4 +255,15 @@ pub fn file_descriptor_proto() -> &'static ::protobuf::descriptor::FileDescripto
     file_descriptor_proto_lazy.get(|| {
         parse_descriptor_proto()
     })
+}
+
+pub fn get_reply_address(msg: Reply) -> StdResult<String> {
+    let data = msg.result.unwrap().data.unwrap();
+    let res: MsgInstantiateContractResponse =
+        Message::parse_from_bytes(data.as_slice()).map_err(|_| {
+            StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
+        })?;
+    let token_addr = res.get_contract_address();
+
+    Ok(token_addr.to_string())
 }

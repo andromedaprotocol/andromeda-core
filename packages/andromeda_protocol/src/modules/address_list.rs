@@ -6,7 +6,8 @@ use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::response::MsgInstantiateContractResponse;
+use super::read_modules;
+use crate::response::get_reply_address;
 use crate::{
     address_list::{query_includes_address, InstantiateMsg as AddressListInstantiateMsg},
     modules::{
@@ -16,9 +17,6 @@ use crate::{
     },
     require::require,
 };
-use protobuf::Message;
-
-use super::read_modules;
 
 pub const ADDRESS_LIST_CONTRACT: Item<String> = Item::new("addresslistcontract");
 pub const REPLY_ADDRESS_LIST: u64 = 2;
@@ -174,14 +172,9 @@ pub fn get_address_list_module_index(storage: &dyn Storage) -> StdResult<usize> 
 }
 
 pub fn on_address_list_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
-    let data = msg.result.unwrap().data.unwrap();
-    let res: MsgInstantiateContractResponse =
-        Message::parse_from_bytes(data.as_slice()).map_err(|_| {
-            StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
-        })?;
-    let receipt_addr = res.get_contract_address();
+    let contract_addr = get_reply_address(msg)?;
 
-    ADDRESS_LIST_CONTRACT.save(deps.storage, &receipt_addr.to_string())?;
+    ADDRESS_LIST_CONTRACT.save(deps.storage, &contract_addr.to_string())?;
 
     Ok(Response::new())
 }

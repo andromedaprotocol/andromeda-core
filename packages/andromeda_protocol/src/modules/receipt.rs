@@ -7,7 +7,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::receipt::Receipt;
-use crate::response::MsgInstantiateContractResponse;
+use crate::response::get_reply_address;
 use crate::{
     modules::{
         common::is_unique,
@@ -17,8 +17,6 @@ use crate::{
     receipt::{ExecuteMsg, InstantiateMsg},
     require::require,
 };
-use protobuf::Message;
-
 pub const RECEIPT_CONTRACT: Item<String> = Item::new("receiptcontract");
 pub const REPLY_RECEIPT: u64 = 1;
 
@@ -117,12 +115,7 @@ impl MessageHooks for ReceiptModule {
 }
 
 pub fn on_receipt_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
-    let data = msg.result.unwrap().data.unwrap();
-    let res: MsgInstantiateContractResponse =
-        Message::parse_from_bytes(data.as_slice()).map_err(|_| {
-            StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
-        })?;
-    let receipt_addr = res.get_contract_address();
+    let receipt_addr = get_reply_address(msg)?;
 
     RECEIPT_CONTRACT.save(deps.storage, &receipt_addr.to_string())?;
 

@@ -10,11 +10,9 @@ use cosmwasm_std::{
 };
 
 use crate::{
-    reply::on_token_creation_reply,
+    reply::{on_token_creation_reply, REPLY_CREATE_TOKEN},
     state::{is_address_defined, read_address, read_config, store_config, Config},
 };
-
-const REPLY_CREATE_TOKEN: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
