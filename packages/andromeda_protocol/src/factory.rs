@@ -19,15 +19,10 @@ pub enum ExecuteMsg {
         modules: Vec<ModuleDefinition>,
         metadata_limit: Option<u64>,
     },
-    //Called by instantiated token contract to store address
-    TokenCreationHook {
-        symbol: String,
-        creator: String,
-    },
-    UpdateAddress {
-        symbol: String,
-        new_address: String,
-    },
+    // UpdateAddress {
+    //     symbol: String,
+    //     new_address: String,
+    // },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

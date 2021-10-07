@@ -36,6 +36,7 @@ cw-storage-plus = "0.8.0"
 schemars = "0.8.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
+cw721 = "0.8.0"
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16.0" }

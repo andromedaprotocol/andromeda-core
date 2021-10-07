@@ -21,6 +21,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus",
+ "cw721",
  "schemars",
  "serde",
 ]
@@ -82,7 +83,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-storage-plus",
  "cw721",
- "protobuf",
  "schemars",
  "serde",
 ]
