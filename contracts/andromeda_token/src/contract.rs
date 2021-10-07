@@ -621,3 +621,643 @@ fn humanize_approval(approval: &Approval) -> cw721::Approval {
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
     Ok(Response::default())
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use andromeda_protocol::modules::blacklist::BLACKLIST;
+    use andromeda_protocol::modules::whitelist::WHITELIST;
+    use andromeda_protocol::modules::ModuleDefinition;
+    use andromeda_protocol::modules::Modules;
+    use andromeda_protocol::modules::MODULES;
+    use andromeda_protocol::token::ExecuteMsg;
+    use andromeda_protocol::token::Approval;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::BankMsg;
+    use cosmwasm_std::{from_binary, Api, Uint128};
+
+    const TOKEN_NAME: &str = "test";
+    const TOKEN_SYMBOL: &str = "T";
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("creator", &[]);
+
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules: vec![],
+            minter: String::from("creator"),
+            init_hook: None,
+            metadata_limit: None,
+        };
+
+        let env = mock_env();
+
+        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+    }
+
+    #[test]
+    fn test_mint() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let token_id = String::default();
+        let creator = "creator".to_string();
+
+        let mint_msg = MintMsg {
+            token_id: token_id.clone(),
+            owner: creator.clone(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
+        };
+
+        let msg = ExecuteMsg::Mint(mint_msg);
+
+        execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let query_msg = QueryMsg::OwnerOf { token_id };
+
+        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let query_val: OwnerOfResponse = from_binary(&query_res).unwrap();
+
+        assert_eq!(query_val.owner, creator)
+    }
+
+    #[test]
+    fn test_transfer() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let recipient = "recipient";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = String::default();
+        let msg = ExecuteMsg::TransferNft {
+            recipient: recipient.to_string(),
+            token_id: token_id.clone(),
+        };
+
+        let token = Token {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: String::default(),
+            approvals: vec![],
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+        };
+
+        TOKENS
+            .save(deps.as_mut().storage, token_id.to_string(), &token)
+            .unwrap();
+
+        let unauth_info = mock_info("anyone", &[]);
+
+        let unauth_res =
+            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        assert_eq!(
+            unauth_res,
+            StdError::generic_err("Address does not have transfer rights for this token")
+        );
+
+        let notfound_msg = ExecuteMsg::TransferNft {
+            recipient: recipient.to_string(),
+            token_id: String::from("2"),
+        };
+        let notfound_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            notfound_msg.clone(),
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            notfound_res,
+            StdError::not_found("andromeda_protocol::token::Token")
+        );
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(Response::default(), res);
+        let owner = TOKENS
+            .load(deps.as_ref().storage, token_id.to_string())
+            .unwrap()
+            .owner;
+        assert_eq!(recipient.to_string(), owner);
+
+        let approval_info = mock_info("spender", &[]);
+        let approval = Approval {
+            spender: approval_info.sender.clone(),
+            expires: cw721::Expiration::Never {},
+        };
+        let approval_token_id = String::from("2");
+        let approval_token = Token {
+            token_id: approval_token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: String::default(),
+            approvals: vec![approval],
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+        };
+        let msg = ExecuteMsg::TransferNft {
+            recipient: recipient.to_string(),
+            token_id: approval_token_id.clone(),
+        };
+
+        TOKENS
+            .save(
+                deps.as_mut().storage,
+                approval_token_id.to_string(),
+                &approval_token,
+            )
+            .unwrap();
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            approval_info.clone(),
+            msg.clone(),
+        )
+        .unwrap();
+        assert_eq!(Response::default(), res);
+        let owner = TOKENS
+            .load(deps.as_ref().storage, approval_token_id.to_string())
+            .unwrap()
+            .owner;
+        assert_eq!(recipient.to_string(), owner);
+
+        let approval_info = mock_info("spender", &[]);
+        let approval = Approval {
+            spender: approval_info.sender.clone(),
+            expires: cw721::Expiration::Never {},
+        };
+        let approval_token_id = String::from("2");
+        let approval_token = Token {
+            token_id: approval_token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: String::default(),
+            approvals: vec![approval],
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+        };
+        let msg = ExecuteMsg::TransferNft {
+            recipient: recipient.to_string(),
+            token_id: approval_token_id.clone(),
+        };
+
+        TOKENS
+            .save(
+                deps.as_mut().storage,
+                approval_token_id.to_string(),
+                &approval_token,
+            )
+            .unwrap();
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            approval_info.clone(),
+            msg.clone(),
+        )
+        .unwrap();
+        assert_eq!(Response::default(), res);
+        let owner = TOKENS
+            .load(deps.as_ref().storage, approval_token_id.to_string())
+            .unwrap()
+            .owner;
+        assert_eq!(recipient.to_string(), owner);
+    }
+
+    #[test]
+    fn test_agreed_transfer() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let recipient = "recipient";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = String::default();
+        let msg = ExecuteMsg::TransferNft {
+            recipient: recipient.to_string(),
+            token_id: token_id.clone(),
+        };
+        let amount = coin(100, "uluna");
+
+        let token = Token {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: String::default(),
+            approvals: vec![],
+            transfer_agreement: Some(TransferAgreement {
+                purchaser: recipient.to_string(),
+                amount: amount.clone(),
+            }),
+            metadata: None,
+            archived: false,
+        };
+
+        TOKENS
+            .save(deps.as_mut().storage, token_id.to_string(), &token)
+            .unwrap();
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(
+            Response::new().add_message(BankMsg::Send {
+                to_address: minter.to_string(),
+                amount: vec![amount.clone()]
+            }),
+            res
+        );
+    }
+
+    #[test]
+    fn test_approve() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let sender = "sender";
+        let info = mock_info(sender.clone(), &[]);
+        let token_id = String::default();
+        let approvee = "aprovee";
+
+        let msg = ExecuteMsg::Approve {
+            spender: approvee.to_string(),
+            expires: None,
+            token_id: String::default(),
+        };
+
+        let token = Token {
+            token_id: token_id.clone(),
+            description: None,
+            name: String::default(),
+            approvals: vec![],
+            owner: sender.to_string(),
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+        };
+
+        TOKENS
+            .save(deps.as_mut().storage, token_id.to_string(), &token)
+            .unwrap();
+
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let token = TOKENS
+            .load(deps.as_mut().storage, token_id.to_string())
+            .unwrap();
+
+        assert_eq!(1, token.approvals.len());
+        assert_eq!(approvee.clone(), token.approvals[0].spender.to_string());
+    }
+
+    #[test]
+    fn test_revoke() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let sender = "sender";
+        let info = mock_info(sender.clone(), &[]);
+        let token_id = String::default();
+        let approvee = "aprovee";
+        let approval = Approval {
+            expires: Expiration::Never {},
+            spender: deps.api.addr_validate(approvee.clone()).unwrap(),
+        };
+
+        let msg = ExecuteMsg::Revoke {
+            spender: approvee.to_string(),
+            token_id: String::default(),
+        };
+
+        let token = Token {
+            token_id: token_id.clone(),
+            description: None,
+            name: String::default(),
+            approvals: vec![approval],
+            owner: sender.to_string(),
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+        };
+
+        TOKENS
+            .save(deps.as_mut().storage, token_id.to_string(), &token)
+            .unwrap();
+
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let token = TOKENS
+            .load(deps.as_mut().storage, token_id.to_string())
+            .unwrap();
+
+        assert_eq!(0, token.approvals.len());
+    }
+
+    #[test]
+    fn test_approve_all() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = String::default();
+        let operator = "operator";
+        let operator_info = mock_info(operator.clone(), &[]);
+
+        let mint_msg = ExecuteMsg::Mint(MintMsg {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: "Some Token".to_string(),
+            metadata: None,
+        });
+        execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
+
+        let transfer_msg = ExecuteMsg::TransferNft {
+            recipient: operator.to_string(),
+            token_id: token_id.clone(),
+        };
+        let err = execute(
+            deps.as_mut(),
+            env.clone(),
+            operator_info.clone(),
+            transfer_msg,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            err,
+            StdError::generic_err("Address does not have transfer rights for this token"),
+        );
+
+        let approve_all_msg = ExecuteMsg::ApproveAll {
+            operator: operator.to_string(),
+            expires: None,
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), approve_all_msg).unwrap();
+
+        let transfer_msg = ExecuteMsg::TransferNft {
+            recipient: operator.to_string(),
+            token_id: token_id.clone(),
+        };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            operator_info.clone(),
+            transfer_msg,
+        )
+        .unwrap();
+
+        let token = TOKENS
+            .load(deps.as_ref().storage, token_id.to_string())
+            .unwrap();
+
+        assert_eq!(token.owner, operator.to_string());
+    }
+
+    #[test]
+    fn test_revoke_all() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = String::default();
+        let operator = "operator";
+        let operator_info = mock_info(operator.clone(), &[]);
+
+        let mint_msg = ExecuteMsg::Mint(MintMsg {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: "Some Token".to_string(),
+            metadata: None,
+        });
+        execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
+
+        let approve_all_msg = ExecuteMsg::ApproveAll {
+            operator: operator.to_string(),
+            expires: None,
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), approve_all_msg).unwrap();
+
+        let transfer_msg = ExecuteMsg::TransferNft {
+            recipient: minter.to_string(),
+            token_id: token_id.clone(),
+        };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            operator_info.clone(),
+            transfer_msg,
+        )
+        .unwrap();
+
+        let revoke_msg = ExecuteMsg::RevokeAll {
+            operator: operator.to_string(),
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), revoke_msg).unwrap();
+
+        let transfer_msg = ExecuteMsg::TransferNft {
+            recipient: minter.to_string(),
+            token_id: token_id.clone(),
+        };
+        let err = execute(
+            deps.as_mut(),
+            env.clone(),
+            operator_info.clone(),
+            transfer_msg,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            err,
+            StdError::generic_err("Address does not have transfer rights for this token"),
+        );
+    }
+
+    #[test]
+    fn test_transfer_agreement() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let purchaser = "purchaser";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = String::default();
+        let denom = "uluna";
+        let amount = 100 as u128;
+        let metadata = "really long metadata message, too long for the storage".to_string();
+        let mint_msg = ExecuteMsg::Mint(MintMsg {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: "Some Token".to_string(),
+            metadata: Some(metadata.clone()),
+        });
+        execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
+
+        let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
+            token_id: token_id.clone(),
+            denom: denom.to_string(),
+            amount: Uint128::from(amount),
+            purchaser: purchaser.to_string(),
+        };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            transfer_agreement_msg,
+        )
+        .unwrap();
+
+        let agreement_query = QueryMsg::NftTransferAgreementInfo {
+            token_id: token_id.clone(),
+        };
+        let res = query(deps.as_ref(), env.clone(), agreement_query).unwrap();
+        let agreement_res: NftTransferAgreementResponse = from_binary(&res).unwrap();
+        let agreement = agreement_res.agreement.unwrap();
+
+        assert_eq!(agreement.purchaser, purchaser.clone());
+        assert_eq!(agreement.amount, coin(amount, denom))
+    }
+
+    #[test]
+    fn test_whitelist() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let moderator = "minter";
+        let whitelistee = "whitelistee";
+        let info = mock_info(moderator.clone(), &[]);
+
+        let module_defs = vec![ModuleDefinition::Whitelist {
+            moderators: vec![moderator.to_string()],
+        }];
+        let modules = Modules { module_defs };
+
+        MODULES.save(deps.as_mut().storage, &modules).unwrap();
+
+        let msg = ExecuteMsg::Whitelist {
+            address: whitelistee.to_string(),
+            whitelisted: true,
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(Response::default(), res);
+
+        let whitelisted = WHITELIST
+            .load(deps.as_ref().storage, whitelistee.to_string())
+            .unwrap();
+
+        assert_eq!(true, whitelisted);
+
+        let unauth_info = mock_info("anyone", &[]);
+        let res =
+            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        assert_eq!(StdError::generic_err("Address is not whitelisted"), res);
+
+        let whitelisted_info = mock_info(whitelistee.clone(), &[]);
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            whitelisted_info.clone(),
+            msg.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            StdError::generic_err("Must be a moderator to whitelist an address"),
+            res
+        );
+
+        let dewhitelist_msg = ExecuteMsg::Whitelist {
+            address: whitelistee.to_string(),
+            whitelisted: false,
+        };
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            dewhitelist_msg.clone(),
+        )
+        .unwrap();
+        assert_eq!(Response::default(), res);
+
+        let whitelisted = WHITELIST
+            .load(deps.as_ref().storage, whitelistee.to_string())
+            .unwrap();
+
+        assert_eq!(false, whitelisted);
+    }
+
+    #[test]
+    fn test_blacklist() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let moderator = "minter";
+        let blacklistee = "blacklistee";
+        let info = mock_info(moderator.clone(), &[]);
+
+        let module_defs = vec![ModuleDefinition::Blacklist {
+            moderators: vec![moderator.to_string()],
+        }];
+        let modules = Modules { module_defs };
+
+        MODULES.save(deps.as_mut().storage, &modules).unwrap();
+
+        let msg = ExecuteMsg::Blacklist {
+            address: blacklistee.to_string(),
+            blacklisted: true,
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(Response::default(), res);
+
+        let whitelisted = BLACKLIST
+            .load(deps.as_ref().storage, blacklistee.to_string())
+            .unwrap();
+
+        assert_eq!(true, whitelisted);
+
+        let unauth_info = mock_info(blacklistee.clone(), &[]);
+        let res =
+            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        assert_eq!(StdError::generic_err("Address is blacklisted"), res);
+
+        let whitelisted_info = mock_info("anyone", &[]);
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            whitelisted_info.clone(),
+            msg.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            StdError::generic_err("Must be a moderator to blacklist an address"),
+            res
+        );
+
+        let deblacklist_msg = ExecuteMsg::Blacklist {
+            address: blacklistee.to_string(),
+            blacklisted: false,
+        };
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            deblacklist_msg.clone(),
+        )
+        .unwrap();
+        assert_eq!(Response::default(), res);
+
+        let blacklisted = BLACKLIST
+            .load(deps.as_ref().storage, blacklistee.to_string())
+            .unwrap();
+
+        assert_eq!(false, blacklisted);
+    }
+}

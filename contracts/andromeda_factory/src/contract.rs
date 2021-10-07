@@ -142,3 +142,148 @@ fn query_address(deps: Deps, symbol: String) -> StdResult<AddressResponse> {
         address: address.clone(),
     })
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::read_creator;
+    use cosmwasm_std::from_binary;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+
+    static TOKEN_CODE_ID: u64 = 0;
+    const TOKEN_NAME: &str = "test";
+    const TOKEN_SYMBOL: &str = "T";
+
+    #[test]
+    fn test_create() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+
+        let init_msg = InstantiateMsg {
+            token_code_id: TOKEN_CODE_ID,
+        };
+
+        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), init_msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        let msg = ExecuteMsg::Create {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules: vec![],
+            metadata_limit: None,
+        };
+
+        let expected_msg = WasmMsg::Instantiate {
+            code_id: TOKEN_CODE_ID,
+            funds: vec![],
+            label: "".to_string(),
+            admin: None,
+            msg: to_binary(&TokenInstantiateMsg {
+                name: TOKEN_NAME.to_string(),
+                symbol: TOKEN_SYMBOL.to_string(),
+                minter: String::from("creator"),
+                modules: vec![],
+                init_hook: Some(InitHook {
+                    msg: to_binary(&ExecuteMsg::TokenCreationHook {
+                        symbol: TOKEN_SYMBOL.to_string(),
+                        creator: String::from("creator"),
+                    })
+                    .unwrap(),
+                    contract_addr: info.sender.to_string(),
+                }),
+                metadata_limit: None,
+            })
+            .unwrap(),
+        };
+
+        let expected_res = Response::new().add_message(expected_msg);
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(res, expected_res);
+        assert_eq!(1, expected_res.messages.len())
+    }
+
+    #[test]
+    fn test_token_creation() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+
+        let msg = ExecuteMsg::TokenCreationHook {
+            symbol: TOKEN_SYMBOL.to_string(),
+            creator: String::from("creator"),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        assert_eq!(res, Response::default());
+
+        let query_msg = QueryMsg::GetAddress {
+            symbol: TOKEN_SYMBOL.to_string(),
+        };
+
+        let addr_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
+
+        assert_eq!(info.sender, addr_val.address);
+        let creator = match read_creator(&deps.storage, TOKEN_SYMBOL.to_string()) {
+            Ok(addr) => addr,
+            _ => String::default(),
+        };
+        assert_eq!(info.sender, creator)
+    }
+
+    #[test]
+    fn test_update_address() {
+        let creator = String::from("creator");
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info(creator.clone().as_str(), &[]);
+
+        let msg = ExecuteMsg::TokenCreationHook {
+            symbol: TOKEN_SYMBOL.to_string(),
+            creator: creator.clone(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        assert_eq!(res, Response::default());
+
+        let new_address = String::from("new");
+        let update_msg = ExecuteMsg::UpdateAddress {
+            symbol: TOKEN_SYMBOL.to_string(),
+            new_address: new_address.clone(),
+        };
+
+        let update_res =
+            execute(deps.as_mut(), env.clone(), info.clone(), update_msg.clone()).unwrap();
+
+        assert_eq!(update_res, Response::default());
+
+        let query_msg = QueryMsg::GetAddress {
+            symbol: TOKEN_SYMBOL.to_string(),
+        };
+
+        let addr_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
+
+        assert_eq!(new_address.clone(), addr_val.address);
+
+        let unauth_env = mock_env();
+        let unauth_info = mock_info("anyone", &[]);
+        let unauth_res = execute(
+            deps.as_mut(),
+            unauth_env.clone(),
+            unauth_info.clone(),
+            update_msg.clone(),
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            unauth_res,
+            StdError::generic_err("Cannot update address for ADO that you did not create"),
+        );
+    }
+}
