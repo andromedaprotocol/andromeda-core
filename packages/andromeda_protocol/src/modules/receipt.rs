@@ -98,6 +98,7 @@ impl MessageHooks for ReceiptModule {
                 label: String::from("Receipt instantiation"),
                 msg: to_binary(&InstantiateMsg {
                     minter: info.sender.to_string(),
+                    moderators: self.moderators.clone(),
                 })?,
             };
 

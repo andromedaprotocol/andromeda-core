@@ -1,9 +1,12 @@
 use crate::state::{
-    can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, Config,
+    can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use andromeda_protocol::{
     modules::common::require,
-    receipt::{ExecuteMsg, InstantiateMsg, QueryMsg, Receipt, ReceiptResponse},
+    receipt::{
+        Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
+        ReceiptResponse,
+    },
 };
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
@@ -22,6 +25,10 @@ pub fn instantiate(
         &Config {
             owner: info.sender.to_string(), // token contract address
             minter: msg.minter,
+            moderators: match msg.moderators {
+                Some(moderators) => moderators,
+                None => vec![],
+            },
         },
     )?;
     Ok(Response::default())
@@ -50,7 +57,9 @@ fn execute_store_receipt(
 ) -> StdResult<Response> {
     require(
         can_mint_receipt(deps.storage, &info.sender.to_string())?,
-        StdError::generic_err("Only the contract owner or the assigned minter can mint a receipt"),
+        StdError::generic_err(
+            "Only the contract owner, the assigned minter or a moderator can mint a receipt",
+        ),
     )?;
     let receipt_id = increment_num_receipt(deps.storage)?;
     store_receipt(deps.storage, receipt_id, &receipt)?;
@@ -65,7 +74,9 @@ fn execute_edit_receipt(
 ) -> StdResult<Response> {
     require(
         can_mint_receipt(deps.storage, &info.sender.to_string())?,
-        StdError::generic_err("Only the contract owner or the assigned minter can edit a receipt"),
+        StdError::generic_err(
+            "Only the contract owner, the assigned minter or a moderator can edit a receipt",
+        ),
     )?;
     read_receipt(deps.storage, receipt_id)?;
     store_receipt(deps.storage, receipt_id, &receipt)?;
@@ -79,12 +90,19 @@ fn execute_edit_receipt(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Receipt { receipt_id } => Ok(to_binary(&query_receipt(deps, receipt_id)?)?),
+        QueryMsg::ContractInfo {} => Ok(to_binary(&query_config(deps)?)?),
     }
 }
 
 fn query_receipt(deps: Deps, receipt_id: Uint128) -> StdResult<ReceiptResponse> {
     let receipt = read_receipt(deps.storage, receipt_id)?;
     Ok(ReceiptResponse { receipt })
+}
+
+fn query_config(deps: Deps) -> StdResult<ContractInfoResponse> {
+    let config = CONFIG.load(deps.storage)?;
+
+    Ok(ContractInfoResponse { config })
 }
 
 #[cfg(test)]
@@ -99,6 +117,7 @@ mod tests {
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {
             minter: owner.to_string(),
+            moderators: None,
         };
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -114,6 +133,7 @@ mod tests {
         let config = Config {
             minter: owner.to_string(),
             owner: owner.to_string(),
+            moderators: vec![],
         };
         store_config(deps.as_mut().storage, &config).unwrap();
 
@@ -145,6 +165,7 @@ mod tests {
         let config = Config {
             minter: owner.to_string(),
             owner: owner.to_string(),
+            moderators: vec![],
         };
         store_config(deps.as_mut().storage, &config).unwrap();
 

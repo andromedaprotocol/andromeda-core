@@ -80,7 +80,6 @@ impl ModuleDefinition {
             ModuleDefinition::Whitelist { .. } => "whitelist",
             ModuleDefinition::Blacklist { .. } => "blacklist",
             ModuleDefinition::Taxable { .. } => "tax",
-            // _ => "unknown",
         })
     }
     pub fn as_module(&self) -> Box<dyn Module> {
