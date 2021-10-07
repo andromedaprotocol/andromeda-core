@@ -1,17 +1,23 @@
-use andromeda_protocol::modules::address_list::REPLY_ADDRESS_LIST;
-use andromeda_protocol::modules::{
-    address_list::on_address_list_reply, common::require, read_modules, store_modules, Modules,
-};
-use andromeda_protocol::token::{
-    Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, NftArchivedResponse,
-    NftMetadataResponse, NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
+use andromeda_protocol::{
+    modules::{
+        address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
+        common::require,
+        read_modules,
+        receipt::{on_receipt_reply, REPLY_RECEIPT},
+        store_modules, Modules,
+    },
+    token::{
+        Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
+        ModuleContractsResponse, ModuleInfoResponse, NftArchivedResponse, NftMetadataResponse,
+        NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
+    },
 };
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair,
-    Reply, Response, StdError, StdResult,
+    attr, coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order,
+    Pair, Reply, Response, StdError, StdResult,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
@@ -36,7 +42,7 @@ pub fn instantiate(
     let config = TokenConfig {
         name: msg.name,
         symbol: msg.symbol,
-        minter: msg.minter,
+        minter: msg.minter.to_string(),
         metadata_limit: msg.metadata_limit,
     };
 
@@ -60,6 +66,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     match msg.id {
+        REPLY_RECEIPT => on_receipt_reply(deps, msg),
         REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
         _ => Err(StdError::generic_err("reply id is invalid")),
     }
@@ -388,7 +395,6 @@ fn transfer_nft(
     recipient: &String,
     token_id: &String,
 ) -> StdResult<Response> {
-    let modules = read_modules(deps.storage)?;
     let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
     require(
         has_transfer_rights(deps.storage, env, info.sender.to_string(), &token)?,
@@ -403,28 +409,20 @@ fn transfer_nft(
     token.owner = recipient.to_string();
     token.approvals = vec![];
 
-    let res = match token.transfer_agreement.clone() {
-        Some(a) => {
-            let mut res = Response::new();
-            let payment_message = a.generate_payment(owner.clone());
-            let mut payments = vec![payment_message];
-            modules.on_agreed_transfer(
-                &deps,
-                info.clone(),
-                env.clone(),
-                &mut payments,
-                owner.clone(),
-                a.purchaser.clone(),
-                a.amount.clone(),
-            )?;
-            for payment in payments {
-                res = res.add_message(payment);
-            }
+    let mut res = Response::new().add_attributes(vec![
+        attr("action", "transfer"),
+        attr("owner", owner.clone()),
+        attr("recipient", recipient.clone()),
+    ]);
 
-            res
-        }
-        None => Response::default(),
-    };
+    if token.transfer_agreement.is_some() {
+        //Attach any transfer agreement messages/events
+        res = token
+            .transfer_agreement
+            .clone()
+            .unwrap()
+            .on_transfer(&deps, info, env, owner, res)?;
+    }
 
     TOKENS.save(deps.storage, token_id.to_string(), &token)?;
     Ok(res)
@@ -503,6 +501,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::NftArchiveStatus { token_id } => {
             to_binary(&query_token_archive_status(deps, token_id)?)
         }
+        QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
+        QueryMsg::ModuleContracts {} => to_binary(&query_module_contracts(deps)?),
     }
 }
 
@@ -598,6 +598,33 @@ fn query_token_archive_status(deps: Deps, token_id: String) -> StdResult<NftArch
     })
 }
 
+fn query_module_info(deps: Deps) -> StdResult<ModuleInfoResponse> {
+    let modules = read_modules(deps.storage)?;
+
+    Ok(ModuleInfoResponse {
+        modules: modules.module_defs,
+    })
+}
+
+fn query_module_contracts(deps: Deps) -> StdResult<ModuleContractsResponse> {
+    let modules = read_modules(deps.storage)?;
+    let contracts: Vec<ModuleContract> = modules
+        .module_defs
+        .iter()
+        .map(|def| {
+            let name = def.name();
+            let addr = def.as_module().get_contract_address(deps.storage);
+
+            ModuleContract {
+                module: name,
+                contract: addr,
+            }
+        })
+        .collect();
+
+    Ok(ModuleContractsResponse { contracts })
+}
+
 /**
 The next few functions are taken from the CW721-base contract:
 https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw721-base
@@ -635,14 +662,16 @@ mod tests {
     use andromeda_protocol::token::Approval;
     use andromeda_protocol::token::ExecuteMsg;
     use andromeda_protocol::token::NftArchivedResponse;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::BankMsg;
-    use cosmwasm_std::{from_binary, Api, Uint128};
+    use cosmwasm_std::{
+        from_binary,
+        testing::{mock_dependencies, mock_env, mock_info},
+        Api, BankMsg, Uint128,
+    };
 
     const ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
-
+    static RECEIPT_CODE_ID: u64 = 1;
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies(&[]);
@@ -652,6 +681,7 @@ mod tests {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             modules: vec![],
+            receipt_code_id: RECEIPT_CODE_ID,
             minter: String::from("creator"),
             init_hook: None,
             metadata_limit: None,
@@ -704,6 +734,24 @@ mod tests {
             recipient: recipient.to_string(),
             token_id: token_id.clone(),
         };
+        let attrs = vec![
+            attr("action", "transfer"),
+            attr("owner", minter.to_string()),
+            attr("recipient", recipient.to_string()),
+        ];
+
+        //store config
+        CONFIG
+            .save(
+                deps.as_mut().storage,
+                &TokenConfig {
+                    name: TOKEN_NAME.to_string(),
+                    symbol: TOKEN_SYMBOL.to_string(),
+                    minter: String::from("creator"),
+                    metadata_limit: None,
+                },
+            )
+            .unwrap();
 
         let token = Token {
             token_id: token_id.clone(),
@@ -747,7 +795,7 @@ mod tests {
         );
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
+        assert_eq!(Response::default().add_attributes(attrs.clone()), res);
         let owner = TOKENS
             .load(deps.as_ref().storage, token_id.to_string())
             .unwrap()
@@ -790,7 +838,7 @@ mod tests {
             msg.clone(),
         )
         .unwrap();
-        assert_eq!(Response::default(), res);
+        assert_eq!(Response::default().add_attributes(attrs.clone()), res);
         let owner = TOKENS
             .load(deps.as_ref().storage, approval_token_id.to_string())
             .unwrap()
@@ -833,7 +881,8 @@ mod tests {
             msg.clone(),
         )
         .unwrap();
-        assert_eq!(Response::default(), res);
+        assert_eq!(Response::default().add_attributes(attrs.clone()), res);
+
         let owner = TOKENS
             .load(deps.as_ref().storage, approval_token_id.to_string())
             .unwrap()
@@ -849,6 +898,19 @@ mod tests {
         let recipient = "recipient";
         let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
+        //store config
+        CONFIG
+            .save(
+                deps.as_mut().storage,
+                &TokenConfig {
+                    name: TOKEN_NAME.to_string(),
+                    symbol: TOKEN_SYMBOL.to_string(),
+                    minter: String::from("creator"),
+                    metadata_limit: None,
+                },
+            )
+            .unwrap();
+
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
             token_id: token_id.clone(),
@@ -875,10 +937,17 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(
-            Response::new().add_message(BankMsg::Send {
-                to_address: minter.to_string(),
-                amount: vec![amount.clone()]
-            }),
+            Response::new()
+                .add_message(BankMsg::Send {
+                    to_address: minter.to_string(),
+                    amount: vec![amount.clone()]
+                })
+                .add_event(token.transfer_agreement.unwrap().generate_event())
+                .add_attributes(vec![
+                    attr("action", "transfer"),
+                    attr("owner", minter.to_string()),
+                    attr("recipient", recipient.to_string()),
+                ]),
             res
         );
     }
@@ -972,6 +1041,18 @@ mod tests {
         let token_id = String::default();
         let operator = "operator";
         let operator_info = mock_info(operator.clone(), &[]);
+        //store config
+        CONFIG
+            .save(
+                deps.as_mut().storage,
+                &TokenConfig {
+                    name: TOKEN_NAME.to_string(),
+                    symbol: TOKEN_SYMBOL.to_string(),
+                    minter: String::from("creator"),
+                    metadata_limit: None,
+                },
+            )
+            .unwrap();
 
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
@@ -1034,6 +1115,19 @@ mod tests {
         let operator = "operator";
         let operator_info = mock_info(operator.clone(), &[]);
 
+        //store config
+        CONFIG
+            .save(
+                deps.as_mut().storage,
+                &TokenConfig {
+                    name: TOKEN_NAME.to_string(),
+                    symbol: TOKEN_SYMBOL.to_string(),
+                    minter: String::from("creator"),
+                    metadata_limit: None,
+                },
+            )
+            .unwrap();
+
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
@@ -1095,6 +1189,18 @@ mod tests {
         let denom = "uluna";
         let amount = Uint128::from(100 as u64);
 
+        let instantiate_msg = InstantiateMsg {
+            name: "Token Name".to_string(),
+            symbol: "TS".to_string(),
+            minter: minter.to_string(),
+            init_hook: None,
+            metadata_limit: None,
+            modules: vec![],
+            receipt_code_id: 1,
+            address_list_code_id: Some(2),
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
@@ -1155,6 +1261,7 @@ mod tests {
             symbol: "T".to_string(),
             minter: minter.to_string(),
             modules: vec![],
+            receipt_code_id: RECEIPT_CODE_ID,
             init_hook: None,
             metadata_limit: Some(4),
             address_list_code_id: Some(ADDRESS_LIST_CODE_ID),

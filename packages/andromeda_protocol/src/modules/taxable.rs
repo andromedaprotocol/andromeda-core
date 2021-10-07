@@ -1,10 +1,15 @@
-use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, StdError, StdResult};
+use cosmwasm_std::{Coin, DepsMut, Env, Event, MessageInfo, StdError, StdResult};
 
 use crate::{
     modules::common::{add_payment, calculate_fee, require},
-    modules::hooks::MessageHooks,
-    modules::{Module, ModuleDefinition, Rate},
+    modules::hooks::{MessageHooks, PaymentAttribute},
+    modules::Rate,
+    modules::{Module, ModuleDefinition},
 };
+
+use super::hooks::{HookResponse, ATTR_DESC, ATTR_PAYMENT};
+
+pub const TAX_EVENT_ID: &str = "tax";
 
 pub struct Taxable {
     pub rate: Rate,
@@ -31,6 +36,13 @@ impl Module for Taxable {
             }
         }
 
+        if self.description.clone().is_some() {
+            require(
+                self.description.clone().unwrap().len() <= 200,
+                StdError::generic_err("Module description can be at most 200 characters long"),
+            )?;
+        }
+
         Ok(true)
     }
     fn as_definition(&self) -> ModuleDefinition {
@@ -52,15 +64,34 @@ impl MessageHooks for Taxable {
         _owner: String,
         _purchaser: String,
         agreed_payment: Coin,
-    ) -> StdResult<bool> {
+    ) -> StdResult<HookResponse> {
         let _contract_addr = env.contract.address;
         let tax_amount = calculate_fee(self.rate.clone(), agreed_payment);
 
-        for receiver in self.receivers.to_vec() {
-            add_payment(payments, receiver.clone(), tax_amount.clone());
+        let mut resp = HookResponse::default();
+        let mut event = Event::new(TAX_EVENT_ID);
+
+        match self.description.clone() {
+            Some(desc) => {
+                event = event.add_attribute(ATTR_DESC, desc);
+            }
+            None => {}
         }
 
-        Ok(true)
+        for receiver in self.receivers.to_vec() {
+            add_payment(payments, receiver.clone(), tax_amount.clone());
+            event = event.add_attribute(
+                ATTR_PAYMENT,
+                PaymentAttribute {
+                    receiver: receiver.clone(),
+                    amount: tax_amount.clone(),
+                }
+                .to_string(),
+            );
+        }
+        resp = resp.add_event(event);
+
+        Ok(resp)
     }
 }
 
@@ -150,5 +181,52 @@ mod tests {
 
         assert_eq!(payments[0], first_payment);
         assert_eq!(payments[1], second_payment);
+    }
+
+    #[test]
+
+    fn test_taxable_on_agreed_transfer_resp() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("sender", &[]);
+        let env = mock_env();
+        let desc = "Some tax module";
+        let receivers = vec![String::from("recv1"), String::from("recv2")];
+        let t = Taxable {
+            rate: Rate::Percent(1),
+            receivers: receivers.clone(),
+            description: Some(desc.to_string()),
+        };
+
+        let agreed_transfer_amount = coin(100, "uluna");
+        let owner = String::from("owner");
+        let purchaser = String::from("purchaser");
+        let mut payments = vec![];
+
+        let resp = t
+            .on_agreed_transfer(
+                &deps.as_mut(),
+                info.clone(),
+                env.clone(),
+                &mut payments,
+                owner.clone(),
+                purchaser.clone(),
+                agreed_transfer_amount.clone(),
+            )
+            .unwrap();
+
+        assert_eq!(resp.events.len(), 1);
+        assert_eq!(resp.events[0].ty, "tax");
+        assert_eq!(resp.events[0].attributes.len(), 3);
+        assert_eq!(resp.events[0].attributes[0].key, ATTR_DESC);
+        assert_eq!(resp.events[0].attributes[0].value, desc.to_string());
+        assert_eq!(resp.events[0].attributes[1].key, ATTR_PAYMENT);
+        assert_eq!(
+            resp.events[0].attributes[1].value,
+            PaymentAttribute {
+                receiver: t.receivers[0].clone(),
+                amount: calculate_fee(t.rate, agreed_transfer_amount)
+            }
+            .to_string()
+        );
     }
 }

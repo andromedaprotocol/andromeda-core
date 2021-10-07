@@ -11,6 +11,7 @@ pub const SYM_CREATOR: Map<String, String> = Map::new("creator");
 pub struct Config {
     pub owner: String,
     pub token_code_id: u64,
+    pub receipt_code_id: u64,
     pub address_list_code_id: u64,
 }
 

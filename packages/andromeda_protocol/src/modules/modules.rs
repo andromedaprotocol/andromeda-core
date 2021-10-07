@@ -1,136 +1,43 @@
-pub mod address_list;
-pub mod common;
-pub mod hooks;
-pub mod receipt;
-pub mod royalties;
-pub mod taxable;
+use crate::modules::receipt::Receipt;
+use crate::modules::taxable::Taxable;
+use crate::modules::{hooks::MessageHooks, whitelist::Whitelist};
 
-use crate::modules::{
-    address_list::AddressListModule,
-    hooks::{HookResponse, MessageHooks},
-    receipt::ReceiptModule,
-    royalties::Royalty,
-    taxable::Taxable,
-};
-use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, MessageInfo, StdResult, Storage, Uint128};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult, Storage};
 use cw721::Expiration;
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+// const KEY_MODULES: &[u8] = b"modules";
 pub const MODULES: Item<Modules> = Item::new("modules");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
-#[serde(rename_all = "snake_case")]
-pub struct FlatRate {
-    amount: Uint128,
-    denom: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum Rate {
-    Flat(FlatRate),
-    Percent(u64),
-}
+pub type Fee = u128;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ModuleDefinition {
-    Whitelist {
-        address: Option<String>,
-        code_id: Option<u64>,
-        moderators: Option<Vec<String>>,
-    },
-    Blacklist {
-        address: Option<String>,
-        code_id: Option<u64>,
-        moderators: Option<Vec<String>>,
-    },
-    Taxable {
-        rate: Rate,
-        receivers: Vec<String>,
-        description: Option<String>,
-    },
-    Royalties {
-        rate: Rate,
-        receivers: Vec<String>,
-        description: Option<String>,
-    },
-    Receipt {
-        address: Option<String>,
-        code_id: Option<u64>,
-        moderators: Option<Vec<String>>,
-    },
+    Whitelist { moderators: Vec<String> },
+    Taxable { tax: Fee, receivers: Vec<String> },
+    Receipt,
+    // Royalties { fee: Fee, receivers: Vec<String> },
 }
 
 pub trait Module: MessageHooks {
     fn validate(&self, modules: Vec<ModuleDefinition>) -> StdResult<bool>;
     fn as_definition(&self) -> ModuleDefinition;
-    fn get_contract_address(&self, _storage: &dyn Storage) -> Option<String> {
-        None
-    }
 }
 
 impl ModuleDefinition {
-    pub fn name(&self) -> String {
-        String::from(match self {
-            ModuleDefinition::Receipt { .. } => "receipt",
-            ModuleDefinition::Royalties { .. } => "royalty",
-            ModuleDefinition::Whitelist { .. } => "whitelist",
-            ModuleDefinition::Blacklist { .. } => "blacklist",
-            ModuleDefinition::Taxable { .. } => "tax",
-        })
-    }
     pub fn as_module(&self) -> Box<dyn Module> {
         match self {
-            ModuleDefinition::Whitelist {
-                address,
-                code_id,
-                moderators,
-            } => Box::from(AddressListModule {
+            ModuleDefinition::Whitelist { moderators } => Box::from(Whitelist {
                 moderators: moderators.clone(),
-                address: address.clone(),
-                code_id: code_id.clone(),
-                inclusive: true,
             }),
-            ModuleDefinition::Blacklist {
-                address,
-                code_id,
-                moderators,
-            } => Box::from(AddressListModule {
-                moderators: moderators.clone(),
-                address: address.clone(),
-                code_id: code_id.clone(),
-                inclusive: false,
-            }),
-            ModuleDefinition::Taxable {
-                rate,
-                receivers,
-                description,
-            } => Box::from(Taxable {
-                rate: rate.clone(),
+            ModuleDefinition::Taxable { tax, receivers } => Box::from(Taxable {
+                rate: tax.clone(),
                 receivers: receivers.clone(),
-                description: description.clone(),
             }),
-            ModuleDefinition::Royalties {
-                rate,
-                receivers,
-                description,
-            } => Box::from(Royalty {
-                rate: rate.clone(),
-                receivers: receivers.to_vec(),
-                description: description.clone(),
-            }),
-            ModuleDefinition::Receipt {
-                moderators,
-                address,
-                code_id,
-            } => Box::from(ReceiptModule {
-                moderators: moderators.clone(),
-                address: address.clone(),
-                code_id: code_id.clone(),
-            }),
+            ModuleDefinition::Receipt => Box::from(Receipt {}),
         }
     }
 }
@@ -162,21 +69,6 @@ impl Modules {
         }
 
         Ok(true)
-    }
-    pub fn on_instantiate(
-        &self,
-        deps: &DepsMut,
-        info: MessageInfo,
-        env: Env,
-    ) -> StdResult<HookResponse> {
-        let modules = self.to_modules();
-        let mut resp = HookResponse::default();
-        for module in modules {
-            let mod_res = module.on_instantiate(deps, info.clone(), env.clone())?;
-            resp = resp.add_resp(mod_res);
-        }
-
-        Ok(resp)
     }
     pub fn on_execute(&self, deps: &DepsMut, info: MessageInfo, env: Env) -> StdResult<()> {
         let modules = self.to_modules();
@@ -228,7 +120,7 @@ impl Modules {
         env: Env,
         token_id: String,
         purchaser: String,
-        amount: u128,
+        amount: Uint128,
         denom: String,
     ) -> StdResult<()> {
         let modules = self.to_modules();
@@ -245,34 +137,6 @@ impl Modules {
         }
 
         Ok(())
-    }
-    pub fn on_agreed_transfer(
-        &self,
-        deps: &DepsMut,
-        info: MessageInfo,
-        env: Env,
-        payments: &mut Vec<BankMsg>,
-        owner: String,
-        purchaser: String,
-        amount: Coin,
-    ) -> StdResult<HookResponse> {
-        let modules = self.to_modules();
-        let mut resp = HookResponse::default();
-        for module in modules {
-            let mod_resp = module.on_agreed_transfer(
-                &deps,
-                info.clone(),
-                env.clone(),
-                payments,
-                owner.clone(),
-                purchaser.clone(),
-                amount.clone(),
-            )?;
-
-            resp = resp.add_resp(mod_resp);
-        }
-
-        Ok(resp)
     }
     pub fn on_send(
         &self,
@@ -374,40 +238,16 @@ impl Modules {
 
         Ok(())
     }
-    pub fn on_burn(
-        &self,
-        deps: &DepsMut,
-        info: MessageInfo,
-        env: Env,
-        token_id: String,
-    ) -> StdResult<()> {
-        let modules = self.to_modules();
-        for module in modules {
-            module.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
-        }
-
-        Ok(())
-    }
-    pub fn on_archive(
-        &self,
-        deps: &DepsMut,
-        info: MessageInfo,
-        env: Env,
-        token_id: String,
-    ) -> StdResult<()> {
-        let modules = self.to_modules();
-        for module in modules {
-            module.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
-        }
-
-        Ok(())
-    }
 }
 
 //Converts a ModuleDefinition to a Module struct
 
-pub fn store_modules(storage: &mut dyn Storage, modules: Modules) -> StdResult<()> {
+pub fn store_modules(
+    storage: &mut dyn Storage,
+    module_defs: Vec<ModuleDefinition>,
+) -> StdResult<()> {
     //Validate each module before storing
+    let modules = Modules::new(module_defs);
     modules.validate()?;
 
     MODULES.save(storage, &modules)

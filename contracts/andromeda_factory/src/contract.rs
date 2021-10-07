@@ -26,6 +26,7 @@ pub fn instantiate(
         deps.storage,
         &Config {
             token_code_id: msg.token_code_id,
+            receipt_code_id: msg.receipt_code_id,
             address_list_code_id: msg.address_list_code_id,
             owner: String::default(),
         },
@@ -69,6 +70,7 @@ pub fn create(
         StdError::generic_err("Symbol is in use"),
     )?;
 
+    //Assign Code IDs to Modules
     let updated_modules: Vec<ModuleDefinition> = modules
         .iter()
         .map(|m| match m {
@@ -90,6 +92,15 @@ pub fn create(
                 moderators: moderators.clone(),
                 code_id: Some(config.address_list_code_id.clone()),
             },
+            ModuleDefinition::Receipt {
+                address,
+                moderators,
+                code_id: _,
+            } => ModuleDefinition::Receipt {
+                address: address.clone(),
+                moderators: moderators.clone(),
+                code_id: Some(config.receipt_code_id.clone()),
+            },
             _ => m.clone(),
         })
         .collect();
@@ -103,6 +114,7 @@ pub fn create(
             name: name.to_string(),
             symbol: symbol.to_string(),
             minter: info.sender.to_string(),
+            receipt_code_id: config.receipt_code_id,
             modules: updated_modules,
             init_hook: Some(InitHook {
                 msg: to_binary(&ExecuteMsg::TokenCreationHook {
@@ -178,6 +190,8 @@ mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     static TOKEN_CODE_ID: u64 = 0;
+    static RECEIPT_CODE_ID: u64 = 1;
+
     static ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
@@ -188,6 +202,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             token_code_id: TOKEN_CODE_ID,
+            receipt_code_id: RECEIPT_CODE_ID,
             address_list_code_id: ADDRESS_LIST_CODE_ID,
         };
         let env = mock_env();
@@ -204,6 +219,7 @@ mod tests {
 
         let init_msg = InstantiateMsg {
             token_code_id: TOKEN_CODE_ID,
+            receipt_code_id: RECEIPT_CODE_ID,
             address_list_code_id: ADDRESS_LIST_CODE_ID,
         };
 
@@ -227,6 +243,7 @@ mod tests {
                 symbol: TOKEN_SYMBOL.to_string(),
                 minter: String::from("creator"),
                 modules: vec![],
+                receipt_code_id: RECEIPT_CODE_ID,
                 init_hook: Some(InitHook {
                     msg: to_binary(&ExecuteMsg::TokenCreationHook {
                         symbol: TOKEN_SYMBOL.to_string(),
