@@ -54,6 +54,7 @@ pub fn instantiate(
 
     let mod_res = modules.on_instantiate(&deps, info.clone(), env)?;
     resp = resp.add_submessages(mod_res.msgs);
+    resp = resp.add_events(mod_res.events);
 
     Ok(resp)
 }
