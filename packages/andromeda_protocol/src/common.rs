@@ -1,6 +1,7 @@
 use crate::modules::{hooks::HookResponse, Module};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult};
 
+//Redundant? Can maybe use `Modules` struct?
 pub fn generate_instantiate_msgs(
     deps: &DepsMut,
     info: MessageInfo,
