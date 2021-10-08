@@ -7,6 +7,6 @@ pub const STATE: Item<State> = Item::new("state");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
-    pub creator: String,
+    pub owner: String,
     pub address_list: AddressList,
 }

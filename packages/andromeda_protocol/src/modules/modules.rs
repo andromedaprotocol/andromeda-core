@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 // const KEY_MODULES: &[u8] = b"modules";
 pub const MODULES: Item<Modules> = Item::new("modules");
 
-pub type Fee = u128;
+pub type Fee = u64;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]

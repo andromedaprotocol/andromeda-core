@@ -1,5 +1,6 @@
 use andromeda_protocol::{
     address_list::{AddressList, ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg},
+    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
 };
 use cosmwasm_std::{
@@ -19,12 +20,13 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let state = State {
-        creator: info.sender.to_string(),
+        owner: info.sender.to_string(),
         address_list: AddressList {
             moderators: msg.moderators.clone(),
         },
     };
 
+    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
     STATE.save(deps.storage, &state)?;
 
     Ok(Response::default())
@@ -40,6 +42,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::AddAddress { address } => execute_add_address(deps, info, address),
         ExecuteMsg::RemoveAddress { address } => execute_remove_address(deps, info, address),
+        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
 
@@ -47,6 +50,7 @@ pub fn execute(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::IncludesAddress { address } => to_binary(&query_address(deps, &address)?),
+        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
     }
 }
 
@@ -127,7 +131,7 @@ mod tests {
         //input moderator for test
 
         let state = State {
-            creator: moderator.to_string(),
+            owner: moderator.to_string(),
             address_list: AddressList {
                 moderators: vec![moderator.to_string()],
             },
@@ -185,7 +189,7 @@ mod tests {
         //save moderator
 
         let state = State {
-            creator: moderator.to_string(),
+            owner: moderator.to_string(),
             address_list: AddressList {
                 moderators: vec![moderator.to_string()],
             },

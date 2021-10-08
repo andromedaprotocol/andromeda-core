@@ -1,9 +1,11 @@
 use crate::state::{State, SPLITTER, STATE};
+use andromeda_protocol::common::generate_instantiate_msgs;
 use andromeda_protocol::modules::address_list::{
     on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST,
 };
 use andromeda_protocol::modules::hooks::MessageHooks;
 use andromeda_protocol::modules::Module;
+use andromeda_protocol::ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER};
 use andromeda_protocol::splitter::GetSplitterConfigResponse;
 use andromeda_protocol::{
     require::require,
@@ -12,8 +14,8 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, StdResult, SubMsg, Uint128
+    attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128
 };
 // use std::collections::HashMap;
 
@@ -35,20 +37,19 @@ pub fn instantiate(
         address_list: msg.address_list.clone(),
     };
 
-    let mut res = Response::default();
-
-    if msg.address_list.is_some() {
-        let addr_res =
-            msg.address_list
-                .clone()
-                .unwrap()
-                .on_instantiate(&deps, info.clone(), env.clone())?;
-        res = res.add_submessages(addr_res.msgs);
-    }
+    let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
 
     STATE.save(deps.storage, &state)?;
     SPLITTER.save(deps.storage, &splitter)?;
-    Ok(res)
+    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
+
+    Ok(Response::new()
+        .add_attributes(vec![
+            attr("action", "instantiate"),
+            attr("type", "splitter"),
+        ])
+        .add_submessages(inst_msgs.msgs)
+        .add_events(inst_msgs.events))
 }
 
 #[entry_point]
@@ -69,6 +70,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             execute_update_address_list(deps, info, address_list)
         }
         ExecuteMsg::Send {} => execute_send(deps, info),
+        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
 
@@ -209,6 +211,7 @@ fn execute_update_address_list(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetSplitterConfig {} => to_binary(&query_splitter(deps)?),
+        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
     }
 }
 
@@ -224,7 +227,6 @@ fn query_splitter(deps: Deps) -> StdResult<GetSplitterConfigResponse> {
         address_list_contract,
     })
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;

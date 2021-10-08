@@ -1,11 +1,12 @@
 use andromeda_protocol::{
     modules::{
         address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
-        common::require,
         read_modules,
         receipt::{on_receipt_reply, REPLY_RECEIPT},
         store_modules, Modules,
     },
+    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
+    require::require,
     token::{
         Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
         ModuleContractsResponse, ModuleInfoResponse, NftArchivedResponse, NftMetadataResponse,
@@ -46,14 +47,16 @@ pub fn instantiate(
         metadata_limit: msg.metadata_limit,
     };
 
-    CONFIG.save(deps.storage, &config)?;
     let modules = Modules::new(msg.modules);
-    store_modules(deps.storage, modules.clone())?;
-
     let mut resp = Response::new();
 
     let mod_res = modules.on_instantiate(&deps, info.clone(), env)?;
     resp = resp.add_submessages(mod_res.msgs);
+    resp = resp.add_events(mod_res.events);
+
+    CONFIG.save(deps.storage, &config)?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
+    store_modules(deps.storage, modules.clone())?;
 
     Ok(resp)
 }
@@ -107,6 +110,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount.u128(), denom),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
+        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
 
@@ -502,6 +506,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
         QueryMsg::ModuleContracts {} => to_binary(&query_module_contracts(deps)?),
+        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
     }
 }
 
@@ -1186,6 +1191,7 @@ mod tests {
         let token_id = String::default();
         let denom = "uluna";
         let amount = Uint128::from(100 as u64);
+        let metadata = String::from("str");
 
         let instantiate_msg = InstantiateMsg {
             name: "Token Name".to_string(),
@@ -1203,14 +1209,14 @@ mod tests {
             owner: minter.to_string(),
             description: None,
             name: "Some Token".to_string(),
-            metadata: None,
+            metadata: Some(metadata.clone()),
         });
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
         let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
             token_id: token_id.clone(),
             denom: denom.to_string(),
-            amount: amount.clone(),
+            amount: Uint128::from(amount),
             purchaser: purchaser.to_string(),
         };
         execute(
@@ -1229,20 +1235,7 @@ mod tests {
         let agreement = agreement_res.agreement.unwrap();
 
         assert_eq!(agreement.purchaser, purchaser.clone());
-        assert_eq!(agreement.amount, coin(amount.u128(), denom));
-
-        let purchaser_info = mock_info(purchaser.clone(), &[]);
-        let transfer_msg = ExecuteMsg::TransferNft {
-            token_id: token_id.clone(),
-            recipient: purchaser.to_string(),
-        };
-        execute(
-            deps.as_mut(),
-            env.clone(),
-            purchaser_info.clone(),
-            transfer_msg,
-        )
-        .unwrap();
+        assert_eq!(agreement.amount, coin(amount.u128(), denom))
     }
 
     #[test]

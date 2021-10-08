@@ -1,10 +1,10 @@
-use cosmwasm_std::{Coin, StdResult, Storage};
+use cosmwasm_std::{Api, Coin, StdError, StdResult, Storage};
 use cw721::Expiration;
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::modules::address_list::AddressListModule;
+use crate::{modules::address_list::AddressListModule, require::require};
 
 pub const HELD_FUNDS: Map<String, Escrow> = Map::new("funds");
 
@@ -21,6 +21,9 @@ pub enum ExecuteMsg {
         recipient: Option<String>,
     },
     ReleaseFunds {},
+    UpdateOwner {
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -28,6 +31,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     GetLockedFunds { address: String },
     GetTimelockConfig {},
+    ContractOwner {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -50,6 +54,30 @@ pub struct Escrow {
     pub recipient: String,
 }
 
+impl Escrow {
+    pub fn validate(self, api: &dyn Api) -> StdResult<bool> {
+        require(
+            self.coins.len() > 0,
+            StdError::generic_err("Cannot escrow empty funds"),
+        )?;
+        require(
+            api.addr_validate(&self.recipient.clone()).is_ok(),
+            StdError::generic_err("Escrow recipient must be a valid address"),
+        )?;
+
+        match self.expiration {
+            Expiration::Never {} => {
+                return Err(StdError::generic_err(
+                    "Cannot escrow funds with no expiration",
+                ));
+            }
+            _ => {}
+        }
+
+        Ok(true)
+    }
+}
+
 pub fn hold_funds(funds: Escrow, storage: &mut dyn Storage, addr: String) -> StdResult<()> {
     HELD_FUNDS.save(storage, addr.clone(), &funds)
 }
@@ -60,4 +88,68 @@ pub fn release_funds(storage: &mut dyn Storage, addr: String) {
 
 pub fn get_funds(storage: &dyn Storage, addr: String) -> StdResult<Option<Escrow>> {
     HELD_FUNDS.may_load(storage, addr)
+}
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::coin;
+    use cosmwasm_std::testing::mock_dependencies;
+
+    use super::*;
+
+    #[test]
+    fn test_validate() {
+        let deps = mock_dependencies(&[]);
+        let expiration = Expiration::AtHeight(1);
+        let coins = vec![coin(100u128, "uluna")];
+        let recipient = String::from("owner");
+
+        let valid_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: coins.clone(),
+            expiration: expiration.clone(),
+        };
+
+        let resp = valid_escrow.validate(deps.as_ref().api).unwrap();
+        assert!(resp);
+
+        let invalid_recipient_escrow = Escrow {
+            recipient: String::default(),
+            coins: coins.clone(),
+            expiration: expiration.clone(),
+        };
+
+        let resp = invalid_recipient_escrow
+            .validate(deps.as_ref().api)
+            .unwrap_err();
+        assert_eq!(
+            StdError::generic_err("Escrow recipient must be a valid address"),
+            resp
+        );
+
+        let invalid_coins_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: vec![],
+            expiration: expiration.clone(),
+        };
+
+        let resp = invalid_coins_escrow
+            .validate(deps.as_ref().api)
+            .unwrap_err();
+        assert_eq!(StdError::generic_err("Cannot escrow empty funds"), resp);
+
+        let invalid_expiration_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: coins.clone(),
+            expiration: Expiration::Never {},
+        };
+
+        let resp = invalid_expiration_escrow
+            .validate(deps.as_ref().api)
+            .unwrap_err();
+        assert_eq!(
+            StdError::generic_err("Cannot escrow funds with no expiration"),
+            resp
+        );
+    }
 }

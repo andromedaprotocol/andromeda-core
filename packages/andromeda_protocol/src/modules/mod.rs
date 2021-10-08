@@ -23,8 +23,8 @@ pub const MODULES: Item<Modules> = Item::new("modules");
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct FlatRate {
-    amount: Uint128,
-    denom: String,
+    pub amount: Uint128,
+    pub denom: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]

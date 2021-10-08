@@ -2,7 +2,7 @@ use crate::modules::{
     common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
 };
 use cosmwasm_std::{
-    attr, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
+    attr, coin, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
     StdResult, Uint128,
 };
 use cw721::Expiration;
@@ -61,6 +61,17 @@ impl TransferAgreement {
             to_address,
             amount: vec![self.amount.clone()],
         }
+    }
+    pub fn calculate_fee(&self, fee: Rate) -> Coin {
+        let amount = self.amount.amount;
+        let fee_amount = match fee {
+            Rate::Flat(flat_rate) => {
+                amount.multiply_ratio(flat_rate.amount, flat_rate.denom.parse::<u128>().unwrap())
+            }
+            Rate::Percent(fee) => amount.multiply_ratio(fee, 100 as u128),
+        };
+
+        coin(fee_amount.u128(), self.amount.denom.clone())
     }
     pub fn generate_fee_payment(&self, to_address: String, rate: Rate) -> BankMsg {
         BankMsg::Send {
@@ -205,6 +216,9 @@ pub enum ExecuteMsg {
         amount: Uint128,
         purchaser: String,
     },
+    UpdateOwner {
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -238,6 +252,7 @@ pub enum QueryMsg {
     ModuleInfo {},
     ModuleContracts {},
     ContractInfo {},
+    ContractOwner {},
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchivedResponse {
