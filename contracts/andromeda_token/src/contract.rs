@@ -1,15 +1,23 @@
-use andromeda_protocol::modules::blacklist::execute_blacklist;
-use andromeda_protocol::modules::whitelist::execute_whitelist;
-use andromeda_protocol::modules::{common::require, read_modules, store_modules};
-use andromeda_protocol::token::{
-    Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, NftArchivedResponse,
-    NftMetadataResponse, NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
+use andromeda_protocol::{
+    modules::{
+        address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
+        common::require,
+        read_modules,
+        receipt::{on_receipt_reply, REPLY_RECEIPT},
+        store_modules, Modules,
+    },
+    token::{
+        Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
+        ModuleContractsResponse, ModuleInfoResponse, NftArchivedResponse, NftMetadataResponse,
+        NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
+    },
 };
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair,
-    Response, StdError, StdResult,
+    attr, coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order,
+    Pair, Reply, Response, StdError, StdResult,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
@@ -25,7 +33,7 @@ use crate::state::{
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
@@ -34,26 +42,40 @@ pub fn instantiate(
     let config = TokenConfig {
         name: msg.name,
         symbol: msg.symbol,
-        minter: msg.minter,
+        minter: msg.minter.to_string(),
         metadata_limit: msg.metadata_limit,
     };
 
     CONFIG.save(deps.storage, &config)?;
-    store_modules(deps.storage, msg.modules)?;
+    let modules = Modules::new(msg.modules);
+    store_modules(deps.storage, modules.clone())?;
 
-    match msg.init_hook {
-        Some(hook) => {
-            let resp = Response::new().add_message(hook.into_cosmos_msg(info.sender.to_string())?);
-            Ok(resp)
-        }
-        None => Ok(Response::default()),
+    let mut resp = Response::new();
+
+    let mod_res = modules.on_instantiate(&deps, info.clone(), env)?;
+    resp = resp.add_submessages(mod_res.msgs);
+    resp = resp.add_events(mod_res.events);
+
+    Ok(resp)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+    if msg.result.is_err() {
+        return Err(StdError::generic_err(msg.result.unwrap_err()));
+    }
+
+    match msg.id {
+        REPLY_RECEIPT => on_receipt_reply(deps, msg),
+        REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
+        _ => Err(StdError::generic_err("reply id is invalid")),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_execute(&deps, info.clone(), env.clone(), msg.clone())?;
+    modules.on_execute(&deps, info.clone(), env.clone())?;
 
     match msg {
         ExecuteMsg::Mint(msg) => execute_mint(deps, env, info, msg),
@@ -84,14 +106,6 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             amount,
             purchaser,
         } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount.u128(), denom),
-        ExecuteMsg::Whitelist {
-            address,
-            whitelisted,
-        } => execute_whitelist(deps, env, info, address, whitelisted),
-        ExecuteMsg::Blacklist {
-            address,
-            blacklisted,
-        } => execute_blacklist(deps, env, info, address, blacklisted),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
     }
@@ -381,7 +395,6 @@ fn transfer_nft(
     recipient: &String,
     token_id: &String,
 ) -> StdResult<Response> {
-    let modules = read_modules(deps.storage)?;
     let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
     require(
         has_transfer_rights(deps.storage, env, info.sender.to_string(), &token)?,
@@ -396,28 +409,20 @@ fn transfer_nft(
     token.owner = recipient.to_string();
     token.approvals = vec![];
 
-    let res = match token.transfer_agreement.clone() {
-        Some(a) => {
-            let mut res = Response::new();
-            let payment_message = a.generate_payment(owner.clone());
-            let mut payments = vec![payment_message];
-            modules.on_agreed_transfer(
-                &deps,
-                info.clone(),
-                env.clone(),
-                &mut payments,
-                owner.clone(),
-                a.purchaser.clone(),
-                a.amount.clone(),
-            )?;
-            for payment in payments {
-                res = res.add_message(payment);
-            }
+    let mut res = Response::new().add_attributes(vec![
+        attr("action", "transfer"),
+        attr("owner", owner.clone()),
+        attr("recipient", recipient.clone()),
+    ]);
 
-            res
-        }
-        None => Response::default(),
-    };
+    if token.transfer_agreement.is_some() {
+        //Attach any transfer agreement messages/events
+        res = token
+            .transfer_agreement
+            .clone()
+            .unwrap()
+            .on_transfer(&deps, info, env, owner, res)?;
+    }
 
     TOKENS.save(deps.storage, token_id.to_string(), &token)?;
     Ok(res)
@@ -496,6 +501,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::NftArchiveStatus { token_id } => {
             to_binary(&query_token_archive_status(deps, token_id)?)
         }
+        QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
+        QueryMsg::ModuleContracts {} => to_binary(&query_module_contracts(deps)?),
     }
 }
 
@@ -591,6 +598,33 @@ fn query_token_archive_status(deps: Deps, token_id: String) -> StdResult<NftArch
     })
 }
 
+fn query_module_info(deps: Deps) -> StdResult<ModuleInfoResponse> {
+    let modules = read_modules(deps.storage)?;
+
+    Ok(ModuleInfoResponse {
+        modules: modules.module_defs,
+    })
+}
+
+fn query_module_contracts(deps: Deps) -> StdResult<ModuleContractsResponse> {
+    let modules = read_modules(deps.storage)?;
+    let contracts: Vec<ModuleContract> = modules
+        .module_defs
+        .iter()
+        .map(|def| {
+            let name = def.name();
+            let addr = def.as_module().get_contract_address(deps.storage);
+
+            ModuleContract {
+                module: name,
+                contract: addr,
+            }
+        })
+        .collect();
+
+    Ok(ModuleContractsResponse { contracts })
+}
+
 /**
 The next few functions are taken from the CW721-base contract:
 https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw721-base
@@ -622,24 +656,22 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
     Ok(Response::default())
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::modules::blacklist::BLACKLIST;
-    use andromeda_protocol::modules::whitelist::WHITELIST;
-    use andromeda_protocol::modules::ModuleDefinition;
-    use andromeda_protocol::modules::Modules;
-    use andromeda_protocol::modules::MODULES;
-    use andromeda_protocol::token::ExecuteMsg;
     use andromeda_protocol::token::Approval;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::BankMsg;
-    use cosmwasm_std::{from_binary, Api, Uint128};
+    use andromeda_protocol::token::ExecuteMsg;
+    use andromeda_protocol::token::NftArchivedResponse;
+    use cosmwasm_std::{
+        from_binary,
+        testing::{mock_dependencies, mock_env, mock_info},
+        Api, BankMsg, Uint128,
+    };
 
+    const ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
-
+    static RECEIPT_CODE_ID: u64 = 1;
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies(&[]);
@@ -649,9 +681,10 @@ mod tests {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             modules: vec![],
+            receipt_code_id: RECEIPT_CODE_ID,
             minter: String::from("creator"),
-            init_hook: None,
             metadata_limit: None,
+            address_list_code_id: Some(ADDRESS_LIST_CODE_ID),
         };
 
         let env = mock_env();
@@ -700,6 +733,24 @@ mod tests {
             recipient: recipient.to_string(),
             token_id: token_id.clone(),
         };
+        let attrs = vec![
+            attr("action", "transfer"),
+            attr("owner", minter.to_string()),
+            attr("recipient", recipient.to_string()),
+        ];
+
+        //store config
+        CONFIG
+            .save(
+                deps.as_mut().storage,
+                &TokenConfig {
+                    name: TOKEN_NAME.to_string(),
+                    symbol: TOKEN_SYMBOL.to_string(),
+                    minter: String::from("creator"),
+                    metadata_limit: None,
+                },
+            )
+            .unwrap();
 
         let token = Token {
             token_id: token_id.clone(),
@@ -743,7 +794,7 @@ mod tests {
         );
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
+        assert_eq!(Response::default().add_attributes(attrs.clone()), res);
         let owner = TOKENS
             .load(deps.as_ref().storage, token_id.to_string())
             .unwrap()
@@ -786,7 +837,7 @@ mod tests {
             msg.clone(),
         )
         .unwrap();
-        assert_eq!(Response::default(), res);
+        assert_eq!(Response::default().add_attributes(attrs.clone()), res);
         let owner = TOKENS
             .load(deps.as_ref().storage, approval_token_id.to_string())
             .unwrap()
@@ -829,7 +880,8 @@ mod tests {
             msg.clone(),
         )
         .unwrap();
-        assert_eq!(Response::default(), res);
+        assert_eq!(Response::default().add_attributes(attrs.clone()), res);
+
         let owner = TOKENS
             .load(deps.as_ref().storage, approval_token_id.to_string())
             .unwrap()
@@ -845,6 +897,19 @@ mod tests {
         let recipient = "recipient";
         let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
+        //store config
+        CONFIG
+            .save(
+                deps.as_mut().storage,
+                &TokenConfig {
+                    name: TOKEN_NAME.to_string(),
+                    symbol: TOKEN_SYMBOL.to_string(),
+                    minter: String::from("creator"),
+                    metadata_limit: None,
+                },
+            )
+            .unwrap();
+
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
             token_id: token_id.clone(),
@@ -871,10 +936,17 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(
-            Response::new().add_message(BankMsg::Send {
-                to_address: minter.to_string(),
-                amount: vec![amount.clone()]
-            }),
+            Response::new()
+                .add_message(BankMsg::Send {
+                    to_address: minter.to_string(),
+                    amount: vec![amount.clone()]
+                })
+                .add_event(token.transfer_agreement.unwrap().generate_event())
+                .add_attributes(vec![
+                    attr("action", "transfer"),
+                    attr("owner", minter.to_string()),
+                    attr("recipient", recipient.to_string()),
+                ]),
             res
         );
     }
@@ -968,6 +1040,18 @@ mod tests {
         let token_id = String::default();
         let operator = "operator";
         let operator_info = mock_info(operator.clone(), &[]);
+        //store config
+        CONFIG
+            .save(
+                deps.as_mut().storage,
+                &TokenConfig {
+                    name: TOKEN_NAME.to_string(),
+                    symbol: TOKEN_SYMBOL.to_string(),
+                    minter: String::from("creator"),
+                    metadata_limit: None,
+                },
+            )
+            .unwrap();
 
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
@@ -1030,6 +1114,19 @@ mod tests {
         let operator = "operator";
         let operator_info = mock_info(operator.clone(), &[]);
 
+        //store config
+        CONFIG
+            .save(
+                deps.as_mut().storage,
+                &TokenConfig {
+                    name: TOKEN_NAME.to_string(),
+                    symbol: TOKEN_SYMBOL.to_string(),
+                    minter: String::from("creator"),
+                    metadata_limit: None,
+                },
+            )
+            .unwrap();
+
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
@@ -1089,8 +1186,20 @@ mod tests {
         let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
         let denom = "uluna";
-        let amount = 100 as u128;
-        let metadata = "really long metadata message, too long for the storage".to_string();
+        let amount = Uint128::from(100 as u64);
+        let metadata = String::from("str");
+
+        let instantiate_msg = InstantiateMsg {
+            name: "Token Name".to_string(),
+            symbol: "TS".to_string(),
+            minter: minter.to_string(),
+            metadata_limit: None,
+            modules: vec![],
+            receipt_code_id: 1,
+            address_list_code_id: Some(2),
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
@@ -1122,142 +1231,181 @@ mod tests {
         let agreement = agreement_res.agreement.unwrap();
 
         assert_eq!(agreement.purchaser, purchaser.clone());
-        assert_eq!(agreement.amount, coin(amount, denom))
+        assert_eq!(agreement.amount, coin(amount.u128(), denom))
     }
 
     #[test]
-    fn test_whitelist() {
+    fn test_metadata() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
-        let moderator = "minter";
-        let whitelistee = "whitelistee";
-        let info = mock_info(moderator.clone(), &[]);
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = "1";
 
-        let module_defs = vec![ModuleDefinition::Whitelist {
-            moderators: vec![moderator.to_string()],
-        }];
-        let modules = Modules { module_defs };
-
-        MODULES.save(deps.as_mut().storage, &modules).unwrap();
-
-        let msg = ExecuteMsg::Whitelist {
-            address: whitelistee.to_string(),
-            whitelisted: true,
+        let instantiate_message = InstantiateMsg {
+            name: "Token".to_string(),
+            symbol: "T".to_string(),
+            minter: minter.to_string(),
+            modules: vec![],
+            receipt_code_id: RECEIPT_CODE_ID,
+            metadata_limit: Some(4),
+            address_list_code_id: Some(ADDRESS_LIST_CODE_ID),
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
+        instantiate(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            instantiate_message,
+        )
+        .unwrap();
 
-        let whitelisted = WHITELIST
-            .load(deps.as_ref().storage, whitelistee.to_string())
-            .unwrap();
+        let metadata = "really long metadata message, too long for the storage".to_string();
 
-        assert_eq!(true, whitelisted);
+        let mint_msg = ExecuteMsg::Mint(MintMsg {
+            token_id: token_id.to_string(),
+            owner: minter.to_string(),
+            name: "test token".to_string(),
+            description: None,
+            metadata: Some(metadata.clone()),
+        });
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap_err();
+
+        assert_eq!(
+            res,
+            StdError::generic_err("Metadata length must be less than or equal to 4")
+        );
+
+        let metadata = "s".to_string();
+
+        let mint_msg = ExecuteMsg::Mint(MintMsg {
+            token_id: token_id.to_string(),
+            owner: minter.to_string(),
+            name: "test token".to_string(),
+            description: None,
+            metadata: Some(metadata.clone()),
+        });
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
+
+        assert_eq!(res, Response::default());
+
+        let query_msg = QueryMsg::NftMetadata {
+            token_id: token_id.to_string(),
+        };
+
+        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let query_val: NftMetadataResponse = from_binary(&query_res).unwrap();
+
+        assert_eq!(query_val.metadata, Some(metadata.clone()))
+    }
+
+    #[test]
+    fn test_execute_burn() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = "1";
+
+        let mint_msg = MintMsg {
+            token_id: token_id.to_string(),
+            owner: minter.to_string(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
+        };
+
+        let msg = ExecuteMsg::Mint(mint_msg);
+
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let unauth_info = mock_info("anyone", &[]);
-        let res =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
-        assert_eq!(StdError::generic_err("Address is not whitelisted"), res);
-
-        let whitelisted_info = mock_info(whitelistee.clone(), &[]);
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            whitelisted_info.clone(),
-            msg.clone(),
-        )
-        .unwrap_err();
-        assert_eq!(
-            StdError::generic_err("Must be a moderator to whitelist an address"),
-            res
-        );
-
-        let dewhitelist_msg = ExecuteMsg::Whitelist {
-            address: whitelistee.to_string(),
-            whitelisted: false,
+        let burn_msg = ExecuteMsg::Burn {
+            token_id: token_id.to_string(),
         };
 
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            dewhitelist_msg.clone(),
+        let resp = execute(deps.as_mut(), env.clone(), unauth_info, burn_msg.clone()).unwrap_err();
+
+        assert_eq!(
+            resp,
+            StdError::generic_err("Cannot burn a token you do not own")
+        );
+
+        execute(deps.as_mut(), env.clone(), info.clone(), burn_msg.clone()).unwrap();
+
+        let query_msg = QueryMsg::OwnerOf {
+            token_id: token_id.to_string(),
+        };
+
+        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap_err();
+
+        assert_eq!(
+            query_res,
+            StdError::not_found("andromeda_protocol::token::Token")
         )
-        .unwrap();
-        assert_eq!(Response::default(), res);
-
-        let whitelisted = WHITELIST
-            .load(deps.as_ref().storage, whitelistee.to_string())
-            .unwrap();
-
-        assert_eq!(false, whitelisted);
     }
 
     #[test]
-    fn test_blacklist() {
+    fn test_execute_archive() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
-        let moderator = "minter";
-        let blacklistee = "blacklistee";
-        let info = mock_info(moderator.clone(), &[]);
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = "1";
 
-        let module_defs = vec![ModuleDefinition::Blacklist {
-            moderators: vec![moderator.to_string()],
-        }];
-        let modules = Modules { module_defs };
-
-        MODULES.save(deps.as_mut().storage, &modules).unwrap();
-
-        let msg = ExecuteMsg::Blacklist {
-            address: blacklistee.to_string(),
-            blacklisted: true,
+        let mint_msg = MintMsg {
+            token_id: token_id.to_string(),
+            owner: minter.to_string(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
+        let msg = ExecuteMsg::Mint(mint_msg);
 
-        let whitelisted = BLACKLIST
-            .load(deps.as_ref().storage, blacklistee.to_string())
-            .unwrap();
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-        assert_eq!(true, whitelisted);
+        let unauth_info = mock_info("anyone", &[]);
+        let archive_msg = ExecuteMsg::Archive {
+            token_id: token_id.to_string(),
+        };
 
-        let unauth_info = mock_info(blacklistee.clone(), &[]);
-        let res =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
-        assert_eq!(StdError::generic_err("Address is blacklisted"), res);
+        let resp =
+            execute(deps.as_mut(), env.clone(), unauth_info, archive_msg.clone()).unwrap_err();
 
-        let whitelisted_info = mock_info("anyone", &[]);
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            whitelisted_info.clone(),
-            msg.clone(),
-        )
-        .unwrap_err();
         assert_eq!(
-            StdError::generic_err("Must be a moderator to blacklist an address"),
-            res
+            resp,
+            StdError::generic_err("Cannot archive a token you do not own")
         );
 
-        let deblacklist_msg = ExecuteMsg::Blacklist {
-            address: blacklistee.to_string(),
-            blacklisted: false,
-        };
-
-        let res = execute(
+        execute(
             deps.as_mut(),
             env.clone(),
             info.clone(),
-            deblacklist_msg.clone(),
+            archive_msg.clone(),
         )
         .unwrap();
-        assert_eq!(Response::default(), res);
 
-        let blacklisted = BLACKLIST
-            .load(deps.as_ref().storage, blacklistee.to_string())
-            .unwrap();
+        let archived_resp = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            archive_msg.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            archived_resp,
+            StdError::generic_err("This token is archived and cannot be changed in any way.")
+        );
 
-        assert_eq!(false, blacklisted);
+        let query_msg = QueryMsg::NftArchiveStatus {
+            token_id: token_id.to_string(),
+        };
+
+        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let query_val: NftArchivedResponse = from_binary(&query_res).unwrap();
+        assert!(query_val.archived)
     }
 }

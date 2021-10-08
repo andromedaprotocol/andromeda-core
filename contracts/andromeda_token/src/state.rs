@@ -83,6 +83,14 @@ pub fn increment_num_tokens(storage: &mut dyn Storage) -> StdResult<()> {
     NUM_TOKENS.save(storage, &(token_count + 1))
 }
 
+pub fn read_config(storage: &dyn Storage) -> StdResult<TokenConfig> {
+    CONFIG.load(storage)
+}
+
+pub fn store_config(storage: &mut dyn Storage, config: &TokenConfig) -> StdResult<()> {
+    CONFIG.save(storage, config)
+}
+
 pub fn decrement_num_tokens(storage: &mut dyn Storage) -> StdResult<()> {
     let token_count = NUM_TOKENS.load(storage).unwrap_or_default();
     if token_count == 0 {

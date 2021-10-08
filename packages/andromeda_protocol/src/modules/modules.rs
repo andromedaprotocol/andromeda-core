@@ -1,5 +1,7 @@
+use crate::modules::receipt::Receipt;
 use crate::modules::taxable::Taxable;
 use crate::modules::{hooks::MessageHooks, whitelist::Whitelist};
+
 use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult, Storage};
 use cw721::Expiration;
 use cw_storage_plus::Item;
@@ -15,8 +17,9 @@ pub type Fee = u64;
 #[serde(rename_all = "snake_case")]
 pub enum ModuleDefinition {
     Whitelist { moderators: Vec<String> },
-    Taxable { rate: Rate, receivers: Vec<String> },
-    // Royalties { rate: Rate, receivers: Vec<String> },
+    Taxable { tax: Fee, receivers: Vec<String> },
+    Receipt,
+    // Royalties { fee: Fee, receivers: Vec<String> },
 }
 
 pub trait Module: MessageHooks {
@@ -34,6 +37,7 @@ impl ModuleDefinition {
                 rate: tax.clone(),
                 receivers: receivers.clone(),
             }),
+            ModuleDefinition::Receipt => Box::from(Receipt {}),
         }
     }
 }
