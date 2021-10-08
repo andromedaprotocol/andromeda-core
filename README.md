@@ -10,7 +10,8 @@ A monorepository containing all the contracts and packages related to Andromeda 
 | [andromeda_token](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_token)      | Token contract used to store all related tokens and any modules that may be attached to them. Initialised by the `andromeda_factory` contract.|
 | [andromeda_addresslist](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_addresslist)      | Contract used to store a list of addresses. Queriable for inclusion of a given address. Used for both whitelist and blacklist modules.|
 | [andromeda_splitter](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_splitter)      | Contract used to split any sent funds amongst defined addresses.|
-| [andromeda_timelock](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_addresslist)      | Contract used to store funds for a defined period of time before being released, similar to Escrow. |
+| [andromeda_timelock](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_timelock)      | Contract used to store funds for a defined period of time before being released, similar to Escrow. |
+| [andromeda_receipt](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_receipt)      | Contract used to mint receipts. |
 
 ## Packages
 | Contract      | Description |
