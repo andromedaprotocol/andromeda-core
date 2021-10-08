@@ -5,6 +5,7 @@ use andromeda_protocol::{
         receipt::{on_receipt_reply, REPLY_RECEIPT},
         store_modules, Modules,
     },
+    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
     token::{
         Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
@@ -46,15 +47,16 @@ pub fn instantiate(
         metadata_limit: msg.metadata_limit,
     };
 
-    CONFIG.save(deps.storage, &config)?;
     let modules = Modules::new(msg.modules);
-    store_modules(deps.storage, modules.clone())?;
-
     let mut resp = Response::new();
 
     let mod_res = modules.on_instantiate(&deps, info.clone(), env)?;
     resp = resp.add_submessages(mod_res.msgs);
     resp = resp.add_events(mod_res.events);
+
+    CONFIG.save(deps.storage, &config)?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
+    store_modules(deps.storage, modules.clone())?;
 
     Ok(resp)
 }
@@ -108,6 +110,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount.u128(), denom),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
+        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
 
@@ -503,6 +506,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
         QueryMsg::ModuleContracts {} => to_binary(&query_module_contracts(deps)?),
+        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
     }
 }
 

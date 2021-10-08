@@ -35,6 +35,9 @@ pub enum ExecuteMsg {
         receipt_id: Uint128,
         receipt: Receipt,
     },
+    UpdateOwner {
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -42,6 +45,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     Receipt { receipt_id: Uint128 },
     ContractInfo {},
+    ContractOwner {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

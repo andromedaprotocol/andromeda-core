@@ -55,12 +55,14 @@ pub enum ExecuteMsg {
     UpdateLock { lock: bool },
     UpdateAddressList { address_list: AddressListModule },
     Send {},
+    UpdateOwner { address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     GetSplitterConfig {},
+    ContractOwner {},
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]

@@ -5,6 +5,7 @@ use andromeda_protocol::modules::address_list::{
 };
 use andromeda_protocol::modules::hooks::MessageHooks;
 use andromeda_protocol::modules::Module;
+use andromeda_protocol::ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER};
 use andromeda_protocol::splitter::GetSplitterConfigResponse;
 use andromeda_protocol::{
     require::require,
@@ -27,7 +28,7 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     msg.validate()?;
     let state = State {
-        owner: info.clone().sender,
+        owner: info.sender.clone(),
     };
 
     let splitter = Splitter {
@@ -36,10 +37,12 @@ pub fn instantiate(
         address_list: msg.address_list.clone(),
     };
 
-    let inst_msgs = generate_instantiate_msgs(&deps, info, env, vec![msg.address_list])?;
+    let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
 
     STATE.save(deps.storage, &state)?;
     SPLITTER.save(deps.storage, &splitter)?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
+
     Ok(Response::new()
         .add_attributes(vec![
             attr("action", "instantiate"),
@@ -67,6 +70,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             execute_update_address_list(deps, info, address_list)
         }
         ExecuteMsg::Send {} => execute_send(deps, info),
+        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
 
@@ -186,6 +190,7 @@ fn execute_update_address_list(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetSplitterConfig {} => to_binary(&query_splitter(deps)?),
+        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
     }
 }
 

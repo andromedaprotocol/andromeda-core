@@ -2,6 +2,7 @@ use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use andromeda_protocol::{
+    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     receipt::{
         Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
         ReceiptResponse,
@@ -31,6 +32,7 @@ pub fn instantiate(
             },
         },
     )?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
     Ok(Response::default())
 }
 
@@ -47,6 +49,7 @@ pub fn execute(
             receipt,
             receipt_id,
         } => execute_edit_receipt(deps, info, receipt_id, receipt),
+        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
 
@@ -89,8 +92,9 @@ fn execute_edit_receipt(
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Receipt { receipt_id } => Ok(to_binary(&query_receipt(deps, receipt_id)?)?),
-        QueryMsg::ContractInfo {} => Ok(to_binary(&query_config(deps)?)?),
+        QueryMsg::Receipt { receipt_id } => to_binary(&query_receipt(deps, receipt_id)?),
+        QueryMsg::ContractInfo {} => to_binary(&query_config(deps)?),
+        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
     }
 }
 

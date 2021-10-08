@@ -216,6 +216,9 @@ pub enum ExecuteMsg {
         amount: Uint128,
         purchaser: String,
     },
+    UpdateOwner {
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -249,6 +252,7 @@ pub enum QueryMsg {
     ModuleInfo {},
     ModuleContracts {},
     ContractInfo {},
+    ContractOwner {},
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchivedResponse {

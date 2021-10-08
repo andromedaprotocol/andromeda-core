@@ -1,6 +1,7 @@
 use andromeda_protocol::{
     factory::{AddressResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     modules::ModuleDefinition,
+    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
     token::InstantiateMsg as TokenInstantiateMsg,
 };
@@ -18,7 +19,7 @@ use crate::{
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     store_config(
@@ -27,9 +28,11 @@ pub fn instantiate(
             token_code_id: msg.token_code_id,
             receipt_code_id: msg.receipt_code_id,
             address_list_code_id: msg.address_list_code_id,
-            owner: String::default(),
+            owner: info.sender.to_string(),
         },
     )?;
+
+    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
 
     Ok(Response::default())
 }
@@ -59,6 +62,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         //     symbol,
         //     new_address,
         // } => update_address(deps, env, info, symbol, new_address),
+        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
 
@@ -162,6 +166,7 @@ pub fn create(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetAddress { symbol } => to_binary(&query_address(deps, symbol)?),
+        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
     }
 }
 
