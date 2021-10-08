@@ -113,9 +113,6 @@ fn execute_hold_funds(
     )?;
 
     let sent_funds: Vec<Coin> = info.funds.clone();
-    if sent_funds.len() == 0 {
-        return Err(StdError::generic_err("No funds provided"));
-    }
 
     let rec = recipient.unwrap_or(info.sender.to_string());
 
@@ -124,6 +121,8 @@ fn execute_hold_funds(
         expiration,
         recipient: rec,
     };
+    escrow.clone().validate(deps.api)?;
+
     hold_funds(escrow, deps.storage, info.sender.to_string())?;
 
     Ok(Response::default())
@@ -149,7 +148,7 @@ fn execute_release_funds(deps: DepsMut, env: Env, info: MessageInfo) -> StdResul
                 return Err(StdError::generic_err("Your funds are still locked"));
             }
         }
-        Expiration::Never {} => {}
+        _ => {}
     }
 
     release_funds(deps.storage, info.sender.to_string());
@@ -163,7 +162,7 @@ fn execute_release_funds(deps: DepsMut, env: Env, info: MessageInfo) -> StdResul
 mod tests {
     use super::*;
     use cosmwasm_std::{
-        from_binary,
+        coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
         Addr,
     };
@@ -197,12 +196,12 @@ mod tests {
         let env = mock_env();
         let owner = "owner";
         let funds = vec![Coin::new(1000, "uusd")];
-        let expiration = Expiration::Never {};
+        let expiration = Expiration::AtHeight(1);
         let info = mock_info(owner, &funds.clone());
         STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let msg = ExecuteMsg::HoldFunds {
-            expiration: Expiration::Never {},
+            expiration: expiration.clone(),
             recipient: None,
         };
 
@@ -236,14 +235,14 @@ mod tests {
 
         let info = mock_info(owner, &funds.clone());
         let msg = ExecuteMsg::HoldFunds {
-            expiration: Expiration::Never {},
+            expiration: Expiration::AtHeight(1),
             recipient: None,
         };
 
         //add address for registered moderator
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-        let info = mock_info(owner, &[]);
+        let info = mock_info(owner, &vec![coin(100u128, "uluna")]);
         let msg = ExecuteMsg::ReleaseFunds {};
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         let bank_msg = BankMsg::Send {
@@ -252,6 +251,20 @@ mod tests {
         };
 
         let expected = Response::default().add_message(bank_msg);
+
+        assert_eq!(res, expected);
+
+        let msg = ExecuteMsg::HoldFunds {
+            expiration: Expiration::AtHeight(10000000),
+            recipient: None,
+        };
+        //add address for registered moderator
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let msg = ExecuteMsg::ReleaseFunds {};
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+
+        let expected = StdError::generic_err("Your funds are still locked");
 
         assert_eq!(res, expected);
     }
