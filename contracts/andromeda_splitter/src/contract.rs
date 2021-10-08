@@ -13,7 +13,7 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, StdResult, SubMsg,
+    Reply, Response, StdError, StdResult, SubMsg, Uint128
 };
 // use std::collections::HashMap;
 
@@ -26,7 +26,7 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     msg.validate()?;
     let state = State {
-        owner: info.clone().sender,
+        owner: info.sender.clone(),
     };
 
     let splitter = Splitter {
@@ -105,19 +105,40 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
 
     let mut submsg: Vec<SubMsg> = Vec::new();
 
-    for recipient_addr in splitter.recipients {
+    for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for coin in &sent_funds {
             let mut recip_coin: Coin = coin.clone();
-            recip_coin.amount = coin.amount.multiply_ratio(recipient_percent, 100 as u128);
+            recip_coin.amount = coin.amount.multiply_ratio(recipient_percent, 100u128);
             vec_coin.push(recip_coin);
         }
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: recipient_addr.addr,
+            to_address: recipient_addr.addr.clone(),
             amount: vec_coin,
         })));
     }
+
+    let mut vec_remainder_coin: Vec<Coin> = Vec::new();
+
+    for coin in &sent_funds {
+        let mut remainder_coin = coin.clone();
+        for recipient_addr in &splitter.recipients {
+            let recipient_percent = recipient_addr.percent;
+            remainder_coin.amount -= coin.amount.multiply_ratio(recipient_percent, 100u128);
+        }
+        if remainder_coin.amount > Uint128::from(0u128) {
+            vec_remainder_coin.push(remainder_coin)
+        }
+    }
+
+    if vec_remainder_coin.len() > 0 {
+        submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec_remainder_coin
+        })));
+    }
+
 
     Ok(Response::new().add_submessages(submsg))
 }
