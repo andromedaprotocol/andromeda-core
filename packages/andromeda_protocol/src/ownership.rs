@@ -5,16 +5,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::require::require;
 
-const CONTRACT_OWNER: Item<String> = Item::new("contractowner");
+pub const CONTRACT_OWNER: Item<String> = Item::new("contractowner");
 
 pub fn is_contract_owner(storage: &dyn Storage, addr: String) -> StdResult<bool> {
     let owner = CONTRACT_OWNER.load(storage)?;
 
     Ok(addr.eq(&owner))
-}
-
-pub fn store_owner(storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
-    CONTRACT_OWNER.save(storage, addr)
 }
 
 pub fn execute_update_owner(
@@ -29,7 +25,7 @@ pub fn execute_update_owner(
         ),
     )?;
 
-    store_owner(deps.storage, &new_owner.clone())?;
+    CONTRACT_OWNER.save(deps.storage, &new_owner.clone())?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "update_owner"),
@@ -61,7 +57,9 @@ mod tests {
         let owner = String::from("owner");
         let new_owner = String::from("newowner");
 
-        store_owner(deps.as_mut().storage, &owner.clone()).unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.clone())
+            .unwrap();
 
         let unauth_info = mock_info("anyone", &[]);
 

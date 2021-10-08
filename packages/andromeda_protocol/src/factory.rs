@@ -23,12 +23,16 @@ pub enum ExecuteMsg {
     //     symbol: String,
     //     new_address: String,
     // },
+    UpdateOwner {
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     GetAddress { symbol: String },
+    ContractOwner {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

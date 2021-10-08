@@ -10,6 +10,7 @@ use andromeda_protocol::{
     common::generate_instantiate_msgs,
     modules::address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
     modules::{hooks::MessageHooks, Module},
+    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
     timelock::{
         get_funds, hold_funds, release_funds, Escrow, ExecuteMsg, GetLockedFundsResponse,
@@ -29,9 +30,10 @@ pub fn instantiate(
         address_list: msg.address_list.clone(),
     };
 
-    let inst_msgs = generate_instantiate_msgs(&deps, info, env, vec![msg.address_list])?;
+    let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
 
     STATE.save(deps.storage, &state)?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
     Ok(Response::new()
         .add_attributes(vec![
             attr("action", "instantiate"),
@@ -68,6 +70,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             recipient,
         } => execute_hold_funds(deps, info, expiration, recipient),
         ExecuteMsg::ReleaseFunds {} => execute_release_funds(deps, env, info),
+        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
 
@@ -144,6 +147,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetLockedFunds { address } => to_binary(&query_held_funds(deps, address)?),
         QueryMsg::GetTimelockConfig {} => to_binary(&query_config(deps)?),
+        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
     }
 }
 

@@ -21,6 +21,9 @@ pub enum ExecuteMsg {
         recipient: Option<String>,
     },
     ReleaseFunds {},
+    UpdateOwner {
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -28,6 +31,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     GetLockedFunds { address: String },
     GetTimelockConfig {},
+    ContractOwner {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

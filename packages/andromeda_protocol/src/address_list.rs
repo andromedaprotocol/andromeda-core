@@ -54,12 +54,14 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     AddAddress { address: String },
     RemoveAddress { address: String },
+    UpdateOwner { address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     IncludesAddress { address: String },
+    ContractOwner {},
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
