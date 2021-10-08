@@ -1,4 +1,7 @@
-use crate::modules::{Module, ModuleDefinition};
+use crate::{
+    modules::{Module, ModuleDefinition},
+    require::require,
+};
 
 use cosmwasm_std::{coin, BankMsg, Coin, StdError, StdResult, Uint128};
 
@@ -18,13 +21,6 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
 
             coin(fee_amount, payment.denom)
         }
-    }
-}
-
-pub fn require(precond: bool, err: StdError) -> StdResult<bool> {
-    match precond {
-        true => Ok(true),
-        false => Err(err),
     }
 }
 

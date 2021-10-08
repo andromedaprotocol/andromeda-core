@@ -2,11 +2,11 @@ use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use andromeda_protocol::{
-    modules::common::require,
     receipt::{
         Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
         ReceiptResponse,
     },
+    require::require,
 };
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
