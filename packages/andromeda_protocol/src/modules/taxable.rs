@@ -1,10 +1,11 @@
 use cosmwasm_std::{Coin, DepsMut, Env, Event, MessageInfo, StdError, StdResult};
 
 use crate::{
-    modules::common::{add_payment, calculate_fee, require},
+    modules::common::{add_payment, calculate_fee},
     modules::hooks::{MessageHooks, PaymentAttribute},
     modules::Rate,
     modules::{Module, ModuleDefinition},
+    require::require,
 };
 
 use super::hooks::{HookResponse, ATTR_DESC, ATTR_PAYMENT};

@@ -1,11 +1,11 @@
 use andromeda_protocol::{
     modules::{
         address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
-        common::require,
         read_modules,
         receipt::{on_receipt_reply, REPLY_RECEIPT},
         store_modules, Modules,
     },
+    require::require,
     token::{
         Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
         ModuleContractsResponse, ModuleInfoResponse, NftArchivedResponse, NftMetadataResponse,
