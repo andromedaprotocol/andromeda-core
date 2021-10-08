@@ -203,7 +203,6 @@ fn query_splitter(deps: Deps) -> StdResult<GetSplitterConfigResponse> {
         address_list_contract,
     })
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;

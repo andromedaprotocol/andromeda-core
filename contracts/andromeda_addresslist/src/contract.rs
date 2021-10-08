@@ -96,6 +96,7 @@ fn execute_remove_address(
     Ok(Response::new())
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
