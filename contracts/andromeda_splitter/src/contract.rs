@@ -116,13 +116,8 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
         for (i, coin) in sent_funds.iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
             recip_coin.amount = coin.amount.multiply_ratio(recipient_percent, 100u128);
-<<<<<<< HEAD
             remainder_funds[i].amount -= recip_coin.amount;
-=======
-            returned_funds[i].amount -= recip_coin.amount;
->>>>>>> 9847b6e8117f9248eb7c07a186537cad0599d2ff
             vec_coin.push(recip_coin);
-            
         }
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: recipient_addr.addr.clone(),
@@ -131,20 +126,10 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     }
     remainder_funds =  remainder_funds.into_iter().filter(|x| x.amount > Uint128::from(0u128)).collect();
 
-<<<<<<< HEAD
     if remainder_funds.len() > 0 {
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: remainder_funds
-=======
-    if returned_funds
-        .iter()
-        .any(|coin| coin.amount > Uint128::zero())
-    {
-        submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: returned_funds,
->>>>>>> 9847b6e8117f9248eb7c07a186537cad0599d2ff
         })));
     }
 
