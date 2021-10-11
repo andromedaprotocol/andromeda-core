@@ -118,7 +118,11 @@ fn query_config(deps: Deps) -> StdResult<ContractInfoResponse> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{
+        from_binary,
+        testing::{mock_dependencies, mock_env, mock_info},
+        Event,
+    };
     #[test]
     fn test_instantiate() {
         let owner = "creator";
@@ -162,7 +166,13 @@ mod tests {
 
         //add address for registered moderator
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::new().add_attribute("receipt_id", "1"), res);
+        assert_eq!(
+            Response::new().add_attributes(vec![
+                attr("action", "mint_receipt"),
+                attr("receipt_id", "1"),
+            ]),
+            res
+        );
     }
 
     #[test]
@@ -180,14 +190,25 @@ mod tests {
         store_config(deps.as_mut().storage, &config).unwrap();
 
         let store_msg = ExecuteMsg::StoreReceipt {
-            receipt: Receipt { events: vec![] },
+            receipt: Receipt {
+                events: vec![Event::new("test")],
+            },
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), store_msg.clone()).unwrap();
-        assert_eq!(Response::new().add_attribute("receipt_id", "1"), res);
+        assert_eq!(
+            Response::new().add_attributes(vec![
+                attr("action", "mint_receipt"),
+                attr("receipt_id", "1"),
+            ]),
+            res
+        );
 
+        let new_receipt = Receipt {
+            events: vec![Event::new("new")],
+        };
         let msg = ExecuteMsg::EditReceipt {
             receipt_id: Uint128::from(1 as u128),
-            receipt: Receipt { events: vec![] },
+            receipt: new_receipt.clone(),
         };
 
         let res_unauth =
@@ -199,12 +220,21 @@ mod tests {
             )
         );
 
-        execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let expected = Response::default().add_attributes(vec![
+            attr("action", "edit_receipt"),
+            attr("receipt_id", "1"),
+            attr("receipt_edited_by", info.sender.to_string()),
+        ]);
 
-        // let query_msg = QueryMsg::Receipt {
-        //     receipt_id: Uint128::from(1 as u128),
-        // };
-        // let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        // let val: ReceiptResponse = from_binary(&res).unwrap();
+        assert_eq!(res, expected);
+
+        let query_msg = QueryMsg::Receipt {
+            receipt_id: Uint128::from(1 as u128),
+        };
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let val: ReceiptResponse = from_binary(&res).unwrap();
+
+        assert_eq!(val.receipt, new_receipt)
     }
 }
