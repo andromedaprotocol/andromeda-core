@@ -91,9 +91,7 @@ mod tests {
         let res = validate_recipient_list(inadequate_recipients).unwrap_err();
         assert_eq!(
             res,
-            StdError::generic_err(
-                "The amount received by the recipients shouldn't be exceed to 100%"
-            )
+            StdError::generic_err("The amount received by the recipients should not exceed 100%")
         );
 
         let valid_recipients = vec![
