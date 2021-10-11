@@ -1,16 +1,14 @@
 use crate::state::SPLITTER;
-use andromeda_protocol::common::generate_instantiate_msgs;
-use andromeda_protocol::modules::address_list::{
-    on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST,
-};
-use andromeda_protocol::modules::hooks::MessageHooks;
-use andromeda_protocol::modules::Module;
-use andromeda_protocol::ownership::{
-    execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER,
-};
-use andromeda_protocol::splitter::GetSplitterConfigResponse;
 use andromeda_protocol::{
+    common::generate_instantiate_msgs,
+    modules::{
+        address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
+        hooks::MessageHooks,
+        Module,
+    },
+    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
+    splitter::GetSplitterConfigResponse,
     splitter::{
         validate_recipient_list, AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg, Splitter,
     },
