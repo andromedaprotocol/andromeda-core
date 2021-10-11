@@ -15,7 +15,7 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128,
 };
 // use std::collections::HashMap;
 
@@ -87,7 +87,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 }
 
 fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
-    let sent_funds: Vec<Coin> = info.funds.clone();
+    let sent_funds: Vec<Coin> = info.funds.clone(); //Immutable for calculating percentages
+    let mut returned_funds: Vec<Coin> = info.funds.clone(); //Mutable for calculating returned funds to sender
 
     require(sent_funds.len() > 0, StdError::generic_err("No coin sent"))?;
 
@@ -110,9 +111,10 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
-        for coin in &sent_funds {
+        for (i, coin) in sent_funds.iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
             recip_coin.amount = coin.amount.multiply_ratio(recipient_percent, 100u128);
+            returned_funds[i].amount -= recip_coin.amount;
             vec_coin.push(recip_coin);
         }
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -121,26 +123,15 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
         })));
     }
 
-    let mut vec_remainder_coin: Vec<Coin> = Vec::new();
-
-    for coin in &sent_funds {
-        let mut remainder_coin = coin.clone();
-        for recipient_addr in &splitter.recipients {
-            let recipient_percent = recipient_addr.percent;
-            remainder_coin.amount -= coin.amount.multiply_ratio(recipient_percent, 100u128);
-        }
-        if remainder_coin.amount > Uint128::from(0u128) {
-            vec_remainder_coin.push(remainder_coin)
-        }
-    }
-
-    if vec_remainder_coin.len() > 0 {
+    if returned_funds
+        .iter()
+        .any(|coin| coin.amount > Uint128::zero())
+    {
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
-            amount: vec_remainder_coin
+            amount: returned_funds,
         })));
     }
-
 
     Ok(Response::new().add_submessages(submsg))
 }
@@ -400,7 +391,10 @@ mod tests {
 
         let sender_funds_amount = 10000u128;
         let owner = "creator";
-        let info = mock_info(owner.clone(), &vec![Coin::new(sender_funds_amount, "uluna")]);
+        let info = mock_info(
+            owner.clone(),
+            &vec![Coin::new(sender_funds_amount, "uluna")],
+        );
 
         let recip_address1 = "address1".to_string();
         let recip_percent1 = 10u128; // 10%
@@ -447,29 +441,23 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-        let expected_res = Response::new()
-            .add_submessages(
-                vec![
-                    SubMsg::new(
-                        CosmosMsg::Bank(BankMsg::Send {
-                            to_address: recip_address1.clone(),
-                            amount: vec![Coin::new(1000, "uluna" )], // 10000 * 0.1
-                        })
-                    ),
-                    SubMsg::new(
-                        CosmosMsg::Bank(BankMsg::Send {
-                            to_address: recip_address2.clone(),
-                            amount: vec![Coin::new(2000, "uluna")], // 10000 * 0.2
-                        })
-                    ),
-                    SubMsg::new( // refunds remainder to sender
-                        CosmosMsg::Bank(BankMsg::Send {
-                            to_address: owner.to_string(),
-                            amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
-                        })
-                    )
-                ]
-            );
+        let expected_res = Response::new().add_submessages(vec![
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: recip_address1.clone(),
+                amount: vec![Coin::new(1000, "uluna")], // 10000 * 0.1
+            })),
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: recip_address2.clone(),
+                amount: vec![Coin::new(2000, "uluna")], // 10000 * 0.2
+            })),
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: owner.to_string(),
+                    amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
+                }),
+            ),
+        ]);
 
         assert_eq!(res, expected_res);
     }
