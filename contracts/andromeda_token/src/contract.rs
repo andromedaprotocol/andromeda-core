@@ -9,16 +9,16 @@ use andromeda_protocol::{
     require::require,
     token::{
         Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
-        ModuleContractsResponse, ModuleInfoResponse, NftArchivedResponse, NftMetadataResponse,
-        NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
+        ModuleContractsResponse, ModuleInfoResponse, NftInfoResponseExtension, QueryMsg, Token,
+        TokenId, TransferAgreement,
     },
 };
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order,
-    Pair, Reply, Response, StdError, StdResult,
+    attr, coin, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair, Reply,
+    Response, StdError, StdResult,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
@@ -497,13 +497,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::NftInfo { token_id } => to_binary(&query_nft_info(deps, token_id)?),
         QueryMsg::AllNftInfo { token_id } => to_binary(&query_all_nft_info(deps, env, token_id)?),
         QueryMsg::ContractInfo {} => to_binary(&query_contract_info(deps)?),
-        QueryMsg::NftTransferAgreementInfo { token_id } => {
-            to_binary(&query_transfer_agreement(deps, token_id)?)
-        }
-        QueryMsg::NftMetadata { token_id } => to_binary(&query_token_metadata(deps, token_id)?),
-        QueryMsg::NftArchiveStatus { token_id } => {
-            to_binary(&query_token_archive_status(deps, token_id)?)
-        }
         QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
         QueryMsg::ModuleContracts {} => to_binary(&query_module_contracts(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
@@ -548,17 +541,30 @@ fn query_num_tokens(deps: Deps, _env: Env) -> StdResult<NumTokensResponse> {
     Ok(NumTokensResponse { count: num_tokens })
 }
 
-fn query_nft_info(deps: Deps, token_id: String) -> StdResult<NftInfoResponse> {
+fn query_nft_info(
+    deps: Deps,
+    token_id: String,
+) -> StdResult<NftInfoResponse<NftInfoResponseExtension>> {
     let token = TOKENS.load(deps.storage, token_id.clone())?;
+    let extension = NftInfoResponseExtension {
+        metadata: token.get_metadata()?,
+        archived: token.archived,
+        transfer_agreement: token.transfer_agreement,
+    };
 
     Ok(NftInfoResponse {
         name: token.name,
         description: token.description.unwrap_or_default(),
         image: None,
+        extension,
     })
 }
 
-fn query_all_nft_info(deps: Deps, env: Env, token_id: String) -> StdResult<AllNftInfoResponse> {
+fn query_all_nft_info(
+    deps: Deps,
+    env: Env,
+    token_id: String,
+) -> StdResult<AllNftInfoResponse<NftInfoResponseExtension>> {
     let access = query_owner(deps, env, token_id.clone())?;
     let info = query_nft_info(deps, token_id.clone())?;
 
@@ -570,35 +576,6 @@ fn query_contract_info(deps: Deps) -> StdResult<ContractInfoResponse> {
     Ok(ContractInfoResponse {
         name: config.name,
         symbol: config.symbol,
-    })
-}
-
-fn query_transfer_agreement(
-    deps: Deps,
-    token_id: String,
-) -> StdResult<NftTransferAgreementResponse> {
-    let token = TOKENS.load(deps.storage, token_id)?;
-
-    Ok(NftTransferAgreementResponse {
-        agreement: token.transfer_agreement,
-    })
-}
-
-fn query_token_metadata(deps: Deps, token_id: String) -> StdResult<NftMetadataResponse> {
-    let token = TOKENS.load(deps.storage, token_id)?;
-    let metadata: Option<String> = match token.metadata {
-        Some(data) => Some(from_binary(&data)?),
-        None => None,
-    };
-
-    Ok(NftMetadataResponse { metadata })
-}
-
-fn query_token_archive_status(deps: Deps, token_id: String) -> StdResult<NftArchivedResponse> {
-    let token = TOKENS.load(deps.storage, token_id)?;
-
-    Ok(NftArchivedResponse {
-        archived: token.archived,
     })
 }
 
@@ -665,7 +642,6 @@ mod tests {
     use super::*;
     use andromeda_protocol::token::Approval;
     use andromeda_protocol::token::ExecuteMsg;
-    use andromeda_protocol::token::NftArchivedResponse;
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
@@ -1227,12 +1203,12 @@ mod tests {
         )
         .unwrap();
 
-        let agreement_query = QueryMsg::NftTransferAgreementInfo {
+        let agreement_query = QueryMsg::NftInfo {
             token_id: token_id.clone(),
         };
         let res = query(deps.as_ref(), env.clone(), agreement_query).unwrap();
-        let agreement_res: NftTransferAgreementResponse = from_binary(&res).unwrap();
-        let agreement = agreement_res.agreement.unwrap();
+        let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
+        let agreement = token_res.extension.transfer_agreement.unwrap();
 
         assert_eq!(agreement.purchaser, purchaser.clone());
         assert_eq!(agreement.amount, coin(amount.u128(), denom))
@@ -1295,14 +1271,14 @@ mod tests {
 
         assert_eq!(res, Response::default());
 
-        let query_msg = QueryMsg::NftMetadata {
+        let token_query = QueryMsg::NftInfo {
             token_id: token_id.to_string(),
         };
+        let res = query(deps.as_ref(), env.clone(), token_query).unwrap();
+        let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
+        let metadata_val = token_res.extension.metadata;
 
-        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let query_val: NftMetadataResponse = from_binary(&query_res).unwrap();
-
-        assert_eq!(query_val.metadata, Some(metadata.clone()))
+        assert_eq!(metadata_val, Some(metadata.clone()))
     }
 
     #[test]
@@ -1404,12 +1380,11 @@ mod tests {
             StdError::generic_err("This token is archived and cannot be changed in any way.")
         );
 
-        let query_msg = QueryMsg::NftArchiveStatus {
+        let token_query = QueryMsg::NftInfo {
             token_id: token_id.to_string(),
         };
-
-        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let query_val: NftArchivedResponse = from_binary(&query_res).unwrap();
-        assert!(query_val.archived)
+        let res = query(deps.as_ref(), env.clone(), token_query).unwrap();
+        let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
+        assert!(token_res.extension.archived)
     }
 }
