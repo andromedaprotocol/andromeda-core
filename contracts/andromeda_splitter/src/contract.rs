@@ -14,8 +14,8 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128
+    attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Reply, Response, StdError, StdResult, SubMsg, Uint128
 };
 // use std::collections::HashMap;
 
@@ -107,40 +107,31 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
 
     let mut submsg: Vec<SubMsg> = Vec::new();
 
+    let mut remainder_funds = info.funds.clone();
+
     for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
-        for coin in &sent_funds {
+        for (i, coin) in sent_funds.iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
             recip_coin.amount = coin.amount.multiply_ratio(recipient_percent, 100u128);
+            remainder_funds[i].amount -= recip_coin.amount;
             vec_coin.push(recip_coin);
+            
         }
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: recipient_addr.addr.clone(),
             amount: vec_coin,
         })));
     }
+    remainder_funds =  remainder_funds.into_iter().filter(|x| x.amount > Uint128::from(0u128)).collect();
 
-    let mut vec_remainder_coin: Vec<Coin> = Vec::new();
-
-    for coin in &sent_funds {
-        let mut remainder_coin = coin.clone();
-        for recipient_addr in &splitter.recipients {
-            let recipient_percent = recipient_addr.percent;
-            remainder_coin.amount -= coin.amount.multiply_ratio(recipient_percent, 100u128);
-        }
-        if remainder_coin.amount > Uint128::from(0u128) {
-            vec_remainder_coin.push(remainder_coin)
-        }
-    }
-
-    if vec_remainder_coin.len() > 0 {
+    if remainder_funds.len() > 0 {
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
-            amount: vec_remainder_coin
+            amount: remainder_funds
         })));
     }
-
 
     Ok(Response::new().add_submessages(submsg))
 }
