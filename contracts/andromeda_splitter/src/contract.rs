@@ -1,14 +1,14 @@
-use crate::state::{State, SPLITTER, STATE};
-use andromeda_protocol::common::generate_instantiate_msgs;
-use andromeda_protocol::modules::address_list::{
-    on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST,
-};
-use andromeda_protocol::modules::hooks::MessageHooks;
-use andromeda_protocol::modules::Module;
-use andromeda_protocol::ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER};
-use andromeda_protocol::splitter::GetSplitterConfigResponse;
+use crate::state::SPLITTER;
 use andromeda_protocol::{
+    common::generate_instantiate_msgs,
+    modules::{
+        address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
+        hooks::MessageHooks,
+        Module,
+    },
+    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
+    splitter::GetSplitterConfigResponse,
     splitter::{
         validate_recipient_list, AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg, Splitter,
     },
@@ -27,9 +27,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     msg.validate()?;
-    let state = State {
-        owner: info.sender.clone(),
-    };
 
     let splitter = Splitter {
         recipients: msg.recipients,
@@ -39,7 +36,6 @@ pub fn instantiate(
 
     let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
 
-    STATE.save(deps.storage, &state)?;
     SPLITTER.save(deps.storage, &splitter)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
 
@@ -88,23 +84,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 
 fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     let sent_funds: Vec<Coin> = info.funds.clone();
-
     require(sent_funds.len() > 0, StdError::generic_err("No coin sent"))?;
 
     let splitter = SPLITTER.load(deps.storage)?;
-
-    if splitter.address_list.is_some() {
-        splitter
-            .address_list
-            .unwrap()
-            .is_authorized(&deps, info.sender.to_string())?;
-    }
-
-    require(
-        splitter.recipients.len() > 0,
-        StdError::generic_err("No recipient received"),
-    )?;
-
     let mut submsg: Vec<SubMsg> = Vec::new();
 
     for recipient_addr in splitter.recipients {
@@ -121,7 +103,10 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
         })));
     }
 
-    Ok(Response::new().add_submessages(submsg))
+    Ok(Response::new().add_submessages(submsg).add_attributes(vec![
+        attr("action", "send"),
+        attr("sender", info.sender.to_string()),
+    ]))
 }
 
 fn execute_update_recipients(
@@ -129,38 +114,37 @@ fn execute_update_recipients(
     info: MessageInfo,
     recipients: Vec<AddressPercent>,
 ) -> StdResult<Response> {
-    let state = STATE.load(deps.storage)?;
     require(
-        state.owner == info.sender,
+        is_contract_owner(deps.storage, info.sender.to_string())?,
         StdError::generic_err("May only be used by the contract owner"),
     )?;
 
     validate_recipient_list(recipients.clone())?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
-
     if splitter.locked == true {
-        StdError::generic_err("Not allow to change recipient");
+        StdError::generic_err("The splitter is currently locked");
     }
-
-    splitter.recipients.clear();
 
     splitter.recipients = recipients.clone();
     SPLITTER.save(deps.storage, &splitter)?;
-    Ok(Response::default())
+
+    Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
 }
 
 fn execute_update_lock(deps: DepsMut, info: MessageInfo, lock: bool) -> StdResult<Response> {
-    let state = STATE.load(deps.storage)?;
     require(
-        state.owner == info.sender,
+        is_contract_owner(deps.storage, info.sender.to_string())?,
         StdError::generic_err("May only be used by the contract owner"),
     )?;
     let mut splitter = SPLITTER.load(deps.storage)?;
     splitter.locked = lock;
     SPLITTER.save(deps.storage, &splitter)?;
 
-    Ok(Response::default())
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_lock"),
+        attr("locked", lock.to_string()),
+    ]))
 }
 
 fn execute_update_address_list(
@@ -168,22 +152,20 @@ fn execute_update_address_list(
     info: MessageInfo,
     address_list: AddressListModule,
 ) -> StdResult<Response> {
-    let state = STATE.load(deps.storage)?;
     require(
-        state.owner == info.sender,
+        is_contract_owner(deps.storage, info.sender.to_string())?,
         StdError::generic_err("May only be used by the contract owner"),
     )?;
-    let mut splitter = SPLITTER.load(deps.storage)?;
 
+    let mut splitter = SPLITTER.load(deps.storage)?;
     if splitter.locked == true {
-        StdError::generic_err("Not allow to change whitelist");
+        StdError::generic_err("The splitter is currently locked");
     }
 
     splitter.address_list = Some(address_list);
-
     SPLITTER.save(deps.storage, &splitter)?;
 
-    Ok(Response::default())
+    Ok(Response::default().add_attributes(vec![attr("action", "update_address_list")]))
 }
 
 #[entry_point]
@@ -211,7 +193,7 @@ mod tests {
     use super::*;
     use andromeda_protocol::modules::address_list::AddressListModule;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, Addr, Coin, Uint128};
+    use cosmwasm_std::{from_binary, Coin, Uint128};
 
     #[test]
     fn test_instantiate() {
@@ -240,22 +222,18 @@ mod tests {
         let lock = true;
         let msg = ExecuteMsg::UpdateLock { lock: lock };
 
-        //incorrect owner
-        let state = State {
-            owner: Addr::unchecked("incorrect_owner".to_string()),
-        };
-        STATE.save(deps.as_mut().storage, &state).unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &String::from("incorrect_owner"))
+            .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         match res {
             Ok(_ret) => assert!(false),
             _ => {}
         }
 
-        let state = State {
-            owner: Addr::unchecked(owner.to_string()),
-        };
-
-        STATE.save(deps.as_mut().storage, &state).unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.to_string())
+            .unwrap();
 
         let splitter = Splitter {
             recipients: vec![],
@@ -266,7 +244,13 @@ mod tests {
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
+        assert_eq!(
+            Response::default().add_attributes(vec![
+                attr("action", "update_lock"),
+                attr("locked", lock.to_string())
+            ]),
+            res
+        );
 
         //check result
         let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -279,10 +263,9 @@ mod tests {
         let env = mock_env();
         let owner = "creator";
 
-        let state = State {
-            owner: Addr::unchecked(owner.to_string()),
-        };
-        STATE.save(deps.as_mut().storage, &state).unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.to_string())
+            .unwrap();
 
         let splitter = Splitter {
             recipients: vec![],
@@ -340,21 +323,18 @@ mod tests {
         };
 
         //incorrect owner
-        let state = State {
-            owner: Addr::unchecked("incorrect_owner".to_string()),
-        };
-        STATE.save(deps.as_mut().storage, &state).unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &String::from("incorrect_owner"))
+            .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         match res {
             Ok(_ret) => assert!(false),
             _ => {}
         }
 
-        let state = State {
-            owner: Addr::unchecked(owner.to_string()),
-        };
-
-        STATE.save(deps.as_mut().storage, &state).unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.to_string())
+            .unwrap();
 
         let splitter = Splitter {
             recipients: vec![],
@@ -365,7 +345,10 @@ mod tests {
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
+        assert_eq!(
+            Response::default().add_attributes(vec![attr("action", "update_recipients")]),
+            res
+        );
 
         //check result
         let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -393,21 +376,18 @@ mod tests {
         let msg = ExecuteMsg::Send {};
 
         //incorrect owner
-        let state = State {
-            owner: Addr::unchecked("incorrect_owner".to_string()),
-        };
-        STATE.save(deps.as_mut().storage, &state).unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &String::from("incorrect_owner"))
+            .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         match res {
             Ok(_ret) => assert!(false),
             _ => {}
         }
 
-        let state = State {
-            owner: Addr::unchecked(owner.to_string()),
-        };
-
-        STATE.save(deps.as_mut().storage, &state).unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.to_string())
+            .unwrap();
 
         let splitter = Splitter {
             recipients: recipient,

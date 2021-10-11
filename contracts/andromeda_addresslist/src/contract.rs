@@ -4,7 +4,8 @@ use andromeda_protocol::{
     require::require,
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+    StdResult,
 };
 
 use crate::{
@@ -29,7 +30,10 @@ pub fn instantiate(
     CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
     STATE.save(deps.storage, &state)?;
 
-    Ok(Response::default())
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "instantiate"),
+        attr("type", "address_list"),
+    ]))
 }
 
 #[entry_point]
@@ -44,22 +48,6 @@ pub fn execute(
         ExecuteMsg::RemoveAddress { address } => execute_remove_address(deps, info, address),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
-}
-
-#[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::IncludesAddress { address } => to_binary(&query_address(deps, &address)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-    }
-}
-
-fn query_address(deps: Deps, address: &String) -> StdResult<IncludesAddressResponse> {
-    let state = STATE.load(deps.storage)?;
-
-    Ok(IncludesAddressResponse {
-        included: state.address_list.includes_address(deps.storage, address)?,
-    })
 }
 
 fn execute_add_address(deps: DepsMut, info: MessageInfo, address: String) -> StdResult<Response> {
@@ -77,7 +65,10 @@ fn execute_add_address(deps: DepsMut, info: MessageInfo, address: String) -> Std
 
     STATE.save(deps.storage, &state)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "add_address"),
+        attr("address", address),
+    ]))
 }
 
 fn execute_remove_address(
@@ -97,7 +88,26 @@ fn execute_remove_address(
         .unwrap();
     STATE.save(deps.storage, &state)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "remove_address"),
+        attr("address", address),
+    ]))
+}
+
+#[entry_point]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::IncludesAddress { address } => to_binary(&query_address(deps, &address)?),
+        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+    }
+}
+
+fn query_address(deps: Deps, address: &String) -> StdResult<IncludesAddressResponse> {
+    let state = STATE.load(deps.storage)?;
+
+    Ok(IncludesAddressResponse {
+        included: state.address_list.includes_address(deps.storage, address)?,
+    })
 }
 
 #[cfg(test)]
@@ -146,7 +156,11 @@ mod tests {
         //add address for registered moderator
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
+        let expected = Response::default().add_attributes(vec![
+            attr("action", "add_address"),
+            attr("address", address),
+        ]);
+        assert_eq!(expected, res);
 
         let whitelisted = ADDRESS_LIST
             .load(deps.as_ref().storage, address.to_string())
@@ -184,7 +198,7 @@ mod tests {
         let moderator = "creator";
         let info = mock_info(moderator.clone(), &[]);
 
-        let whitelistee = "whitelistee";
+        let address = "whitelistee";
 
         //save moderator
 
@@ -198,17 +212,21 @@ mod tests {
         STATE.save(deps.as_mut().storage, &state).unwrap();
 
         let msg = ExecuteMsg::RemoveAddress {
-            address: whitelistee.to_string(),
+            address: address.to_string(),
         };
 
         //add address for registered moderator
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_eq!(Response::default(), res);
+        let expected = Response::default().add_attributes(vec![
+            attr("action", "remove_address"),
+            attr("address", address.to_string()),
+        ]);
+        assert_eq!(expected, res);
 
-        let whitelisted = ADDRESS_LIST
-            .load(deps.as_ref().storage, whitelistee.to_string())
+        let included = ADDRESS_LIST
+            .load(deps.as_ref().storage, address.to_string())
             .unwrap();
-        assert_eq!(false, whitelisted);
+        assert_eq!(false, included);
 
         //add address for unregistered moderator
         let unauth_info = mock_info("anyone", &[]);
