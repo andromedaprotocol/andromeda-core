@@ -15,8 +15,8 @@ pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> StdResult<boo
     }
 
     require(
-        percent_sum.eq(&Uint128::from(100 as u128)),
-        StdError::generic_err("The amount received by the recipients must come to 100%"),
+        percent_sum <= Uint128::from(100u128),
+        StdError::generic_err("The amount received by the recipients should not exceed 100%"),
     )?;
 
     Ok(true)
@@ -86,12 +86,12 @@ mod tests {
 
         let inadequate_recipients = vec![AddressPercent {
             addr: String::from("some address"),
-            percent: Uint128::from(50 as u128),
+            percent: Uint128::from(150 as u128),
         }];
         let res = validate_recipient_list(inadequate_recipients).unwrap_err();
         assert_eq!(
             res,
-            StdError::generic_err("The amount received by the recipients must come to 100%")
+            StdError::generic_err("The amount received by the recipients should not exceed 100%")
         );
 
         let valid_recipients = vec![

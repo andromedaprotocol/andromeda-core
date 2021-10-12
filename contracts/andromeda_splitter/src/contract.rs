@@ -14,8 +14,8 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg,
+    attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Reply, Response, StdError, StdResult, SubMsg, Uint128
 };
 // use std::collections::HashMap;
 
@@ -89,17 +89,28 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     let splitter = SPLITTER.load(deps.storage)?;
     let mut submsg: Vec<SubMsg> = Vec::new();
 
-    for recipient_addr in splitter.recipients {
+    let mut remainder_funds = info.funds.clone();
+
+    for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
-        for coin in &sent_funds {
+        for (i, coin) in sent_funds.iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
-            recip_coin.amount = coin.amount.multiply_ratio(recipient_percent, 100 as u128);
+            recip_coin.amount = coin.amount.multiply_ratio(recipient_percent, 100u128);
+            remainder_funds[i].amount -= recip_coin.amount;
             vec_coin.push(recip_coin);
         }
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: recipient_addr.addr,
+            to_address: recipient_addr.addr.clone(),
             amount: vec_coin,
+        })));
+    }
+    remainder_funds =  remainder_funds.into_iter().filter(|x| x.amount > Uint128::from(0u128)).collect();
+
+    if remainder_funds.len() > 0 {
+        submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: remainder_funds
         })));
     }
 
@@ -360,17 +371,27 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
+        let sender_funds_amount = 10000u128;
         let owner = "creator";
-        let info = mock_info(owner.clone(), &vec![Coin::new(10000, "uluna")]);
+        let info = mock_info(
+            owner.clone(),
+            &vec![Coin::new(sender_funds_amount, "uluna")],
+        );
+
+        let recip_address1 = "address1".to_string();
+        let recip_percent1 = 10u128; // 10%
+
+        let recip_address2 = "address2".to_string();
+        let recip_percent2 = 20u128; // 20%
 
         let recipient = vec![
             AddressPercent {
-                addr: "address1".to_string(),
-                percent: Uint128::from(10 as u128),
+                addr: recip_address1.clone(),
+                percent: Uint128::from(recip_percent1),
             },
             AddressPercent {
-                addr: "address1".to_string(),
-                percent: Uint128::from(20 as u128),
+                addr: recip_address2.clone(),
+                percent: Uint128::from(recip_percent2),
             },
         ];
         let msg = ExecuteMsg::Send {};
@@ -398,7 +419,32 @@ mod tests {
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        assert_ne!(Response::default(), res);
+
+        let expected_res = Response::new().add_submessages(vec![
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: recip_address1.clone(),
+                amount: vec![Coin::new(1000, "uluna")], // 10000 * 0.1
+            })),
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: recip_address2.clone(),
+                amount: vec![Coin::new(2000, "uluna")], // 10000 * 0.2
+            })),
+            SubMsg::new(
+                // refunds remainder to sender
+                CosmosMsg::Bank(BankMsg::Send {
+                    to_address: owner.to_string(),
+                    amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
+                }),
+            ),
+        ])
+        .add_attributes(
+            vec![
+                attr("action", "send"),
+                attr("sender", "creator")
+            ]
+        );
+
+        assert_eq!(res, expected_res);
     }
 
     #[test]

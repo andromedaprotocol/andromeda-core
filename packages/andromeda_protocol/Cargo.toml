@@ -15,3 +15,4 @@ schemars = "0.8.3"
 cw721 = "0.9.1"
 cw-storage-plus = "0.9.1"
 protobuf = { version = "2", features = ["with-bytes"] }
+terra-cosmwasm = { version = "2.2.0" }

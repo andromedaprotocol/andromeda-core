@@ -8,5 +8,9 @@ pub mod receipt;
 pub mod require;
 pub mod response;
 pub mod splitter;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod testing;
+
 pub mod timelock;
 pub mod token;
