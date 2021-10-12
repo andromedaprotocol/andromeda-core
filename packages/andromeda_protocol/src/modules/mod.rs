@@ -192,13 +192,15 @@ impl Modules {
         info: MessageInfo,
         env: Env,
         token_id: String,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_mint(&deps, info.clone(), env.clone(), token_id.clone())?;
+            let mod_res = module.on_mint(&deps, info.clone(), env.clone(), token_id.clone())?;
+            resp = resp.add_resp(mod_res);
         }
 
-        Ok(())
+        Ok(resp)
     }
     pub fn on_transfer(
         &self,
@@ -207,19 +209,21 @@ impl Modules {
         env: Env,
         recipient: String,
         token_id: String,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_transfer(
+            let mod_res = module.on_transfer(
                 &deps,
                 info.clone(),
                 env.clone(),
                 recipient.clone(),
                 token_id.clone(),
             )?;
+            resp = resp.add_resp(mod_res)
         }
 
-        Ok(())
+        Ok(resp)
     }
     pub fn on_transfer_agreement(
         &self,
@@ -230,10 +234,11 @@ impl Modules {
         purchaser: String,
         amount: u128,
         denom: String,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_transfer_agreement(
+            let mod_res = module.on_transfer_agreement(
                 &deps,
                 info.clone(),
                 env.clone(),
@@ -242,9 +247,10 @@ impl Modules {
                 amount.clone(),
                 denom.clone(),
             )?;
+            resp = resp.add_resp(mod_res);
         }
 
-        Ok(())
+        Ok(resp)
     }
     pub fn on_agreed_transfer(
         &self,
@@ -281,19 +287,21 @@ impl Modules {
         env: Env,
         contract: String,
         token_id: String,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_send(
+            let mod_res = module.on_send(
                 &deps,
                 info.clone(),
                 env.clone(),
                 contract.clone(),
                 token_id.clone(),
             )?;
+            resp = resp.add_resp(mod_res);
         }
 
-        Ok(())
+        Ok(resp)
     }
     pub fn on_approve(
         &self,
@@ -303,10 +311,11 @@ impl Modules {
         sender: String,
         token_id: String,
         expires: Option<Expiration>,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_approve(
+            let mod_res = module.on_approve(
                 &deps,
                 info.clone(),
                 env.clone(),
@@ -314,9 +323,10 @@ impl Modules {
                 token_id.clone(),
                 expires.clone(),
             )?;
+            resp = resp.add_resp(mod_res);
         }
 
-        Ok(())
+        Ok(resp)
     }
     pub fn on_revoke(
         &self,
@@ -325,19 +335,21 @@ impl Modules {
         env: Env,
         sender: String,
         token_id: String,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_revoke(
+            let mod_res = module.on_revoke(
                 &deps,
                 info.clone(),
                 env.clone(),
                 sender.clone(),
                 token_id.clone(),
             )?;
+            resp = resp.add_resp(mod_res);
         }
 
-        Ok(())
+        Ok(resp)
     }
     pub fn on_approve_all(
         &self,
@@ -346,19 +358,21 @@ impl Modules {
         env: Env,
         operator: String,
         expires: Option<Expiration>,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_approve_all(
+            let mod_res = module.on_approve_all(
                 &deps,
                 info.clone(),
                 env.clone(),
                 operator.clone(),
                 expires.clone(),
             )?;
+            resp = resp.add_resp(mod_res);
         }
 
-        Ok(())
+        Ok(resp)
     }
     pub fn on_revoke_all(
         &self,
@@ -366,13 +380,16 @@ impl Modules {
         info: MessageInfo,
         env: Env,
         operator: String,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_revoke_all(&deps, info.clone(), env.clone(), operator.clone())?;
+            let mod_res =
+                module.on_revoke_all(&deps, info.clone(), env.clone(), operator.clone())?;
+            resp = resp.add_resp(mod_res);
         }
 
-        Ok(())
+        Ok(resp)
     }
     pub fn on_burn(
         &self,
@@ -380,13 +397,15 @@ impl Modules {
         info: MessageInfo,
         env: Env,
         token_id: String,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
+            let mod_res = module.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
+            resp = resp.add_resp(mod_res);
         }
 
-        Ok(())
+        Ok(resp)
     }
     pub fn on_archive(
         &self,
@@ -394,13 +413,15 @@ impl Modules {
         info: MessageInfo,
         env: Env,
         token_id: String,
-    ) -> StdResult<()> {
+    ) -> StdResult<HookResponse> {
         let modules = self.to_modules();
+        let mut resp = HookResponse::default();
         for module in modules {
-            module.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
+            let mod_res = module.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
+            resp = resp.add_resp(mod_res);
         }
 
-        Ok(())
+        Ok(resp)
     }
 }
 

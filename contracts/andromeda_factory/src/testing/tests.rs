@@ -1,14 +1,17 @@
 use crate::contract::{execute, instantiate};
 use crate::reply::REPLY_CREATE_TOKEN;
 
-use andromeda_protocol::modules::Rate;
 use andromeda_protocol::{
     factory::{ExecuteMsg, InstantiateMsg},
     modules::ModuleDefinition,
+    modules::Rate,
     token::InstantiateMsg as TokenInstantiateMsg,
 };
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{to_binary, ReplyOn, Response, SubMsg, WasmMsg};
+use cosmwasm_std::{
+    attr,
+    testing::{mock_dependencies, mock_env, mock_info},
+    to_binary, ReplyOn, Response, SubMsg, WasmMsg,
+};
 
 static TOKEN_CODE_ID: u64 = 0;
 const TOKEN_NAME: &str = "test";
@@ -102,7 +105,13 @@ fn test_create() {
         reply_on: ReplyOn::Always,
     };
 
-    let expected_res = Response::new().add_submessage(expected_msg);
+    let expected_res = Response::new()
+        .add_submessage(expected_msg)
+        .add_attributes(vec![
+            attr("action", "create"),
+            attr("name", TOKEN_NAME.to_string()),
+            attr("symbol", TOKEN_SYMBOL.to_string()),
+        ]);
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
     assert_eq!(res, expected_res);

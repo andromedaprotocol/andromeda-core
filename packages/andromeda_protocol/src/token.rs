@@ -2,8 +2,8 @@ use crate::modules::{
     common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
 };
 use cosmwasm_std::{
-    attr, coin, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
-    StdResult, Uint128,
+    attr, coin, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event,
+    MessageInfo, Response, StdResult, Uint128,
 };
 use cw721::Expiration;
 use schemars::JsonSchema;
@@ -46,6 +46,12 @@ impl Token {
             .into_iter()
             .filter(|a| !a.spender.eq(spender))
             .collect();
+    }
+    pub fn get_metadata(&self) -> StdResult<Option<String>> {
+        match self.clone().metadata {
+            Some(data) => Ok(Some(from_binary(&data)?)),
+            None => Ok(None),
+        }
     }
 }
 
@@ -240,15 +246,6 @@ pub enum QueryMsg {
     AllNftInfo {
         token_id: TokenId,
     },
-    NftTransferAgreementInfo {
-        token_id: TokenId,
-    },
-    NftMetadata {
-        token_id: TokenId,
-    },
-    NftArchiveStatus {
-        token_id: TokenId,
-    },
     ModuleInfo {},
     ModuleContracts {},
     ContractInfo {},
@@ -265,23 +262,10 @@ pub struct ModulesResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct NftTransferAgreementResponse {
-    pub agreement: Option<TransferAgreement>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct WhitelistedResponse {
-    pub whitelisted: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct NftMetadataResponse {
+pub struct NftInfoResponseExtension {
     pub metadata: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct NftArchivedResponse {
     pub archived: bool,
+    pub transfer_agreement: Option<TransferAgreement>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

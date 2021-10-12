@@ -9,16 +9,16 @@ use andromeda_protocol::{
     require::require,
     token::{
         Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
-        ModuleContractsResponse, ModuleInfoResponse, NftArchivedResponse, NftMetadataResponse,
-        NftTransferAgreementResponse, QueryMsg, Token, TokenId, TransferAgreement,
+        ModuleContractsResponse, ModuleInfoResponse, NftInfoResponseExtension, QueryMsg, Token,
+        TokenId, TransferAgreement,
     },
 };
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, from_binary, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order,
-    Pair, Reply, Response, StdError, StdResult,
+    attr, coin, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair, Reply,
+    Response, StdError, StdResult,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
@@ -41,24 +41,28 @@ pub fn instantiate(
     msg.validate()?;
 
     let config = TokenConfig {
-        name: msg.name,
-        symbol: msg.symbol,
-        minter: msg.minter.to_string(),
-        metadata_limit: msg.metadata_limit,
+        name: msg.clone().name,
+        symbol: msg.clone().symbol,
+        minter: msg.clone().minter.to_string(),
+        metadata_limit: msg.clone().metadata_limit,
     };
 
     let modules = Modules::new(msg.modules);
-    let mut resp = Response::new();
-
     let mod_res = modules.on_instantiate(&deps, info.clone(), env)?;
-    resp = resp.add_submessages(mod_res.msgs);
-    resp = resp.add_events(mod_res.events);
 
     CONFIG.save(deps.storage, &config)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
     store_modules(deps.storage, modules.clone())?;
 
-    Ok(resp)
+    Ok(Response::new()
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "instantiate"),
+            attr("name", msg.name),
+            attr("symbol", msg.symbol),
+            attr("minter", msg.minter),
+        ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -122,7 +126,7 @@ pub fn execute_mint(
 ) -> StdResult<Response> {
     let config = CONFIG.may_load(deps.storage)?;
 
-    let metadata = match msg.metadata {
+    let metadata = match msg.clone().metadata {
         Some(data) => {
             if config.is_some() {
                 config.unwrap().validate_metadata_size(data.clone())?;
@@ -133,10 +137,10 @@ pub fn execute_mint(
     };
 
     let token = Token {
-        token_id: msg.token_id.clone(),
+        token_id: msg.clone().token_id,
         owner: info.sender.to_string(),
-        description: msg.description,
-        name: msg.name,
+        description: msg.clone().description,
+        name: msg.clone().name,
         approvals: vec![],
         transfer_agreement: None,
         metadata,
@@ -147,9 +151,17 @@ pub fn execute_mint(
     increment_num_tokens(deps.storage)?;
 
     let modules = read_modules(deps.storage)?;
-    modules.on_mint(&deps, info.clone(), env.clone(), msg.token_id.clone())?;
+    let mod_res = modules.on_mint(&deps, info.clone(), env.clone(), msg.token_id.clone())?;
 
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "mint"),
+            attr("token_id", msg.token_id),
+            attr("owner", info.sender),
+            attr("name", msg.name),
+        ]))
 }
 
 pub fn execute_transfer(
@@ -160,7 +172,7 @@ pub fn execute_transfer(
     token_id: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_transfer(
+    let mod_res = modules.on_transfer(
         &deps,
         info.clone(),
         env.clone(),
@@ -170,7 +182,15 @@ pub fn execute_transfer(
 
     let res = transfer_nft(deps, &env, &info, &recipient, &token_id)?;
 
-    Ok(res)
+    Ok(res
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "transfer"),
+            attr("recipient", recipient),
+            attr("token_id", token_id),
+            attr("sender", info.sender.to_string()),
+        ]))
 }
 
 pub fn execute_send_nft(
@@ -182,7 +202,7 @@ pub fn execute_send_nft(
     msg: Binary,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_send(
+    let mod_res = modules.on_send(
         &deps,
         info.clone(),
         env.clone(),
@@ -191,7 +211,7 @@ pub fn execute_send_nft(
     )?;
 
     // Transfer token
-    transfer_nft(deps, &env, &info, &contract, &token_id)?;
+    let res = transfer_nft(deps, &env, &info, &contract, &token_id)?;
 
     let send = Cw721ReceiveMsg {
         sender: info.sender.to_string(),
@@ -200,12 +220,16 @@ pub fn execute_send_nft(
     };
 
     // Send message
-    Ok(Response::new()
+    Ok(res
         .add_message(send.into_cosmos_msg(contract.clone())?)
-        .add_attribute("action", "send_nft")
-        .add_attribute("sender", info.sender)
-        .add_attribute("recipient", contract)
-        .add_attribute("token_id", token_id.to_string()))
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "send"),
+            attr("sender", info.sender),
+            attr("recipient", contract),
+            attr("token_id", token_id.to_string()),
+        ]))
 }
 
 pub fn execute_approve(
@@ -217,7 +241,7 @@ pub fn execute_approve(
     expires: Option<Expiration>,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_approve(
+    let mod_res = modules.on_approve(
         &deps,
         info.clone(),
         env.clone(),
@@ -232,9 +256,16 @@ pub fn execute_approve(
         expires: expires.unwrap_or_default(),
     };
 
-    add_approval(deps, &info, token_id, approval)?;
+    add_approval(deps, &info, token_id.clone(), approval)?;
 
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "approve"),
+            attr("token_id", token_id.clone()),
+            attr("spender", spender),
+        ]))
 }
 
 pub fn execute_revoke(
@@ -245,7 +276,7 @@ pub fn execute_revoke(
     spender: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_revoke(
+    let mod_res = modules.on_revoke(
         &deps,
         info.clone(),
         env.clone(),
@@ -255,9 +286,16 @@ pub fn execute_revoke(
 
     let spender_addr = deps.api.addr_validate(&spender)?;
 
-    remove_approval(deps, &info, token_id, &spender_addr)?;
+    remove_approval(deps, &info, token_id.clone(), &spender_addr)?;
 
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "revoke"),
+            attr("token_id", token_id),
+            attr("spender", spender),
+        ]))
 }
 
 fn execute_approve_all(
@@ -268,7 +306,7 @@ fn execute_approve_all(
     expires: Option<Expiration>,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_approve_all(
+    let mod_res = modules.on_approve_all(
         &deps,
         info.clone(),
         env.clone(),
@@ -282,7 +320,14 @@ fn execute_approve_all(
         &expires.unwrap_or_default(),
     )?;
 
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "approve_all"),
+            attr("operator", operator),
+            attr("sender", info.sender.to_string()),
+        ]))
 }
 
 fn execute_revoke_all(
@@ -292,11 +337,18 @@ fn execute_revoke_all(
     operator: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_revoke_all(&deps, info.clone(), env.clone(), operator.clone())?;
+    let mod_res = modules.on_revoke_all(&deps, info.clone(), env.clone(), operator.clone())?;
 
     OPERATOR.remove(deps.storage, (info.sender.to_string(), operator.clone()));
 
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "revoke_all"),
+            attr("operator", operator),
+            attr("sender", info.sender.to_string()),
+        ]))
 }
 
 fn execute_transfer_agreement(
@@ -309,7 +361,7 @@ fn execute_transfer_agreement(
     denom: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_transfer_agreement(
+    let mod_res = modules.on_transfer_agreement(
         &deps,
         info.clone(),
         env.clone(),
@@ -329,15 +381,24 @@ fn execute_transfer_agreement(
         StdError::generic_err("This token is archived and cannot be changed in any way."),
     )?;
 
+    let amount = coin(amount, denom);
     let agreement = TransferAgreement {
         purchaser: purchaser.clone(),
-        amount: coin(amount, denom),
+        amount: amount.clone(),
     };
     token.transfer_agreement = Some(agreement);
 
     TOKENS.save(deps.storage, token_id.clone(), &token)?;
 
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "transfer_agreement"),
+            attr("purchaser", purchaser),
+            attr("amount", amount.to_string()),
+            attr("token_id", token_id),
+        ]))
 }
 
 fn execute_burn(
@@ -357,12 +418,19 @@ fn execute_burn(
     )?;
 
     let modules = read_modules(deps.storage)?;
-    modules.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
+    let mod_res = modules.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
 
     TOKENS.remove(deps.storage, token_id.clone());
     decrement_num_tokens(deps.storage)?;
 
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "burn"),
+            attr("token_id", token_id),
+            attr("sender", info.sender.to_string()),
+        ]))
 }
 
 fn execute_archive(
@@ -382,13 +450,20 @@ fn execute_archive(
     )?;
 
     let modules = read_modules(deps.storage)?;
-    modules.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
+    let mod_res = modules.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
 
     token.archived = true;
     TOKENS.save(deps.storage, token_id.clone(), &token)?;
     decrement_num_tokens(deps.storage)?;
 
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_submessages(mod_res.msgs)
+        .add_events(mod_res.events)
+        .add_attributes(vec![
+            attr("action", "archive"),
+            attr("token_id", token_id),
+            attr("sender", info.sender.to_string()),
+        ]))
 }
 
 fn transfer_nft(
@@ -412,11 +487,7 @@ fn transfer_nft(
     token.owner = recipient.to_string();
     token.approvals = vec![];
 
-    let mut res = Response::new().add_attributes(vec![
-        attr("action", "transfer"),
-        attr("owner", owner.clone()),
-        attr("recipient", recipient.clone()),
-    ]);
+    let mut res = Response::new();
 
     if token.transfer_agreement.is_some() {
         //Attach any transfer agreement messages/events
@@ -463,7 +534,7 @@ fn remove_approval(
     let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
     require(
         token.owner.eq(&info.sender.to_string()),
-        StdError::generic_err("Only the token owner can add approvals"),
+        StdError::generic_err("Only the token owner can remove approvals"),
     )?;
     require(
         !token.archived,
@@ -497,13 +568,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::NftInfo { token_id } => to_binary(&query_nft_info(deps, token_id)?),
         QueryMsg::AllNftInfo { token_id } => to_binary(&query_all_nft_info(deps, env, token_id)?),
         QueryMsg::ContractInfo {} => to_binary(&query_contract_info(deps)?),
-        QueryMsg::NftTransferAgreementInfo { token_id } => {
-            to_binary(&query_transfer_agreement(deps, token_id)?)
-        }
-        QueryMsg::NftMetadata { token_id } => to_binary(&query_token_metadata(deps, token_id)?),
-        QueryMsg::NftArchiveStatus { token_id } => {
-            to_binary(&query_token_archive_status(deps, token_id)?)
-        }
         QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
         QueryMsg::ModuleContracts {} => to_binary(&query_module_contracts(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
@@ -548,17 +612,30 @@ fn query_num_tokens(deps: Deps, _env: Env) -> StdResult<NumTokensResponse> {
     Ok(NumTokensResponse { count: num_tokens })
 }
 
-fn query_nft_info(deps: Deps, token_id: String) -> StdResult<NftInfoResponse> {
+fn query_nft_info(
+    deps: Deps,
+    token_id: String,
+) -> StdResult<NftInfoResponse<NftInfoResponseExtension>> {
     let token = TOKENS.load(deps.storage, token_id.clone())?;
+    let extension = NftInfoResponseExtension {
+        metadata: token.get_metadata()?,
+        archived: token.archived,
+        transfer_agreement: token.transfer_agreement,
+    };
 
     Ok(NftInfoResponse {
         name: token.name,
         description: token.description.unwrap_or_default(),
         image: None,
+        extension,
     })
 }
 
-fn query_all_nft_info(deps: Deps, env: Env, token_id: String) -> StdResult<AllNftInfoResponse> {
+fn query_all_nft_info(
+    deps: Deps,
+    env: Env,
+    token_id: String,
+) -> StdResult<AllNftInfoResponse<NftInfoResponseExtension>> {
     let access = query_owner(deps, env, token_id.clone())?;
     let info = query_nft_info(deps, token_id.clone())?;
 
@@ -570,35 +647,6 @@ fn query_contract_info(deps: Deps) -> StdResult<ContractInfoResponse> {
     Ok(ContractInfoResponse {
         name: config.name,
         symbol: config.symbol,
-    })
-}
-
-fn query_transfer_agreement(
-    deps: Deps,
-    token_id: String,
-) -> StdResult<NftTransferAgreementResponse> {
-    let token = TOKENS.load(deps.storage, token_id)?;
-
-    Ok(NftTransferAgreementResponse {
-        agreement: token.transfer_agreement,
-    })
-}
-
-fn query_token_metadata(deps: Deps, token_id: String) -> StdResult<NftMetadataResponse> {
-    let token = TOKENS.load(deps.storage, token_id)?;
-    let metadata: Option<String> = match token.metadata {
-        Some(data) => Some(from_binary(&data)?),
-        None => None,
-    };
-
-    Ok(NftMetadataResponse { metadata })
-}
-
-fn query_token_archive_status(deps: Deps, token_id: String) -> StdResult<NftArchivedResponse> {
-    let token = TOKENS.load(deps.storage, token_id)?;
-
-    Ok(NftArchivedResponse {
-        archived: token.archived,
     })
 }
 
@@ -665,7 +713,6 @@ mod tests {
     use super::*;
     use andromeda_protocol::token::Approval;
     use andromeda_protocol::token::ExecuteMsg;
-    use andromeda_protocol::token::NftArchivedResponse;
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
@@ -739,8 +786,9 @@ mod tests {
         };
         let attrs = vec![
             attr("action", "transfer"),
-            attr("owner", minter.to_string()),
-            attr("recipient", recipient.to_string()),
+            attr("recipient", recipient.clone()),
+            attr("token_id", token_id.clone()),
+            attr("sender", info.sender.to_string()),
         ];
 
         //store config
@@ -841,7 +889,15 @@ mod tests {
             msg.clone(),
         )
         .unwrap();
-        assert_eq!(Response::default().add_attributes(attrs.clone()), res);
+        assert_eq!(
+            Response::default().add_attributes(vec![
+                attr("action", "transfer"),
+                attr("recipient", recipient.clone()),
+                attr("token_id", approval_token_id.clone()),
+                attr("sender", approval_info.sender.to_string()),
+            ]),
+            res
+        );
         let owner = TOKENS
             .load(deps.as_ref().storage, approval_token_id.to_string())
             .unwrap()
@@ -884,7 +940,15 @@ mod tests {
             msg.clone(),
         )
         .unwrap();
-        assert_eq!(Response::default().add_attributes(attrs.clone()), res);
+        assert_eq!(
+            Response::default().add_attributes(vec![
+                attr("action", "transfer"),
+                attr("recipient", recipient.clone()),
+                attr("token_id", approval_token_id.clone()),
+                attr("sender", approval_info.sender.to_string()),
+            ]),
+            res
+        );
 
         let owner = TOKENS
             .load(deps.as_ref().storage, approval_token_id.to_string())
@@ -948,8 +1012,9 @@ mod tests {
                 .add_event(token.transfer_agreement.unwrap().generate_event())
                 .add_attributes(vec![
                     attr("action", "transfer"),
-                    attr("owner", minter.to_string()),
-                    attr("recipient", recipient.to_string()),
+                    attr("recipient", recipient),
+                    attr("token_id", token_id),
+                    attr("sender", info.sender.to_string()),
                 ]),
             res
         );
@@ -1227,12 +1292,12 @@ mod tests {
         )
         .unwrap();
 
-        let agreement_query = QueryMsg::NftTransferAgreementInfo {
+        let agreement_query = QueryMsg::NftInfo {
             token_id: token_id.clone(),
         };
         let res = query(deps.as_ref(), env.clone(), agreement_query).unwrap();
-        let agreement_res: NftTransferAgreementResponse = from_binary(&res).unwrap();
-        let agreement = agreement_res.agreement.unwrap();
+        let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
+        let agreement = token_res.extension.transfer_agreement.unwrap();
 
         assert_eq!(agreement.purchaser, purchaser.clone());
         assert_eq!(agreement.amount, coin(amount.u128(), denom))
@@ -1292,17 +1357,23 @@ mod tests {
         });
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
+        let expected = Response::default().add_attributes(vec![
+            attr("action", "mint"),
+            attr("token_id", token_id.to_string()),
+            attr("owner", info.sender.to_string()),
+            attr("name", "test token".to_string()),
+        ]);
 
-        assert_eq!(res, Response::default());
+        assert_eq!(res, expected);
 
-        let query_msg = QueryMsg::NftMetadata {
+        let token_query = QueryMsg::NftInfo {
             token_id: token_id.to_string(),
         };
+        let res = query(deps.as_ref(), env.clone(), token_query).unwrap();
+        let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
+        let metadata_val = token_res.extension.metadata;
 
-        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let query_val: NftMetadataResponse = from_binary(&query_res).unwrap();
-
-        assert_eq!(query_val.metadata, Some(metadata.clone()))
+        assert_eq!(metadata_val, Some(metadata.clone()))
     }
 
     #[test]
@@ -1404,12 +1475,11 @@ mod tests {
             StdError::generic_err("This token is archived and cannot be changed in any way.")
         );
 
-        let query_msg = QueryMsg::NftArchiveStatus {
+        let token_query = QueryMsg::NftInfo {
             token_id: token_id.to_string(),
         };
-
-        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let query_val: NftArchivedResponse = from_binary(&query_res).unwrap();
-        assert!(query_val.archived)
+        let res = query(deps.as_ref(), env.clone(), token_query).unwrap();
+        let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
+        assert!(token_res.extension.archived)
     }
 }

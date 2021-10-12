@@ -6,8 +6,8 @@ use andromeda_protocol::{
     token::InstantiateMsg as TokenInstantiateMsg,
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response,
-    StdError, StdResult, SubMsg, WasmMsg,
+    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
+    Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 
 use crate::{
@@ -34,7 +34,8 @@ pub fn instantiate(
 
     CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
 
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_attributes(vec![attr("action", "instantiate"), attr("type", "factory")]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -142,7 +143,11 @@ pub fn create(
         reply_on: ReplyOn::Always,
     };
 
-    Ok(Response::new().add_submessage(msg))
+    Ok(Response::new().add_submessage(msg).add_attributes(vec![
+        attr("action", "create"),
+        attr("name", name.clone()),
+        attr("symbol", symbol.clone()),
+    ]))
 }
 
 // pub fn update_address(
@@ -251,7 +256,13 @@ mod tests {
             reply_on: ReplyOn::Always,
         };
 
-        let expected_res = Response::new().add_submessage(expected_msg);
+        let expected_res = Response::new()
+            .add_submessage(expected_msg)
+            .add_attributes(vec![
+                attr("action", "create"),
+                attr("name", TOKEN_NAME.to_string()),
+                attr("symbol", TOKEN_SYMBOL.to_string()),
+            ]);
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         assert_eq!(res, expected_res);
