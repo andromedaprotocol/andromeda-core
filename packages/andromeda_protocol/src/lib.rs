@@ -8,5 +8,6 @@ pub mod receipt;
 pub mod require;
 pub mod response;
 pub mod splitter;
+pub mod testing;
 pub mod timelock;
 pub mod token;

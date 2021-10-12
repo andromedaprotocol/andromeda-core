@@ -39,6 +39,7 @@ dependencies = [
  "protobuf",
  "schemars",
  "serde",
+ "terra-cosmwasm",
 ]
 
 [[package]]

@@ -16,6 +16,7 @@ use crate::{
         {Module, ModuleDefinition},
     },
     require::require,
+    testing::mock_querier::mock_dependencies_custom,
 };
 
 pub const ADDRESS_LIST_CONTRACT: Item<String> = Item::new("addresslistcontract");
@@ -181,6 +182,8 @@ pub fn on_address_list_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
 
 #[cfg(test)]
 mod tests {
+    use cosmwasm_std::testing::{mock_env, mock_info};
+
     use crate::modules::Rate;
 
     use super::*;
@@ -241,37 +244,36 @@ mod tests {
     }
 
     //TODO
-    // #[test]
-    // fn test_on_execute() {
-    //     let sender = "seender";
-    //     let mut deps = mock_dependencies(&[]);
-    //     deps.querier = deps.querier.with_custom_handler(handler)
-    //     let env = mock_env();
-    //     let info = mock_info(sender, &[]);
-    //     let wl = AddressListModule {
-    //         moderators: Some(vec![]),
-    //         address: Some(String::from("someaddress")),
-    //         code_id: None,
-    //         inclusive: true,
-    //     };
-    //     let msg = ExecuteMsg::Revoke {
-    //         spender: String::default(),
-    //         token_id: String::default(),
-    //     };
+    #[test]
+    fn test_on_execute() {
+        let sender = "seender";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(sender, &[]);
+        let invalid_addresslist = AddressListModule {
+            moderators: Some(vec![]),
+            address: Some(String::from("addresslist_contract_address2")),
+            code_id: None,
+            inclusive: true,
+        };
 
-    //     let resp = wl
-    //         .on_execute(&deps.as_mut(), info.clone(), env.clone(), msg.clone())
-    //         .unwrap_err();
+        let resp = invalid_addresslist
+            .on_execute(&deps.as_mut(), info.clone(), env.clone())
+            .unwrap_err();
 
-    //     assert_eq!(
-    //         resp,
-    //         StdError::generic_err("Address is not included in the address list")
-    //     );
+        assert_eq!(resp, StdError::generic_err("Address is not authorized"));
 
-    //     let resp = wl
-    //         .on_execute(&deps.as_mut(), info.clone(), env.clone(), msg.clone())
-    //         .unwrap();
+        let valid_addresslist = AddressListModule {
+            moderators: Some(vec![]),
+            address: Some(String::from("addresslist_contract_address1")),
+            code_id: None,
+            inclusive: true,
+        };
 
-    //     assert_eq!(resp, HookResponse::default());
-    // }
+        let resp = valid_addresslist
+            .on_execute(&deps.as_mut(), info.clone(), env.clone())
+            .unwrap();
+
+        assert_eq!(resp, HookResponse::default());
+    }
 }
