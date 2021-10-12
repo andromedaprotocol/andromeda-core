@@ -16,7 +16,6 @@ use crate::{
         {Module, ModuleDefinition},
     },
     require::require,
-    testing::mock_querier::mock_dependencies_custom,
 };
 
 pub const ADDRESS_LIST_CONTRACT: Item<String> = Item::new("addresslistcontract");
@@ -184,7 +183,7 @@ pub fn on_address_list_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
 mod tests {
     use cosmwasm_std::testing::{mock_env, mock_info};
 
-    use crate::modules::Rate;
+    use crate::{modules::Rate, testing::mock_querier::mock_dependencies_custom};
 
     use super::*;
     // use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MockQuerier};
