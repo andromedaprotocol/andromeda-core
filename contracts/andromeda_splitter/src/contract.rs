@@ -3,7 +3,7 @@ use andromeda_protocol::{
     common::generate_instantiate_msgs,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
-        hooks::MessageHooks,
+        hooks::{HookResponse, MessageHooks},
         Module,
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
@@ -14,8 +14,8 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, StdResult, SubMsg, Uint128
+    attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128,
 };
 // use std::collections::HashMap;
 
@@ -63,7 +63,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         }
         ExecuteMsg::UpdateLock { lock } => execute_update_lock(deps, info, lock),
         ExecuteMsg::UpdateAddressList { address_list } => {
-            execute_update_address_list(deps, info, address_list)
+            execute_update_address_list(deps, info, env, address_list)
         }
         ExecuteMsg::Send {} => execute_send(deps, info),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
@@ -105,12 +105,15 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
             amount: vec_coin,
         })));
     }
-    remainder_funds =  remainder_funds.into_iter().filter(|x| x.amount > Uint128::from(0u128)).collect();
+    remainder_funds = remainder_funds
+        .into_iter()
+        .filter(|x| x.amount > Uint128::from(0u128))
+        .collect();
 
     if remainder_funds.len() > 0 {
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
-            amount: remainder_funds
+            amount: remainder_funds,
         })));
     }
 
@@ -161,7 +164,8 @@ fn execute_update_lock(deps: DepsMut, info: MessageInfo, lock: bool) -> StdResul
 fn execute_update_address_list(
     deps: DepsMut,
     info: MessageInfo,
-    address_list: AddressListModule,
+    env: Env,
+    address_list: Option<AddressListModule>,
 ) -> StdResult<Response> {
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
@@ -173,10 +177,18 @@ fn execute_update_address_list(
         StdError::generic_err("The splitter is currently locked");
     }
 
-    splitter.address_list = Some(address_list);
+    let mod_resp = match address_list.clone() {
+        None => HookResponse::default(),
+        Some(addr_list) => addr_list.on_instantiate(&deps, info, env)?,
+    };
+    splitter.address_list = address_list;
+
     SPLITTER.save(deps.storage, &splitter)?;
 
-    Ok(Response::default().add_attributes(vec![attr("action", "update_address_list")]))
+    Ok(Response::default()
+        .add_submessages(mod_resp.msgs)
+        .add_events(mod_resp.events)
+        .add_attributes(vec![attr("action", "update_address_list")]))
 }
 
 #[entry_point]
@@ -287,12 +299,12 @@ mod tests {
 
         let address_list = AddressListModule {
             address: Some(String::from("terra1contractaddress")),
-            code_id: None,
-            moderators: None,
+            code_id: Some(1),
+            moderators: Some(vec![String::from("moderator1")]),
             inclusive: true,
         };
         let msg = ExecuteMsg::UpdateAddressList {
-            address_list: address_list.clone(),
+            address_list: Some(address_list.clone()),
         };
 
         let unauth_info = mock_info("anyone", &[]);
@@ -304,7 +316,17 @@ mod tests {
         );
 
         let info = mock_info(owner.clone(), &[]);
-        execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let mod_resp = address_list
+            .clone()
+            .on_instantiate(&deps.as_mut(), info.clone(), env.clone())
+            .unwrap();
+        let expected = Response::default()
+            .add_submessages(mod_resp.msgs)
+            .add_events(mod_resp.events)
+            .add_attributes(vec![attr("action", "update_address_list")]);
+
+        assert_eq!(resp, expected);
 
         let updated = SPLITTER.load(deps.as_mut().storage).unwrap();
 
@@ -420,29 +442,25 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-        let expected_res = Response::new().add_submessages(vec![
-            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: recip_address1.clone(),
-                amount: vec![Coin::new(1000, "uluna")], // 10000 * 0.1
-            })),
-            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: recip_address2.clone(),
-                amount: vec![Coin::new(2000, "uluna")], // 10000 * 0.2
-            })),
-            SubMsg::new(
-                // refunds remainder to sender
-                CosmosMsg::Bank(BankMsg::Send {
-                    to_address: owner.to_string(),
-                    amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
-                }),
-            ),
-        ])
-        .add_attributes(
-            vec![
-                attr("action", "send"),
-                attr("sender", "creator")
-            ]
-        );
+        let expected_res = Response::new()
+            .add_submessages(vec![
+                SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: recip_address1.clone(),
+                    amount: vec![Coin::new(1000, "uluna")], // 10000 * 0.1
+                })),
+                SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: recip_address2.clone(),
+                    amount: vec![Coin::new(2000, "uluna")], // 10000 * 0.2
+                })),
+                SubMsg::new(
+                    // refunds remainder to sender
+                    CosmosMsg::Bank(BankMsg::Send {
+                        to_address: owner.to_string(),
+                        amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
+                    }),
+                ),
+            ])
+            .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
 
         assert_eq!(res, expected_res);
     }

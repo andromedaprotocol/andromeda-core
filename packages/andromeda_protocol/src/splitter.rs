@@ -51,11 +51,19 @@ impl InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    UpdateRecipients { recipients: Vec<AddressPercent> },
-    UpdateLock { lock: bool },
-    UpdateAddressList { address_list: AddressListModule },
+    UpdateRecipients {
+        recipients: Vec<AddressPercent>,
+    },
+    UpdateLock {
+        lock: bool,
+    },
+    UpdateAddressList {
+        address_list: Option<AddressListModule>,
+    },
     Send {},
-    UpdateOwner { address: String },
+    UpdateOwner {
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
