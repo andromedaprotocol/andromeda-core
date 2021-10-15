@@ -14,7 +14,7 @@ use crate::{
     reply::{on_token_creation_reply, REPLY_CREATE_TOKEN},
     state::{
         is_address_defined, is_creator, read_address, read_config, store_address, store_config,
-        store_creator, Config,
+        Config,
     },
 };
 
@@ -161,7 +161,7 @@ pub fn update_address(
     new_address: String,
 ) -> StdResult<Response> {
     require(
-        is_creator(deps.storage, symbol.clone(), info.sender.to_string())?
+        is_creator(&deps, symbol.clone(), info.sender.to_string())?
             || is_contract_owner(deps.storage, info.sender.to_string())?,
         StdError::generic_err("Cannot update address for ADO that you did not create"),
     )?;
@@ -188,9 +188,10 @@ fn query_address(deps: Deps, symbol: String) -> StdResult<AddressResponse> {
 
 #[cfg(test)]
 mod tests {
-    use crate::state::SYM_CREATOR;
+    use crate::state::SYM_ADDRESS;
 
     use super::*;
+    use andromeda_protocol::testing::mock_querier::mock_dependencies_custom;
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
@@ -280,15 +281,19 @@ mod tests {
     fn test_update_address() {
         let creator = String::from("creator");
         let owner = String::from("owner");
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info(creator.clone().as_str(), &[]);
 
-        SYM_CREATOR
-            .save(deps.as_mut().storage, TOKEN_SYMBOL.to_string(), &creator)
-            .unwrap();
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &owner.clone())
+            .unwrap();
+        SYM_ADDRESS
+            .save(
+                deps.as_mut().storage,
+                TOKEN_SYMBOL.to_string(),
+                &String::from("factory_address"),
+            )
             .unwrap();
 
         let new_address = String::from("new");
@@ -296,20 +301,6 @@ mod tests {
             symbol: TOKEN_SYMBOL.to_string(),
             new_address: new_address.clone(),
         };
-
-        let update_res =
-            execute(deps.as_mut(), env.clone(), info.clone(), update_msg.clone()).unwrap();
-
-        assert_eq!(update_res, Response::default());
-
-        let query_msg = QueryMsg::GetAddress {
-            symbol: TOKEN_SYMBOL.to_string(),
-        };
-
-        let addr_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
-
-        assert_eq!(new_address.clone(), addr_val.address);
 
         let unauth_env = mock_env();
         let unauth_info = mock_info("anyone", &[]);
@@ -325,5 +316,19 @@ mod tests {
             unauth_res,
             StdError::generic_err("Cannot update address for ADO that you did not create"),
         );
+
+        let update_res =
+            execute(deps.as_mut(), env.clone(), info.clone(), update_msg.clone()).unwrap();
+
+        assert_eq!(update_res, Response::default());
+
+        let query_msg = QueryMsg::GetAddress {
+            symbol: TOKEN_SYMBOL.to_string(),
+        };
+
+        let addr_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
+
+        assert_eq!(new_address.clone(), addr_val.address);
     }
 }

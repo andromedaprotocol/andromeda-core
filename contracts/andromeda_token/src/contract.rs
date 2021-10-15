@@ -51,7 +51,7 @@ pub fn instantiate(
     let mod_res = modules.on_instantiate(&deps, info.clone(), env)?;
 
     CONFIG.save(deps.storage, &config)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
+    CONTRACT_OWNER.save(deps.storage, &msg.minter.clone())?;
     store_modules(deps.storage, modules.clone())?;
 
     Ok(Response::new()
