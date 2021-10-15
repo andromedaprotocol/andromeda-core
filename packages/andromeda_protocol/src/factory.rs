@@ -19,10 +19,10 @@ pub enum ExecuteMsg {
         modules: Vec<ModuleDefinition>,
         metadata_limit: Option<u64>,
     },
-    // UpdateAddress {
-    //     symbol: String,
-    //     new_address: String,
-    // },
+    UpdateAddress {
+        symbol: String,
+        new_address: String,
+    },
     UpdateOwner {
         address: String,
     },

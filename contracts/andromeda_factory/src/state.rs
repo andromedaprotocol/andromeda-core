@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const SYM_ADDRESS: Map<String, String> = Map::new("address");
-// pub const SYM_CREATOR: Map<String, String> = Map::new("creator");
+pub const SYM_CREATOR: Map<String, String> = Map::new("creator");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
@@ -31,13 +31,13 @@ pub fn read_address(storage: &dyn Storage, symbol: String) -> StdResult<String> 
     SYM_ADDRESS.load(storage, symbol)
 }
 
-// pub fn store_creator(storage: &mut dyn Storage, symbol: String, creator: &String) -> StdResult<()> {
-//     SYM_CREATOR.save(storage, symbol, creator)
-// }
+pub fn store_creator(storage: &mut dyn Storage, symbol: String, creator: &String) -> StdResult<()> {
+    SYM_CREATOR.save(storage, symbol, creator)
+}
 
-// pub fn read_creator(storage: &dyn Storage, symbol: String) -> StdResult<String> {
-//     SYM_CREATOR.load(storage, symbol)
-// }
+pub fn read_creator(storage: &dyn Storage, symbol: String) -> StdResult<String> {
+    SYM_CREATOR.load(storage, symbol)
+}
 
 pub fn is_address_defined(storage: &dyn Storage, symbol: String) -> StdResult<bool> {
     match read_address(storage, symbol) {
@@ -46,9 +46,9 @@ pub fn is_address_defined(storage: &dyn Storage, symbol: String) -> StdResult<bo
     }
 }
 
-// pub fn is_creator(storage: &dyn Storage, symbol: String, address: String) -> StdResult<bool> {
-//     match read_creator(storage, symbol) {
-//         Ok(creator) => Ok(address == creator),
-//         Err(_e) => Ok(false),
-//     }
-// }
+pub fn is_creator(storage: &dyn Storage, symbol: String, address: String) -> StdResult<bool> {
+    match read_creator(storage, symbol) {
+        Ok(creator) => Ok(address == creator),
+        Err(_e) => Ok(false),
+    }
+}
