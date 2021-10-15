@@ -84,9 +84,7 @@ fn test_create() {
         name: TOKEN_NAME.to_string(),
         symbol: TOKEN_SYMBOL.to_string(),
         minter: info.sender.to_string(),
-        receipt_code_id: RECEIPT_CODE_ID,
         modules: modules.clone(),
-        address_list_code_id: Some(ADDRESS_LIST_CODE_ID),
         metadata_limit: Some(size_limit),
     };
 

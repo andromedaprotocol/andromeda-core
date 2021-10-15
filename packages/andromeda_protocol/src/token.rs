@@ -36,6 +36,7 @@ pub struct Token {
     pub transfer_agreement: Option<TransferAgreement>,
     pub metadata: Option<Binary>,
     pub archived: bool,
+    pub image: Option<String>,
 }
 
 impl Token {
@@ -155,9 +156,6 @@ pub struct InstantiateMsg {
     //The attached Andromeda modules
     pub modules: Vec<ModuleDefinition>,
 
-    //code id for receipt contract
-    pub receipt_code_id: u64,
-    pub address_list_code_id: Option<u64>,
     //An optional limit for token metadata size
     pub metadata_limit: Option<u64>,
 }
@@ -173,6 +171,7 @@ pub struct MintMsg {
     pub token_id: TokenId,
     pub owner: String,
     pub name: String,
+    pub image: Option<String>,
     pub description: Option<String>,
     pub metadata: Option<String>,
 }

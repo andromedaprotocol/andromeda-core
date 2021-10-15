@@ -5,18 +5,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub minter: String,
-    pub owner: String,
     pub moderators: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Receipt {
     pub events: Vec<Event>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ReceiptResponse {
-    pub receipt: Receipt,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -52,4 +46,9 @@ pub enum QueryMsg {
 #[serde(rename_all = "snake_case")]
 pub struct ContractInfoResponse {
     pub config: Config,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ReceiptResponse {
+    pub receipt: Receipt,
 }

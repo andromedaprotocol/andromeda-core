@@ -1,4 +1,7 @@
-use andromeda_protocol::receipt::{Config, Receipt};
+use andromeda_protocol::{
+    ownership::is_contract_owner,
+    receipt::{Config, Receipt},
+};
 use cosmwasm_std::{StdResult, Storage, Uint128};
 use cw_storage_plus::{Item, Map, U128Key};
 
@@ -12,7 +15,9 @@ pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()>
 
 pub fn can_mint_receipt(storage: &dyn Storage, addr: &String) -> StdResult<bool> {
     let config = CONFIG.load(storage)?;
-    Ok(addr.eq(&config.owner) || addr.eq(&config.minter) || config.moderators.contains(addr))
+    Ok(is_contract_owner(storage, addr.to_string())?
+        || addr.eq(&config.minter)
+        || config.moderators.contains(addr))
 }
 
 // increase receipt ID
@@ -36,6 +41,7 @@ pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Rec
 
 #[cfg(test)]
 mod tests {
+    use andromeda_protocol::ownership::CONTRACT_OWNER;
     use cosmwasm_std::testing::mock_dependencies;
 
     use super::*;
@@ -50,10 +56,12 @@ mod tests {
         let config = Config {
             minter: minter.clone(),
             moderators: vec![moderator.clone()],
-            owner: owner.clone(),
         };
         let mut deps = mock_dependencies(&[]);
 
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.to_string())
+            .unwrap();
         CONFIG.save(deps.as_mut().storage, &config).unwrap();
 
         let anyone_resp = can_mint_receipt(deps.as_ref().storage, &anyone).unwrap();

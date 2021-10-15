@@ -18,7 +18,6 @@ use cosmwasm_std::{
 const TOKEN_NAME: &str = "test";
 const TOKEN_SYMBOL: &str = "T";
 const ADDRESS_LIST_CODE_ID: u64 = 1;
-const RECEIPT_CODE_ID: u64 = 2;
 
 // integration testing for initialize, mint, tranfer_aggrement, transferNFT, modules
 #[test]
@@ -60,8 +59,6 @@ fn test_token_modules() {
         modules,
         minter: String::from("creator"),
         metadata_limit: Some(size_limit),
-        receipt_code_id: RECEIPT_CODE_ID,
-        address_list_code_id: Some(ADDRESS_LIST_CODE_ID),
     };
 
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -103,6 +100,7 @@ fn test_token_modules() {
         description: Some("Test Token".to_string()),
         name: "TestToken".to_string(),
         metadata: None,
+        image: None,
     };
     let res = execute(
         deps.as_mut(),

@@ -9,6 +9,37 @@ use crate::{modules::address_list::AddressListModule, require::require};
 pub const HELD_FUNDS: Map<String, Escrow> = Map::new("funds");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Escrow {
+    pub coins: Vec<Coin>,
+    pub expiration: Expiration,
+    pub recipient: String,
+}
+
+impl Escrow {
+    pub fn validate(self, api: &dyn Api) -> StdResult<bool> {
+        require(
+            self.coins.len() > 0,
+            StdError::generic_err("Cannot escrow empty funds"),
+        )?;
+        require(
+            api.addr_validate(&self.recipient.clone()).is_ok(),
+            StdError::generic_err("Escrow recipient must be a valid address"),
+        )?;
+
+        match self.expiration {
+            Expiration::Never {} => {
+                return Err(StdError::generic_err(
+                    "Cannot escrow funds with no expiration",
+                ));
+            }
+            _ => {}
+        }
+
+        Ok(true)
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub address_list: Option<AddressListModule>,
 }
@@ -45,37 +76,6 @@ pub struct GetLockedFundsResponse {
 pub struct GetTimelockConfigResponse {
     pub address_list: Option<AddressListModule>,
     pub address_list_contract: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Escrow {
-    pub coins: Vec<Coin>,
-    pub expiration: Expiration,
-    pub recipient: String,
-}
-
-impl Escrow {
-    pub fn validate(self, api: &dyn Api) -> StdResult<bool> {
-        require(
-            self.coins.len() > 0,
-            StdError::generic_err("Cannot escrow empty funds"),
-        )?;
-        require(
-            api.addr_validate(&self.recipient.clone()).is_ok(),
-            StdError::generic_err("Escrow recipient must be a valid address"),
-        )?;
-
-        match self.expiration {
-            Expiration::Never {} => {
-                return Err(StdError::generic_err(
-                    "Cannot escrow funds with no expiration",
-                ));
-            }
-            _ => {}
-        }
-
-        Ok(true)
-    }
 }
 
 pub fn hold_funds(funds: Escrow, storage: &mut dyn Storage, addr: String) -> StdResult<()> {

@@ -144,6 +144,7 @@ pub fn execute_mint(
         approvals: vec![],
         transfer_agreement: None,
         metadata,
+        image: None,
         archived: false,
     };
 
@@ -719,10 +720,8 @@ mod tests {
         Api, BankMsg, Uint128,
     };
 
-    const ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
-    static RECEIPT_CODE_ID: u64 = 1;
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies(&[]);
@@ -732,10 +731,8 @@ mod tests {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             modules: vec![],
-            receipt_code_id: RECEIPT_CODE_ID,
             minter: String::from("creator"),
             metadata_limit: None,
-            address_list_code_id: Some(ADDRESS_LIST_CODE_ID),
         };
 
         let env = mock_env();
@@ -758,6 +755,7 @@ mod tests {
             description: Some("Test Token".to_string()),
             name: "TestToken".to_string(),
             metadata: None,
+            image: None,
         };
 
         let msg = ExecuteMsg::Mint(mint_msg);
@@ -812,6 +810,7 @@ mod tests {
             approvals: vec![],
             transfer_agreement: None,
             metadata: None,
+            image: None,
             archived: false,
         };
 
@@ -868,6 +867,7 @@ mod tests {
             transfer_agreement: None,
             metadata: None,
             archived: false,
+            image: None,
         };
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -919,6 +919,7 @@ mod tests {
             transfer_agreement: None,
             metadata: None,
             archived: false,
+            image: None,
         };
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -996,6 +997,7 @@ mod tests {
             }),
             metadata: None,
             archived: false,
+            image: None,
         };
 
         TOKENS
@@ -1044,6 +1046,7 @@ mod tests {
             transfer_agreement: None,
             metadata: None,
             archived: false,
+            image: None,
         };
 
         TOKENS
@@ -1086,6 +1089,7 @@ mod tests {
             transfer_agreement: None,
             metadata: None,
             archived: false,
+            image: None,
         };
 
         TOKENS
@@ -1128,6 +1132,7 @@ mod tests {
             description: None,
             name: "Some Token".to_string(),
             metadata: None,
+            image: None,
         });
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
@@ -1202,6 +1207,7 @@ mod tests {
             description: None,
             name: "Some Token".to_string(),
             metadata: None,
+            image: None,
         });
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
@@ -1264,8 +1270,6 @@ mod tests {
             minter: minter.to_string(),
             metadata_limit: None,
             modules: vec![],
-            receipt_code_id: 1,
-            address_list_code_id: Some(2),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
 
@@ -1275,6 +1279,7 @@ mod tests {
             description: None,
             name: "Some Token".to_string(),
             metadata: Some(metadata.clone()),
+            image: None,
         });
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
@@ -1316,9 +1321,7 @@ mod tests {
             symbol: "T".to_string(),
             minter: minter.to_string(),
             modules: vec![],
-            receipt_code_id: RECEIPT_CODE_ID,
             metadata_limit: Some(4),
-            address_list_code_id: Some(ADDRESS_LIST_CODE_ID),
         };
 
         instantiate(
@@ -1337,6 +1340,7 @@ mod tests {
             name: "test token".to_string(),
             description: None,
             metadata: Some(metadata.clone()),
+            image: None,
         });
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap_err();
@@ -1354,6 +1358,7 @@ mod tests {
             name: "test token".to_string(),
             description: None,
             metadata: Some(metadata.clone()),
+            image: None,
         });
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
@@ -1390,6 +1395,7 @@ mod tests {
             description: Some("Test Token".to_string()),
             name: "TestToken".to_string(),
             metadata: None,
+            image: None,
         };
 
         let msg = ExecuteMsg::Mint(mint_msg);
@@ -1436,6 +1442,7 @@ mod tests {
             description: Some("Test Token".to_string()),
             name: "TestToken".to_string(),
             metadata: None,
+            image: None,
         };
 
         let msg = ExecuteMsg::Mint(mint_msg);

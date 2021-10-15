@@ -122,9 +122,7 @@ pub fn create(
         name: name.to_string(),
         symbol: symbol.to_string(),
         minter: info.sender.to_string(),
-        receipt_code_id: config.receipt_code_id,
         modules: updated_modules,
-        address_list_code_id: Some(config.address_list_code_id),
         metadata_limit,
     };
 
@@ -235,9 +233,7 @@ mod tests {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             minter: info.sender.to_string(),
-            receipt_code_id: RECEIPT_CODE_ID,
             modules: vec![],
-            address_list_code_id: Some(ADDRESS_LIST_CODE_ID),
             metadata_limit: None,
         };
 

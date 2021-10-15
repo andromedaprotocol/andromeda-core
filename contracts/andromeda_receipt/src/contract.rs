@@ -24,7 +24,6 @@ pub fn instantiate(
     store_config(
         deps.storage,
         &Config {
-            owner: info.sender.to_string(), // token contract address
             minter: msg.minter,
             moderators: match msg.moderators {
                 Some(moderators) => moderators,
@@ -146,10 +145,12 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
         let config = Config {
             minter: owner.to_string(),
-            owner: owner.to_string(),
             moderators: vec![],
         };
         store_config(deps.as_mut().storage, &config).unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.to_string())
+            .unwrap();
 
         let msg = ExecuteMsg::StoreReceipt {
             receipt: Receipt { events: vec![] },
@@ -184,9 +185,13 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
         let config = Config {
             minter: owner.to_string(),
-            owner: owner.to_string(),
             moderators: vec![],
         };
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.to_string())
+            .unwrap();
+
         store_config(deps.as_mut().storage, &config).unwrap();
 
         let store_msg = ExecuteMsg::StoreReceipt {
