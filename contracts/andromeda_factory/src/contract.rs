@@ -1,7 +1,7 @@
 use andromeda_protocol::{
     factory::{AddressResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     modules::ModuleDefinition,
-    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
+    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
     token::InstantiateMsg as TokenInstantiateMsg,
 };
@@ -12,7 +12,10 @@ use cosmwasm_std::{
 
 use crate::{
     reply::{on_token_creation_reply, REPLY_CREATE_TOKEN},
-    state::{is_address_defined, read_address, read_config, store_config, Config},
+    state::{
+        is_address_defined, is_creator, read_address, read_config, store_address, store_config,
+        store_creator, Config,
+    },
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -59,10 +62,10 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             modules,
             metadata_limit,
         } => create(deps, env, info, name, symbol, modules, metadata_limit),
-        // ExecuteMsg::UpdateAddress {
-        //     symbol,
-        //     new_address,
-        // } => update_address(deps, env, info, symbol, new_address),
+        ExecuteMsg::UpdateAddress {
+            symbol,
+            new_address,
+        } => update_address(deps, env, info, symbol, new_address),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
@@ -82,6 +85,8 @@ pub fn create(
         !is_address_defined(deps.storage, symbol.to_string())?,
         StdError::generic_err("Symbol is in use"),
     )?;
+
+    store_creator(deps.storage, symbol.clone(), &info.sender.to_string())?;
 
     //Assign Code IDs to Modules
     let updated_modules: Vec<ModuleDefinition> = modules
@@ -148,22 +153,23 @@ pub fn create(
     ]))
 }
 
-// pub fn update_address(
-//     deps: DepsMut,
-//     _env: Env,
-//     info: MessageInfo,
-//     symbol: String,
-//     new_address: String,
-// ) -> StdResult<Response> {
-//     require(
-//         is_creator(deps.storage, symbol.clone(), info.sender.to_string())?,
-//         StdError::generic_err("Cannot update address for ADO that you did not create"),
-//     )?;
+pub fn update_address(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    symbol: String,
+    new_address: String,
+) -> StdResult<Response> {
+    require(
+        is_creator(deps.storage, symbol.clone(), info.sender.to_string())?
+            || is_contract_owner(deps.storage, info.sender.to_string())?,
+        StdError::generic_err("Cannot update address for ADO that you did not create"),
+    )?;
 
-//     store_address(deps.storage, symbol.clone(), &new_address.clone())?;
+    store_address(deps.storage, symbol.clone(), &new_address.clone())?;
 
-//     Ok(Response::default())
-// }
+    Ok(Response::default())
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -182,8 +188,13 @@ fn query_address(deps: Deps, symbol: String) -> StdResult<AddressResponse> {
 
 #[cfg(test)]
 mod tests {
+    use crate::state::SYM_CREATOR;
+
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{
+        from_binary,
+        testing::{mock_dependencies, mock_env, mock_info},
+    };
 
     static TOKEN_CODE_ID: u64 = 0;
     static RECEIPT_CODE_ID: u64 = 1;
@@ -265,55 +276,54 @@ mod tests {
         assert_eq!(1, expected_res.messages.len())
     }
 
-    // #[test]
-    // fn test_update_address() {
-    //     let creator = String::from("creator");
-    //     let mut deps = mock_dependencies(&[]);
-    //     let env = mock_env();
-    //     let info = mock_info(creator.clone().as_str(), &[]);
+    #[test]
+    fn test_update_address() {
+        let creator = String::from("creator");
+        let owner = String::from("owner");
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info(creator.clone().as_str(), &[]);
 
-    //     let msg = ExecuteMsg::TokenCreationHook {
-    //         symbol: TOKEN_SYMBOL.to_string(),
-    //         creator: creator.clone(),
-    //     };
+        SYM_CREATOR
+            .save(deps.as_mut().storage, TOKEN_SYMBOL.to_string(), &creator)
+            .unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.clone())
+            .unwrap();
 
-    //     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let new_address = String::from("new");
+        let update_msg = ExecuteMsg::UpdateAddress {
+            symbol: TOKEN_SYMBOL.to_string(),
+            new_address: new_address.clone(),
+        };
 
-    //     assert_eq!(res, Response::default());
+        let update_res =
+            execute(deps.as_mut(), env.clone(), info.clone(), update_msg.clone()).unwrap();
 
-    //     let new_address = String::from("new");
-    //     let update_msg = ExecuteMsg::UpdateAddress {
-    //         symbol: TOKEN_SYMBOL.to_string(),
-    //         new_address: new_address.clone(),
-    //     };
+        assert_eq!(update_res, Response::default());
 
-    //     let update_res =
-    //         execute(deps.as_mut(), env.clone(), info.clone(), update_msg.clone()).unwrap();
+        let query_msg = QueryMsg::GetAddress {
+            symbol: TOKEN_SYMBOL.to_string(),
+        };
 
-    //     assert_eq!(update_res, Response::default());
+        let addr_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
 
-    //     let query_msg = QueryMsg::GetAddress {
-    //         symbol: TOKEN_SYMBOL.to_string(),
-    //     };
+        assert_eq!(new_address.clone(), addr_val.address);
 
-    //     let addr_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    //     let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
+        let unauth_env = mock_env();
+        let unauth_info = mock_info("anyone", &[]);
+        let unauth_res = execute(
+            deps.as_mut(),
+            unauth_env.clone(),
+            unauth_info.clone(),
+            update_msg.clone(),
+        )
+        .unwrap_err();
 
-    //     assert_eq!(new_address.clone(), addr_val.address);
-
-    //     let unauth_env = mock_env();
-    //     let unauth_info = mock_info("anyone", &[]);
-    //     let unauth_res = execute(
-    //         deps.as_mut(),
-    //         unauth_env.clone(),
-    //         unauth_info.clone(),
-    //         update_msg.clone(),
-    //     )
-    //     .unwrap_err();
-
-    //     assert_eq!(
-    //         unauth_res,
-    //         StdError::generic_err("Cannot update address for ADO that you did not create"),
-    //     );
-    // }
+        assert_eq!(
+            unauth_res,
+            StdError::generic_err("Cannot update address for ADO that you did not create"),
+        );
+    }
 }
