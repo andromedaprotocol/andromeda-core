@@ -86,8 +86,6 @@ pub fn create(
         StdError::generic_err("Symbol is in use"),
     )?;
 
-    store_creator(deps.storage, symbol.clone(), &info.sender.to_string())?;
-
     //Assign Code IDs to Modules
     let updated_modules: Vec<ModuleDefinition> = modules
         .iter()
