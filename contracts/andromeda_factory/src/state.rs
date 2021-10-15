@@ -11,7 +11,6 @@ pub const SYM_ADDRESS: Map<String, String> = Map::new("address");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    pub owner: String,
     pub token_code_id: u64,
     pub receipt_code_id: u64,
     pub address_list_code_id: u64,

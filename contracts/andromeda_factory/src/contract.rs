@@ -1,5 +1,5 @@
 use andromeda_protocol::{
-    factory::{AddressResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
+    factory::{AddressResponse, CodeIdsResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     modules::ModuleDefinition,
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
@@ -31,7 +31,6 @@ pub fn instantiate(
             token_code_id: msg.token_code_id,
             receipt_code_id: msg.receipt_code_id,
             address_list_code_id: msg.address_list_code_id,
-            owner: info.sender.to_string(),
         },
     )?;
 
@@ -67,6 +66,18 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             new_address,
         } => update_address(deps, env, info, symbol, new_address),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        ExecuteMsg::UpdateCodeId {
+            address_list_code_id,
+            receipt_code_id,
+            token_code_id,
+        } => update_code_id(
+            deps,
+            env,
+            info,
+            receipt_code_id,
+            address_list_code_id,
+            token_code_id,
+        ),
     }
 }
 
@@ -169,11 +180,52 @@ pub fn update_address(
     Ok(Response::default())
 }
 
+pub fn update_code_id(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    receipt_code_id: Option<u64>,
+    address_list_code_id: Option<u64>,
+    token_code_id: Option<u64>,
+) -> StdResult<Response> {
+    require(receipt_code_id.is_some() || address_list_code_id.is_some() || token_code_id.is_some(), StdError::generic_err("Must provide one of the following: \"receipt_code_id\", \"token_code_id\", \"address_list_code_id\""))?;
+    require(
+        is_contract_owner(deps.storage, info.sender.to_string())?,
+        StdError::generic_err("Can only be used by the contract owner"),
+    )?;
+    let mut config = read_config(deps.storage)?;
+
+    if receipt_code_id.is_some() {
+        config.receipt_code_id = receipt_code_id.unwrap();
+    }
+
+    if address_list_code_id.is_some() {
+        config.address_list_code_id = address_list_code_id.unwrap();
+    }
+
+    if token_code_id.is_some() {
+        config.token_code_id = token_code_id.unwrap();
+    }
+
+    store_config(deps.storage, &config)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_code_id"),
+        attr("receipt_code_id", config.receipt_code_id.to_string()),
+        attr("token_code_id", config.token_code_id.to_string()),
+        attr(
+            "address_list_code_id",
+            config.address_list_code_id.to_string(),
+        ),
+    ]))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetAddress { symbol } => to_binary(&query_address(deps, symbol)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::CodeIds {} => to_binary(&query_code_ids(deps)?),
     }
 }
 
@@ -181,6 +233,16 @@ fn query_address(deps: Deps, symbol: String) -> StdResult<AddressResponse> {
     let address = read_address(deps.storage, symbol)?;
     Ok(AddressResponse {
         address: address.clone(),
+    })
+}
+
+fn query_code_ids(deps: Deps) -> StdResult<CodeIdsResponse> {
+    let config = read_config(deps.storage)?;
+
+    Ok(CodeIdsResponse {
+        receipt_code_id: config.receipt_code_id,
+        address_list_code_id: config.address_list_code_id,
+        token_code_id: config.token_code_id,
     })
 }
 
@@ -328,5 +390,73 @@ mod tests {
         let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
 
         assert_eq!(new_address.clone(), addr_val.address);
+    }
+
+    #[test]
+    fn test_update_code_id() {
+        let owner = String::from("owner");
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(owner.clone().as_str(), &[]);
+        let unauth_info = mock_info("anyone", &[]);
+        let config = Config {
+            address_list_code_id: ADDRESS_LIST_CODE_ID,
+            receipt_code_id: RECEIPT_CODE_ID,
+            token_code_id: TOKEN_CODE_ID,
+        };
+        store_config(deps.as_mut().storage, &config).unwrap();
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.clone())
+            .unwrap();
+
+        let invalid_msg = ExecuteMsg::UpdateCodeId {
+            receipt_code_id: None,
+            token_code_id: None,
+            address_list_code_id: None,
+        };
+
+        let resp = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            invalid_msg.clone(),
+        )
+        .unwrap_err();
+        let expected = StdError::generic_err("Must provide one of the following: \"receipt_code_id\", \"token_code_id\", \"address_list_code_id\"");
+
+        assert_eq!(resp, expected);
+
+        let new_receipt_code_id = 4;
+        let msg = ExecuteMsg::UpdateCodeId {
+            receipt_code_id: Some(new_receipt_code_id),
+            token_code_id: None,
+            address_list_code_id: None,
+        };
+
+        let resp =
+            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        let expected = StdError::generic_err("Can only be used by the contract owner");
+
+        assert_eq!(resp, expected);
+
+        let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let expected = Response::default().add_attributes(vec![
+            attr("action", "update_code_id"),
+            attr("receipt_code_id", new_receipt_code_id.to_string()),
+            attr("token_code_id", TOKEN_CODE_ID.to_string()),
+            attr("address_list_code_id", ADDRESS_LIST_CODE_ID.to_string()),
+        ]);
+
+        assert_eq!(resp, expected);
+
+        let new_config = read_config(deps.as_ref().storage).unwrap();
+        let expected = Config {
+            receipt_code_id: new_receipt_code_id,
+            address_list_code_id: ADDRESS_LIST_CODE_ID,
+            token_code_id: TOKEN_CODE_ID,
+        };
+
+        assert_eq!(new_config, expected);
     }
 }
