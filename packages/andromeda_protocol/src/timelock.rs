@@ -11,7 +11,7 @@ pub const HELD_FUNDS: Map<String, Escrow> = Map::new("funds");
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Escrow {
     pub coins: Vec<Coin>,
-    pub expiration: Expiration,
+    pub expiration: Option<Expiration>,
     pub recipient: String,
 }
 
@@ -26,13 +26,15 @@ impl Escrow {
             StdError::generic_err("Escrow recipient must be a valid address"),
         )?;
 
-        match self.expiration {
-            Expiration::Never {} => {
-                return Err(StdError::generic_err(
-                    "Cannot escrow funds with no expiration",
-                ));
+        if self.expiration.is_some() {
+            match self.expiration.unwrap() {
+                Expiration::Never {} => {
+                    return Err(StdError::generic_err(
+                        "Cannot escrow funds with no expiration",
+                    ));
+                }
+                _ => {}
             }
-            _ => {}
         }
 
         Ok(true)
@@ -48,7 +50,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     HoldFunds {
-        expiration: Expiration,
+        expiration: Option<Expiration>,
         recipient: Option<String>,
     },
     ReleaseFunds {},
@@ -107,16 +109,26 @@ mod tests {
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: expiration.clone(),
+            expiration: Some(expiration.clone()),
         };
 
         let resp = valid_escrow.validate(deps.as_ref().api).unwrap();
         assert!(resp);
 
+        let valid_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: coins.clone(),
+            expiration: None,
+        };
+
+        let resp = valid_escrow.validate(deps.as_ref().api).unwrap();
+        assert!(resp);
+
+
         let invalid_recipient_escrow = Escrow {
             recipient: String::default(),
             coins: coins.clone(),
-            expiration: expiration.clone(),
+            expiration: Some(expiration.clone()),
         };
 
         let resp = invalid_recipient_escrow
@@ -130,7 +142,7 @@ mod tests {
         let invalid_coins_escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![],
-            expiration: expiration.clone(),
+            expiration: Some(expiration.clone()),
         };
 
         let resp = invalid_coins_escrow
@@ -141,7 +153,7 @@ mod tests {
         let invalid_expiration_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: Expiration::Never {},
+            expiration: Some(Expiration::Never {}),
         };
 
         let resp = invalid_expiration_escrow

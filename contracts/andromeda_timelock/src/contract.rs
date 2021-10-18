@@ -77,7 +77,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
 fn execute_hold_funds(
     deps: DepsMut,
     info: MessageInfo,
-    expiration: Expiration,
+    expiration: Option<Expiration>,
     recipient: Option<String>,
 ) -> StdResult<Response> {
     let result: Option<Escrow> = get_funds(deps.storage, info.sender.to_string())?;
@@ -99,11 +99,18 @@ fn execute_hold_funds(
 
     hold_funds(escrow.clone(), deps.storage, info.sender.to_string())?;
 
+    let ret_expiration;
+    if escrow.expiration.is_some() {
+        ret_expiration = escrow.expiration.unwrap().to_string()
+    }else{
+        ret_expiration = String::from("none");
+    }
+
     Ok(Response::default().add_attributes(vec![
         attr("action", "hold_funds"),
         attr("sender", info.sender.to_string()),
-        attr("recipient", escrow.clone().recipient.clone()),
-        attr("expiration", escrow.clone().expiration.to_string()),
+        attr("recipient", escrow.recipient.clone()),
+        attr("expiration", ret_expiration),
     ]))
 }
 
@@ -115,8 +122,9 @@ fn execute_release_funds(deps: DepsMut, env: Env, info: MessageInfo) -> StdResul
     }
 
     let funds: Escrow = result.unwrap();
-
     match funds.expiration {
+        Some(expiration) => {
+            match expiration {
         Expiration::AtTime(t) => {
             if t > env.block.time {
                 return Err(StdError::generic_err("Your funds are still locked"));
@@ -129,6 +137,9 @@ fn execute_release_funds(deps: DepsMut, env: Env, info: MessageInfo) -> StdResul
         }
         _ => {}
     }
+        }
+        None => {}
+    }    
 
     let bank_msg = BankMsg::Send {
         to_address: funds.clone().recipient,
@@ -213,7 +224,7 @@ mod tests {
         STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let msg = ExecuteMsg::HoldFunds {
-            expiration: expiration.clone(),
+            expiration: Some(expiration.clone()),
             recipient: None,
         };
 
@@ -236,7 +247,7 @@ mod tests {
         let val: GetLockedFundsResponse = from_binary(&res).unwrap();
         let expected = Escrow {
             coins: funds.clone(),
-            expiration: expiration.clone(),
+            expiration: Some(expiration.clone()),
             recipient: owner.to_string(),
         };
 
@@ -250,10 +261,38 @@ mod tests {
         let owner = "owner";
         let funds = vec![Coin::new(1000, "uusd")];
         STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
+        let info = mock_info(owner, &funds.clone());
+        
+        //test for Expiration::AtHeight(1)
+        let msg = ExecuteMsg::HoldFunds {
+            expiration: Some(Expiration::AtHeight(1)),
+            recipient: None,
+        };
 
+        //add address for registered moderator
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let info = mock_info(owner, &vec![coin(100u128, "uluna")]);
+        let msg = ExecuteMsg::ReleaseFunds {};
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let bank_msg = BankMsg::Send {
+            to_address: owner.to_string(),
+            amount: funds.clone(),
+        };
+
+        let expected = Response::default()
+            .add_message(bank_msg)
+            .add_attributes(vec![
+                attr("action", "release_funds"),
+                attr("recipient", info.sender.clone()),
+            ]);
+
+        assert_eq!(res, expected);
+        
+        //test when Expiration is none
         let info = mock_info(owner, &funds.clone());
         let msg = ExecuteMsg::HoldFunds {
-            expiration: Expiration::AtHeight(1),
+            expiration: None,
             recipient: None,
         };
 
@@ -277,8 +316,9 @@ mod tests {
 
         assert_eq!(res, expected);
 
+
         let msg = ExecuteMsg::HoldFunds {
-            expiration: Expiration::AtHeight(10000000),
+            expiration: Some(Expiration::AtHeight(10000000)),
             recipient: None,
         };
         //add address for registered moderator
