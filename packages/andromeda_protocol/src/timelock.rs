@@ -53,6 +53,9 @@ pub enum ExecuteMsg {
         expiration: Option<Expiration>,
         recipient: Option<String>,
     },
+    UpdateAddressList {
+        address_list: Option<AddressListModule>,
+    },
     ReleaseFunds {},
     UpdateOwner {
         address: String,
@@ -123,7 +126,6 @@ mod tests {
 
         let resp = valid_escrow.validate(deps.as_ref().api).unwrap();
         assert!(resp);
-
 
         let invalid_recipient_escrow = Escrow {
             recipient: String::default(),
