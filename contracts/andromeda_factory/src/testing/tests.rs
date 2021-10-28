@@ -45,7 +45,6 @@ fn test_create() {
     let tax_receivers = vec!["tax_recever1".to_string()];
     let royality_fee: Rate = Rate::Percent(1u64);
     let royality_receivers = vec!["royality_recever1".to_string()];
-    let size_limit = 100u64;
     let modules = vec![
         ModuleDefinition::Whitelist {
             moderators: Some(whitelist_moderators),
@@ -77,7 +76,6 @@ fn test_create() {
         name: TOKEN_NAME.to_string(),
         symbol: TOKEN_SYMBOL.to_string(),
         modules: modules.clone(),
-        metadata_limit: Some(size_limit),
     };
 
     let token_inst_msg = TokenInstantiateMsg {
@@ -85,7 +83,6 @@ fn test_create() {
         symbol: TOKEN_SYMBOL.to_string(),
         minter: info.sender.to_string(),
         modules: modules.clone(),
-        metadata_limit: Some(size_limit),
     };
 
     let inst_msg = WasmMsg::Instantiate {

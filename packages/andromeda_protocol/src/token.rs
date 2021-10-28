@@ -2,14 +2,12 @@ use crate::modules::{
     common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
 };
 use cosmwasm_std::{
-    attr, coin, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event,
-    MessageInfo, Response, StdResult, Uint128,
+    attr, coin, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
+    StdResult, Uint128,
 };
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-pub type TokenId = String;
 
 //Duplicate Approval struct from CW721-base contract: https://github.com/CosmWasm/cosmwasm-plus/blob/main/contracts/cw721-base/src/state.rs
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -27,16 +25,58 @@ impl Approval {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum MetadataType {
+    Image,
+    Video,
+    Audio,
+    Domain,
+    Json,
+    Other,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct MetadataAttribute {
+    pub key: String,
+    pub value: String,
+    pub display_label: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct TokenMetadata {
+    pub data_type: MetadataType,
+    //A URL to the token's source
+    pub external_url: Option<String>,
+    //A URL to any off-chain data relating to the token, the response from this URL should match the defined `data_type` of the token
+    pub data_url: Option<String>,
+    //On chain attributes related to the token (basic key/value)
+    pub attributes: Option<Vec<MetadataAttribute>>,
+}
+
+impl TokenMetadata {
+    pub fn default(data_type: MetadataType) -> TokenMetadata {
+        TokenMetadata {
+            data_type,
+            external_url: None,
+            data_url: None,
+            attributes: None,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Token {
-    pub token_id: TokenId,
+    pub token_id: String,
     pub owner: String,
     pub name: String,
+    pub publisher: String,
     pub description: Option<String>,
     pub approvals: Vec<Approval>,
     pub transfer_agreement: Option<TransferAgreement>,
-    pub metadata: Option<Binary>,
+    pub metadata: Option<TokenMetadata>,
     pub archived: bool,
     pub image: Option<String>,
+    pub pricing: Option<Coin>,
 }
 
 impl Token {
@@ -47,12 +87,6 @@ impl Token {
             .into_iter()
             .filter(|a| !a.spender.eq(spender))
             .collect();
-    }
-    pub fn get_metadata(&self) -> StdResult<Option<String>> {
-        match self.clone().metadata {
-            Some(data) => Ok(Some(from_binary(&data)?)),
-            None => Ok(None),
-        }
     }
 }
 
@@ -155,9 +189,6 @@ pub struct InstantiateMsg {
 
     //The attached Andromeda modules
     pub modules: Vec<ModuleDefinition>,
-
-    //An optional limit for token metadata size
-    pub metadata_limit: Option<u64>,
 }
 
 impl InstantiateMsg {
@@ -168,12 +199,13 @@ impl InstantiateMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MintMsg {
-    pub token_id: TokenId,
+    pub token_id: String,
     pub owner: String,
     pub name: String,
     pub image: Option<String>,
     pub description: Option<String>,
-    pub metadata: Option<String>,
+    pub metadata: Option<TokenMetadata>,
+    pub pricing: Option<Coin>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -182,24 +214,24 @@ pub enum ExecuteMsg {
     Mint(MintMsg),
     TransferNft {
         recipient: String,
-        token_id: TokenId,
+        token_id: String,
     },
     SendNft {
         contract: String,
-        token_id: TokenId,
+        token_id: String,
         msg: Binary,
     },
     /// Allows operator to transfer / send the token from the owner's account.
     /// If expiration is set, then this allowance has a time/height limit
     Approve {
         spender: String,
-        token_id: TokenId,
+        token_id: String,
         expires: Option<Expiration>,
     },
     /// Remove previously granted Approval
     Revoke {
         spender: String,
-        token_id: TokenId,
+        token_id: String,
     },
     ApproveAll {
         operator: String,
@@ -210,13 +242,13 @@ pub enum ExecuteMsg {
         operator: String,
     },
     Burn {
-        token_id: TokenId,
+        token_id: String,
     },
     Archive {
-        token_id: TokenId,
+        token_id: String,
     },
     TransferAgreement {
-        token_id: TokenId,
+        token_id: String,
         denom: String,
         amount: Uint128,
         purchaser: String,
@@ -240,10 +272,10 @@ pub enum QueryMsg {
     },
     NumTokens {},
     NftInfo {
-        token_id: TokenId,
+        token_id: String,
     },
     AllNftInfo {
-        token_id: TokenId,
+        token_id: String,
     },
     ModuleInfo {},
     ModuleContracts {},
@@ -262,8 +294,9 @@ pub struct ModulesResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct NftInfoResponseExtension {
-    pub metadata: Option<String>,
+    pub metadata: Option<TokenMetadata>,
     pub archived: bool,
+    pub pricing: Option<Coin>,
     pub transfer_agreement: Option<TransferAgreement>,
 }
 

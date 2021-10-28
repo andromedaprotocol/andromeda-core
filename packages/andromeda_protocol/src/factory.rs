@@ -17,7 +17,6 @@ pub enum ExecuteMsg {
         name: String,
         symbol: String,
         modules: Vec<ModuleDefinition>,
-        metadata_limit: Option<u64>,
     },
     UpdateAddress {
         symbol: String,

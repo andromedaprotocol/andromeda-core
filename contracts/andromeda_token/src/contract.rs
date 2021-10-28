@@ -10,7 +10,7 @@ use andromeda_protocol::{
     token::{
         Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
         ModuleContractsResponse, ModuleInfoResponse, NftInfoResponseExtension, QueryMsg, Token,
-        TokenId, TransferAgreement,
+        TransferAgreement,
     },
 };
 
@@ -44,7 +44,6 @@ pub fn instantiate(
         name: msg.clone().name,
         symbol: msg.clone().symbol,
         minter: msg.clone().minter.to_string(),
-        metadata_limit: msg.clone().metadata_limit,
     };
 
     let modules = Modules::new(msg.modules);
@@ -124,18 +123,6 @@ pub fn execute_mint(
     info: MessageInfo,
     msg: MintMsg,
 ) -> StdResult<Response> {
-    let config = CONFIG.may_load(deps.storage)?;
-
-    let metadata = match msg.clone().metadata {
-        Some(data) => {
-            if config.is_some() {
-                config.unwrap().validate_metadata_size(data.clone())?;
-            }
-            Some(to_binary(&data)?)
-        }
-        None => None,
-    };
-
     let token = Token {
         token_id: msg.clone().token_id,
         owner: info.sender.to_string(),
@@ -143,9 +130,11 @@ pub fn execute_mint(
         name: msg.clone().name,
         approvals: vec![],
         transfer_agreement: None,
-        metadata,
-        image: None,
+        metadata: msg.metadata.clone(),
+        image: msg.image,
         archived: false,
+        pricing: msg.pricing,
+        publisher: info.sender.to_string(),
     };
 
     TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
@@ -506,7 +495,7 @@ fn transfer_nft(
 fn add_approval(
     deps: DepsMut,
     info: &MessageInfo,
-    token_id: TokenId,
+    token_id: String,
     approval: Approval,
 ) -> StdResult<()> {
     let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
@@ -529,7 +518,7 @@ fn add_approval(
 fn remove_approval(
     deps: DepsMut,
     info: &MessageInfo,
-    token_id: TokenId,
+    token_id: String,
     spender: &Addr,
 ) -> StdResult<()> {
     let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
@@ -575,7 +564,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_owner(deps: Deps, _env: Env, token_id: TokenId) -> StdResult<OwnerOfResponse> {
+fn query_owner(deps: Deps, _env: Env, token_id: String) -> StdResult<OwnerOfResponse> {
     let token = TOKENS.load(deps.storage, token_id.to_string())?;
     Ok(OwnerOfResponse {
         owner: token.clone().owner,
@@ -619,15 +608,16 @@ fn query_nft_info(
 ) -> StdResult<NftInfoResponse<NftInfoResponseExtension>> {
     let token = TOKENS.load(deps.storage, token_id.clone())?;
     let extension = NftInfoResponseExtension {
-        metadata: token.get_metadata()?,
+        metadata: token.metadata,
         archived: token.archived,
         transfer_agreement: token.transfer_agreement,
+        pricing: token.pricing,
     };
 
     Ok(NftInfoResponse {
         name: token.name,
         description: token.description.unwrap_or_default(),
-        image: None,
+        image: token.image,
         extension,
     })
 }
@@ -712,8 +702,7 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::token::Approval;
-    use andromeda_protocol::token::ExecuteMsg;
+    use andromeda_protocol::token::{Approval, ExecuteMsg};
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
@@ -732,7 +721,6 @@ mod tests {
             symbol: TOKEN_SYMBOL.to_string(),
             modules: vec![],
             minter: String::from("creator"),
-            metadata_limit: None,
         };
 
         let env = mock_env();
@@ -756,6 +744,7 @@ mod tests {
             name: "TestToken".to_string(),
             metadata: None,
             image: None,
+            pricing: None,
         };
 
         let msg = ExecuteMsg::Mint(mint_msg);
@@ -797,7 +786,6 @@ mod tests {
                     name: TOKEN_NAME.to_string(),
                     symbol: TOKEN_SYMBOL.to_string(),
                     minter: String::from("creator"),
-                    metadata_limit: None,
                 },
             )
             .unwrap();
@@ -812,6 +800,8 @@ mod tests {
             metadata: None,
             image: None,
             archived: false,
+            pricing: None,
+            publisher: minter.to_string(),
         };
 
         TOKENS
@@ -868,6 +858,8 @@ mod tests {
             metadata: None,
             archived: false,
             image: None,
+            pricing: None,
+            publisher: minter.to_string(),
         };
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -920,6 +912,8 @@ mod tests {
             metadata: None,
             archived: false,
             image: None,
+            pricing: None,
+            publisher: minter.to_string(),
         };
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -974,7 +968,6 @@ mod tests {
                     name: TOKEN_NAME.to_string(),
                     symbol: TOKEN_SYMBOL.to_string(),
                     minter: String::from("creator"),
-                    metadata_limit: None,
                 },
             )
             .unwrap();
@@ -998,6 +991,8 @@ mod tests {
             metadata: None,
             archived: false,
             image: None,
+            pricing: None,
+            publisher: minter.to_string(),
         };
 
         TOKENS
@@ -1047,6 +1042,8 @@ mod tests {
             metadata: None,
             archived: false,
             image: None,
+            pricing: None,
+            publisher: sender.to_string(),
         };
 
         TOKENS
@@ -1090,6 +1087,8 @@ mod tests {
             metadata: None,
             archived: false,
             image: None,
+            pricing: None,
+            publisher: sender.to_string(),
         };
 
         TOKENS
@@ -1121,7 +1120,6 @@ mod tests {
                     name: TOKEN_NAME.to_string(),
                     symbol: TOKEN_SYMBOL.to_string(),
                     minter: String::from("creator"),
-                    metadata_limit: None,
                 },
             )
             .unwrap();
@@ -1133,6 +1131,7 @@ mod tests {
             name: "Some Token".to_string(),
             metadata: None,
             image: None,
+            pricing: None,
         });
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
@@ -1196,7 +1195,6 @@ mod tests {
                     name: TOKEN_NAME.to_string(),
                     symbol: TOKEN_SYMBOL.to_string(),
                     minter: String::from("creator"),
-                    metadata_limit: None,
                 },
             )
             .unwrap();
@@ -1208,6 +1206,7 @@ mod tests {
             name: "Some Token".to_string(),
             metadata: None,
             image: None,
+            pricing: None,
         });
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
@@ -1262,13 +1261,12 @@ mod tests {
         let token_id = String::default();
         let denom = "uluna";
         let amount = Uint128::from(100 as u64);
-        let metadata = String::from("str");
+        let metadata = None;
 
         let instantiate_msg = InstantiateMsg {
             name: "Token Name".to_string(),
             symbol: "TS".to_string(),
             minter: minter.to_string(),
-            metadata_limit: None,
             modules: vec![],
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
@@ -1278,8 +1276,9 @@ mod tests {
             owner: minter.to_string(),
             description: None,
             name: "Some Token".to_string(),
-            metadata: Some(metadata.clone()),
+            metadata: metadata.clone(),
             image: None,
+            pricing: None,
         });
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
@@ -1309,79 +1308,6 @@ mod tests {
     }
 
     #[test]
-    fn test_metadata() {
-        let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
-        let minter = "minter";
-        let info = mock_info(minter.clone(), &[]);
-        let token_id = "1";
-
-        let instantiate_message = InstantiateMsg {
-            name: "Token".to_string(),
-            symbol: "T".to_string(),
-            minter: minter.to_string(),
-            modules: vec![],
-            metadata_limit: Some(4),
-        };
-
-        instantiate(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            instantiate_message,
-        )
-        .unwrap();
-
-        let metadata = "really long metadata message, too long for the storage".to_string();
-
-        let mint_msg = ExecuteMsg::Mint(MintMsg {
-            token_id: token_id.to_string(),
-            owner: minter.to_string(),
-            name: "test token".to_string(),
-            description: None,
-            metadata: Some(metadata.clone()),
-            image: None,
-        });
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap_err();
-
-        assert_eq!(
-            res,
-            StdError::generic_err("Metadata length must be less than or equal to 4")
-        );
-
-        let metadata = "s".to_string();
-
-        let mint_msg = ExecuteMsg::Mint(MintMsg {
-            token_id: token_id.to_string(),
-            owner: minter.to_string(),
-            name: "test token".to_string(),
-            description: None,
-            metadata: Some(metadata.clone()),
-            image: None,
-        });
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
-        let expected = Response::default().add_attributes(vec![
-            attr("action", "mint"),
-            attr("token_id", token_id.to_string()),
-            attr("owner", info.sender.to_string()),
-            attr("name", "test token".to_string()),
-        ]);
-
-        assert_eq!(res, expected);
-
-        let token_query = QueryMsg::NftInfo {
-            token_id: token_id.to_string(),
-        };
-        let res = query(deps.as_ref(), env.clone(), token_query).unwrap();
-        let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
-        let metadata_val = token_res.extension.metadata;
-
-        assert_eq!(metadata_val, Some(metadata.clone()))
-    }
-
-    #[test]
     fn test_execute_burn() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
@@ -1396,6 +1322,7 @@ mod tests {
             name: "TestToken".to_string(),
             metadata: None,
             image: None,
+            pricing: None,
         };
 
         let msg = ExecuteMsg::Mint(mint_msg);
@@ -1443,6 +1370,7 @@ mod tests {
             name: "TestToken".to_string(),
             metadata: None,
             image: None,
+            pricing: None,
         };
 
         let msg = ExecuteMsg::Mint(mint_msg);
