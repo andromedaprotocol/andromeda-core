@@ -35,6 +35,19 @@ pub enum MetadataType {
     Other,
 }
 
+impl ToString for MetadataType {
+    fn to_string(&self) -> String {
+        match self {
+            MetadataType::Image => String::from("Image"),
+            MetadataType::Video => String::from("Video"),
+            MetadataType::Audio => String::from("Audio"),
+            MetadataType::Domain => String::from("Domain"),
+            MetadataType::Json => String::from("Json"),
+            MetadataType::Other => String::from("Other"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct MetadataAttribute {
     pub key: String,
