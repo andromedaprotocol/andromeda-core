@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MintLog {
-    pub token_id: TokenId,
+    pub token_id: String,
     pub owner: String,
 }
 
@@ -18,7 +18,7 @@ impl fmt::Display for MintLog {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TransferLog {
-    pub token_id: TokenId,
+    pub token_id: String,
     pub from: String,
     pub to: String,
 }
@@ -34,7 +34,7 @@ impl fmt::Display for TransferLog {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BurnLog {
-    pub token_id: TokenId,
+    pub token_id: String,
     pub burner: String,
 }
 
@@ -50,7 +50,7 @@ impl fmt::Display for BurnLog {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchiveLog {
-    pub token_id: TokenId,
+    pub token_id: String,
     pub archiver: String,
 }
 

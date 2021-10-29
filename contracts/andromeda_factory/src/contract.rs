@@ -59,8 +59,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             symbol,
             name,
             modules,
-            metadata_limit,
-        } => create(deps, env, info, name, symbol, modules, metadata_limit),
+        } => create(deps, env, info, name, symbol, modules),
         ExecuteMsg::UpdateAddress {
             symbol,
             new_address,
@@ -88,7 +87,6 @@ pub fn create(
     name: String,
     symbol: String,
     modules: Vec<ModuleDefinition>,
-    metadata_limit: Option<u64>,
 ) -> StdResult<Response> {
     let config = read_config(deps.storage)?;
 
@@ -137,7 +135,6 @@ pub fn create(
         symbol: symbol.to_string(),
         minter: info.sender.to_string(),
         modules: updated_modules,
-        metadata_limit,
     };
 
     let inst_msg = WasmMsg::Instantiate {
@@ -298,7 +295,6 @@ mod tests {
             name: TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             modules: vec![],
-            metadata_limit: None,
         };
 
         let token_inst_msg = TokenInstantiateMsg {
@@ -306,7 +302,6 @@ mod tests {
             symbol: TOKEN_SYMBOL.to_string(),
             minter: info.sender.to_string(),
             modules: vec![],
-            metadata_limit: None,
         };
 
         let inst_msg = WasmMsg::Instantiate {

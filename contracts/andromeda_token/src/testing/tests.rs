@@ -30,7 +30,6 @@ fn test_token_modules() {
     let tax_receivers = vec!["tax_recever1".to_string()];
     let royality_fee: Rate = Rate::Percent(1u64);
     let royality_receivers = vec!["royality_recever1".to_string()];
-    let size_limit = 100u64;
     let modules = vec![
         ModuleDefinition::Whitelist {
             moderators: Some(vec![whitelist_moderators]),
@@ -58,7 +57,6 @@ fn test_token_modules() {
         symbol: TOKEN_SYMBOL.to_string(),
         modules,
         minter: String::from("creator"),
-        metadata_limit: Some(size_limit),
     };
 
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -101,6 +99,7 @@ fn test_token_modules() {
         name: "TestToken".to_string(),
         metadata: None,
         image: None,
+        pricing: None,
     };
     let res = execute(
         deps.as_mut(),
