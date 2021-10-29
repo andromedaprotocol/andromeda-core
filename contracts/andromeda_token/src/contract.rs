@@ -17,8 +17,8 @@ use andromeda_protocol::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, to_binary, Addr, Api, Binary, Deps, DepsMut, Env, MessageInfo, Order, Pair, Reply,
-    Response, StdError, StdResult,
+    attr, coin, to_binary, Addr, Api, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Pair,
+    Reply, Response, StdError, StdResult,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
@@ -114,6 +114,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        ExecuteMsg::UpdatePricing { token_id, price } => {
+            execute_update_pricing(deps, env, info, token_id, price)
+        }
     }
 }
 
@@ -444,7 +447,6 @@ fn execute_archive(
 
     token.archived = true;
     TOKENS.save(deps.storage, token_id.clone(), &token)?;
-    decrement_num_tokens(deps.storage)?;
 
     Ok(Response::default()
         .add_submessages(mod_res.msgs)
@@ -454,6 +456,39 @@ fn execute_archive(
             attr("token_id", token_id),
             attr("sender", info.sender.to_string()),
         ]))
+}
+
+fn execute_update_pricing(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    token_id: String,
+    pricing: Option<Coin>,
+) -> StdResult<Response> {
+    let mut token = TOKENS.load(deps.storage, token_id.clone())?;
+    require(
+        token.owner.eq(&info.sender.to_string()),
+        StdError::generic_err("Cannot update pricing for a token you do not own"),
+    )?;
+    require(
+        !token.archived,
+        StdError::generic_err("This token is archived and cannot be changed in any way."),
+    )?;
+
+    token.pricing = pricing.clone();
+    TOKENS.save(deps.storage, token_id.clone(), &token)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_pricing"),
+        attr("token_id", token_id),
+        attr(
+            "pricing",
+            match pricing {
+                Some(price) => price.to_string(),
+                None => String::from("none"),
+            },
+        ),
+    ]))
 }
 
 fn transfer_nft(
@@ -1416,5 +1451,57 @@ mod tests {
         let res = query(deps.as_ref(), env.clone(), token_query).unwrap();
         let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
         assert!(token_res.extension.archived)
+    }
+
+    #[test]
+    fn test_execute_update_pricing() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = "1";
+
+        let mint_msg = MintMsg {
+            token_id: token_id.to_string(),
+            owner: minter.to_string(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
+            image: None,
+            pricing: None,
+        };
+
+        let msg = ExecuteMsg::Mint(mint_msg);
+
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let unauth_info = mock_info("anyone", &[]);
+        let pricing = coin(100, "uluna");
+        let update_msg = ExecuteMsg::UpdatePricing {
+            token_id: token_id.to_string(),
+            price: Some(pricing.clone()),
+        };
+
+        let resp =
+            execute(deps.as_mut(), env.clone(), unauth_info, update_msg.clone()).unwrap_err();
+        assert_eq!(
+            resp,
+            StdError::generic_err("Cannot update pricing for a token you do not own")
+        );
+
+        let resp = execute(deps.as_mut(), env.clone(), info.clone(), update_msg.clone()).unwrap();
+        let expected = Response::default().add_attributes(vec![
+            attr("action", "update_pricing"),
+            attr("token_id", token_id),
+            attr("pricing", pricing.to_string()),
+        ]);
+        assert_eq!(expected, resp);
+
+        let token_query = QueryMsg::NftInfo {
+            token_id: token_id.to_string(),
+        };
+        let res = query(deps.as_ref(), env.clone(), token_query).unwrap();
+        let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
+        assert_eq!(token_res.extension.pricing.unwrap(), pricing)
     }
 }

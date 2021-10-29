@@ -39,6 +39,7 @@ pub enum MetadataType {
 pub struct MetadataAttribute {
     pub key: String,
     pub value: String,
+    //The string used to display the attribute, if none is provided the `key` field can be used
     pub display_label: Option<String>,
 }
 
@@ -76,6 +77,7 @@ pub struct Token {
     pub metadata: Option<TokenMetadata>,
     pub archived: bool,
     pub image: Option<String>,
+    //The current price listing for the token
     pub pricing: Option<Coin>,
 }
 
@@ -252,6 +254,10 @@ pub enum ExecuteMsg {
         denom: String,
         amount: Uint128,
         purchaser: String,
+    },
+    UpdatePricing {
+        token_id: String,
+        price: Option<Coin>,
     },
     UpdateOwner {
         address: String,
