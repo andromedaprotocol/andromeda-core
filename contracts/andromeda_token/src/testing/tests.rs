@@ -105,18 +105,34 @@ fn test_token_modules() {
         deps.as_mut(),
         env.clone(),
         info.clone(),
-        ExecuteMsg::Mint(mint_msg),
+        ExecuteMsg::Mint(mint_msg.clone()),
     )
     .unwrap();
-    assert_eq!(
-        res,
-        Response::default().add_attributes(vec![
-            attr("action", "mint"),
-            attr("token_id", "token_id1"),
-            attr("owner", "creator"),
-            attr("name", "TestToken"),
-        ])
-    );
+    let expected = Response::default().add_attributes(vec![
+        attr("action", "mint"),
+        attr("token_id", mint_msg.token_id),
+        attr("owner", info.sender.to_string()),
+        attr("name", mint_msg.name),
+        attr("symbol", TOKEN_SYMBOL.to_string()),
+        attr(
+            "pricing",
+            match mint_msg.pricing {
+                Some(price) => price.to_string(),
+                None => String::from("none"),
+            },
+        ),
+        attr(
+            "metadata_type",
+            match mint_msg.metadata {
+                Some(metadata) => metadata.data_type.to_string(),
+                None => String::from("unspecified"),
+            },
+        ),
+        attr("publisher", info.sender.to_string()),
+        attr("description", String::from("Test Token")),
+        attr("image", ""),
+    ]);
+    assert_eq!(res, expected);
     // test transfer_agreement
     let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
         token_id: "token_id1".to_string(),

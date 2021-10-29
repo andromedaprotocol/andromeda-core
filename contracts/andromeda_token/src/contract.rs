@@ -765,6 +765,20 @@ mod tests {
 
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
+
+    fn store_mock_config(deps: DepsMut, minter: String) {
+        CONFIG
+            .save(
+                deps.storage,
+                &TokenConfig {
+                    name: TOKEN_NAME.to_string(),
+                    symbol: TOKEN_SYMBOL.to_string(),
+                    minter: minter,
+                },
+            )
+            .unwrap()
+    }
+
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies(&[]);
@@ -791,17 +805,6 @@ mod tests {
         let token_id = String::default();
         let creator = "creator".to_string();
 
-        CONFIG
-            .save(
-                deps.as_mut().storage,
-                &TokenConfig {
-                    name: TOKEN_NAME.to_string(),
-                    symbol: TOKEN_SYMBOL.to_string(),
-                    minter: String::from("creator"),
-                },
-            )
-            .unwrap();
-
         let mint_msg = MintMsg {
             token_id: token_id.clone(),
             owner: creator.clone(),
@@ -811,6 +814,8 @@ mod tests {
             image: None,
             pricing: None,
         };
+
+        store_mock_config(deps.as_mut(), String::from("minter"));
 
         let msg = ExecuteMsg::Mint(mint_msg);
 
@@ -844,16 +849,7 @@ mod tests {
         ];
 
         //store config
-        CONFIG
-            .save(
-                deps.as_mut().storage,
-                &TokenConfig {
-                    name: TOKEN_NAME.to_string(),
-                    symbol: TOKEN_SYMBOL.to_string(),
-                    minter: String::from("creator"),
-                },
-            )
-            .unwrap();
+        store_mock_config(deps.as_mut(), minter.to_string());
 
         let token = Token {
             token_id: token_id.clone(),
@@ -1026,16 +1022,7 @@ mod tests {
         let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
         //store config
-        CONFIG
-            .save(
-                deps.as_mut().storage,
-                &TokenConfig {
-                    name: TOKEN_NAME.to_string(),
-                    symbol: TOKEN_SYMBOL.to_string(),
-                    minter: String::from("creator"),
-                },
-            )
-            .unwrap();
+        store_mock_config(deps.as_mut(), minter.to_string());
 
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -1178,16 +1165,7 @@ mod tests {
         let operator = "operator";
         let operator_info = mock_info(operator.clone(), &[]);
         //store config
-        CONFIG
-            .save(
-                deps.as_mut().storage,
-                &TokenConfig {
-                    name: TOKEN_NAME.to_string(),
-                    symbol: TOKEN_SYMBOL.to_string(),
-                    minter: String::from("creator"),
-                },
-            )
-            .unwrap();
+        store_mock_config(deps.as_mut(), minter.to_string());
 
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
@@ -1253,16 +1231,7 @@ mod tests {
         let operator_info = mock_info(operator.clone(), &[]);
 
         //store config
-        CONFIG
-            .save(
-                deps.as_mut().storage,
-                &TokenConfig {
-                    name: TOKEN_NAME.to_string(),
-                    symbol: TOKEN_SYMBOL.to_string(),
-                    minter: String::from("creator"),
-                },
-            )
-            .unwrap();
+        store_mock_config(deps.as_mut(), minter.to_string());
 
         let mint_msg = ExecuteMsg::Mint(MintMsg {
             token_id: token_id.clone(),
@@ -1379,6 +1348,7 @@ mod tests {
         let minter = "minter";
         let info = mock_info(minter.clone(), &[]);
         let token_id = "1";
+        store_mock_config(deps.as_mut(), minter.to_string());
 
         let mint_msg = MintMsg {
             token_id: token_id.to_string(),
@@ -1427,6 +1397,7 @@ mod tests {
         let minter = "minter";
         let info = mock_info(minter.clone(), &[]);
         let token_id = "1";
+        store_mock_config(deps.as_mut(), minter.to_string());
 
         let mint_msg = MintMsg {
             token_id: token_id.to_string(),
@@ -1490,6 +1461,7 @@ mod tests {
         let minter = "minter";
         let info = mock_info(minter.clone(), &[]);
         let token_id = "1";
+        store_mock_config(deps.as_mut(), minter.to_string());
 
         let mint_msg = MintMsg {
             token_id: token_id.to_string(),
