@@ -127,18 +127,19 @@ pub fn execute_mint(
     msg: MintMsg,
 ) -> StdResult<Response> {
     let token = Token {
-        token_id: msg.clone().token_id,
+        token_id: msg.token_id.clone(),
         owner: info.sender.to_string(),
-        description: msg.clone().description,
-        name: msg.clone().name,
+        description: msg.description.clone(),
+        name: msg.name.clone(),
         approvals: vec![],
         transfer_agreement: None,
         metadata: msg.metadata.clone(),
-        image: msg.image,
+        image: msg.image.clone(),
         archived: false,
-        pricing: msg.pricing,
+        pricing: msg.pricing.clone(),
         publisher: info.sender.to_string(),
     };
+    let config = CONFIG.load(deps.storage)?;
 
     TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
     increment_num_tokens(deps.storage)?;
@@ -152,8 +153,26 @@ pub fn execute_mint(
         .add_attributes(vec![
             attr("action", "mint"),
             attr("token_id", msg.token_id),
-            attr("owner", info.sender),
+            attr("owner", info.sender.to_string()),
             attr("name", msg.name),
+            attr("symbol", config.symbol),
+            attr(
+                "pricing",
+                match msg.pricing {
+                    Some(price) => price.to_string(),
+                    None => String::from("none"),
+                },
+            ),
+            attr(
+                "metadata_type",
+                match msg.metadata {
+                    Some(metadata) => metadata.data_type.to_string(),
+                    None => String::from("unspecified"),
+                },
+            ),
+            attr("publisher", info.sender.to_string()),
+            attr("description", msg.description.unwrap_or_default()),
+            attr("image", msg.image.unwrap_or_default()),
         ]))
 }
 
@@ -771,6 +790,17 @@ mod tests {
         let info = mock_info("creator", &[]);
         let token_id = String::default();
         let creator = "creator".to_string();
+
+        CONFIG
+            .save(
+                deps.as_mut().storage,
+                &TokenConfig {
+                    name: TOKEN_NAME.to_string(),
+                    symbol: TOKEN_SYMBOL.to_string(),
+                    minter: String::from("creator"),
+                },
+            )
+            .unwrap();
 
         let mint_msg = MintMsg {
             token_id: token_id.clone(),
