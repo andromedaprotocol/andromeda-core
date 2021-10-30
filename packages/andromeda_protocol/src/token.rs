@@ -67,17 +67,6 @@ pub struct TokenMetadata {
     pub attributes: Option<Vec<MetadataAttribute>>,
 }
 
-impl TokenMetadata {
-    pub fn default(data_type: MetadataType) -> TokenMetadata {
-        TokenMetadata {
-            data_type,
-            external_url: None,
-            data_url: None,
-            attributes: None,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Token {
     pub token_id: String,
@@ -206,12 +195,6 @@ pub struct InstantiateMsg {
     pub modules: Vec<ModuleDefinition>,
 }
 
-impl InstantiateMsg {
-    pub fn validate(&self) -> StdResult<bool> {
-        Ok(true)
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MintMsg {
     pub token_id: String,
@@ -297,7 +280,6 @@ pub enum QueryMsg {
         token_id: String,
     },
     ModuleInfo {},
-    ModuleContracts {},
     ContractInfo {},
     ContractOwner {},
 }
@@ -322,17 +304,13 @@ pub struct NftInfoResponseExtension {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ModuleInfoResponse {
     pub modules: Vec<ModuleDefinition>,
+    pub contracts: Vec<ModuleContract>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ModuleContract {
     pub module: String,
     pub contract: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ModuleContractsResponse {
-    pub contracts: Vec<ModuleContract>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

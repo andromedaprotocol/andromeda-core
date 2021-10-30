@@ -9,8 +9,7 @@ use andromeda_protocol::{
     require::require,
     token::{
         Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
-        ModuleContractsResponse, ModuleInfoResponse, NftInfoResponseExtension, QueryMsg, Token,
-        TransferAgreement,
+        ModuleInfoResponse, NftInfoResponseExtension, QueryMsg, Token, TransferAgreement,
     },
 };
 
@@ -38,8 +37,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
-    msg.validate()?;
-
     let config = TokenConfig {
         name: msg.clone().name,
         symbol: msg.clone().symbol,
@@ -613,7 +610,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::AllNftInfo { token_id } => to_binary(&query_all_nft_info(deps, env, token_id)?),
         QueryMsg::ContractInfo {} => to_binary(&query_contract_info(deps)?),
         QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
-        QueryMsg::ModuleContracts {} => to_binary(&query_module_contracts(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
     }
 }
@@ -697,14 +693,6 @@ fn query_contract_info(deps: Deps) -> StdResult<ContractInfoResponse> {
 
 fn query_module_info(deps: Deps) -> StdResult<ModuleInfoResponse> {
     let modules = read_modules(deps.storage)?;
-
-    Ok(ModuleInfoResponse {
-        modules: modules.module_defs,
-    })
-}
-
-fn query_module_contracts(deps: Deps) -> StdResult<ModuleContractsResponse> {
-    let modules = read_modules(deps.storage)?;
     let contracts: Vec<ModuleContract> = modules
         .module_defs
         .iter()
@@ -719,7 +707,10 @@ fn query_module_contracts(deps: Deps) -> StdResult<ModuleContractsResponse> {
         })
         .collect();
 
-    Ok(ModuleContractsResponse { contracts })
+    Ok(ModuleInfoResponse {
+        modules: modules.module_defs,
+        contracts,
+    })
 }
 
 /**
