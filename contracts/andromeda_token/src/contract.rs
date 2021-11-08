@@ -613,6 +613,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::NumTokens {} => to_binary(&query_num_tokens(deps, env)?),
         QueryMsg::NftInfo { token_id } => to_binary(&query_nft_info(deps, token_id)?),
         QueryMsg::AllNftInfo { token_id } => to_binary(&query_all_nft_info(deps, env, token_id)?),
+        QueryMsg::Tokens {
+            owner,
+            start_after,
+            limit,
+        } => to_binary(&query_owned_tokens(deps, owner, start_after, limit)?),
         QueryMsg::AllTokens { start_after, limit } => {
             to_binary(&query_all_tokens(deps, start_after, limit)?)
         }
@@ -719,6 +724,32 @@ fn query_module_info(deps: Deps) -> StdResult<ModuleInfoResponse> {
         modules: modules.module_defs,
         contracts,
     })
+}
+
+//Queries partially taken from CW721-base
+//https://github.com/CosmWasm/cw-nfts/blob/main/contracts/cw721-base/src/query.rs
+fn query_owned_tokens(
+    deps: Deps,
+    owner: String,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<TokensResponse> {
+    let owner_addr = deps.api.addr_validate(&owner)?;
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let pks: Vec<_> = tokens()
+        .idx
+        .owner
+        .prefix(owner_addr)
+        .keys(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect();
+
+    let res: Result<Vec<_>, _> = pks.iter().map(|v| String::from_utf8(v.to_vec())).collect();
+    let tokens = res.map_err(StdError::invalid_utf8)?;
+
+    Ok(TokensResponse { tokens })
 }
 
 fn query_all_tokens(
@@ -1523,6 +1554,40 @@ mod tests {
         let res = query(deps.as_ref(), env.clone(), token_query).unwrap();
         let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
         assert_eq!(token_res.extension.pricing.unwrap(), pricing)
+    }
+
+    #[test]
+    fn test_owned_tokens() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = "1";
+        store_mock_config(deps.as_mut(), minter.to_string());
+
+        let mint_msg = MintMsg {
+            token_id: token_id.to_string(),
+            owner: minter.to_string(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
+            token_uri: None,
+            pricing: None,
+        };
+
+        let msg = ExecuteMsg::Mint(mint_msg);
+
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let query_msg = QueryMsg::Tokens {
+            owner: minter.to_string(),
+            limit: Some(1),
+            start_after: None,
+        };
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let val: TokensResponse = from_binary(&res).unwrap();
+
+        assert_eq!(val.tokens, vec![token_id.to_string()])
     }
 
     #[test]

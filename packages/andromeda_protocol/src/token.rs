@@ -277,6 +277,11 @@ pub enum QueryMsg {
     AllNftInfo {
         token_id: String,
     },
+    Tokens {
+        owner: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     AllTokens {
         start_after: Option<String>,
         limit: Option<u32>,
