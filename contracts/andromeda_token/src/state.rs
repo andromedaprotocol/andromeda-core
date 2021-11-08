@@ -39,7 +39,7 @@ pub fn has_approval(env: &Env, addr: &String, token: &Token) -> bool {
 pub fn has_transfer_agreement(addr: String, token: &Token) -> bool {
     match token.transfer_agreement.clone() {
         None => false,
-        Some(ag) => ag.purchaser.eq(&addr),
+        Some(ag) => ag.purchaser == "*" || ag.purchaser.eq(&addr),
     }
 }
 
