@@ -23,16 +23,16 @@ const ADDRESS_LIST_CODE_ID: u64 = 1;
 #[test]
 fn test_token_modules() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let sender = "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v";
+    let info = mock_info(sender.clone(), &[]);
     let env = mock_env();
-    let whitelist_moderators = "creator".to_string();
     let tax_fee: Rate = Rate::Percent(1u64);
     let tax_receivers = vec!["tax_recever1".to_string()];
     let royality_fee: Rate = Rate::Percent(1u64);
     let royality_receivers = vec!["royality_recever1".to_string()];
     let modules = vec![
         ModuleDefinition::Whitelist {
-            moderators: Some(vec![whitelist_moderators]),
+            moderators: Some(vec![sender.to_string()]),
             address: None,
             code_id: Some(ADDRESS_LIST_CODE_ID),
         },
@@ -49,14 +49,14 @@ fn test_token_modules() {
         ModuleDefinition::Receipt {
             address: Some("receipt_contract_address".to_string()),
             code_id: Some(2u64), //contract code_id
-            moderators: Some(vec!["creator".to_string()]),
+            moderators: Some(vec![sender.to_string()]),
         },
     ];
     let msg = InstantiateMsg {
         name: TOKEN_NAME.to_string(),
         symbol: TOKEN_SYMBOL.to_string(),
         modules,
-        minter: String::from("creator"),
+        minter: sender.to_string(),
     };
 
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -66,12 +66,12 @@ fn test_token_modules() {
             gas_limit: None,
             reply_on: ReplyOn::Always,
             msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                admin: Some("creator".to_string()),
+                admin: Some(sender.to_string()),
                 code_id: 1u64,
                 funds: vec![],
                 label: String::from("Address list instantiation"),
                 msg: to_binary(&AddressListInstantiateMsg {
-                    moderators: vec!["creator".to_string()],
+                    moderators: vec![sender.to_string()],
                 })
                 .unwrap(),
             }),
@@ -80,7 +80,7 @@ fn test_token_modules() {
             attr("action", "instantiate"),
             attr("name", "test"),
             attr("symbol", "T"),
-            attr("minter", "creator"),
+            attr("minter", sender.to_string()),
         ]);
     assert_eq!(res, expected_msg);
 
@@ -94,11 +94,11 @@ fn test_token_modules() {
     //test token_mint
     let mint_msg = MintMsg {
         token_id: "token_id1".to_string(),
-        owner: "".to_string(),
+        owner: sender.to_string(),
         description: Some("Test Token".to_string()),
         name: "TestToken".to_string(),
         metadata: None,
-        image: None,
+        token_uri: None,
         pricing: None,
     };
     let res = execute(
@@ -130,7 +130,7 @@ fn test_token_modules() {
         ),
         attr("publisher", info.sender.to_string()),
         attr("description", String::from("Test Token")),
-        attr("image", ""),
+        attr("token_uri", ""),
     ]);
     assert_eq!(res, expected);
     // test transfer_agreement
@@ -167,7 +167,7 @@ fn test_token_modules() {
     let expected_res = Response::default()
         .add_submessages(vec![
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: "creator".to_string(),
+                to_address: sender.to_string(),
                 amount: vec![coin(99u128, "uusd".to_string())],
             })),
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -215,7 +215,7 @@ fn test_token_modules() {
             attr("action", "transfer"),
             attr("recipient", "recipient1"),
             attr("token_id", "token_id1"),
-            attr("sender", "creator"),
+            attr("sender", sender.to_string()),
         ]);
     assert_eq!(res, expected_res);
 }

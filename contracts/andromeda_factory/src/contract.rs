@@ -156,6 +156,7 @@ pub fn create(
         attr("action", "create"),
         attr("name", name.clone()),
         attr("symbol", symbol.clone()),
+        attr("owner", info.sender.to_string()),
     ]))
 }
 
@@ -325,6 +326,7 @@ mod tests {
                 attr("action", "create"),
                 attr("name", TOKEN_NAME.to_string()),
                 attr("symbol", TOKEN_SYMBOL.to_string()),
+                attr("owner", info.sender.to_string()),
             ]);
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();

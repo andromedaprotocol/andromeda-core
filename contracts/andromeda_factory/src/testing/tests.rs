@@ -106,6 +106,7 @@ fn test_create() {
             attr("action", "create"),
             attr("name", TOKEN_NAME.to_string()),
             attr("symbol", TOKEN_SYMBOL.to_string()),
+            attr("owner", info.sender.to_string()),
         ]);
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();

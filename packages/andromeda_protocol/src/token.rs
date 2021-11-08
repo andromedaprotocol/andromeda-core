@@ -61,8 +61,6 @@ pub struct TokenMetadata {
     pub data_type: MetadataType,
     //A URL to the token's source
     pub external_url: Option<String>,
-    //A URL to any off-chain data relating to the token, the response from this URL should match the defined `data_type` of the token
-    pub data_url: Option<String>,
     //On chain attributes related to the token (basic key/value)
     pub attributes: Option<Vec<MetadataAttribute>>,
 }
@@ -70,15 +68,15 @@ pub struct TokenMetadata {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Token {
     pub token_id: String,
-    pub owner: String,
+    pub owner: Addr,
     pub name: String,
-    pub publisher: String,
+    pub publisher: Addr,
     pub description: Option<String>,
     pub approvals: Vec<Approval>,
     pub transfer_agreement: Option<TransferAgreement>,
     pub metadata: Option<TokenMetadata>,
     pub archived: bool,
-    pub image: Option<String>,
+    pub token_uri: Option<String>,
     //The current price listing for the token
     pub pricing: Option<Coin>,
 }
@@ -200,7 +198,7 @@ pub struct MintMsg {
     pub token_id: String,
     pub owner: String,
     pub name: String,
-    pub image: Option<String>,
+    pub token_uri: Option<String>,
     pub description: Option<String>,
     pub metadata: Option<TokenMetadata>,
     pub pricing: Option<Coin>,
@@ -279,6 +277,10 @@ pub enum QueryMsg {
     AllNftInfo {
         token_id: String,
     },
+    AllTokens {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     ModuleInfo {},
     ContractInfo {},
     ContractOwner {},
@@ -311,6 +313,11 @@ pub struct ModuleInfoResponse {
 pub struct ModuleContract {
     pub module: String,
     pub contract: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct TokensResponse {
+    pub tokens: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

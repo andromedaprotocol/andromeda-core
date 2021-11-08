@@ -9,7 +9,8 @@ use andromeda_protocol::{
     require::require,
     token::{
         Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
-        ModuleInfoResponse, NftInfoResponseExtension, QueryMsg, Token, TransferAgreement,
+        ModuleInfoResponse, NftInfoResponseExtension, QueryMsg, Token, TokensResponse,
+        TransferAgreement,
     },
 };
 
@@ -26,8 +27,8 @@ use cw721::{
 use cw_storage_plus::Bound;
 
 use crate::state::{
-    decrement_num_tokens, has_transfer_rights, increment_num_tokens, TokenConfig, CONFIG,
-    NUM_TOKENS, OPERATOR, TOKENS,
+    decrement_num_tokens, has_transfer_rights, increment_num_tokens, tokens, TokenConfig, CONFIG,
+    NUM_TOKENS, OPERATOR,
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -125,20 +126,20 @@ pub fn execute_mint(
 ) -> StdResult<Response> {
     let token = Token {
         token_id: msg.token_id.clone(),
-        owner: info.sender.to_string(),
+        owner: deps.api.addr_validate(&msg.owner)?,
         description: msg.description.clone(),
         name: msg.name.clone(),
         approvals: vec![],
         transfer_agreement: None,
         metadata: msg.metadata.clone(),
-        image: msg.image.clone(),
+        token_uri: msg.token_uri.clone(),
         archived: false,
         pricing: msg.pricing.clone(),
-        publisher: info.sender.to_string(),
+        publisher: info.sender.clone(),
     };
     let config = CONFIG.load(deps.storage)?;
 
-    TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
+    tokens().save(deps.storage, msg.token_id.to_string(), &token)?;
     increment_num_tokens(deps.storage)?;
 
     let modules = read_modules(deps.storage)?;
@@ -169,7 +170,7 @@ pub fn execute_mint(
             ),
             attr("publisher", info.sender.to_string()),
             attr("description", msg.description.unwrap_or_default()),
-            attr("image", msg.image.unwrap_or_default()),
+            attr("token_uri", msg.token_uri.unwrap_or_default()),
         ]))
 }
 
@@ -379,7 +380,7 @@ fn execute_transfer_agreement(
         amount.clone(),
         denom.clone(),
     )?;
-    let mut token = TOKENS.load(deps.storage, token_id.clone())?;
+    let mut token = tokens().load(deps.storage, token_id.clone())?;
 
     require(
         info.sender.to_string().eq(&token.owner.clone()),
@@ -397,7 +398,7 @@ fn execute_transfer_agreement(
     };
     token.transfer_agreement = Some(agreement);
 
-    TOKENS.save(deps.storage, token_id.clone(), &token)?;
+    tokens().save(deps.storage, token_id.clone(), &token)?;
 
     Ok(Response::default()
         .add_submessages(mod_res.msgs)
@@ -416,7 +417,7 @@ fn execute_burn(
     info: MessageInfo,
     token_id: String,
 ) -> StdResult<Response> {
-    let token = TOKENS.load(deps.storage, token_id.clone())?;
+    let token = tokens().load(deps.storage, token_id.clone())?;
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Cannot burn a token you do not own"),
@@ -429,7 +430,7 @@ fn execute_burn(
     let modules = read_modules(deps.storage)?;
     let mod_res = modules.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
 
-    TOKENS.remove(deps.storage, token_id.clone());
+    tokens().remove(deps.storage, token_id.clone())?;
     decrement_num_tokens(deps.storage)?;
 
     Ok(Response::default()
@@ -448,7 +449,7 @@ fn execute_archive(
     info: MessageInfo,
     token_id: String,
 ) -> StdResult<Response> {
-    let mut token = TOKENS.load(deps.storage, token_id.clone())?;
+    let mut token = tokens().load(deps.storage, token_id.clone())?;
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Cannot archive a token you do not own"),
@@ -462,7 +463,7 @@ fn execute_archive(
     let mod_res = modules.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
 
     token.archived = true;
-    TOKENS.save(deps.storage, token_id.clone(), &token)?;
+    tokens().save(deps.storage, token_id.clone(), &token)?;
 
     Ok(Response::default()
         .add_submessages(mod_res.msgs)
@@ -481,7 +482,7 @@ fn execute_update_pricing(
     token_id: String,
     pricing: Option<Coin>,
 ) -> StdResult<Response> {
-    let mut token = TOKENS.load(deps.storage, token_id.clone())?;
+    let mut token = tokens().load(deps.storage, token_id.clone())?;
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Cannot update pricing for a token you do not own"),
@@ -492,7 +493,7 @@ fn execute_update_pricing(
     )?;
 
     token.pricing = pricing.clone();
-    TOKENS.save(deps.storage, token_id.clone(), &token)?;
+    tokens().save(deps.storage, token_id.clone(), &token)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_pricing"),
@@ -514,7 +515,7 @@ fn transfer_nft(
     recipient: &String,
     token_id: &String,
 ) -> StdResult<Response> {
-    let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
+    let mut token = tokens().load(deps.storage, token_id.to_string())?;
     require(
         has_transfer_rights(deps.storage, env, info.sender.to_string(), &token)?,
         StdError::generic_err("Address does not have transfer rights for this token"),
@@ -525,21 +526,25 @@ fn transfer_nft(
     )?;
     let owner = token.owner;
 
-    token.owner = recipient.to_string();
+    token.owner = deps.api.addr_validate(recipient)?;
     token.approvals = vec![];
 
     let mut res = Response::new();
 
     if token.transfer_agreement.is_some() {
         //Attach any transfer agreement messages/events
-        res = token
-            .transfer_agreement
-            .clone()
-            .unwrap()
-            .on_transfer(&deps, info, env, owner, res)?;
+        res = token.transfer_agreement.clone().unwrap().on_transfer(
+            &deps,
+            info,
+            env,
+            owner.to_string(),
+            res,
+        )?;
     }
 
-    TOKENS.save(deps.storage, token_id.to_string(), &token)?;
+    token.transfer_agreement = None;
+
+    tokens().save(deps.storage, token_id.to_string(), &token)?;
     Ok(res)
 }
 
@@ -549,7 +554,7 @@ fn add_approval(
     token_id: String,
     approval: Approval,
 ) -> StdResult<()> {
-    let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
+    let mut token = tokens().load(deps.storage, token_id.to_string())?;
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Only the token owner can add approvals"),
@@ -562,7 +567,7 @@ fn add_approval(
     token.filter_approval(&approval.spender.clone());
 
     token.approvals.push(approval);
-    TOKENS.save(deps.storage, token_id.to_string(), &token)?;
+    tokens().save(deps.storage, token_id.to_string(), &token)?;
     Ok(())
 }
 
@@ -572,7 +577,7 @@ fn remove_approval(
     token_id: String,
     spender: &Addr,
 ) -> StdResult<()> {
-    let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
+    let mut token = tokens().load(deps.storage, token_id.to_string())?;
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Only the token owner can remove approvals"),
@@ -584,7 +589,7 @@ fn remove_approval(
 
     token.filter_approval(spender);
 
-    TOKENS.save(deps.storage, token_id.to_string(), &token)?;
+    tokens().save(deps.storage, token_id.to_string(), &token)?;
     Ok(())
 }
 
@@ -608,6 +613,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::NumTokens {} => to_binary(&query_num_tokens(deps, env)?),
         QueryMsg::NftInfo { token_id } => to_binary(&query_nft_info(deps, token_id)?),
         QueryMsg::AllNftInfo { token_id } => to_binary(&query_all_nft_info(deps, env, token_id)?),
+        QueryMsg::AllTokens { start_after, limit } => {
+            to_binary(&query_all_tokens(deps, start_after, limit)?)
+        }
         QueryMsg::ContractInfo {} => to_binary(&query_contract_info(deps)?),
         QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
@@ -615,9 +623,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_owner(deps: Deps, _env: Env, token_id: String) -> StdResult<OwnerOfResponse> {
-    let token = TOKENS.load(deps.storage, token_id.to_string())?;
+    let token = tokens().load(deps.storage, token_id.to_string())?;
     Ok(OwnerOfResponse {
-        owner: token.clone().owner,
+        owner: token.owner.to_string(),
         approvals: humanize_approvals(&token.clone()),
     })
 }
@@ -656,7 +664,7 @@ fn query_nft_info(
     deps: Deps,
     token_id: String,
 ) -> StdResult<NftInfoResponse<NftInfoResponseExtension>> {
-    let token = TOKENS.load(deps.storage, token_id.clone())?;
+    let token = tokens().load(deps.storage, token_id.clone())?;
     let extension = NftInfoResponseExtension {
         metadata: token.metadata,
         archived: token.archived,
@@ -667,7 +675,7 @@ fn query_nft_info(
     Ok(NftInfoResponse {
         name: token.name,
         description: token.description.unwrap_or_default(),
-        image: token.image,
+        image: token.token_uri,
         extension,
     })
 }
@@ -710,6 +718,25 @@ fn query_module_info(deps: Deps) -> StdResult<ModuleInfoResponse> {
     Ok(ModuleInfoResponse {
         modules: modules.module_defs,
         contracts,
+    })
+}
+
+fn query_all_tokens(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<TokensResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let all_tokens: StdResult<Vec<String>> = tokens()
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|item| item.map(|(k, _)| String::from_utf8_lossy(&k).to_string()))
+        .collect();
+
+    Ok(TokensResponse {
+        tokens: all_tokens?,
     })
 }
 
@@ -802,7 +829,7 @@ mod tests {
             description: Some("Test Token".to_string()),
             name: "TestToken".to_string(),
             metadata: None,
-            image: None,
+            token_uri: None,
             pricing: None,
         };
 
@@ -844,19 +871,19 @@ mod tests {
 
         let token = Token {
             token_id: token_id.clone(),
-            owner: minter.to_string(),
+            owner: Addr::unchecked(minter),
             description: None,
             name: String::default(),
             approvals: vec![],
             transfer_agreement: None,
             metadata: None,
-            image: None,
+            token_uri: None,
             archived: false,
             pricing: None,
-            publisher: minter.to_string(),
+            publisher: Addr::unchecked(minter),
         };
 
-        TOKENS
+        tokens()
             .save(deps.as_mut().storage, token_id.to_string(), &token)
             .unwrap();
 
@@ -888,7 +915,7 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(Response::default().add_attributes(attrs.clone()), res);
-        let owner = TOKENS
+        let owner = tokens()
             .load(deps.as_ref().storage, token_id.to_string())
             .unwrap()
             .owner;
@@ -902,23 +929,23 @@ mod tests {
         let approval_token_id = String::from("2");
         let approval_token = Token {
             token_id: approval_token_id.clone(),
-            owner: minter.to_string(),
+            owner: Addr::unchecked(minter),
             description: None,
             name: String::default(),
             approvals: vec![approval],
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            image: None,
+            token_uri: None,
             pricing: None,
-            publisher: minter.to_string(),
+            publisher: Addr::unchecked(minter),
         };
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
             token_id: approval_token_id.clone(),
         };
 
-        TOKENS
+        tokens()
             .save(
                 deps.as_mut().storage,
                 approval_token_id.to_string(),
@@ -942,7 +969,7 @@ mod tests {
             ]),
             res
         );
-        let owner = TOKENS
+        let owner = tokens()
             .load(deps.as_ref().storage, approval_token_id.to_string())
             .unwrap()
             .owner;
@@ -956,23 +983,23 @@ mod tests {
         let approval_token_id = String::from("2");
         let approval_token = Token {
             token_id: approval_token_id.clone(),
-            owner: minter.to_string(),
+            owner: Addr::unchecked(minter),
             description: None,
             name: String::default(),
             approvals: vec![approval],
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            image: None,
+            token_uri: None,
             pricing: None,
-            publisher: minter.to_string(),
+            publisher: Addr::unchecked(minter),
         };
         let msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
             token_id: approval_token_id.clone(),
         };
 
-        TOKENS
+        tokens()
             .save(
                 deps.as_mut().storage,
                 approval_token_id.to_string(),
@@ -997,7 +1024,7 @@ mod tests {
             res
         );
 
-        let owner = TOKENS
+        let owner = tokens()
             .load(deps.as_ref().storage, approval_token_id.to_string())
             .unwrap()
             .owner;
@@ -1023,7 +1050,7 @@ mod tests {
 
         let token = Token {
             token_id: token_id.clone(),
-            owner: minter.to_string(),
+            owner: Addr::unchecked(minter),
             description: None,
             name: String::default(),
             approvals: vec![],
@@ -1033,12 +1060,12 @@ mod tests {
             }),
             metadata: None,
             archived: false,
-            image: None,
+            token_uri: None,
             pricing: None,
-            publisher: minter.to_string(),
+            publisher: Addr::unchecked(minter),
         };
 
-        TOKENS
+        tokens()
             .save(deps.as_mut().storage, token_id.to_string(), &token)
             .unwrap();
 
@@ -1080,21 +1107,21 @@ mod tests {
             description: None,
             name: String::default(),
             approvals: vec![],
-            owner: sender.to_string(),
+            owner: Addr::unchecked(sender),
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            image: None,
+            token_uri: None,
             pricing: None,
-            publisher: sender.to_string(),
+            publisher: Addr::unchecked(sender),
         };
 
-        TOKENS
+        tokens()
             .save(deps.as_mut().storage, token_id.to_string(), &token)
             .unwrap();
 
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        let token = TOKENS
+        let token = tokens()
             .load(deps.as_mut().storage, token_id.to_string())
             .unwrap();
 
@@ -1125,21 +1152,21 @@ mod tests {
             description: None,
             name: String::default(),
             approvals: vec![approval],
-            owner: sender.to_string(),
+            owner: Addr::unchecked(sender),
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            image: None,
+            token_uri: None,
             pricing: None,
-            publisher: sender.to_string(),
+            publisher: Addr::unchecked(sender),
         };
 
-        TOKENS
+        tokens()
             .save(deps.as_mut().storage, token_id.to_string(), &token)
             .unwrap();
 
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        let token = TOKENS
+        let token = tokens()
             .load(deps.as_mut().storage, token_id.to_string())
             .unwrap();
 
@@ -1164,7 +1191,7 @@ mod tests {
             description: None,
             name: "Some Token".to_string(),
             metadata: None,
-            image: None,
+            token_uri: None,
             pricing: None,
         });
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
@@ -1204,7 +1231,7 @@ mod tests {
         )
         .unwrap();
 
-        let token = TOKENS
+        let token = tokens()
             .load(deps.as_ref().storage, token_id.to_string())
             .unwrap();
 
@@ -1230,7 +1257,7 @@ mod tests {
             description: None,
             name: "Some Token".to_string(),
             metadata: None,
-            image: None,
+            token_uri: None,
             pricing: None,
         });
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
@@ -1302,7 +1329,7 @@ mod tests {
             description: None,
             name: "Some Token".to_string(),
             metadata: metadata.clone(),
-            image: None,
+            token_uri: None,
             pricing: None,
         });
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
@@ -1347,7 +1374,7 @@ mod tests {
             description: Some("Test Token".to_string()),
             name: "TestToken".to_string(),
             metadata: None,
-            image: None,
+            token_uri: None,
             pricing: None,
         };
 
@@ -1396,7 +1423,7 @@ mod tests {
             description: Some("Test Token".to_string()),
             name: "TestToken".to_string(),
             metadata: None,
-            image: None,
+            token_uri: None,
             pricing: None,
         };
 
@@ -1460,7 +1487,7 @@ mod tests {
             description: Some("Test Token".to_string()),
             name: "TestToken".to_string(),
             metadata: None,
-            image: None,
+            token_uri: None,
             pricing: None,
         };
 
@@ -1496,5 +1523,38 @@ mod tests {
         let res = query(deps.as_ref(), env.clone(), token_query).unwrap();
         let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
         assert_eq!(token_res.extension.pricing.unwrap(), pricing)
+    }
+
+    #[test]
+    fn test_all_tokens() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let info = mock_info(minter.clone(), &[]);
+        let token_id = "1";
+        store_mock_config(deps.as_mut(), minter.to_string());
+
+        let mint_msg = MintMsg {
+            token_id: token_id.to_string(),
+            owner: minter.to_string(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
+            token_uri: None,
+            pricing: None,
+        };
+
+        let msg = ExecuteMsg::Mint(mint_msg);
+
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let query_msg = QueryMsg::AllTokens {
+            limit: Some(1),
+            start_after: None,
+        };
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let val: TokensResponse = from_binary(&res).unwrap();
+
+        assert_eq!(val.tokens, vec![token_id.to_string()])
     }
 }
