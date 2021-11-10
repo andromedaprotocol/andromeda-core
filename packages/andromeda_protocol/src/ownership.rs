@@ -1,16 +1,24 @@
-use cosmwasm_std::{attr, Deps, DepsMut, MessageInfo, Response, StdError, StdResult, Storage};
+use cosmwasm_std::{
+    attr, Addr, Api, Deps, DepsMut, MessageInfo, Response, StdError, StdResult, Storage,
+};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::require::require;
 
-pub const CONTRACT_OWNER: Item<String> = Item::new("contractowner");
+pub const CONTRACT_OWNER: Item<Addr> = Item::new("contractowner");
 
 pub fn is_contract_owner(storage: &dyn Storage, addr: String) -> StdResult<bool> {
     let owner = CONTRACT_OWNER.load(storage)?;
 
     Ok(addr.eq(&owner))
+}
+
+pub fn save_owner(storage: &mut dyn Storage, api: &dyn Api, addr: String) -> StdResult<()> {
+    let new_owner_addr = api.addr_validate(&addr)?;
+    CONTRACT_OWNER.save(storage, &new_owner_addr.clone())?;
+    Ok(())
 }
 
 pub fn execute_update_owner(
@@ -24,9 +32,7 @@ pub fn execute_update_owner(
             "Ownership of this contract can only be transferred by the current owner",
         ),
     )?;
-
-    CONTRACT_OWNER.save(deps.storage, &new_owner.clone())?;
-
+    save_owner(deps.storage, deps.api, new_owner.clone())?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "update_owner"),
         attr("value", new_owner.clone()),
@@ -36,7 +42,9 @@ pub fn execute_update_owner(
 pub fn query_contract_owner(deps: Deps) -> StdResult<ContractOwnerResponse> {
     let owner = CONTRACT_OWNER.load(deps.storage)?;
 
-    Ok(ContractOwnerResponse { owner })
+    Ok(ContractOwnerResponse {
+        owner: owner.to_string(),
+    })
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -56,9 +64,9 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let owner = String::from("owner");
         let new_owner = String::from("newowner");
-
+        let new_owner_addr = Addr::unchecked(owner.clone());
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.clone())
+            .save(deps.as_mut().storage, &new_owner_addr.clone())
             .unwrap();
 
         let unauth_info = mock_info("anyone", &[]);

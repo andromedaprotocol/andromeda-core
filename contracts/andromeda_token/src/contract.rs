@@ -8,7 +8,7 @@ use andromeda_protocol::{
         receipt::{on_receipt_reply, REPLY_RECEIPT},
         store_modules, Modules,
     },
-    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
+    ownership::{execute_update_owner, query_contract_owner, save_owner},
     require::require,
     token::{
         Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
@@ -51,7 +51,7 @@ pub fn instantiate(
     let mod_res = modules.hook(|module| module.on_instantiate(&deps, info.clone(), env.clone()))?;
 
     CONFIG.save(deps.storage, &config)?;
-    CONTRACT_OWNER.save(deps.storage, &msg.minter.clone())?;
+    save_owner(deps.storage, deps.api, msg.minter.clone())?;
     store_modules(deps.storage, modules.clone())?;
 
     Ok(Response::new()

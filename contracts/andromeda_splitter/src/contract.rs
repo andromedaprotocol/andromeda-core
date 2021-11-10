@@ -43,7 +43,7 @@ pub fn instantiate(
         modules.hook(|module| module.on_instantiate(&deps, info.clone(), env.clone()))?;
 
     SPLITTER.save(deps.storage, &splitter)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
 
     Ok(Response::new()
         .add_attributes(vec![
@@ -222,7 +222,7 @@ mod tests {
     use super::*;
     use andromeda_protocol::modules::address_list::AddressListModule;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, Coin, Uint128};
+    use cosmwasm_std::{from_binary, Addr, Coin, Uint128};
 
     #[test]
     fn test_instantiate() {
@@ -252,7 +252,7 @@ mod tests {
         let msg = ExecuteMsg::UpdateLock { lock: lock };
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &String::from("incorrect_owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
             .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         match res {
@@ -261,7 +261,7 @@ mod tests {
         }
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.to_string())
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
         let splitter = Splitter {
@@ -293,7 +293,7 @@ mod tests {
         let owner = "creator";
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.to_string())
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
         let splitter = Splitter {
@@ -363,7 +363,7 @@ mod tests {
 
         //incorrect owner
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &String::from("incorrect_owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
             .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         match res {
@@ -372,7 +372,7 @@ mod tests {
         }
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.to_string())
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
         let splitter = Splitter {
@@ -426,7 +426,7 @@ mod tests {
 
         //incorrect owner
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &String::from("incorrect_owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
             .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         match res {
@@ -435,7 +435,7 @@ mod tests {
         }
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.to_string())
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
         let splitter = Splitter {

@@ -34,7 +34,7 @@ pub fn instantiate(
         },
     )?;
 
-    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
 
     Ok(Response::default()
         .add_attributes(vec![attr("action", "instantiate"), attr("type", "factory")]))
@@ -253,6 +253,7 @@ mod tests {
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
+        Addr,
     };
 
     static TOKEN_CODE_ID: u64 = 0;
@@ -343,7 +344,7 @@ mod tests {
         let info = mock_info(creator.clone().as_str(), &[]);
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.clone())
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.clone()))
             .unwrap();
         SYM_ADDRESS
             .save(
@@ -404,7 +405,7 @@ mod tests {
         store_config(deps.as_mut().storage, &config).unwrap();
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.clone())
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.clone()))
             .unwrap();
 
         let invalid_msg = ExecuteMsg::UpdateCodeId {

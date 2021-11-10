@@ -35,7 +35,7 @@ pub fn instantiate(
     let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
 
     STATE.save(deps.storage, &state)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
     Ok(Response::new()
         .add_attributes(vec![
             attr("action", "instantiate"),
@@ -216,6 +216,7 @@ mod tests {
     use cosmwasm_std::{
         coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
+        Addr,
     };
 
     fn mock_state() -> State {
@@ -363,7 +364,7 @@ mod tests {
         let owner = "creator";
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.to_string())
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
         let state = State { address_list: None };

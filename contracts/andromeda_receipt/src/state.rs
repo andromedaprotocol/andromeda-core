@@ -42,7 +42,7 @@ pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Rec
 #[cfg(test)]
 mod tests {
     use andromeda_protocol::ownership::CONTRACT_OWNER;
-    use cosmwasm_std::testing::mock_dependencies;
+    use cosmwasm_std::{testing::mock_dependencies, Addr};
 
     use super::*;
 
@@ -60,7 +60,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.to_string())
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
         CONFIG.save(deps.as_mut().storage, &config).unwrap();
 

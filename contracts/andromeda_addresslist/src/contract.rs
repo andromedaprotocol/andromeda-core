@@ -27,7 +27,7 @@ pub fn instantiate(
         },
     };
 
-    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
     STATE.save(deps.storage, &state)?;
 
     Ok(Response::default().add_attributes(vec![

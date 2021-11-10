@@ -31,7 +31,7 @@ pub fn instantiate(
             },
         },
     )?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
     Ok(Response::default()
         .add_attributes(vec![attr("action", "instantiate"), attr("type", "receipt")]))
 }
@@ -120,7 +120,7 @@ mod tests {
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
-        Event,
+        Addr, Event,
     };
     #[test]
     fn test_instantiate() {
@@ -149,7 +149,7 @@ mod tests {
         };
         store_config(deps.as_mut().storage, &config).unwrap();
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.to_string())
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
         let msg = ExecuteMsg::StoreReceipt {
@@ -189,7 +189,7 @@ mod tests {
         };
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.to_string())
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
         store_config(deps.as_mut().storage, &config).unwrap();
