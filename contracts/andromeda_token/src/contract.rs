@@ -1,3 +1,6 @@
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 use andromeda_protocol::{
     modules::{
         address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
@@ -13,9 +16,6 @@ use andromeda_protocol::{
         TransferAgreement,
     },
 };
-
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, coin, to_binary, Addr, Api, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Pair,
     Reply, Response, StdError, StdResult,
@@ -31,6 +31,9 @@ use crate::state::{
     NUM_TOKENS, OPERATOR,
 };
 
+const DEFAULT_LIMIT: u32 = 10u32;
+const MAX_LIMIT: u32 = 30u32;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -45,7 +48,7 @@ pub fn instantiate(
     };
 
     let modules = Modules::new(msg.modules);
-    let mod_res = modules.on_instantiate(&deps, info.clone(), env)?;
+    let mod_res = modules.hook(|module| module.on_instantiate(&deps, info.clone(), env.clone()))?;
 
     CONFIG.save(deps.storage, &config)?;
     CONTRACT_OWNER.save(deps.storage, &msg.minter.clone())?;
@@ -78,7 +81,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    modules.on_execute(&deps, info.clone(), env.clone())?;
+    modules.hook(|module| module.on_execute(&deps, info.clone(), env.clone()))?;
 
     match msg {
         ExecuteMsg::Mint(msg) => execute_mint(deps, env, info, msg),
@@ -143,7 +146,9 @@ pub fn execute_mint(
     increment_num_tokens(deps.storage)?;
 
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_mint(&deps, info.clone(), env.clone(), msg.token_id.clone())?;
+    // let mod_res = modules?;
+    let mod_res = modules
+        .hook(|module| module.on_mint(&deps, info.clone(), env.clone(), msg.token_id.clone()))?;
 
     Ok(Response::default()
         .add_submessages(mod_res.msgs)
@@ -182,13 +187,15 @@ pub fn execute_transfer(
     token_id: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_transfer(
-        &deps,
-        info.clone(),
-        env.clone(),
-        recipient.clone(),
-        token_id.clone(),
-    )?;
+    let mod_res = modules.hook(|module| {
+        module.on_transfer(
+            &deps,
+            info.clone(),
+            env.clone(),
+            recipient.clone(),
+            token_id.clone(),
+        )
+    })?;
 
     let res = transfer_nft(deps, &env, &info, &recipient, &token_id)?;
 
@@ -212,13 +219,15 @@ pub fn execute_send_nft(
     msg: Binary,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_send(
-        &deps,
-        info.clone(),
-        env.clone(),
-        contract.clone(),
-        token_id.clone(),
-    )?;
+    let mod_res = modules.hook(|module| {
+        module.on_send(
+            &deps,
+            info.clone(),
+            env.clone(),
+            contract.clone(),
+            token_id.clone(),
+        )
+    })?;
 
     // Transfer token
     let res = transfer_nft(deps, &env, &info, &contract, &token_id)?;
@@ -251,14 +260,16 @@ pub fn execute_approve(
     expires: Option<Expiration>,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_approve(
-        &deps,
-        info.clone(),
-        env.clone(),
-        spender.clone(),
-        token_id.clone(),
-        expires.clone(),
-    )?;
+    let mod_res = modules.hook(|module| {
+        module.on_approve(
+            &deps,
+            info.clone(),
+            env.clone(),
+            spender.clone(),
+            token_id.clone(),
+            expires.clone(),
+        )
+    })?;
 
     let spender_addr = deps.api.addr_validate(&spender)?;
     let approval = Approval {
@@ -286,13 +297,15 @@ pub fn execute_revoke(
     spender: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_revoke(
-        &deps,
-        info.clone(),
-        env.clone(),
-        spender.clone(),
-        token_id.clone(),
-    )?;
+    let mod_res = modules.hook(|module| {
+        module.on_revoke(
+            &deps,
+            info.clone(),
+            env.clone(),
+            spender.clone(),
+            token_id.clone(),
+        )
+    })?;
 
     let spender_addr = deps.api.addr_validate(&spender)?;
 
@@ -316,13 +329,15 @@ fn execute_approve_all(
     expires: Option<Expiration>,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_approve_all(
-        &deps,
-        info.clone(),
-        env.clone(),
-        operator.clone(),
-        expires.clone(),
-    )?;
+    let mod_res = modules.hook(|module| {
+        module.on_approve_all(
+            &deps,
+            info.clone(),
+            env.clone(),
+            operator.clone(),
+            expires.clone(),
+        )
+    })?;
 
     OPERATOR.save(
         deps.storage,
@@ -347,7 +362,8 @@ fn execute_revoke_all(
     operator: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_revoke_all(&deps, info.clone(), env.clone(), operator.clone())?;
+    let mod_res = modules
+        .hook(|module| module.on_revoke_all(&deps, info.clone(), env.clone(), operator.clone()))?;
 
     OPERATOR.remove(deps.storage, (info.sender.to_string(), operator.clone()));
 
@@ -371,15 +387,17 @@ fn execute_transfer_agreement(
     denom: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_transfer_agreement(
-        &deps,
-        info.clone(),
-        env.clone(),
-        token_id.clone(),
-        purchaser.clone(),
-        amount.clone(),
-        denom.clone(),
-    )?;
+    let mod_res = modules.hook(|module| {
+        module.on_transfer_agreement(
+            &deps,
+            info.clone(),
+            env.clone(),
+            token_id.clone(),
+            purchaser.clone(),
+            amount.clone(),
+            denom.clone(),
+        )
+    })?;
     let mut token = tokens().load(deps.storage, token_id.clone())?;
 
     require(
@@ -428,7 +446,9 @@ fn execute_burn(
     )?;
 
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
+    // let mod_res = modules.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
+    let mod_res = modules
+        .hook(|module| module.on_burn(&deps, info.clone(), env.clone(), token_id.clone()))?;
 
     tokens().remove(deps.storage, token_id.clone())?;
     decrement_num_tokens(deps.storage)?;
@@ -460,7 +480,8 @@ fn execute_archive(
     )?;
 
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
+    let mod_res = modules
+        .hook(|module| module.on_archive(&deps, info.clone(), env.clone(), token_id.clone()))?;
 
     token.archived = true;
     tokens().save(deps.storage, token_id.clone(), &token)?;
@@ -635,9 +656,6 @@ fn query_owner(deps: Deps, _env: Env, token_id: String) -> StdResult<OwnerOfResp
     })
 }
 
-const DEFAULT_LIMIT: u32 = 10;
-const MAX_LIMIT: u32 = 30;
-
 fn query_all_approvals(
     deps: Deps,
     env: Env,
@@ -678,9 +696,9 @@ fn query_nft_info(
     };
 
     Ok(NftInfoResponse {
-        name: token.name,
-        description: token.description.unwrap_or_default(),
-        image: token.token_uri,
+        // name: token.name,
+        // description: token.description.unwrap_or_default(),
+        token_uri: token.token_uri,
         extension,
     })
 }

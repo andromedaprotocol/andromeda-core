@@ -8,6 +8,7 @@ use cosmwasm_std::{
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 
 //Duplicate Approval struct from CW721-base contract: https://github.com/CosmWasm/cosmwasm-plus/blob/main/contracts/cw721-base/src/state.rs
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -142,18 +143,20 @@ impl TransferAgreement {
         let mut res = res_in.clone();
         let modules = read_modules(deps.storage)?;
         let payment_message = self.generate_payment(owner.clone());
-        let mut payments = vec![payment_message];
-        let mod_resp = modules.on_agreed_transfer(
-            &deps,
-            info.clone(),
-            env.clone(),
-            &mut payments,
-            owner.clone(),
-            self.purchaser.clone(),
-            self.amount.clone(),
-        )?;
+        let payments = Arc::new(Mutex::new(vec![payment_message]));
+        let mod_resp = modules.hook(|module| {
+            module.on_agreed_transfer(
+                deps,
+                info.clone(),
+                env.clone(),
+                &mut payments.lock().unwrap(),
+                owner.clone(),
+                self.purchaser.clone(),
+                self.amount.clone(),
+            )
+        })?;
 
-        for payment in payments {
+        for payment in payments.lock().unwrap().to_vec() {
             res = res.add_message(payment);
         }
 

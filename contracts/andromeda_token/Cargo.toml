@@ -28,7 +28,6 @@ overflow-checks = true
 [features]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
-library = []
 
 [dependencies]
 cosmwasm-std = "0.16.0"

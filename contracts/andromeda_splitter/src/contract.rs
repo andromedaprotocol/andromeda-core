@@ -1,10 +1,9 @@
 use crate::state::SPLITTER;
 use andromeda_protocol::{
-    common::generate_instantiate_msgs,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         hooks::{HookResponse, MessageHooks},
-        Module,
+        Module, Modules,
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
@@ -34,7 +33,14 @@ pub fn instantiate(
         address_list: msg.address_list.clone(),
     };
 
-    let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
+    // let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
+    let mut module_defs = vec![];
+    if msg.address_list.is_some() {
+        module_defs.push(msg.address_list.unwrap().as_definition());
+    }
+    let modules = Modules::new(module_defs);
+    let inst_msgs =
+        modules.hook(|module| module.on_instantiate(&deps, info.clone(), env.clone()))?;
 
     SPLITTER.save(deps.storage, &splitter)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender.to_string())?;
