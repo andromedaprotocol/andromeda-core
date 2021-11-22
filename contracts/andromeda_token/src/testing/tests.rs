@@ -24,7 +24,7 @@ const ADDRESS_LIST_CODE_ID: u64 = 1;
 fn test_token_modules() {
     let mut deps = mock_dependencies_custom(&[]);
     let sender = "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v";
-    let info = mock_info(sender.clone(), &[]);
+    let info = mock_info(sender.clone(), &[coin(101, "uusd")]);
     let env = mock_env();
     let tax_fee: Rate = Rate::Percent(1u64);
     let tax_receivers = vec!["tax_recever1".to_string()];

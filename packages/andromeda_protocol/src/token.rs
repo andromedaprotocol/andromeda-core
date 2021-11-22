@@ -1,5 +1,8 @@
-use crate::modules::{
-    common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
+use crate::{
+    common::{calculate_remaining_funds, calculcate_required_payments},
+    modules::{
+        common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
+    },
 };
 use cosmwasm_std::{
     attr, coin, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
@@ -155,6 +158,17 @@ impl TransferAgreement {
                 self.amount.clone(),
             )
         })?;
+
+        let required_payments: Vec<Coin> =
+            calculcate_required_payments(payments.lock().unwrap().to_vec());
+        let remaining_funds = calculate_remaining_funds(info.funds.to_vec(), required_payments)?;
+
+        if remaining_funds.len() > 0 {
+            res = res.add_message(BankMsg::Send {
+                to_address: info.sender.to_string(),
+                amount: remaining_funds,
+            });
+        }
 
         for payment in payments.lock().unwrap().to_vec() {
             res = res.add_message(payment);
