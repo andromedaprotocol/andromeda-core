@@ -1086,8 +1086,7 @@ mod tests {
         let env = mock_env();
         let minter = "minter";
         let recipient = "recipient";
-        let amount = coin(100, "uluna");
-        let info = mock_info(recipient.clone(), &vec![amount.clone()]);
+        let info = mock_info(minter.clone(), &[]);
         let token_id = String::default();
         //store config
         store_mock_config(deps.as_mut(), minter.to_string());
@@ -1096,6 +1095,7 @@ mod tests {
             recipient: recipient.to_string(),
             token_id: token_id.clone(),
         };
+        let amount = coin(100, "uluna");
 
         let token = Token {
             token_id: token_id.clone(),

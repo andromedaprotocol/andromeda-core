@@ -1,8 +1,7 @@
 use cosmwasm_std::{Coin, DepsMut, Env, Event, MessageInfo, StdError, StdResult};
 
 use crate::{
-    common::add_payment,
-    modules::common::calculate_fee,
+    modules::common::{add_payment, calculate_fee},
     modules::hooks::{MessageHooks, PaymentAttribute},
     modules::Rate,
     modules::{Module, ModuleDefinition},

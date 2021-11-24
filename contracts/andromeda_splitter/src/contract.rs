@@ -11,6 +11,7 @@ use andromeda_protocol::{
     splitter::{
         validate_recipient_list, AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg, Splitter,
     },
+    operators::{execute_update_operators, query_is_operator}
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
@@ -73,6 +74,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         }
         ExecuteMsg::Send {} => execute_send(deps, info),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
     }
 }
 
@@ -202,6 +204,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetSplitterConfig {} => to_binary(&query_splitter(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::IsOperator { address} => to_binary(&query_is_operator(deps, address)?),
     }
 }
 

@@ -4,6 +4,7 @@ pub mod factory;
 pub mod hook;
 pub mod modules;
 pub mod ownership;
+pub mod operators;
 pub mod receipt;
 pub mod require;
 pub mod response;
