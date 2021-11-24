@@ -2,12 +2,12 @@ use andromeda_protocol::{
     address_list::{AddressList, ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
+    operators::{execute_update_operators, query_is_operator}
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
     StdResult,
 };
-
 use crate::{
     error::ContractError,
     state::{State, STATE},
@@ -47,6 +47,7 @@ pub fn execute(
         ExecuteMsg::AddAddress { address } => execute_add_address(deps, info, address),
         ExecuteMsg::RemoveAddress { address } => execute_remove_address(deps, info, address),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
     }
 }
 
@@ -99,6 +100,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::IncludesAddress { address } => to_binary(&query_address(deps, &address)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::IsOperator { address} => to_binary(&query_is_operator(deps, address)?),
     }
 }
 

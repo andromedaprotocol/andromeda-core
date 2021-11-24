@@ -8,11 +8,13 @@ use andromeda_protocol::{
         ReceiptResponse,
     },
     require::require,
+    operators::{execute_update_operators, query_is_operator}
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
     StdResult, Uint128,
 };
+
 
 #[entry_point]
 pub fn instantiate(
@@ -50,6 +52,7 @@ pub fn execute(
             receipt_id,
         } => execute_edit_receipt(deps, info, receipt_id, receipt),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
     }
 }
 
@@ -100,6 +103,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Receipt { receipt_id } => to_binary(&query_receipt(deps, receipt_id)?),
         QueryMsg::ContractInfo {} => to_binary(&query_config(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::IsOperator { address} => to_binary(&query_is_operator(deps, address)?),
     }
 }
 

@@ -4,12 +4,12 @@ use andromeda_protocol::{
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
     token::InstantiateMsg as TokenInstantiateMsg,
+    operators::{execute_update_operators, query_is_operator}
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
     Response, StdError, StdResult, SubMsg, WasmMsg,
 };
-
 use crate::{
     reply::{on_token_creation_reply, REPLY_CREATE_TOKEN},
     state::{
@@ -65,6 +65,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             new_address,
         } => update_address(deps, env, info, symbol, new_address),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
         ExecuteMsg::UpdateCodeId {
             address_list_code_id,
             receipt_code_id,
@@ -224,6 +225,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetAddress { symbol } => to_binary(&query_address(deps, symbol)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
         QueryMsg::CodeIds {} => to_binary(&query_code_ids(deps)?),
+        QueryMsg::IsOperator { address} => to_binary(&query_is_operator(deps, address)?),
     }
 }
 

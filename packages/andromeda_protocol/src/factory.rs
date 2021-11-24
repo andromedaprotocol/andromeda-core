@@ -30,6 +30,9 @@ pub enum ExecuteMsg {
     UpdateOwner {
         address: String,
     },
+    UpdateOperator{
+        operators: Vec<String>,
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -38,6 +41,7 @@ pub enum QueryMsg {
     GetAddress { symbol: String },
     CodeIds {},
     ContractOwner {},
+    IsOperator{ address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -1,10 +1,9 @@
 use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, StdError, StdResult};
 
-use crate::common::{add_payment, deduct_payment};
 use crate::require::require;
 
 use super::{
-    common::calculate_fee,
+    common::{add_payment, calculate_fee, deduct_payment},
     hooks::{HookResponse, MessageHooks, PaymentAttribute, ATTR_DEDUCTED, ATTR_DESC, ATTR_PAYMENT},
     Module, ModuleDefinition, Rate,
 };

@@ -19,6 +19,7 @@ use andromeda_protocol::{
         get_funds, hold_funds, release_funds, Escrow, ExecuteMsg, GetLockedFundsResponse,
         GetTimelockConfigResponse, InstantiateMsg, QueryMsg,
     },
+    operators::{execute_update_operators, query_is_operator}
 };
 
 #[entry_point]
@@ -75,7 +76,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateAddressList { address_list } => {
             execute_update_address_list(deps, info, env, address_list)
-        }
+        },
+        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
+
     }
 }
 
@@ -188,6 +191,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetLockedFunds { address } => to_binary(&query_held_funds(deps, address)?),
         QueryMsg::GetTimelockConfig {} => to_binary(&query_config(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::IsOperator { address} => to_binary(&query_is_operator(deps, address)?),
     }
 }
 
