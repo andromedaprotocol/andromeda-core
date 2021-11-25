@@ -43,6 +43,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-rates"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-receipt"
 version = "0.1.0"
 dependencies = [
