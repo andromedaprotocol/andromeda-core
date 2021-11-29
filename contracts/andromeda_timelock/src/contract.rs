@@ -120,7 +120,7 @@ fn execute_hold_funds(
 }
 
 fn execute_release_funds(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
-    let result: Option<Escrow> = get_funds(deps.storage, info.sender.to_string())?; // StdResult<Option<HoldFunds>>
+    let result: Option<Escrow> = get_funds(deps.storage, info.sender.to_string())?;
 
     if result.is_none() {
         return Err(StdError::generic_err("No locked funds for your address"));
