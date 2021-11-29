@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    attr, entry_point, to_binary, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Reply,
+    attr, entry_point, to_binary, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
     Response, StdError, StdResult,
 };
 
@@ -85,37 +85,27 @@ fn execute_hold_funds(
     expiration: Option<Expiration>,
     recipient: Option<String>,
 ) -> StdResult<Response> {
-    let result: Option<Escrow> = get_funds(deps.storage, info.sender.to_string())?;
-    require(
-        result.is_none(),
-        StdError::generic_err("Funds are already being held for this address"),
-    )?;
-
-    let sent_funds: Vec<Coin> = info.funds.clone();
-
     let rec = recipient.unwrap_or(info.sender.to_string());
+    //Validate recipient address
+    deps.api.addr_validate(&rec)?;
 
     let escrow = Escrow {
-        coins: sent_funds,
+        coins: info.funds.clone(),
         expiration,
         recipient: rec,
     };
-    escrow.clone().validate(deps.api)?;
-
+    escrow.validate(deps.api)?;
     hold_funds(escrow.clone(), deps.storage, info.sender.to_string())?;
-
-    let ret_expiration;
-    if escrow.expiration.is_some() {
-        ret_expiration = escrow.expiration.unwrap().to_string()
-    } else {
-        ret_expiration = String::from("none");
-    }
+    let expiration_string = match escrow.expiration {
+        Some(e) => e.to_string(),
+        None => String::from("none"),
+    };
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "hold_funds"),
         attr("sender", info.sender.to_string()),
         attr("recipient", escrow.recipient.clone()),
-        attr("expiration", ret_expiration),
+        attr("expiration", expiration_string),
     ]))
 }
 
@@ -216,6 +206,7 @@ mod tests {
     use cosmwasm_std::{
         coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
+        Coin,
     };
 
     fn mock_state() -> State {
