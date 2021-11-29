@@ -16,7 +16,7 @@ pub struct Escrow {
 }
 
 impl Escrow {
-    pub fn validate(self, api: &dyn Api) -> StdResult<bool> {
+    pub fn validate(&self, api: &dyn Api) -> StdResult<bool> {
         require(
             self.coins.len() > 0,
             StdError::generic_err("Cannot escrow empty funds"),
@@ -84,6 +84,14 @@ pub struct GetTimelockConfigResponse {
 }
 
 pub fn hold_funds(funds: Escrow, storage: &mut dyn Storage, addr: String) -> StdResult<()> {
+    //Check for existing funds
+    let held_funds: Option<Escrow> = get_funds(storage, addr.to_string())?;
+    //If funds are currently stored, return error
+    require(
+        held_funds.is_none(),
+        StdError::generic_err("Funds are already being held for this address"),
+    )?;
+
     HELD_FUNDS.save(storage, addr.clone(), &funds)
 }
 
