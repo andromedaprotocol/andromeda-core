@@ -1,21 +1,21 @@
-use andromeda_protocol::{
-    factory::{AddressResponse, CodeIdsResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
-    modules::ModuleDefinition,
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require::require,
-    token::InstantiateMsg as TokenInstantiateMsg,
-    operators::{execute_update_operators, query_is_operator}
-};
-use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
-    Response, StdError, StdResult, SubMsg, WasmMsg,
-};
 use crate::{
     reply::{on_token_creation_reply, REPLY_CREATE_TOKEN},
     state::{
         is_address_defined, is_creator, read_address, read_config, store_address, store_config,
         Config,
     },
+};
+use andromeda_protocol::{
+    factory::{AddressResponse, CodeIdsResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
+    modules::ModuleDefinition,
+    operators::{execute_update_operators, query_is_operator},
+    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
+    require::require,
+    token::InstantiateMsg as TokenInstantiateMsg,
+};
+use cosmwasm_std::{
+    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
+    Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -225,7 +225,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetAddress { symbol } => to_binary(&query_address(deps, symbol)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
         QueryMsg::CodeIds {} => to_binary(&query_code_ids(deps)?),
-        QueryMsg::IsOperator { address} => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
     }
 }
 

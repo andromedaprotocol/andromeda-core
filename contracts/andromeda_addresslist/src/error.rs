@@ -11,5 +11,4 @@ pub enum ContractError {
     Unauthorized {},
     #[error("not existed address")]
     NotExisted {},
-
 }

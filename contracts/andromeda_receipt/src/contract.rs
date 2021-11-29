@@ -2,19 +2,18 @@ use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use andromeda_protocol::{
+    operators::{execute_update_operators, query_is_operator},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     receipt::{
         Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
         ReceiptResponse,
     },
     require::require,
-    operators::{execute_update_operators, query_is_operator}
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
     StdResult, Uint128,
 };
-
 
 #[entry_point]
 pub fn instantiate(
@@ -103,7 +102,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Receipt { receipt_id } => to_binary(&query_receipt(deps, receipt_id)?),
         QueryMsg::ContractInfo {} => to_binary(&query_config(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address} => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
     }
 }
 

@@ -1,16 +1,16 @@
+use crate::{
+    error::ContractError,
+    state::{State, STATE},
+};
 use andromeda_protocol::{
     address_list::{AddressList, ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg},
+    operators::{execute_update_operators, query_is_operator},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require::require,
-    operators::{execute_update_operators, query_is_operator}
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
     StdResult,
-};
-use crate::{
-    error::ContractError,
-    state::{State, STATE},
 };
 
 #[entry_point]
@@ -100,7 +100,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::IncludesAddress { address } => to_binary(&query_address(deps, &address)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address} => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
     }
 }
 

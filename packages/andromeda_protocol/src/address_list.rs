@@ -55,9 +55,7 @@ pub enum ExecuteMsg {
     AddAddress { address: String },
     RemoveAddress { address: String },
     UpdateOwner { address: String },
-    UpdateOperator{
-        operators: Vec<String>,
-    }
+    UpdateOperator { operators: Vec<String> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -65,7 +63,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     IncludesAddress { address: String },
     ContractOwner {},
-    IsOperator{ address: String },
+    IsOperator { address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
