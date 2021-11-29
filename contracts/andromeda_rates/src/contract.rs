@@ -1,8 +1,7 @@
 use cosmwasm_std::{attr, entry_point, to_binary, Binary, Deps, DepsMut, Env,
                    MessageInfo, Response, StdError, StdResult,  Coin};
 use andromeda_protocol::modules::common::calculate_fee;
-use andromeda_protocol::modules::Rate;
-use crate::msg::{ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, PaymentInfo, PaymentsResponse, QueryMsg, RateInfo};
 use crate::state::{
     Config, CONFIG,
 };
@@ -17,8 +16,6 @@ pub fn instantiate(
     let config = Config{
         owner: info.sender.to_string(),
         rates: msg.rates,
-        is_additive: msg.is_additive,
-        description: msg.description
     };
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new()
@@ -40,7 +37,7 @@ pub fn execute(
 fn execute_update_rates(
     deps: DepsMut,
     info: MessageInfo,
-    rates: Vec<Rate>
+    rates: Vec<RateInfo>
 ) -> StdResult<Response>{
     let mut config = CONFIG.load(deps.storage)?;
     if config.owner != info.sender.to_string() {
@@ -70,17 +67,26 @@ fn query_payments(
     let mut res = vec![];
     let config = CONFIG.load(deps.storage)?;
     let rates = config.rates;
-    let is_additive = config.is_additive;
+
 
     for rate in rates.iter(){
-        let fee_coin = calculate_fee(rate.clone(), amount.clone());
-        res.push(fee_coin);
+        let fee_coin = calculate_fee(rate.rate.clone(), amount.clone());
+        let result = if rate.is_additive {
+            Coin{ denom: fee_coin.denom.clone(), amount: amount.amount.checked_add(fee_coin.amount.clone())? }
+        }else{
+            Coin{ denom: fee_coin.denom.clone(), amount: amount.amount.checked_sub(fee_coin.amount.clone())? }
+        };
+
+        res.push(PaymentInfo{
+            result,
+            fee: fee_coin,
+            is_additive: rate.is_additive,
+            description: rate.description.clone(),
+        });
     }
 
     Ok(PaymentsResponse{
         payments: res,
-        is_additive,
-        description: config.description,
     })
 }
 
@@ -90,7 +96,7 @@ mod tests {
     use cosmwasm_std::{coin, to_binary, Uint128};
     use andromeda_protocol::modules::{FlatRate, Rate};
     use crate::contract::{instantiate, query};
-    use crate::msg::{InstantiateMsg, PaymentsResponse, QueryMsg};
+    use crate::msg::{InstantiateMsg, PaymentInfo, PaymentsResponse, QueryMsg, RateInfo};
 
     #[test]
     fn test_instantiate_query() {
@@ -99,9 +105,21 @@ mod tests {
         let owner = "owner";
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {
-            rates: vec![Rate::Percent(10), Rate::Flat(FlatRate { amount: Uint128::from(10u128), denom: "uusd".to_string() })],
-            is_additive: true,
-            description: "desc1".to_string()
+            rates: vec![
+                RateInfo{
+                    rate: Rate::Percent(10),
+                    is_additive: true,
+                    description: Some("desc1".to_string()),
+                },
+                RateInfo{
+                    rate: Rate::Flat( FlatRate{ amount: Uint128::from(10u128), denom: "uusd".to_string() }),
+                    is_additive: false,
+                    description: Some("desc2".to_string()),
+                },
+                ]
+                //Rate::Percent(10), Rate::Flat(FlatRate { amount: Uint128::from(10u128), denom: "uusd".to_string() })],
+            //is_additive: true,
+            //description: "desc1".to_string()
         };
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
@@ -111,11 +129,30 @@ mod tests {
             deps.as_ref(),
             env.clone(),
             QueryMsg::Payments { amount: coin(100u128, "uusd".to_string()) }).unwrap();
+
         assert_eq!(payments, to_binary(&PaymentsResponse{
-            payments: vec![coin(10, "uusd".to_string()), coin(10,"uusd".to_string())],
-            is_additive: true,
-            description: "desc1".to_string()
+            payments: vec![
+                PaymentInfo{
+                    result: coin(110, "uusd".to_string()),
+                    fee: coin(10, "uusd".to_string()),
+                    is_additive: true,
+                    description: Some("desc1".to_string())
+                },
+                PaymentInfo{
+                    result: coin(90, "uusd".to_string()),
+                    fee: coin(10, "uusd".to_string()),
+                    is_additive: false,
+                    description: Some("desc2".to_string())
+                },
+
+            ]
         }).unwrap());
+
+        let payments = query(
+            deps.as_ref(),
+            env.clone(),
+            QueryMsg::Payments { amount: coin(5u128, "uusd".to_string()) }).is_err();
+        assert_eq!(payments, true);
 
     }
 
