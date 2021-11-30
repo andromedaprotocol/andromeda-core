@@ -93,10 +93,18 @@ pub struct GetTimelockConfigResponse {
 }
 
 pub fn hold_funds(funds: Escrow, storage: &mut dyn Storage, addr: String) -> StdResult<()> {
+    require(
+        // Makes sure that HELD_FUNDS is empty before allowing writing into HELD_FUNDS.
+        HELD_FUNDS.may_load(storage, addr.clone()) == Ok(None),
+        StdError::generic_err("Cannot overwrite Held Funds"));
     HELD_FUNDS.save(storage, addr.clone(), &funds)
 }
 
 pub fn release_funds(storage: &mut dyn Storage, addr: String) {
+    require(
+        // Makes sure that HELD_FUNDS is empty before allowing writing into HELD_FUNDS.
+        HELD_FUNDS.may_load(storage, addr.clone()) != Ok(None),
+        StdError::generic_err("Cannot overwrite Held Funds"));
     HELD_FUNDS.remove(storage, addr.clone());
 }
 
