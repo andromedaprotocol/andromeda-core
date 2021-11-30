@@ -14,10 +14,10 @@ impl AddressList {
     pub fn is_moderator(&self, addr: &String) -> bool {
         self.moderators.contains(addr)
     }
-    pub fn include_address(&self, storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
+    pub fn add_address(&self, storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
         ADDRESS_LIST.save(storage, addr.clone(), &true)
     }
-    pub fn exclude_address(&self, storage: &mut dyn Storage, addr: &String) {
+    pub fn remove_address(&self, storage: &mut dyn Storage, addr: &String) {
         let included = ADDRESS_LIST.load(storage, addr.clone());
 
         if included.is_ok() {

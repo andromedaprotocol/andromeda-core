@@ -60,7 +60,7 @@ fn execute_add_address(deps: DepsMut, info: MessageInfo, address: String) -> Std
 
     state
         .address_list
-        .include_address(deps.storage, &address)
+        .add_address(deps.storage, &address)
         .unwrap();
 
     STATE.save(deps.storage, &state)?;
@@ -82,7 +82,7 @@ fn execute_remove_address(
         StdError::generic_err("Only a moderator can remove an address from the address list"),
     )?;
 
-    state.address_list.exclude_address(deps.storage, &address);
+    state.address_list.remove_address(deps.storage, &address);
     STATE.save(deps.storage, &state)?;
 
     Ok(Response::new().add_attributes(vec![
@@ -220,10 +220,10 @@ mod tests {
         ]);
         assert_eq!(expected, res);
 
-        let included = ADDRESS_LIST
+        let included_is_err = ADDRESS_LIST
             .load(deps.as_ref().storage, address.to_string())
-            .unwrap();
-        assert_eq!(false, included);
+            .is_err();
+        assert_eq!(true, included_is_err);
 
         //add address for unregistered moderator
         let unauth_info = mock_info("anyone", &[]);
