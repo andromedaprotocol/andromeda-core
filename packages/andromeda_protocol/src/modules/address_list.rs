@@ -95,7 +95,7 @@ impl Module for AddressListModule {
         if self.address.is_some() {
             return Some(self.address.clone().unwrap());
         }
-        ADDRESS_LIST_CONTRACT.may_load(storage).unwrap()
+        ADDRESS_LIST_CONTRACT.may_load(storage).unwrap_or_default()
     }
 }
 
