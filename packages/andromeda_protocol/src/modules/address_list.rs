@@ -92,7 +92,7 @@ impl Module for AddressListModule {
         }
     }
     fn get_contract_address(&self, storage: &dyn Storage) -> Option<String> {
-        if self.address.clone().is_some() {
+        if self.address.is_some() {
             return Some(self.address.clone().unwrap());
         }
         ADDRESS_LIST_CONTRACT.may_load(storage).unwrap()
