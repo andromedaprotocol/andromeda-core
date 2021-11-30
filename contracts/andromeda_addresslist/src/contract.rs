@@ -82,10 +82,7 @@ fn execute_remove_address(
         StdError::generic_err("Only a moderator can remove an address from the address list"),
     )?;
 
-    state
-        .address_list
-        .exclude_address(deps.storage, &address)
-        .unwrap();
+    state.address_list.exclude_address(deps.storage, &address);
     STATE.save(deps.storage, &state)?;
 
     Ok(Response::new().add_attributes(vec![

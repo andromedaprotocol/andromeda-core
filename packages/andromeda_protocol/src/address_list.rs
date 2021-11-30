@@ -17,8 +17,12 @@ impl AddressList {
     pub fn include_address(&self, storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
         ADDRESS_LIST.save(storage, addr.clone(), &true)
     }
-    pub fn exclude_address(&self, storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
-        ADDRESS_LIST.save(storage, addr.clone(), &false)
+    pub fn exclude_address(&self, storage: &mut dyn Storage, addr: &String) {
+        let included = ADDRESS_LIST.load(storage, addr.clone());
+
+        if included.is_ok() {
+            ADDRESS_LIST.remove(storage, addr.clone());
+        };
     }
     pub fn includes_address(&self, storage: &dyn Storage, addr: &String) -> StdResult<bool> {
         match ADDRESS_LIST.load(storage, addr.clone()) {
