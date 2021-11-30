@@ -1,4 +1,4 @@
-use cosmwasm_std::{Api, Coin, StdError, StdResult, Storage};
+use cosmwasm_std::{Api, Coin, StdError, StdResult, Storage, BlockInfo, Timestamp};
 use cw721::Expiration;
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
@@ -12,11 +12,11 @@ pub const HELD_FUNDS: Map<String, Escrow> = Map::new("funds");
 pub struct Escrow {
     pub coins: Vec<Coin>,
     pub expiration: Option<Expiration>,
-    pub recipient: String,
+    pub recipient: String, 
 }
 
 impl Escrow {
-    pub fn validate(&self, api: &dyn Api) -> StdResult<bool> {
+    pub fn validate(self, api: &dyn Api, block: &BlockInfo) -> StdResult<bool> {
         require(
             self.coins.len() > 0,
             StdError::generic_err("Cannot escrow empty funds"),
@@ -28,6 +28,15 @@ impl Escrow {
 
         if self.expiration.is_some() {
             match self.expiration.unwrap() {
+                //ACK-01 Change (Check before deleting comment)
+                Expiration::AtTime(time) => {
+                    if time < block.time {
+                        return Err(StdError::generic_err(
+                            "Cannot set expiration in the past",
+                        ));
+                    }
+                    
+                }
                 Expiration::Never {} => {
                     return Err(StdError::generic_err(
                         "Cannot escrow funds with no expiration",
@@ -84,14 +93,6 @@ pub struct GetTimelockConfigResponse {
 }
 
 pub fn hold_funds(funds: Escrow, storage: &mut dyn Storage, addr: String) -> StdResult<()> {
-    //Check for existing funds
-    let held_funds: Option<Escrow> = get_funds(storage, addr.to_string())?;
-    //If funds are currently stored, return error
-    require(
-        held_funds.is_none(),
-        StdError::generic_err("Funds are already being held for this address"),
-    )?;
-
     HELD_FUNDS.save(storage, addr.clone(), &funds)
 }
 
@@ -122,8 +123,12 @@ mod tests {
             coins: coins.clone(),
             expiration: Some(expiration.clone()),
         };
-
-        let resp = valid_escrow.validate(deps.as_ref().api).unwrap();
+        let block = BlockInfo {
+            height: 1000,
+            time: Timestamp::from_seconds(4444),
+            chain_id: "foo".to_string(),
+        };
+        let resp = valid_escrow.validate(deps.as_ref().api, &block).unwrap();
         assert!(resp);
 
         let valid_escrow = Escrow {
@@ -131,8 +136,12 @@ mod tests {
             coins: coins.clone(),
             expiration: None,
         };
-
-        let resp = valid_escrow.validate(deps.as_ref().api).unwrap();
+        let block = BlockInfo {
+            height: 1000,
+            time: Timestamp::from_seconds(3333),
+            chain_id: "foo".to_string(),
+        };
+        let resp = valid_escrow.validate(deps.as_ref().api, &block).unwrap();
         assert!(resp);
 
         let invalid_recipient_escrow = Escrow {
@@ -142,7 +151,7 @@ mod tests {
         };
 
         let resp = invalid_recipient_escrow
-            .validate(deps.as_ref().api)
+            .validate(deps.as_ref().api, &block)
             .unwrap_err();
         assert_eq!(
             StdError::generic_err("Escrow recipient must be a valid address"),
@@ -156,7 +165,7 @@ mod tests {
         };
 
         let resp = invalid_coins_escrow
-            .validate(deps.as_ref().api)
+            .validate(deps.as_ref().api, &block)
             .unwrap_err();
         assert_eq!(StdError::generic_err("Cannot escrow empty funds"), resp);
 
@@ -167,7 +176,7 @@ mod tests {
         };
 
         let resp = invalid_expiration_escrow
-            .validate(deps.as_ref().api)
+            .validate(deps.as_ref().api, &block)
             .unwrap_err();
         assert_eq!(
             StdError::generic_err("Cannot escrow funds with no expiration"),
