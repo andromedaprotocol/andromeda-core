@@ -24,6 +24,7 @@ impl AddressList {
         match ADDRESS_LIST.load(storage, addr.clone()) {
             Ok(included) => Ok(included),
             Err(e) => match e {
+                //If no value for address return false
                 cosmwasm_std::StdError::NotFound { .. } => Ok(false),
                 _ => Err(e),
             },
