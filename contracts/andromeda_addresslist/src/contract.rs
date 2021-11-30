@@ -60,7 +60,7 @@ fn execute_add_address(deps: DepsMut, info: MessageInfo, address: String) -> Std
 
     state
         .address_list
-        .add_address(deps.storage, &address)
+        .include_address(deps.storage, &address)
         .unwrap();
 
     STATE.save(deps.storage, &state)?;
@@ -84,7 +84,7 @@ fn execute_remove_address(
 
     state
         .address_list
-        .remove_address(deps.storage, &address)
+        .exclude_address(deps.storage, &address)
         .unwrap();
     STATE.save(deps.storage, &state)?;
 

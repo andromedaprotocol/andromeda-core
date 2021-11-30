@@ -14,10 +14,10 @@ impl AddressList {
     pub fn is_moderator(&self, addr: &String) -> bool {
         self.moderators.contains(addr)
     }
-    pub fn add_address(&self, storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
+    pub fn include_address(&self, storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
         ADDRESS_LIST.save(storage, addr.clone(), &true)
     }
-    pub fn remove_address(&self, storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
+    pub fn exclude_address(&self, storage: &mut dyn Storage, addr: &String) -> StdResult<()> {
         ADDRESS_LIST.save(storage, addr.clone(), &false)
     }
     pub fn includes_address(&self, storage: &dyn Storage, addr: &String) -> StdResult<bool> {
