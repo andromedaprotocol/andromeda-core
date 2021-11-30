@@ -70,7 +70,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::HoldFunds {
             expiration,
             recipient,
-        } => execute_hold_funds(deps, info, expiration, recipient),
+        } => execute_hold_funds(deps, info, expiration, recipient, env),
         ExecuteMsg::ReleaseFunds {} => execute_release_funds(deps, env, info),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateAddressList { address_list } => {
@@ -84,6 +84,7 @@ fn execute_hold_funds(
     info: MessageInfo,
     expiration: Option<Expiration>,
     recipient: Option<String>,
+    env: Env,
 ) -> StdResult<Response> {
     let rec = recipient.unwrap_or(info.sender.to_string());
     //Validate recipient address
@@ -94,7 +95,7 @@ fn execute_hold_funds(
         expiration,
         recipient: rec,
     };
-    escrow.validate(deps.api)?;
+    escrow.validate(deps.api, &env.block )?;
     hold_funds(escrow.clone(), deps.storage, info.sender.to_string())?;
     let expiration_string = match escrow.expiration {
         Some(e) => e.to_string(),
