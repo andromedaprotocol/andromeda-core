@@ -6,7 +6,6 @@ use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::read_modules;
 use crate::response::get_reply_address;
 use crate::{
     address_list::{query_includes_address, InstantiateMsg as AddressListInstantiateMsg},
@@ -135,40 +134,6 @@ impl MessageHooks for AddressListModule {
 
         Ok(HookResponse::default())
     }
-}
-
-pub fn get_address_list_module(storage: &dyn Storage) -> StdResult<ModuleDefinition> {
-    let modules = read_modules(storage)?;
-    let address_list_def = modules
-        .module_defs
-        .iter()
-        .find(|m| match m {
-            ModuleDefinition::Whitelist { .. } => true,
-            ModuleDefinition::Blacklist { .. } => true,
-            _ => false,
-        })
-        .ok_or(StdError::generic_err(
-            "Token does not implement any address list module",
-        ))?;
-
-    Ok(address_list_def.clone())
-}
-
-pub fn get_address_list_module_index(storage: &dyn Storage) -> StdResult<usize> {
-    let modules = read_modules(storage)?;
-    let address_list_def = modules
-        .module_defs
-        .iter()
-        .position(|m| match m {
-            ModuleDefinition::Whitelist { .. } => true,
-            ModuleDefinition::Blacklist { .. } => true,
-            _ => false,
-        })
-        .ok_or(StdError::generic_err(
-            "Token does not implement any address list module",
-        ))?;
-
-    Ok(address_list_def.clone())
 }
 
 pub fn on_address_list_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
