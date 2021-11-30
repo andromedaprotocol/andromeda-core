@@ -67,7 +67,7 @@ impl Module for AddressListModule {
 
         require(
             is_unique(&opposite_module, &includes_opposite),
-            StdError::generic_err("Any address list module must be unique"),
+            StdError::generic_err("An address list module cannot be included alongside an address list module of the opposing type"),
         )?;
 
         require(
@@ -236,9 +236,7 @@ mod tests {
 
         assert_eq!(
             al.validate(modules.to_vec()),
-            Err(StdError::generic_err(
-                "Any address list module must be unique"
-            ))
+            Err(StdError::generic_err("An address list module cannot be included alongside an address list module of the opposing type"))
         );
     }
 
