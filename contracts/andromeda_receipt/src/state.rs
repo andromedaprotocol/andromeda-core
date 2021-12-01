@@ -23,7 +23,8 @@ pub fn can_mint_receipt(storage: &dyn Storage, addr: &String) -> StdResult<bool>
 // increase receipt ID
 pub fn increment_num_receipt(storage: &mut dyn Storage) -> StdResult<Uint128> {
     let mut receipt_count = NUM_RECEIPT.load(storage).unwrap_or_default();
-    receipt_count = receipt_count + Uint128::from(1 as u128);
+    //Changed type conversion from explicit to implicit.
+    receipt_count = receipt_count + Uint128::from(1_u128);
     NUM_RECEIPT.save(storage, &receipt_count)?;
     Ok(receipt_count)
 }
