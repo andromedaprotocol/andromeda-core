@@ -95,7 +95,8 @@ fn execute_hold_funds(
         expiration,
         recipient: rec,
     };
-    escrow.validate(deps.api, &env.block )?;
+    //Adding clone for escrow here to allow for moving
+    escrow.clone().validate(deps.api, &env.block )?;
     hold_funds(escrow.clone(), deps.storage, info.sender.to_string())?;
     let expiration_string = match escrow.expiration {
         Some(e) => e.to_string(),
