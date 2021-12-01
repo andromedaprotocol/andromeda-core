@@ -90,7 +90,9 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     let mut submsg: Vec<SubMsg> = Vec::new();
 
     let mut remainder_funds = info.funds.clone();
-
+    // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS. 
+    // Would like to understand more about why we loop through funds and what it exactly stored in it. 
+    // From there we could look into HashMaps, or other methods to break the nested loops and avoid Denial of Service.  
     for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
@@ -109,7 +111,12 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
         .into_iter()
         .filter(|x| x.amount > Uint128::from(0u128))
         .collect();
-
+    // Who is the sender of this function? 
+    // Why does the remaining funds go the the sender of the executor of the splitter?
+    // Is it considered tax(fee) or mistake? 
+    // Discussion around caller of splitter function in andromeda_splitter smart contract.
+    // From tests, it looks like owner of smart contract (Andromeda) will recieve the rest of funds. 
+    // If so, should be documented 
     if remainder_funds.len() > 0 {
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
