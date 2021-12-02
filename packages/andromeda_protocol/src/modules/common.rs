@@ -18,7 +18,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
                  StdError::generic_err("Rate must be between 0 and 100%")
                 ).unwrap();
             let mut fee_amount = payment.amount.multiply_ratio(rate, 100 as u128).u128();
-
+            
             //Always round any remainder up and prioritise the fee receiver
             let reversed_fee = (fee_amount * 100) / Uint128::from(rate).u128();
             if payment.amount.u128() > reversed_fee {
