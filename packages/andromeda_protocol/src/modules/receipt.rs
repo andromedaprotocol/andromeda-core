@@ -37,7 +37,8 @@ impl ReceiptModule {
 
         let contract_addr = self
             .get_contract_address(storage)
-            .ok_or(StdError::generic_err(
+            // [REC-01] Replace ok_or with lazily ok_or_else to optimizr smart contract efficiency
+            .ok_or_else(|| StdError::generic_err(
                 "Receipt module does not have an assigned address",
             ))?;
 
