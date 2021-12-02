@@ -34,7 +34,7 @@ impl Module for Taxable {
             }
             Rate::Percent(rate) => {
                 require(rate > 0, StdError::generic_err("Tax must be non-zero"))?;
-                // Added rate checker to Taxable also [COM-03]
+                // Added rate checker to Taxable also [COM-03] and [TAX-01]
                 require(rate <=100, StdError::generic_err("Rate must be less than 100%"))?;
             }
         }
