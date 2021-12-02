@@ -11,6 +11,12 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
     match fee_rate {
         Rate::Flat(rate) => coin(Uint128::from(rate.amount).u128(), rate.denom),
         Rate::Percent(rate) => {
+            // [COM-03] Make sure that fee_rate between 0 and 100.
+            require(
+                // No need for rate >=0 due to type limits (Question: Should add or remove?)
+                rate <= 100,
+                 StdError::generic_err("Rate must be between 0 and 100%")
+                ).unwrap();
             let mut fee_amount = payment.amount.multiply_ratio(rate, 100 as u128).u128();
 
             //Always round any remainder up and prioritise the fee receiver
@@ -206,6 +212,8 @@ mod tests {
         let fee = Rate::Percent(4);
 
         let received = calculate_fee(fee, payment);
+
+        assert_eq!(expected, received);
 
         assert_eq!(expected, received);
 
