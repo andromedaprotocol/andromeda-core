@@ -24,8 +24,17 @@ pub fn can_mint_receipt(storage: &dyn Storage, addr: &String) -> StdResult<bool>
 pub fn increment_num_receipt(storage: &mut dyn Storage) -> StdResult<Uint128> {
     let mut receipt_count = NUM_RECEIPT.load(storage).unwrap_or_default();
     //Changed type conversion from explicit to implicit. [AKP-01] (Delete when reviewed)
-    receipt_count = receipt_count + Uint128::from(1_u128);
-    NUM_RECEIPT.save(storage, &receipt_count)?;
+    //Added checked_add function to make sure that no overflow occurs [ACP-02] (Delete when reviewed)
+    let res = receipt_count.checked_add(Uint128::from(1u128));
+    //Check that no overflow, else panic. 
+    let _res = match res {
+        Err(error) => panic!("Problem adding: {:?}", error),
+        _ => {receipt_count = res.unwrap()}
+    };
+    
+    
+    
+    
     Ok(receipt_count)
 }
 
