@@ -93,6 +93,11 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS. 
     // Would like to understand more about why we loop through funds and what it exactly stored in it. 
     // From there we could look into HashMaps, or other methods to break the nested loops and avoid Denial of Service.  
+    // [ACK-04] Limit number of coins sent to 5. 
+    require(
+        info.funds.len() < 5,
+        StdError::generic_err("Exceeds max amount of coins allowed."),
+    )?;
     for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
@@ -404,7 +409,7 @@ mod tests {
         let owner = "creator";
         let info = mock_info(
             owner.clone(),
-            &vec![Coin::new(sender_funds_amount, "uluna")],
+            &vec![Coin::new(sender_funds_amount, "uluna") ],
         );
 
         let recip_address1 = "address1".to_string();
@@ -501,4 +506,67 @@ mod tests {
             splitter.address_list.unwrap().address.unwrap()
         );
     }
+
+    #[test]
+    fn test_execute_send_error() {
+        //Executes send with more than 5 tokens [ACK-04]
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+
+        let sender_funds_amount = 10000u128;
+        let owner = "creator";
+        let info = mock_info(
+            owner.clone(),
+            &vec![Coin::new(sender_funds_amount, "uluna"), Coin::new(sender_funds_amount, "uluna"), Coin::new(sender_funds_amount, "uluna"), Coin::new(sender_funds_amount, "uluna"), Coin::new(sender_funds_amount, "uluna"),Coin::new(sender_funds_amount, "uluna") ],
+        );
+
+        let recip_address1 = "address1".to_string();
+        let recip_percent1 = 10u128; // 10%
+
+        let recip_address2 = "address2".to_string();
+        let recip_percent2 = 20u128; // 20%
+
+        let recipient = vec![
+            AddressPercent {
+                addr: recip_address1.clone(),
+                percent: Uint128::from(recip_percent1),
+            },
+            AddressPercent {
+                addr: recip_address2.clone(),
+                percent: Uint128::from(recip_percent2),
+            },
+        ];
+        let msg = ExecuteMsg::Send {};
+
+        //incorrect owner
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &String::from("incorrect_owner"))
+            .unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        match res {
+            Ok(_ret) => assert!(false),
+            _ => {}
+        }
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.to_string())
+            .unwrap();
+
+        let splitter = Splitter {
+            recipients: recipient,
+            locked: false,
+            address_list: None,
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+
+        let expected_res = StdError::generic_err("Exceeds max amount of coins allowed.");
+
+        assert_eq!(res, expected_res);
+    }
 }
+    
+        
+    
