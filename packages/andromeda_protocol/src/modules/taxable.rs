@@ -80,7 +80,7 @@ impl MessageHooks for Taxable {
             }
             None => {}
         }
-
+        // No deduction of payment because the buyer pays the tax while royalties are paid by seller [ROY-01]
         for receiver in self.receivers.to_vec() {
             add_payment(payments, receiver.clone(), tax_amount.clone());
             event = event.add_attribute(

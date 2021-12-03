@@ -31,10 +31,6 @@ pub fn increment_num_receipt(storage: &mut dyn Storage) -> StdResult<Uint128> {
         Err(error) => panic!("Problem adding: {:?}", error),
         _ => {receipt_count = res.unwrap()}
     };
-    
-    
-    
-    
     Ok(receipt_count)
 }
 
