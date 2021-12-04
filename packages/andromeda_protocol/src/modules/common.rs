@@ -29,8 +29,8 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
         }
     }
 }
-
-pub fn is_unique<M: Module>(module: &M, all_modules: &Vec<ModuleDefinition>) -> bool {
+// [COM-02] Changed parameter all_modules type from Vec to a reference of a slice. 
+pub fn is_unique<M: Module>(module: &M, all_modules: &[ModuleDefinition]) -> bool {
     let definition = module.as_definition();
     let mut total = 0;
     all_modules.into_iter().for_each(|d| {
