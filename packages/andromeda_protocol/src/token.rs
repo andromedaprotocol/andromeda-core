@@ -47,7 +47,7 @@ impl ToString for MetadataType {
         }
     }
 }
-
+// [TOK-02] Add approval function should have been here but maybe was removed or altered in alter commits.
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct MetadataAttribute {
     pub key: String,
