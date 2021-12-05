@@ -37,6 +37,10 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
+    require(
+        msg.clone().name.len() > 3,
+        StdError::generic_err("Name must be between 3 and 30 characters.")
+    )?;
     let config = TokenConfig {
         name: msg.clone().name,
         symbol: msg.clone().symbol,
@@ -530,15 +534,20 @@ fn transfer_nft(
 
     let mut res = Response::new();
 
-    if token.transfer_agreement.is_some() {
+    // if token.transfer_agreement.is_some() {
         //Attach any transfer agreement messages/events
-        res = token
-            .transfer_agreement
-            .clone()
-            .unwrap()
-            .on_transfer(&deps, info, env, owner, res)?;
+    //     res = token
+    //         .transfer_agreement
+    //         .clone()
+    //         .unwrap()
+    //         .on_transfer(&deps, info, env, owner, res)?;
+    // }
+    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+    if let Some(transfer_agreement) = token.clone().transfer_agreement {
+        res = transfer_agreement
+              .clone()
+              .on_transfer(&deps, info, env, owner, res)?;
     }
-
     TOKENS.save(deps.storage, token_id.to_string(), &token)?;
     Ok(res)
 }
