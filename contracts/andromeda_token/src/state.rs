@@ -19,7 +19,7 @@ pub const NUM_TOKENS: Item<u64> = Item::new("numtokens");
 
 pub fn save_token(storage: &mut dyn Storage, token_id: String, token: Token) -> StdResult<()> {
     let saved_token = TOKENS.may_load(storage, token_id.clone())?;
-    if saved_token.is_some() {
+    if let Some(..) = saved_token {
         Err(StdError::generic_err("Token with given ID already exists"))
     } else {
         TOKENS.save(storage, token_id, &Some(token))
@@ -29,8 +29,8 @@ pub fn save_token(storage: &mut dyn Storage, token_id: String, token: Token) -> 
 pub fn load_token(storage: &dyn Storage, token_id: String) -> StdResult<Token> {
     let token = TOKENS.load(storage, token_id)?;
 
-    if token.is_some() {
-        Ok(token.unwrap())
+    if let Some(token) = token {
+        Ok(token)
     } else {
         Err(StdError::not_found("Token"))
     }
