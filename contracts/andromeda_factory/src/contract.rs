@@ -279,7 +279,7 @@ mod tests {
 
     static ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
-    const TOKEN_SYMBOL: &str = "T";
+    const TOKEN_SYMBOL: &str = "TT";
 
     #[test]
     fn proper_initialization() {
