@@ -71,7 +71,6 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         addr_list.on_execute(&deps, info.clone(), env.clone())?;
     }
 
-
     match msg {
         ExecuteMsg::HoldFunds {
             expiration,
@@ -102,7 +101,7 @@ fn execute_hold_funds(
         recipient: rec,
     };
     //Adding clone for escrow here to allow for moving
-    escrow.clone().validate(deps.api, &env.block )?;
+    escrow.clone().validate(deps.api, &env.block)?;
     hold_funds(escrow.clone(), deps.storage, info.sender.to_string())?;
     let expiration_string = match escrow.expiration {
         Some(e) => e.to_string(),
@@ -147,7 +146,7 @@ fn execute_release_funds(deps: DepsMut, env: Env, info: MessageInfo) -> StdResul
         amount: funds.clone().coins,
     };
 
-    release_funds(deps.storage, info.sender.to_string());
+    release_funds(deps.storage, info.sender.to_string())?;
     Ok(Response::new().add_message(bank_msg).add_attributes(vec![
         attr("action", "release_funds"),
         attr("recipient", funds.clone().recipient.clone()),

@@ -197,16 +197,16 @@ pub struct InstantiateMsg {
 impl InstantiateMsg {
     pub fn validate(&self) -> StdResult<bool> {
         // [TOK-01] Add illegal names symbols as much as you want
-        let mut illegal_names = "BitcoinEthereumDogecoinShibaInuTetherAdminRoot".to_string();
+        let illegal_names = "BitcoinEthereumDogecoinShibaInuTetherAdminRoot".to_string();
         // Maybe changing to vectors is a better idea since
-        let mut illegal_symbols = "ETHBTCUSDT".to_string();
+        let illegal_symbols = "ETHBTCUSDT".to_string();
         require(
             !illegal_names.contains(&self.name),
-            StdError::generic_err("Name is illegal to be initialized."),
+            StdError::generic_err("Name is disallowed"),
         )?;
         require(
             !illegal_symbols.contains(&self.symbol),
-            StdError::generic_err("Symbol is illegal to be used."),
+            StdError::generic_err("Symbol is disallowed"),
         )?;
 
         Ok(true)

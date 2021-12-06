@@ -1,4 +1,4 @@
-use cosmwasm_std::{Api, Coin, StdError, StdResult, Storage, BlockInfo, Timestamp};
+use cosmwasm_std::{Api, BlockInfo, Coin, StdError, StdResult, Storage};
 use cw721::Expiration;
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
@@ -12,7 +12,7 @@ pub const HELD_FUNDS: Map<String, Escrow> = Map::new("funds");
 pub struct Escrow {
     pub coins: Vec<Coin>,
     pub expiration: Option<Expiration>,
-    pub recipient: String, 
+    pub recipient: String,
 }
 
 impl Escrow {
@@ -31,11 +31,8 @@ impl Escrow {
                 //ACK-01 Change (Check before deleting comment)
                 Expiration::AtTime(time) => {
                     if time < block.time {
-                        return Err(StdError::generic_err(
-                            "Cannot set expiration in the past",
-                        ));
+                        return Err(StdError::generic_err("Cannot set expiration in the past"));
                     }
-                    
                 }
                 Expiration::Never {} => {
                     return Err(StdError::generic_err(
@@ -97,19 +94,20 @@ pub fn hold_funds(funds: Escrow, storage: &mut dyn Storage, addr: String) -> Std
         // Makes sure that HELD_FUNDS is empty before allowing writing into HELD_FUNDS.
         //Decided to use unwrap instead of unwrap_or_else (correct me if wrong)
         HELD_FUNDS.may_load(storage, addr.clone()).unwrap() == None,
-        StdError::generic_err("Cannot overwrite Held Funds")
-    );
+        StdError::generic_err("Cannot overwrite Held Funds"),
+    )?;
     HELD_FUNDS.save(storage, addr.clone(), &funds)
 }
 
-pub fn release_funds(storage: &mut dyn Storage, addr: String) {
-    require(    
+pub fn release_funds(storage: &mut dyn Storage, addr: String) -> StdResult<()> {
+    require(
         // Makes sure that HELD_FUNDS is NOT empty before allowing removing into HELD_FUNDS.
         //Decided to use unwrap instead of unwrap_or_else (correct me if wrong)
         HELD_FUNDS.may_load(storage, addr.clone()).unwrap() != None,
-        StdError::generic_err("Cannot overwrite Held Funds")
-    );
+        StdError::generic_err("Cannot overwrite Held Funds"),
+    )?;
     HELD_FUNDS.remove(storage, addr.clone());
+    Ok(())
 }
 
 pub fn get_funds(storage: &dyn Storage, addr: String) -> StdResult<Option<Escrow>> {
@@ -118,8 +116,8 @@ pub fn get_funds(storage: &dyn Storage, addr: String) -> StdResult<Option<Escrow
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::coin;
     use cosmwasm_std::testing::mock_dependencies;
+    use cosmwasm_std::{coin, Timestamp};
 
     use super::*;
 
