@@ -26,7 +26,7 @@ use cw721::{
 use cw_storage_plus::Bound;
 
 use crate::state::{
-    decrement_num_tokens, has_transfer_rights, increment_num_tokens, load_token, save_token,
+    decrement_num_tokens, has_transfer_rights, increment_num_tokens, load_token, save_new_token,
     TokenConfig, CONFIG, NUM_TOKENS, OPERATOR, TOKENS,
 };
 
@@ -143,7 +143,7 @@ pub fn execute_mint(
     let config = CONFIG.load(deps.storage)?;
 
     // TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
-    save_token(deps.storage, msg.token_id.clone(), token)?;
+    save_new_token(deps.storage, msg.token_id.clone(), token)?;
     increment_num_tokens(deps.storage)?;
 
     let modules = read_modules(deps.storage)?;
