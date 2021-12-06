@@ -26,8 +26,8 @@ use cw721::{
 use cw_storage_plus::Bound;
 
 use crate::state::{
-    decrement_num_tokens, has_transfer_rights, increment_num_tokens, TokenConfig, CONFIG,
-    NUM_TOKENS, OPERATOR, TOKENS,
+    decrement_num_tokens, has_transfer_rights, increment_num_tokens, save_token, TokenConfig,
+    CONFIG, NUM_TOKENS, OPERATOR, TOKENS,
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -39,7 +39,7 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     require(
         msg.clone().name.len() > 3,
-        StdError::generic_err("Name must be between 3 and 30 characters.")
+        StdError::generic_err("Name must be between 3 and 30 characters."),
     )?;
     let config = TokenConfig {
         name: msg.clone().name,
@@ -142,7 +142,8 @@ pub fn execute_mint(
     };
     let config = CONFIG.load(deps.storage)?;
 
-    TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
+    // TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
+    save_token(deps.storage, msg.token_id.clone(), &token)?;
     increment_num_tokens(deps.storage)?;
 
     let modules = read_modules(deps.storage)?;
@@ -535,7 +536,7 @@ fn transfer_nft(
     let mut res = Response::new();
 
     // if token.transfer_agreement.is_some() {
-        //Attach any transfer agreement messages/events
+    //Attach any transfer agreement messages/events
     //     res = token
     //         .transfer_agreement
     //         .clone()
@@ -545,8 +546,8 @@ fn transfer_nft(
     // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
     if let Some(transfer_agreement) = token.clone().transfer_agreement {
         res = transfer_agreement
-              .clone()
-              .on_transfer(&deps, info, env, owner, res)?;
+            .clone()
+            .on_transfer(&deps, info, env, owner, res)?;
     }
     TOKENS.save(deps.storage, token_id.to_string(), &token)?;
     Ok(res)

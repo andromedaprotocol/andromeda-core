@@ -17,6 +17,15 @@ pub const TOKENS: Map<String, Token> = Map::new("ownership");
 pub const OPERATOR: Map<(String, String), Expiration> = Map::new("operator");
 pub const NUM_TOKENS: Item<u64> = Item::new("numtokens");
 
+pub fn save_token(storage: &mut dyn Storage, token_id: String, token: &Token) -> StdResult<()> {
+    let saved_token = TOKENS.may_load(storage, token_id.clone())?;
+    if saved_token.is_some() {
+        Err(StdError::generic_err("Token with given ID already exists"))
+    } else {
+        TOKENS.save(storage, token_id, token)
+    }
+}
+
 pub fn has_transfer_rights(
     storage: &dyn Storage,
     env: &Env,

@@ -1,14 +1,14 @@
 use crate::modules::{
     common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
 };
+use crate::require::require;
 use cosmwasm_std::{
     attr, coin, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
-    StdResult, Uint128, StdError
+    StdError, StdResult, Uint128,
 };
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use require::require;
 //Duplicate Approval struct from CW721-base contract: https://github.com/CosmWasm/cosmwasm-plus/blob/main/contracts/cw721-base/src/state.rs
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Approval {
@@ -202,18 +202,15 @@ impl InstantiateMsg {
         let mut illegal_symbols = "ETHBTCUSDT".to_string();
         require(
             !illegal_names.contains(&self.name),
-            StdError::generic_err("Name is illegal to be initialized.")
-    )?;
-    require(
-        !illegal_symbols.contains(&self.symbol),
-        StdError::generic_err("Symbol is illegal to be used.")
-    )?;
+            StdError::generic_err("Name is illegal to be initialized."),
+        )?;
+        require(
+            !illegal_symbols.contains(&self.symbol),
+            StdError::generic_err("Symbol is illegal to be used."),
+        )?;
 
-        
         Ok(true)
-        
     }
-
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MintMsg {
