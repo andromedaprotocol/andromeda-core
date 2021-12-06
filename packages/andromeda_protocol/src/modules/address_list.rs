@@ -91,8 +91,13 @@ impl Module for AddressListModule {
         }
     }
     fn get_contract_address(&self, storage: &dyn Storage) -> Option<String> {
-        if self.address.is_some() {
-            return Some(self.address.clone().unwrap());
+        // if self.address.is_some() {
+        //    return Some(self.address.clone().unwrap());
+        // }
+
+        // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+        if let Some(address) = &self.address {
+            return Some(address.clone());
         }
         ADDRESS_LIST_CONTRACT.may_load(storage).unwrap_or_default()
     }

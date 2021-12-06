@@ -3,12 +3,12 @@ use crate::modules::{
 };
 use cosmwasm_std::{
     attr, coin, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
-    StdResult, Uint128,
+    StdResult, Uint128, StdError
 };
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
+use require::require;
 //Duplicate Approval struct from CW721-base contract: https://github.com/CosmWasm/cosmwasm-plus/blob/main/contracts/cw721-base/src/state.rs
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Approval {
@@ -194,7 +194,27 @@ pub struct InstantiateMsg {
     //The attached Andromeda modules
     pub modules: Vec<ModuleDefinition>,
 }
+impl InstantiateMsg {
+    pub fn validate(&self) -> StdResult<bool> {
+        // [TOK-01] Add illegal names symbols as much as you want
+        let mut illegal_names = "BitcoinEthereumDogecoinShibaInuTetherAdminRoot".to_string();
+        // Maybe changing to vectors is a better idea since
+        let mut illegal_symbols = "ETHBTCUSDT".to_string();
+        require(
+            !illegal_names.contains(&self.name),
+            StdError::generic_err("Name is illegal to be initialized.")
+    )?;
+    require(
+        !illegal_symbols.contains(&self.symbol),
+        StdError::generic_err("Symbol is illegal to be used.")
+    )?;
 
+        
+        Ok(true)
+        
+    }
+
+}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MintMsg {
     pub token_id: String,

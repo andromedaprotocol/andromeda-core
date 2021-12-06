@@ -61,10 +61,16 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let state = STATE.load(deps.storage)?;
 
-    if state.address_list.is_some() {
-        let addr_list = state.address_list.unwrap();
+    // if state.address_list.is_some() {
+    //     let addr_list = state.address_list.unwrap();
+    //     addr_list.on_execute(&deps, info.clone(), env.clone())?;
+    // }
+    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+    if let Some(address_list) = state.address_list {
+        let addr_list = address_list;
         addr_list.on_execute(&deps, info.clone(), env.clone())?;
     }
+
 
     match msg {
         ExecuteMsg::HoldFunds {

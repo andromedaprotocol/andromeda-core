@@ -136,6 +136,13 @@ pub fn create(
         minter: info.sender.to_string(),
         modules: updated_modules,
     };
+    // [TOK-01 Validation Process]
+    let validation = token_inst_msg.validate();
+    let validation = match validation {
+        Ok(true) => {}
+        Err(error) => panic!("{:?}",error),
+        _ => {}
+    };
 
     let inst_msg = WasmMsg::Instantiate {
         admin: Some(info.sender.to_string()),
@@ -192,16 +199,30 @@ pub fn update_code_id(
     )?;
     let mut config = read_config(deps.storage)?;
 
-    if receipt_code_id.is_some() {
-        config.receipt_code_id = receipt_code_id.unwrap();
-    }
+    // if receipt_code_id.is_some() {
+    //    config.receipt_code_id = receipt_code_id.unwrap();
+    // }
 
-    if address_list_code_id.is_some() {
-        config.address_list_code_id = address_list_code_id.unwrap();
+    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+    if let Some(receipt_code_id) = receipt_code_id {
+        config.receipt_code_id = receipt_code_id;
     }
+    
 
-    if token_code_id.is_some() {
-        config.token_code_id = token_code_id.unwrap();
+    // if address_list_code_id.is_some() {
+    //    config.address_list_code_id = address_list_code_id.unwrap();
+    // }
+    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+    if let Some(address_list_code_id) = address_list_code_id {
+        config.address_list_code_id = address_list_code_id;
+    }
+        
+    // if token_code_id.is_some() {
+    //    config.token_code_id = token_code_id.unwrap();
+    // }
+    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+    if let Some(token_code_id) = token_code_id {
+        config.token_code_id = token_code_id;
     }
 
     store_config(deps.storage, &config)?;
@@ -302,6 +323,13 @@ mod tests {
             symbol: TOKEN_SYMBOL.to_string(),
             minter: info.sender.to_string(),
             modules: vec![],
+        };
+        // [TOK-01 Validation Process]
+        let validation = token_inst_msg.validate();
+        let validation = match validation {
+            Ok(true) => {}
+            Err(error) => panic!("{:?}",error),
+            _ => {}
         };
 
         let inst_msg = WasmMsg::Instantiate {

@@ -52,10 +52,15 @@ pub fn instantiate(
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let splitter = SPLITTER.load(deps.storage)?;
 
-    if splitter.address_list.is_some() {
-        let addr_list = splitter.address_list.unwrap();
+    // if splitter.address_list.is_some() {
+    //     let addr_list = splitter.address_list.unwrap();
+    //     addr_list.on_execute(&deps, info.clone(), env.clone())?;
+    // }
+// [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+    if let Some(splitter) = splitter.address_list {
+        let addr_list = splitter;
         addr_list.on_execute(&deps, info.clone(), env.clone())?;
-    }
+    } 
 
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => {
