@@ -41,6 +41,7 @@ pub fn instantiate(
         msg.clone().name.len() > 3,
         StdError::generic_err("Name must be between 3 and 30 characters.")
     )?;
+    msg.validate()?;
     let config = TokenConfig {
         name: msg.clone().name,
         symbol: msg.clone().symbol,
@@ -765,6 +766,7 @@ mod tests {
 
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
+    const BLACK_LIST_ADDRESS: &str = "blacklisted";
 
     fn store_mock_config(deps: DepsMut, minter: String) {
         CONFIG
@@ -795,6 +797,25 @@ mod tests {
 
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
+    }
+     //Added a test to check blacklist
+    #[test]
+     fn test_instantiate_blacklist() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("creator", &[]);
+
+        let msg = InstantiateMsg {
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            modules: vec![],
+            minter: String::from(BLACK_LIST_ADDRESS),
+        };
+        
+        let env = mock_env();
+        
+        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap_err();
+        let err = StdError::generic_err("Minter is on blacklist. Not allowed to mint.");
+        assert_eq!(err, res);
     }
 
     #[test]
