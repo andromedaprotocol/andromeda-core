@@ -15,7 +15,7 @@ use cosmwasm_std::{
 
 static TOKEN_CODE_ID: u64 = 0;
 const TOKEN_NAME: &str = "test";
-const TOKEN_SYMBOL: &str = "T";
+const TOKEN_SYMBOL: &str = "TT";
 const ADDRESS_LIST_CODE_ID: u64 = 1;
 const RECEIPT_CODE_ID: u64 = 2;
 

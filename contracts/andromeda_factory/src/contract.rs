@@ -138,9 +138,9 @@ pub fn create(
     };
     // [TOK-01 Validation Process]
     let validation = token_inst_msg.validate();
-    let validation = match validation {
+    match validation {
         Ok(true) => {}
-        Err(error) => panic!("{:?}",error),
+        Err(error) => panic!("{:?}", error),
         _ => {}
     };
 
@@ -207,7 +207,6 @@ pub fn update_code_id(
     if let Some(receipt_code_id) = receipt_code_id {
         config.receipt_code_id = receipt_code_id;
     }
-    
 
     // if address_list_code_id.is_some() {
     //    config.address_list_code_id = address_list_code_id.unwrap();
@@ -216,7 +215,7 @@ pub fn update_code_id(
     if let Some(address_list_code_id) = address_list_code_id {
         config.address_list_code_id = address_list_code_id;
     }
-        
+
     // if token_code_id.is_some() {
     //    config.token_code_id = token_code_id.unwrap();
     // }
@@ -280,7 +279,7 @@ mod tests {
 
     static ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
-    const TOKEN_SYMBOL: &str = "T";
+    const TOKEN_SYMBOL: &str = "TT";
 
     #[test]
     fn proper_initialization() {
@@ -326,9 +325,9 @@ mod tests {
         };
         // [TOK-01 Validation Process]
         let validation = token_inst_msg.validate();
-        let validation = match validation {
+        match validation {
             Ok(true) => {}
-            Err(error) => panic!("{:?}",error),
+            Err(error) => panic!("{:?}", error),
             _ => {}
         };
 

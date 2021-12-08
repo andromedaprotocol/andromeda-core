@@ -13,9 +13,28 @@ pub struct TokenConfig {
 }
 
 pub const CONFIG: Item<TokenConfig> = Item::new("config");
-pub const TOKENS: Map<String, Token> = Map::new("ownership");
+pub const TOKENS: Map<String, Option<Token>> = Map::new("ownership");
 pub const OPERATOR: Map<(String, String), Expiration> = Map::new("operator");
 pub const NUM_TOKENS: Item<u64> = Item::new("numtokens");
+
+pub fn save_new_token(storage: &mut dyn Storage, token_id: String, token: Token) -> StdResult<()> {
+    let saved_token = TOKENS.may_load(storage, token_id.clone())?;
+    if let Some(..) = saved_token {
+        Err(StdError::generic_err("Token with given ID already exists"))
+    } else {
+        TOKENS.save(storage, token_id, &Some(token))
+    }
+}
+
+pub fn load_token(storage: &dyn Storage, token_id: String) -> StdResult<Token> {
+    let token = TOKENS.load(storage, token_id)?;
+
+    if let Some(token) = token {
+        Ok(token)
+    } else {
+        Err(StdError::not_found("Token"))
+    }
+}
 
 pub fn has_transfer_rights(
     storage: &dyn Storage,
