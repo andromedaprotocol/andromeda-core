@@ -198,23 +198,37 @@ pub struct InstantiateMsg {
 impl InstantiateMsg {
     pub fn validate(&self) -> StdResult<bool> {
         // [TOK-01] Add illegal names symbols as much as you want
-        let mut illegal_names = vec!["Bitcoin".to_string(),"Ethereum".to_string(),"Admin".to_string(),"Root".to_string(),"Tether".to_string(),"Dogecoin".to_string(),"Elon".to_string(),"Shiba Inu".to_string()];
+        let illegal_names = vec![
+            "Bitcoin".to_string(),
+            "Ethereum".to_string(),
+            "Admin".to_string(),
+            "Root".to_string(),
+            "Tether".to_string(),
+            "Dogecoin".to_string(),
+            "Elon".to_string(),
+            "Shiba Inu".to_string(),
+        ];
         // Maybe changing to vectors is a better idea since
-        let mut illegal_symbols = vec!["BTC".to_string(),"ETH".to_string(),"DOGE".to_string(),"USDT".to_string()];
+        let illegal_symbols = vec![
+            "BTC".to_string(),
+            "ETH".to_string(),
+            "DOGE".to_string(),
+            "USDT".to_string(),
+        ];
         // Could also later on add a list of blacklist addresses that are not allowed to mint.
-        let mut blacklist = vec!["blacklisted".to_string()];
+        let blacklist = vec!["blacklisted".to_string()];
         require(
             !illegal_names.contains(&self.name),
-            StdError::generic_err("Name is illegal to be initialized.")
-    )?;
+            StdError::generic_err("Name is illegal to be initialized."),
+        )?;
         require(
             !illegal_symbols.contains(&self.symbol),
-            StdError::generic_err("Symbol is illegal to be used.")
+            StdError::generic_err("Symbol is illegal to be used."),
         )?;
 
         require(
             !blacklist.contains(&self.minter),
-            StdError::generic_err("Minter is on blacklist. Not allowed to mint.")
+            StdError::generic_err("Minter is on blacklist. Not allowed to mint."),
         )?;
 
         Ok(true)

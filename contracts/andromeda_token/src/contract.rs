@@ -26,8 +26,8 @@ use cw721::{
 use cw_storage_plus::Bound;
 
 use crate::state::{
-    decrement_num_tokens, has_transfer_rights, increment_num_tokens, TokenConfig, CONFIG,
-    NUM_TOKENS, OPERATOR, TOKENS,
+    decrement_num_tokens, has_transfer_rights, increment_num_tokens, load_token, mint_token,
+    TokenConfig, CONFIG, NUM_TOKENS, OPERATOR, TOKENS,
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -39,7 +39,7 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     require(
         msg.clone().name.len() > 3,
-        StdError::generic_err("Name must be between 3 and 30 characters.")
+        StdError::generic_err("Name must be between 3 and 30 characters."),
     )?;
     msg.validate()?;
     let config = TokenConfig {
@@ -143,7 +143,7 @@ pub fn execute_mint(
     };
     let config = CONFIG.load(deps.storage)?;
 
-    TOKENS.save(deps.storage, msg.token_id.to_string(), &token)?;
+    mint_token(deps.storage, msg.token_id.to_string(), token)?;
     increment_num_tokens(deps.storage)?;
 
     let modules = read_modules(deps.storage)?;
@@ -384,7 +384,7 @@ fn execute_transfer_agreement(
         amount.clone(),
         denom.clone(),
     )?;
-    let mut token = TOKENS.load(deps.storage, token_id.clone())?;
+    let mut token = load_token(deps.storage, token_id.clone())?;
 
     require(
         info.sender.to_string().eq(&token.owner.clone()),
@@ -402,7 +402,7 @@ fn execute_transfer_agreement(
     };
     token.transfer_agreement = Some(agreement);
 
-    TOKENS.save(deps.storage, token_id.clone(), &token)?;
+    TOKENS.save(deps.storage, token_id.clone(), &Some(token))?;
 
     Ok(Response::default()
         .add_submessages(mod_res.msgs)
@@ -421,7 +421,7 @@ fn execute_burn(
     info: MessageInfo,
     token_id: String,
 ) -> StdResult<Response> {
-    let token = TOKENS.load(deps.storage, token_id.clone())?;
+    let token = load_token(deps.storage, token_id.clone())?;
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Cannot burn a token you do not own"),
@@ -453,7 +453,7 @@ fn execute_archive(
     info: MessageInfo,
     token_id: String,
 ) -> StdResult<Response> {
-    let mut token = TOKENS.load(deps.storage, token_id.clone())?;
+    let mut token = load_token(deps.storage, token_id.clone())?;
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Cannot archive a token you do not own"),
@@ -467,7 +467,7 @@ fn execute_archive(
     let mod_res = modules.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
 
     token.archived = true;
-    TOKENS.save(deps.storage, token_id.clone(), &token)?;
+    TOKENS.save(deps.storage, token_id.clone(), &Some(token))?;
 
     Ok(Response::default()
         .add_submessages(mod_res.msgs)
@@ -486,7 +486,7 @@ fn execute_update_pricing(
     token_id: String,
     pricing: Option<Coin>,
 ) -> StdResult<Response> {
-    let mut token = TOKENS.load(deps.storage, token_id.clone())?;
+    let mut token = load_token(deps.storage, token_id.clone())?;
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Cannot update pricing for a token you do not own"),
@@ -497,7 +497,7 @@ fn execute_update_pricing(
     )?;
 
     token.pricing = pricing.clone();
-    TOKENS.save(deps.storage, token_id.clone(), &token)?;
+    TOKENS.save(deps.storage, token_id.clone(), &Some(token))?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_pricing"),
@@ -519,7 +519,7 @@ fn transfer_nft(
     recipient: &String,
     token_id: &String,
 ) -> StdResult<Response> {
-    let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
+    let mut token = load_token(deps.storage, token_id.to_string())?;
     require(
         has_transfer_rights(deps.storage, env, info.sender.to_string(), &token)?,
         StdError::generic_err("Address does not have transfer rights for this token"),
@@ -536,7 +536,7 @@ fn transfer_nft(
     let mut res = Response::new();
 
     // if token.transfer_agreement.is_some() {
-        //Attach any transfer agreement messages/events
+    //Attach any transfer agreement messages/events
     //     res = token
     //         .transfer_agreement
     //         .clone()
@@ -546,10 +546,10 @@ fn transfer_nft(
     // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
     if let Some(transfer_agreement) = token.clone().transfer_agreement {
         res = transfer_agreement
-              .clone()
-              .on_transfer(&deps, info, env, owner, res)?;
+            .clone()
+            .on_transfer(&deps, info, env, owner, res)?;
     }
-    TOKENS.save(deps.storage, token_id.to_string(), &token)?;
+    TOKENS.save(deps.storage, token_id.to_string(), &Some(token))?;
     Ok(res)
 }
 
@@ -559,7 +559,7 @@ fn add_approval(
     token_id: String,
     approval: Approval,
 ) -> StdResult<()> {
-    let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
+    let mut token = load_token(deps.storage, token_id.to_string())?;
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Only the token owner can add approvals"),
@@ -572,7 +572,7 @@ fn add_approval(
     token.filter_approval(&approval.spender.clone());
 
     token.approvals.push(approval);
-    TOKENS.save(deps.storage, token_id.to_string(), &token)?;
+    TOKENS.save(deps.storage, token_id.to_string(), &Some(token))?;
     Ok(())
 }
 
@@ -582,7 +582,7 @@ fn remove_approval(
     token_id: String,
     spender: &Addr,
 ) -> StdResult<()> {
-    let mut token = TOKENS.load(deps.storage, token_id.to_string())?;
+    let mut token = load_token(deps.storage, token_id.to_string())?;
     require(
         token.owner.eq(&info.sender.to_string()),
         StdError::generic_err("Only the token owner can remove approvals"),
@@ -594,7 +594,7 @@ fn remove_approval(
 
     token.filter_approval(spender);
 
-    TOKENS.save(deps.storage, token_id.to_string(), &token)?;
+    TOKENS.save(deps.storage, token_id.to_string(), &Some(token))?;
     Ok(())
 }
 
@@ -625,7 +625,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_owner(deps: Deps, _env: Env, token_id: String) -> StdResult<OwnerOfResponse> {
-    let token = TOKENS.load(deps.storage, token_id.to_string())?;
+    let token = load_token(deps.storage, token_id.to_string())?;
     Ok(OwnerOfResponse {
         owner: token.clone().owner,
         approvals: humanize_approvals(&token.clone()),
@@ -666,7 +666,7 @@ fn query_nft_info(
     deps: Deps,
     token_id: String,
 ) -> StdResult<NftInfoResponse<NftInfoResponseExtension>> {
-    let token = TOKENS.load(deps.storage, token_id.clone())?;
+    let token = load_token(deps.storage, token_id.clone())?;
     let extension = NftInfoResponseExtension {
         metadata: token.metadata,
         archived: token.archived,
@@ -798,9 +798,9 @@ mod tests {
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
-     //Added a test to check blacklist
+    //Added a test to check blacklist
     #[test]
-     fn test_instantiate_blacklist() {
+    fn test_instantiate_blacklist() {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("creator", &[]);
 
@@ -810,9 +810,9 @@ mod tests {
             modules: vec![],
             minter: String::from(BLACK_LIST_ADDRESS),
         };
-        
+
         let env = mock_env();
-        
+
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap_err();
         let err = StdError::generic_err("Minter is on blacklist. Not allowed to mint.");
         assert_eq!(err, res);
@@ -887,7 +887,7 @@ mod tests {
         };
 
         TOKENS
-            .save(deps.as_mut().storage, token_id.to_string(), &token)
+            .save(deps.as_mut().storage, token_id.to_string(), &Some(token))
             .unwrap();
 
         let unauth_info = mock_info("anyone", &[]);
@@ -913,13 +913,12 @@ mod tests {
 
         assert_eq!(
             notfound_res,
-            StdError::not_found("andromeda_protocol::token::Token")
+            StdError::not_found("core::option::Option<andromeda_protocol::token::Token>")
         );
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(Response::default().add_attributes(attrs.clone()), res);
-        let owner = TOKENS
-            .load(deps.as_ref().storage, token_id.to_string())
+        let owner = load_token(deps.as_ref().storage, token_id.to_string())
             .unwrap()
             .owner;
         assert_eq!(recipient.to_string(), owner);
@@ -952,7 +951,7 @@ mod tests {
             .save(
                 deps.as_mut().storage,
                 approval_token_id.to_string(),
-                &approval_token,
+                &Some(approval_token),
             )
             .unwrap();
 
@@ -972,8 +971,7 @@ mod tests {
             ]),
             res
         );
-        let owner = TOKENS
-            .load(deps.as_ref().storage, approval_token_id.to_string())
+        let owner = load_token(deps.as_ref().storage, approval_token_id.to_string())
             .unwrap()
             .owner;
         assert_eq!(recipient.to_string(), owner);
@@ -1006,7 +1004,7 @@ mod tests {
             .save(
                 deps.as_mut().storage,
                 approval_token_id.to_string(),
-                &approval_token,
+                &Some(approval_token),
             )
             .unwrap();
 
@@ -1027,8 +1025,7 @@ mod tests {
             res
         );
 
-        let owner = TOKENS
-            .load(deps.as_ref().storage, approval_token_id.to_string())
+        let owner = load_token(deps.as_ref().storage, approval_token_id.to_string())
             .unwrap()
             .owner;
         assert_eq!(recipient.to_string(), owner);
@@ -1069,7 +1066,11 @@ mod tests {
         };
 
         TOKENS
-            .save(deps.as_mut().storage, token_id.to_string(), &token)
+            .save(
+                deps.as_mut().storage,
+                token_id.to_string(),
+                &Some(token.clone()),
+            )
             .unwrap();
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
@@ -1120,13 +1121,11 @@ mod tests {
         };
 
         TOKENS
-            .save(deps.as_mut().storage, token_id.to_string(), &token)
+            .save(deps.as_mut().storage, token_id.to_string(), &Some(token))
             .unwrap();
 
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        let token = TOKENS
-            .load(deps.as_mut().storage, token_id.to_string())
-            .unwrap();
+        let token = load_token(deps.as_mut().storage, token_id.to_string()).unwrap();
 
         assert_eq!(1, token.approvals.len());
         assert_eq!(approvee.clone(), token.approvals[0].spender.to_string());
@@ -1165,13 +1164,11 @@ mod tests {
         };
 
         TOKENS
-            .save(deps.as_mut().storage, token_id.to_string(), &token)
+            .save(deps.as_mut().storage, token_id.to_string(), &Some(token))
             .unwrap();
 
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        let token = TOKENS
-            .load(deps.as_mut().storage, token_id.to_string())
-            .unwrap();
+        let token = load_token(deps.as_mut().storage, token_id.to_string()).unwrap();
 
         assert_eq!(0, token.approvals.len());
     }
@@ -1234,9 +1231,7 @@ mod tests {
         )
         .unwrap();
 
-        let token = TOKENS
-            .load(deps.as_ref().storage, token_id.to_string())
-            .unwrap();
+        let token = load_token(deps.as_ref().storage, token_id.to_string()).unwrap();
 
         assert_eq!(token.owner, operator.to_string());
     }
@@ -1407,7 +1402,7 @@ mod tests {
 
         assert_eq!(
             query_res,
-            StdError::not_found("andromeda_protocol::token::Token")
+            StdError::not_found("core::option::Option<andromeda_protocol::token::Token>")
         )
     }
 
