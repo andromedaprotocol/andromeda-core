@@ -91,8 +91,9 @@ pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> 
             }
             Ok(true)
         }
+        // [COM-05] Misleading error message since it should check whether there is pending deductions and not if it has enough funds.
         None => Err(StdError::generic_err(
-            "Not enough funds to deduct required payment!",
+            "No pending deductions from the given address!",
         )),
     }
 }
