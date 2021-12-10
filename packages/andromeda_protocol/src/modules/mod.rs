@@ -91,7 +91,8 @@ impl ModuleDefinition {
             } => Box::from(AddressListModule {
                 moderators: moderators.clone(),
                 address: address.clone(),
-                code_id: code_id.clone(),
+                // [MOD-01] Dereferencing the borrows and removing clone for u64.
+                code_id: *code_id,
                 inclusive: true,
             }),
             ModuleDefinition::Blacklist {
@@ -101,7 +102,7 @@ impl ModuleDefinition {
             } => Box::from(AddressListModule {
                 moderators: moderators.clone(),
                 address: address.clone(),
-                code_id: code_id.clone(),
+                code_id: *code_id,
                 inclusive: false,
             }),
             ModuleDefinition::Taxable {
@@ -129,7 +130,7 @@ impl ModuleDefinition {
             } => Box::from(ReceiptModule {
                 moderators: moderators.clone(),
                 address: address.clone(),
-                code_id: code_id.clone(),
+                code_id: *code_id,
             }),
         }
     }
@@ -244,7 +245,7 @@ impl Modules {
                 env.clone(),
                 token_id.clone(),
                 purchaser.clone(),
-                amount.clone(),
+                amount,
                 denom.clone(),
             )?;
             resp = resp.add_resp(mod_res);
