@@ -1,4 +1,6 @@
 use crate::contract::{execute, instantiate};
+use crate::state::{increment_num_tokens};
+use cw_storage_plus::{Item};
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
     modules::{
@@ -12,13 +14,14 @@ use andromeda_protocol::{
 use cosmwasm_std::{
     attr, coin,
     testing::{mock_env, mock_info},
-    to_binary, BankMsg, CosmosMsg, Event, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
+    to_binary, BankMsg, CosmosMsg, Event, ReplyOn, Response, SubMsg, Uint128, WasmMsg, StdResult
+    
 };
 
 const TOKEN_NAME: &str = "test";
 const TOKEN_SYMBOL: &str = "T";
 const ADDRESS_LIST_CODE_ID: u64 = 1;
-
+const NUM_TOKENS: Item<u64> = Item::new("numtokens");
 // integration testing for initialize, mint, tranfer_aggrement, transferNFT, modules
 #[test]
 fn test_token_modules() {
@@ -218,4 +221,33 @@ fn test_token_modules() {
             attr("sender", "creator"),
         ]);
     assert_eq!(res, expected_res);
+}
+// Test for positive test increment for number of tokens
+#[test]
+fn test_increment_num_tokens() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let env = mock_env();
+    let res =increment_num_tokens(deps.as_mut().storage).unwrap();
+    assert_eq!(res, ());
+    
+
+
+    
+
+}
+// Increment num tokens with overflow (should panic)
+#[test]
+#[should_panic]
+fn test_increment_num_tokens_error() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let env = mock_env();
+    NUM_TOKENS.save(deps.as_mut().storage, &u64::MAX).unwrap();
+    let _res =increment_num_tokens(deps.as_mut().storage);
+    
+
+
+    
+
 }
