@@ -82,7 +82,7 @@ fn test_create() {
         name: TOKEN_NAME.to_string(),
         symbol: TOKEN_SYMBOL.to_string(),
         minter: info.sender.to_string(),
-        modules: modules.clone(),
+        modules,
     };
 
     let inst_msg = WasmMsg::Instantiate {
@@ -108,7 +108,7 @@ fn test_create() {
             attr("symbol", TOKEN_SYMBOL.to_string()),
         ]);
 
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(res, expected_res);
     assert_eq!(1, expected_res.messages.len())
 }

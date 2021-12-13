@@ -96,7 +96,7 @@ pub fn hold_funds(funds: Escrow, storage: &mut dyn Storage, addr: String) -> Std
         HELD_FUNDS.may_load(storage, addr.clone()).unwrap() == None,
         StdError::generic_err("Cannot overwrite Held Funds"),
     )?;
-    HELD_FUNDS.save(storage, addr.clone(), &funds)
+    HELD_FUNDS.save(storage, addr, &funds)
 }
 
 pub fn release_funds(storage: &mut dyn Storage, addr: String) -> StdResult<()> {
@@ -106,7 +106,7 @@ pub fn release_funds(storage: &mut dyn Storage, addr: String) -> StdResult<()> {
         HELD_FUNDS.may_load(storage, addr.clone()).unwrap() != None,
         StdError::generic_err("Cannot overwrite Held Funds"),
     )?;
-    HELD_FUNDS.remove(storage, addr.clone());
+    HELD_FUNDS.remove(storage, addr);
     Ok(())
 }
 

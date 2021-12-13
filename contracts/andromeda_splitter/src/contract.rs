@@ -52,13 +52,8 @@ pub fn instantiate(
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let splitter = SPLITTER.load(deps.storage)?;
 
-    // if splitter.address_list.is_some() {
-    //     let addr_list = splitter.address_list.unwrap();
-    //     addr_list.on_execute(&deps, info.clone(), env.clone())?;
-    // }
     // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
-    if let Some(splitter) = splitter.address_list {
-        let addr_list = splitter;
+    if let Some(addr_list) = splitter.address_list {
         addr_list.on_execute(&deps, info.clone(), env.clone())?;
     }
 
@@ -247,7 +242,7 @@ mod tests {
                 percent: Uint128::from(100_u128),
             }],
         };
-        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
 
@@ -283,7 +278,7 @@ mod tests {
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             Response::default().add_attributes(vec![
                 attr("action", "update_lock"),
@@ -333,10 +328,10 @@ mod tests {
         );
 
         let info = mock_info(owner.clone(), &[]);
-        let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let mod_resp = address_list
             .clone()
-            .on_instantiate(&deps.as_mut(), info.clone(), env.clone())
+            .on_instantiate(&deps.as_mut(), info, env)
             .unwrap();
         let expected = Response::default()
             .add_submessages(mod_resp.msgs)
@@ -394,7 +389,7 @@ mod tests {
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             Response::default().add_attributes(vec![attr("action", "update_recipients")]),
             res
@@ -402,7 +397,7 @@ mod tests {
 
         //check result
         let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
-        assert_eq!(splitter.recipients, recipient.clone());
+        assert_eq!(splitter.recipients, recipient);
     }
 
     #[test]
@@ -457,16 +452,16 @@ mod tests {
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         let expected_res = Response::new()
             .add_submessages(vec![
                 SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: recip_address1.clone(),
+                    to_address: recip_address1,
                     amount: vec![Coin::new(1000, "uluna")], // 10000 * 0.1
                 })),
                 SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: recip_address2.clone(),
+                    to_address: recip_address2,
                     amount: vec![Coin::new(2000, "uluna")], // 10000 * 0.2
                 })),
                 SubMsg::new(
@@ -540,11 +535,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                addr: recip_address1.clone(),
+                addr: recip_address1,
                 percent: Uint128::from(recip_percent1),
             },
             AddressPercent {
-                addr: recip_address2.clone(),
+                addr: recip_address2,
                 percent: Uint128::from(recip_percent2),
             },
         ];
@@ -572,7 +567,7 @@ mod tests {
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
         let expected_res = StdError::generic_err("Exceeds max amount of coins allowed.");
 

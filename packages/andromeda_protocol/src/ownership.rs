@@ -25,12 +25,12 @@ pub fn execute_update_owner(
         ),
     )?;
     //
-    let new_owner_addr = deps.api.addr_validate(&new_owner.clone())?;
+    let new_owner_addr = deps.api.addr_validate(&new_owner)?;
     CONTRACT_OWNER.save(deps.storage, &new_owner_addr.to_string())?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "update_owner"),
-        attr("value", new_owner.clone()),
+        attr("value", new_owner),
     ]))
 }
 

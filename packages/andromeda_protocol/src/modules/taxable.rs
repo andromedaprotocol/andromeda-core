@@ -89,7 +89,7 @@ impl MessageHooks for Taxable {
             event = event.add_attribute(
                 ATTR_PAYMENT,
                 PaymentAttribute {
-                    receiver: receiver.clone(),
+                    receiver,
                     amount: tax_amount.clone(),
                 }
                 .to_string(),

@@ -128,7 +128,7 @@ impl TransferAgreement {
     pub fn generate_event(self) -> Event {
         Event::new("agreed_transfer").add_attributes(vec![
             attr("amount", self.amount.to_string()),
-            attr("purchaser", self.purchaser.clone()),
+            attr("purchaser", self.purchaser),
         ])
     }
     /*
@@ -142,7 +142,7 @@ impl TransferAgreement {
         owner: String,
         res_in: Response,
     ) -> StdResult<Response> {
-        let mut res = res_in.clone();
+        let mut res = res_in;
         let modules = read_modules(deps.storage)?;
         let payment_message = self.generate_payment(owner.clone());
         let mut payments = vec![payment_message];
@@ -151,7 +151,7 @@ impl TransferAgreement {
             info.clone(),
             env.clone(),
             &mut payments,
-            owner.clone(),
+            owner,
             self.purchaser.clone(),
             self.amount.clone(),
         )?;

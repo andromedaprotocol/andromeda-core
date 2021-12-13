@@ -38,9 +38,9 @@ impl ReceiptModule {
         let contract_addr = self
             .get_contract_address(storage)
             // [REC-01] Replace ok_or with lazily ok_or_else to optimizr smart contract efficiency
-            .ok_or_else(|| StdError::generic_err(
-                "Receipt module does not have an assigned address",
-            ))?;
+            .ok_or_else(|| {
+                StdError::generic_err("Receipt module does not have an assigned address")
+            })?;
 
         Ok(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr,
@@ -141,7 +141,7 @@ pub fn get_receipt_module(storage: &dyn Storage) -> StdResult<Option<ReceiptModu
             address,
         } => Ok(Some(ReceiptModule {
             moderators: moderators.clone(),
-            code_id: code_id.clone(),
+            code_id: *code_id,
             address: address.clone(),
         })),
         _ => Ok(None),

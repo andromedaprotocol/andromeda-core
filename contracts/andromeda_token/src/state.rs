@@ -46,7 +46,7 @@ pub fn has_transfer_rights(
     Ok(token.owner.eq(&addr)
         || has_approval(env, &addr, token)
         || is_operator(storage, env, token.owner.clone(), addr.clone())?
-        || has_transfer_agreement(addr.clone(), token))
+        || has_transfer_agreement(addr, token))
 }
 
 pub fn has_approval(env: &Env, addr: &String, token: &Token) -> bool {

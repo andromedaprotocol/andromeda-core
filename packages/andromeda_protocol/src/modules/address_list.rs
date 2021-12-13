@@ -37,7 +37,7 @@ impl AddressListModule {
         )?;
 
         let includes_address =
-            query_includes_address(deps.querier, contract_addr.unwrap(), address.clone())?;
+            query_includes_address(deps.querier, contract_addr.unwrap(), address)?;
         require(
             includes_address == self.inclusive,
             StdError::generic_err("Address is not authorized"),
@@ -61,7 +61,7 @@ impl Module for AddressListModule {
             moderators: self.moderators.clone(),
             inclusive: !self.inclusive,
         };
-        let mut includes_opposite = all_modules.clone();
+        let mut includes_opposite = all_modules;
         includes_opposite.append(&mut vec![opposite_module.as_definition()]);
 
         require(
@@ -80,21 +80,17 @@ impl Module for AddressListModule {
         match self.inclusive {
             true => ModuleDefinition::Whitelist {
                 address: self.address.clone(),
-                code_id: self.code_id.clone(),
+                code_id: self.code_id,
                 moderators: self.moderators.clone(),
             },
             false => ModuleDefinition::Blacklist {
                 address: self.address.clone(),
-                code_id: self.code_id.clone(),
+                code_id: self.code_id,
                 moderators: self.moderators.clone(),
             },
         }
     }
     fn get_contract_address(&self, storage: &dyn Storage) -> Option<String> {
-        // if self.address.is_some() {
-        //    return Some(self.address.clone().unwrap());
-        // }
-
         // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
         if let Some(address) = &self.address {
             return Some(address.clone());
@@ -238,7 +234,7 @@ mod tests {
         };
 
         let resp = valid_addresslist
-            .on_execute(&deps.as_mut(), info.clone(), env.clone())
+            .on_execute(&deps.as_mut(), info, env)
             .unwrap();
 
         assert_eq!(resp, HookResponse::default());

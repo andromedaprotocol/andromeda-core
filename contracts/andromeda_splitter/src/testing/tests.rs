@@ -25,7 +25,7 @@ fn test_instantiate() {
             percent: Uint128::from(100_u128),
         }],
     };
-    let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let expected_res = Response::new()
         .add_attributes(vec![
             attr("action", "instantiate"),

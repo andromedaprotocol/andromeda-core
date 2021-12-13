@@ -38,22 +38,22 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     require(
-        msg.clone().name.len() > 3,
+        msg.name.len() > 3,
         StdError::generic_err("Name must be between 3 and 30 characters."),
     )?;
     msg.validate()?;
     let config = TokenConfig {
-        name: msg.clone().name,
-        symbol: msg.clone().symbol,
-        minter: msg.clone().minter.to_string(),
+        name: msg.name.clone(),
+        symbol: msg.symbol.clone(),
+        minter: msg.minter.to_string(),
     };
 
     let modules = Modules::new(msg.modules);
-    let mod_res = modules.on_instantiate(&deps, info.clone(), env)?;
+    let mod_res = modules.on_instantiate(&deps, info, env)?;
 
     CONFIG.save(deps.storage, &config)?;
-    CONTRACT_OWNER.save(deps.storage, &msg.minter.clone())?;
-    store_modules(deps.storage, modules.clone())?;
+    CONTRACT_OWNER.save(deps.storage, &msg.minter)?;
+    store_modules(deps.storage, modules)?;
 
     Ok(Response::new()
         .add_submessages(mod_res.msgs)
@@ -147,7 +147,7 @@ pub fn execute_mint(
     increment_num_tokens(deps.storage)?;
 
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_mint(&deps, info.clone(), env.clone(), msg.token_id.clone())?;
+    let mod_res = modules.on_mint(&deps, info.clone(), env, msg.token_id.clone())?;
 
     Ok(Response::default()
         .add_submessages(mod_res.msgs)
@@ -351,7 +351,7 @@ fn execute_revoke_all(
     operator: String,
 ) -> StdResult<Response> {
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_revoke_all(&deps, info.clone(), env.clone(), operator.clone())?;
+    let mod_res = modules.on_revoke_all(&deps, info.clone(), env, operator.clone())?;
 
     OPERATOR.remove(deps.storage, (info.sender.to_string(), operator.clone()));
 
@@ -387,7 +387,7 @@ fn execute_transfer_agreement(
     let mut token = load_token(deps.storage, token_id.clone())?;
 
     require(
-        info.sender.to_string().eq(&token.owner.clone()),
+        info.sender.to_string().eq(&token.owner),
         StdError::generic_err("Only the token owner can create a transfer agreement"),
     )?;
     require(
@@ -432,7 +432,7 @@ fn execute_burn(
     )?;
 
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
+    let mod_res = modules.on_burn(&deps, info.clone(), env, token_id.clone())?;
 
     TOKENS.remove(deps.storage, token_id.clone());
     decrement_num_tokens(deps.storage)?;
@@ -464,7 +464,7 @@ fn execute_archive(
     )?;
 
     let modules = read_modules(deps.storage)?;
-    let mod_res = modules.on_archive(&deps, info.clone(), env.clone(), token_id.clone())?;
+    let mod_res = modules.on_archive(&deps, info.clone(), env, token_id.clone())?;
 
     token.archived = true;
     TOKENS.save(deps.storage, token_id.clone(), &Some(token))?;
@@ -535,19 +535,9 @@ fn transfer_nft(
 
     let mut res = Response::new();
 
-    // if token.transfer_agreement.is_some() {
-    //Attach any transfer agreement messages/events
-    //     res = token
-    //         .transfer_agreement
-    //         .clone()
-    //         .unwrap()
-    //         .on_transfer(&deps, info, env, owner, res)?;
-    // }
     // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
-    if let Some(transfer_agreement) = token.clone().transfer_agreement {
-        res = transfer_agreement
-            .clone()
-            .on_transfer(&deps, info, env, owner, res)?;
+    if let Some(transfer_agreement) = token.transfer_agreement.clone() {
+        res = transfer_agreement.on_transfer(&deps, info, env, owner, res)?;
     }
     TOKENS.save(deps.storage, token_id.to_string(), &Some(token))?;
     Ok(res)
@@ -627,8 +617,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_owner(deps: Deps, _env: Env, token_id: String) -> StdResult<OwnerOfResponse> {
     let token = load_token(deps.storage, token_id.to_string())?;
     Ok(OwnerOfResponse {
-        owner: token.clone().owner,
-        approvals: humanize_approvals(&token.clone()),
+        owner: token.owner.clone(),
+        approvals: humanize_approvals(&token),
     })
 }
 
@@ -648,7 +638,7 @@ fn query_all_approvals(
     let start = start_addr.map(|addr| Bound::exclusive(addr.as_ref()));
 
     let res: StdResult<Vec<_>> = OPERATOR
-        .prefix(owner.clone())
+        .prefix(owner)
         .range(deps.storage, start, None, Order::Ascending)
         .filter(|r| include_expired || r.is_err() || !r.as_ref().unwrap().1.is_expired(&env.block))
         .take(limit)
@@ -666,7 +656,7 @@ fn query_nft_info(
     deps: Deps,
     token_id: String,
 ) -> StdResult<NftInfoResponse<NftInfoResponseExtension>> {
-    let token = load_token(deps.storage, token_id.clone())?;
+    let token = load_token(deps.storage, token_id)?;
     let extension = NftInfoResponseExtension {
         metadata: token.metadata,
         archived: token.archived,
@@ -688,7 +678,7 @@ fn query_all_nft_info(
     token_id: String,
 ) -> StdResult<AllNftInfoResponse<NftInfoResponseExtension>> {
     let access = query_owner(deps, env, token_id.clone())?;
-    let info = query_nft_info(deps, token_id.clone())?;
+    let info = query_nft_info(deps, token_id)?;
 
     Ok(AllNftInfoResponse { access, info })
 }
@@ -775,7 +765,7 @@ mod tests {
                 &TokenConfig {
                     name: TOKEN_NAME.to_string(),
                     symbol: TOKEN_SYMBOL.to_string(),
-                    minter: minter,
+                    minter,
                 },
             )
             .unwrap()
@@ -795,7 +785,7 @@ mod tests {
 
         let env = mock_env();
 
-        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
     //Added a test to check blacklist
@@ -813,7 +803,7 @@ mod tests {
 
         let env = mock_env();
 
-        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap_err();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
         let err = StdError::generic_err("Minter is on blacklist. Not allowed to mint.");
         assert_eq!(err, res);
     }
@@ -844,7 +834,7 @@ mod tests {
 
         let query_msg = QueryMsg::OwnerOf { token_id };
 
-        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let query_res = query(deps.as_ref(), env, query_msg).unwrap();
         let query_val: OwnerOfResponse = from_binary(&query_res).unwrap();
 
         assert_eq!(query_val.owner, creator)
@@ -892,8 +882,7 @@ mod tests {
 
         let unauth_info = mock_info("anyone", &[]);
 
-        let unauth_res =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        let unauth_res = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
         assert_eq!(
             unauth_res,
             StdError::generic_err("Address does not have transfer rights for this token")
@@ -903,21 +892,17 @@ mod tests {
             recipient: recipient.to_string(),
             token_id: String::from("2"),
         };
-        let notfound_res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            notfound_msg.clone(),
-        )
-        .unwrap_err();
+        let notfound_res =
+            execute(deps.as_mut(), env.clone(), info.clone(), notfound_msg).unwrap_err();
 
         assert_eq!(
             notfound_res,
             StdError::not_found("core::option::Option<andromeda_protocol::token::Token>")
         );
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         assert_eq!(Response::default().add_attributes(attrs.clone()), res);
+
         let owner = load_token(deps.as_ref().storage, token_id.to_string())
             .unwrap()
             .owner;
@@ -1223,13 +1208,7 @@ mod tests {
             recipient: operator.to_string(),
             token_id: token_id.clone(),
         };
-        execute(
-            deps.as_mut(),
-            env.clone(),
-            operator_info.clone(),
-            transfer_msg,
-        )
-        .unwrap();
+        execute(deps.as_mut(), env, operator_info, transfer_msg).unwrap();
 
         let token = load_token(deps.as_ref().storage, token_id.to_string()).unwrap();
 
@@ -1281,19 +1260,13 @@ mod tests {
         let revoke_msg = ExecuteMsg::RevokeAll {
             operator: operator.to_string(),
         };
-        execute(deps.as_mut(), env.clone(), info.clone(), revoke_msg).unwrap();
+        execute(deps.as_mut(), env.clone(), info, revoke_msg).unwrap();
 
         let transfer_msg = ExecuteMsg::TransferNft {
             recipient: minter.to_string(),
-            token_id: token_id.clone(),
+            token_id,
         };
-        let err = execute(
-            deps.as_mut(),
-            env.clone(),
-            operator_info.clone(),
-            transfer_msg,
-        )
-        .unwrap_err();
+        let err = execute(deps.as_mut(), env, operator_info, transfer_msg).unwrap_err();
 
         assert_eq!(
             err,
@@ -1326,7 +1299,7 @@ mod tests {
             owner: minter.to_string(),
             description: None,
             name: "Some Token".to_string(),
-            metadata: metadata.clone(),
+            metadata,
             image: None,
             pricing: None,
         });
@@ -1349,11 +1322,11 @@ mod tests {
         let agreement_query = QueryMsg::NftInfo {
             token_id: token_id.clone(),
         };
-        let res = query(deps.as_ref(), env.clone(), agreement_query).unwrap();
+        let res = query(deps.as_ref(), env, agreement_query).unwrap();
         let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
         let agreement = token_res.extension.transfer_agreement.unwrap();
 
-        assert_eq!(agreement.purchaser, purchaser.clone());
+        assert_eq!(agreement.purchaser, purchaser);
         assert_eq!(agreement.amount, coin(amount.u128(), denom))
     }
 
@@ -1392,13 +1365,13 @@ mod tests {
             StdError::generic_err("Cannot burn a token you do not own")
         );
 
-        execute(deps.as_mut(), env.clone(), info.clone(), burn_msg.clone()).unwrap();
+        execute(deps.as_mut(), env.clone(), info, burn_msg).unwrap();
 
         let query_msg = QueryMsg::OwnerOf {
             token_id: token_id.to_string(),
         };
 
-        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap_err();
+        let query_res = query(deps.as_ref(), env, query_msg).unwrap_err();
 
         assert_eq!(
             query_res,
@@ -1450,13 +1423,7 @@ mod tests {
         )
         .unwrap();
 
-        let archived_resp = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            archive_msg.clone(),
-        )
-        .unwrap_err();
+        let archived_resp = execute(deps.as_mut(), env.clone(), info, archive_msg).unwrap_err();
         assert_eq!(
             archived_resp,
             StdError::generic_err("This token is archived and cannot be changed in any way.")
@@ -1507,7 +1474,7 @@ mod tests {
             StdError::generic_err("Cannot update pricing for a token you do not own")
         );
 
-        let resp = execute(deps.as_mut(), env.clone(), info.clone(), update_msg.clone()).unwrap();
+        let resp = execute(deps.as_mut(), env.clone(), info.clone(), update_msg).unwrap();
         let expected = Response::default().add_attributes(vec![
             attr("action", "update_pricing"),
             attr("token_id", token_id),
@@ -1518,7 +1485,7 @@ mod tests {
         let token_query = QueryMsg::NftInfo {
             token_id: token_id.to_string(),
         };
-        let res = query(deps.as_ref(), env.clone(), token_query).unwrap();
+        let res = query(deps.as_ref(), env, token_query).unwrap();
         let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
         assert_eq!(token_res.extension.pricing.unwrap(), pricing)
     }

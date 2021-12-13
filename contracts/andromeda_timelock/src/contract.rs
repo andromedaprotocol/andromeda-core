@@ -61,10 +61,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     let state = STATE.load(deps.storage)?;
 
-    // if state.address_list.is_some() {
-    //     let addr_list = state.address_list.unwrap();
-    //     addr_list.on_execute(&deps, info.clone(), env.clone())?;
-    // }
     // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
     if let Some(address_list) = state.address_list {
         let addr_list = address_list;
@@ -96,7 +92,7 @@ fn execute_hold_funds(
     deps.api.addr_validate(&rec)?;
 
     let escrow = Escrow {
-        coins: info.funds.clone(),
+        coins: info.funds,
         expiration,
         recipient: rec,
     };
@@ -111,7 +107,7 @@ fn execute_hold_funds(
     Ok(Response::default().add_attributes(vec![
         attr("action", "hold_funds"),
         attr("sender", info.sender.to_string()),
-        attr("recipient", escrow.recipient.clone()),
+        attr("recipient", escrow.recipient),
         attr("expiration", expiration_string),
     ]))
 }
@@ -142,14 +138,14 @@ fn execute_release_funds(deps: DepsMut, env: Env, info: MessageInfo) -> StdResul
     }
 
     let bank_msg = BankMsg::Send {
-        to_address: funds.clone().recipient,
-        amount: funds.clone().coins,
+        to_address: funds.recipient.clone(),
+        amount: funds.coins,
     };
 
     release_funds(deps.storage, info.sender.to_string())?;
     Ok(Response::new().add_message(bank_msg).add_attributes(vec![
         attr("action", "release_funds"),
-        attr("recipient", funds.clone().recipient.clone()),
+        attr("recipient", funds.recipient),
     ]))
 }
 
@@ -189,7 +185,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_held_funds(deps: Deps, address: String) -> StdResult<GetLockedFundsResponse> {
-    let hold_funds = get_funds(deps.storage, address.clone())?;
+    let hold_funds = get_funds(deps.storage, address)?;
     Ok(GetLockedFundsResponse { funds: hold_funds })
 }
 
@@ -227,7 +223,7 @@ mod tests {
         let owner = "owner";
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg { address_list: None };
-        let res = instantiate(deps.as_mut(), env, info.clone(), msg.clone()).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
 
         assert_eq!(0, res.messages.len());
 
@@ -253,11 +249,11 @@ mod tests {
 
         //add address for registered moderator
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let expected = Response::default().add_attributes(vec![
             attr("action", "hold_funds"),
             attr("sender", info.sender.to_string()),
-            attr("recipient", info.sender.clone()),
+            attr("recipient", info.sender),
             attr("expiration", expiration.to_string()),
         ]);
         assert_eq!(expected, res);
@@ -266,11 +262,11 @@ mod tests {
             address: owner.to_string(),
         };
 
-        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let res = query(deps.as_ref(), env, query_msg).unwrap();
         let val: GetLockedFundsResponse = from_binary(&res).unwrap();
         let expected = Escrow {
-            coins: funds.clone(),
-            expiration: Some(expiration.clone()),
+            coins: funds,
+            expiration: Some(expiration),
             recipient: owner.to_string(),
         };
 
@@ -327,7 +323,7 @@ mod tests {
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         let bank_msg = BankMsg::Send {
             to_address: owner.to_string(),
-            amount: funds.clone(),
+            amount: funds,
         };
 
         let expected = Response::default()
@@ -347,7 +343,7 @@ mod tests {
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
         let msg = ExecuteMsg::ReleaseFunds {};
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
         let expected = StdError::generic_err("Your funds are still locked");
 
@@ -378,18 +374,16 @@ mod tests {
         };
 
         let unauth_info = mock_info("anyone", &[]);
-        let err_res =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        let err_res = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
         assert_eq!(
             err_res,
             StdError::generic_err("May only be used by the contract owner")
         );
 
-        let info = mock_info(owner.clone(), &[]);
-        let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let info = mock_info(owner, &[]);
+        let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let mod_resp = address_list
-            .clone()
-            .on_instantiate(&deps.as_mut(), info.clone(), env.clone())
+            .on_instantiate(&deps.as_mut(), info, env)
             .unwrap();
         let expected = Response::default()
             .add_submessages(mod_resp.msgs)

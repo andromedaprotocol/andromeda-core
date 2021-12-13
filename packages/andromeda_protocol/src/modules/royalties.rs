@@ -44,7 +44,7 @@ impl MessageHooks for Royalty {
             event = event.add_attribute(
                 ATTR_PAYMENT,
                 PaymentAttribute {
-                    receiver: receiver.clone(),
+                    receiver,
                     amount: fee_payment.clone(),
                 }
                 .to_string(),

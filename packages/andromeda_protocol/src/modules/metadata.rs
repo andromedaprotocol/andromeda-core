@@ -24,8 +24,8 @@ impl Module for MetadataStorage {
     }
     fn as_definition(&self) -> ModuleDefinition {
         ModuleDefinition::MetadataStorage {
-            size_limit: self.size_limit.clone(),
-            description: self.description.clone(),
+            size_limit: self.size_limit,
+            description: self.description,
         }
     }
 }

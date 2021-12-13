@@ -78,7 +78,7 @@ pub fn add_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) {
 
 pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> StdResult<bool> {
     let payment = payments.iter_mut().find(|m| match m {
-        BankMsg::Send { to_address, .. } => to_address.clone().eq(&to),
+        BankMsg::Send { to_address, .. } => to_address.eq(&to),
         _ => false,
     });
 

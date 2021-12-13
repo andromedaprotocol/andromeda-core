@@ -23,7 +23,7 @@ pub fn instantiate(
     let state = State {
         owner: info.sender.to_string(),
         address_list: AddressList {
-            moderators: msg.moderators.clone(),
+            moderators: msg.moderators,
         },
     };
 
@@ -121,7 +121,7 @@ mod tests {
         let msg = InstantiateMsg {
             moderators: vec!["11".to_string(), "22".to_string()],
         };
-        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
 
@@ -152,7 +152,7 @@ mod tests {
 
         //add address for registered moderator
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
         let expected = Response::default().add_attributes(vec![
             attr("action", "add_address"),
             attr("address", address),
@@ -179,8 +179,7 @@ mod tests {
 
         //add address for unregistered moderator
         let unauth_info = mock_info("anyone", &[]);
-        let res =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        let res = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
         assert_eq!(
             StdError::generic_err("Only a moderator can add an address to the address list"),
             res
@@ -213,7 +212,7 @@ mod tests {
         };
 
         //add address for registered moderator
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
         let expected = Response::default().add_attributes(vec![
             attr("action", "remove_address"),
             attr("address", address.to_string()),
@@ -227,8 +226,7 @@ mod tests {
 
         //add address for unregistered moderator
         let unauth_info = mock_info("anyone", &[]);
-        let res =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        let res = execute(deps.as_mut(), env, unauth_info.clone(), msg).unwrap_err();
         assert_eq!(
             StdError::generic_err("Only a moderator can remove an address from the address list"),
             res
