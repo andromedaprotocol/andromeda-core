@@ -225,8 +225,8 @@ fn test_token_modules() {
 #[test]
 fn test_increment_num_tokens() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
-    let env = mock_env();
+    let _info = mock_info("creator", &[]);
+    let _env = mock_env();
     let res = increment_num_tokens(deps.as_mut().storage).unwrap();
     assert_eq!(res, ());
 }
@@ -235,8 +235,8 @@ fn test_increment_num_tokens() {
 #[should_panic]
 fn test_increment_num_tokens_error() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
-    let env = mock_env();
+    let _info = mock_info("creator", &[]);
+    let _env = mock_env();
     NUM_TOKENS.save(deps.as_mut().storage, &u64::MAX).unwrap();
     let _res = increment_num_tokens(deps.as_mut().storage);
 }
