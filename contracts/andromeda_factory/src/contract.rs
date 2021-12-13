@@ -106,7 +106,7 @@ pub fn create(
             } => ModuleDefinition::Whitelist {
                 address: address.clone(),
                 moderators: moderators.clone(),
-                code_id: Some(config.address_list_code_id.clone()),
+                code_id: Some(config.address_list_code_id),
             },
             ModuleDefinition::Blacklist {
                 address,
@@ -115,7 +115,7 @@ pub fn create(
             } => ModuleDefinition::Blacklist {
                 address: address.clone(),
                 moderators: moderators.clone(),
-                code_id: Some(config.address_list_code_id.clone()),
+                code_id: Some(config.address_list_code_id),
             },
             ModuleDefinition::Receipt {
                 address,
@@ -124,7 +124,7 @@ pub fn create(
             } => ModuleDefinition::Receipt {
                 address: address.clone(),
                 moderators: moderators.clone(),
-                code_id: Some(config.receipt_code_id.clone()),
+                code_id: Some(config.receipt_code_id),
             },
             _ => m.clone(),
         })
