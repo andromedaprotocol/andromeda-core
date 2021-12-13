@@ -37,7 +37,7 @@ impl MessageHooks for Royalty {
         }
 
         for receiver in self.receivers.to_vec() {
-            // Deducts the required payment since it should be paid by token owner. [ROY-01]
+            // Deducts the required payment since it should be paid by token owner. [ROY-01]/[TAX-02]
             deduct_payment(payments, owner.clone(), fee_payment.clone())?;
             event = event.add_attribute(ATTR_DEDUCTED, fee_payment.to_string());
             add_payment(payments, receiver.clone(), fee_payment.clone());
@@ -130,6 +130,7 @@ mod tests {
             amount: vec![fee_amount.clone()],
         };
         assert_eq!(payments[2], receiver_two_payment);
+        //Check that the royalty payments are deducted from the seller
         let deducted_payment = BankMsg::Send {
             to_address: owner.to_string(),
             amount: vec![coin(96, "uluna")],

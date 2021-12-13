@@ -35,7 +35,10 @@ impl Module for Taxable {
             Rate::Percent(rate) => {
                 require(rate > 0, StdError::generic_err("Tax must be non-zero"))?;
                 // Added rate checker to Taxable also [COM-03] and [TAX-01]
-                require(rate <=100, StdError::generic_err("Rate must be less than 100%"))?;
+                require(
+                    rate <= 100,
+                    StdError::generic_err("Rate must be less than 100%"),
+                )?;
             }
         }
 
@@ -80,7 +83,7 @@ impl MessageHooks for Taxable {
             }
             None => {}
         }
-        // No deduction of payment because the buyer pays the tax while royalties are paid by seller [ROY-01]
+        // No deduction of payment because the buyer pays the tax while royalties are paid by seller [ROY-01]/[TAX-02]
         for receiver in self.receivers.to_vec() {
             add_payment(payments, receiver.clone(), tax_amount.clone());
             event = event.add_attribute(
