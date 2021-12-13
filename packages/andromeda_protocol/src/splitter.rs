@@ -9,7 +9,7 @@ pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> StdResult<boo
         StdError::generic_err("The recipients list must include at least one recipient"),
     )?;
 
-    let mut percent_sum: Uint128 = Uint128::from(0 as u128);
+    let mut percent_sum: Uint128 = Uint128::from(0_u128);
     for rec in recipients {
         percent_sum += rec.percent;
     }
@@ -94,7 +94,7 @@ mod tests {
 
         let inadequate_recipients = vec![AddressPercent {
             addr: String::from("some address"),
-            percent: Uint128::from(150 as u128),
+            percent: Uint128::from(150_u128),
         }];
         let res = validate_recipient_list(inadequate_recipients).unwrap_err();
         assert_eq!(
@@ -105,11 +105,11 @@ mod tests {
         let valid_recipients = vec![
             AddressPercent {
                 addr: String::from("some address"),
-                percent: Uint128::from(50 as u128),
+                percent: Uint128::from(50_u128),
             },
             AddressPercent {
                 addr: String::from("some address"),
-                percent: Uint128::from(50 as u128),
+                percent: Uint128::from(50_u128),
             },
         ];
 

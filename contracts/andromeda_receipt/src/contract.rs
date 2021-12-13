@@ -212,7 +212,7 @@ mod tests {
             events: vec![Event::new("new")],
         };
         let msg = ExecuteMsg::EditReceipt {
-            receipt_id: Uint128::from(1 as u128),
+            receipt_id: Uint128::from(1_u128),
             receipt: new_receipt.clone(),
         };
 
@@ -235,7 +235,7 @@ mod tests {
         assert_eq!(res, expected);
 
         let query_msg = QueryMsg::Receipt {
-            receipt_id: Uint128::from(1 as u128),
+            receipt_id: Uint128::from(1_u128),
         };
         let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let val: ReceiptResponse = from_binary(&res).unwrap();

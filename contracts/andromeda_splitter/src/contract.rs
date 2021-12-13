@@ -56,11 +56,11 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
     //     let addr_list = splitter.address_list.unwrap();
     //     addr_list.on_execute(&deps, info.clone(), env.clone())?;
     // }
-// [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
     if let Some(splitter) = splitter.address_list {
         let addr_list = splitter;
         addr_list.on_execute(&deps, info.clone(), env.clone())?;
-    } 
+    }
 
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => {
@@ -95,10 +95,10 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     let mut submsg: Vec<SubMsg> = Vec::new();
 
     let mut remainder_funds = info.funds.clone();
-    // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS. 
-    // Would like to understand more about why we loop through funds and what it exactly stored in it. 
-    // From there we could look into HashMaps, or other methods to break the nested loops and avoid Denial of Service.  
-    // [ACK-04] Limit number of coins sent to 5. 
+    // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS.
+    // Would like to understand more about why we loop through funds and what it exactly stored in it.
+    // From there we could look into HashMaps, or other methods to break the nested loops and avoid Denial of Service.
+    // [ACK-04] Limit number of coins sent to 5.
     require(
         info.funds.len() < 5,
         StdError::generic_err("Exceeds max amount of coins allowed."),
@@ -121,12 +121,12 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
         .into_iter()
         .filter(|x| x.amount > Uint128::from(0u128))
         .collect();
-    // Who is the sender of this function? 
+    // Who is the sender of this function?
     // Why does the remaining funds go the the sender of the executor of the splitter?
-    // Is it considered tax(fee) or mistake? 
+    // Is it considered tax(fee) or mistake?
     // Discussion around caller of splitter function in andromeda_splitter smart contract.
-    // From tests, it looks like owner of smart contract (Andromeda) will recieve the rest of funds. 
-    // If so, should be documented 
+    // From tests, it looks like owner of smart contract (Andromeda) will recieve the rest of funds.
+    // If so, should be documented
     if remainder_funds.len() > 0 {
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
@@ -244,7 +244,7 @@ mod tests {
             address_list: None,
             recipients: vec![AddressPercent {
                 addr: String::from("Some Address"),
-                percent: Uint128::from(100 as u128),
+                percent: Uint128::from(100_u128),
             }],
         };
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -361,11 +361,11 @@ mod tests {
         let recipient = vec![
             AddressPercent {
                 addr: "address1".to_string(),
-                percent: Uint128::from(40 as u128),
+                percent: Uint128::from(40_u128),
             },
             AddressPercent {
                 addr: "address1".to_string(),
-                percent: Uint128::from(60 as u128),
+                percent: Uint128::from(60_u128),
             },
         ];
         let msg = ExecuteMsg::UpdateRecipients {
@@ -414,7 +414,7 @@ mod tests {
         let owner = "creator";
         let info = mock_info(
             owner.clone(),
-            &vec![Coin::new(sender_funds_amount, "uluna") ],
+            &vec![Coin::new(sender_funds_amount, "uluna")],
         );
 
         let recip_address1 = "address1".to_string();
@@ -522,7 +522,14 @@ mod tests {
         let owner = "creator";
         let info = mock_info(
             owner.clone(),
-            &vec![Coin::new(sender_funds_amount, "uluna"), Coin::new(sender_funds_amount, "uluna"), Coin::new(sender_funds_amount, "uluna"), Coin::new(sender_funds_amount, "uluna"), Coin::new(sender_funds_amount, "uluna"),Coin::new(sender_funds_amount, "uluna") ],
+            &vec![
+                Coin::new(sender_funds_amount, "uluna"),
+                Coin::new(sender_funds_amount, "uluna"),
+                Coin::new(sender_funds_amount, "uluna"),
+                Coin::new(sender_funds_amount, "uluna"),
+                Coin::new(sender_funds_amount, "uluna"),
+                Coin::new(sender_funds_amount, "uluna"),
+            ],
         );
 
         let recip_address1 = "address1".to_string();
@@ -572,6 +579,3 @@ mod tests {
         assert_eq!(res, expected_res);
     }
 }
-    
-        
-    

@@ -114,7 +114,7 @@ impl TransferAgreement {
             Rate::Flat(flat_rate) => {
                 amount.multiply_ratio(flat_rate.amount, flat_rate.denom.parse::<u128>().unwrap())
             }
-            Rate::Percent(fee) => amount.multiply_ratio(fee, 100 as u128),
+            Rate::Percent(fee) => amount.multiply_ratio(fee, 100_u128),
         };
 
         coin(fee_amount.u128(), self.amount.denom.clone())

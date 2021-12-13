@@ -15,10 +15,11 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
             require(
                 // No need for rate >=0 due to type limits (Question: Should add or remove?)
                 rate <= 100,
-                 StdError::generic_err("Rate must be between 0 and 100%")
-                ).unwrap();
-            let mut fee_amount = payment.amount.multiply_ratio(rate, 100 as u128).u128();
-            
+                StdError::generic_err("Rate must be between 0 and 100%"),
+            )
+            .unwrap();
+            let mut fee_amount = payment.amount.multiply_ratio(rate, 100_u128).u128();
+
             //Always round any remainder up and prioritise the fee receiver
             let reversed_fee = (fee_amount * 100) / Uint128::from(rate).u128();
             if payment.amount.u128() > reversed_fee {
@@ -26,7 +27,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
                 let res = fee_amount.checked_add(1);
                 let _res = match res {
                     None => panic!("Problem adding: Overflow in addition"),
-                    _ => {fee_amount = res.unwrap()}
+                    _ => fee_amount = res.unwrap(),
                 };
             }
 
@@ -34,7 +35,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
         }
     }
 }
-// [COM-02] Changed parameter all_modules type from Vec to a reference of a slice. 
+// [COM-02] Changed parameter all_modules type from Vec to a reference of a slice.
 pub fn is_unique<M: Module>(module: &M, all_modules: &[ModuleDefinition]) -> bool {
     let definition = module.as_definition();
     let mut total = 0;
@@ -226,7 +227,7 @@ mod tests {
         let payment = coin(125, "uluna");
         let expected = coin(5, "uluna");
         let fee = Rate::Flat(FlatRate {
-            amount: Uint128::from(5 as u128),
+            amount: Uint128::from(5_u128),
             denom: "uluna".to_string(),
         });
 
