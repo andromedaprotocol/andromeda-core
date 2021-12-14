@@ -1,7 +1,7 @@
 use andromeda_protocol::{
     address_list::{AddressList, ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
-    require::require,
+    require,
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,

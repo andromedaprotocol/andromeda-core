@@ -14,21 +14,27 @@ use crate::{
         hooks::{HookResponse, MessageHooks},
         {Module, ModuleDefinition},
     },
-    require::require,
+    require,
 };
 
 pub const ADDRESS_LIST_CONTRACT: Item<String> = Item::new("addresslistcontract");
 pub const REPLY_ADDRESS_LIST: u64 = 2;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+/// A struct used to define the Address List module. Can be defined by providing either a contract address or the combination of a code ID and a vector of moderators.
 pub struct AddressListModule {
+    /// The address of the module contract
     pub address: Option<String>,
+    /// The code ID for the module contract
     pub code_id: Option<u64>,
+    /// An optional vector of addresses to assign as moderators
     pub moderators: Option<Vec<String>>,
+    /// Whether the address list is inclusive, true = whitelist, false = blacklist
     pub inclusive: bool,
 }
 
 impl AddressListModule {
+    /// Helper function to query the address list contract to determine if the provided address is authorized
     pub fn is_authorized(self, deps: &DepsMut, address: String) -> StdResult<bool> {
         let contract_addr = self.get_contract_address(deps.storage);
         require(
@@ -48,6 +54,11 @@ impl AddressListModule {
 }
 
 impl Module for AddressListModule {
+    /// Checks the validity of an address list module:
+    ///
+    /// * Must be unique
+    /// * Cannot be included alongside an address list of the opposite type (no mixing whitelist/blacklist)
+    /// * Must include either a contract address or a combination of a valid code id and an optional vector of moderating addresses
     fn validate(&self, all_modules: Vec<ModuleDefinition>) -> StdResult<bool> {
         require(
             is_unique(self, &all_modules),
@@ -100,6 +111,7 @@ impl Module for AddressListModule {
 }
 
 impl MessageHooks for AddressListModule {
+    /// Generates an instantiation message for the module contract
     fn on_instantiate(
         &self,
         _deps: &DepsMut,
@@ -130,6 +142,7 @@ impl MessageHooks for AddressListModule {
 
         Ok(res)
     }
+    /// On any execute message, validates that the sender is authorized by the address list
     fn on_execute(&self, deps: &DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
         self.clone().is_authorized(deps, info.sender.to_string())?;
 
@@ -137,6 +150,7 @@ impl MessageHooks for AddressListModule {
     }
 }
 
+/// Used to stored the contract address once the contract is instantiated
 pub fn on_address_list_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
     let contract_addr = get_reply_address(msg)?;
 

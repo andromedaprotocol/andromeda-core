@@ -15,19 +15,25 @@ use crate::{
         read_modules, {Module, ModuleDefinition},
     },
     receipt::{ExecuteMsg, InstantiateMsg},
-    require::require,
+    require,
 };
 pub const RECEIPT_CONTRACT: Item<String> = Item::new("receiptcontract");
 pub const REPLY_RECEIPT: u64 = 1;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+/// A struct used to define the Receipt module. Can be defined by providing either a contract address or the combination of a code ID and a vector of moderators.
 pub struct ReceiptModule {
+    /// The address of the module contract
     pub address: Option<String>,
+    /// The code ID for the module contract
     pub code_id: Option<u64>,
+    /// An optional vector of addresses to assign as moderators
     pub moderators: Option<Vec<String>>,
 }
 
 impl ReceiptModule {
+    /// Creates a `CosmosMsg::Wasm` message to mint a receipt on the module contract
+    /// Errors if the receipt module does not have an assigned contract address.
     pub fn generate_receipt_message(
         self,
         storage: &dyn Storage,
@@ -51,6 +57,9 @@ impl ReceiptModule {
 }
 
 impl Module for ReceiptModule {
+    /// Validates the receipt module:
+    /// * Must be unique
+    /// * Must include either a contract address or a combination of a valid code id and an optional vector of moderating addresses
     fn validate(&self, all_modules: Vec<ModuleDefinition>) -> StdResult<bool> {
         require(
             is_unique(self, &all_modules),
@@ -82,6 +91,7 @@ impl Module for ReceiptModule {
 }
 
 impl MessageHooks for ReceiptModule {
+    /// Creates a `SubMsg` with which to instantiate the receipt module contract
     fn on_instantiate(
         &self,
         _deps: &DepsMut,
@@ -123,6 +133,7 @@ pub fn on_receipt_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
     Ok(Response::new())
 }
 
+/// Searches the stored vector of Modules within the current contract for a receipt module
 pub fn get_receipt_module(storage: &dyn Storage) -> StdResult<Option<ReceiptModule>> {
     let modules = read_modules(storage)?;
     let receipt_def = modules.module_defs.iter().find(|m| match m {

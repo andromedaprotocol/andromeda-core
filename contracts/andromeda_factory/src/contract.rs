@@ -2,7 +2,7 @@ use andromeda_protocol::{
     factory::{AddressResponse, CodeIdsResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     modules::ModuleDefinition,
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require::require,
+    require,
     token::InstantiateMsg as TokenInstantiateMsg,
 };
 use cosmwasm_std::{

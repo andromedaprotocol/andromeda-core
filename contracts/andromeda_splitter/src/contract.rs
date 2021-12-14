@@ -1,13 +1,13 @@
 use crate::state::SPLITTER;
 use andromeda_protocol::{
-    common::generate_instantiate_msgs,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
+        generate_instantiate_msgs,
         hooks::{HookResponse, MessageHooks},
         Module,
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require::require,
+    require,
     splitter::GetSplitterConfigResponse,
     splitter::{
         validate_recipient_list, AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg, Splitter,

@@ -3,16 +3,20 @@ use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::require::require;
+use crate::require;
 
 pub const CONTRACT_OWNER: Item<String> = Item::new("contractowner");
 
+/// Helper function to query if a given address is the current contract owner.
+///
+/// Returns a boolean value indicating if the given address is the contract owner.
 pub fn is_contract_owner(storage: &dyn Storage, addr: String) -> StdResult<bool> {
     let owner = CONTRACT_OWNER.load(storage)?;
 
     Ok(addr.eq(&owner))
 }
 
+/// Updates the current contract owner. **Only executable by the current contract owner.**
 pub fn execute_update_owner(
     deps: DepsMut,
     info: MessageInfo,

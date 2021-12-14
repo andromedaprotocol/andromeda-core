@@ -4,18 +4,27 @@ use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{modules::address_list::AddressListModule, require::require};
+use crate::{modules::address_list::AddressListModule, require};
 
 pub const HELD_FUNDS: Map<String, Escrow> = Map::new("funds");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+/// Struct used to define funds being held in Escrow
 pub struct Escrow {
+    /// Funds being held within the Escrow
     pub coins: Vec<Coin>,
+    /// Optional expiration for the Escrow
     pub expiration: Option<Expiration>,
+    /// The recipient of the funds once Expiration is reached
     pub recipient: String,
 }
 
 impl Escrow {
+    /// Used to check the validity of an Escrow before it is stored.
+    ///
+    /// * Escrowed funds cannot be empty
+    /// * The Escrow recipient must be a valid address
+    /// * Expiration cannot be "Never" or before current time/block
     pub fn validate(self, api: &dyn Api, block: &BlockInfo) -> StdResult<bool> {
         require(
             self.coins.len() > 0,
@@ -49,21 +58,27 @@ impl Escrow {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
+    /// An optional address list module to restrict usage of the contract
     pub address_list: Option<AddressListModule>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    /// Hold funds in Escrow
     HoldFunds {
         expiration: Option<Expiration>,
         recipient: Option<String>,
     },
+    /// Update the optional address list module
     UpdateAddressList {
         address_list: Option<AddressListModule>,
     },
+    /// Release funds held in Escrow
     ReleaseFunds {},
+    /// Update ownership of the contract. Only executable by the current contract owner.
     UpdateOwner {
+        /// The address of the new contract owner.
         address: String,
     },
 }
@@ -71,8 +86,11 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    /// Queries funds held by an address
     GetLockedFunds { address: String },
+    /// The current config of the contract
     GetTimelockConfig {},
+    /// The current owner of the contract
     ContractOwner {},
 }
 
@@ -89,6 +107,7 @@ pub struct GetTimelockConfigResponse {
     pub address_list_contract: Option<String>,
 }
 
+/// Stores an Escrow struct for a given address. Used to store funds from an address.
 pub fn hold_funds(funds: Escrow, storage: &mut dyn Storage, addr: String) -> StdResult<()> {
     require(
         // Makes sure that HELD_FUNDS is empty before allowing writing into HELD_FUNDS.
@@ -99,6 +118,7 @@ pub fn hold_funds(funds: Escrow, storage: &mut dyn Storage, addr: String) -> Std
     HELD_FUNDS.save(storage, addr, &funds)
 }
 
+/// Removes the stored Escrow struct for a given address.
 pub fn release_funds(storage: &mut dyn Storage, addr: String) -> StdResult<()> {
     require(
         // Makes sure that HELD_FUNDS is NOT empty before allowing removing into HELD_FUNDS.
@@ -110,6 +130,7 @@ pub fn release_funds(storage: &mut dyn Storage, addr: String) -> StdResult<()> {
     Ok(())
 }
 
+/// Retrieves the stored Escrow struct for a given address
 pub fn get_funds(storage: &dyn Storage, addr: String) -> StdResult<Option<Escrow>> {
     HELD_FUNDS.may_load(storage, addr)
 }

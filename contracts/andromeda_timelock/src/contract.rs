@@ -7,14 +7,14 @@ use cw721::Expiration;
 
 use crate::state::{State, STATE};
 use andromeda_protocol::{
-    common::generate_instantiate_msgs,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
+        generate_instantiate_msgs,
         hooks::HookResponse,
     },
     modules::{hooks::MessageHooks, Module},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require::require,
+    require,
     timelock::{
         get_funds, hold_funds, release_funds, Escrow, ExecuteMsg, GetLockedFundsResponse,
         GetTimelockConfigResponse, InstantiateMsg, QueryMsg,

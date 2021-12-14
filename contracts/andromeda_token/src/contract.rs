@@ -6,7 +6,7 @@ use andromeda_protocol::{
         store_modules, Modules,
     },
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
-    require::require,
+    require,
     token::{
         Approval, ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, ModuleContract,
         ModuleInfoResponse, NftInfoResponseExtension, QueryMsg, Token, TransferAgreement,

@@ -7,7 +7,7 @@ use andromeda_protocol::{
         Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
         ReceiptResponse,
     },
-    require::require,
+    require,
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,

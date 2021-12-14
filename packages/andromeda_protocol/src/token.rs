@@ -1,16 +1,16 @@
 use crate::modules::{
     common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
 };
-use crate::require::require;
+use crate::require;
 use cosmwasm_std::{
-    attr, coin, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
+    attr, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
     StdError, StdResult, Uint128,
 };
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-//Duplicate Approval struct from CW721-base contract: https://github.com/CosmWasm/cosmwasm-plus/blob/main/contracts/cw721-base/src/state.rs
+// Duplicate Approval struct from CW721-base contract: https://github.com/CosmWasm/cosmwasm-plus/blob/main/contracts/cw721-base/src/state.rs
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Approval {
     /// Account that can transfer/send the token
@@ -27,6 +27,7 @@ impl Approval {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
+/// Enum used to define the type of metadata held by a token
 pub enum MetadataType {
     Image,
     Video,
@@ -51,40 +52,54 @@ impl ToString for MetadataType {
 // [TOK-02] Add approval function should have been here but maybe was removed or altered in alter commits.
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct MetadataAttribute {
+    /// The key for the attribute
     pub key: String,
+    /// The value for the attribute
     pub value: String,
-    //The string used to display the attribute, if none is provided the `key` field can be used
+    /// The string used to display the attribute, if none is provided the `key` field can be used
     pub display_label: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct TokenMetadata {
+    /// The metadata type
     pub data_type: MetadataType,
-    //A URL to the token's source
+    /// A URL to the token's source
     pub external_url: Option<String>,
-    //A URL to any off-chain data relating to the token, the response from this URL should match the defined `data_type` of the token
+    /// A URL to any off-chain data relating to the token, the response from this URL should match the defined `data_type` of the token
     pub data_url: Option<String>,
-    //On chain attributes related to the token (basic key/value)
+    /// On chain attributes related to the token (basic key/value)
     pub attributes: Option<Vec<MetadataAttribute>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Token {
+    /// The ID of the token (unique)
     pub token_id: String,
+    /// The owner of the token
     pub owner: String,
+    /// The name of the token
     pub name: String,
+    /// The original publisher of the token (immutable)
     pub publisher: String,
+    /// An optional description of the token
     pub description: Option<String>,
+    /// Any assigned approvals for the token
     pub approvals: Vec<Approval>,
+    /// The transfer agreement of the token (if it exists)
     pub transfer_agreement: Option<TransferAgreement>,
+    /// The metadata of the token (if it exists)
     pub metadata: Option<TokenMetadata>,
+    /// Whether the token is archived or not
     pub archived: bool,
+    /// An image URI for the token
     pub image: Option<String>,
-    //The current price listing for the token
+    /// The current price listing for the token
     pub pricing: Option<Coin>,
 }
 
 impl Token {
+    /// Removes address approval for the token for a given address
     pub fn filter_approval(&mut self, spender: &Addr) {
         self.approvals = self
             .approvals
@@ -96,44 +111,37 @@ impl Token {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+/// A struct used to represent an agreed transfer of a token. The `purchaser` may use the `Transfer` message for this token as long as funds are provided equalling the `amount` defined in the agreement.
 pub struct TransferAgreement {
+    /// The amount required for the purchaser to transfer ownership of the token
     pub amount: Coin,
+    /// The address of the purchaser
     pub purchaser: String,
 }
 
 impl TransferAgreement {
+    /// Generates a `BankMsg` for the amount defined in the transfer agreement to the provided address
     pub fn generate_payment(&self, to_address: String) -> BankMsg {
         BankMsg::Send {
             to_address,
             amount: vec![self.amount.clone()],
         }
     }
-    pub fn calculate_fee(&self, fee: Rate) -> Coin {
-        let amount = self.amount.amount;
-        let fee_amount = match fee {
-            Rate::Flat(flat_rate) => {
-                amount.multiply_ratio(flat_rate.amount, flat_rate.denom.parse::<u128>().unwrap())
-            }
-            Rate::Percent(fee) => amount.multiply_ratio(fee, 100_u128),
-        };
-
-        coin(fee_amount.u128(), self.amount.denom.clone())
-    }
+    /// Generates a `BankMsg` for a given `Rate` to a given address
     pub fn generate_fee_payment(&self, to_address: String, rate: Rate) -> BankMsg {
         BankMsg::Send {
             to_address,
             amount: vec![calculate_fee(rate, self.amount.clone())],
         }
     }
+    /// Generates an event related to the agreed transfer of a token
     pub fn generate_event(self) -> Event {
         Event::new("agreed_transfer").add_attributes(vec![
             attr("amount", self.amount.to_string()),
             attr("purchaser", self.purchaser),
         ])
     }
-    /*
-        Adds generated module events and messages to the response object
-    */
+    /// Generates payment messages for any fees required by the current contracts Modules. Generates a receipt for the agreed transfer if the current contract contains a `Receipt` module.
     pub fn on_transfer(
         self,
         deps: &DepsMut,
@@ -236,23 +244,30 @@ impl InstantiateMsg {
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MintMsg {
+    /// The ID of the token
     pub token_id: String,
+    /// The owner of the token
     pub owner: String,
+    /// The name of the token
     pub name: String,
+    /// The image URI of the token
     pub image: Option<String>,
+    /// An optional description of the token
     pub description: Option<String>,
+    /// Any metadata related to the token
     pub metadata: Option<TokenMetadata>,
+    /// The listing price of the token
     pub pricing: Option<Coin>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    /// Mints a token
     Mint(MintMsg),
-    TransferNft {
-        recipient: String,
-        token_id: String,
-    },
+    /// Transfers ownership of a token
+    TransferNft { recipient: String, token_id: String },
+    /// Sends a token to another contract
     SendNft {
         contract: String,
         token_id: String,
@@ -266,35 +281,33 @@ pub enum ExecuteMsg {
         expires: Option<Expiration>,
     },
     /// Remove previously granted Approval
-    Revoke {
-        spender: String,
-        token_id: String,
-    },
+    Revoke { spender: String, token_id: String },
+    /// Approves an address for all tokens owned by the sender
     ApproveAll {
         operator: String,
         expires: Option<Expiration>,
     },
     /// Remove previously granted ApproveAll permission
-    RevokeAll {
-        operator: String,
-    },
-    Burn {
-        token_id: String,
-    },
-    Archive {
-        token_id: String,
-    },
+    RevokeAll { operator: String },
+    /// Burns a token, removing all data related to it. The ID of the token is still reserved.
+    Burn { token_id: String },
+    /// Archives a token, causing it to be immutable but readable
+    Archive { token_id: String },
+    /// Assigns a `TransferAgreement` for a token
     TransferAgreement {
         token_id: String,
         denom: String,
         amount: Uint128,
         purchaser: String,
     },
+    /// Updates the pricing of a token
     UpdatePricing {
         token_id: String,
         price: Option<Coin>,
     },
+    /// Update ownership of the contract. Only executable by the current contract owner.
     UpdateOwner {
+        /// The address of the new contract owner.
         address: String,
     },
 }
@@ -302,24 +315,26 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    OwnerOf {
-        token_id: String,
-    },
+    /// Owner of the given token by ID
+    OwnerOf { token_id: String },
+    /// Approvals for a given address (paginated)
     ApprovedForAll {
         owner: String,
         include_expired: Option<bool>,
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Amount of tokens minted by the contract
     NumTokens {},
-    NftInfo {
-        token_id: String,
-    },
-    AllNftInfo {
-        token_id: String,
-    },
+    /// The data of a token
+    NftInfo { token_id: String },
+    /// The data of a token and any approvals assigned to it
+    AllNftInfo { token_id: String },
+    /// Info of any modules assigned to the contract
     ModuleInfo {},
+    /// The current config of the contract
     ContractInfo {},
+    /// The current owner of the contract
     ContractOwner {},
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -347,8 +362,11 @@ pub struct ModuleInfoResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+/// A struct used to defined a module and its current contract address (if it exists)
 pub struct ModuleContract {
+    /// The module name
     pub module: String,
+    /// The contract address (if it exists)
     pub contract: Option<String>,
 }
 

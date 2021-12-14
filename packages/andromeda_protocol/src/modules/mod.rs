@@ -22,44 +22,71 @@ pub const MODULES: Item<Modules> = Item::new("modules");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
+/// A struct used to define a flat rate fee
 pub struct FlatRate {
+    /// The fee amount
     pub amount: Uint128,
+    /// The fee denomination
     pub denom: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
+/// An enum used to define various types of fees
 pub enum Rate {
+    /// A flat rate fee
     Flat(FlatRate),
+    /// A percentage fee (integer)
     Percent(u64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
 #[serde(rename_all = "snake_case")]
+/// Definitions for each module, used in the `InstantiateMsg` for the token contract to define any modules assigned to the contract
 pub enum ModuleDefinition {
+    /// A whitelist module
     Whitelist {
+        /// The address of the module contract
         address: Option<String>,
+        /// A valid code ID for the module contract. Used upon contract instantiation to instantiate a new module contract.
         code_id: Option<u64>,
+        /// A vector of contract moderators. Used in combination with a valid `code_id` parameter
         moderators: Option<Vec<String>>,
     },
+    /// A blacklist module
     Blacklist {
+        /// The address of the module contract
         address: Option<String>,
+        /// A valid code ID for the module contract. Used upon contract instantiation to instantiate a new module contract.
         code_id: Option<u64>,
+        /// A vector of contract moderators. Used in combination with a valid `code_id` parameter
         moderators: Option<Vec<String>>,
     },
+    /// A tax module. Required payments are paid by the purchaser.
     Taxable {
+        /// The tax rate
         rate: Rate,
+        /// The receiving addresses of the fee
         receivers: Vec<String>,
+        /// An optional description of the fee
         description: Option<String>,
     },
+    /// A royalty module. Required payments are paid by the seller.
     Royalties {
+        /// The royalty rate
         rate: Rate,
+        /// The receiving addresses of the fee
         receivers: Vec<String>,
+        /// An optional description of the fee
         description: Option<String>,
     },
+    /// A receipt module
     Receipt {
+        /// The address of the module contract
         address: Option<String>,
+        /// A valid code ID for the module contract. Used upon contract instantiation to instantiate a new module contract.
         code_id: Option<u64>,
+        /// A vector of contract moderators. Used in combination with a valid `code_id` parameter
         moderators: Option<Vec<String>>,
     },
 }
@@ -137,6 +164,8 @@ impl ModuleDefinition {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
+/// Helping struct to aid in hook execution.
+/// The `Modules` struct implements all hooks that a `Module` may implement.
 pub struct Modules {
     pub module_defs: Vec<ModuleDefinition>,
 }
@@ -426,8 +455,6 @@ impl Modules {
     }
 }
 
-//Converts a ModuleDefinition to a Module struct
-
 pub fn store_modules(storage: &mut dyn Storage, modules: Modules) -> StdResult<()> {
     //Validate each module before storing
     modules.validate()?;
@@ -442,4 +469,29 @@ pub fn read_modules(storage: &dyn Storage) -> StdResult<Modules> {
         Some(mods) => Ok(mods),
         None => Ok(Modules::default()),
     }
+}
+
+/// Generates instantiation messgaes for a list of modules
+///
+/// Returns a HookResponse object containing the instantiation messages
+pub fn generate_instantiate_msgs(
+    deps: &DepsMut,
+    info: MessageInfo,
+    env: Env,
+    modules: Vec<Option<impl Module>>,
+) -> StdResult<HookResponse> {
+    let mut resp = HookResponse::default();
+
+    for module_opt in modules {
+        match module_opt {
+            Some(module) => {
+                //On instantiate generates instantiation message for a module (if it is required)
+                let hook_resp = module.on_instantiate(&deps, info.clone(), env.clone())?;
+                resp = resp.add_resp(hook_resp);
+            }
+            None => {}
+        }
+    }
+
+    Ok(resp)
 }
