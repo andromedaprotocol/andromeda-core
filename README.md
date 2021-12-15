@@ -34,3 +34,35 @@ All contracts and packages can be built by running the build script:
 ```./build.sh```
 
 This will build all contract `.wasm` files in to the `artifacts` directory at the project root.
+
+### Formatting
+
+Make sure you run `rustfmt` before creating a PR to the repo. You need to install the `nightly` version of `rustfmt`.
+
+```sh
+rustup toolchain install nightly
+```
+
+To run `rustfmt`,
+
+```sh
+cargo fmt
+```
+
+### Linting
+
+You should run `clippy` also. This is a lint tool for rust. It suggests more efficient/readable code.
+You can see [the clippy document](https://rust-lang.github.io/rust-clippy/master/index.html) for more information.
+You need to install `nightly` version of `clippy`.
+
+#### Install
+
+```sh
+rustup toolchain install nightly
+```
+
+#### Run
+
+```sh
+cargo clippy --all --all-targets -- -D warnings
+```
