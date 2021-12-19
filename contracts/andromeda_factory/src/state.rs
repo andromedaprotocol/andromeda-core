@@ -2,27 +2,37 @@ use andromeda_protocol::{ownership::ContractOwnerResponse, token::QueryMsg as To
 use cosmwasm_std::{
     to_binary, DepsMut, QuerierWrapper, QueryRequest, StdResult, Storage, WasmQuery,
 };
-use cw_storage_plus::{Item, Map};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cw_storage_plus::Map;
 
-pub const CONFIG: Item<Config> = Item::new("config");
+// pub const CONFIG: Item<Config> = Item::new("config");
 pub const SYM_ADDRESS: Map<String, String> = Map::new("address");
+pub const CODE_ID: Map<String, u64> = Map::new("code_id");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Config {
-    pub token_code_id: u64,
-    pub receipt_code_id: u64,
-    pub address_list_code_id: u64,
+// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+// pub struct Config {
+//     pub token_code_id: u64,
+//     pub receipt_code_id: u64,
+//     pub address_list_code_id: u64,
+// }
+pub fn store_code_id(
+    storage: &mut dyn Storage,
+    code_id_key: String,
+    code_id: u64,
+) -> StdResult<()> {
+    CODE_ID.save(storage, code_id_key, &code_id)
 }
 
-pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()> {
-    CONFIG.save(storage, config)
+pub fn read_code_id(storage: &dyn Storage, code_id_key: String) -> StdResult<u64> {
+    CODE_ID.load(storage, code_id_key)
 }
-
-pub fn read_config(storage: &dyn Storage) -> StdResult<Config> {
-    CONFIG.load(storage)
-}
+//
+// pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()> {
+//     CONFIG.save(storage, config)
+// }
+//
+// pub fn read_config(storage: &dyn Storage) -> StdResult<Config> {
+//     CONFIG.load(storage)
+// }
 
 pub fn store_address(storage: &mut dyn Storage, symbol: String, address: &String) -> StdResult<()> {
     SYM_ADDRESS.save(storage, symbol, &address)

@@ -17,16 +17,16 @@ static TOKEN_CODE_ID: u64 = 0;
 const TOKEN_NAME: &str = "test";
 const TOKEN_SYMBOL: &str = "T";
 const ADDRESS_LIST_CODE_ID: u64 = 1;
-const RECEIPT_CODE_ID: u64 = 2;
+// const RECEIPT_CODE_ID: u64 = 2;
 
 #[test]
 fn proper_initialization() {
     let mut deps = mock_dependencies(&[]);
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
-        token_code_id: TOKEN_CODE_ID,
-        address_list_code_id: ADDRESS_LIST_CODE_ID,
-        receipt_code_id: RECEIPT_CODE_ID,
+        // token_code_id: TOKEN_CODE_ID,
+        // address_list_code_id: ADDRESS_LIST_CODE_ID,
+        // receipt_code_id: RECEIPT_CODE_ID,
     };
     let env = mock_env();
 
@@ -64,13 +64,29 @@ fn test_create() {
     ];
 
     let init_msg = InstantiateMsg {
-        token_code_id: TOKEN_CODE_ID,
-        receipt_code_id: RECEIPT_CODE_ID,
-        address_list_code_id: ADDRESS_LIST_CODE_ID,
+        // token_code_id: TOKEN_CODE_ID,
+        // receipt_code_id: RECEIPT_CODE_ID,
+        // address_list_code_id: ADDRESS_LIST_CODE_ID,
     };
 
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), init_msg).unwrap();
     assert_eq!(0, res.messages.len());
+
+    let msg = ExecuteMsg::AddUpdateCodeId {
+        code_id_key: "address_list".to_string(),
+        code_id: 1u64,
+    };
+    let _ = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let msg = ExecuteMsg::AddUpdateCodeId {
+        code_id_key: "receipt".to_string(),
+        code_id: 2u64,
+    };
+    let _ = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let msg = ExecuteMsg::AddUpdateCodeId {
+        code_id_key: "token".to_string(),
+        code_id: 0u64,
+    };
+    let _ = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::Create {
         name: TOKEN_NAME.to_string(),
