@@ -24,15 +24,6 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> StdResult<Response> {
-    // store_config(
-    //     deps.storage,
-    //     &Config {
-    //         token_code_id: msg.token_code_id,
-    //         receipt_code_id: msg.receipt_code_id,
-    //         address_list_code_id: msg.address_list_code_id,
-    //     },
-    // )?;
-
     CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
 
     Ok(Response::default()
@@ -225,9 +216,6 @@ mod tests {
     };
 
     static TOKEN_CODE_ID: u64 = 0;
-    // static RECEIPT_CODE_ID: u64 = 1;
-
-    // static ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
 
@@ -235,11 +223,7 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            // token_code_id: TOKEN_CODE_ID,
-            // receipt_code_id: RECEIPT_CODE_ID,
-            // address_list_code_id: ADDRESS_LIST_CODE_ID,
-        };
+        let msg = InstantiateMsg {};
         let env = mock_env();
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -252,11 +236,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
 
-        let init_msg = InstantiateMsg {
-            // token_code_id: TOKEN_CODE_ID,
-            // receipt_code_id: RECEIPT_CODE_ID,
-            // address_list_code_id: ADDRESS_LIST_CODE_ID,
-        };
+        let init_msg = InstantiateMsg {};
 
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), init_msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -380,22 +360,12 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info(owner.clone().as_str(), &[]);
-        // let unauth_info = mock_info("anyone", &[]);
-        // let config = Config {
-        //     address_list_code_id: ADDRESS_LIST_CODE_ID,
-        //     receipt_code_id: RECEIPT_CODE_ID,
-        //     token_code_id: TOKEN_CODE_ID,
-        // };
-        // store_config(deps.as_mut().storage, &config).unwrap();
 
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &Addr::unchecked(owner.clone()))
             .unwrap();
 
         let msg = ExecuteMsg::AddUpdateCodeId {
-            // receipt_code_id: None,
-            // token_code_id: None,
-            // address_list_code_id: None,
             code_id_key: "address_list".to_string(),
             code_id: 1u64,
         };
