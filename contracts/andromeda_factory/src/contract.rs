@@ -1,12 +1,11 @@
 use crate::{
     reply::{on_token_creation_reply, REPLY_CREATE_TOKEN},
     state::{
-        is_address_defined, is_creator, read_address, read_config, store_address, store_config,
-        Config,
+        is_address_defined, is_creator, read_address, read_code_id, store_address, store_code_id,
     },
 };
 use andromeda_protocol::{
-    factory::{AddressResponse, CodeIdsResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
+    factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     modules::ModuleDefinition,
     operators::{execute_update_operators, query_is_operator},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
@@ -23,17 +22,8 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: InstantiateMsg,
+    _msg: InstantiateMsg,
 ) -> StdResult<Response> {
-    store_config(
-        deps.storage,
-        &Config {
-            token_code_id: msg.token_code_id,
-            receipt_code_id: msg.receipt_code_id,
-            address_list_code_id: msg.address_list_code_id,
-        },
-    )?;
-
     CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
 
     Ok(Response::default()
@@ -66,18 +56,10 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         } => update_address(deps, env, info, symbol, new_address),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
-        ExecuteMsg::UpdateCodeId {
-            address_list_code_id,
-            receipt_code_id,
-            token_code_id,
-        } => update_code_id(
-            deps,
-            env,
-            info,
-            receipt_code_id,
-            address_list_code_id,
-            token_code_id,
-        ),
+        ExecuteMsg::AddUpdateCodeId {
+            code_id_key,
+            code_id,
+        } => add_update_code_id(deps, env, info, code_id_key, code_id),
     }
 }
 
@@ -89,7 +71,7 @@ pub fn create(
     symbol: String,
     modules: Vec<ModuleDefinition>,
 ) -> StdResult<Response> {
-    let config = read_config(deps.storage)?;
+    //let config = read_config(deps.storage)?;
 
     require(
         !is_address_defined(deps.storage, symbol.to_string())?,
@@ -107,7 +89,7 @@ pub fn create(
             } => ModuleDefinition::Whitelist {
                 address: address.clone(),
                 moderators: moderators.clone(),
-                code_id: Some(config.address_list_code_id.clone()),
+                code_id: Some(read_code_id(deps.storage, "address_list".to_string()).unwrap()),
             },
             ModuleDefinition::Blacklist {
                 address,
@@ -116,7 +98,7 @@ pub fn create(
             } => ModuleDefinition::Blacklist {
                 address: address.clone(),
                 moderators: moderators.clone(),
-                code_id: Some(config.address_list_code_id.clone()),
+                code_id: Some(read_code_id(deps.storage, "address_list".to_string()).unwrap()),
             },
             ModuleDefinition::Receipt {
                 address,
@@ -125,7 +107,7 @@ pub fn create(
             } => ModuleDefinition::Receipt {
                 address: address.clone(),
                 moderators: moderators.clone(),
-                code_id: Some(config.receipt_code_id.clone()),
+                code_id: Some(read_code_id(deps.storage, "receipt".to_string()).unwrap()),
             },
             _ => m.clone(),
         })
@@ -140,7 +122,7 @@ pub fn create(
 
     let inst_msg = WasmMsg::Instantiate {
         admin: Some(info.sender.to_string()),
-        code_id: config.token_code_id,
+        code_id: read_code_id(deps.storage, "token".to_string())?,
         funds: vec![],
         label: String::from("Address list instantiation"),
         msg: to_binary(&token_inst_msg)?,
@@ -179,43 +161,23 @@ pub fn update_address(
     Ok(Response::default())
 }
 
-pub fn update_code_id(
+pub fn add_update_code_id(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    receipt_code_id: Option<u64>,
-    address_list_code_id: Option<u64>,
-    token_code_id: Option<u64>,
+    code_id_key: String,
+    code_id: u64,
 ) -> StdResult<Response> {
-    require(receipt_code_id.is_some() || address_list_code_id.is_some() || token_code_id.is_some(), StdError::generic_err("Must provide one of the following: \"receipt_code_id\", \"token_code_id\", \"address_list_code_id\""))?;
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
         StdError::generic_err("Can only be used by the contract owner"),
     )?;
-    let mut config = read_config(deps.storage)?;
-
-    if receipt_code_id.is_some() {
-        config.receipt_code_id = receipt_code_id.unwrap();
-    }
-
-    if address_list_code_id.is_some() {
-        config.address_list_code_id = address_list_code_id.unwrap();
-    }
-
-    if token_code_id.is_some() {
-        config.token_code_id = token_code_id.unwrap();
-    }
-
-    store_config(deps.storage, &config)?;
+    store_code_id(deps.storage, code_id_key.clone(), code_id)?;
 
     Ok(Response::default().add_attributes(vec![
-        attr("action", "update_code_id"),
-        attr("receipt_code_id", config.receipt_code_id.to_string()),
-        attr("token_code_id", config.token_code_id.to_string()),
-        attr(
-            "address_list_code_id",
-            config.address_list_code_id.to_string(),
-        ),
+        attr("action", "add_update_code_id"),
+        attr("code_id_key", code_id_key.clone()),
+        attr("code_id", code_id.to_string()),
     ]))
 }
 
@@ -224,7 +186,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetAddress { symbol } => to_binary(&query_address(deps, symbol)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::CodeIds {} => to_binary(&query_code_ids(deps)?),
+        QueryMsg::CodeId { key } => to_binary(&query_code_id(deps, key)?),
         QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
     }
 }
@@ -236,14 +198,9 @@ fn query_address(deps: Deps, symbol: String) -> StdResult<AddressResponse> {
     })
 }
 
-fn query_code_ids(deps: Deps) -> StdResult<CodeIdsResponse> {
-    let config = read_config(deps.storage)?;
-
-    Ok(CodeIdsResponse {
-        receipt_code_id: config.receipt_code_id,
-        address_list_code_id: config.address_list_code_id,
-        token_code_id: config.token_code_id,
-    })
+fn query_code_id(deps: Deps, key: String) -> StdResult<CodeIdResponse> {
+    let code_id = read_code_id(deps.storage, key)?;
+    Ok(CodeIdResponse { code_id })
 }
 
 #[cfg(test)]
@@ -259,9 +216,6 @@ mod tests {
     };
 
     static TOKEN_CODE_ID: u64 = 0;
-    static RECEIPT_CODE_ID: u64 = 1;
-
-    static ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "T";
 
@@ -269,11 +223,7 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            token_code_id: TOKEN_CODE_ID,
-            receipt_code_id: RECEIPT_CODE_ID,
-            address_list_code_id: ADDRESS_LIST_CODE_ID,
-        };
+        let msg = InstantiateMsg {};
         let env = mock_env();
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -286,14 +236,26 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
 
-        let init_msg = InstantiateMsg {
-            token_code_id: TOKEN_CODE_ID,
-            receipt_code_id: RECEIPT_CODE_ID,
-            address_list_code_id: ADDRESS_LIST_CODE_ID,
-        };
+        let init_msg = InstantiateMsg {};
 
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), init_msg).unwrap();
         assert_eq!(0, res.messages.len());
+
+        let msg = ExecuteMsg::AddUpdateCodeId {
+            code_id_key: "address_list".to_string(),
+            code_id: 1u64,
+        };
+        let _ = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let msg = ExecuteMsg::AddUpdateCodeId {
+            code_id_key: "receipt".to_string(),
+            code_id: 2u64,
+        };
+        let _ = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let msg = ExecuteMsg::AddUpdateCodeId {
+            code_id_key: "token".to_string(),
+            code_id: 0u64,
+        };
+        let _ = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::Create {
             name: TOKEN_NAME.to_string(),
@@ -398,65 +360,24 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info(owner.clone().as_str(), &[]);
-        let unauth_info = mock_info("anyone", &[]);
-        let config = Config {
-            address_list_code_id: ADDRESS_LIST_CODE_ID,
-            receipt_code_id: RECEIPT_CODE_ID,
-            token_code_id: TOKEN_CODE_ID,
-        };
-        store_config(deps.as_mut().storage, &config).unwrap();
 
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &Addr::unchecked(owner.clone()))
             .unwrap();
 
-        let invalid_msg = ExecuteMsg::UpdateCodeId {
-            receipt_code_id: None,
-            token_code_id: None,
-            address_list_code_id: None,
+        let msg = ExecuteMsg::AddUpdateCodeId {
+            code_id_key: "address_list".to_string(),
+            code_id: 1u64,
         };
-
-        let resp = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            invalid_msg.clone(),
-        )
-        .unwrap_err();
-        let expected = StdError::generic_err("Must provide one of the following: \"receipt_code_id\", \"token_code_id\", \"address_list_code_id\"");
-
-        assert_eq!(resp, expected);
-
-        let new_receipt_code_id = 4;
-        let msg = ExecuteMsg::UpdateCodeId {
-            receipt_code_id: Some(new_receipt_code_id),
-            token_code_id: None,
-            address_list_code_id: None,
-        };
-
-        let resp =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
-        let expected = StdError::generic_err("Can only be used by the contract owner");
-
-        assert_eq!(resp, expected);
 
         let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-        let expected = Response::default().add_attributes(vec![
-            attr("action", "update_code_id"),
-            attr("receipt_code_id", new_receipt_code_id.to_string()),
-            attr("token_code_id", TOKEN_CODE_ID.to_string()),
-            attr("address_list_code_id", ADDRESS_LIST_CODE_ID.to_string()),
+
+        let expected = Response::new().add_attributes(vec![
+            attr("action", "add_update_code_id"),
+            attr("code_id_key", "address_list"),
+            attr("code_id", "1"),
         ]);
 
         assert_eq!(resp, expected);
-
-        let new_config = read_config(deps.as_ref().storage).unwrap();
-        let expected = Config {
-            receipt_code_id: new_receipt_code_id,
-            address_list_code_id: ADDRESS_LIST_CODE_ID,
-            token_code_id: TOKEN_CODE_ID,
-        };
-
-        assert_eq!(new_config, expected);
     }
 }
