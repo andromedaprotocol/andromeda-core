@@ -20,7 +20,13 @@ jobs:
       - name: Run tests
         run: cargo test --verbose --workspace
       - name: Formatting
-        run:
-         command: |
-            rustup component add rustfmt --toolchain nightly
-            cargo fmt -- --emit files
+        run: rustup component add rustfmt --toolchain nightly && cargo fmt -- --emit files
+  clippy_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - run: rustup component add clippy
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
