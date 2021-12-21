@@ -6,7 +6,6 @@ use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::read_modules;
 use crate::response::get_reply_address;
 use crate::{
     address_list::{query_includes_address, InstantiateMsg as AddressListInstantiateMsg},
@@ -15,21 +14,27 @@ use crate::{
         hooks::{HookResponse, MessageHooks},
         {Module, ModuleDefinition},
     },
-    require::require,
+    require,
 };
 
 pub const ADDRESS_LIST_CONTRACT: Item<String> = Item::new("addresslistcontract");
 pub const REPLY_ADDRESS_LIST: u64 = 2;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+/// A struct used to define the Address List module. Can be defined by providing either a contract address or the combination of a code ID and a vector of moderators.
 pub struct AddressListModule {
+    /// The address of the module contract
     pub address: Option<String>,
+    /// The code ID for the module contract
     pub code_id: Option<u64>,
+    /// An optional vector of addresses to assign as moderators
     pub moderators: Option<Vec<String>>,
+    /// Whether the address list is inclusive, true = whitelist, false = blacklist
     pub inclusive: bool,
 }
 
 impl AddressListModule {
+    /// Helper function to query the address list contract to determine if the provided address is authorized
     pub fn is_authorized(self, deps: &DepsMut, address: String) -> StdResult<bool> {
         let contract_addr = self.get_contract_address(deps.storage);
         require(
@@ -38,7 +43,7 @@ impl AddressListModule {
         )?;
 
         let includes_address =
-            query_includes_address(deps.querier, contract_addr.unwrap(), address.clone())?;
+            query_includes_address(deps.querier, contract_addr.unwrap(), address)?;
         require(
             includes_address == self.inclusive,
             StdError::generic_err("Address is not authorized"),
@@ -49,6 +54,11 @@ impl AddressListModule {
 }
 
 impl Module for AddressListModule {
+    /// Checks the validity of an address list module:
+    ///
+    /// * Must be unique
+    /// * Cannot be included alongside an address list of the opposite type (no mixing whitelist/blacklist)
+    /// * Must include either a contract address or a combination of a valid code id and an optional vector of moderating addresses
     fn validate(&self, all_modules: Vec<ModuleDefinition>) -> StdResult<bool> {
         require(
             is_unique(self, &all_modules),
@@ -58,16 +68,16 @@ impl Module for AddressListModule {
         //Test to see if the opposite address list type is present
         let opposite_module = AddressListModule {
             address: self.address.clone(),
-            code_id: self.code_id.clone(),
+            code_id: self.code_id,
             moderators: self.moderators.clone(),
             inclusive: !self.inclusive,
         };
-        let mut includes_opposite = all_modules.clone();
+        let mut includes_opposite = all_modules;
         includes_opposite.append(&mut vec![opposite_module.as_definition()]);
 
         require(
             is_unique(&opposite_module, &includes_opposite),
-            StdError::generic_err("Any address list module must be unique"),
+            StdError::generic_err("An address list module cannot be included alongside an address list module of the opposing type"),
         )?;
 
         require(
@@ -81,25 +91,27 @@ impl Module for AddressListModule {
         match self.inclusive {
             true => ModuleDefinition::Whitelist {
                 address: self.address.clone(),
-                code_id: self.code_id.clone(),
+                code_id: self.code_id,
                 moderators: self.moderators.clone(),
             },
             false => ModuleDefinition::Blacklist {
                 address: self.address.clone(),
-                code_id: self.code_id.clone(),
+                code_id: self.code_id,
                 moderators: self.moderators.clone(),
             },
         }
     }
     fn get_contract_address(&self, storage: &dyn Storage) -> Option<String> {
-        if self.address.clone().is_some() {
-            return Some(self.address.clone().unwrap());
+        // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+        if let Some(address) = &self.address {
+            return Some(address.clone());
         }
-        ADDRESS_LIST_CONTRACT.may_load(storage).unwrap()
+        ADDRESS_LIST_CONTRACT.may_load(storage).unwrap_or_default()
     }
 }
 
 impl MessageHooks for AddressListModule {
+    /// Generates an instantiation message for the module contract
     fn on_instantiate(
         &self,
         _deps: &DepsMut,
@@ -130,6 +142,7 @@ impl MessageHooks for AddressListModule {
 
         Ok(res)
     }
+    /// On any execute message, validates that the sender is authorized by the address list
     fn on_execute(&self, deps: &DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
         self.clone().is_authorized(deps, info.sender.to_string())?;
 
@@ -137,44 +150,11 @@ impl MessageHooks for AddressListModule {
     }
 }
 
-pub fn get_address_list_module(storage: &dyn Storage) -> StdResult<ModuleDefinition> {
-    let modules = read_modules(storage)?;
-    let address_list_def = modules
-        .module_defs
-        .iter()
-        .find(|m| match m {
-            ModuleDefinition::Whitelist { .. } => true,
-            ModuleDefinition::Blacklist { .. } => true,
-            _ => false,
-        })
-        .ok_or(StdError::generic_err(
-            "Token does not implement any address list module",
-        ))?;
-
-    Ok(address_list_def.clone())
-}
-
-pub fn get_address_list_module_index(storage: &dyn Storage) -> StdResult<usize> {
-    let modules = read_modules(storage)?;
-    let address_list_def = modules
-        .module_defs
-        .iter()
-        .position(|m| match m {
-            ModuleDefinition::Whitelist { .. } => true,
-            ModuleDefinition::Blacklist { .. } => true,
-            _ => false,
-        })
-        .ok_or(StdError::generic_err(
-            "Token does not implement any address list module",
-        ))?;
-
-    Ok(address_list_def.clone())
-}
-
+/// Used to stored the contract address once the contract is instantiated
 pub fn on_address_list_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
     let contract_addr = get_reply_address(msg)?;
 
-    ADDRESS_LIST_CONTRACT.save(deps.storage, &contract_addr.to_string())?;
+    ADDRESS_LIST_CONTRACT.save(deps.storage, &contract_addr)?;
 
     Ok(Response::new())
 }
@@ -197,7 +177,7 @@ mod tests {
             inclusive: true,
         };
         let mut modules = vec![
-            al.as_definition().clone(),
+            al.as_definition(),
             ModuleDefinition::Taxable {
                 rate: Rate::Percent(2),
                 receivers: vec![],
@@ -221,7 +201,7 @@ mod tests {
         );
 
         let modules = vec![
-            al.as_definition().clone(),
+            al.as_definition(),
             ModuleDefinition::Taxable {
                 rate: Rate::Percent(2),
                 receivers: vec![],
@@ -236,9 +216,7 @@ mod tests {
 
         assert_eq!(
             al.validate(modules.to_vec()),
-            Err(StdError::generic_err(
-                "Any address list module must be unique"
-            ))
+            Err(StdError::generic_err("An address list module cannot be included alongside an address list module of the opposing type"))
         );
     }
 
@@ -270,7 +248,7 @@ mod tests {
         };
 
         let resp = valid_addresslist
-            .on_execute(&deps.as_mut(), info.clone(), env.clone())
+            .on_execute(&deps.as_mut(), info, env)
             .unwrap();
 
         assert_eq!(resp, HookResponse::default());

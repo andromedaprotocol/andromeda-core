@@ -12,7 +12,7 @@ pub fn on_token_creation_reply(deps: DepsMut, msg: Reply) -> StdResult<Response>
     let token_addr = get_reply_address(msg)?;
     let info = query_token_config(deps.querier, token_addr.to_string())?;
 
-    store_address(deps.storage, info.symbol, &token_addr.to_string())?;
+    store_address(deps.storage, info.symbol, &token_addr)?;
 
     Ok(Response::new())
 }

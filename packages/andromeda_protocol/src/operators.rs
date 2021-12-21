@@ -1,7 +1,7 @@
 use cosmwasm_std::{attr, Deps, DepsMut, MessageInfo, Order, Response, StdError, StdResult};
 
 use crate::ownership::is_contract_owner;
-use crate::require::require;
+use crate::require;
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -63,34 +63,29 @@ mod tests {
         let auth_info = mock_info(owner.as_str(), &[]);
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner_addr.clone())
+            .save(deps.as_mut().storage, &owner_addr)
             .unwrap();
         let unauth_info = mock_info("anyone", &[]);
         //check auth
-        let resp = execute_update_operators(deps.as_mut(), unauth_info.clone(), operators.clone())
-            .unwrap_err();
+        let resp =
+            execute_update_operators(deps.as_mut(), unauth_info, operators.clone()).unwrap_err();
         let expected = StdError::generic_err("unauthorized");
         assert_eq!(resp, expected);
 
-        let resp =
-            execute_update_operators(deps.as_mut(), auth_info.clone(), operators.clone()).unwrap();
+        let resp = execute_update_operators(deps.as_mut(), auth_info.clone(), operators).unwrap();
         let expected = Response::new().add_attributes(vec![attr("action", "update_operators")]);
         assert_eq!(resp, expected);
         //check
         let query_resp = query_is_operator(deps.as_ref(), "operator_001".to_string()).unwrap();
-        assert_eq!(query_resp.is_operator, true);
+        assert!(query_resp.is_operator);
 
         //update another operators
-        let _ = execute_update_operators(
-            deps.as_mut(),
-            auth_info.clone(),
-            vec!["another".to_string()],
-        )
-        .unwrap();
+        let _ = execute_update_operators(deps.as_mut(), auth_info, vec!["another".to_string()])
+            .unwrap();
         //check to be removed operator_000, operator_001
         let query_resp = query_is_operator(deps.as_ref(), "operator_001".to_string()).unwrap();
-        assert_eq!(query_resp.is_operator, false);
+        assert!(!query_resp.is_operator);
         let query_resp = query_is_operator(deps.as_ref(), "operator_000".to_string()).unwrap();
-        assert_eq!(query_resp.is_operator, false);
+        assert!(!query_resp.is_operator);
     }
 }

@@ -38,7 +38,7 @@ fn execute_update_rates(
     rates: Vec<RateInfo>,
 ) -> StdResult<Response> {
     let mut config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender.to_string() {
+    if config.owner != info.sender {
         return Err(StdError::generic_err("unauthorized"));
     }
     config.rates = rates;
@@ -95,11 +95,11 @@ mod tests {
         let msg = InstantiateMsg {
             rates: rates.clone(),
         };
-        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         assert_eq!(0, res.messages.len());
 
-        let payments = query(deps.as_ref(), env.clone(), QueryMsg::Payments {}).unwrap();
+        let payments = query(deps.as_ref(), env, QueryMsg::Payments {}).unwrap();
 
         assert_eq!(
             payments,

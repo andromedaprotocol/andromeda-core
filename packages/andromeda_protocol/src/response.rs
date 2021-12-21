@@ -257,6 +257,7 @@ pub fn file_descriptor_proto() -> &'static ::protobuf::descriptor::FileDescripto
     })
 }
 
+/// Returns the address of the sender for a `Reply` message.
 pub fn get_reply_address(msg: Reply) -> StdResult<String> {
     let data = msg.result.unwrap().data.unwrap();
     let res: MsgInstantiateContractResponse =

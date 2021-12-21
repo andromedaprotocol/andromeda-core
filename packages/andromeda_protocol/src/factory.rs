@@ -3,29 +3,27 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {
-    // pub token_code_id: u64,
-// pub receipt_code_id: u64,
-// pub address_list_code_id: u64,
-}
+pub struct InstantiateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    //Create new token
+    /// Create new token
     Create {
         name: String,
         symbol: String,
         modules: Vec<ModuleDefinition>,
     },
+    UpdateCodeId {
+        code_id_key: String,
+        code_id: u64,
+    },
+    /// Update token contract address by symbol
     UpdateAddress {
         symbol: String,
         new_address: String,
     },
-    AddUpdateCodeId {
-        code_id_key: String,
-        code_id: u64,
-    },
+    /// Update current contract owner
     UpdateOwner {
         address: String,
     },
@@ -37,10 +35,19 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    GetAddress { symbol: String },
-    CodeId { key: String },
+    /// Query token contract address by its symbol
+    GetAddress {
+        symbol: String,
+    },
+    /// All code IDs for Andromeda contracts
+    CodeId {
+        key: String,
+    },
+    /// The current contract owner
     ContractOwner {},
-    IsOperator { address: String },
+    IsOperator {
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

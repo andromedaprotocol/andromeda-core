@@ -49,15 +49,15 @@ impl WasmMockQuerier {
             }) => {
                 if contract_addr == &Addr::unchecked("addresslist_contract_address1") {
                     let msg_response = IncludesAddressResponse { included: true };
-                    return SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()));
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
                 } else if contract_addr == &Addr::unchecked("factory_address") {
                     let msg_response = ContractOwnerResponse {
                         owner: String::from("creator"),
                     };
-                    return SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()));
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
                 } else {
                     let msg_response = IncludesAddressResponse { included: false };
-                    return SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()));
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
                 }
             }
             _ => self.base.handle_query(request),

@@ -13,21 +13,24 @@ pub struct TokenConfig {
 }
 
 pub struct TokenIndexes<'a> {
-    pub owner: MultiIndex<'a, (Addr, Vec<u8>), Token>,
+    pub owner: MultiIndex<'a, (Addr, Vec<u8>), Option<Token>>,
 }
 
-impl<'a> IndexList<Token> for TokenIndexes<'a> {
-    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Token>> + '_> {
-        let v: Vec<&dyn Index<Token>> = vec![&self.owner];
+impl<'a> IndexList<Option<Token>> for TokenIndexes<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Option<Token>>> + '_> {
+        let v: Vec<&dyn Index<Option<Token>>> = vec![&self.owner];
         Box::new(v.into_iter())
     }
 }
 
-fn token_owner_index(t: &Token, k: Vec<u8>) -> (Addr, Vec<u8>) {
-    (t.owner.clone(), k)
+fn token_owner_index(t: &Option<Token>, k: Vec<u8>) -> (Addr, Vec<u8>) {
+    match t {
+        Some(token) => (Addr::unchecked(token.owner.clone()), k),
+        None => (Addr::unchecked(""), k),
+    }
 }
 
-pub fn tokens<'a>() -> IndexedMap<'a, String, Token, TokenIndexes<'a>> {
+pub fn tokens<'a>() -> IndexedMap<'a, String, Option<Token>, TokenIndexes<'a>> {
     IndexedMap::new(
         "ownership",
         TokenIndexes {
@@ -40,6 +43,26 @@ pub const CONFIG: Item<TokenConfig> = Item::new("config");
 pub const OPERATOR: Map<(String, String), Expiration> = Map::new("operator");
 pub const NUM_TOKENS: Item<u64> = Item::new("numtokens");
 
+pub fn mint_token(storage: &mut dyn Storage, token_id: String, token: Token) -> StdResult<()> {
+    //Check if token with ID exists (may be None if token was burnt)
+    let saved_token = tokens().may_load(storage, token_id.clone())?;
+    if let Some(..) = saved_token {
+        Err(StdError::generic_err("Token with given ID already exists"))
+    } else {
+        tokens().save(storage, token_id, &Some(token))
+    }
+}
+
+pub fn load_token(storage: &dyn Storage, token_id: String) -> StdResult<Token> {
+    let token = tokens().load(storage, token_id)?;
+
+    if let Some(token) = token {
+        Ok(token)
+    } else {
+        Err(StdError::not_found("Token"))
+    }
+}
+
 pub fn has_transfer_rights(
     storage: &dyn Storage,
     env: &Env,
@@ -48,11 +71,11 @@ pub fn has_transfer_rights(
 ) -> StdResult<bool> {
     Ok(token.owner.eq(&addr)
         || has_approval(env, &addr, token)
-        || is_operator(storage, env, token.owner.to_string(), addr.clone())?
-        || has_transfer_agreement(addr.clone(), token))
+        || is_operator(storage, env, token.owner.clone(), addr.clone())?
+        || has_transfer_agreement(addr, token))
 }
 
-pub fn has_approval(env: &Env, addr: &String, token: &Token) -> bool {
+pub fn has_approval(env: &Env, addr: &str, token: &Token) -> bool {
     token
         .approvals
         .iter()

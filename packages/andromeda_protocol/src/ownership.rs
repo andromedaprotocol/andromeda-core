@@ -1,26 +1,24 @@
 use cosmwasm_std::{
-    attr, Addr, Api, Deps, DepsMut, MessageInfo, Response, StdError, StdResult, Storage,
+    attr, Addr, Deps, DepsMut, MessageInfo, Response, StdError, StdResult, Storage,
 };
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::require::require;
+use crate::require;
 
 pub const CONTRACT_OWNER: Item<Addr> = Item::new("contractowner");
 
+/// Helper function to query if a given address is the current contract owner.
+///
+/// Returns a boolean value indicating if the given address is the contract owner.
 pub fn is_contract_owner(storage: &dyn Storage, addr: String) -> StdResult<bool> {
     let owner = CONTRACT_OWNER.load(storage)?;
 
     Ok(addr.eq(&owner))
 }
 
-pub fn save_owner(storage: &mut dyn Storage, api: &dyn Api, addr: String) -> StdResult<()> {
-    let new_owner_addr = api.addr_validate(&addr)?;
-    CONTRACT_OWNER.save(storage, &new_owner_addr.clone())?;
-    Ok(())
-}
-
+/// Updates the current contract owner. **Only executable by the current contract owner.**
 pub fn execute_update_owner(
     deps: DepsMut,
     info: MessageInfo,
@@ -32,10 +30,13 @@ pub fn execute_update_owner(
             "Ownership of this contract can only be transferred by the current owner",
         ),
     )?;
-    save_owner(deps.storage, deps.api, new_owner.clone())?;
+    //
+    let new_owner_addr = deps.api.addr_validate(&new_owner)?;
+    CONTRACT_OWNER.save(deps.storage, &new_owner_addr)?;
+
     Ok(Response::new().add_attributes(vec![
         attr("action", "update_owner"),
-        attr("value", new_owner.clone()),
+        attr("value", new_owner),
     ]))
 }
 
@@ -66,13 +67,13 @@ mod tests {
         let new_owner = String::from("newowner");
         let new_owner_addr = Addr::unchecked(owner.clone());
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &new_owner_addr.clone())
+            .save(deps.as_mut().storage, &new_owner_addr)
             .unwrap();
 
         let unauth_info = mock_info("anyone", &[]);
 
-        let resp = execute_update_owner(deps.as_mut(), unauth_info.clone(), String::from("anyone"))
-            .unwrap_err();
+        let resp =
+            execute_update_owner(deps.as_mut(), unauth_info, String::from("anyone")).unwrap_err();
         let expected = StdError::generic_err(
             "Ownership of this contract can only be transferred by the current owner",
         );
@@ -80,8 +81,7 @@ mod tests {
 
         let auth_info = mock_info(owner.as_str(), &[]);
 
-        let resp =
-            execute_update_owner(deps.as_mut(), auth_info.clone(), new_owner.clone()).unwrap();
+        let resp = execute_update_owner(deps.as_mut(), auth_info, new_owner.clone()).unwrap();
         let expected = Response::new().add_attributes(vec![
             attr("action", "update_owner"),
             attr("value", new_owner.clone()),

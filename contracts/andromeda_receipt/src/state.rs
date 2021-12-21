@@ -13,18 +13,24 @@ pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()>
     CONFIG.save(storage, config)
 }
 
-pub fn can_mint_receipt(storage: &dyn Storage, addr: &String) -> StdResult<bool> {
+pub fn can_mint_receipt(storage: &dyn Storage, addr: &str) -> StdResult<bool> {
     let config = CONFIG.load(storage)?;
     Ok(is_contract_owner(storage, addr.to_string())?
         || addr.eq(&config.minter)
-        || config.moderators.contains(addr))
+        || config.moderators.contains(&addr.to_string()))
 }
 
 // increase receipt ID
 pub fn increment_num_receipt(storage: &mut dyn Storage) -> StdResult<Uint128> {
     let mut receipt_count = NUM_RECEIPT.load(storage).unwrap_or_default();
-    receipt_count = receipt_count + Uint128::from(1 as u128);
-    NUM_RECEIPT.save(storage, &receipt_count)?;
+    //Changed type conversion from explicit to implicit. [AKP-01] (Delete when reviewed)
+    //Added checked_add function to make sure that no overflow occurs [ACP-02] (Delete when reviewed)
+    let res = receipt_count.checked_add(Uint128::from(1u128));
+    //Check that no overflow, else panic.
+    let _res = match res {
+        Err(error) => panic!("Problem adding: {:?}", error),
+        _ => receipt_count = res.unwrap(),
+    };
     Ok(receipt_count)
 }
 

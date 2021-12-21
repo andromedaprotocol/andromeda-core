@@ -1,4 +1,5 @@
 use crate::contract::{execute, instantiate};
+use crate::state::increment_num_tokens;
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
     modules::{
@@ -14,17 +15,18 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info},
     to_binary, BankMsg, CosmosMsg, Event, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
 };
+use cw_storage_plus::Item;
 
 const TOKEN_NAME: &str = "test";
 const TOKEN_SYMBOL: &str = "T";
 const ADDRESS_LIST_CODE_ID: u64 = 1;
-
+const NUM_TOKENS: Item<u64> = Item::new("numtokens");
 // integration testing for initialize, mint, tranfer_aggrement, transferNFT, modules
 #[test]
 fn test_token_modules() {
     let mut deps = mock_dependencies_custom(&[]);
     let sender = "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v";
-    let info = mock_info(sender.clone(), &[]);
+    let info = mock_info(<&str>::clone(&sender), &[]);
     let env = mock_env();
     let tax_fee: Rate = Rate::Percent(1u64);
     let tax_receivers = vec!["tax_recever1".to_string()];
@@ -163,7 +165,7 @@ fn test_token_modules() {
         token_id: "token_id1".to_string(),
     };
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), transfernft_msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, transfernft_msg).unwrap();
     let expected_res = Response::default()
         .add_submessages(vec![
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -218,4 +220,22 @@ fn test_token_modules() {
             attr("sender", sender.to_string()),
         ]);
     assert_eq!(res, expected_res);
+}
+// Test for positive test increment for number of tokens
+#[test]
+fn test_increment_num_tokens() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let _info = mock_info("creator", &[]);
+    let _env = mock_env();
+    increment_num_tokens(deps.as_mut().storage).unwrap();
+}
+// Increment num tokens with overflow (should panic)
+#[test]
+#[should_panic]
+fn test_increment_num_tokens_error() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let _info = mock_info("creator", &[]);
+    let _env = mock_env();
+    NUM_TOKENS.save(deps.as_mut().storage, &u64::MAX).unwrap();
+    let _res = increment_num_tokens(deps.as_mut().storage);
 }

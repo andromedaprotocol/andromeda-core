@@ -15,7 +15,7 @@ use cosmwasm_std::{
 
 static TOKEN_CODE_ID: u64 = 0;
 const TOKEN_NAME: &str = "test";
-const TOKEN_SYMBOL: &str = "T";
+const TOKEN_SYMBOL: &str = "TT";
 const ADDRESS_LIST_CODE_ID: u64 = 1;
 // const RECEIPT_CODE_ID: u64 = 2;
 
@@ -72,17 +72,17 @@ fn test_create() {
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), init_msg).unwrap();
     assert_eq!(0, res.messages.len());
 
-    let msg = ExecuteMsg::AddUpdateCodeId {
+    let msg = ExecuteMsg::UpdateCodeId {
         code_id_key: "address_list".to_string(),
         code_id: 1u64,
     };
     let _ = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-    let msg = ExecuteMsg::AddUpdateCodeId {
+    let msg = ExecuteMsg::UpdateCodeId {
         code_id_key: "receipt".to_string(),
         code_id: 2u64,
     };
     let _ = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-    let msg = ExecuteMsg::AddUpdateCodeId {
+    let msg = ExecuteMsg::UpdateCodeId {
         code_id_key: "token".to_string(),
         code_id: 0u64,
     };
@@ -98,7 +98,7 @@ fn test_create() {
         name: TOKEN_NAME.to_string(),
         symbol: TOKEN_SYMBOL.to_string(),
         minter: info.sender.to_string(),
-        modules: modules.clone(),
+        modules,
     };
 
     let inst_msg = WasmMsg::Instantiate {
@@ -125,7 +125,7 @@ fn test_create() {
             attr("owner", info.sender.to_string()),
         ]);
 
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(res, expected_res);
     assert_eq!(1, expected_res.messages.len())
 }

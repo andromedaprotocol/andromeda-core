@@ -9,7 +9,7 @@ use andromeda_protocol::{
     modules::ModuleDefinition,
     operators::{execute_update_operators, query_is_operator},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require::require,
+    require,
     token::InstantiateMsg as TokenInstantiateMsg,
 };
 use cosmwasm_std::{
@@ -24,7 +24,7 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> StdResult<Response> {
-    CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
 
     Ok(Response::default()
         .add_attributes(vec![attr("action", "instantiate"), attr("type", "factory")]))
@@ -56,7 +56,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         } => update_address(deps, env, info, symbol, new_address),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
-        ExecuteMsg::AddUpdateCodeId {
+        ExecuteMsg::UpdateCodeId {
             code_id_key,
             code_id,
         } => add_update_code_id(deps, env, info, code_id_key, code_id),
@@ -119,6 +119,13 @@ pub fn create(
         minter: info.sender.to_string(),
         modules: updated_modules,
     };
+    // [TOK-01 Validation Process]
+    let validation = token_inst_msg.validate();
+    match validation {
+        Ok(true) => {}
+        Err(error) => panic!("{:?}", error),
+        _ => {}
+    };
 
     let inst_msg = WasmMsg::Instantiate {
         admin: Some(info.sender.to_string()),
@@ -137,8 +144,8 @@ pub fn create(
 
     Ok(Response::new().add_submessage(msg).add_attributes(vec![
         attr("action", "create"),
-        attr("name", name.clone()),
-        attr("symbol", symbol.clone()),
+        attr("name", name),
+        attr("symbol", symbol),
         attr("owner", info.sender.to_string()),
     ]))
 }
@@ -156,7 +163,7 @@ pub fn update_address(
         StdError::generic_err("Cannot update address for ADO that you did not create"),
     )?;
 
-    store_address(deps.storage, symbol.clone(), &new_address.clone())?;
+    store_address(deps.storage, symbol, &new_address)?;
 
     Ok(Response::default())
 }
@@ -176,7 +183,7 @@ pub fn add_update_code_id(
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "add_update_code_id"),
-        attr("code_id_key", code_id_key.clone()),
+        attr("code_id_key", code_id_key),
         attr("code_id", code_id.to_string()),
     ]))
 }
@@ -193,9 +200,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 fn query_address(deps: Deps, symbol: String) -> StdResult<AddressResponse> {
     let address = read_address(deps.storage, symbol)?;
-    Ok(AddressResponse {
-        address: address.clone(),
-    })
+    Ok(AddressResponse { address })
 }
 
 fn query_code_id(deps: Deps, key: String) -> StdResult<CodeIdResponse> {
@@ -217,7 +222,7 @@ mod tests {
 
     static TOKEN_CODE_ID: u64 = 0;
     const TOKEN_NAME: &str = "test";
-    const TOKEN_SYMBOL: &str = "T";
+    const TOKEN_SYMBOL: &str = "TT";
 
     #[test]
     fn proper_initialization() {
@@ -238,20 +243,20 @@ mod tests {
 
         let init_msg = InstantiateMsg {};
 
-        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), init_msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info.clone(), init_msg).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let msg = ExecuteMsg::AddUpdateCodeId {
+        let msg = ExecuteMsg::UpdateCodeId {
             code_id_key: "address_list".to_string(),
             code_id: 1u64,
         };
         let _ = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-        let msg = ExecuteMsg::AddUpdateCodeId {
+        let msg = ExecuteMsg::UpdateCodeId {
             code_id_key: "receipt".to_string(),
             code_id: 2u64,
         };
         let _ = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-        let msg = ExecuteMsg::AddUpdateCodeId {
+        let msg = ExecuteMsg::UpdateCodeId {
             code_id_key: "token".to_string(),
             code_id: 0u64,
         };
@@ -268,6 +273,13 @@ mod tests {
             symbol: TOKEN_SYMBOL.to_string(),
             minter: info.sender.to_string(),
             modules: vec![],
+        };
+        // [TOK-01 Validation Process]
+        let validation = token_inst_msg.validate();
+        match validation {
+            Ok(true) => {}
+            Err(error) => panic!("{:?}", error),
+            _ => {}
         };
 
         let inst_msg = WasmMsg::Instantiate {
@@ -294,7 +306,7 @@ mod tests {
                 attr("owner", info.sender.to_string()),
             ]);
 
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(res, expected_res);
         assert_eq!(1, expected_res.messages.len())
     }
@@ -305,10 +317,10 @@ mod tests {
         let owner = String::from("owner");
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
-        let info = mock_info(creator.clone().as_str(), &[]);
+        let info = mock_info(creator.as_str(), &[]);
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.clone()))
+            .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
         SYM_ADDRESS
             .save(
@@ -326,21 +338,15 @@ mod tests {
 
         let unauth_env = mock_env();
         let unauth_info = mock_info("anyone", &[]);
-        let unauth_res = execute(
-            deps.as_mut(),
-            unauth_env.clone(),
-            unauth_info.clone(),
-            update_msg.clone(),
-        )
-        .unwrap_err();
+        let unauth_res =
+            execute(deps.as_mut(), unauth_env, unauth_info, update_msg.clone()).unwrap_err();
 
         assert_eq!(
             unauth_res,
             StdError::generic_err("Cannot update address for ADO that you did not create"),
         );
 
-        let update_res =
-            execute(deps.as_mut(), env.clone(), info.clone(), update_msg.clone()).unwrap();
+        let update_res = execute(deps.as_mut(), env.clone(), info, update_msg).unwrap();
 
         assert_eq!(update_res, Response::default());
 
@@ -348,10 +354,10 @@ mod tests {
             symbol: TOKEN_SYMBOL.to_string(),
         };
 
-        let addr_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let addr_res = query(deps.as_ref(), env, query_msg).unwrap();
         let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
 
-        assert_eq!(new_address.clone(), addr_val.address);
+        assert_eq!(new_address, addr_val.address);
     }
 
     #[test]
@@ -359,18 +365,18 @@ mod tests {
         let owner = String::from("owner");
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
-        let info = mock_info(owner.clone().as_str(), &[]);
+        let info = mock_info(owner.as_str(), &[]);
 
         CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.clone()))
+            .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
 
-        let msg = ExecuteMsg::AddUpdateCodeId {
+        let msg = ExecuteMsg::UpdateCodeId {
             code_id_key: "address_list".to_string(),
             code_id: 1u64,
         };
 
-        let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let resp = execute(deps.as_mut(), env, info, msg).unwrap();
 
         let expected = Response::new().add_attributes(vec![
             attr("action", "add_update_code_id"),

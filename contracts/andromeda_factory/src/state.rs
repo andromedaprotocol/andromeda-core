@@ -34,8 +34,8 @@ pub fn read_code_id(storage: &dyn Storage, code_id_key: String) -> StdResult<u64
 //     CONFIG.load(storage)
 // }
 
-pub fn store_address(storage: &mut dyn Storage, symbol: String, address: &String) -> StdResult<()> {
-    SYM_ADDRESS.save(storage, symbol, &address)
+pub fn store_address(storage: &mut dyn Storage, symbol: String, address: &str) -> StdResult<()> {
+    SYM_ADDRESS.save(storage, symbol, &address.to_string())
 }
 
 pub fn read_address(storage: &dyn Storage, symbol: String) -> StdResult<String> {
