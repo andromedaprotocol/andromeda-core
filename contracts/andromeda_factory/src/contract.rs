@@ -5,6 +5,7 @@ use crate::{
     },
 };
 use andromeda_protocol::{
+    error::ContractError,
     factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     modules::ModuleDefinition,
     operators::{execute_update_operators, query_is_operator},
@@ -23,7 +24,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     _msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
 
     Ok(Response::default()
@@ -43,7 +44,12 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Create {
             symbol,
@@ -70,12 +76,12 @@ pub fn create(
     name: String,
     symbol: String,
     modules: Vec<ModuleDefinition>,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     //let config = read_config(deps.storage)?;
 
     require(
         !is_address_defined(deps.storage, symbol.to_string())?,
-        StdError::generic_err("Symbol is in use"),
+        ContractError::SymbolInUse {},
     )?;
 
     //Assign Code IDs to Modules
@@ -156,11 +162,11 @@ pub fn update_address(
     info: MessageInfo,
     symbol: String,
     new_address: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     require(
         is_creator(&deps, symbol.clone(), info.sender.to_string())?
             || is_contract_owner(deps.storage, info.sender.to_string())?,
-        StdError::generic_err("Cannot update address for ADO that you did not create"),
+        ContractError::Unauthorized {},
     )?;
 
     store_address(deps.storage, symbol, &new_address)?;
@@ -174,10 +180,10 @@ pub fn add_update_code_id(
     info: MessageInfo,
     code_id_key: String,
     code_id: u64,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
-        StdError::generic_err("Can only be used by the contract owner"),
+        ContractError::Unauthorized {},
     )?;
     store_code_id(deps.storage, code_id_key.clone(), code_id)?;
 
@@ -341,10 +347,7 @@ mod tests {
         let unauth_res =
             execute(deps.as_mut(), unauth_env, unauth_info, update_msg.clone()).unwrap_err();
 
-        assert_eq!(
-            unauth_res,
-            StdError::generic_err("Cannot update address for ADO that you did not create"),
-        );
+        assert_eq!(unauth_res, ContractError::Unauthorized {},);
 
         let update_res = execute(deps.as_mut(), env.clone(), info, update_msg).unwrap();
 

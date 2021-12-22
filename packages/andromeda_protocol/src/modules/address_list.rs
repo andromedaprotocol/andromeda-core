@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::response::get_reply_address;
 use crate::{
     address_list::{query_includes_address, InstantiateMsg as AddressListInstantiateMsg},
+    error::ContractError,
     modules::{
         common::is_unique,
         hooks::{HookResponse, MessageHooks},
@@ -35,18 +36,18 @@ pub struct AddressListModule {
 
 impl AddressListModule {
     /// Helper function to query the address list contract to determine if the provided address is authorized
-    pub fn is_authorized(self, deps: &DepsMut, address: String) -> StdResult<bool> {
+    pub fn is_authorized(self, deps: &DepsMut, address: String) -> Result<bool, ContractError> {
         let contract_addr = self.get_contract_address(deps.storage);
         require(
             contract_addr.is_some(),
-            StdError::generic_err("Address list does not have an assigned contract address"),
+            ContractError::ContractAddressNotInAddressList {},
         )?;
 
         let includes_address =
             query_includes_address(deps.querier, contract_addr.unwrap(), address)?;
         require(
             includes_address == self.inclusive,
-            StdError::generic_err("Address is not authorized"),
+            ContractError::Unauthorized {},
         )?;
 
         Ok(true)
@@ -59,10 +60,10 @@ impl Module for AddressListModule {
     /// * Must be unique
     /// * Cannot be included alongside an address list of the opposite type (no mixing whitelist/blacklist)
     /// * Must include either a contract address or a combination of a valid code id and an optional vector of moderating addresses
-    fn validate(&self, all_modules: Vec<ModuleDefinition>) -> StdResult<bool> {
+    fn validate(&self, all_modules: Vec<ModuleDefinition>) -> Result<bool, ContractError> {
         require(
             is_unique(self, &all_modules),
-            StdError::generic_err("Any address list module must be unique"),
+            ContractError::ModuleNotUnique {},
         )?;
 
         //Test to see if the opposite address list type is present
@@ -77,12 +78,12 @@ impl Module for AddressListModule {
 
         require(
             is_unique(&opposite_module, &includes_opposite),
-            StdError::generic_err("An address list module cannot be included alongside an address list module of the opposing type"),
+            ContractError::Std(StdError::generic_err("An address list module cannot be included alongside an address list module of the opposing type")),
         )?;
 
         require(
             self.address.is_some() || (self.code_id.is_some() && self.moderators.is_some()),
-            StdError::generic_err("Address list must include either a contract address or a code id and moderator list"),
+            ContractError::Std(StdError::generic_err("Address list must include either a contract address or a code id and moderator list")),
         )?;
 
         Ok(true)
@@ -117,7 +118,7 @@ impl MessageHooks for AddressListModule {
         _deps: &DepsMut,
         info: MessageInfo,
         _env: Env,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         let mut res = HookResponse::default();
         if self.address.is_none() {
             let inst_msg = WasmMsg::Instantiate {
@@ -143,7 +144,12 @@ impl MessageHooks for AddressListModule {
         Ok(res)
     }
     /// On any execute message, validates that the sender is authorized by the address list
-    fn on_execute(&self, deps: &DepsMut, info: MessageInfo, _env: Env) -> StdResult<HookResponse> {
+    fn on_execute(
+        &self,
+        deps: &DepsMut,
+        info: MessageInfo,
+        _env: Env,
+    ) -> Result<HookResponse, ContractError> {
         self.clone().is_authorized(deps, info.sender.to_string())?;
 
         Ok(HookResponse::default())
@@ -195,9 +201,7 @@ mod tests {
 
         assert_eq!(
             al.validate(modules.to_vec()),
-            Err(StdError::generic_err(
-                "Any address list module must be unique"
-            ))
+            Err(ContractError::ModuleNotUnique {})
         );
 
         let modules = vec![
@@ -216,8 +220,8 @@ mod tests {
 
         assert_eq!(
             al.validate(modules.to_vec()),
-            Err(StdError::generic_err("An address list module cannot be included alongside an address list module of the opposing type"))
-        );
+            Err(ContractError::Std(StdError::generic_err("An address list module cannot be included alongside an address list module of the opposing type"))
+        ));
     }
 
     //TODO
@@ -238,7 +242,7 @@ mod tests {
             .on_execute(&deps.as_mut(), info.clone(), env.clone())
             .unwrap_err();
 
-        assert_eq!(resp, StdError::generic_err("Address is not authorized"));
+        assert_eq!(resp, ContractError::Unauthorized {});
 
         let valid_addresslist = AddressListModule {
             moderators: Some(vec![]),

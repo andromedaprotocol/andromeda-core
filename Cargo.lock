@@ -9,7 +9,7 @@ dependencies = [
  "andromeda-protocol",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-storage-plus",
+ "cw-storage-plus 0.9.1",
  "schemars",
  "serde",
  "thiserror",
@@ -22,7 +22,7 @@ dependencies = [
  "andromeda-protocol",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 0.9.1",
  "cw721",
  "schemars",
  "serde",
@@ -30,11 +30,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-primitive"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.8.1",
+ "cw2",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-protocol"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 0.9.1",
  "cw721",
  "schemars",
  "serde",
@@ -49,7 +64,7 @@ dependencies = [
  "andromeda-protocol",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-storage-plus",
+ "cw-storage-plus 0.9.1",
  "schemars",
  "serde",
 ]
@@ -61,7 +76,7 @@ dependencies = [
  "andromeda-protocol",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-storage-plus",
+ "cw-storage-plus 0.9.1",
  "schemars",
  "serde",
 ]
@@ -73,7 +88,7 @@ dependencies = [
  "andromeda-protocol",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-storage-plus",
+ "cw-storage-plus 0.9.1",
  "schemars",
  "serde",
 ]
@@ -84,7 +99,7 @@ version = "0.1.0"
 dependencies = [
  "andromeda-protocol",
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 0.9.1",
  "cw721",
  "schemars",
  "serde",
@@ -97,7 +112,7 @@ dependencies = [
  "andromeda-protocol",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 0.9.1",
  "cw721",
  "schemars",
  "serde",
@@ -247,6 +262,17 @@ dependencies = [
 
 [[package]]
 name = "cw-storage-plus"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1e867b9972b83b32e00e878dfbff48299ba26618dabeb19b9c56fae176dc225"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw-storage-plus"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8e401ed71bd64abb9b91151a9ff4f7b34e81b2b3eceab23e3cb67fe47e39938"
@@ -266,6 +292,18 @@ dependencies = [
  "schemars",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "cw2"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d48454f96494aa1018556cd457977375cc8c57ef3e5c767cfa2ea5ec24b0258"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.8.1",
+ "schemars",
+ "serde",
 ]
 
 [[package]]

@@ -1,10 +1,9 @@
-use cosmwasm_std::{
-    attr, Addr, Deps, DepsMut, MessageInfo, Response, StdError, StdResult, Storage,
-};
+use cosmwasm_std::{attr, Addr, Deps, DepsMut, MessageInfo, Response, StdResult, Storage};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::error::ContractError;
 use crate::require;
 
 pub const CONTRACT_OWNER: Item<Addr> = Item::new("contractowner");
@@ -23,12 +22,10 @@ pub fn execute_update_owner(
     deps: DepsMut,
     info: MessageInfo,
     new_owner: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
-        StdError::generic_err(
-            "Ownership of this contract can only be transferred by the current owner",
-        ),
+        ContractError::Unauthorized {},
     )?;
     //
     let new_owner_addr = deps.api.addr_validate(&new_owner)?;
@@ -74,9 +71,7 @@ mod tests {
 
         let resp =
             execute_update_owner(deps.as_mut(), unauth_info, String::from("anyone")).unwrap_err();
-        let expected = StdError::generic_err(
-            "Ownership of this contract can only be transferred by the current owner",
-        );
+        let expected = ContractError::Unauthorized {};
         assert_eq!(resp, expected);
 
         let auth_info = mock_info(owner.as_str(), &[]);

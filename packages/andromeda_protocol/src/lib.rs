@@ -1,10 +1,13 @@
-use cosmwasm_std::{StdError, StdResult};
+use crate::error::ContractError;
 
 pub mod address_list;
+pub mod common;
+pub mod error;
 pub mod factory;
 pub mod modules;
 pub mod operators;
 pub mod ownership;
+pub mod primitive;
 pub mod receipt;
 pub mod response;
 pub mod splitter;
@@ -24,11 +27,12 @@ pub mod token;
 ///
 /// ## Example
 /// ```
+/// use andromeda_protocol::error::ContractError;
 /// use cosmwasm_std::StdError;
 /// use andromeda_protocol::require;
-/// require(false, StdError::generic_err("Some boolean condition was not met"));
+/// require(false, ContractError::Std(StdError::generic_err("Some boolean condition was not met")));
 /// ```
-pub fn require(precond: bool, err: StdError) -> StdResult<bool> {
+pub fn require(precond: bool, err: ContractError) -> Result<bool, ContractError> {
     match precond {
         true => Ok(true),
         false => Err(err),

@@ -1,5 +1,6 @@
-use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, StdError, StdResult};
+use cosmwasm_std::{DepsMut, Env, Event, MessageInfo};
 
+use crate::error::ContractError;
 use crate::{require, token::TransferAgreement};
 
 use super::{
@@ -31,7 +32,7 @@ impl MessageHooks for Royalty {
         payments: &mut Vec<cosmwasm_std::BankMsg>,
         owner: String,
         agreement: TransferAgreement,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         let fee_payment = calculate_fee(self.rate.clone(), agreement.amount);
         let mut resp = HookResponse::default();
         let mut event = Event::new("royalty");
@@ -66,36 +67,33 @@ impl Module for Royalty {
     /// * Royalty must have at least one receiver
     /// * Royalty rate must be non-zero
     /// * Any optional description provided cannot exceed 200 characters in length
-    fn validate(&self, _extensions: Vec<super::ModuleDefinition>) -> StdResult<bool> {
+    fn validate(&self, _extensions: Vec<super::ModuleDefinition>) -> Result<bool, ContractError> {
         require(
             !self.receivers.is_empty(),
-            StdError::generic_err("Cannot apply a royalty with no receiving addresses"),
+            ContractError::NoReceivingAddress {},
         )?;
         // require(self.rate > 0, StdError::generic_err("Tax must be non-zero"))?;
         match self.rate.clone() {
             Rate::Flat(rate) => {
-                require(
-                    rate.amount.u128() > 0,
-                    StdError::generic_err("Royalty rate must be non-zero"),
-                )?;
+                require(rate.amount.u128() > 0, ContractError::InvalidRate {})?;
             }
             Rate::Percent(rate) => {
-                require(
-                    rate > 0,
-                    StdError::generic_err("Royalty rate must be non-zero"),
-                )?;
+                require(rate > 0, ContractError::InvalidRate {})?;
             }
         }
 
         if self.description.clone().is_some() {
             require(
                 self.description.clone().unwrap().len() <= 200,
-                StdError::generic_err("Module description can be at most 200 characters long"),
+                ContractError::ModuleDiscriptionTooLong {
+                    msg: "Module description can be at most 200 characters long".to_string(),
+                },
             )?;
         }
 
         Ok(true)
     }
+
     fn as_definition(&self) -> ModuleDefinition {
         ModuleDefinition::Royalties {
             rate: self.rate.clone(),

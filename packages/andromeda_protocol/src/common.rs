@@ -1,5 +1,6 @@
+use crate::error::ContractError;
 use crate::modules::{hooks::HookResponse, Module};
-use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult};
+use cosmwasm_std::{DepsMut, Env, MessageInfo};
 
 //Redundant? Can maybe use `Modules` struct?
 pub fn generate_instantiate_msgs(
@@ -7,7 +8,7 @@ pub fn generate_instantiate_msgs(
     info: MessageInfo,
     env: Env,
     modules: Vec<Option<impl Module>>,
-) -> StdResult<HookResponse> {
+) -> Result<HookResponse, ContractError> {
     let mut resp = HookResponse::default();
 
     for module_opt in modules {

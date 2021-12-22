@@ -1,9 +1,10 @@
 use crate::{
+    error::ContractError,
     modules::{Module, ModuleDefinition, Rate},
     require,
 };
 
-use cosmwasm_std::{coin, BankMsg, Coin, StdError, StdResult, Uint128};
+use cosmwasm_std::{coin, BankMsg, Coin, Uint128};
 
 /// Calculates a fee amount given a `Rate` and payment amount.
 ///
@@ -20,7 +21,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
             require(
                 // No need for rate >=0 due to type limits (Question: Should add or remove?)
                 rate <= 100,
-                StdError::generic_err("Rate must be between 0 and 100%"),
+                ContractError::InvalidRate {},
             )
             .unwrap();
             let mut fee_amount = payment.amount.multiply_ratio(rate, 100_u128).u128();
@@ -69,19 +70,19 @@ pub fn is_unique<M: Module>(module: &M, all_modules: &[ModuleDefinition]) -> boo
 /// ## Arguments
 /// * `coins` - The vector of `Coin` structs from which to deduct the given funds
 /// * `funds` - The amount to deduct
-pub fn deduct_funds(coins: &mut Vec<Coin>, funds: Coin) -> StdResult<bool> {
+pub fn deduct_funds(coins: &mut Vec<Coin>, funds: Coin) -> Result<bool, ContractError> {
     let coin_amount = coins.iter_mut().find(|c| c.denom.eq(&funds.denom));
 
     match coin_amount {
         Some(c) => {
             require(
                 c.amount >= funds.amount,
-                StdError::generic_err("Not enough funds to deduct payment"),
+                ContractError::InsufficientFunds {},
             )?;
             c.amount -= funds.amount;
             Ok(true)
         }
-        None => Err(StdError::generic_err("Not enough funds to deduct payment")),
+        None => Err(ContractError::InsufficientFunds {}),
     }
 }
 
@@ -108,7 +109,11 @@ pub fn add_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) {
 /// * `amount` - The amount to be deducted
 ///
 /// Errors if there is no payment from which to deduct the funds
-pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> StdResult<bool> {
+pub fn deduct_payment(
+    payments: &mut Vec<BankMsg>,
+    to: String,
+    amount: Coin,
+) -> Result<bool, ContractError> {
     let payment = payments.iter_mut().find(|m| match m {
         BankMsg::Send { to_address, .. } => to_address.eq(&to),
         _ => false,
@@ -122,9 +127,7 @@ pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> 
             Ok(true)
         }
         // [COM-05] Misleading error message since it should check whether there is pending deductions and not if it has enough funds.
-        None => Err(StdError::generic_err(
-            "No pending payments for the given address!",
-        )),
+        None => Err(ContractError::NoPendingPayments {}),
     }
 }
 
@@ -187,10 +190,7 @@ mod tests {
 
         let e = deduct_funds(&mut funds, coin(10, "uluna")).unwrap_err();
 
-        assert_eq!(
-            StdError::generic_err("Not enough funds to deduct payment"),
-            e
-        );
+        assert_eq!(ContractError::InsufficientFunds {}, e);
     }
 
     #[test]

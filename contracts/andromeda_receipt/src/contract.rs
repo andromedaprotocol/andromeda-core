@@ -2,6 +2,7 @@ use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use andromeda_protocol::{
+    error::ContractError,
     operators::{execute_update_operators, query_is_operator},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     receipt::{
@@ -11,8 +12,8 @@ use andromeda_protocol::{
     require,
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult, Uint128,
+    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    Uint128,
 };
 
 #[entry_point]
@@ -21,7 +22,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     store_config(
         deps.storage,
         &Config {
@@ -43,7 +44,7 @@ pub fn execute(
     _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::StoreReceipt { receipt } => execute_store_receipt(deps, info, receipt),
         ExecuteMsg::EditReceipt {
@@ -59,12 +60,10 @@ fn execute_store_receipt(
     deps: DepsMut,
     info: MessageInfo,
     receipt: Receipt,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     require(
         can_mint_receipt(deps.storage, &info.sender.to_string())?,
-        StdError::generic_err(
-            "Only the contract owner, the assigned minter or a moderator can mint a receipt",
-        ),
+        ContractError::Unauthorized {},
     )?;
     let receipt_id = increment_num_receipt(deps.storage)?;
     store_receipt(deps.storage, receipt_id, &receipt)?;
@@ -79,12 +78,10 @@ fn execute_edit_receipt(
     info: MessageInfo,
     receipt_id: Uint128,
     receipt: Receipt,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     require(
         can_mint_receipt(deps.storage, &info.sender.to_string())?,
-        StdError::generic_err(
-            "Only the contract owner, the assigned minter or a moderator can edit a receipt",
-        ),
+        ContractError::Unauthorized {},
     )?;
     read_receipt(deps.storage, receipt_id)?;
     store_receipt(deps.storage, receipt_id, &receipt)?;
@@ -160,12 +157,7 @@ mod tests {
         };
 
         let res_unauth = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
-        assert_eq!(
-            res_unauth,
-            StdError::generic_err(
-                "Only the contract owner, the assigned minter or a moderator can mint a receipt"
-            )
-        );
+        assert_eq!(res_unauth, ContractError::Unauthorized {});
 
         //add address for registered moderator
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -219,12 +211,7 @@ mod tests {
         };
 
         let res_unauth = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
-        assert_eq!(
-            res_unauth,
-            StdError::generic_err(
-                "Only the contract owner, the assigned minter or a moderator can edit a receipt"
-            )
-        );
+        assert_eq!(res_unauth, ContractError::Unauthorized {});
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let expected = Response::default().add_attributes(vec![

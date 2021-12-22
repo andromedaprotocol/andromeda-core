@@ -1,6 +1,7 @@
-use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, Event, MessageInfo, StdResult, SubMsg};
+use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, Event, MessageInfo, SubMsg};
 use cw721::Expiration;
 
+use crate::error::ContractError;
 use crate::token::TransferAgreement;
 
 pub const ATTR_DESC: &str = "description";
@@ -75,7 +76,7 @@ pub trait MessageHooks {
         _deps: &DepsMut,
         _info: MessageInfo,
         _env: Env,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when any `ExecuteMsg` is received
@@ -84,7 +85,7 @@ pub trait MessageHooks {
         _deps: &DepsMut,
         _info: MessageInfo,
         _env: Env,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when an `ExecuteMsg::Mint` message is received
@@ -94,7 +95,7 @@ pub trait MessageHooks {
         _info: MessageInfo,
         _env: Env,
         _token_id: String,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when an `ExecuteMsg::Transfer` message is received
@@ -105,7 +106,7 @@ pub trait MessageHooks {
         _env: Env,
         _recipient: String,
         _token_id: String,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when an `ExecuteMsg::Send` message is received
@@ -116,7 +117,7 @@ pub trait MessageHooks {
         _env: Env,
         _contract: String,
         _token_id: String,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when an `ExecuteMsg::Approve` message is received
@@ -128,7 +129,7 @@ pub trait MessageHooks {
         _spender: String,
         _token_id: String,
         _expires: Option<Expiration>,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when an `ExecuteMsg::Revoke` message is received
@@ -139,7 +140,7 @@ pub trait MessageHooks {
         _env: Env,
         _sender: String,
         _token_id: String,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when an `ExecuteMsg::ApproveAll` message is received
@@ -150,7 +151,7 @@ pub trait MessageHooks {
         _env: Env,
         _operator: String,
         _expires: Option<Expiration>,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when an `ExecuteMsg::RevokeAll` message is received
@@ -160,7 +161,7 @@ pub trait MessageHooks {
         _info: MessageInfo,
         _env: Env,
         _operator: String,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when an `ExecuteMsg::TransferAgreement` message is received
@@ -172,7 +173,7 @@ pub trait MessageHooks {
         _token_id: String,
         _purchaser: String,
         _amount: Coin,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when an `ExecuteMsg::Burn` message is received
@@ -182,7 +183,7 @@ pub trait MessageHooks {
         _info: MessageInfo,
         _env: Env,
         _token_id: String,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called when an `ExecuteMsg::Archive` message is received
@@ -192,7 +193,7 @@ pub trait MessageHooks {
         _info: MessageInfo,
         _env: Env,
         _token_id: String,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
     /// Called whenever an agreed transfer is taking place
@@ -204,7 +205,7 @@ pub trait MessageHooks {
         _payments: &mut Vec<BankMsg>,
         _owner: String,
         _agreement: TransferAgreement,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }
 }

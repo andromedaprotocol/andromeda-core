@@ -1,12 +1,13 @@
 use std::sync::{Arc, Mutex};
 
+use crate::error::ContractError;
 use crate::modules::{
     common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
 };
 use crate::require;
 use cosmwasm_std::{
     attr, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    Uint128,
 };
 use cw721::Expiration;
 use schemars::JsonSchema;
@@ -151,7 +152,7 @@ impl TransferAgreement {
         env: &Env,
         owner: String,
         res_in: Response,
-    ) -> StdResult<Response> {
+    ) -> Result<Response, ContractError> {
         let mut res = res_in;
         let modules = read_modules(deps.storage)?;
         let payment_message = self.generate_payment(owner.clone());
@@ -203,7 +204,7 @@ pub struct InstantiateMsg {
     pub modules: Vec<ModuleDefinition>,
 }
 impl InstantiateMsg {
-    pub fn validate(&self) -> StdResult<bool> {
+    pub fn validate(&self) -> Result<bool, ContractError> {
         // [TOK-01] Add illegal names symbols as much as you want
         let illegal_names = vec![
             "Bitcoin".to_string(),
@@ -226,16 +227,16 @@ impl InstantiateMsg {
         let blacklist = vec!["blacklisted".to_string()];
         require(
             !illegal_names.contains(&self.name),
-            StdError::generic_err("Name is illegal to be initialized."),
+            ContractError::IllegalTokenName {},
         )?;
         require(
             !illegal_symbols.contains(&self.symbol),
-            StdError::generic_err("Symbol is illegal to be used."),
+            ContractError::IllegalTokenSymbol {},
         )?;
 
         require(
             !blacklist.contains(&self.minter),
-            StdError::generic_err("Minter is on blacklist. Not allowed to mint."),
+            ContractError::MinterBlacklisted {},
         )?;
 
         Ok(true)
