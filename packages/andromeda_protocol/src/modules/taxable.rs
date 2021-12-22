@@ -122,7 +122,7 @@ mod tests {
 
         assert_eq!(
             t_invalidtax.validate(vec![]).unwrap_err(),
-            StdError::generic_err("Tax rate must be non-zero")
+            StdError::generic_err("Provided rate cannot be zero")
         );
 
         let t_invalidrecv = Taxable {
