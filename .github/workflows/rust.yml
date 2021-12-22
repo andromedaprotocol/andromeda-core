@@ -22,7 +22,6 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Clippy
       - uses: actions/checkout@v1
       - uses: actions-rs/toolchain@v1
         with:
