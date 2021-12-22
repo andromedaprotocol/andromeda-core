@@ -959,6 +959,17 @@ mod tests {
 
         let owner = load_token(deps.as_ref().storage, token_id).unwrap().owner;
         assert_eq!(recipient.to_string(), owner);
+    }
+
+    #[test]
+    fn test_transfer_approval() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let recipient = "recipient";
+
+        //store config
+        store_mock_config(deps.as_mut(), minter.to_string());
 
         let approval_info = mock_info("spender", &[]);
         let approval = Approval {
@@ -1002,54 +1013,6 @@ mod tests {
             ]),
             res
         );
-        let owner = load_token(deps.as_ref().storage, approval_token_id)
-            .unwrap()
-            .owner;
-        assert_eq!(recipient.to_string(), owner);
-
-        let approval_info = mock_info("spender", &[]);
-        let approval = Approval {
-            spender: approval_info.sender.clone(),
-            expires: cw721::Expiration::Never {},
-        };
-        let approval_token_id = String::from("2");
-        let approval_token = Token {
-            token_id: approval_token_id.clone(),
-            owner: minter.to_string(),
-            description: None,
-            name: String::default(),
-            approvals: vec![approval],
-            transfer_agreement: None,
-            metadata: None,
-            archived: false,
-            token_uri: None,
-            pricing: None,
-            publisher: minter.to_string(),
-        };
-        let msg = ExecuteMsg::TransferNft {
-            recipient: recipient.to_string(),
-            token_id: approval_token_id.clone(),
-        };
-
-        tokens()
-            .save(
-                deps.as_mut().storage,
-                approval_token_id.to_string(),
-                &Some(approval_token),
-            )
-            .unwrap();
-
-        let res = execute(deps.as_mut(), env, approval_info.clone(), msg).unwrap();
-        assert_eq!(
-            Response::default().add_attributes(vec![
-                attr("action", "transfer"),
-                attr("recipient", recipient),
-                attr("token_id", approval_token_id.clone()),
-                attr("sender", approval_info.sender.to_string()),
-            ]),
-            res
-        );
-
         let owner = load_token(deps.as_ref().storage, approval_token_id)
             .unwrap()
             .owner;
