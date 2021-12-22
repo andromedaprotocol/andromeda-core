@@ -33,9 +33,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Run tests
+        run: cargo test --verbose --workspace
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
           "${GITHUB_WORKSPACE}/build.sh"
-      - name: Run tests
-        run: cargo test --verbose --workspace
+            - name: Build
+      - name: Check contract sizes
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
+          "${GITHUB_WORKSPACE}/.github/file-size.sh"
