@@ -158,7 +158,7 @@ impl MessageHooks for AddressListModule {
 
 /// Used to stored the contract address once the contract is instantiated
 pub fn on_address_list_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
-    let contract_addr = get_reply_address(msg)?;
+    let contract_addr = get_reply_address(&msg)?;
 
     ADDRESS_LIST_CONTRACT.save(deps.storage, &contract_addr)?;
 
