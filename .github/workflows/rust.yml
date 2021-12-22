@@ -37,7 +37,7 @@ jobs:
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
           "${GITHUB_WORKSPACE}/build.sh"
-          cargo test --verbose --workspace
+          sudo cargo test --verbose --workspace
       - name: Check contract sizes
         run: |
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
