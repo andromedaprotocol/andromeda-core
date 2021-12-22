@@ -2,7 +2,7 @@ name: Rust
 
 on:
   push:
-    paths: ["**.rs"]
+    paths: ["**.*"]
   pull_request:
     branches: [main]
 
@@ -19,14 +19,15 @@ jobs:
         run: cargo build --verbose
       - name: Run tests
         run: cargo test --verbose --workspace
-      - name: Formatting
-        run: rustup component add rustfmt --toolchain nightly && cargo fmt -- --emit files
-  clippy_check:
+  lint:
     runs-on: ubuntu-latest
     steps:
+      - name: Clippy
       - uses: actions/checkout@v1
-      - run: rustup component add clippy
-      - uses: actions-rs/clippy-check@v1
+      - uses: actions-rs/toolchain@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
+          toolchain: stable
+          components: clippy
+      - uses: actions-rs/clippy@master
+        with:
+          args: --all-features --all-targets
