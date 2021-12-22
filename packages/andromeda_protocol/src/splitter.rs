@@ -1,5 +1,6 @@
+use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
-use cosmwasm_std::{StdError, StdResult, Uint128};
+use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +17,7 @@ pub struct Splitter {
     pub recipients: Vec<AddressPercent>,
     /// Whether or not the contract is currently locked. This restricts updating any config related fields.
     pub locked: bool,
-    /// An optional address list to restrict access to the `Splitter` contract.     
+    /// An optional address list to restrict access to the `Splitter` contract.
     pub address_list: Option<AddressListModule>,
 }
 
@@ -24,12 +25,12 @@ pub struct Splitter {
 pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
-    /// An optional address list to restrict access to the `Splitter` contract.    
+    /// An optional address list to restrict access to the `Splitter` contract.
     pub address_list: Option<AddressListModule>,
 }
 
 impl InstantiateMsg {
-    pub fn validate(&self) -> StdResult<bool> {
+    pub fn validate(&self) -> Result<bool, ContractError> {
         validate_recipient_list(self.recipients.clone())?;
         Ok(true)
     }
@@ -85,10 +86,10 @@ pub struct GetSplitterConfigResponse {
 ///
 /// * Must include at least one recipient
 /// * The combined percentage of the recipients must not exceed 100
-pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> StdResult<bool> {
+pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> Result<bool, ContractError> {
     require(
         !recipients.is_empty(),
-        StdError::generic_err("The recipients list must include at least one recipient"),
+        ContractError::EmptyRecipientsList {},
     )?;
 
     let mut percent_sum: Uint128 = Uint128::from(0_u128);
@@ -98,7 +99,7 @@ pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> StdResult<boo
 
     require(
         percent_sum <= Uint128::from(100u128),
-        StdError::generic_err("The amount received by the recipients should not exceed 100%"),
+        ContractError::AmountExceededHundredPrecent {},
     )?;
 
     Ok(true)
@@ -112,20 +113,14 @@ mod tests {
     fn test_validate_recipient_list() {
         let empty_recipients = vec![];
         let res = validate_recipient_list(empty_recipients).unwrap_err();
-        assert_eq!(
-            res,
-            StdError::generic_err("The recipients list must include at least one recipient")
-        );
+        assert_eq!(res, ContractError::EmptyRecipientsList {});
 
         let inadequate_recipients = vec![AddressPercent {
             addr: String::from("some address"),
             percent: Uint128::from(150_u128),
         }];
         let res = validate_recipient_list(inadequate_recipients).unwrap_err();
-        assert_eq!(
-            res,
-            StdError::generic_err("The amount received by the recipients should not exceed 100%")
-        );
+        assert_eq!(res, ContractError::AmountExceededHundredPrecent {});
 
         let valid_recipients = vec![
             AddressPercent {

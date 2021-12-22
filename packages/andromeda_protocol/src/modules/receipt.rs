@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::receipt::Receipt;
 use crate::response::get_reply_address;
 use crate::{
+    error::ContractError,
     modules::{
         common::is_unique,
         hooks::{HookResponse, MessageHooks},
@@ -60,17 +61,17 @@ impl Module for ReceiptModule {
     /// Validates the receipt module:
     /// * Must be unique
     /// * Must include either a contract address or a combination of a valid code id and an optional vector of moderating addresses
-    fn validate(&self, all_modules: Vec<ModuleDefinition>) -> StdResult<bool> {
+    fn validate(&self, all_modules: Vec<ModuleDefinition>) -> Result<bool, ContractError> {
         require(
             is_unique(self, &all_modules),
-            StdError::generic_err("The receipt module must be unique"),
+            ContractError::ModuleNotUnique {},
         )?;
 
         require(
             self.address.is_some() || (self.code_id.is_some() && self.moderators.is_some()),
-            StdError::generic_err(
+            ContractError::Std(StdError::generic_err(
                 "Receipt must include either a contract address or a code id and moderator list",
-            ),
+            )),
         )?;
 
         Ok(true)
@@ -97,7 +98,7 @@ impl MessageHooks for ReceiptModule {
         _deps: &DepsMut,
         info: MessageInfo,
         _env: Env,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         let mut res = HookResponse::default();
         if self.address.is_none() {
             let inst_msg = WasmMsg::Instantiate {
@@ -134,7 +135,7 @@ pub fn on_receipt_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
 }
 
 /// Searches the stored vector of Modules within the current contract for a receipt module
-pub fn get_receipt_module(storage: &dyn Storage) -> StdResult<Option<ReceiptModule>> {
+pub fn get_receipt_module(storage: &dyn Storage) -> Result<Option<ReceiptModule>, ContractError> {
     let modules = read_modules(storage)?;
     let receipt_def = modules
         .module_defs

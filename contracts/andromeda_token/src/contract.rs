@@ -2,6 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use andromeda_protocol::{
+    error::ContractError,
     modules::{
         address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
         read_modules,
@@ -40,10 +41,12 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     require(
         msg.name.len() > 3,
-        StdError::generic_err("Name must be between 3 and 30 characters."),
+        ContractError::InvalidTokenNameLength {
+            msg: "Name must be between 3 and 30 characters.".to_string(),
+        },
     )?;
     msg.validate()?;
     let config = TokenConfig {
@@ -84,7 +87,12 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let modules = read_modules(deps.storage)?;
     modules.hook(|module| module.on_execute(&deps, info.clone(), env.clone()))?;
 
@@ -131,7 +139,7 @@ pub fn execute_mint(
     env: Env,
     info: MessageInfo,
     msg: MintMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     deps.api.addr_validate(&msg.owner)?;
     let token = Token {
         token_id: msg.token_id.clone(),
@@ -190,7 +198,7 @@ pub fn execute_transfer(
     info: MessageInfo,
     recipient: String,
     token_id: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let modules = read_modules(deps.storage)?;
     let mod_res = modules.hook(|module| {
         module.on_transfer(
@@ -222,7 +230,7 @@ pub fn execute_send_nft(
     contract: String,
     token_id: String,
     msg: Binary,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let modules = read_modules(deps.storage)?;
     let mod_res = modules.hook(|module| {
         module.on_send(
@@ -263,7 +271,7 @@ pub fn execute_approve(
     token_id: String,
     spender: String,
     expires: Option<Expiration>,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let modules = read_modules(deps.storage)?;
     let mod_res = modules.hook(|module| {
         module.on_approve(
@@ -300,7 +308,7 @@ pub fn execute_revoke(
     info: MessageInfo,
     token_id: String,
     spender: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let modules = read_modules(deps.storage)?;
     let mod_res = modules.hook(|module| {
         module.on_revoke(
@@ -332,7 +340,7 @@ fn execute_approve_all(
     info: MessageInfo,
     operator: String,
     expires: Option<Expiration>,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let modules = read_modules(deps.storage)?;
     let mod_res = modules.hook(|module| {
         module.on_approve_all(&deps, info.clone(), env.clone(), operator.clone(), expires)
@@ -359,7 +367,7 @@ fn execute_revoke_all(
     env: Env,
     info: MessageInfo,
     operator: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let modules = read_modules(deps.storage)?;
     let mod_res = modules
         .hook(|module| module.on_revoke_all(&deps, info.clone(), env.clone(), operator.clone()))?;
@@ -384,7 +392,7 @@ fn execute_transfer_agreement(
     purchaser: String,
     amount: u128,
     denom: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let modules = read_modules(deps.storage)?;
     let mod_res = modules.hook(|module| {
         module.on_transfer_agreement(
@@ -400,12 +408,9 @@ fn execute_transfer_agreement(
 
     require(
         info.sender.to_string().eq(&token.owner),
-        StdError::generic_err("Only the token owner can create a transfer agreement"),
+        ContractError::Unauthorized {},
     )?;
-    require(
-        !token.archived,
-        StdError::generic_err("This token is archived and cannot be changed in any way."),
-    )?;
+    require(!token.archived, ContractError::TokenIsArchived {})?;
 
     let amount = coin(amount, denom);
     let agreement = TransferAgreement {
@@ -432,16 +437,13 @@ fn execute_burn(
     env: Env,
     info: MessageInfo,
     token_id: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let token = load_token(deps.storage, token_id.clone())?;
     require(
         token.owner.eq(&info.sender.to_string()),
-        StdError::generic_err("Cannot burn a token you do not own"),
+        ContractError::Unauthorized {},
     )?;
-    require(
-        !token.archived,
-        StdError::generic_err("This token is archived and cannot be changed in any way."),
-    )?;
+    require(!token.archived, ContractError::TokenIsArchived {})?;
 
     let modules = read_modules(deps.storage)?;
     // let mod_res = modules.on_burn(&deps, info.clone(), env.clone(), token_id.clone())?;
@@ -466,16 +468,13 @@ fn execute_archive(
     env: Env,
     info: MessageInfo,
     token_id: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let mut token = load_token(deps.storage, token_id.clone())?;
     require(
         token.owner.eq(&info.sender.to_string()),
-        StdError::generic_err("Cannot archive a token you do not own"),
+        ContractError::Unauthorized {},
     )?;
-    require(
-        !token.archived,
-        StdError::generic_err("This token is archived and cannot be changed in any way."),
-    )?;
+    require(!token.archived, ContractError::TokenIsArchived {})?;
     let modules = read_modules(deps.storage)?;
     let mod_res = modules
         .hook(|module| module.on_archive(&deps, info.clone(), env.clone(), token_id.clone()))?;
@@ -499,16 +498,13 @@ fn execute_update_pricing(
     info: MessageInfo,
     token_id: String,
     pricing: Option<Coin>,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let mut token = load_token(deps.storage, token_id.clone())?;
     require(
         token.owner.eq(&info.sender.to_string()),
-        StdError::generic_err("Cannot update pricing for a token you do not own"),
+        ContractError::Unauthorized {},
     )?;
-    require(
-        !token.archived,
-        StdError::generic_err("This token is archived and cannot be changed in any way."),
-    )?;
+    require(!token.archived, ContractError::TokenIsArchived {})?;
 
     token.pricing = pricing.clone();
     tokens().save(deps.storage, token_id.clone(), &Some(token))?;
@@ -532,16 +528,13 @@ fn transfer_nft(
     info: &MessageInfo,
     recipient: &str,
     token_id: &str,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let mut token = load_token(deps.storage, token_id.to_string())?;
     require(
         has_transfer_rights(deps.storage, env, info.sender.to_string(), &token)?,
-        StdError::generic_err("Address does not have transfer rights for this token"),
+        ContractError::Unauthorized {},
     )?;
-    require(
-        !token.archived,
-        StdError::generic_err("This token is archived and cannot be changed in any way."),
-    )?;
+    require(!token.archived, ContractError::TokenIsArchived {})?;
     let owner = token.owner;
 
     //Validate recipient is valid address
@@ -566,16 +559,13 @@ fn add_approval(
     info: &MessageInfo,
     token_id: String,
     approval: Approval,
-) -> StdResult<()> {
+) -> Result<(), ContractError> {
     let mut token = load_token(deps.storage, token_id.to_string())?;
     require(
         token.owner.eq(&info.sender.to_string()),
-        StdError::generic_err("Only the token owner can add approvals"),
+        ContractError::Unauthorized {},
     )?;
-    require(
-        !token.archived,
-        StdError::generic_err("This token is archived and cannot be changed in any way."),
-    )?;
+    require(!token.archived, ContractError::TokenIsArchived {})?;
 
     token.filter_approval(&approval.spender);
 
@@ -589,16 +579,13 @@ fn remove_approval(
     info: &MessageInfo,
     token_id: String,
     spender: &Addr,
-) -> StdResult<()> {
+) -> Result<(), ContractError> {
     let mut token = load_token(deps.storage, token_id.to_string())?;
     require(
         token.owner.eq(&info.sender.to_string()),
-        StdError::generic_err("Only the token owner can remove approvals"),
+        ContractError::Unauthorized {},
     )?;
-    require(
-        !token.archived,
-        StdError::generic_err("This token is archived and cannot be changed in any way."),
-    )?;
+    require(!token.archived, ContractError::TokenIsArchived {})?;
 
     token.filter_approval(spender);
 
@@ -808,7 +795,7 @@ fn humanize_approval(approval: &Approval) -> cw721::Approval {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     Ok(Response::default())
 }
 
@@ -872,7 +859,7 @@ mod tests {
         let env = mock_env();
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
-        let err = StdError::generic_err("Minter is on blacklist. Not allowed to mint.");
+        let err = ContractError::MinterBlacklisted {};
         assert_eq!(err, res);
     }
 
@@ -951,10 +938,7 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
 
         let unauth_res = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
-        assert_eq!(
-            unauth_res,
-            StdError::generic_err("Address does not have transfer rights for this token")
-        );
+        assert_eq!(unauth_res, ContractError::Unauthorized {});
 
         let notfound_msg = ExecuteMsg::TransferNft {
             recipient: recipient.to_string(),
@@ -965,7 +949,9 @@ mod tests {
 
         assert_eq!(
             notfound_res,
-            StdError::not_found("core::option::Option<andromeda_protocol::token::Token>")
+            ContractError::Std(StdError::not_found(
+                "core::option::Option<andromeda_protocol::token::Token>"
+            ))
         );
 
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -1247,10 +1233,7 @@ mod tests {
         )
         .unwrap_err();
 
-        assert_eq!(
-            err,
-            StdError::generic_err("Address does not have transfer rights for this token"),
-        );
+        assert_eq!(err, ContractError::Unauthorized {});
 
         let approve_all_msg = ExecuteMsg::ApproveAll {
             operator: operator.to_string(),
@@ -1322,10 +1305,7 @@ mod tests {
         };
         let err = execute(deps.as_mut(), env, operator_info, transfer_msg).unwrap_err();
 
-        assert_eq!(
-            err,
-            StdError::generic_err("Address does not have transfer rights for this token"),
-        );
+        assert_eq!(err, ContractError::Unauthorized {});
     }
 
     #[test]
@@ -1406,10 +1386,7 @@ mod tests {
 
         let resp = execute(deps.as_mut(), env.clone(), unauth_info, burn_msg.clone()).unwrap_err();
 
-        assert_eq!(
-            resp,
-            StdError::generic_err("Cannot burn a token you do not own")
-        );
+        assert_eq!(resp, ContractError::Unauthorized {});
 
         execute(deps.as_mut(), env.clone(), info, burn_msg).unwrap();
 
@@ -1456,10 +1433,7 @@ mod tests {
         let resp =
             execute(deps.as_mut(), env.clone(), unauth_info, archive_msg.clone()).unwrap_err();
 
-        assert_eq!(
-            resp,
-            StdError::generic_err("Cannot archive a token you do not own")
-        );
+        assert_eq!(resp, ContractError::Unauthorized {});
 
         execute(
             deps.as_mut(),
@@ -1470,10 +1444,7 @@ mod tests {
         .unwrap();
 
         let archived_resp = execute(deps.as_mut(), env.clone(), info, archive_msg).unwrap_err();
-        assert_eq!(
-            archived_resp,
-            StdError::generic_err("This token is archived and cannot be changed in any way.")
-        );
+        assert_eq!(archived_resp, ContractError::TokenIsArchived {});
 
         let token_query = QueryMsg::NftInfo {
             token_id: token_id.to_string(),
@@ -1515,10 +1486,7 @@ mod tests {
 
         let resp =
             execute(deps.as_mut(), env.clone(), unauth_info, update_msg.clone()).unwrap_err();
-        assert_eq!(
-            resp,
-            StdError::generic_err("Cannot update pricing for a token you do not own")
-        );
+        assert_eq!(resp, ContractError::Unauthorized {});
 
         let resp = execute(deps.as_mut(), env.clone(), info, update_msg).unwrap();
         let expected = Response::default().add_attributes(vec![

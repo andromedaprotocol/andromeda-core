@@ -1,5 +1,6 @@
 use crate::state::SPLITTER;
 use andromeda_protocol::{
+    error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         hooks::{HookResponse, MessageHooks},
@@ -25,7 +26,7 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     msg.validate()?;
 
     let splitter = Splitter {
@@ -56,7 +57,12 @@ pub fn instantiate(
 }
 
 #[entry_point]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let splitter = SPLITTER.load(deps.storage)?;
 
     // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
@@ -90,12 +96,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     }
 }
 
-fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
+fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let sent_funds: Vec<Coin> = info.funds.clone();
-    require(
-        !sent_funds.is_empty(),
-        StdError::generic_err("No coin sent"),
-    )?;
+    require(!sent_funds.is_empty(), ContractError::EmptyFunds {})?;
 
     let splitter = SPLITTER.load(deps.storage)?;
     let mut submsg: Vec<SubMsg> = Vec::new();
@@ -107,7 +110,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     // [ACK-04] Limit number of coins sent to 5.
     require(
         info.funds.len() < 5,
-        StdError::generic_err("Exceeds max amount of coins allowed."),
+        ContractError::ExceedsMaxAllowedCoins {},
     )?;
     for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
@@ -150,10 +153,10 @@ fn execute_update_recipients(
     deps: DepsMut,
     info: MessageInfo,
     recipients: Vec<AddressPercent>,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
-        StdError::generic_err("May only be used by the contract owner"),
+        ContractError::Unauthorized {},
     )?;
 
     validate_recipient_list(recipients.clone())?;
@@ -169,10 +172,14 @@ fn execute_update_recipients(
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
 }
 
-fn execute_update_lock(deps: DepsMut, info: MessageInfo, lock: bool) -> StdResult<Response> {
+fn execute_update_lock(
+    deps: DepsMut,
+    info: MessageInfo,
+    lock: bool,
+) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
-        StdError::generic_err("May only be used by the contract owner"),
+        ContractError::Unauthorized {},
     )?;
     let mut splitter = SPLITTER.load(deps.storage)?;
     splitter.locked = lock;
@@ -189,10 +196,10 @@ fn execute_update_address_list(
     info: MessageInfo,
     env: Env,
     address_list: Option<AddressListModule>,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
-        StdError::generic_err("May only be used by the contract owner"),
+        ContractError::Unauthorized {},
     )?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
@@ -332,10 +339,7 @@ mod tests {
 
         let unauth_info = mock_info("anyone", &[]);
         let err_res = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
-        assert_eq!(
-            err_res,
-            StdError::generic_err("May only be used by the contract owner")
-        );
+        assert_eq!(err_res, ContractError::Unauthorized {});
 
         let info = mock_info(owner, &[]);
         let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -570,7 +574,7 @@ mod tests {
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
-        let expected_res = StdError::generic_err("Exceeds max amount of coins allowed.");
+        let expected_res = ContractError::ExceedsMaxAllowedCoins {};
 
         assert_eq!(res, expected_res);
     }

@@ -1,16 +1,13 @@
-use crate::{
-    error::ContractError,
-    state::{State, STATE},
-};
+use crate::state::{State, STATE};
 use andromeda_protocol::{
     address_list::{AddressList, ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg},
+    error::ContractError,
     operators::{execute_update_operators, query_is_operator},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult,
+    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
 
 #[entry_point]
@@ -42,7 +39,7 @@ pub fn execute(
     _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AddAddress { address } => execute_add_address(deps, info, address),
         ExecuteMsg::RemoveAddress { address } => execute_remove_address(deps, info, address),
@@ -51,12 +48,16 @@ pub fn execute(
     }
 }
 
-fn execute_add_address(deps: DepsMut, info: MessageInfo, address: String) -> StdResult<Response> {
+fn execute_add_address(
+    deps: DepsMut,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
 
     require(
         state.address_list.is_moderator(&info.sender.to_string()),
-        StdError::generic_err("Only a moderator can add an address to the address list"),
+        ContractError::Unauthorized {},
     )?;
 
     state
@@ -76,11 +77,11 @@ fn execute_remove_address(
     deps: DepsMut,
     info: MessageInfo,
     address: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
     require(
         state.address_list.is_moderator(&info.sender.to_string()),
-        StdError::generic_err("Only a moderator can remove an address from the address list"),
+        ContractError::Unauthorized {},
     )?;
 
     state.address_list.remove_address(deps.storage, &address);
@@ -180,10 +181,7 @@ mod tests {
         //add address for unregistered moderator
         let unauth_info = mock_info("anyone", &[]);
         let res = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
-        assert_eq!(
-            StdError::generic_err("Only a moderator can add an address to the address list"),
-            res
-        );
+        assert_eq!(ContractError::Unauthorized {}, res);
     }
 
     #[test]
@@ -227,9 +225,6 @@ mod tests {
         //add address for unregistered moderator
         let unauth_info = mock_info("anyone", &[]);
         let res = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
-        assert_eq!(
-            StdError::generic_err("Only a moderator can remove an address from the address list"),
-            res
-        );
+        assert_eq!(ContractError::Unauthorized {}, res);
     }
 }

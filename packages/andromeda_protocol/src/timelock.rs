@@ -1,9 +1,10 @@
-use cosmwasm_std::{Api, BlockInfo, Coin, StdError, StdResult, Storage};
+use cosmwasm_std::{Api, BlockInfo, Coin, StdResult, Storage};
 use cw721::Expiration;
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
 
 pub const HELD_FUNDS: Map<String, Escrow> = Map::new("funds");
@@ -25,14 +26,11 @@ impl Escrow {
     /// * Escrowed funds cannot be empty
     /// * The Escrow recipient must be a valid address
     /// * Expiration cannot be "Never" or before current time/block
-    pub fn validate(self, api: &dyn Api, block: &BlockInfo) -> StdResult<bool> {
-        require(
-            !self.coins.is_empty(),
-            StdError::generic_err("Cannot escrow empty funds"),
-        )?;
+    pub fn validate(self, api: &dyn Api, block: &BlockInfo) -> Result<bool, ContractError> {
+        require(!self.coins.is_empty(), ContractError::EmptyFunds {})?;
         require(
             api.addr_validate(&self.recipient).is_ok(),
-            StdError::generic_err("Escrow recipient must be a valid address"),
+            ContractError::InvalidAddress {},
         )?;
 
         if self.expiration.is_some() {
@@ -40,13 +38,11 @@ impl Escrow {
                 //ACK-01 Change (Check before deleting comment)
                 Expiration::AtTime(time) => {
                     if time < block.time {
-                        return Err(StdError::generic_err("Cannot set expiration in the past"));
+                        return Err(ContractError::ExpirationInPast {});
                     }
                 }
                 Expiration::Never {} => {
-                    return Err(StdError::generic_err(
-                        "Cannot escrow funds with no expiration",
-                    ));
+                    return Err(ContractError::ExpirationNotSpecified {});
                 }
                 _ => {}
             }
@@ -116,23 +112,28 @@ pub struct GetTimelockConfigResponse {
 }
 
 /// Stores an Escrow struct for a given address. Used to store funds from an address.
-pub fn hold_funds(funds: Escrow, storage: &mut dyn Storage, addr: String) -> StdResult<()> {
+pub fn hold_funds(
+    funds: Escrow,
+    storage: &mut dyn Storage,
+    addr: String,
+) -> Result<(), ContractError> {
     require(
         // Makes sure that HELD_FUNDS is empty before allowing writing into HELD_FUNDS.
         //Decided to use unwrap instead of unwrap_or_else (correct me if wrong)
         HELD_FUNDS.may_load(storage, addr.clone()).unwrap() == None,
-        StdError::generic_err("Cannot overwrite Held Funds"),
+        ContractError::CannotOverwriteHeldFunds {},
     )?;
-    HELD_FUNDS.save(storage, addr, &funds)
+    HELD_FUNDS.save(storage, addr, &funds)?;
+    Ok(())
 }
 
 /// Removes the stored Escrow struct for a given address.
-pub fn release_funds(storage: &mut dyn Storage, addr: String) -> StdResult<()> {
+pub fn release_funds(storage: &mut dyn Storage, addr: String) -> Result<(), ContractError> {
     require(
         // Makes sure that HELD_FUNDS is NOT empty before allowing removing into HELD_FUNDS.
         //Decided to use unwrap instead of unwrap_or_else (correct me if wrong)
         HELD_FUNDS.may_load(storage, addr.clone()).unwrap() != None,
-        StdError::generic_err("Cannot overwrite Held Funds"),
+        ContractError::CannotOverwriteHeldFunds {},
     )?;
     HELD_FUNDS.remove(storage, addr);
     Ok(())
@@ -192,10 +193,7 @@ mod tests {
         let resp = invalid_recipient_escrow
             .validate(deps.as_ref().api, &block)
             .unwrap_err();
-        assert_eq!(
-            StdError::generic_err("Escrow recipient must be a valid address"),
-            resp
-        );
+        assert_eq!(ContractError::InvalidAddress {}, resp);
 
         let invalid_coins_escrow = Escrow {
             recipient: recipient.clone(),
@@ -206,7 +204,7 @@ mod tests {
         let resp = invalid_coins_escrow
             .validate(deps.as_ref().api, &block)
             .unwrap_err();
-        assert_eq!(StdError::generic_err("Cannot escrow empty funds"), resp);
+        assert_eq!(ContractError::EmptyFunds {}, resp);
 
         let invalid_expiration_escrow = Escrow {
             recipient,
@@ -217,9 +215,6 @@ mod tests {
         let resp = invalid_expiration_escrow
             .validate(deps.as_ref().api, &block)
             .unwrap_err();
-        assert_eq!(
-            StdError::generic_err("Cannot escrow funds with no expiration"),
-            resp
-        );
+        assert_eq!(ContractError::ExpirationNotSpecified {}, resp);
     }
 }

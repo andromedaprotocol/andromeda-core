@@ -6,6 +6,7 @@ pub mod royalties;
 pub mod taxable;
 
 use crate::{
+    error::ContractError,
     modules::{
         address_list::AddressListModule,
         hooks::{HookResponse, MessageHooks},
@@ -15,7 +16,7 @@ use crate::{
     },
     require,
 };
-use cosmwasm_std::{DepsMut, Env, MessageInfo, StdError, StdResult, Storage, Uint128};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult, Storage, Uint128};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -51,17 +52,11 @@ impl Rate {
         }
     }
 
-    pub fn validate(&self) -> StdResult<()> {
-        require(
-            self.is_non_zero(),
-            StdError::generic_err("Provided rate cannot be zero"),
-        )?;
+    pub fn validate(&self) -> Result<(), ContractError> {
+        require(self.is_non_zero(), ContractError::InvalidRate {})?;
 
         if let Rate::Percent(rate) = self {
-            require(
-                rate <= &100,
-                StdError::generic_err("Provided percentage rate cannot be larger than 100"),
-            )?;
+            require(rate <= &100, ContractError::InvalidRate {})?;
         }
 
         Ok(())
@@ -120,7 +115,7 @@ pub enum ModuleDefinition {
 }
 
 pub trait Module: MessageHooks {
-    fn validate(&self, modules: Vec<ModuleDefinition>) -> StdResult<bool>;
+    fn validate(&self, modules: Vec<ModuleDefinition>) -> Result<bool, ContractError>;
     fn as_definition(&self) -> ModuleDefinition;
     fn get_contract_address(&self, _storage: &dyn Storage) -> Option<String> {
         None
@@ -214,16 +209,16 @@ impl Modules {
             .map(|d| d.as_module())
             .collect()
     }
-    pub fn validate(&self) -> StdResult<bool> {
+    pub fn validate(&self) -> Result<bool, ContractError> {
         for module in self.to_modules() {
             module.validate(self.module_defs.clone())?;
         }
 
         Ok(true)
     }
-    pub fn hook<F>(&self, f: F) -> StdResult<HookResponse>
+    pub fn hook<F>(&self, f: F) -> Result<HookResponse, ContractError>
     where
-        F: Fn(Box<dyn Module>) -> StdResult<HookResponse>,
+        F: Fn(Box<dyn Module>) -> Result<HookResponse, ContractError>,
     {
         let modules = self.to_modules();
         let mut res = HookResponse::default();
@@ -235,11 +230,11 @@ impl Modules {
     }
 }
 
-pub fn store_modules(storage: &mut dyn Storage, modules: Modules) -> StdResult<()> {
+pub fn store_modules(storage: &mut dyn Storage, modules: Modules) -> Result<(), ContractError> {
     //Validate each module before storing
     modules.validate()?;
 
-    MODULES.save(storage, &modules)
+    Ok(MODULES.save(storage, &modules)?)
 }
 
 pub fn read_modules(storage: &dyn Storage) -> StdResult<Modules> {
@@ -259,7 +254,7 @@ pub fn generate_instantiate_msgs(
     info: MessageInfo,
     env: Env,
     modules: Vec<Option<impl Module>>,
-) -> StdResult<HookResponse> {
+) -> Result<HookResponse, ContractError> {
     let mut resp = HookResponse::default();
 
     for module in modules.into_iter().flatten() {

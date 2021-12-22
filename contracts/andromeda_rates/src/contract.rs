@@ -1,8 +1,8 @@
 use crate::msg::{ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo};
 use crate::state::{Config, CONFIG};
+use andromeda_protocol::error::ContractError;
 use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult,
+    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
 
 #[entry_point]
@@ -11,7 +11,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let config = Config {
         owner: info.sender.to_string(),
         rates: msg.rates,
@@ -26,7 +26,7 @@ pub fn execute(
     _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateRates { rates } => execute_update_rates(deps, info, rates),
     }
@@ -36,10 +36,10 @@ fn execute_update_rates(
     deps: DepsMut,
     info: MessageInfo,
     rates: Vec<RateInfo>,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
     if config.owner != info.sender {
-        return Err(StdError::generic_err("unauthorized"));
+        return Err(ContractError::Unauthorized {});
     }
     config.rates = rates;
     CONFIG.save(deps.storage, &config)?;

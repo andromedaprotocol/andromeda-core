@@ -1,16 +1,20 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
 };
 use cw2::set_contract_version;
 
-use crate::error::ContractError;
-use crate::msg::{ConfigResponse, ExecuteMsg, GetValueResponse, InstantiateMsg, QueryMsg};
-use crate::state::{Config, Primitive, CONFIG, DATA, DEFAULT_KEY};
+use crate::state::{DATA, DEFAULT_KEY};
+use andromeda_protocol::{
+    error::ContractError,
+    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
+    primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, Primitive, QueryMsg},
+    require,
+};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:primitive-contract";
+const CONTRACT_NAME: &str = "crates.io:andromeda_primitive";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -20,12 +24,8 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let config = Config {
-        owner: info.sender.clone(),
-    };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    CONFIG.save(deps.storage, &config)?;
-
+    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender))
@@ -41,6 +41,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::SetValue { name, value } => execute_set_value(deps, info, name, value),
         ExecuteMsg::DeleteValue { name } => execute_delete_value(deps, info, name),
+        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
 
@@ -50,7 +51,10 @@ pub fn execute_set_value(
     name: Option<String>,
     value: Primitive,
 ) -> Result<Response, ContractError> {
-    check_is_owner(&deps, &info.sender)?;
+    require(
+        is_contract_owner(deps.storage, info.sender.to_string())?,
+        ContractError::Unauthorized {},
+    )?;
     if value.is_invalid() {
         return Err(ContractError::InvalidPrimitive {});
     }
@@ -72,7 +76,10 @@ pub fn execute_delete_value(
     info: MessageInfo,
     name: Option<String>,
 ) -> Result<Response, ContractError> {
-    check_is_owner(&deps, &info.sender)?;
+    require(
+        is_contract_owner(deps.storage, info.sender.to_string())?,
+        ContractError::Unauthorized {},
+    )?;
     let name = get_name_or_default(&name);
     DATA.remove(deps.storage, name);
     Ok(Response::new()
@@ -84,8 +91,8 @@ pub fn execute_delete_value(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::GetValue { name } => to_binary(&query_value(deps, name)?),
+        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
     }
 }
 
@@ -98,26 +105,11 @@ fn query_value(deps: Deps, name: Option<String>) -> StdResult<GetValueResponse> 
     })
 }
 
-fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse {
-        owner: config.owner,
-    })
-}
-
 fn get_name_or_default(name: &Option<String>) -> &str {
     match name {
         None => DEFAULT_KEY,
         Some(s) => &s,
     }
-}
-
-fn check_is_owner(deps: &DepsMut, address: &Addr) -> Result<bool, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if &config.owner != address {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(true)
 }
 
 #[cfg(test)]

@@ -30,6 +30,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-primitive"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.8.1",
+ "cw2",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-protocol"
 version = "0.1.0"
 dependencies = [
@@ -40,6 +55,7 @@ dependencies = [
  "schemars",
  "serde",
  "terra-cosmwasm",
+ "thiserror",
 ]
 
 [[package]]
@@ -482,20 +498,6 @@ checksum = "ee3ef9b64d26bad0536099c816c6734379e45bbd5f14798def6809e5cc350447"
 dependencies = [
  "der",
  "spki",
-]
-
-[[package]]
-name = "primitive-contract"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-storage-plus 0.8.1",
- "cw2",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]

@@ -1,6 +1,7 @@
-use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, StdError, StdResult};
+use cosmwasm_std::{DepsMut, Env, Event, MessageInfo};
 
 use crate::{
+    error::ContractError,
     modules::common::{add_payment, calculate_fee},
     modules::hooks::{MessageHooks, PaymentAttribute},
     modules::Rate,
@@ -36,7 +37,7 @@ impl MessageHooks for Taxable {
         payments: &mut Vec<cosmwasm_std::BankMsg>,
         _owner: String,
         agreement: TransferAgreement,
-    ) -> StdResult<HookResponse> {
+    ) -> Result<HookResponse, ContractError> {
         let _contract_addr = env.contract.address;
         let tax_amount = calculate_fee(self.rate.clone(), agreement.amount);
 
@@ -69,17 +70,19 @@ impl Module for Taxable {
     /// * Tax must have at least one receiver
     /// * Tax rate must be non-zero
     /// * Any optional description provided cannot exceed 200 characters in length
-    fn validate(&self, _modules: Vec<crate::modules::ModuleDefinition>) -> StdResult<bool> {
+    fn validate(&self, _modules: Vec<ModuleDefinition>) -> Result<bool, ContractError> {
         require(
             !self.receivers.is_empty(),
-            StdError::generic_err("Cannot apply a tax with no receiving addresses"),
+            ContractError::NoReceivingAddress {},
         )?;
         self.rate.validate()?;
 
         if self.description.clone().is_some() {
             require(
                 self.description.clone().unwrap().len() <= 200,
-                StdError::generic_err("Module description can be at most 200 characters long"),
+                ContractError::ModuleDiscriptionTooLong {
+                    msg: "Module description can be at most 200 characters long".to_string(),
+                },
             )?;
         }
 
@@ -122,7 +125,7 @@ mod tests {
 
         assert_eq!(
             t_invalidtax.validate(vec![]).unwrap_err(),
-            StdError::generic_err("Tax rate must be non-zero")
+            ContractError::InvalidRate {}
         );
 
         let t_invalidrecv = Taxable {
@@ -133,7 +136,7 @@ mod tests {
 
         assert_eq!(
             t_invalidrecv.validate(vec![]).unwrap_err(),
-            StdError::generic_err("Cannot apply a tax with no receiving addresses")
+            ContractError::NoReceivingAddress {}
         );
     }
 

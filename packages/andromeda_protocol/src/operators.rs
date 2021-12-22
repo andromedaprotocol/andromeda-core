@@ -1,5 +1,6 @@
-use cosmwasm_std::{attr, Deps, DepsMut, MessageInfo, Order, Response, StdError, StdResult};
+use cosmwasm_std::{attr, Deps, DepsMut, MessageInfo, Order, Response, StdResult};
 
+use crate::error::ContractError;
 use crate::ownership::is_contract_owner;
 use crate::require;
 use cw_storage_plus::Map;
@@ -12,10 +13,10 @@ pub fn execute_update_operators(
     deps: DepsMut,
     info: MessageInfo,
     operators: Vec<String>,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
-        StdError::generic_err("unauthorized"),
+        ContractError::Unauthorized {},
     )?;
 
     let keys: Vec<Vec<u8>> = OPERATORS
@@ -69,7 +70,7 @@ mod tests {
         //check auth
         let resp =
             execute_update_operators(deps.as_mut(), unauth_info, operators.clone()).unwrap_err();
-        let expected = StdError::generic_err("unauthorized");
+        let expected = ContractError::Unauthorized {};
         assert_eq!(resp, expected);
 
         let resp = execute_update_operators(deps.as_mut(), auth_info.clone(), operators).unwrap();

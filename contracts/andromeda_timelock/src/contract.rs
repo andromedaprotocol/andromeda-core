@@ -7,6 +7,7 @@ use cw721::Expiration;
 
 use crate::state::{State, STATE};
 use andromeda_protocol::{
+    error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         generate_instantiate_msgs,
@@ -28,7 +29,7 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let state = State {
         address_list: msg.address_list.clone(),
     };
@@ -59,7 +60,12 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 }
 
 #[entry_point]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
 
     // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
@@ -88,7 +94,7 @@ fn execute_hold_funds(
     expiration: Option<Expiration>,
     recipient: Option<String>,
     env: Env,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let rec = recipient.unwrap_or_else(|| info.sender.to_string());
     //Validate recipient address
     deps.api.addr_validate(&rec)?;
@@ -114,11 +120,15 @@ fn execute_hold_funds(
     ]))
 }
 
-fn execute_release_funds(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
+fn execute_release_funds(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     let result: Option<Escrow> = get_funds(deps.storage, info.sender.to_string())?;
 
     if result.is_none() {
-        return Err(StdError::generic_err("No locked funds for your address"));
+        return Err(ContractError::NoLockedFunds {});
     }
 
     let funds: Escrow = result.unwrap();
@@ -126,12 +136,12 @@ fn execute_release_funds(deps: DepsMut, env: Env, info: MessageInfo) -> StdResul
         match expiration {
             Expiration::AtTime(t) => {
                 if t > env.block.time {
-                    return Err(StdError::generic_err("Your funds are still locked"));
+                    return Err(ContractError::FundsAreLocked {});
                 }
             }
             Expiration::AtHeight(h) => {
                 if h > env.block.height {
-                    return Err(StdError::generic_err("Your funds are still locked"));
+                    return Err(ContractError::FundsAreLocked {});
                 }
             }
             _ => {}
@@ -155,11 +165,11 @@ fn execute_update_address_list(
     info: MessageInfo,
     env: Env,
     address_list: Option<AddressListModule>,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let mut state = STATE.load(deps.storage)?;
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
-        StdError::generic_err("May only be used by the contract owner"),
+        ContractError::Unauthorized {},
     )?;
 
     let mod_resp = match address_list.clone() {
@@ -347,7 +357,7 @@ mod tests {
         let msg = ExecuteMsg::ReleaseFunds {};
         let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
-        let expected = StdError::generic_err("Your funds are still locked");
+        let expected = ContractError::FundsAreLocked {};
 
         assert_eq!(res, expected);
     }
@@ -377,10 +387,7 @@ mod tests {
 
         let unauth_info = mock_info("anyone", &[]);
         let err_res = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
-        assert_eq!(
-            err_res,
-            StdError::generic_err("May only be used by the contract owner")
-        );
+        assert_eq!(err_res, ContractError::Unauthorized {});
 
         let info = mock_info(owner, &[]);
         let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
