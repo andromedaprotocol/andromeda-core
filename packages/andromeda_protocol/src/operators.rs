@@ -1,4 +1,4 @@
-use cosmwasm_std::{attr, Deps, DepsMut, MessageInfo, Order, Response, StdResult};
+use cosmwasm_std::{attr, Deps, DepsMut, MessageInfo, Order, Response, StdResult, Storage};
 
 use crate::error::ContractError;
 use crate::ownership::is_contract_owner;
@@ -8,6 +8,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub const OPERATORS: Map<String, bool> = Map::new("operators");
+
+/// Helper function to query if a given address is a operator.
+///
+/// Returns a boolean value indicating if the given address is a operator.
+pub fn is_operator(storage: &dyn Storage, addr: String) -> StdResult<bool> {
+    Ok(OPERATORS.may_load(storage, addr)?.is_some())
+}
 
 pub fn execute_update_operators(
     deps: DepsMut,
@@ -31,6 +38,13 @@ pub fn execute_update_operators(
     }
 
     Ok(Response::new().add_attributes(vec![attr("action", "update_operators")]))
+}
+
+pub fn initialize_operators(storage: &mut dyn Storage, operators: Vec<String>) -> StdResult<()> {
+    for operator in operators.iter() {
+        OPERATORS.save(storage, operator.clone(), &true)?;
+    }
+    Ok(())
 }
 
 pub fn query_is_operator(deps: Deps, addr: String) -> StdResult<IsOperatorResponse> {

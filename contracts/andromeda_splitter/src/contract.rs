@@ -18,7 +18,6 @@ use cosmwasm_std::{
     attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128,
 };
-// use std::collections::HashMap;
 
 #[entry_point]
 pub fn instantiate(
@@ -330,7 +329,7 @@ mod tests {
         let address_list = AddressListModule {
             address: Some(String::from("terra1contractaddress")),
             code_id: Some(1),
-            moderators: Some(vec![String::from("moderator1")]),
+            operators: Some(vec![String::from("operator1")]),
             inclusive: true,
         };
         let msg = ExecuteMsg::UpdateAddressList {
@@ -495,7 +494,7 @@ mod tests {
             address_list: Some(AddressListModule {
                 address: Some(String::from("somecontractaddress")),
                 code_id: None,
-                moderators: None,
+                operators: None,
                 inclusive: false,
             }),
         };
