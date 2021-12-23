@@ -329,7 +329,7 @@ mod tests {
         let address_list = AddressListModule {
             address: Some(String::from("terra1contractaddress")),
             code_id: Some(1),
-            operators: Some(vec![String::from("moderator1")]),
+            operators: Some(vec![String::from("operator1")]),
             inclusive: true,
         };
         let msg = ExecuteMsg::UpdateAddressList {
