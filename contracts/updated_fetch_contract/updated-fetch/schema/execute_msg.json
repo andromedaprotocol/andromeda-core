@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "anyOf": [
+    {
+      "type": "object",
+      "required": [
+        "update"
+      ],
+      "properties": {
+        "update": {
+          "type": "object",
+          "required": [
+            "contract_address",
+            "name"
+          ],
+          "properties": {
+            "contract_address": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
