@@ -116,15 +116,15 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
-        let moderator = "creator";
-        let info = mock_info(moderator, &[]);
+        let operator = "creator";
+        let info = mock_info(operator, &[]);
 
         let address = "whitelistee";
 
-        //input moderator for test
+        //input operator for test
 
         OPERATORS
-            .save(deps.as_mut().storage, moderator.to_string(), &true)
+            .save(deps.as_mut().storage, operator.to_string(), &true)
             .unwrap();
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &info.sender)
@@ -134,7 +134,7 @@ mod tests {
             address: address.to_string(),
         };
 
-        //add address for registered moderator
+        //add address for registered operator
 
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
         let expected = Response::default().add_attributes(vec![
@@ -159,7 +159,7 @@ mod tests {
             }
         }
 
-        //add address for unregistered moderator
+        //add address for unregistered operator
         let unauth_info = mock_info("anyone", &[]);
         let res = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, res);
@@ -170,14 +170,14 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
-        let moderator = "creator";
-        let info = mock_info(moderator, &[]);
+        let operator = "creator";
+        let info = mock_info(operator, &[]);
 
         let address = "whitelistee";
 
-        //save moderator
+        //save operator
         OPERATORS
-            .save(deps.as_mut().storage, moderator.to_string(), &true)
+            .save(deps.as_mut().storage, operator.to_string(), &true)
             .unwrap();
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &info.sender)
@@ -187,7 +187,7 @@ mod tests {
             address: address.to_string(),
         };
 
-        //add address for registered moderator
+        //add address for registered operator
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
         let expected = Response::default().add_attributes(vec![
             attr("action", "remove_address"),
@@ -200,7 +200,7 @@ mod tests {
             .is_err();
         assert!(included_is_err);
 
-        //add address for unregistered moderator
+        //add address for unregistered operator
         let unauth_info = mock_info("anyone", &[]);
         let res = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, res);
