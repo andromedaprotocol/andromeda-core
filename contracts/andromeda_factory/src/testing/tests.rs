@@ -40,14 +40,14 @@ fn test_create() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
 
-    let whitelist_moderators = vec!["whitelist_moderator1".to_string()];
+    let whitelist_operators = vec!["whitelist_operator1".to_string()];
     let tax_fee: Rate = Rate::Percent(1u64);
     let tax_receivers = vec!["tax_recever1".to_string()];
     let royality_fee: Rate = Rate::Percent(1u64);
     let royality_receivers = vec!["royality_recever1".to_string()];
     let modules = vec![
         ModuleDefinition::Whitelist {
-            moderators: Some(whitelist_moderators),
+            operators: Some(whitelist_operators),
             address: None,
             code_id: Some(ADDRESS_LIST_CODE_ID),
         },

@@ -1,8 +1,10 @@
-use crate::state::{State, STATE};
 use andromeda_protocol::{
-    address_list::{AddressList, ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg},
+    address_list::{
+        add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
+        InstantiateMsg, QueryMsg,
+    },
     error::ContractError,
-    operators::{execute_update_operators, query_is_operator},
+    operators::{execute_update_operators, initialize_operators, is_operator, query_is_operator},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
@@ -17,16 +19,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let state = State {
-        owner: info.sender.to_string(),
-        address_list: AddressList {
-            moderators: msg.moderators,
-        },
-    };
-
+    initialize_operators(deps.storage, msg.operators)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    STATE.save(deps.storage, &state)?;
-
     Ok(Response::default().add_attributes(vec![
         attr("action", "instantiate"),
         attr("type", "address_list"),
@@ -53,19 +47,11 @@ fn execute_add_address(
     info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
-    let state = STATE.load(deps.storage)?;
-
     require(
-        state.address_list.is_moderator(&info.sender.to_string()),
+        is_operator(deps.storage, info.sender.to_string())?,
         ContractError::Unauthorized {},
     )?;
-
-    state
-        .address_list
-        .add_address(deps.storage, &address)
-        .unwrap();
-
-    STATE.save(deps.storage, &state)?;
+    add_address(deps.storage, &address)?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "add_address"),
@@ -78,14 +64,12 @@ fn execute_remove_address(
     info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
-    let state = STATE.load(deps.storage)?;
     require(
-        state.address_list.is_moderator(&info.sender.to_string()),
+        is_operator(deps.storage, info.sender.to_string())?,
         ContractError::Unauthorized {},
     )?;
 
-    state.address_list.remove_address(deps.storage, &address);
-    STATE.save(deps.storage, &state)?;
+    remove_address(deps.storage, &address);
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "remove_address"),
@@ -103,10 +87,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_address(deps: Deps, address: &str) -> StdResult<IncludesAddressResponse> {
-    let state = STATE.load(deps.storage)?;
-
     Ok(IncludesAddressResponse {
-        included: state.address_list.includes_address(deps.storage, address)?,
+        included: includes_address(deps.storage, address)?,
     })
 }
 
@@ -114,6 +96,7 @@ fn query_address(deps: Deps, address: &str) -> StdResult<IncludesAddressResponse
 mod tests {
     use super::*;
     use andromeda_protocol::address_list::ADDRESS_LIST;
+    use andromeda_protocol::operators::OPERATORS;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
@@ -122,7 +105,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            moderators: vec!["11".to_string(), "22".to_string()],
+            operators: vec!["11".to_string(), "22".to_string()],
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -140,14 +123,12 @@ mod tests {
 
         //input moderator for test
 
-        let state = State {
-            owner: moderator.to_string(),
-            address_list: AddressList {
-                moderators: vec![moderator.to_string()],
-            },
-        };
-
-        STATE.save(deps.as_mut().storage, &state).unwrap();
+        OPERATORS
+            .save(deps.as_mut().storage, moderator.to_string(), &true)
+            .unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &info.sender)
+            .unwrap();
 
         let msg = ExecuteMsg::AddAddress {
             address: address.to_string(),
@@ -195,15 +176,12 @@ mod tests {
         let address = "whitelistee";
 
         //save moderator
-
-        let state = State {
-            owner: moderator.to_string(),
-            address_list: AddressList {
-                moderators: vec![moderator.to_string()],
-            },
-        };
-
-        STATE.save(deps.as_mut().storage, &state).unwrap();
+        OPERATORS
+            .save(deps.as_mut().storage, moderator.to_string(), &true)
+            .unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &info.sender)
+            .unwrap();
 
         let msg = ExecuteMsg::RemoveAddress {
             address: address.to_string(),

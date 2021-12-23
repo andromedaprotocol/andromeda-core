@@ -22,14 +22,14 @@ pub const RECEIPT_CONTRACT: Item<String> = Item::new("receiptcontract");
 pub const REPLY_RECEIPT: u64 = 1;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-/// A struct used to define the Receipt module. Can be defined by providing either a contract address or the combination of a code ID and a vector of moderators.
+/// A struct used to define the Receipt module. Can be defined by providing either a contract address or the combination of a code ID and a vector of operators.
 pub struct ReceiptModule {
     /// The address of the module contract
     pub address: Option<String>,
     /// The code ID for the module contract
     pub code_id: Option<u64>,
-    /// An optional vector of addresses to assign as moderators
-    pub moderators: Option<Vec<String>>,
+    /// An optional vector of addresses to assign as operators
+    pub operators: Option<Vec<String>>,
 }
 
 impl ReceiptModule {
@@ -68,7 +68,7 @@ impl Module for ReceiptModule {
         )?;
 
         require(
-            self.address.is_some() || (self.code_id.is_some() && self.moderators.is_some()),
+            self.address.is_some() || (self.code_id.is_some() && self.operators.is_some()),
             ContractError::Std(StdError::generic_err(
                 "Receipt must include either a contract address or a code id and moderator list",
             )),
@@ -80,7 +80,7 @@ impl Module for ReceiptModule {
         ModuleDefinition::Receipt {
             address: self.address.clone(),
             code_id: self.code_id,
-            moderators: self.moderators.clone(),
+            operators: self.operators.clone(),
         }
     }
     fn get_contract_address(&self, storage: &dyn Storage) -> Option<String> {
@@ -108,7 +108,7 @@ impl MessageHooks for ReceiptModule {
                 label: String::from("Receipt instantiation"),
                 msg: to_binary(&InstantiateMsg {
                     minter: info.sender.to_string(),
-                    moderators: self.moderators.clone(),
+                    operators: self.operators.clone(),
                 })?,
             };
 
@@ -148,11 +148,11 @@ pub fn get_receipt_module(storage: &dyn Storage) -> Result<Option<ReceiptModule>
 
     match receipt_def.unwrap() {
         ModuleDefinition::Receipt {
-            moderators,
+            operators,
             code_id,
             address,
         } => Ok(Some(ReceiptModule {
-            moderators: moderators.clone(),
+            operators: operators.clone(),
             code_id: *code_id,
             address: address.clone(),
         })),

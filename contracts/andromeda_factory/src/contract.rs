@@ -90,29 +90,29 @@ pub fn create(
         .map(|m| match m {
             ModuleDefinition::Whitelist {
                 address,
-                moderators,
+                operators,
                 code_id: _,
             } => ModuleDefinition::Whitelist {
                 address: address.clone(),
-                moderators: moderators.clone(),
+                operators: operators.clone(),
                 code_id: Some(read_code_id(deps.storage, "address_list".to_string()).unwrap()),
             },
             ModuleDefinition::Blacklist {
                 address,
-                moderators,
+                operators,
                 code_id: _,
             } => ModuleDefinition::Blacklist {
                 address: address.clone(),
-                moderators: moderators.clone(),
+                operators: operators.clone(),
                 code_id: Some(read_code_id(deps.storage, "address_list".to_string()).unwrap()),
             },
             ModuleDefinition::Receipt {
                 address,
-                moderators,
+                operators,
                 code_id: _,
             } => ModuleDefinition::Receipt {
                 address: address.clone(),
-                moderators: moderators.clone(),
+                operators: operators.clone(),
                 code_id: Some(read_code_id(deps.storage, "receipt".to_string()).unwrap()),
             },
             _ => m.clone(),

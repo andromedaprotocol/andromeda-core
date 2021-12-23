@@ -142,18 +142,18 @@ mod tests {
     #[test]
     fn test_is_unique() {
         let module = AddressListModule {
-            moderators: Some(vec![]),
+            operators: Some(vec![]),
             address: None,
             code_id: None,
             inclusive: true,
         };
         let duplicate_module = ModuleDefinition::Whitelist {
-            moderators: Some(vec![]),
+            operators: Some(vec![]),
             address: None,
             code_id: None,
         };
         let similar_module = ModuleDefinition::Whitelist {
-            moderators: Some(vec![String::default()]),
+            operators: Some(vec![String::default()]),
             address: None,
             code_id: None,
         };

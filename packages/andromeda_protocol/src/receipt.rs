@@ -6,8 +6,6 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     /// The address authorized to mint new receipts
     pub minter: String,
-    /// A list of moderating addresses authorized to update receipts
-    pub moderators: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -22,7 +20,7 @@ pub struct InstantiateMsg {
     /// The address authorized to mint new receipts
     pub minter: String,
     /// Optional list of moderating addresses authorized to update receipts, defaults to an empty vector
-    pub moderators: Option<Vec<String>>,
+    pub operators: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

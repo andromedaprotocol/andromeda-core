@@ -5,40 +5,28 @@ use serde::{Deserialize, Serialize};
 
 pub const ADDRESS_LIST: Map<String, bool> = Map::new("addresslist");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
-pub struct AddressList {
-    /// A list of addresses allowed to add/remove addresses from the list
-    pub moderators: Vec<String>,
+/// Add an address to the address list.
+pub fn add_address(storage: &mut dyn Storage, addr: &str) -> StdResult<()> {
+    ADDRESS_LIST.save(storage, addr.to_string(), &true)
 }
+/// Remove an address from the address list. Errors if the address is not currently included.
+pub fn remove_address(storage: &mut dyn Storage, addr: &str) {
+    let included = ADDRESS_LIST.load(storage, addr.to_string());
 
-impl AddressList {
-    /// Check if an address is a moderator of the address list.
-    pub fn is_moderator(&self, addr: &str) -> bool {
-        self.moderators.contains(&addr.to_string())
-    }
-    /// Add an address to the address list.
-    pub fn add_address(&self, storage: &mut dyn Storage, addr: &str) -> StdResult<()> {
-        ADDRESS_LIST.save(storage, addr.to_string(), &true)
-    }
-    /// Remove an address from the address list. Errors if the address is not currently included.
-    pub fn remove_address(&self, storage: &mut dyn Storage, addr: &str) {
-        let included = ADDRESS_LIST.load(storage, addr.to_string());
-
-        // Check if the address is included in the address list before removing
-        if included.is_ok() {
-            ADDRESS_LIST.remove(storage, addr.to_string());
-        };
-    }
-    /// Query if a given address is included in the address list.
-    pub fn includes_address(&self, storage: &dyn Storage, addr: &str) -> StdResult<bool> {
-        match ADDRESS_LIST.load(storage, addr.to_string()) {
-            Ok(included) => Ok(included),
-            Err(e) => match e {
-                //If no value for address return false
-                cosmwasm_std::StdError::NotFound { .. } => Ok(false),
-                _ => Err(e),
-            },
-        }
+    // Check if the address is included in the address list before removing
+    if included.is_ok() {
+        ADDRESS_LIST.remove(storage, addr.to_string());
+    };
+}
+/// Query if a given address is included in the address list.
+pub fn includes_address(storage: &dyn Storage, addr: &str) -> StdResult<bool> {
+    match ADDRESS_LIST.load(storage, addr.to_string()) {
+        Ok(included) => Ok(included),
+        Err(e) => match e {
+            //If no value for address return false
+            cosmwasm_std::StdError::NotFound { .. } => Ok(false),
+            _ => Err(e),
+        },
     }
 }
 
@@ -60,7 +48,7 @@ pub fn query_includes_address(
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub moderators: Vec<String>,
+    pub operators: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

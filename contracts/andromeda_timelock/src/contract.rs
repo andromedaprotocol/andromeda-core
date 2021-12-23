@@ -259,7 +259,7 @@ mod tests {
             recipient: None,
         };
 
-        //add address for registered moderator
+        //add address for registered operator
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let expected = Response::default().add_attributes(vec![
@@ -300,7 +300,7 @@ mod tests {
             recipient: None,
         };
 
-        //add address for registered moderator
+        //add address for registered operator
         let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let info = mock_info(owner, &[coin(100u128, "uluna")]);
@@ -327,7 +327,7 @@ mod tests {
             recipient: None,
         };
 
-        //add address for registered moderator
+        //add address for registered operator
         let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let info = mock_info(owner, &[coin(100u128, "uluna")]);
@@ -351,7 +351,7 @@ mod tests {
             expiration: Some(Expiration::AtHeight(10000000)),
             recipient: None,
         };
-        //add address for registered moderator
+        //add address for registered operator
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::ReleaseFunds {};
@@ -378,7 +378,7 @@ mod tests {
         let address_list = AddressListModule {
             address: Some(String::from("terra1contractaddress")),
             code_id: Some(1),
-            moderators: Some(vec![String::from("moderator1")]),
+            operators: Some(vec![String::from("operator1")]),
             inclusive: true,
         };
         let msg = ExecuteMsg::UpdateAddressList {
