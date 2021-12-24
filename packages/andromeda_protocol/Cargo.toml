@@ -19,3 +19,4 @@ cw721 = "0.9.1"
 cw-storage-plus = "0.9.1"
 terra-cosmwasm = { version = "2.2.0" }
 thiserror = { version = "1.0.21" }
+mirror-protocol = "2.1.1"

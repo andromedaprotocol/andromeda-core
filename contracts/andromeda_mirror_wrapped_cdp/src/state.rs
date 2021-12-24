@@ -1,6 +1,13 @@
-use andromeda_protocol::primitive::Primitive;
-use cw_storage_plus::Map;
+use cosmwasm_std::CanonicalAddr;
+use cw_storage_plus::Item;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
-pub const DEFAULT_KEY: &str = "default";
+pub const CONFIG: Item<Config> = Item::new("config");
 
-pub const DATA: Map<&str, Primitive> = Map::new("data");
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Config {
+    pub mirror_mint_contract: CanonicalAddr,
+    pub mirror_staking_contract: CanonicalAddr,
+    pub mirror_gov_contract: CanonicalAddr,
+}
