@@ -1,13 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
     StdResult, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use serde::de::DeserializeOwned;
 
-use crate::state::CONFIG;
+use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     error::ContractError,
     mirror_wrapped_cdp::{ExecuteMsg, InstantiateMsg, MirrorMintQueryMsg, QueryMsg},
@@ -24,8 +24,14 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    let config = Config {
+        mirror_mint_contract: deps.api.addr_canonicalize(&msg.mirror_mint_contract)?,
+        mirror_staking_contract: deps.api.addr_canonicalize(&msg.mirror_staking_contract)?,
+        mirror_gov_contract: deps.api.addr_canonicalize(&msg.mirror_gov_contract)?,
+    };
+    CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new()
