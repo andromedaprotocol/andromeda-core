@@ -39,6 +39,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-storage-plus 0.8.1",
  "cw2",
+ "mirror-protocol",
  "schemars",
  "serde",
  "thiserror",

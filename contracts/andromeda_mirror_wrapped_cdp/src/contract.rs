@@ -1,17 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    attr, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
+    StdResult, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
+use serde::de::DeserializeOwned;
 
-use crate::state::{Config, CONFIG};
+use crate::state::CONFIG;
 use andromeda_protocol::{
     error::ContractError,
-    mirror_wrapped_cdp::{
-        ExecuteMsg, InstantiateMsg, MirrorGovExecuteMsg, MirrorMintExecuteMsg,
-        MirrorStakingExecuteMsg, QueryMsg,
-    },
+    mirror_wrapped_cdp::{ExecuteMsg, InstantiateMsg, MirrorMintQueryMsg, QueryMsg},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
@@ -41,10 +40,23 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
     match msg {
-        ExecuteMsg::MirrorMintExecuteMsg(msg) => execute_mirror_mint_msg(deps, info, msg),
-        ExecuteMsg::MirrorStakingExecuteMsg(msg) => execute_mirror_staking_msg(deps, info, msg),
-        ExecuteMsg::MirrorGovExecuteMsg(msg) => execute_mirror_gov_msg(deps, info, msg),
+        ExecuteMsg::MirrorMintExecuteMsg(msg) => execute_mirror_msg(
+            info,
+            config.mirror_mint_contract.to_string(),
+            to_binary(&msg)?,
+        ),
+        ExecuteMsg::MirrorStakingExecuteMsg(msg) => execute_mirror_msg(
+            info,
+            config.mirror_staking_contract.to_string(),
+            to_binary(&msg)?,
+        ),
+        ExecuteMsg::MirrorGovExecuteMsg(msg) => execute_mirror_msg(
+            info,
+            config.mirror_gov_contract.to_string(),
+            to_binary(&msg)?,
+        ),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateConfig {
             mirror_mint_contract,
@@ -60,28 +72,17 @@ pub fn execute(
     }
 }
 
-pub fn execute_mirror_mint_msg(
-    deps: DepsMut,
+pub fn execute_mirror_msg(
     info: MessageInfo,
-    msg: MirrorMintExecuteMsg,
+    contract_addr: String,
+    msg_binary: Binary,
 ) -> Result<Response, ContractError> {
-    Ok(Response::default())
-}
-
-pub fn execute_mirror_staking_msg(
-    deps: DepsMut,
-    info: MessageInfo,
-    msg: MirrorStakingExecuteMsg,
-) -> Result<Response, ContractError> {
-    Ok(Response::default())
-}
-
-pub fn execute_mirror_gov_msg(
-    deps: DepsMut,
-    info: MessageInfo,
-    msg: MirrorGovExecuteMsg,
-) -> Result<Response, ContractError> {
-    Ok(Response::default())
+    let execute_msg = WasmMsg::Execute {
+        contract_addr,
+        funds: info.funds,
+        msg: msg_binary,
+    };
+    Ok(Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]))
 }
 
 pub fn execute_update_config(
@@ -113,7 +114,31 @@ pub fn execute_update_config(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::MirrorMintQueryMsg(msg) => to_binary(&query_mirror_mint(deps, msg)?),
         // TODO: Replace panic with actual code.
         _ => panic!(),
     }
+}
+
+pub fn query_mirror_mint(deps: Deps, msg: MirrorMintQueryMsg) -> StdResult<()> {
+    let contract_addr = CONFIG.load(deps.storage)?.mirror_mint_contract.to_string();
+    match msg {
+        MirrorMintQueryMsg::Config {} => query_mirror_msg(deps, contract_addr, to_binary(&msg)?),
+        MirrorMintQueryMsg::AssetConfig { .. } => panic!(),
+        MirrorMintQueryMsg::Position { .. } => panic!(),
+        MirrorMintQueryMsg::Positions { .. } => panic!(),
+        MirrorMintQueryMsg::NextPositionIdx {} => panic!(),
+    }
+}
+
+pub fn query_mirror_msg<T: DeserializeOwned>(
+    deps: Deps,
+    contract_addr: String,
+    msg_binary: Binary,
+) -> StdResult<T> {
+    let query_msg = WasmQuery::Smart {
+        contract_addr,
+        msg: msg_binary,
+    };
+    deps.querier.query(&QueryRequest::Wasm(query_msg))
 }
