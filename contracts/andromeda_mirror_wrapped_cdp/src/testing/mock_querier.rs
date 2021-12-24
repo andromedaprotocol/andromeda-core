@@ -1,16 +1,45 @@
-use andromeda_protocol::mirror_wrapped_cdp::MirrorMintQueryMsg;
+use andromeda_protocol::mirror_wrapped_cdp::{MirrorMintQueryMsg, MirrorStakingQueryMsg};
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult,
-    QueryRequest, SystemError, SystemResult, WasmQuery,
+    to_binary, Addr, Api, Binary, CanonicalAddr, Coin, ContractResult, Decimal, OwnedDeps, Querier,
+    QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
-use mirror_protocol::mint::ConfigResponse;
+use mirror_protocol::mint::ConfigResponse as MintConfigResponse;
+use mirror_protocol::staking::ConfigResponse as StakingConfigResponse;
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_MIRROR_MINT_ADDR: &str = "mirror_mint";
 pub const MOCK_MIRROR_STAKING_ADDR: &str = "mirror_staking";
 pub const MOCK_MIRROR_GOV_ADDR: &str = "mirror_gov";
+
+pub fn mock_mint_config_response() -> MintConfigResponse {
+    MintConfigResponse {
+        owner: "owner".to_string(),
+        oracle: "oracle".to_string(),
+        collector: "collector".to_string(),
+        collateral_oracle: "collateral_oracle".to_string(),
+        staking: "staking".to_string(),
+        terraswap_factory: "terraswap_factory".to_string(),
+        lock: "lock".to_string(),
+        base_denom: "base_denom".to_string(),
+        token_code_id: 1_u64,
+        protocol_fee_rate: Decimal::one(),
+    }
+}
+
+pub fn mock_staking_config_response() -> StakingConfigResponse {
+    StakingConfigResponse {
+        owner: "owner".to_string(),
+        mirror_token: "mirror_token".to_string(),
+        terraswap_factory: "terraswap_factory".to_string(),
+        base_denom: "base_denom".to_string(),
+        mint_contract: "mint_contract".to_string(),
+        oracle_contract: "oracle_contract".to_string(),
+        premium_min_update_interval: 1_u64,
+        short_reward_contract: "short_reward_contract".to_string(),
+    }
+}
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -47,29 +76,12 @@ impl Querier for WasmMockQuerier {
 
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
-        let mock_config_response = ConfigResponse {
-            owner: "owner".to_string(),
-            oracle: "oracle".to_string(),
-            collector: "collector".to_string(),
-            collateral_oracle: "collateral_oracle".to_string(),
-            staking: "staking".to_string(),
-            terraswap_factory: "terraswap_factory".to_string(),
-            lock: "lock".to_string(),
-            base_denom: "base_denom".to_string(),
-            token_code_id: 1_u64,
-            protocol_fee_rate: Decimal::one(),
-        };
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
-                if contract_addr == MOCK_MIRROR_MINT_ADDR {
-                    match from_binary(msg).unwrap() {
-                        MirrorMintQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
-                            to_binary(&mock_config_response).unwrap(),
-                        )),
-                        _ => self.base.handle_query(request),
-                    }
-                } else {
-                    panic!();
+                match contract_addr.as_str() {
+                    MOCK_MIRROR_MINT_ADDR => self.handle_mint_query(msg, request),
+                    MOCK_MIRROR_STAKING_ADDR => self.handle_staking_query(msg, request),
+                    _ => panic!("Unknown contract address"),
                 }
             }
             _ => self.base.handle_query(request),
@@ -78,5 +90,31 @@ impl WasmMockQuerier {
 
     pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
         WasmMockQuerier { base }
+    }
+
+    fn handle_mint_query(
+        &self,
+        msg: &Binary,
+        request: &QueryRequest<TerraQueryWrapper>,
+    ) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            MirrorMintQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_mint_config_response()).unwrap(),
+            )),
+            _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_staking_query(
+        &self,
+        msg: &Binary,
+        request: &QueryRequest<TerraQueryWrapper>,
+    ) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            MirrorStakingQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_staking_config_response()).unwrap(),
+            )),
+            _ => self.base.handle_query(request),
+        }
     }
 }

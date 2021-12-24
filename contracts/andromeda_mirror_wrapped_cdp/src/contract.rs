@@ -10,10 +10,15 @@ use serde::de::DeserializeOwned;
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     error::ContractError,
-    mirror_wrapped_cdp::{ExecuteMsg, InstantiateMsg, MirrorMintQueryMsg, QueryMsg},
+    mirror_wrapped_cdp::{
+        ConfigResponse, ExecuteMsg, InstantiateMsg, MirrorMintQueryMsg, MirrorStakingQueryMsg,
+        QueryMsg,
+    },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
+use mirror_protocol::mint::ConfigResponse as MintConfigResponse;
+use mirror_protocol::staking::ConfigResponse as StakingConfigResponse;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_mirror_wrapped_cdp";
@@ -27,9 +32,9 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let config = Config {
-        mirror_mint_contract: deps.api.addr_canonicalize(&msg.mirror_mint_contract)?,
-        mirror_staking_contract: deps.api.addr_canonicalize(&msg.mirror_staking_contract)?,
-        mirror_gov_contract: deps.api.addr_canonicalize(&msg.mirror_gov_contract)?,
+        mirror_mint_contract: deps.api.addr_validate(&msg.mirror_mint_contract)?,
+        mirror_staking_contract: deps.api.addr_validate(&msg.mirror_staking_contract)?,
+        mirror_gov_contract: deps.api.addr_validate(&msg.mirror_gov_contract)?,
     };
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -104,13 +109,13 @@ pub fn execute_update_config(
     )?;
     let mut config = CONFIG.load(deps.storage)?;
     if let Some(mirror_mint_contract) = mirror_mint_contract {
-        config.mirror_mint_contract = deps.api.addr_canonicalize(&mirror_mint_contract)?;
+        config.mirror_mint_contract = deps.api.addr_validate(&mirror_mint_contract)?;
     }
     if let Some(mirror_staking_contract) = mirror_staking_contract {
-        config.mirror_staking_contract = deps.api.addr_canonicalize(&mirror_staking_contract)?;
+        config.mirror_staking_contract = deps.api.addr_validate(&mirror_staking_contract)?;
     }
     if let Some(mirror_gov_contract) = mirror_gov_contract {
-        config.mirror_gov_contract = deps.api.addr_canonicalize(&mirror_gov_contract)?;
+        config.mirror_gov_contract = deps.api.addr_validate(&mirror_gov_contract)?;
     }
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::default())
@@ -120,21 +125,46 @@ pub fn execute_update_config(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::MirrorMintQueryMsg(msg) => to_binary(&query_mirror_mint(deps, msg)?),
-        // TODO: Replace panic with actual code.
-        _ => panic!(),
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::MirrorMintQueryMsg(msg) => query_mirror_mint(deps, msg),
+        QueryMsg::MirrorStakingQueryMsg(msg) => query_mirror_staking(deps, msg),
+        QueryMsg::MirrorGovQueryMsg(_) => panic!(), // TODO: Replace panic with code.
     }
 }
 
-pub fn query_mirror_mint(deps: Deps, msg: MirrorMintQueryMsg) -> StdResult<()> {
+pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+    let config = CONFIG.load(deps.storage)?;
+    Ok(ConfigResponse {
+        mirror_mint_contract: config.mirror_mint_contract.to_string(),
+        mirror_staking_contract: config.mirror_staking_contract.to_string(),
+        mirror_gov_contract: config.mirror_gov_contract.to_string(),
+    })
+}
+
+pub fn query_mirror_mint(deps: Deps, msg: MirrorMintQueryMsg) -> StdResult<Binary> {
     let contract_addr = CONFIG.load(deps.storage)?.mirror_mint_contract.to_string();
-    match msg {
-        MirrorMintQueryMsg::Config {} => query_mirror_msg(deps, contract_addr, to_binary(&msg)?),
+    to_binary(&match msg {
+        MirrorMintQueryMsg::Config {} => {
+            query_mirror_msg::<MintConfigResponse>(deps, contract_addr, to_binary(&msg)?)?
+        }
         MirrorMintQueryMsg::AssetConfig { .. } => panic!(),
         MirrorMintQueryMsg::Position { .. } => panic!(),
         MirrorMintQueryMsg::Positions { .. } => panic!(),
         MirrorMintQueryMsg::NextPositionIdx {} => panic!(),
-    }
+    })
+}
+
+pub fn query_mirror_staking(deps: Deps, msg: MirrorStakingQueryMsg) -> StdResult<Binary> {
+    let contract_addr = CONFIG
+        .load(deps.storage)?
+        .mirror_staking_contract
+        .to_string();
+    to_binary(&match msg {
+        MirrorStakingQueryMsg::Config {} => {
+            query_mirror_msg::<StakingConfigResponse>(deps, contract_addr, to_binary(&msg)?)?
+        }
+        _ => panic!(),
+    })
 }
 
 pub fn query_mirror_msg<T: DeserializeOwned>(

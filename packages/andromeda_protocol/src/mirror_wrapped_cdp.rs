@@ -36,4 +36,13 @@ pub enum QueryMsg {
     MirrorStakingQueryMsg(MirrorStakingQueryMsg),
     MirrorGovQueryMsg(MirrorGovQueryMsg),
     ContractOwner {},
+    Config {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct ConfigResponse {
+    pub mirror_mint_contract: String,
+    pub mirror_staking_contract: String,
+    pub mirror_gov_contract: String,
 }
