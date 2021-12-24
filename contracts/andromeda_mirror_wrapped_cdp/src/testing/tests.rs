@@ -4,13 +4,14 @@ use super::mock_querier::{
 };
 use crate::contract::{execute, instantiate, query};
 use andromeda_protocol::mirror_wrapped_cdp::{
-    ConfigResponse, InstantiateMsg, MirrorMintQueryMsg, MirrorStakingQueryMsg, QueryMsg,
+    ConfigResponse, ExecuteMsg, InstantiateMsg, MirrorMintExecuteMsg, MirrorMintQueryMsg,
+    MirrorStakingQueryMsg, QueryMsg,
 };
-use cosmwasm_std::from_binary;
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::CanonicalAddr;
+use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::{from_binary, to_binary, CosmosMsg, Decimal, Response, Uint128, WasmMsg};
 use mirror_protocol::mint::ConfigResponse as MintConfigResponse;
 use mirror_protocol::staking::ConfigResponse as StakingConfigResponse;
+use terraswap::asset::{Asset, AssetInfo};
 
 #[test]
 fn test_instantiate() {
@@ -23,7 +24,13 @@ fn test_instantiate() {
         mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
     };
 
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_attribute("method", "instantiate")
+            .add_attribute("owner", info.sender),
+        res
+    );
 
     // Verify that we can query the mirror mint contract.
     let msg = QueryMsg::MirrorMintQueryMsg(MirrorMintQueryMsg::Config {});
@@ -46,6 +53,45 @@ fn test_instantiate() {
             mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
             mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string()
         },
+        res
+    );
+}
+
+#[test]
+fn test_mirror_mint_operations() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let msg = InstantiateMsg {
+        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
+    };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let mirror_msg = MirrorMintExecuteMsg::OpenPosition {
+        collateral: Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(10_u128),
+        },
+        asset_info: AssetInfo::Token {
+            contract_addr: "token_address".to_string(),
+        },
+        collateral_ratio: Decimal::one(),
+        short_params: None,
+    };
+
+    let msg = ExecuteMsg::MirrorMintExecuteMsg(mirror_msg.clone());
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
+
+    let execute_msg = WasmMsg::Execute {
+        contract_addr: MOCK_MIRROR_MINT_ADDR.to_string(),
+        funds: info.funds,
+        msg: to_binary(&mirror_msg).unwrap(),
+    };
+    assert_eq!(
+        Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
         res
     );
 }

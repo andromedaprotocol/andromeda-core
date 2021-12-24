@@ -2,8 +2,8 @@ use andromeda_protocol::mirror_wrapped_cdp::{MirrorMintQueryMsg, MirrorStakingQu
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, Api, Binary, CanonicalAddr, Coin, ContractResult, Decimal, OwnedDeps, Querier,
-    QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
+    to_binary, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult,
+    QueryRequest, SystemError, SystemResult, WasmQuery,
 };
 use mirror_protocol::mint::ConfigResponse as MintConfigResponse;
 use mirror_protocol::staking::ConfigResponse as StakingConfigResponse;
