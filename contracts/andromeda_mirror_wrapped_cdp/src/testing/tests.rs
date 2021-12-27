@@ -4,18 +4,25 @@ use super::mock_querier::{
 };
 use crate::contract::{execute, instantiate, query};
 use andromeda_protocol::mirror_wrapped_cdp::{
-    ConfigResponse, ExecuteMsg, InstantiateMsg, MirrorGovExecuteMsg, MirrorGovQueryMsg,
-    MirrorMintExecuteMsg, MirrorMintQueryMsg, MirrorStakingExecuteMsg, MirrorStakingQueryMsg,
+    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg,
+    MirrorGovExecuteMsg, MirrorGovQueryMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
+    MirrorMintQueryMsg, MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, MirrorStakingQueryMsg,
     QueryMsg,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
     from_binary, to_binary, CosmosMsg, Decimal, DepsMut, MessageInfo, Response, Uint128, WasmMsg,
 };
-use mirror_protocol::gov::{ConfigResponse as GovConfigResponse, VoteOption};
-use mirror_protocol::mint::ConfigResponse as MintConfigResponse;
-use mirror_protocol::staking::ConfigResponse as StakingConfigResponse;
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use mirror_protocol::{
+    gov::{ConfigResponse as GovConfigResponse, VoteOption},
+    mint::ConfigResponse as MintConfigResponse,
+    staking::ConfigResponse as StakingConfigResponse,
+};
 use terraswap::asset::{Asset, AssetInfo};
+
+const TEST_TOKEN: &str = "TEST_TOKEN";
+const TEST_AMOUNT: u128 = 100u128;
 
 fn assert_mint_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorMintExecuteMsg) {
     let msg = ExecuteMsg::MirrorMintExecuteMsg(mirror_msg.clone());
@@ -25,6 +32,33 @@ fn assert_mint_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorM
         contract_addr: MOCK_MIRROR_MINT_ADDR.to_string(),
         funds: info.funds,
         msg: to_binary(&mirror_msg).unwrap(),
+    };
+    assert_eq!(
+        Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
+        res
+    );
+}
+
+fn assert_mint_execute_cw20_msg(
+    deps: DepsMut,
+    info: MessageInfo,
+    mirror_msg: MirrorMintCw20HookMsg,
+) {
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: info.sender.to_string(),
+        amount: Uint128::from(TEST_AMOUNT),
+        msg: to_binary(&Cw20HookMsg::MirrorMintCw20HookMsg(mirror_msg.clone())).unwrap(),
+    });
+    let res = execute(deps, mock_env(), mock_info(TEST_TOKEN, &[]), msg.clone()).unwrap();
+    let send_msg = Cw20ExecuteMsg::Send {
+        contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        amount: Uint128::from(TEST_AMOUNT),
+        msg: to_binary(&mirror_msg).unwrap(),
+    };
+    let execute_msg = WasmMsg::Execute {
+        contract_addr: TEST_TOKEN.to_string(),
+        funds: vec![],
+        msg: to_binary(&send_msg).unwrap(),
     };
     assert_eq!(
         Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
@@ -44,6 +78,56 @@ fn assert_staking_execute_msg(
         contract_addr: MOCK_MIRROR_STAKING_ADDR.to_string(),
         funds: info.funds,
         msg: to_binary(&mirror_msg).unwrap(),
+    };
+    assert_eq!(
+        Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
+        res
+    );
+}
+
+fn assert_staking_execute_cw20_msg(
+    deps: DepsMut,
+    info: MessageInfo,
+    mirror_msg: MirrorStakingCw20HookMsg,
+) {
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: info.sender.to_string(),
+        amount: Uint128::from(TEST_AMOUNT),
+        msg: to_binary(&Cw20HookMsg::MirrorStakingCw20HookMsg(mirror_msg.clone())).unwrap(),
+    });
+    let res = execute(deps, mock_env(), mock_info(TEST_TOKEN, &[]), msg.clone()).unwrap();
+    let send_msg = Cw20ExecuteMsg::Send {
+        contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
+        amount: Uint128::from(TEST_AMOUNT),
+        msg: to_binary(&mirror_msg).unwrap(),
+    };
+    let execute_msg = WasmMsg::Execute {
+        contract_addr: TEST_TOKEN.to_string(),
+        funds: vec![],
+        msg: to_binary(&send_msg).unwrap(),
+    };
+    assert_eq!(
+        Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
+        res
+    );
+}
+
+fn assert_gov_execute_cw20_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorGovCw20HookMsg) {
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: info.sender.to_string(),
+        amount: Uint128::from(TEST_AMOUNT),
+        msg: to_binary(&Cw20HookMsg::MirrorGovCw20HookMsg(mirror_msg.clone())).unwrap(),
+    });
+    let res = execute(deps, mock_env(), mock_info(TEST_TOKEN, &[]), msg.clone()).unwrap();
+    let send_msg = Cw20ExecuteMsg::Send {
+        contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        amount: Uint128::from(TEST_AMOUNT),
+        msg: to_binary(&mirror_msg).unwrap(),
+    };
+    let execute_msg = WasmMsg::Execute {
+        contract_addr: TEST_TOKEN.to_string(),
+        funds: vec![],
+        msg: to_binary(&send_msg).unwrap(),
     };
     assert_eq!(
         Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
@@ -213,6 +297,82 @@ fn test_mirror_mint_mint() {
 }
 
 #[test]
+fn test_mirror_mint_open_position_cw20() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let msg = InstantiateMsg {
+        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
+    };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let mirror_msg = MirrorMintCw20HookMsg::OpenPosition {
+        asset_info: AssetInfo::Token {
+            contract_addr: TEST_TOKEN.to_string(),
+        },
+        collateral_ratio: Decimal::one(),
+        short_params: None,
+    };
+
+    assert_mint_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
+}
+
+#[test]
+fn test_mirror_mint_deposit_cw20() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let msg = InstantiateMsg {
+        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
+    };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let mirror_msg = MirrorMintCw20HookMsg::Deposit {
+        position_idx: Uint128::from(1u128),
+    };
+
+    assert_mint_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
+}
+
+#[test]
+fn test_mirror_mint_burn_cw20() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let msg = InstantiateMsg {
+        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
+    };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let mirror_msg = MirrorMintCw20HookMsg::Burn {
+        position_idx: Uint128::from(1u128),
+    };
+
+    assert_mint_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
+}
+
+#[test]
+fn test_mirror_mint_auction_cw20() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let msg = InstantiateMsg {
+        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
+    };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let mirror_msg = MirrorMintCw20HookMsg::Auction {
+        position_idx: Uint128::from(1u128),
+    };
+
+    assert_mint_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
+}
+
+#[test]
 fn test_mirror_staking_unbond() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
@@ -277,6 +437,24 @@ fn test_mirror_staking_autostake() {
     };
 
     assert_staking_execute_msg(deps.as_mut(), info, mirror_msg);
+}
+
+#[test]
+fn test_mirror_staking_bond_cw20() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let msg = InstantiateMsg {
+        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
+    };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let mirror_msg = MirrorStakingCw20HookMsg::Bond {
+        asset_token: TEST_TOKEN.to_string(),
+    };
+
+    assert_staking_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
 }
 
 #[test]
@@ -393,4 +571,41 @@ fn test_mirror_gov_snapshot_poll() {
     let mirror_msg = MirrorGovExecuteMsg::SnapshotPoll { poll_id: 1_u64 };
 
     assert_gov_execute_msg(deps.as_mut(), info, mirror_msg);
+}
+
+#[test]
+fn test_mirror_gov_stake_voting_tokens_cw20() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let msg = InstantiateMsg {
+        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
+    };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let mirror_msg = MirrorGovCw20HookMsg::StakeVotingTokens {};
+
+    assert_gov_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
+}
+
+#[test]
+fn test_mirror_gov_create_poll_cw20() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let msg = InstantiateMsg {
+        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
+    };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let mirror_msg = MirrorGovCw20HookMsg::CreatePoll {
+        title: "title".to_string(),
+        description: "description".to_string(),
+        link: None,
+        execute_msg: None,
+    };
+
+    assert_gov_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
 }

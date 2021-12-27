@@ -100,24 +100,25 @@ pub fn receive_cw20(
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+    let token_address = info.sender.to_string();
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::MirrorMintCw20HookMsg(msg) => execute_mirror_cw20_msg(
             info,
-            cw20_msg.sender.to_string(),
+            token_address,
             cw20_msg.amount,
             config.mirror_mint_contract.to_string(),
             to_binary(&msg)?,
         ),
         Cw20HookMsg::MirrorStakingCw20HookMsg(msg) => execute_mirror_cw20_msg(
             info,
-            cw20_msg.sender.to_string(),
+            token_address,
             cw20_msg.amount,
             config.mirror_staking_contract.to_string(),
             to_binary(&msg)?,
         ),
         Cw20HookMsg::MirrorGovCw20HookMsg(msg) => execute_mirror_cw20_msg(
             info,
-            cw20_msg.sender.to_string(),
+            token_address,
             cw20_msg.amount,
             config.mirror_gov_contract.to_string(),
             to_binary(&msg)?,
@@ -133,11 +134,11 @@ pub fn execute_mirror_cw20_msg(
     msg_binary: Binary,
 ) -> Result<Response, ContractError> {
     let msg = Cw20ExecuteMsg::Send {
-        contract: token_addr,
+        contract: contract_addr,
         amount,
         msg: msg_binary,
     };
-    execute_mirror_msg(info, contract_addr, to_binary(&msg)?)
+    execute_mirror_msg(info, token_addr, to_binary(&msg)?)
 }
 
 pub fn execute_mirror_msg(
