@@ -259,7 +259,7 @@ pub fn query_mirror_msg<T: DeserializeOwned>(
     deps: Deps,
     contract_addr: String,
     msg_binary: Binary,
-) -> StdResult<Binary> {
+) -> StdResult<T> {
     let query_msg = WasmQuery::Smart {
         contract_addr,
         msg: msg_binary,
