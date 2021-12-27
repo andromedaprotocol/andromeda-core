@@ -1,7 +1,17 @@
+use cw20::Cw20ReceiveMsg;
 pub use mirror_protocol::{
-    gov::{ExecuteMsg as MirrorGovExecuteMsg, QueryMsg as MirrorGovQueryMsg},
-    mint::{ExecuteMsg as MirrorMintExecuteMsg, QueryMsg as MirrorMintQueryMsg},
-    staking::{ExecuteMsg as MirrorStakingExecuteMsg, QueryMsg as MirrorStakingQueryMsg},
+    gov::{
+        Cw20HookMsg as MirrorGovCw20HookMsg, ExecuteMsg as MirrorGovExecuteMsg,
+        QueryMsg as MirrorGovQueryMsg,
+    },
+    mint::{
+        Cw20HookMsg as MirrorMintCw20HookMsg, ExecuteMsg as MirrorMintExecuteMsg,
+        QueryMsg as MirrorMintQueryMsg,
+    },
+    staking::{
+        Cw20HookMsg as MirrorStakingCw20HookMsg, ExecuteMsg as MirrorStakingExecuteMsg,
+        QueryMsg as MirrorStakingQueryMsg,
+    },
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -16,6 +26,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    Receive(Cw20ReceiveMsg),
     MirrorMintExecuteMsg(MirrorMintExecuteMsg),
     MirrorStakingExecuteMsg(MirrorStakingExecuteMsg),
     MirrorGovExecuteMsg(MirrorGovExecuteMsg),
@@ -37,6 +48,14 @@ pub enum QueryMsg {
     MirrorGovQueryMsg(MirrorGovQueryMsg),
     ContractOwner {},
     Config {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Cw20HookMsg {
+    MirrorMintCw20HookMsg(MirrorMintCw20HookMsg),
+    MirrorStakingCw20HookMsg(MirrorStakingCw20HookMsg),
+    MirrorGovCw20HookMsg(MirrorGovCw20HookMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

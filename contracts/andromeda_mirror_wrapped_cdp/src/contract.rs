@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
-    StdResult, WasmMsg, WasmQuery,
+    from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest,
+    Response, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use serde::de::DeserializeOwned;
@@ -11,14 +11,20 @@ use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     error::ContractError,
     mirror_wrapped_cdp::{
-        ConfigResponse, ExecuteMsg, InstantiateMsg, MirrorMintQueryMsg, MirrorStakingQueryMsg,
-        QueryMsg,
+        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorMintQueryMsg,
+        MirrorStakingQueryMsg, QueryMsg,
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
-use mirror_protocol::mint::ConfigResponse as MintConfigResponse;
-use mirror_protocol::staking::ConfigResponse as StakingConfigResponse;
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use mirror_protocol::mint::{
+    AssetConfigResponse, ConfigResponse as MintConfigResponse, NextPositionIdxResponse,
+    PositionResponse, PositionsResponse,
+};
+use mirror_protocol::staking::{
+    ConfigResponse as StakingConfigResponse, PoolInfoResponse, RewardInfoResponse,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_mirror_wrapped_cdp";
@@ -53,6 +59,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     match msg {
+        ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
         ExecuteMsg::MirrorMintExecuteMsg(msg) => execute_mirror_msg(
             info,
             config.mirror_mint_contract.to_string(),
@@ -81,6 +88,52 @@ pub fn execute(
             mirror_gov_contract,
         ),
     }
+}
+
+pub fn receive_cw20(
+    deps: DepsMut,
+    info: MessageInfo,
+    cw20_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    match from_binary(&cw20_msg.msg)? {
+        Cw20HookMsg::MirrorMintCw20HookMsg(msg) => execute_mirror_cw20_msg(
+            info,
+            cw20_msg.sender.to_string(),
+            cw20_msg.amount,
+            config.mirror_mint_contract.to_string(),
+            to_binary(&msg)?,
+        ),
+        Cw20HookMsg::MirrorStakingCw20HookMsg(msg) => execute_mirror_cw20_msg(
+            info,
+            cw20_msg.sender.to_string(),
+            cw20_msg.amount,
+            config.mirror_staking_contract.to_string(),
+            to_binary(&msg)?,
+        ),
+        Cw20HookMsg::MirrorGovCw20HookMsg(msg) => execute_mirror_cw20_msg(
+            info,
+            cw20_msg.sender.to_string(),
+            cw20_msg.amount,
+            config.mirror_gov_contract.to_string(),
+            to_binary(&msg)?,
+        ),
+    }
+}
+
+pub fn execute_mirror_cw20_msg(
+    info: MessageInfo,
+    token_addr: String,
+    amount: Uint128,
+    contract_addr: String,
+    msg_binary: Binary,
+) -> Result<Response, ContractError> {
+    let msg = Cw20ExecuteMsg::Send {
+        contract: token_addr,
+        amount,
+        msg: msg_binary,
+    };
+    execute_mirror_msg(info, contract_addr, to_binary(&msg)?)
 }
 
 pub fn execute_mirror_msg(
@@ -143,15 +196,37 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 
 pub fn query_mirror_mint(deps: Deps, msg: MirrorMintQueryMsg) -> StdResult<Binary> {
     let contract_addr = CONFIG.load(deps.storage)?.mirror_mint_contract.to_string();
-    to_binary(&match msg {
-        MirrorMintQueryMsg::Config {} => {
-            query_mirror_msg::<MintConfigResponse>(deps, contract_addr, to_binary(&msg)?)?
+    match msg {
+        MirrorMintQueryMsg::Config {} => to_binary(&query_mirror_msg::<MintConfigResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorMintQueryMsg::AssetConfig { .. } => {
+            to_binary(&query_mirror_msg::<AssetConfigResponse>(
+                deps,
+                contract_addr,
+                to_binary(&msg)?,
+            )?)
         }
-        MirrorMintQueryMsg::AssetConfig { .. } => panic!(),
-        MirrorMintQueryMsg::Position { .. } => panic!(),
-        MirrorMintQueryMsg::Positions { .. } => panic!(),
-        MirrorMintQueryMsg::NextPositionIdx {} => panic!(),
-    })
+        MirrorMintQueryMsg::Position { .. } => to_binary(&query_mirror_msg::<PositionResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorMintQueryMsg::Positions { .. } => to_binary(&query_mirror_msg::<PositionsResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorMintQueryMsg::NextPositionIdx {} => {
+            to_binary(&query_mirror_msg::<NextPositionIdxResponse>(
+                deps,
+                contract_addr,
+                to_binary(&msg)?,
+            )?)
+        }
+    }
 }
 
 pub fn query_mirror_staking(deps: Deps, msg: MirrorStakingQueryMsg) -> StdResult<Binary> {
@@ -159,19 +234,32 @@ pub fn query_mirror_staking(deps: Deps, msg: MirrorStakingQueryMsg) -> StdResult
         .load(deps.storage)?
         .mirror_staking_contract
         .to_string();
-    to_binary(&match msg {
-        MirrorStakingQueryMsg::Config {} => {
-            query_mirror_msg::<StakingConfigResponse>(deps, contract_addr, to_binary(&msg)?)?
+    match msg {
+        MirrorStakingQueryMsg::Config {} => to_binary(&query_mirror_msg::<StakingConfigResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorStakingQueryMsg::PoolInfo { .. } => to_binary(&query_mirror_msg::<PoolInfoResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorStakingQueryMsg::RewardInfo { .. } => {
+            to_binary(&query_mirror_msg::<RewardInfoResponse>(
+                deps,
+                contract_addr,
+                to_binary(&msg)?,
+            )?)
         }
-        _ => panic!(),
-    })
+    }
 }
 
 pub fn query_mirror_msg<T: DeserializeOwned>(
     deps: Deps,
     contract_addr: String,
     msg_binary: Binary,
-) -> StdResult<T> {
+) -> StdResult<Binary> {
     let query_msg = WasmQuery::Smart {
         contract_addr,
         msg: msg_binary,
