@@ -11,19 +11,23 @@ use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     error::ContractError,
     mirror_wrapped_cdp::{
-        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorMintQueryMsg,
-        MirrorStakingQueryMsg, QueryMsg,
+        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovQueryMsg,
+        MirrorMintQueryMsg, MirrorStakingQueryMsg, QueryMsg,
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use mirror_protocol::mint::{
-    AssetConfigResponse, ConfigResponse as MintConfigResponse, NextPositionIdxResponse,
-    PositionResponse, PositionsResponse,
-};
-use mirror_protocol::staking::{
-    ConfigResponse as StakingConfigResponse, PoolInfoResponse, RewardInfoResponse,
+use mirror_protocol::{
+    gov::{
+        ConfigResponse as GovConfigResponse, PollResponse, PollsResponse, SharesResponse,
+        StakerResponse, StateResponse as GovStateResponse, VotersResponse, VotersResponseItem,
+    },
+    mint::{
+        AssetConfigResponse, ConfigResponse as MintConfigResponse, NextPositionIdxResponse,
+        PositionResponse, PositionsResponse,
+    },
+    staking::{ConfigResponse as StakingConfigResponse, PoolInfoResponse, RewardInfoResponse},
 };
 
 // version info for migration info
@@ -181,7 +185,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::MirrorMintQueryMsg(msg) => query_mirror_mint(deps, msg),
         QueryMsg::MirrorStakingQueryMsg(msg) => query_mirror_staking(deps, msg),
-        QueryMsg::MirrorGovQueryMsg(_) => panic!(), // TODO: Replace panic with code.
+        QueryMsg::MirrorGovQueryMsg(msg) => query_mirror_gov(deps, msg),
     }
 }
 
@@ -252,6 +256,52 @@ pub fn query_mirror_staking(deps: Deps, msg: MirrorStakingQueryMsg) -> StdResult
                 to_binary(&msg)?,
             )?)
         }
+    }
+}
+
+pub fn query_mirror_gov(deps: Deps, msg: MirrorGovQueryMsg) -> StdResult<Binary> {
+    let contract_addr = CONFIG.load(deps.storage)?.mirror_gov_contract.to_string();
+    match msg {
+        MirrorGovQueryMsg::Config {} => to_binary(&query_mirror_msg::<GovConfigResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorGovQueryMsg::State {} => to_binary(&query_mirror_msg::<GovStateResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorGovQueryMsg::Staker { .. } => to_binary(&query_mirror_msg::<StakerResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorGovQueryMsg::Poll { .. } => to_binary(&query_mirror_msg::<PollResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorGovQueryMsg::Polls { .. } => to_binary(&query_mirror_msg::<PollsResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorGovQueryMsg::Voter { .. } => to_binary(&query_mirror_msg::<VotersResponseItem>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorGovQueryMsg::Voters { .. } => to_binary(&query_mirror_msg::<VotersResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorGovQueryMsg::Shares { .. } => to_binary(&query_mirror_msg::<SharesResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
     }
 }
 

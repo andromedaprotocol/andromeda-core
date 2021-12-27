@@ -1,12 +1,16 @@
-use andromeda_protocol::mirror_wrapped_cdp::{MirrorMintQueryMsg, MirrorStakingQueryMsg};
+use andromeda_protocol::mirror_wrapped_cdp::{
+    MirrorGovQueryMsg, MirrorMintQueryMsg, MirrorStakingQueryMsg,
+};
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult,
-    QueryRequest, SystemError, SystemResult, WasmQuery,
+    QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
-use mirror_protocol::mint::ConfigResponse as MintConfigResponse;
-use mirror_protocol::staking::ConfigResponse as StakingConfigResponse;
+use mirror_protocol::{
+    gov::ConfigResponse as GovConfigResponse, mint::ConfigResponse as MintConfigResponse,
+    staking::ConfigResponse as StakingConfigResponse,
+};
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_MIRROR_MINT_ADDR: &str = "mirror_mint";
@@ -38,6 +42,20 @@ pub fn mock_staking_config_response() -> StakingConfigResponse {
         oracle_contract: "oracle_contract".to_string(),
         premium_min_update_interval: 1_u64,
         short_reward_contract: "short_reward_contract".to_string(),
+    }
+}
+
+pub fn mock_gov_config_response() -> GovConfigResponse {
+    GovConfigResponse {
+        owner: "owner".to_string(),
+        mirror_token: "mirror_token".to_string(),
+        quorum: Decimal::one(),
+        threshold: Decimal::one(),
+        voting_period: 1_u64,
+        effective_delay: 1_u64,
+        proposal_deposit: Uint128::from(1_u128),
+        voter_weight: Decimal::one(),
+        snapshot_period: 1_u64,
     }
 }
 
@@ -81,6 +99,7 @@ impl WasmMockQuerier {
                 match contract_addr.as_str() {
                     MOCK_MIRROR_MINT_ADDR => self.handle_mint_query(msg, request),
                     MOCK_MIRROR_STAKING_ADDR => self.handle_staking_query(msg, request),
+                    MOCK_MIRROR_GOV_ADDR => self.handle_gov_query(msg, request),
                     _ => panic!("Unknown contract address"),
                 }
             }
@@ -113,6 +132,19 @@ impl WasmMockQuerier {
         match from_binary(msg).unwrap() {
             MirrorStakingQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
                 to_binary(&mock_staking_config_response()).unwrap(),
+            )),
+            _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_gov_query(
+        &self,
+        msg: &Binary,
+        request: &QueryRequest<TerraQueryWrapper>,
+    ) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            MirrorGovQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_gov_config_response()).unwrap(),
             )),
             _ => self.base.handle_query(request),
         }
