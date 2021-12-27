@@ -8,10 +8,22 @@ use cosmwasm_std::{
     QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 use mirror_protocol::{
-    gov::ConfigResponse as GovConfigResponse, mint::ConfigResponse as MintConfigResponse,
-    staking::ConfigResponse as StakingConfigResponse,
+    gov::{
+        ConfigResponse as GovConfigResponse, PollResponse, PollStatus, PollsResponse,
+        SharesResponse, StakerResponse, StateResponse as GovStateResponse, VoteOption,
+        VotersResponse, VotersResponseItem,
+    },
+    mint::{
+        AssetConfigResponse, ConfigResponse as MintConfigResponse, NextPositionIdxResponse,
+        PositionResponse, PositionsResponse,
+    },
+    staking::{
+        ConfigResponse as StakingConfigResponse, PoolInfoResponse, RewardInfoResponse,
+        RewardInfoResponseItem,
+    },
 };
 use terra_cosmwasm::TerraQueryWrapper;
+use terraswap::asset::{Asset, AssetInfo};
 
 pub const MOCK_MIRROR_MINT_ADDR: &str = "mirror_mint";
 pub const MOCK_MIRROR_STAKING_ADDR: &str = "mirror_staking";
@@ -59,6 +71,138 @@ pub fn mock_gov_config_response() -> GovConfigResponse {
     }
 }
 
+pub fn mock_asset_config_response() -> AssetConfigResponse {
+    AssetConfigResponse {
+        token: "token".to_string(),
+        auction_discount: Decimal::one(),
+        min_collateral_ratio: Decimal::one(),
+        end_price: None,
+        ipo_params: None,
+    }
+}
+
+pub fn mock_position_response() -> PositionResponse {
+    PositionResponse {
+        idx: Uint128::from(1u128),
+        owner: "owner".to_string(),
+        collateral: Asset {
+            amount: Uint128::from(1u128),
+            info: AssetInfo::NativeToken {
+                denom: "denom".to_string(),
+            },
+        },
+        asset: Asset {
+            amount: Uint128::from(1u128),
+            info: AssetInfo::NativeToken {
+                denom: "denom".to_string(),
+            },
+        },
+        is_short: false,
+    }
+}
+pub fn mock_positions_response() -> PositionsResponse {
+    PositionsResponse {
+        positions: vec![mock_position_response()],
+    }
+}
+
+pub fn mock_next_position_idx_response() -> NextPositionIdxResponse {
+    NextPositionIdxResponse {
+        next_position_idx: Uint128::from(2u128),
+    }
+}
+
+pub fn mock_pool_info_response() -> PoolInfoResponse {
+    PoolInfoResponse {
+        asset_token: "asset_token".to_string(),
+        staking_token: "staking_token".to_string(),
+        total_bond_amount: Uint128::from(1u128),
+        total_short_amount: Uint128::from(1u128),
+        reward_index: Decimal::one(),
+        short_reward_index: Decimal::one(),
+        pending_reward: Uint128::from(1u128),
+        short_pending_reward: Uint128::from(1u128),
+        premium_rate: Decimal::one(),
+        short_reward_weight: Decimal::one(),
+        premium_updated_time: 1u64,
+    }
+}
+
+pub fn mock_reward_info_response() -> RewardInfoResponse {
+    RewardInfoResponse {
+        staker_addr: "staker_addr".to_string(),
+        reward_infos: vec![RewardInfoResponseItem {
+            asset_token: "asset_token".to_string(),
+            bond_amount: Uint128::from(1u128),
+            pending_reward: Uint128::from(1u128),
+            is_short: false,
+        }],
+    }
+}
+
+pub fn mock_gov_state_response() -> GovStateResponse {
+    GovStateResponse {
+        poll_count: 1u64,
+        total_share: Uint128::from(1u128),
+        total_deposit: Uint128::from(1u128),
+        pending_voting_rewards: Uint128::from(1u128),
+    }
+}
+
+pub fn mock_staker_response() -> StakerResponse {
+    StakerResponse {
+        balance: Uint128::from(1u128),
+        share: Uint128::from(1u128),
+        locked_balance: vec![],
+        withdrawable_polls: vec![],
+        pending_voting_rewards: Uint128::from(1u128),
+    }
+}
+
+pub fn mock_poll_response() -> PollResponse {
+    PollResponse {
+        id: 1u64,
+        creator: "creator".to_string(),
+        status: PollStatus::Passed {},
+        end_time: 1u64,
+        title: "title".to_string(),
+        description: "description".to_string(),
+        link: None,
+        deposit_amount: Uint128::from(1u128),
+        execute_data: None,
+        yes_votes: Uint128::from(1u128),
+        no_votes: Uint128::from(1u128),
+        abstain_votes: Uint128::from(1u128),
+        total_balance_at_end_poll: None,
+        voters_reward: Uint128::from(1u128),
+        staked_amount: None,
+    }
+}
+
+pub fn mock_polls_response() -> PollsResponse {
+    PollsResponse {
+        polls: vec![mock_poll_response()],
+    }
+}
+
+pub fn mock_voter_response() -> VotersResponseItem {
+    VotersResponseItem {
+        voter: "voter".to_string(),
+        vote: VoteOption::Yes,
+        balance: Uint128::from(1u128),
+    }
+}
+
+pub fn mock_voters_response() -> VotersResponse {
+    VotersResponse {
+        voters: vec![mock_voter_response()],
+    }
+}
+
+pub fn mock_shares_response() -> SharesResponse {
+    SharesResponse { stakers: vec![] }
+}
+
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
@@ -97,9 +241,9 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
-                    MOCK_MIRROR_MINT_ADDR => self.handle_mint_query(msg, request),
-                    MOCK_MIRROR_STAKING_ADDR => self.handle_staking_query(msg, request),
-                    MOCK_MIRROR_GOV_ADDR => self.handle_gov_query(msg, request),
+                    MOCK_MIRROR_MINT_ADDR => self.handle_mint_query(msg),
+                    MOCK_MIRROR_STAKING_ADDR => self.handle_staking_query(msg),
+                    MOCK_MIRROR_GOV_ADDR => self.handle_gov_query(msg),
                     _ => panic!("Unknown contract address"),
                 }
             }
@@ -111,42 +255,66 @@ impl WasmMockQuerier {
         WasmMockQuerier { base }
     }
 
-    fn handle_mint_query(
-        &self,
-        msg: &Binary,
-        request: &QueryRequest<TerraQueryWrapper>,
-    ) -> QuerierResult {
+    fn handle_mint_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             MirrorMintQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
                 to_binary(&mock_mint_config_response()).unwrap(),
             )),
-            _ => self.base.handle_query(request),
+            MirrorMintQueryMsg::AssetConfig { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_asset_config_response()).unwrap(),
+            )),
+            MirrorMintQueryMsg::Position { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_position_response()).unwrap(),
+            )),
+            MirrorMintQueryMsg::Positions { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_positions_response()).unwrap(),
+            )),
+            MirrorMintQueryMsg::NextPositionIdx { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_next_position_idx_response()).unwrap(),
+            )),
         }
     }
 
-    fn handle_staking_query(
-        &self,
-        msg: &Binary,
-        request: &QueryRequest<TerraQueryWrapper>,
-    ) -> QuerierResult {
+    fn handle_staking_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             MirrorStakingQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
                 to_binary(&mock_staking_config_response()).unwrap(),
             )),
-            _ => self.base.handle_query(request),
+            MirrorStakingQueryMsg::PoolInfo { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_pool_info_response()).unwrap(),
+            )),
+            MirrorStakingQueryMsg::RewardInfo { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_reward_info_response()).unwrap(),
+            )),
         }
     }
 
-    fn handle_gov_query(
-        &self,
-        msg: &Binary,
-        request: &QueryRequest<TerraQueryWrapper>,
-    ) -> QuerierResult {
+    fn handle_gov_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             MirrorGovQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
                 to_binary(&mock_gov_config_response()).unwrap(),
             )),
-            _ => self.base.handle_query(request),
+            MirrorGovQueryMsg::State {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_gov_state_response()).unwrap(),
+            )),
+            MirrorGovQueryMsg::Staker { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_staker_response()).unwrap(),
+            )),
+            MirrorGovQueryMsg::Poll { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_poll_response()).unwrap(),
+            )),
+            MirrorGovQueryMsg::Polls { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_polls_response()).unwrap(),
+            )),
+            MirrorGovQueryMsg::Voter { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_voter_response()).unwrap(),
+            )),
+            MirrorGovQueryMsg::Voters { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_voters_response()).unwrap(),
+            )),
+            MirrorGovQueryMsg::Shares { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_shares_response()).unwrap(),
+            )),
         }
     }
 }
