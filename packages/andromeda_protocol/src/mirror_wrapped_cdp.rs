@@ -27,6 +27,7 @@ pub struct InstantiateMsg {
     pub mirror_lock_contract: String,
     pub mirror_oracle_contract: String,
     pub mirror_collateral_oracle_contract: String,
+    pub operators: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -48,6 +49,9 @@ pub enum ExecuteMsg {
         mirror_oracle_contract: Option<String>,
         mirror_collateral_oracle_contract: Option<String>,
     },
+    UpdateOperators {
+        operators: Vec<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -61,6 +65,7 @@ pub enum QueryMsg {
     MirrorCollateralOracleQueryMsg(MirrorCollateralOracleQueryMsg),
     ContractOwner {},
     Config {},
+    IsOperator { address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

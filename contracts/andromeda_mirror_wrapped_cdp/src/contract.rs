@@ -15,6 +15,7 @@ use andromeda_protocol::{
         MirrorGovQueryMsg, MirrorLockQueryMsg, MirrorMintQueryMsg, MirrorOracleQueryMsg,
         MirrorStakingQueryMsg, QueryMsg,
     },
+    operators::{execute_update_operators, initialize_operators, is_operator, query_is_operator},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
@@ -51,6 +52,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    if let Some(operators) = msg.operators {
+        initialize_operators(deps.storage, operators)?;
+    }
     let config = Config {
         mirror_mint_contract: deps.api.addr_validate(&msg.mirror_mint_contract)?,
         mirror_staking_contract: deps.api.addr_validate(&msg.mirror_staking_contract)?,
@@ -81,25 +85,29 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
         ExecuteMsg::MirrorMintExecuteMsg(msg) => execute_mirror_msg(
             deps,
-            info,
+            info.sender.to_string(),
+            info.funds,
             config.mirror_mint_contract.to_string(),
             to_binary(&msg)?,
         ),
         ExecuteMsg::MirrorStakingExecuteMsg(msg) => execute_mirror_msg(
             deps,
-            info,
+            info.sender.to_string(),
+            info.funds,
             config.mirror_staking_contract.to_string(),
             to_binary(&msg)?,
         ),
         ExecuteMsg::MirrorGovExecuteMsg(msg) => execute_mirror_msg(
             deps,
-            info,
+            info.sender.to_string(),
+            info.funds,
             config.mirror_gov_contract.to_string(),
             to_binary(&msg)?,
         ),
         ExecuteMsg::MirrorLockExecuteMsg(msg) => execute_mirror_msg(
             deps,
-            info,
+            info.sender.to_string(),
+            info.funds,
             config.mirror_lock_contract.to_string(),
             to_binary(&msg)?,
         ),
@@ -121,6 +129,9 @@ pub fn execute(
             mirror_oracle_contract,
             mirror_collateral_oracle_contract,
         ),
+        ExecuteMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
+        }
     }
 }
 
@@ -134,7 +145,7 @@ pub fn receive_cw20(
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::MirrorMintCw20HookMsg(msg) => execute_mirror_cw20_msg(
             deps,
-            info,
+            cw20_msg.sender,
             token_address,
             cw20_msg.amount,
             config.mirror_mint_contract.to_string(),
@@ -142,7 +153,7 @@ pub fn receive_cw20(
         ),
         Cw20HookMsg::MirrorStakingCw20HookMsg(msg) => execute_mirror_cw20_msg(
             deps,
-            info,
+            cw20_msg.sender,
             token_address,
             cw20_msg.amount,
             config.mirror_staking_contract.to_string(),
@@ -150,7 +161,7 @@ pub fn receive_cw20(
         ),
         Cw20HookMsg::MirrorGovCw20HookMsg(msg) => execute_mirror_cw20_msg(
             deps,
-            info,
+            cw20_msg.sender,
             token_address,
             cw20_msg.amount,
             config.mirror_gov_contract.to_string(),
@@ -161,7 +172,7 @@ pub fn receive_cw20(
 
 pub fn execute_mirror_cw20_msg(
     deps: DepsMut,
-    info: MessageInfo,
+    sender: String,
     token_addr: String,
     amount: Uint128,
     contract_addr: String,
@@ -172,22 +183,27 @@ pub fn execute_mirror_cw20_msg(
         amount,
         msg: msg_binary,
     };
-    execute_mirror_msg(deps, info, token_addr, to_binary(&msg)?)
+    execute_mirror_msg(deps, sender, vec![], token_addr, to_binary(&msg)?)
 }
 
 pub fn execute_mirror_msg(
     deps: DepsMut,
-    info: MessageInfo,
+    sender: String,
+    funds: Vec<Coin>,
     contract_addr: String,
     msg_binary: Binary,
 ) -> Result<Response, ContractError> {
     require(
-        info.funds.is_empty() || info.funds.len() == 1,
+        is_contract_owner(deps.storage, sender.clone())? || is_operator(deps.storage, sender)?,
+        ContractError::Unauthorized {},
+    )?;
+    require(
+        funds.is_empty() || funds.len() == 1,
         ContractError::InvalidMirrorFunds {
             msg: "Mirror expects no funds or a single type of fund to be deposited.".to_string(),
         },
     )?;
-    let tax_deducted_funds = get_tax_deducted_funds(&deps, info.funds)?;
+    let tax_deducted_funds = get_tax_deducted_funds(&deps, funds)?;
 
     let execute_msg = WasmMsg::Execute {
         contract_addr,
@@ -240,6 +256,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
         QueryMsg::MirrorMintQueryMsg(msg) => query_mirror_mint(deps, msg),
         QueryMsg::MirrorStakingQueryMsg(msg) => query_mirror_staking(deps, msg),
         QueryMsg::MirrorGovQueryMsg(msg) => query_mirror_gov(deps, msg),

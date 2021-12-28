@@ -11,12 +11,16 @@ use super::mock_querier::{
     MOCK_MIRROR_MINT_ADDR, MOCK_MIRROR_ORACLE_ADDR, MOCK_MIRROR_STAKING_ADDR,
 };
 use crate::contract::{execute, get_tax_deducted_funds, instantiate, query};
-use andromeda_protocol::mirror_wrapped_cdp::{
-    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorCollateralOracleQueryMsg,
-    MirrorGovCw20HookMsg, MirrorGovExecuteMsg, MirrorGovQueryMsg, MirrorLockExecuteMsg,
-    MirrorLockQueryMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorMintQueryMsg,
-    MirrorOracleQueryMsg, MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, MirrorStakingQueryMsg,
-    QueryMsg,
+use andromeda_protocol::{
+    error::ContractError,
+    mirror_wrapped_cdp::{
+        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorCollateralOracleQueryMsg,
+        MirrorGovCw20HookMsg, MirrorGovExecuteMsg, MirrorGovQueryMsg, MirrorLockExecuteMsg,
+        MirrorLockQueryMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorMintQueryMsg,
+        MirrorOracleQueryMsg, MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg,
+        MirrorStakingQueryMsg, QueryMsg,
+    },
+    operators::IsOperatorResponse,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
@@ -189,6 +193,7 @@ fn assert_intantiate(deps: DepsMut, info: MessageInfo) {
         mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
         mirror_oracle_contract: MOCK_MIRROR_ORACLE_ADDR.to_string(),
         mirror_collateral_oracle_contract: MOCK_MIRROR_COLLATERAL_ORACLE_ADDR.to_string(),
+        operators: None,
     };
     let res = instantiate(deps, mock_env(), info.clone(), msg).unwrap();
     assert_eq!(
@@ -219,6 +224,88 @@ fn test_instantiate() {
         },
         res
     );
+}
+
+#[test]
+fn test_instantiate_with_operator() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    let operator = mock_info("operator", &[]);
+    let msg = InstantiateMsg {
+        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
+        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
+        mirror_oracle_contract: MOCK_MIRROR_ORACLE_ADDR.to_string(),
+        mirror_collateral_oracle_contract: MOCK_MIRROR_COLLATERAL_ORACLE_ADDR.to_string(),
+        operators: Some(vec![operator.sender.to_string()]),
+    };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::IsOperator {
+            address: operator.sender.to_string(),
+        },
+        IsOperatorResponse { is_operator: true },
+    );
+}
+
+#[test]
+fn test_mirror_non_authorized_user() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info.clone());
+
+    let unauth_user = mock_info("user", &[]);
+    let mirror_msg = MirrorMintExecuteMsg::OpenPosition {
+        collateral: Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(10_u128),
+        },
+        asset_info: AssetInfo::Token {
+            contract_addr: "token_address".to_string(),
+        },
+        collateral_ratio: Decimal::one(),
+        short_params: None,
+    };
+    let res_err = execute(
+        deps.as_mut(),
+        mock_env(),
+        unauth_user.clone(),
+        ExecuteMsg::MirrorMintExecuteMsg(mirror_msg),
+    )
+    .unwrap_err();
+    assert_eq!(ContractError::Unauthorized {}, res_err);
+}
+
+#[test]
+fn test_mirror_cw20_non_authorized_user() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info.clone());
+
+    let unauth_user = mock_info("user", &[]);
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: unauth_user.sender.to_string(),
+        amount: Uint128::from(TEST_AMOUNT),
+        msg: to_binary(&Cw20HookMsg::MirrorMintCw20HookMsg(
+            MirrorMintCw20HookMsg::Deposit {
+                position_idx: Uint128::from(1u128),
+            },
+        ))
+        .unwrap(),
+    });
+    let res_err = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(TEST_TOKEN, &[]),
+        msg.clone(),
+    )
+    .unwrap_err();
+    assert_eq!(ContractError::Unauthorized {}, res_err);
 }
 
 #[test]
@@ -272,12 +359,23 @@ fn test_mirror_mint_withdraw() {
     let info = mock_info("creator", &[]);
     assert_intantiate(deps.as_mut(), info.clone());
 
+    let operator = mock_info("operator", &[]);
+    let _res = execute(
+        deps.as_mut(),
+        mock_env(),
+        info,
+        ExecuteMsg::UpdateOperators {
+            operators: vec![operator.sender.to_string()],
+        },
+    )
+    .unwrap();
+
     let mirror_msg = MirrorMintExecuteMsg::Withdraw {
         position_idx: Uint128::from(1_u128),
         collateral: None,
     };
 
-    assert_mint_execute_msg(deps.as_mut(), info, mirror_msg);
+    assert_mint_execute_msg(deps.as_mut(), operator, mirror_msg);
 }
 
 #[test]
@@ -323,11 +421,22 @@ fn test_mirror_mint_deposit_cw20() {
     let info = mock_info("creator", &[]);
     assert_intantiate(deps.as_mut(), info.clone());
 
+    let operator = mock_info("operator", &[]);
+    let _res = execute(
+        deps.as_mut(),
+        mock_env(),
+        info,
+        ExecuteMsg::UpdateOperators {
+            operators: vec![operator.sender.to_string()],
+        },
+    )
+    .unwrap();
+
     let mirror_msg = MirrorMintCw20HookMsg::Deposit {
         position_idx: Uint128::from(1u128),
     };
 
-    assert_mint_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
+    assert_mint_execute_cw20_msg(deps.as_mut(), operator, mirror_msg);
 }
 
 #[test]
