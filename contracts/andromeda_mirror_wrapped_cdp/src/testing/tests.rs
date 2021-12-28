@@ -1,18 +1,22 @@
 use super::mock_querier::{
-    mock_asset_config_response, mock_dependencies_custom, mock_lock_config_response,
-    mock_mint_config_response, mock_next_position_idx_response, mock_poll_response,
-    mock_polls_response, mock_pool_info_response, mock_position_lock_info_response,
-    mock_position_response, mock_positions_response, mock_reward_info_response,
-    mock_shares_response, mock_staker_response, mock_staking_config_response, mock_voter_response,
-    mock_voters_response, MOCK_MIRROR_GOV_ADDR, MOCK_MIRROR_LOCK_ADDR, MOCK_MIRROR_MINT_ADDR,
-    MOCK_MIRROR_STAKING_ADDR,
+    mock_asset_config_response, mock_collateral_info_response, mock_collateral_infos_response,
+    mock_collateral_oracle_config_response, mock_collateral_price_response,
+    mock_dependencies_custom, mock_feeder_response, mock_lock_config_response,
+    mock_mint_config_response, mock_next_position_idx_response, mock_oracle_config_response,
+    mock_poll_response, mock_polls_response, mock_pool_info_response,
+    mock_position_lock_info_response, mock_position_response, mock_positions_response,
+    mock_price_response, mock_prices_response, mock_reward_info_response, mock_shares_response,
+    mock_staker_response, mock_staking_config_response, mock_voter_response, mock_voters_response,
+    MOCK_MIRROR_COLLATERAL_ORACLE_ADDR, MOCK_MIRROR_GOV_ADDR, MOCK_MIRROR_LOCK_ADDR,
+    MOCK_MIRROR_MINT_ADDR, MOCK_MIRROR_ORACLE_ADDR, MOCK_MIRROR_STAKING_ADDR,
 };
 use crate::contract::{execute, get_tax_deducted_funds, instantiate, query};
 use andromeda_protocol::mirror_wrapped_cdp::{
-    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg,
-    MirrorGovExecuteMsg, MirrorGovQueryMsg, MirrorLockExecuteMsg, MirrorLockQueryMsg,
-    MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorMintQueryMsg, MirrorStakingCw20HookMsg,
-    MirrorStakingExecuteMsg, MirrorStakingQueryMsg, QueryMsg,
+    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorCollateralOracleQueryMsg,
+    MirrorGovCw20HookMsg, MirrorGovExecuteMsg, MirrorGovQueryMsg, MirrorLockExecuteMsg,
+    MirrorLockQueryMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorMintQueryMsg,
+    MirrorOracleQueryMsg, MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, MirrorStakingQueryMsg,
+    QueryMsg,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
@@ -20,11 +24,8 @@ use cosmwasm_std::{
     Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use mirror_protocol::{
-    gov::{ConfigResponse as GovConfigResponse, StateResponse as GovStateResponse, VoteOption},
-    lock::ConfigResponse as LockConfigResponse,
-    mint::ConfigResponse as MintConfigResponse,
-    staking::ConfigResponse as StakingConfigResponse,
+use mirror_protocol::gov::{
+    ConfigResponse as GovConfigResponse, StateResponse as GovStateResponse, VoteOption,
 };
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
@@ -186,6 +187,8 @@ fn assert_intantiate(deps: DepsMut, info: MessageInfo) {
         mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
         mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
         mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
+        mirror_oracle_contract: MOCK_MIRROR_ORACLE_ADDR.to_string(),
+        mirror_collateral_oracle_contract: MOCK_MIRROR_COLLATERAL_ORACLE_ADDR.to_string(),
     };
     let res = instantiate(deps, mock_env(), info.clone(), msg).unwrap();
     assert_eq!(
@@ -200,33 +203,7 @@ fn assert_intantiate(deps: DepsMut, info: MessageInfo) {
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
-
     assert_intantiate(deps.as_mut(), info);
-
-    // Verify that we can query the mirror mint contract.
-    let msg = QueryMsg::MirrorMintQueryMsg(MirrorMintQueryMsg::Config {});
-    let res: MintConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-    assert_eq!(mock_mint_config_response(), res);
-
-    // Verify that we can query the mirror staking contract.
-    let msg = QueryMsg::MirrorStakingQueryMsg(MirrorStakingQueryMsg::Config {});
-    let res: StakingConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-    assert_eq!(mock_staking_config_response(), res);
-
-    // Verify that we can query the mirror gov contract.
-    let msg = QueryMsg::MirrorGovQueryMsg(MirrorGovQueryMsg::Config {});
-    // Can't check equality for this one as GovConfigResponse doesn't derive Debug for some reason.
-    // But unwrapping is enough to check that it was returned.
-    let _res: GovConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-
-    // Verify that we can query the mirror lock contract.
-    let msg = QueryMsg::MirrorLockQueryMsg(MirrorLockQueryMsg::Config {});
-    let res: LockConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-    assert_eq!(mock_lock_config_response(), res);
 
     // Verify that we can query our contract's config.
     let msg = QueryMsg::Config {};
@@ -236,7 +213,9 @@ fn test_instantiate() {
             mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
             mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
             mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
-            mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string()
+            mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
+            mirror_oracle_contract: MOCK_MIRROR_ORACLE_ADDR.to_string(),
+            mirror_collateral_oracle_contract: MOCK_MIRROR_COLLATERAL_ORACLE_ADDR.to_string(),
         },
         res
     );
@@ -568,6 +547,13 @@ fn test_mirror_mint_queries() {
     let info = mock_info("creator", &[]);
     assert_intantiate(deps.as_mut(), info);
 
+    let msg = MirrorMintQueryMsg::Config {};
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorMintQueryMsg(msg),
+        mock_mint_config_response(),
+    );
+
     let msg = MirrorMintQueryMsg::AssetConfig {
         asset_token: "token".to_string(),
     };
@@ -613,6 +599,13 @@ fn test_mirror_staking_queries() {
     let info = mock_info("creator", &[]);
     assert_intantiate(deps.as_mut(), info);
 
+    let msg = MirrorStakingQueryMsg::Config {};
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorStakingQueryMsg(msg),
+        mock_staking_config_response(),
+    );
+
     let msg = MirrorStakingQueryMsg::PoolInfo {
         asset_token: "asset_token".to_string(),
     };
@@ -638,6 +631,11 @@ fn test_mirror_gov_queries() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
     assert_intantiate(deps.as_mut(), info);
+
+    let msg = QueryMsg::MirrorGovQueryMsg(MirrorGovQueryMsg::Config {});
+    // This response doesn't implement Debug so we can't use the helper function.
+    let _res: GovConfigResponse =
+        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     let msg = MirrorGovQueryMsg::State {};
     // This response doesn't implement Debug so we can't use the helper function.
@@ -713,6 +711,13 @@ fn test_mirror_lock_queries() {
     let info = mock_info("creator", &[]);
     assert_intantiate(deps.as_mut(), info);
 
+    let msg = MirrorLockQueryMsg::Config {};
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorLockQueryMsg(msg),
+        mock_lock_config_response(),
+    );
+
     let msg = MirrorLockQueryMsg::PositionLockInfo {
         position_idx: Uint128::from(1u128),
     };
@@ -720,5 +725,89 @@ fn test_mirror_lock_queries() {
         deps.as_ref(),
         QueryMsg::MirrorLockQueryMsg(msg),
         mock_position_lock_info_response(),
+    );
+}
+
+#[test]
+fn test_mirror_oracle_queries() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info);
+
+    let msg = MirrorOracleQueryMsg::Config {};
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorOracleQueryMsg(msg),
+        mock_oracle_config_response(),
+    );
+
+    let msg = MirrorOracleQueryMsg::Feeder {
+        asset_token: "asset_token".to_string(),
+    };
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorOracleQueryMsg(msg),
+        mock_feeder_response(),
+    );
+
+    let msg = MirrorOracleQueryMsg::Price {
+        base_asset: "base_asset".to_string(),
+        quote_asset: "quote_asset".to_string(),
+    };
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorOracleQueryMsg(msg),
+        mock_price_response(),
+    );
+
+    let msg = MirrorOracleQueryMsg::Prices {
+        start_after: None,
+        limit: None,
+        order_by: None,
+    };
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorOracleQueryMsg(msg),
+        mock_prices_response(),
+    );
+}
+
+#[test]
+fn test_mirror_collateral_oracle_queries() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info);
+
+    let msg = MirrorCollateralOracleQueryMsg::Config {};
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorCollateralOracleQueryMsg(msg),
+        mock_collateral_oracle_config_response(),
+    );
+
+    let msg = MirrorCollateralOracleQueryMsg::CollateralPrice {
+        asset: "asset".to_string(),
+        block_height: None,
+    };
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorCollateralOracleQueryMsg(msg),
+        mock_collateral_price_response(),
+    );
+
+    let msg = MirrorCollateralOracleQueryMsg::CollateralAssetInfo {
+        asset: "asset".to_string(),
+    };
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorCollateralOracleQueryMsg(msg),
+        mock_collateral_info_response(),
+    );
+
+    let msg = MirrorCollateralOracleQueryMsg::CollateralAssetInfos {};
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorCollateralOracleQueryMsg(msg),
+        mock_collateral_infos_response(),
     );
 }

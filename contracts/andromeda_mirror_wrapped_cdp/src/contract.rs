@@ -11,14 +11,19 @@ use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     error::ContractError,
     mirror_wrapped_cdp::{
-        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovQueryMsg,
-        MirrorLockQueryMsg, MirrorMintQueryMsg, MirrorStakingQueryMsg, QueryMsg,
+        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorCollateralOracleQueryMsg,
+        MirrorGovQueryMsg, MirrorLockQueryMsg, MirrorMintQueryMsg, MirrorOracleQueryMsg,
+        MirrorStakingQueryMsg, QueryMsg,
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use mirror_protocol::{
+    collateral_oracle::{
+        CollateralInfoResponse, CollateralInfosResponse, CollateralPriceResponse,
+        ConfigResponse as CollateralOracleConfigResponse,
+    },
     gov::{
         ConfigResponse as GovConfigResponse, PollResponse, PollsResponse, SharesResponse,
         StakerResponse, StateResponse as GovStateResponse, VotersResponse, VotersResponseItem,
@@ -27,6 +32,9 @@ use mirror_protocol::{
     mint::{
         AssetConfigResponse, ConfigResponse as MintConfigResponse, NextPositionIdxResponse,
         PositionResponse, PositionsResponse,
+    },
+    oracle::{
+        ConfigResponse as OracleConfigResponse, FeederResponse, PriceResponse, PricesResponse,
     },
     staking::{ConfigResponse as StakingConfigResponse, PoolInfoResponse, RewardInfoResponse},
 };
@@ -48,6 +56,10 @@ pub fn instantiate(
         mirror_staking_contract: deps.api.addr_validate(&msg.mirror_staking_contract)?,
         mirror_gov_contract: deps.api.addr_validate(&msg.mirror_gov_contract)?,
         mirror_lock_contract: deps.api.addr_validate(&msg.mirror_lock_contract)?,
+        mirror_oracle_contract: deps.api.addr_validate(&msg.mirror_oracle_contract)?,
+        mirror_collateral_oracle_contract: deps
+            .api
+            .addr_validate(&msg.mirror_collateral_oracle_contract)?,
     };
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -97,6 +109,8 @@ pub fn execute(
             mirror_staking_contract,
             mirror_gov_contract,
             mirror_lock_contract,
+            mirror_oracle_contract,
+            mirror_collateral_oracle_contract,
         } => execute_update_config(
             deps,
             info,
@@ -104,6 +118,8 @@ pub fn execute(
             mirror_staking_contract,
             mirror_gov_contract,
             mirror_lock_contract,
+            mirror_oracle_contract,
+            mirror_collateral_oracle_contract,
         ),
     }
 }
@@ -188,6 +204,8 @@ pub fn execute_update_config(
     mirror_staking_contract: Option<String>,
     mirror_gov_contract: Option<String>,
     mirror_lock_contract: Option<String>,
+    mirror_oracle_contract: Option<String>,
+    mirror_collateral_oracle_contract: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
@@ -206,6 +224,13 @@ pub fn execute_update_config(
     if let Some(mirror_lock_contract) = mirror_lock_contract {
         config.mirror_lock_contract = deps.api.addr_validate(&mirror_lock_contract)?;
     }
+    if let Some(mirror_oracle_contract) = mirror_oracle_contract {
+        config.mirror_oracle_contract = deps.api.addr_validate(&mirror_oracle_contract)?;
+    }
+    if let Some(mirror_collateral_oracle_contract) = mirror_collateral_oracle_contract {
+        config.mirror_collateral_oracle_contract =
+            deps.api.addr_validate(&mirror_collateral_oracle_contract)?;
+    }
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::default())
 }
@@ -219,6 +244,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::MirrorStakingQueryMsg(msg) => query_mirror_staking(deps, msg),
         QueryMsg::MirrorGovQueryMsg(msg) => query_mirror_gov(deps, msg),
         QueryMsg::MirrorLockQueryMsg(msg) => query_mirror_lock(deps, msg),
+        QueryMsg::MirrorOracleQueryMsg(msg) => query_mirror_oracle(deps, msg),
+        QueryMsg::MirrorCollateralOracleQueryMsg(msg) => query_mirror_collateral_oracle(deps, msg),
     }
 }
 
@@ -229,6 +256,8 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         mirror_staking_contract: config.mirror_staking_contract.to_string(),
         mirror_gov_contract: config.mirror_gov_contract.to_string(),
         mirror_lock_contract: config.mirror_lock_contract.to_string(),
+        mirror_oracle_contract: config.mirror_oracle_contract.to_string(),
+        mirror_collateral_oracle_contract: config.mirror_collateral_oracle_contract.to_string(),
     })
 }
 
@@ -354,6 +383,67 @@ pub fn query_mirror_lock(deps: Deps, msg: MirrorLockQueryMsg) -> StdResult<Binar
                 to_binary(&msg)?,
             )?)
         }
+    }
+}
+
+pub fn query_mirror_oracle(deps: Deps, msg: MirrorOracleQueryMsg) -> StdResult<Binary> {
+    let contract_addr = CONFIG
+        .load(deps.storage)?
+        .mirror_oracle_contract
+        .to_string();
+    match msg {
+        MirrorOracleQueryMsg::Config {} => to_binary(&query_mirror_msg::<OracleConfigResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorOracleQueryMsg::Feeder { .. } => to_binary(&query_mirror_msg::<FeederResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorOracleQueryMsg::Price { .. } => to_binary(&query_mirror_msg::<PriceResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorOracleQueryMsg::Prices { .. } => to_binary(&query_mirror_msg::<PricesResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+    }
+}
+
+pub fn query_mirror_collateral_oracle(
+    deps: Deps,
+    msg: MirrorCollateralOracleQueryMsg,
+) -> StdResult<Binary> {
+    let contract_addr = CONFIG
+        .load(deps.storage)?
+        .mirror_collateral_oracle_contract
+        .to_string();
+    match msg {
+        MirrorCollateralOracleQueryMsg::Config {} => {
+            to_binary(&query_mirror_msg::<CollateralOracleConfigResponse>(
+                deps,
+                contract_addr,
+                to_binary(&msg)?,
+            )?)
+        }
+        MirrorCollateralOracleQueryMsg::CollateralPrice { .. } => {
+            to_binary(&query_mirror_msg::<CollateralPriceResponse>(
+                deps,
+                contract_addr,
+                to_binary(&msg)?,
+            )?)
+        }
+        MirrorCollateralOracleQueryMsg::CollateralAssetInfo { .. } => to_binary(
+            &query_mirror_msg::<CollateralInfoResponse>(deps, contract_addr, to_binary(&msg)?)?,
+        ),
+        MirrorCollateralOracleQueryMsg::CollateralAssetInfos { .. } => to_binary(
+            &query_mirror_msg::<CollateralInfosResponse>(deps, contract_addr, to_binary(&msg)?)?,
+        ),
     }
 }
 

@@ -1,5 +1,6 @@
 use cw20::Cw20ReceiveMsg;
 pub use mirror_protocol::{
+    collateral_oracle::QueryMsg as MirrorCollateralOracleQueryMsg,
     gov::{
         Cw20HookMsg as MirrorGovCw20HookMsg, ExecuteMsg as MirrorGovExecuteMsg,
         QueryMsg as MirrorGovQueryMsg,
@@ -9,6 +10,7 @@ pub use mirror_protocol::{
         Cw20HookMsg as MirrorMintCw20HookMsg, ExecuteMsg as MirrorMintExecuteMsg,
         QueryMsg as MirrorMintQueryMsg,
     },
+    oracle::QueryMsg as MirrorOracleQueryMsg,
     staking::{
         Cw20HookMsg as MirrorStakingCw20HookMsg, ExecuteMsg as MirrorStakingExecuteMsg,
         QueryMsg as MirrorStakingQueryMsg,
@@ -23,6 +25,8 @@ pub struct InstantiateMsg {
     pub mirror_staking_contract: String,
     pub mirror_gov_contract: String,
     pub mirror_lock_contract: String,
+    pub mirror_oracle_contract: String,
+    pub mirror_collateral_oracle_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -41,6 +45,8 @@ pub enum ExecuteMsg {
         mirror_staking_contract: Option<String>,
         mirror_gov_contract: Option<String>,
         mirror_lock_contract: Option<String>,
+        mirror_oracle_contract: Option<String>,
+        mirror_collateral_oracle_contract: Option<String>,
     },
 }
 
@@ -51,6 +57,8 @@ pub enum QueryMsg {
     MirrorStakingQueryMsg(MirrorStakingQueryMsg),
     MirrorGovQueryMsg(MirrorGovQueryMsg),
     MirrorLockQueryMsg(MirrorLockQueryMsg),
+    MirrorOracleQueryMsg(MirrorOracleQueryMsg),
+    MirrorCollateralOracleQueryMsg(MirrorCollateralOracleQueryMsg),
     ContractOwner {},
     Config {},
 }
@@ -70,4 +78,6 @@ pub struct ConfigResponse {
     pub mirror_staking_contract: String,
     pub mirror_gov_contract: String,
     pub mirror_lock_contract: String,
+    pub mirror_oracle_contract: String,
+    pub mirror_collateral_oracle_contract: String,
 }

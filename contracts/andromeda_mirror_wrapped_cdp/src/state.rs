@@ -11,4 +11,6 @@ pub struct Config {
     pub mirror_staking_contract: Addr,
     pub mirror_gov_contract: Addr,
     pub mirror_lock_contract: Addr,
+    pub mirror_oracle_contract: Addr,
+    pub mirror_collateral_oracle_contract: Addr,
 }

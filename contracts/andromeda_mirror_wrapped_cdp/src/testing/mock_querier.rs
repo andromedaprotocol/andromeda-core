@@ -1,5 +1,6 @@
 use andromeda_protocol::mirror_wrapped_cdp::{
-    MirrorGovQueryMsg, MirrorLockQueryMsg, MirrorMintQueryMsg, MirrorStakingQueryMsg,
+    MirrorCollateralOracleQueryMsg, MirrorGovQueryMsg, MirrorLockQueryMsg, MirrorMintQueryMsg,
+    MirrorOracleQueryMsg, MirrorStakingQueryMsg,
 };
 use cosmwasm_std::{
     from_binary, from_slice,
@@ -8,6 +9,10 @@ use cosmwasm_std::{
     QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 use mirror_protocol::{
+    collateral_oracle::{
+        CollateralInfoResponse, CollateralInfosResponse, CollateralPriceResponse,
+        ConfigResponse as CollateralOracleConfigResponse,
+    },
     gov::{
         ConfigResponse as GovConfigResponse, PollResponse, PollStatus, PollsResponse,
         SharesResponse, StakerResponse, StateResponse as GovStateResponse, VoteOption,
@@ -17,6 +22,9 @@ use mirror_protocol::{
     mint::{
         AssetConfigResponse, ConfigResponse as MintConfigResponse, NextPositionIdxResponse,
         PositionResponse, PositionsResponse,
+    },
+    oracle::{
+        ConfigResponse as OracleConfigResponse, FeederResponse, PriceResponse, PricesResponse,
     },
     staking::{
         ConfigResponse as StakingConfigResponse, PoolInfoResponse, RewardInfoResponse,
@@ -31,6 +39,8 @@ pub const MOCK_MIRROR_MINT_ADDR: &str = "mirror_mint";
 pub const MOCK_MIRROR_STAKING_ADDR: &str = "mirror_staking";
 pub const MOCK_MIRROR_GOV_ADDR: &str = "mirror_gov";
 pub const MOCK_MIRROR_LOCK_ADDR: &str = "mirror_lock";
+pub const MOCK_MIRROR_ORACLE_ADDR: &str = "mirror_oracle";
+pub const MOCK_MIRROR_COLLATERAL_ORACLE_ADDR: &str = "mirror_collateral_oracle";
 
 pub fn mock_mint_config_response() -> MintConfigResponse {
     MintConfigResponse {
@@ -80,6 +90,24 @@ pub fn mock_lock_config_response() -> LockConfigResponse {
         mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
         base_denom: "base_denom".to_string(),
         lockup_period: 1u64,
+    }
+}
+
+pub fn mock_oracle_config_response() -> OracleConfigResponse {
+    OracleConfigResponse {
+        owner: "owner".to_string(),
+        base_asset: "base_asset".to_string(),
+    }
+}
+
+pub fn mock_collateral_oracle_config_response() -> CollateralOracleConfigResponse {
+    CollateralOracleConfigResponse {
+        owner: "owner".to_string(),
+        mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        base_denom: "base_denom".to_string(),
+        mirror_oracle: MOCK_MIRROR_ORACLE_ADDR.to_string(),
+        anchor_oracle: "anchor_oracle".to_string(),
+        band_oracle: "band_oracle".to_string(),
     }
 }
 
@@ -224,6 +252,50 @@ pub fn mock_position_lock_info_response() -> PositionLockInfoResponse {
     }
 }
 
+pub fn mock_feeder_response() -> FeederResponse {
+    FeederResponse {
+        asset_token: "asset_token".to_string(),
+        feeder: "feeder".to_string(),
+    }
+}
+
+pub fn mock_price_response() -> PriceResponse {
+    PriceResponse {
+        rate: Decimal::one(),
+        last_updated_base: 1u64,
+        last_updated_quote: 1u64,
+    }
+}
+
+pub fn mock_prices_response() -> PricesResponse {
+    PricesResponse { prices: vec![] }
+}
+
+pub fn mock_collateral_price_response() -> CollateralPriceResponse {
+    CollateralPriceResponse {
+        asset: "asset".to_string(),
+        rate: Decimal::one(),
+        last_updated: 1u64,
+        multiplier: Decimal::one(),
+        is_revoked: false,
+    }
+}
+
+pub fn mock_collateral_info_response() -> CollateralInfoResponse {
+    CollateralInfoResponse {
+        asset: "asset".to_string(),
+        multiplier: Decimal::one(),
+        source_type: "source_type".to_string(),
+        is_revoked: false,
+    }
+}
+
+pub fn mock_collateral_infos_response() -> CollateralInfosResponse {
+    CollateralInfosResponse {
+        collaterals: vec![],
+    }
+}
+
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
@@ -316,6 +388,8 @@ impl WasmMockQuerier {
                     MOCK_MIRROR_STAKING_ADDR => self.handle_staking_query(msg),
                     MOCK_MIRROR_GOV_ADDR => self.handle_gov_query(msg),
                     MOCK_MIRROR_LOCK_ADDR => self.handle_lock_query(msg),
+                    MOCK_MIRROR_ORACLE_ADDR => self.handle_oracle_query(msg),
+                    MOCK_MIRROR_COLLATERAL_ORACLE_ADDR => self.handle_collateral_oracle_query(msg),
                     _ => panic!("Unknown contract address"),
                 }
             }
@@ -405,6 +479,40 @@ impl WasmMockQuerier {
             MirrorLockQueryMsg::PositionLockInfo { .. } => SystemResult::Ok(ContractResult::Ok(
                 to_binary(&mock_position_lock_info_response()).unwrap(),
             )),
+        }
+    }
+
+    fn handle_oracle_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            MirrorOracleQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_oracle_config_response()).unwrap(),
+            )),
+            MirrorOracleQueryMsg::Feeder { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_feeder_response()).unwrap(),
+            )),
+            MirrorOracleQueryMsg::Price { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_price_response()).unwrap(),
+            )),
+            MirrorOracleQueryMsg::Prices { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_prices_response()).unwrap(),
+            )),
+        }
+    }
+
+    fn handle_collateral_oracle_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            MirrorCollateralOracleQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_collateral_oracle_config_response()).unwrap(),
+            )),
+            MirrorCollateralOracleQueryMsg::CollateralPrice { .. } => SystemResult::Ok(
+                ContractResult::Ok(to_binary(&mock_collateral_price_response()).unwrap()),
+            ),
+            MirrorCollateralOracleQueryMsg::CollateralAssetInfo { .. } => SystemResult::Ok(
+                ContractResult::Ok(to_binary(&mock_collateral_info_response()).unwrap()),
+            ),
+            MirrorCollateralOracleQueryMsg::CollateralAssetInfos { .. } => SystemResult::Ok(
+                ContractResult::Ok(to_binary(&mock_collateral_infos_response()).unwrap()),
+            ),
         }
     }
 }
