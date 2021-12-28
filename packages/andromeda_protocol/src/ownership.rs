@@ -11,10 +11,9 @@ pub const CONTRACT_OWNER: Item<Addr> = Item::new("contractowner");
 /// Helper function to query if a given address is the current contract owner.
 ///
 /// Returns a boolean value indicating if the given address is the contract owner.
-pub fn is_contract_owner(storage: &dyn Storage, addr: String) -> StdResult<bool> {
+pub fn is_contract_owner(storage: &dyn Storage, addr: &str) -> StdResult<bool> {
     let owner = CONTRACT_OWNER.load(storage)?;
-
-    Ok(addr.eq(&owner))
+    Ok(addr == owner)
 }
 
 /// Updates the current contract owner. **Only executable by the current contract owner.**
@@ -24,7 +23,7 @@ pub fn execute_update_owner(
     new_owner: String,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, &info.sender.to_string())?,
         ContractError::Unauthorized {},
     )?;
     //

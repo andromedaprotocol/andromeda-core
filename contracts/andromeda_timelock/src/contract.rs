@@ -168,7 +168,7 @@ fn execute_update_address_list(
 ) -> Result<Response, ContractError> {
     let mut state = STATE.load(deps.storage)?;
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -192,7 +192,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetLockedFunds { address } => to_binary(&query_held_funds(deps, address)?),
         QueryMsg::GetTimelockConfig {} => to_binary(&query_config(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
     }
 }
 

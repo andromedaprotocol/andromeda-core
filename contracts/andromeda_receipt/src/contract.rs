@@ -3,7 +3,7 @@ use crate::state::{
 };
 use andromeda_protocol::{
     error::ContractError,
-    operators::{execute_update_operators, query_is_operator, OPERATORS},
+    operators::{execute_update_operators, initialize_operators, query_is_operator},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     receipt::{
         Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
@@ -25,9 +25,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     store_config(deps.storage, &Config { minter: msg.minter })?;
     if let Some(operators) = msg.operators {
-        for operator in operators.iter() {
-            OPERATORS.save(deps.storage, operator.clone(), &true)?;
-        }
+        initialize_operators(deps.storage, operators)?;
     }
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::default()
@@ -95,7 +93,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Receipt { receipt_id } => to_binary(&query_receipt(deps, receipt_id)?),
         QueryMsg::ContractInfo {} => to_binary(&query_config(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
     }
 }
 

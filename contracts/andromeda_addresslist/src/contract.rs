@@ -48,7 +48,7 @@ fn execute_add_address(
     address: String,
 ) -> Result<Response, ContractError> {
     require(
-        is_operator(deps.storage, info.sender.to_string())?,
+        is_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     add_address(deps.storage, &address)?;
@@ -65,7 +65,7 @@ fn execute_remove_address(
     address: String,
 ) -> Result<Response, ContractError> {
     require(
-        is_operator(deps.storage, info.sender.to_string())?,
+        is_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -82,7 +82,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::IncludesAddress { address } => to_binary(&query_address(deps, &address)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
     }
 }
 
@@ -124,7 +124,7 @@ mod tests {
         //input operator for test
 
         OPERATORS
-            .save(deps.as_mut().storage, operator.to_string(), &true)
+            .save(deps.as_mut().storage, operator, &true)
             .unwrap();
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &info.sender)
@@ -177,7 +177,7 @@ mod tests {
 
         //save operator
         OPERATORS
-            .save(deps.as_mut().storage, operator.to_string(), &true)
+            .save(deps.as_mut().storage, operator, &true)
             .unwrap();
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &info.sender)
