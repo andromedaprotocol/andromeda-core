@@ -23,7 +23,7 @@ pub fn execute_update_owner(
     new_owner: String,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, &info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     //
