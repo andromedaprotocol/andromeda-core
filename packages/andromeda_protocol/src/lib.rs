@@ -8,6 +8,7 @@ pub mod modules;
 pub mod operators;
 pub mod ownership;
 pub mod primitive;
+pub mod rates;
 pub mod receipt;
 pub mod response;
 pub mod splitter;

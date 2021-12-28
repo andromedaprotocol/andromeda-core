@@ -1,4 +1,4 @@
-use crate::msg::RateInfo;
+use andromeda_protocol::rates::RateInfo;
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

@@ -1,4 +1,4 @@
-use andromeda_protocol::modules::Rate;
+use crate::modules::Rate;
 use cosmwasm_std::Addr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
