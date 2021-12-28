@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_addresslist/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_anchor/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_factory/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_factory/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_primitive/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_rates/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_receipt/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_splitter/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_timelock/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_token/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/andromeda_token/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/andromeda_protocol/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

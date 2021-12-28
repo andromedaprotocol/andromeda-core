@@ -82,6 +82,9 @@ pub enum ContractError {
 
     #[error("TokenIsArchived")]
     TokenIsArchived {},
+
+    #[error("MoreThanOneCoin")]
+    MoreThanOneCoin {},
 }
 
 impl From<FromUtf8Error> for ContractError {
