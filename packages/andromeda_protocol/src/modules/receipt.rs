@@ -70,7 +70,7 @@ impl Module for ReceiptModule {
         require(
             self.address.is_some() || (self.code_id.is_some() && self.operators.is_some()),
             ContractError::Std(StdError::generic_err(
-                "Receipt must include either a contract address or a code id and moderator list",
+                "Receipt must include either a contract address or a code id and operator list",
             )),
         )?;
 
