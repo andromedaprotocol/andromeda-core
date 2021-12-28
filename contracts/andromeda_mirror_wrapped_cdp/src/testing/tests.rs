@@ -24,7 +24,7 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
-    coins, from_binary, to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo,
+    coin, coins, from_binary, to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo,
     Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -212,8 +212,9 @@ fn test_instantiate() {
 
     // Verify that we can query our contract's config.
     let msg = QueryMsg::Config {};
-    let res: ConfigResponse = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-    assert_eq!(
+    assert_query_msg(
+        deps.as_ref(),
+        msg,
         ConfigResponse {
             mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
             mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
@@ -222,7 +223,6 @@ fn test_instantiate() {
             mirror_oracle_contract: MOCK_MIRROR_ORACLE_ADDR.to_string(),
             mirror_collateral_oracle_contract: MOCK_MIRROR_COLLATERAL_ORACLE_ADDR.to_string(),
         },
-        res
     );
 }
 
@@ -249,63 +249,6 @@ fn test_instantiate_with_operator() {
         },
         IsOperatorResponse { is_operator: true },
     );
-}
-
-#[test]
-fn test_mirror_non_authorized_user() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
-    assert_intantiate(deps.as_mut(), info.clone());
-
-    let unauth_user = mock_info("user", &[]);
-    let mirror_msg = MirrorMintExecuteMsg::OpenPosition {
-        collateral: Asset {
-            info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
-            amount: Uint128::from(10_u128),
-        },
-        asset_info: AssetInfo::Token {
-            contract_addr: "token_address".to_string(),
-        },
-        collateral_ratio: Decimal::one(),
-        short_params: None,
-    };
-    let res_err = execute(
-        deps.as_mut(),
-        mock_env(),
-        unauth_user.clone(),
-        ExecuteMsg::MirrorMintExecuteMsg(mirror_msg),
-    )
-    .unwrap_err();
-    assert_eq!(ContractError::Unauthorized {}, res_err);
-}
-
-#[test]
-fn test_mirror_cw20_non_authorized_user() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
-    assert_intantiate(deps.as_mut(), info.clone());
-
-    let unauth_user = mock_info("user", &[]);
-    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-        sender: unauth_user.sender.to_string(),
-        amount: Uint128::from(TEST_AMOUNT),
-        msg: to_binary(&Cw20HookMsg::MirrorMintCw20HookMsg(
-            MirrorMintCw20HookMsg::Deposit {
-                position_idx: Uint128::from(1u128),
-            },
-        ))
-        .unwrap(),
-    });
-    let res_err = execute(
-        deps.as_mut(),
-        mock_env(),
-        mock_info(TEST_TOKEN, &[]),
-        msg.clone(),
-    )
-    .unwrap_err();
-    assert_eq!(ContractError::Unauthorized {}, res_err);
 }
 
 #[test]
@@ -918,5 +861,134 @@ fn test_mirror_collateral_oracle_queries() {
         deps.as_ref(),
         QueryMsg::MirrorCollateralOracleQueryMsg(msg),
         mock_collateral_infos_response(),
+    );
+}
+
+#[test]
+fn test_mirror_too_many_funds() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[coin(1u128, "uusd"), coin(1u128, "uluna")]);
+    assert_intantiate(deps.as_mut(), info.clone());
+    let mirror_msg = MirrorMintExecuteMsg::OpenPosition {
+        collateral: Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(10_u128),
+        },
+        asset_info: AssetInfo::Token {
+            contract_addr: "token_address".to_string(),
+        },
+        collateral_ratio: Decimal::one(),
+        short_params: None,
+    };
+    let res_err = execute(
+        deps.as_mut(),
+        mock_env(),
+        info.clone(),
+        ExecuteMsg::MirrorMintExecuteMsg(mirror_msg),
+    )
+    .unwrap_err();
+    assert_eq!(
+        ContractError::InvalidMirrorFunds {
+            msg: "Mirror expects no funds or a single type of fund to be deposited.".to_string()
+        },
+        res_err
+    );
+}
+
+#[test]
+fn test_mirror_non_authorized_user() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info.clone());
+
+    let unauth_user = mock_info("user", &[]);
+    let mirror_msg = MirrorMintExecuteMsg::OpenPosition {
+        collateral: Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(10_u128),
+        },
+        asset_info: AssetInfo::Token {
+            contract_addr: "token_address".to_string(),
+        },
+        collateral_ratio: Decimal::one(),
+        short_params: None,
+    };
+    let res_err = execute(
+        deps.as_mut(),
+        mock_env(),
+        unauth_user.clone(),
+        ExecuteMsg::MirrorMintExecuteMsg(mirror_msg),
+    )
+    .unwrap_err();
+    assert_eq!(ContractError::Unauthorized {}, res_err);
+}
+
+#[test]
+fn test_mirror_cw20_non_authorized_user() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info.clone());
+
+    let unauth_user = mock_info("user", &[]);
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: unauth_user.sender.to_string(),
+        amount: Uint128::from(TEST_AMOUNT),
+        msg: to_binary(&Cw20HookMsg::MirrorMintCw20HookMsg(
+            MirrorMintCw20HookMsg::Deposit {
+                position_idx: Uint128::from(1u128),
+            },
+        ))
+        .unwrap(),
+    });
+    let res_err = execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(TEST_TOKEN, &[]),
+        msg.clone(),
+    )
+    .unwrap_err();
+    assert_eq!(ContractError::Unauthorized {}, res_err);
+}
+
+#[test]
+fn test_update_config() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info.clone());
+
+    let mirror_mint_contract = "new_mint".to_string();
+    let mirror_staking_contract = "new_stake".to_string();
+    let mirror_gov_contract = "new_gov".to_string();
+    let mirror_lock_contract = "new_lock".to_string();
+    let mirror_oracle_contract = "new_oracle".to_string();
+    let mirror_collateral_oracle_contract = "new_collateral_oracle".to_string();
+
+    let msg = ExecuteMsg::UpdateConfig {
+        mirror_mint_contract: Some(mirror_mint_contract.clone()),
+        mirror_staking_contract: Some(mirror_staking_contract.clone()),
+        mirror_gov_contract: Some(mirror_gov_contract.clone()),
+        mirror_lock_contract: Some(mirror_lock_contract.clone()),
+        mirror_oracle_contract: Some(mirror_oracle_contract.clone()),
+        mirror_collateral_oracle_contract: Some(mirror_collateral_oracle_contract.clone()),
+    };
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // Verify that config was updated.
+    let msg = QueryMsg::Config {};
+    assert_query_msg(
+        deps.as_ref(),
+        msg,
+        ConfigResponse {
+            mirror_mint_contract: mirror_mint_contract.to_string(),
+            mirror_staking_contract: mirror_staking_contract.to_string(),
+            mirror_gov_contract: mirror_gov_contract.to_string(),
+            mirror_lock_contract: mirror_lock_contract.to_string(),
+            mirror_oracle_contract: mirror_oracle_contract.to_string(),
+            mirror_collateral_oracle_contract: mirror_collateral_oracle_contract.to_string(),
+        },
     );
 }

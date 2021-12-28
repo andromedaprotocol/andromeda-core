@@ -248,7 +248,7 @@ pub fn execute_update_config(
             deps.api.addr_validate(&mirror_collateral_oracle_contract)?;
     }
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::default())
+    Ok(Response::new().add_attribute("action", "update_config"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
