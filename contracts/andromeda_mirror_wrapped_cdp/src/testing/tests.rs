@@ -15,8 +15,8 @@ use andromeda_protocol::mirror_wrapped_cdp::{
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
-    coins, from_binary, to_binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo, Response,
-    Uint128, WasmMsg,
+    coins, from_binary, to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo,
+    Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use mirror_protocol::{
@@ -33,17 +33,12 @@ const TEST_AMOUNT: u128 = 100u128;
 
 fn assert_mint_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorMintExecuteMsg) {
     let msg = ExecuteMsg::MirrorMintExecuteMsg(mirror_msg.clone());
-    let tax_deducted_funds = get_tax_deducted_funds(&deps, info.funds.clone()).unwrap();
-    let res = execute(deps, mock_env(), info, msg.clone()).unwrap();
-
-    let execute_msg = WasmMsg::Execute {
-        contract_addr: MOCK_MIRROR_MINT_ADDR.to_string(),
-        funds: tax_deducted_funds,
-        msg: to_binary(&mirror_msg).unwrap(),
-    };
-    assert_eq!(
-        Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
-        res
+    assert_execute_msg(
+        deps,
+        info,
+        msg,
+        to_binary(&mirror_msg).unwrap(),
+        MOCK_MIRROR_MINT_ADDR.to_string(),
     );
 }
 
@@ -52,25 +47,13 @@ fn assert_mint_execute_cw20_msg(
     info: MessageInfo,
     mirror_msg: MirrorMintCw20HookMsg,
 ) {
-    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-        sender: info.sender.to_string(),
-        amount: Uint128::from(TEST_AMOUNT),
-        msg: to_binary(&Cw20HookMsg::MirrorMintCw20HookMsg(mirror_msg.clone())).unwrap(),
-    });
-    let res = execute(deps, mock_env(), mock_info(TEST_TOKEN, &[]), msg.clone()).unwrap();
-    let send_msg = Cw20ExecuteMsg::Send {
-        contract: MOCK_MIRROR_MINT_ADDR.to_string(),
-        amount: Uint128::from(TEST_AMOUNT),
-        msg: to_binary(&mirror_msg).unwrap(),
-    };
-    let execute_msg = WasmMsg::Execute {
-        contract_addr: TEST_TOKEN.to_string(),
-        funds: vec![],
-        msg: to_binary(&send_msg).unwrap(),
-    };
-    assert_eq!(
-        Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
-        res
+    let msg = Cw20HookMsg::MirrorMintCw20HookMsg(mirror_msg.clone());
+    assert_execute_cw20_msg(
+        deps,
+        info,
+        msg,
+        to_binary(&mirror_msg).unwrap(),
+        MOCK_MIRROR_MINT_ADDR.to_string(),
     );
 }
 
@@ -80,16 +63,12 @@ fn assert_staking_execute_msg(
     mirror_msg: MirrorStakingExecuteMsg,
 ) {
     let msg = ExecuteMsg::MirrorStakingExecuteMsg(mirror_msg.clone());
-    let res = execute(deps, mock_env(), info.clone(), msg.clone()).unwrap();
-
-    let execute_msg = WasmMsg::Execute {
-        contract_addr: MOCK_MIRROR_STAKING_ADDR.to_string(),
-        funds: info.funds,
-        msg: to_binary(&mirror_msg).unwrap(),
-    };
-    assert_eq!(
-        Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
-        res
+    assert_execute_msg(
+        deps,
+        info,
+        msg,
+        to_binary(&mirror_msg).unwrap(),
+        MOCK_MIRROR_STAKING_ADDR.to_string(),
     );
 }
 
@@ -98,21 +77,40 @@ fn assert_staking_execute_cw20_msg(
     info: MessageInfo,
     mirror_msg: MirrorStakingCw20HookMsg,
 ) {
-    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-        sender: info.sender.to_string(),
-        amount: Uint128::from(TEST_AMOUNT),
-        msg: to_binary(&Cw20HookMsg::MirrorStakingCw20HookMsg(mirror_msg.clone())).unwrap(),
-    });
-    let res = execute(deps, mock_env(), mock_info(TEST_TOKEN, &[]), msg.clone()).unwrap();
-    let send_msg = Cw20ExecuteMsg::Send {
-        contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
-        amount: Uint128::from(TEST_AMOUNT),
-        msg: to_binary(&mirror_msg).unwrap(),
-    };
+    let msg = Cw20HookMsg::MirrorStakingCw20HookMsg(mirror_msg.clone());
+    assert_execute_cw20_msg(
+        deps,
+        info,
+        msg,
+        to_binary(&mirror_msg).unwrap(),
+        MOCK_MIRROR_STAKING_ADDR.to_string(),
+    );
+}
+
+fn assert_gov_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorGovExecuteMsg) {
+    let msg = ExecuteMsg::MirrorGovExecuteMsg(mirror_msg.clone());
+    assert_execute_msg(
+        deps,
+        info,
+        msg,
+        to_binary(&mirror_msg).unwrap(),
+        MOCK_MIRROR_GOV_ADDR.to_string(),
+    );
+}
+
+fn assert_execute_msg(
+    deps: DepsMut,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+    mirror_msg_binary: Binary,
+    contract_addr: String,
+) {
+    let tax_deducted_funds = get_tax_deducted_funds(&deps, info.funds.clone()).unwrap();
+    let res = execute(deps, mock_env(), info.clone(), msg.clone()).unwrap();
     let execute_msg = WasmMsg::Execute {
-        contract_addr: TEST_TOKEN.to_string(),
-        funds: vec![],
-        msg: to_binary(&send_msg).unwrap(),
+        contract_addr,
+        funds: tax_deducted_funds,
+        msg: mirror_msg_binary,
     };
     assert_eq!(
         Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
@@ -120,14 +118,28 @@ fn assert_staking_execute_cw20_msg(
     );
 }
 
-fn assert_gov_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorGovExecuteMsg) {
-    let msg = ExecuteMsg::MirrorGovExecuteMsg(mirror_msg.clone());
-    let res = execute(deps, mock_env(), info.clone(), msg.clone()).unwrap();
-
+fn assert_execute_cw20_msg(
+    deps: DepsMut,
+    info: MessageInfo,
+    cw20_hook_msg: Cw20HookMsg,
+    mirror_msg_binary: Binary,
+    contract_addr: String,
+) {
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: info.sender.to_string(),
+        amount: Uint128::from(TEST_AMOUNT),
+        msg: to_binary(&cw20_hook_msg).unwrap(),
+    });
+    let res = execute(deps, mock_env(), mock_info(TEST_TOKEN, &[]), msg.clone()).unwrap();
+    let send_msg = Cw20ExecuteMsg::Send {
+        contract: contract_addr,
+        amount: Uint128::from(TEST_AMOUNT),
+        msg: mirror_msg_binary,
+    };
     let execute_msg = WasmMsg::Execute {
-        contract_addr: MOCK_MIRROR_GOV_ADDR.to_string(),
-        funds: info.funds,
-        msg: to_binary(&mirror_msg).unwrap(),
+        contract_addr: TEST_TOKEN.to_string(),
+        funds: vec![],
+        msg: to_binary(&send_msg).unwrap(),
     };
     assert_eq!(
         Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
