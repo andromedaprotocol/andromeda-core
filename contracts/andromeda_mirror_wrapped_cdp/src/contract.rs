@@ -12,7 +12,7 @@ use andromeda_protocol::{
     error::ContractError,
     mirror_wrapped_cdp::{
         ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovQueryMsg,
-        MirrorMintQueryMsg, MirrorStakingQueryMsg, QueryMsg,
+        MirrorLockQueryMsg, MirrorMintQueryMsg, MirrorStakingQueryMsg, QueryMsg,
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
@@ -23,6 +23,7 @@ use mirror_protocol::{
         ConfigResponse as GovConfigResponse, PollResponse, PollsResponse, SharesResponse,
         StakerResponse, StateResponse as GovStateResponse, VotersResponse, VotersResponseItem,
     },
+    lock::{ConfigResponse as LockConfigResponse, PositionLockInfoResponse},
     mint::{
         AssetConfigResponse, ConfigResponse as MintConfigResponse, NextPositionIdxResponse,
         PositionResponse, PositionsResponse,
@@ -46,6 +47,7 @@ pub fn instantiate(
         mirror_mint_contract: deps.api.addr_validate(&msg.mirror_mint_contract)?,
         mirror_staking_contract: deps.api.addr_validate(&msg.mirror_staking_contract)?,
         mirror_gov_contract: deps.api.addr_validate(&msg.mirror_gov_contract)?,
+        mirror_lock_contract: deps.api.addr_validate(&msg.mirror_lock_contract)?,
     };
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -83,17 +85,25 @@ pub fn execute(
             config.mirror_gov_contract.to_string(),
             to_binary(&msg)?,
         ),
+        ExecuteMsg::MirrorLockExecuteMsg(msg) => execute_mirror_msg(
+            deps,
+            info,
+            config.mirror_lock_contract.to_string(),
+            to_binary(&msg)?,
+        ),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateConfig {
             mirror_mint_contract,
             mirror_staking_contract,
             mirror_gov_contract,
+            mirror_lock_contract,
         } => execute_update_config(
             deps,
             info,
             mirror_mint_contract,
             mirror_staking_contract,
             mirror_gov_contract,
+            mirror_lock_contract,
         ),
     }
 }
@@ -177,6 +187,7 @@ pub fn execute_update_config(
     mirror_mint_contract: Option<String>,
     mirror_staking_contract: Option<String>,
     mirror_gov_contract: Option<String>,
+    mirror_lock_contract: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
@@ -192,6 +203,9 @@ pub fn execute_update_config(
     if let Some(mirror_gov_contract) = mirror_gov_contract {
         config.mirror_gov_contract = deps.api.addr_validate(&mirror_gov_contract)?;
     }
+    if let Some(mirror_lock_contract) = mirror_lock_contract {
+        config.mirror_lock_contract = deps.api.addr_validate(&mirror_lock_contract)?;
+    }
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::default())
 }
@@ -204,6 +218,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::MirrorMintQueryMsg(msg) => query_mirror_mint(deps, msg),
         QueryMsg::MirrorStakingQueryMsg(msg) => query_mirror_staking(deps, msg),
         QueryMsg::MirrorGovQueryMsg(msg) => query_mirror_gov(deps, msg),
+        QueryMsg::MirrorLockQueryMsg(msg) => query_mirror_lock(deps, msg),
     }
 }
 
@@ -213,6 +228,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         mirror_mint_contract: config.mirror_mint_contract.to_string(),
         mirror_staking_contract: config.mirror_staking_contract.to_string(),
         mirror_gov_contract: config.mirror_gov_contract.to_string(),
+        mirror_lock_contract: config.mirror_lock_contract.to_string(),
     })
 }
 
@@ -320,6 +336,24 @@ pub fn query_mirror_gov(deps: Deps, msg: MirrorGovQueryMsg) -> StdResult<Binary>
             contract_addr,
             to_binary(&msg)?,
         )?),
+    }
+}
+
+pub fn query_mirror_lock(deps: Deps, msg: MirrorLockQueryMsg) -> StdResult<Binary> {
+    let contract_addr = CONFIG.load(deps.storage)?.mirror_lock_contract.to_string();
+    match msg {
+        MirrorLockQueryMsg::Config {} => to_binary(&query_mirror_msg::<LockConfigResponse>(
+            deps,
+            contract_addr,
+            to_binary(&msg)?,
+        )?),
+        MirrorLockQueryMsg::PositionLockInfo { .. } => {
+            to_binary(&query_mirror_msg::<PositionLockInfoResponse>(
+                deps,
+                contract_addr,
+                to_binary(&msg)?,
+            )?)
+        }
     }
 }
 

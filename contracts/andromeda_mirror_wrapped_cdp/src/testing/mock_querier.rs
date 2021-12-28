@@ -1,5 +1,5 @@
 use andromeda_protocol::mirror_wrapped_cdp::{
-    MirrorGovQueryMsg, MirrorMintQueryMsg, MirrorStakingQueryMsg,
+    MirrorGovQueryMsg, MirrorLockQueryMsg, MirrorMintQueryMsg, MirrorStakingQueryMsg,
 };
 use cosmwasm_std::{
     from_binary, from_slice,
@@ -13,6 +13,7 @@ use mirror_protocol::{
         SharesResponse, StakerResponse, StateResponse as GovStateResponse, VoteOption,
         VotersResponse, VotersResponseItem,
     },
+    lock::{ConfigResponse as LockConfigResponse, PositionLockInfoResponse},
     mint::{
         AssetConfigResponse, ConfigResponse as MintConfigResponse, NextPositionIdxResponse,
         PositionResponse, PositionsResponse,
@@ -29,6 +30,7 @@ use terraswap::asset::{Asset, AssetInfo};
 pub const MOCK_MIRROR_MINT_ADDR: &str = "mirror_mint";
 pub const MOCK_MIRROR_STAKING_ADDR: &str = "mirror_staking";
 pub const MOCK_MIRROR_GOV_ADDR: &str = "mirror_gov";
+pub const MOCK_MIRROR_LOCK_ADDR: &str = "mirror_lock";
 
 pub fn mock_mint_config_response() -> MintConfigResponse {
     MintConfigResponse {
@@ -69,6 +71,15 @@ pub fn mock_gov_config_response() -> GovConfigResponse {
         proposal_deposit: Uint128::from(1_u128),
         voter_weight: Decimal::one(),
         snapshot_period: 1_u64,
+    }
+}
+
+pub fn mock_lock_config_response() -> LockConfigResponse {
+    LockConfigResponse {
+        owner: "owner".to_string(),
+        mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
+        base_denom: "base_denom".to_string(),
+        lockup_period: 1u64,
     }
 }
 
@@ -204,6 +215,15 @@ pub fn mock_shares_response() -> SharesResponse {
     SharesResponse { stakers: vec![] }
 }
 
+pub fn mock_position_lock_info_response() -> PositionLockInfoResponse {
+    PositionLockInfoResponse {
+        idx: Uint128::from(1u128),
+        receiver: "receiver".to_string(),
+        locked_amount: Uint128::from(1u128),
+        unlock_time: 1u64,
+    }
+}
+
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
@@ -295,6 +315,7 @@ impl WasmMockQuerier {
                     MOCK_MIRROR_MINT_ADDR => self.handle_mint_query(msg),
                     MOCK_MIRROR_STAKING_ADDR => self.handle_staking_query(msg),
                     MOCK_MIRROR_GOV_ADDR => self.handle_gov_query(msg),
+                    MOCK_MIRROR_LOCK_ADDR => self.handle_lock_query(msg),
                     _ => panic!("Unknown contract address"),
                 }
             }
@@ -372,6 +393,17 @@ impl WasmMockQuerier {
             )),
             MirrorGovQueryMsg::Shares { .. } => SystemResult::Ok(ContractResult::Ok(
                 to_binary(&mock_shares_response()).unwrap(),
+            )),
+        }
+    }
+
+    fn handle_lock_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            MirrorLockQueryMsg::Config {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_lock_config_response()).unwrap(),
+            )),
+            MirrorLockQueryMsg::PositionLockInfo { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_position_lock_info_response()).unwrap(),
             )),
         }
     }

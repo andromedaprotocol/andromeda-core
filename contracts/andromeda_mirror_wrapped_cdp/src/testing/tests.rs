@@ -1,17 +1,18 @@
 use super::mock_querier::{
-    mock_asset_config_response, mock_dependencies_custom, mock_mint_config_response,
-    mock_next_position_idx_response, mock_poll_response, mock_polls_response,
-    mock_pool_info_response, mock_position_response, mock_positions_response,
-    mock_reward_info_response, mock_shares_response, mock_staker_response,
-    mock_staking_config_response, mock_voter_response, mock_voters_response, MOCK_MIRROR_GOV_ADDR,
-    MOCK_MIRROR_MINT_ADDR, MOCK_MIRROR_STAKING_ADDR,
+    mock_asset_config_response, mock_dependencies_custom, mock_lock_config_response,
+    mock_mint_config_response, mock_next_position_idx_response, mock_poll_response,
+    mock_polls_response, mock_pool_info_response, mock_position_lock_info_response,
+    mock_position_response, mock_positions_response, mock_reward_info_response,
+    mock_shares_response, mock_staker_response, mock_staking_config_response, mock_voter_response,
+    mock_voters_response, MOCK_MIRROR_GOV_ADDR, MOCK_MIRROR_LOCK_ADDR, MOCK_MIRROR_MINT_ADDR,
+    MOCK_MIRROR_STAKING_ADDR,
 };
 use crate::contract::{execute, get_tax_deducted_funds, instantiate, query};
 use andromeda_protocol::mirror_wrapped_cdp::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg,
-    MirrorGovExecuteMsg, MirrorGovQueryMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
-    MirrorMintQueryMsg, MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, MirrorStakingQueryMsg,
-    QueryMsg,
+    MirrorGovExecuteMsg, MirrorGovQueryMsg, MirrorLockExecuteMsg, MirrorLockQueryMsg,
+    MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorMintQueryMsg, MirrorStakingCw20HookMsg,
+    MirrorStakingExecuteMsg, MirrorStakingQueryMsg, QueryMsg,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
@@ -21,6 +22,7 @@ use cosmwasm_std::{
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use mirror_protocol::{
     gov::{ConfigResponse as GovConfigResponse, StateResponse as GovStateResponse, VoteOption},
+    lock::ConfigResponse as LockConfigResponse,
     mint::ConfigResponse as MintConfigResponse,
     staking::ConfigResponse as StakingConfigResponse,
 };
@@ -98,6 +100,28 @@ fn assert_gov_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorGo
     );
 }
 
+fn assert_gov_execute_cw20_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorGovCw20HookMsg) {
+    let msg = Cw20HookMsg::MirrorGovCw20HookMsg(mirror_msg.clone());
+    assert_execute_cw20_msg(
+        deps,
+        info,
+        msg,
+        to_binary(&mirror_msg).unwrap(),
+        MOCK_MIRROR_GOV_ADDR.to_string(),
+    );
+}
+
+fn assert_lock_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorLockExecuteMsg) {
+    let msg = ExecuteMsg::MirrorLockExecuteMsg(mirror_msg.clone());
+    assert_execute_msg(
+        deps,
+        info,
+        msg,
+        to_binary(&mirror_msg).unwrap(),
+        MOCK_MIRROR_LOCK_ADDR.to_string(),
+    );
+}
+
 fn assert_execute_msg(
     deps: DepsMut,
     info: MessageInfo,
@@ -156,34 +180,12 @@ fn assert_query_msg<T: DeserializeOwned + Debug + PartialEq>(
     assert_eq!(expected_res, actual_res);
 }
 
-fn assert_gov_execute_cw20_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorGovCw20HookMsg) {
-    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-        sender: info.sender.to_string(),
-        amount: Uint128::from(TEST_AMOUNT),
-        msg: to_binary(&Cw20HookMsg::MirrorGovCw20HookMsg(mirror_msg.clone())).unwrap(),
-    });
-    let res = execute(deps, mock_env(), mock_info(TEST_TOKEN, &[]), msg.clone()).unwrap();
-    let send_msg = Cw20ExecuteMsg::Send {
-        contract: MOCK_MIRROR_GOV_ADDR.to_string(),
-        amount: Uint128::from(TEST_AMOUNT),
-        msg: to_binary(&mirror_msg).unwrap(),
-    };
-    let execute_msg = WasmMsg::Execute {
-        contract_addr: TEST_TOKEN.to_string(),
-        funds: vec![],
-        msg: to_binary(&send_msg).unwrap(),
-    };
-    assert_eq!(
-        Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
-        res
-    );
-}
-
 fn assert_intantiate(deps: DepsMut, info: MessageInfo) {
     let msg = InstantiateMsg {
         mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
         mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
         mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+        mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
     };
     let res = instantiate(deps, mock_env(), info.clone(), msg).unwrap();
     assert_eq!(
@@ -220,6 +222,12 @@ fn test_instantiate() {
     let _res: GovConfigResponse =
         from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
+    // Verify that we can query the mirror lock contract.
+    let msg = QueryMsg::MirrorLockQueryMsg(MirrorLockQueryMsg::Config {});
+    let res: LockConfigResponse =
+        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    assert_eq!(mock_lock_config_response(), res);
+
     // Verify that we can query our contract's config.
     let msg = QueryMsg::Config {};
     let res: ConfigResponse = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
@@ -227,7 +235,8 @@ fn test_instantiate() {
         ConfigResponse {
             mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
             mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
-            mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string()
+            mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
+            mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string()
         },
         res
     );
@@ -542,6 +551,18 @@ fn test_mirror_gov_create_poll_cw20() {
 }
 
 #[test]
+fn test_lock_unlock_position_funds() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info.clone());
+
+    let mirror_msg = MirrorLockExecuteMsg::UnlockPositionFunds {
+        positions_idx: vec![Uint128::from(1u128)],
+    };
+    assert_lock_execute_msg(deps.as_mut(), info, mirror_msg);
+}
+
+#[test]
 fn test_mirror_mint_queries() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
@@ -683,5 +704,21 @@ fn test_mirror_gov_queries() {
         deps.as_ref(),
         QueryMsg::MirrorGovQueryMsg(msg),
         mock_shares_response(),
+    );
+}
+
+#[test]
+fn test_mirror_lock_queries() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info);
+
+    let msg = MirrorLockQueryMsg::PositionLockInfo {
+        position_idx: Uint128::from(1u128),
+    };
+    assert_query_msg(
+        deps.as_ref(),
+        QueryMsg::MirrorLockQueryMsg(msg),
+        mock_position_lock_info_response(),
     );
 }

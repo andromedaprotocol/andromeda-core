@@ -4,6 +4,7 @@ pub use mirror_protocol::{
         Cw20HookMsg as MirrorGovCw20HookMsg, ExecuteMsg as MirrorGovExecuteMsg,
         QueryMsg as MirrorGovQueryMsg,
     },
+    lock::{ExecuteMsg as MirrorLockExecuteMsg, QueryMsg as MirrorLockQueryMsg},
     mint::{
         Cw20HookMsg as MirrorMintCw20HookMsg, ExecuteMsg as MirrorMintExecuteMsg,
         QueryMsg as MirrorMintQueryMsg,
@@ -21,6 +22,7 @@ pub struct InstantiateMsg {
     pub mirror_mint_contract: String,
     pub mirror_staking_contract: String,
     pub mirror_gov_contract: String,
+    pub mirror_lock_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -30,6 +32,7 @@ pub enum ExecuteMsg {
     MirrorMintExecuteMsg(MirrorMintExecuteMsg),
     MirrorStakingExecuteMsg(MirrorStakingExecuteMsg),
     MirrorGovExecuteMsg(MirrorGovExecuteMsg),
+    MirrorLockExecuteMsg(MirrorLockExecuteMsg),
     UpdateOwner {
         address: String,
     },
@@ -37,6 +40,7 @@ pub enum ExecuteMsg {
         mirror_mint_contract: Option<String>,
         mirror_staking_contract: Option<String>,
         mirror_gov_contract: Option<String>,
+        mirror_lock_contract: Option<String>,
     },
 }
 
@@ -46,6 +50,7 @@ pub enum QueryMsg {
     MirrorMintQueryMsg(MirrorMintQueryMsg),
     MirrorStakingQueryMsg(MirrorStakingQueryMsg),
     MirrorGovQueryMsg(MirrorGovQueryMsg),
+    MirrorLockQueryMsg(MirrorLockQueryMsg),
     ContractOwner {},
     Config {},
 }
@@ -64,4 +69,5 @@ pub struct ConfigResponse {
     pub mirror_mint_contract: String,
     pub mirror_staking_contract: String,
     pub mirror_gov_contract: String,
+    pub mirror_lock_contract: String,
 }

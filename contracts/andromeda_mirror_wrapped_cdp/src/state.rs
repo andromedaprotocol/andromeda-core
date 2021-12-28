@@ -10,4 +10,5 @@ pub struct Config {
     pub mirror_mint_contract: Addr,
     pub mirror_staking_contract: Addr,
     pub mirror_gov_contract: Addr,
+    pub mirror_lock_contract: Addr,
 }
