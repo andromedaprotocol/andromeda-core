@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest,
+    from_binary, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest,
     Response, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
@@ -29,6 +29,7 @@ use mirror_protocol::{
     },
     staking::{ConfigResponse as StakingConfigResponse, PoolInfoResponse, RewardInfoResponse},
 };
+use terraswap::asset::{Asset, AssetInfo};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_mirror_wrapped_cdp";
@@ -65,16 +66,19 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
         ExecuteMsg::MirrorMintExecuteMsg(msg) => execute_mirror_msg(
+            deps,
             info,
             config.mirror_mint_contract.to_string(),
             to_binary(&msg)?,
         ),
         ExecuteMsg::MirrorStakingExecuteMsg(msg) => execute_mirror_msg(
+            deps,
             info,
             config.mirror_staking_contract.to_string(),
             to_binary(&msg)?,
         ),
         ExecuteMsg::MirrorGovExecuteMsg(msg) => execute_mirror_msg(
+            deps,
             info,
             config.mirror_gov_contract.to_string(),
             to_binary(&msg)?,
@@ -103,6 +107,7 @@ pub fn receive_cw20(
     let token_address = info.sender.to_string();
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::MirrorMintCw20HookMsg(msg) => execute_mirror_cw20_msg(
+            deps,
             info,
             token_address,
             cw20_msg.amount,
@@ -110,6 +115,7 @@ pub fn receive_cw20(
             to_binary(&msg)?,
         ),
         Cw20HookMsg::MirrorStakingCw20HookMsg(msg) => execute_mirror_cw20_msg(
+            deps,
             info,
             token_address,
             cw20_msg.amount,
@@ -117,6 +123,7 @@ pub fn receive_cw20(
             to_binary(&msg)?,
         ),
         Cw20HookMsg::MirrorGovCw20HookMsg(msg) => execute_mirror_cw20_msg(
+            deps,
             info,
             token_address,
             cw20_msg.amount,
@@ -127,6 +134,7 @@ pub fn receive_cw20(
 }
 
 pub fn execute_mirror_cw20_msg(
+    deps: DepsMut,
     info: MessageInfo,
     token_addr: String,
     amount: Uint128,
@@ -138,17 +146,26 @@ pub fn execute_mirror_cw20_msg(
         amount,
         msg: msg_binary,
     };
-    execute_mirror_msg(info, token_addr, to_binary(&msg)?)
+    execute_mirror_msg(deps, info, token_addr, to_binary(&msg)?)
 }
 
 pub fn execute_mirror_msg(
+    deps: DepsMut,
     info: MessageInfo,
     contract_addr: String,
     msg_binary: Binary,
 ) -> Result<Response, ContractError> {
+    require(
+        info.funds.is_empty() || info.funds.len() == 1,
+        ContractError::InvalidMirrorFunds {
+            msg: "Mirror expects no funds or a single type of fund to be deposited.".to_string(),
+        },
+    )?;
+    let tax_deducted_funds = get_tax_deducted_funds(&deps, info.funds)?;
+
     let execute_msg = WasmMsg::Execute {
         contract_addr,
-        funds: info.funds,
+        funds: tax_deducted_funds,
         msg: msg_binary,
     };
     Ok(Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]))
@@ -316,4 +333,18 @@ pub fn query_mirror_msg<T: DeserializeOwned>(
         msg: msg_binary,
     };
     deps.querier.query(&QueryRequest::Wasm(query_msg))
+}
+
+pub fn get_tax_deducted_funds(deps: &DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
+    if !coins.is_empty() {
+        let asset = Asset {
+            info: AssetInfo::NativeToken {
+                denom: coins[0].denom.to_string(),
+            },
+            amount: coins[0].amount,
+        };
+        Ok(vec![asset.deduct_tax(&deps.querier)?])
+    } else {
+        Ok(coins)
+    }
 }

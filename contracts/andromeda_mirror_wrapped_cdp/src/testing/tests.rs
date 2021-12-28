@@ -6,7 +6,7 @@ use super::mock_querier::{
     mock_staking_config_response, mock_voter_response, mock_voters_response, MOCK_MIRROR_GOV_ADDR,
     MOCK_MIRROR_MINT_ADDR, MOCK_MIRROR_STAKING_ADDR,
 };
-use crate::contract::{execute, instantiate, query};
+use crate::contract::{execute, get_tax_deducted_funds, instantiate, query};
 use andromeda_protocol::mirror_wrapped_cdp::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg,
     MirrorGovExecuteMsg, MirrorGovQueryMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
@@ -15,8 +15,8 @@ use andromeda_protocol::mirror_wrapped_cdp::{
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
-    from_binary, to_binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo, Response, Uint128,
-    WasmMsg,
+    coins, from_binary, to_binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo, Response,
+    Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use mirror_protocol::{
@@ -33,11 +33,12 @@ const TEST_AMOUNT: u128 = 100u128;
 
 fn assert_mint_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorMintExecuteMsg) {
     let msg = ExecuteMsg::MirrorMintExecuteMsg(mirror_msg.clone());
-    let res = execute(deps, mock_env(), info.clone(), msg.clone()).unwrap();
+    let tax_deducted_funds = get_tax_deducted_funds(&deps, info.funds.clone()).unwrap();
+    let res = execute(deps, mock_env(), info, msg.clone()).unwrap();
 
     let execute_msg = WasmMsg::Execute {
         contract_addr: MOCK_MIRROR_MINT_ADDR.to_string(),
-        funds: info.funds,
+        funds: tax_deducted_funds,
         msg: to_binary(&mirror_msg).unwrap(),
     };
     assert_eq!(
@@ -245,7 +246,11 @@ fn test_mirror_mint_open_position() {
 #[test]
 fn test_mirror_mint_deposit() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    deps.querier.with_tax(
+        Decimal::percent(10),
+        &[(&"uusd".to_string(), &Uint128::from(1500000u128))],
+    );
+    let info = mock_info("creator", &coins(10u128, "uusd"));
     assert_intantiate(deps.as_mut(), info.clone());
 
     let mirror_msg = MirrorMintExecuteMsg::Deposit {
@@ -253,9 +258,9 @@ fn test_mirror_mint_deposit() {
             info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
             },
-            amount: Uint128::from(10_u128),
+            amount: Uint128::from(10u128),
         },
-        position_idx: Uint128::from(1_u128),
+        position_idx: Uint128::from(1u128),
     };
 
     assert_mint_execute_msg(deps.as_mut(), info, mirror_msg);

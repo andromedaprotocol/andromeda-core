@@ -82,6 +82,9 @@ pub enum ContractError {
 
     #[error("TokenIsArchived")]
     TokenIsArchived {},
+
+    #[error("InvalidMirrorFunds")]
+    InvalidMirrorFunds { msg: String },
 }
 
 impl From<FromUtf8Error> for ContractError {
