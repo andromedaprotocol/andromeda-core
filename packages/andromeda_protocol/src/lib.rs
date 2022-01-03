@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 
 pub mod address_list;
+pub mod auction;
 pub mod common;
 pub mod error;
 pub mod factory;
