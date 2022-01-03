@@ -1,20 +1,9 @@
 use cw20::Cw20ReceiveMsg;
 pub use mirror_protocol::{
-    collateral_oracle::QueryMsg as MirrorCollateralOracleQueryMsg,
-    gov::{
-        Cw20HookMsg as MirrorGovCw20HookMsg, ExecuteMsg as MirrorGovExecuteMsg,
-        QueryMsg as MirrorGovQueryMsg,
-    },
-    lock::{ExecuteMsg as MirrorLockExecuteMsg, QueryMsg as MirrorLockQueryMsg},
-    mint::{
-        Cw20HookMsg as MirrorMintCw20HookMsg, ExecuteMsg as MirrorMintExecuteMsg,
-        QueryMsg as MirrorMintQueryMsg,
-    },
-    oracle::QueryMsg as MirrorOracleQueryMsg,
-    staking::{
-        Cw20HookMsg as MirrorStakingCw20HookMsg, ExecuteMsg as MirrorStakingExecuteMsg,
-        QueryMsg as MirrorStakingQueryMsg,
-    },
+    gov::{Cw20HookMsg as MirrorGovCw20HookMsg, ExecuteMsg as MirrorGovExecuteMsg},
+    lock::ExecuteMsg as MirrorLockExecuteMsg,
+    mint::{Cw20HookMsg as MirrorMintCw20HookMsg, ExecuteMsg as MirrorMintExecuteMsg},
+    staking::{Cw20HookMsg as MirrorStakingCw20HookMsg, ExecuteMsg as MirrorStakingExecuteMsg},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -57,12 +46,6 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    MirrorMintQueryMsg(MirrorMintQueryMsg),
-    MirrorStakingQueryMsg(MirrorStakingQueryMsg),
-    MirrorGovQueryMsg(MirrorGovQueryMsg),
-    MirrorLockQueryMsg(MirrorLockQueryMsg),
-    MirrorOracleQueryMsg(MirrorOracleQueryMsg),
-    MirrorCollateralOracleQueryMsg(MirrorCollateralOracleQueryMsg),
     ContractOwner {},
     Config {},
     IsOperator { address: String },

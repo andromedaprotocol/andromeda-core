@@ -1,44 +1,20 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest,
-    Response, StdResult, Uint128, WasmMsg, WasmQuery,
+    from_binary, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
+    StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use serde::de::DeserializeOwned;
 
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     error::ContractError,
-    mirror_wrapped_cdp::{
-        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorCollateralOracleQueryMsg,
-        MirrorGovQueryMsg, MirrorLockQueryMsg, MirrorMintQueryMsg, MirrorOracleQueryMsg,
-        MirrorStakingQueryMsg, QueryMsg,
-    },
+    mirror_wrapped_cdp::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
     operators::{execute_update_operators, initialize_operators, is_operator, query_is_operator},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use mirror_protocol::{
-    collateral_oracle::{
-        CollateralInfoResponse, CollateralInfosResponse, CollateralPriceResponse,
-        ConfigResponse as CollateralOracleConfigResponse,
-    },
-    gov::{
-        ConfigResponse as GovConfigResponse, PollResponse, PollsResponse, SharesResponse,
-        StakerResponse, StateResponse as GovStateResponse, VotersResponse, VotersResponseItem,
-    },
-    lock::{ConfigResponse as LockConfigResponse, PositionLockInfoResponse},
-    mint::{
-        AssetConfigResponse, ConfigResponse as MintConfigResponse, NextPositionIdxResponse,
-        PositionResponse, PositionsResponse,
-    },
-    oracle::{
-        ConfigResponse as OracleConfigResponse, FeederResponse, PriceResponse, PricesResponse,
-    },
-    staking::{ConfigResponse as StakingConfigResponse, PoolInfoResponse, RewardInfoResponse},
-};
 use terraswap::asset::{Asset, AssetInfo};
 
 // version info for migration info
@@ -257,12 +233,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
-        QueryMsg::MirrorMintQueryMsg(msg) => query_mirror_mint(deps, msg),
-        QueryMsg::MirrorStakingQueryMsg(msg) => query_mirror_staking(deps, msg),
-        QueryMsg::MirrorGovQueryMsg(msg) => query_mirror_gov(deps, msg),
-        QueryMsg::MirrorLockQueryMsg(msg) => query_mirror_lock(deps, msg),
-        QueryMsg::MirrorOracleQueryMsg(msg) => query_mirror_oracle(deps, msg),
-        QueryMsg::MirrorCollateralOracleQueryMsg(msg) => query_mirror_collateral_oracle(deps, msg),
     }
 }
 
@@ -276,204 +246,6 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         mirror_oracle_contract: config.mirror_oracle_contract.to_string(),
         mirror_collateral_oracle_contract: config.mirror_collateral_oracle_contract.to_string(),
     })
-}
-
-pub fn query_mirror_mint(deps: Deps, msg: MirrorMintQueryMsg) -> StdResult<Binary> {
-    let contract_addr = CONFIG.load(deps.storage)?.mirror_mint_contract.to_string();
-    match msg {
-        MirrorMintQueryMsg::Config {} => to_binary(&query_mirror_msg::<MintConfigResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorMintQueryMsg::AssetConfig { .. } => {
-            to_binary(&query_mirror_msg::<AssetConfigResponse>(
-                deps,
-                contract_addr,
-                to_binary(&msg)?,
-            )?)
-        }
-        MirrorMintQueryMsg::Position { .. } => to_binary(&query_mirror_msg::<PositionResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorMintQueryMsg::Positions { .. } => to_binary(&query_mirror_msg::<PositionsResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorMintQueryMsg::NextPositionIdx {} => {
-            to_binary(&query_mirror_msg::<NextPositionIdxResponse>(
-                deps,
-                contract_addr,
-                to_binary(&msg)?,
-            )?)
-        }
-    }
-}
-
-pub fn query_mirror_staking(deps: Deps, msg: MirrorStakingQueryMsg) -> StdResult<Binary> {
-    let contract_addr = CONFIG
-        .load(deps.storage)?
-        .mirror_staking_contract
-        .to_string();
-    match msg {
-        MirrorStakingQueryMsg::Config {} => to_binary(&query_mirror_msg::<StakingConfigResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorStakingQueryMsg::PoolInfo { .. } => to_binary(&query_mirror_msg::<PoolInfoResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorStakingQueryMsg::RewardInfo { .. } => {
-            to_binary(&query_mirror_msg::<RewardInfoResponse>(
-                deps,
-                contract_addr,
-                to_binary(&msg)?,
-            )?)
-        }
-    }
-}
-
-pub fn query_mirror_gov(deps: Deps, msg: MirrorGovQueryMsg) -> StdResult<Binary> {
-    let contract_addr = CONFIG.load(deps.storage)?.mirror_gov_contract.to_string();
-    match msg {
-        MirrorGovQueryMsg::Config {} => to_binary(&query_mirror_msg::<GovConfigResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorGovQueryMsg::State {} => to_binary(&query_mirror_msg::<GovStateResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorGovQueryMsg::Staker { .. } => to_binary(&query_mirror_msg::<StakerResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorGovQueryMsg::Poll { .. } => to_binary(&query_mirror_msg::<PollResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorGovQueryMsg::Polls { .. } => to_binary(&query_mirror_msg::<PollsResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorGovQueryMsg::Voter { .. } => to_binary(&query_mirror_msg::<VotersResponseItem>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorGovQueryMsg::Voters { .. } => to_binary(&query_mirror_msg::<VotersResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorGovQueryMsg::Shares { .. } => to_binary(&query_mirror_msg::<SharesResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-    }
-}
-
-pub fn query_mirror_lock(deps: Deps, msg: MirrorLockQueryMsg) -> StdResult<Binary> {
-    let contract_addr = CONFIG.load(deps.storage)?.mirror_lock_contract.to_string();
-    match msg {
-        MirrorLockQueryMsg::Config {} => to_binary(&query_mirror_msg::<LockConfigResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorLockQueryMsg::PositionLockInfo { .. } => {
-            to_binary(&query_mirror_msg::<PositionLockInfoResponse>(
-                deps,
-                contract_addr,
-                to_binary(&msg)?,
-            )?)
-        }
-    }
-}
-
-pub fn query_mirror_oracle(deps: Deps, msg: MirrorOracleQueryMsg) -> StdResult<Binary> {
-    let contract_addr = CONFIG
-        .load(deps.storage)?
-        .mirror_oracle_contract
-        .to_string();
-    match msg {
-        MirrorOracleQueryMsg::Config {} => to_binary(&query_mirror_msg::<OracleConfigResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorOracleQueryMsg::Feeder { .. } => to_binary(&query_mirror_msg::<FeederResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorOracleQueryMsg::Price { .. } => to_binary(&query_mirror_msg::<PriceResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-        MirrorOracleQueryMsg::Prices { .. } => to_binary(&query_mirror_msg::<PricesResponse>(
-            deps,
-            contract_addr,
-            to_binary(&msg)?,
-        )?),
-    }
-}
-
-pub fn query_mirror_collateral_oracle(
-    deps: Deps,
-    msg: MirrorCollateralOracleQueryMsg,
-) -> StdResult<Binary> {
-    let contract_addr = CONFIG
-        .load(deps.storage)?
-        .mirror_collateral_oracle_contract
-        .to_string();
-    match msg {
-        MirrorCollateralOracleQueryMsg::Config {} => {
-            to_binary(&query_mirror_msg::<CollateralOracleConfigResponse>(
-                deps,
-                contract_addr,
-                to_binary(&msg)?,
-            )?)
-        }
-        MirrorCollateralOracleQueryMsg::CollateralPrice { .. } => {
-            to_binary(&query_mirror_msg::<CollateralPriceResponse>(
-                deps,
-                contract_addr,
-                to_binary(&msg)?,
-            )?)
-        }
-        MirrorCollateralOracleQueryMsg::CollateralAssetInfo { .. } => to_binary(
-            &query_mirror_msg::<CollateralInfoResponse>(deps, contract_addr, to_binary(&msg)?)?,
-        ),
-        MirrorCollateralOracleQueryMsg::CollateralAssetInfos { .. } => to_binary(
-            &query_mirror_msg::<CollateralInfosResponse>(deps, contract_addr, to_binary(&msg)?)?,
-        ),
-    }
-}
-
-pub fn query_mirror_msg<T: DeserializeOwned>(
-    deps: Deps,
-    contract_addr: String,
-    msg_binary: Binary,
-) -> StdResult<T> {
-    let query_msg = WasmQuery::Smart {
-        contract_addr,
-        msg: msg_binary,
-    };
-    deps.querier.query(&QueryRequest::Wasm(query_msg))
 }
 
 pub fn get_tax_deducted_funds(deps: &DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
