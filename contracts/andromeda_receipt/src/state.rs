@@ -16,9 +16,7 @@ pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()>
 
 pub fn can_mint_receipt(storage: &dyn Storage, addr: &str) -> StdResult<bool> {
     let config = CONFIG.load(storage)?;
-    Ok(is_contract_owner(storage, addr.to_string())?
-        || addr.eq(&config.minter)
-        || is_operator(storage, addr.to_string())?)
+    Ok(is_contract_owner(storage, addr)? || addr.eq(&config.minter) || is_operator(storage, addr)?)
 }
 
 // increase receipt ID
@@ -57,7 +55,7 @@ mod tests {
     #[test]
     fn test_can_mint() {
         let minter = String::from("minter");
-        let moderator = String::from("moderator");
+        let operator = String::from("operator");
         let owner = String::from("owner");
         let anyone = String::from("anyone");
 
@@ -66,7 +64,7 @@ mod tests {
         };
         let mut deps = mock_dependencies(&[]);
         OPERATORS
-            .save(deps.as_mut().storage, moderator.clone(), &true)
+            .save(deps.as_mut().storage, &operator, &true)
             .unwrap();
 
         CONTRACT_OWNER
@@ -83,7 +81,7 @@ mod tests {
         let minter_resp = can_mint_receipt(deps.as_ref().storage, &minter).unwrap();
         assert!(minter_resp);
 
-        let moderator_resp = can_mint_receipt(deps.as_ref().storage, &moderator).unwrap();
-        assert!(moderator_resp);
+        let operator_resp = can_mint_receipt(deps.as_ref().storage, &operator).unwrap();
+        assert!(operator_resp);
     }
 }

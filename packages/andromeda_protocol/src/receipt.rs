@@ -30,7 +30,7 @@ pub enum ExecuteMsg {
     StoreReceipt {
         receipt: Receipt,
     },
-    /// Edit a receipt by ID. Only executable by the assigned `minter` address or a valid `moderator`.
+    /// Edit a receipt by ID. Only executable by the assigned `minter` address or a valid `operator`.
     EditReceipt {
         receipt_id: Uint128,
         receipt: Receipt,

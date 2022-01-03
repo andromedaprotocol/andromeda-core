@@ -52,7 +52,7 @@ pub fn execute_set_value(
     value: Primitive,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     if value.is_invalid() {
@@ -77,7 +77,7 @@ pub fn execute_delete_value(
     name: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let name = get_name_or_default(&name);
