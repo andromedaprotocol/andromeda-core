@@ -26,8 +26,6 @@ const MOCK_MIRROR_MINT_ADDR: &str = "mirror_mint";
 const MOCK_MIRROR_STAKING_ADDR: &str = "mirror_staking";
 const MOCK_MIRROR_GOV_ADDR: &str = "mirror_gov";
 const MOCK_MIRROR_LOCK_ADDR: &str = "mirror_lock";
-const MOCK_MIRROR_ORACLE_ADDR: &str = "mirror_oracle";
-const MOCK_MIRROR_COLLATERAL_ORACLE_ADDR: &str = "mirror_collateral_oracle";
 
 fn assert_mint_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorMintExecuteMsg) {
     let msg = ExecuteMsg::MirrorMintExecuteMsg(mirror_msg.clone());
@@ -182,8 +180,6 @@ fn assert_intantiate(deps: DepsMut, info: MessageInfo) {
         mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
         mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
         mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
-        mirror_oracle_contract: MOCK_MIRROR_ORACLE_ADDR.to_string(),
-        mirror_collateral_oracle_contract: MOCK_MIRROR_COLLATERAL_ORACLE_ADDR.to_string(),
         operators: None,
     };
     let res = instantiate(deps, mock_env(), info.clone(), msg).unwrap();
@@ -211,8 +207,6 @@ fn test_instantiate() {
             mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
             mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
             mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
-            mirror_oracle_contract: MOCK_MIRROR_ORACLE_ADDR.to_string(),
-            mirror_collateral_oracle_contract: MOCK_MIRROR_COLLATERAL_ORACLE_ADDR.to_string(),
         },
     );
 }
@@ -227,8 +221,6 @@ fn test_instantiate_with_operator() {
         mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
         mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
         mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
-        mirror_oracle_contract: MOCK_MIRROR_ORACLE_ADDR.to_string(),
-        mirror_collateral_oracle_contract: MOCK_MIRROR_COLLATERAL_ORACLE_ADDR.to_string(),
         operators: Some(vec![operator.sender.to_string()]),
     };
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -684,16 +676,12 @@ fn test_update_config() {
     let mirror_staking_contract = "new_stake".to_string();
     let mirror_gov_contract = "new_gov".to_string();
     let mirror_lock_contract = "new_lock".to_string();
-    let mirror_oracle_contract = "new_oracle".to_string();
-    let mirror_collateral_oracle_contract = "new_collateral_oracle".to_string();
 
     let msg = ExecuteMsg::UpdateConfig {
         mirror_mint_contract: Some(mirror_mint_contract.clone()),
         mirror_staking_contract: Some(mirror_staking_contract.clone()),
         mirror_gov_contract: Some(mirror_gov_contract.clone()),
         mirror_lock_contract: Some(mirror_lock_contract.clone()),
-        mirror_oracle_contract: Some(mirror_oracle_contract.clone()),
-        mirror_collateral_oracle_contract: Some(mirror_collateral_oracle_contract.clone()),
     };
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -707,8 +695,6 @@ fn test_update_config() {
             mirror_staking_contract: mirror_staking_contract.to_string(),
             mirror_gov_contract: mirror_gov_contract.to_string(),
             mirror_lock_contract: mirror_lock_contract.to_string(),
-            mirror_oracle_contract: mirror_oracle_contract.to_string(),
-            mirror_collateral_oracle_contract: mirror_collateral_oracle_contract.to_string(),
         },
     );
 }

@@ -36,10 +36,6 @@ pub fn instantiate(
         mirror_staking_contract: deps.api.addr_validate(&msg.mirror_staking_contract)?,
         mirror_gov_contract: deps.api.addr_validate(&msg.mirror_gov_contract)?,
         mirror_lock_contract: deps.api.addr_validate(&msg.mirror_lock_contract)?,
-        mirror_oracle_contract: deps.api.addr_validate(&msg.mirror_oracle_contract)?,
-        mirror_collateral_oracle_contract: deps
-            .api
-            .addr_validate(&msg.mirror_collateral_oracle_contract)?,
     };
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -93,8 +89,6 @@ pub fn execute(
             mirror_staking_contract,
             mirror_gov_contract,
             mirror_lock_contract,
-            mirror_oracle_contract,
-            mirror_collateral_oracle_contract,
         } => execute_update_config(
             deps,
             info,
@@ -102,8 +96,6 @@ pub fn execute(
             mirror_staking_contract,
             mirror_gov_contract,
             mirror_lock_contract,
-            mirror_oracle_contract,
-            mirror_collateral_oracle_contract,
         ),
         ExecuteMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
@@ -196,8 +188,6 @@ pub fn execute_update_config(
     mirror_staking_contract: Option<String>,
     mirror_gov_contract: Option<String>,
     mirror_lock_contract: Option<String>,
-    mirror_oracle_contract: Option<String>,
-    mirror_collateral_oracle_contract: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.to_string())?,
@@ -215,13 +205,6 @@ pub fn execute_update_config(
     }
     if let Some(mirror_lock_contract) = mirror_lock_contract {
         config.mirror_lock_contract = deps.api.addr_validate(&mirror_lock_contract)?;
-    }
-    if let Some(mirror_oracle_contract) = mirror_oracle_contract {
-        config.mirror_oracle_contract = deps.api.addr_validate(&mirror_oracle_contract)?;
-    }
-    if let Some(mirror_collateral_oracle_contract) = mirror_collateral_oracle_contract {
-        config.mirror_collateral_oracle_contract =
-            deps.api.addr_validate(&mirror_collateral_oracle_contract)?;
     }
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new().add_attribute("action", "update_config"))
@@ -243,8 +226,6 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         mirror_staking_contract: config.mirror_staking_contract.to_string(),
         mirror_gov_contract: config.mirror_gov_contract.to_string(),
         mirror_lock_contract: config.mirror_lock_contract.to_string(),
-        mirror_oracle_contract: config.mirror_oracle_contract.to_string(),
-        mirror_collateral_oracle_contract: config.mirror_collateral_oracle_contract.to_string(),
     })
 }
 
