@@ -33,8 +33,8 @@ pub fn execute_update_operators(
         OPERATORS.remove(deps.storage, &String::from_utf8(key.clone())?);
     }
 
-    for x in operators.iter() {
-        OPERATORS.save(deps.storage, &x, &true)?;
+    for op in operators.iter() {
+        OPERATORS.save(deps.storage, op, &true)?;
     }
 
     Ok(Response::new().add_attributes(vec![attr("action", "update_operators")]))
@@ -42,7 +42,7 @@ pub fn execute_update_operators(
 
 pub fn initialize_operators(storage: &mut dyn Storage, operators: Vec<String>) -> StdResult<()> {
     for operator in operators.iter() {
-        OPERATORS.save(storage, &operator, &true)?;
+        OPERATORS.save(storage, operator, &true)?;
     }
     Ok(())
 }

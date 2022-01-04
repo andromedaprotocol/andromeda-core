@@ -162,7 +162,8 @@ pub fn execute_mirror_msg(
     msg_binary: Binary,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, sender.clone())? || is_operator(deps.storage, sender)?,
+        is_contract_owner(deps.storage, sender.as_str())?
+            || is_operator(deps.storage, sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -190,7 +191,7 @@ pub fn execute_update_config(
     mirror_lock_contract: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut config = CONFIG.load(deps.storage)?;
@@ -215,7 +216,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address.as_str())?),
     }
 }
 

@@ -59,7 +59,7 @@ pub fn execute_set_value(
         return Err(ContractError::InvalidPrimitive {});
     }
     let name: &str = get_name_or_default(&name);
-    DATA.update::<_, StdError>(deps.storage, &name, |old| match old {
+    DATA.update::<_, StdError>(deps.storage, name, |old| match old {
         Some(_) => Ok(value.clone()),
         None => Ok(value.clone()),
     })?;
@@ -108,7 +108,7 @@ fn query_value(deps: Deps, name: Option<String>) -> StdResult<GetValueResponse> 
 fn get_name_or_default(name: &Option<String>) -> &str {
     match name {
         None => DEFAULT_KEY,
-        Some(s) => &s,
+        Some(s) => s,
     }
 }
 
