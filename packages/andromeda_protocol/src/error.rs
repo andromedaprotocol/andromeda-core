@@ -85,6 +85,9 @@ pub enum ContractError {
 
     #[error("InvalidMirrorFunds")]
     InvalidMirrorFunds { msg: String },
+
+    #[error("InvalidJSON")]
+    InvalidJSON {},
 }
 
 impl From<FromUtf8Error> for ContractError {

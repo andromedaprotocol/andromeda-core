@@ -74,6 +74,7 @@ dependencies = [
  "mirror-protocol",
  "schemars",
  "serde",
+ "serde_json",
  "terra-cosmwasm",
  "thiserror",
 ]

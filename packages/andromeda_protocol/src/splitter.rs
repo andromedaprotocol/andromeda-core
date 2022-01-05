@@ -5,6 +5,7 @@ use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+// ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ADORecipient {
     pub addr: String,
@@ -18,10 +19,12 @@ pub enum Recipient {
 }
 
 impl Recipient {
+    /// Creates an Addr Recipient from the given string
     pub fn from_string(addr: String) -> Recipient {
         Recipient::Addr(addr)
     }
-    pub fn ado_from_str(addr: String) -> Recipient {
+    /// Creates an ADO Recipient from the given string with an empty Data field
+    pub fn ado_from_string(addr: String) -> Recipient {
         Recipient::ADO(ADORecipient { addr, data: None })
     }
 }
