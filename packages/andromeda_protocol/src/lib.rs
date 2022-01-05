@@ -5,6 +5,7 @@ pub mod auction;
 pub mod common;
 pub mod error;
 pub mod factory;
+pub mod mirror_wrapped_cdp;
 pub mod modules;
 pub mod operators;
 pub mod ownership;
