@@ -1,3 +1,4 @@
+use crate::communication::AndromedaMsg;
 use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
 use cosmwasm_std::Uint128;
@@ -5,8 +6,29 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AddressPercent {
+pub struct ADORecipient {
     pub addr: String,
+    pub data: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum Recipient {
+    Addr(String),
+    ADO(ADORecipient),
+}
+
+impl Recipient {
+    pub fn from_string(addr: String) -> Recipient {
+        Recipient::Addr(addr)
+    }
+    pub fn ado_from_str(addr: String) -> Recipient {
+        Recipient::ADO(ADORecipient { addr, data: None })
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AddressPercent {
+    pub recipient: Recipient,
     pub percent: Uint128,
 }
 
@@ -61,6 +83,7 @@ pub enum ExecuteMsg {
     UpdateOperator {
         operators: Vec<String>,
     },
+    AndrMsg(AndromedaMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -116,7 +139,7 @@ mod tests {
         assert_eq!(res, ContractError::EmptyRecipientsList {});
 
         let inadequate_recipients = vec![AddressPercent {
-            addr: String::from("some address"),
+            recipient: Recipient::from_string(String::from("Some Address")),
             percent: Uint128::from(150_u128),
         }];
         let res = validate_recipient_list(inadequate_recipients).unwrap_err();
@@ -124,11 +147,11 @@ mod tests {
 
         let valid_recipients = vec![
             AddressPercent {
-                addr: String::from("some address"),
+                recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Uint128::from(50_u128),
             },
             AddressPercent {
-                addr: String::from("some address"),
+                recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Uint128::from(50_u128),
             },
         ];

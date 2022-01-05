@@ -1,5 +1,5 @@
 use crate::contract::instantiate;
-use andromeda_protocol::splitter::{AddressPercent, InstantiateMsg};
+use andromeda_protocol::splitter::{AddressPercent, InstantiateMsg, Recipient};
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
     modules::address_list::{AddressListModule, REPLY_ADDRESS_LIST},
@@ -21,7 +21,7 @@ fn test_instantiate() {
     let msg = InstantiateMsg {
         address_list,
         recipients: vec![AddressPercent {
-            addr: String::from("Some Address"),
+            recipient: Recipient::from_string(String::from("Some Address")),
             percent: Uint128::from(100_u128),
         }],
     };
