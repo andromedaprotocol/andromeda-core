@@ -101,6 +101,19 @@ impl MessageHooks for AuctionModule {
 
         Ok(res)
     }
+
+    fn on_transfer(
+        &self,
+        deps: &DepsMut,
+        info: MessageInfo,
+        env: Env,
+        recipient: String,
+        token_id: String,
+    ) -> Result<HookResponse, ContractError> {
+        let mut res = HookResponse::default();
+
+        Ok(res)
+    }
 }
 
 /// Used to stored the contract address once the contract is instantiated

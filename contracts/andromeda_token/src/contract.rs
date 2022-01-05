@@ -5,6 +5,7 @@ use andromeda_protocol::{
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
+        auction::{on_auction_reply, AUCTION_CONTRACT, REPLY_AUCTION},
         read_modules,
         receipt::{on_receipt_reply, REPLY_RECEIPT},
         store_modules, Modules,
@@ -82,6 +83,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     match msg.id {
         REPLY_RECEIPT => on_receipt_reply(deps, msg),
         REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
+        REPLY_AUCTION => on_auction_reply(deps, msg),
         _ => Err(StdError::generic_err("reply id is invalid")),
     }
 }
@@ -405,11 +407,13 @@ fn execute_transfer_agreement(
         )
     })?;
     let mut token = load_token(deps.storage, token_id.clone())?;
-
-    require(
-        info.sender.to_string().eq(&token.owner),
-        ContractError::Unauthorized {},
-    )?;
+    let mut condition = info.sender.to_string().eq(&token.owner);
+    // If auction is a module for this token we whitelist it to be able to make transfer agreements.
+    let auction_contract = AUCTION_CONTRACT.may_load(deps.storage)?;
+    if let Some(auction_contract) = auction_contract {
+        condition = condition || info.sender.to_string().eq(&auction_contract);
+    }
+    require(condition, ContractError::Unauthorized {})?;
     require(!token.archived, ContractError::TokenIsArchived {})?;
 
     let amount = coin(amount, denom);

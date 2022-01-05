@@ -119,8 +119,14 @@ pub enum ContractError {
     #[error("HighestBidderCannotOutBid")]
     HighestBidderCannotOutBid {},
 
-    #[error("InvalidMirrorFunds")]
-    InvalidMirrorFunds { msg: String },
+    #[error("MoreThanOneCoinSent")]
+    MoreThanOneCoinSent {},
+
+    #[error("AuctionRewardAlreadyClaimed")]
+    AuctionRewardAlreadyClaimed {},
+
+    #[error("AuctionNotEnded")]
+    AuctionNotEnded {},
 }
 
 impl From<FromUtf8Error> for ContractError {

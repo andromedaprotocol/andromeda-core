@@ -13,8 +13,11 @@ pub enum ExecuteMsg {
     PlaceBid {
         token_id: String,
     },
-    Withdraw {
+    ClaimReward {
         token_id: String,
+    },
+    Withdraw {
+        auction_id: Uint128,
     },
     StartAuction {
         token_id: String,
@@ -27,19 +30,16 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    AuctionState { token_id: String },
+    LatestAuctionState { token_id: String },
 }
 
-// #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-// pub struct HighestBidResponse{
-//     pub address: String,
-//     pub bid: Uint128,
-//
-// }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct AuctionStateResponse {
     pub start_time: u64,
     pub end_time: u64,
     pub high_bidder_addr: String,
     pub high_bidder_amount: Uint128,
+    pub auction_id: Uint128,
+    pub coin_denom: String,
+    pub reward_claimed: bool,
 }

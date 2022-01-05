@@ -8,6 +8,7 @@ use cw2::set_contract_version;
 
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
+    common::get_tax_deducted_funds,
     error::ContractError,
     mirror_wrapped_cdp::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
     operators::{execute_update_operators, initialize_operators, is_operator, query_is_operator},
@@ -15,7 +16,6 @@ use andromeda_protocol::{
     require,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use terraswap::asset::{Asset, AssetInfo};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_mirror_wrapped_cdp";
@@ -168,9 +168,7 @@ pub fn execute_mirror_msg(
     )?;
     require(
         funds.is_empty() || funds.len() == 1,
-        ContractError::InvalidMirrorFunds {
-            msg: "Mirror expects no funds or a single type of fund to be deposited.".to_string(),
-        },
+        ContractError::MoreThanOneCoinSent {},
     )?;
     let tax_deducted_funds = get_tax_deducted_funds(&deps, funds)?;
 
@@ -228,18 +226,4 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         mirror_gov_contract: config.mirror_gov_contract.to_string(),
         mirror_lock_contract: config.mirror_lock_contract.to_string(),
     })
-}
-
-pub fn get_tax_deducted_funds(deps: &DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
-    if !coins.is_empty() {
-        let asset = Asset {
-            info: AssetInfo::NativeToken {
-                denom: coins[0].denom.to_string(),
-            },
-            amount: coins[0].amount,
-        };
-        Ok(vec![asset.deduct_tax(&deps.querier)?])
-    } else {
-        Ok(coins)
-    }
 }
