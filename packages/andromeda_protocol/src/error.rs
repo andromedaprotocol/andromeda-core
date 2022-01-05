@@ -95,8 +95,8 @@ pub enum ContractError {
     #[error("TokenOwnerCannotBid")]
     TokenOwnerCannotBid {},
 
-    #[error("BidAmountSmallerThanHighestBid")]
-    BidAmountSmallerThanHighestBid {},
+    #[error("BidSmallerThanHighestBid")]
+    BidSmallerThanHighestBid {},
 
     #[error("Overflow")]
     Overflow {},

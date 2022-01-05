@@ -1,13 +1,23 @@
+use andromeda_protocol::token::QueryMsg as TokenQueryMsg;
 use cosmwasm_std::{
-    from_slice,
+    from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SystemError, SystemResult, Uint128,
+    to_binary, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult,
+    QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
+use cw721::OwnerOfResponse;
 use std::collections::HashMap;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
 
 pub const MOCK_TOKEN_ADDR: &str = "token0001";
+pub const MOCK_TOKEN_OWNER: &str = "owner";
+
+fn mock_owner_of_response() -> OwnerOfResponse {
+    OwnerOfResponse {
+        owner: MOCK_TOKEN_OWNER.to_string(),
+        approvals: vec![],
+    }
+}
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -95,7 +105,22 @@ impl WasmMockQuerier {
                     panic!("DO NOT ENTER HERE")
                 }
             }
+            QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
+                match contract_addr.as_str() {
+                    MOCK_TOKEN_ADDR => self.handle_token_query(msg),
+                    _ => panic!("Unknown Contract Address"),
+                }
+            }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            TokenQueryMsg::OwnerOf { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&mock_owner_of_response()).unwrap(),
+            )),
+            _ => panic!("Unsupported Query"),
         }
     }
 

@@ -10,12 +10,12 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{
     attr, coins, entry_point, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, SubMsg, Uint128,
-    WasmMsg, WasmQuery,
+    MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, Storage, SubMsg,
+    Uint128, WasmMsg, WasmQuery,
 };
 use cw721::OwnerOfResponse;
 use cw_storage_plus::U128Key;
-use std::ops::AddAssign;
+use std::ops::Add;
 
 trait FromUint128 {
     fn from_uint128(input: Uint128) -> U128Key;
@@ -37,6 +37,7 @@ pub fn instantiate(
     let config: Config = Config {
         token_addr: msg.token_addr.clone(),
     };
+    NEXT_AUCTION_ID.save(deps.storage, &Uint128::from(0u128))?;
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -112,12 +113,11 @@ pub fn execute_place_bid(
     };
     if let Some(existing_bid) = existing_bid_option {
         bid.amount = existing_bid.amount;
-        bid.amount = bid.amount.checked_add(payment.amount)?;
     }
-
+    bid.amount = bid.amount.checked_add(payment.amount)?;
     require(
         token_auction_state.high_bidder_amount < bid.amount,
-        ContractError::BidAmountSmallerThanHighestBid {},
+        ContractError::BidSmallerThanHighestBid {},
     )?;
 
     let token_owner_res = query_owner_of(deps.querier, config.token_addr, token_id.clone())?;
@@ -126,14 +126,12 @@ pub fn execute_place_bid(
         ContractError::TokenOwnerCannotBid {},
     )?;
     token_auction_state.high_bidder_addr = info.sender.clone();
-    token_auction_state.high_bidder_amount = payment.amount;
+    token_auction_state.high_bidder_amount = bid.amount;
 
     let key = U128Key::from_uint128(token_auction_state.auction_id);
     TOKEN_AUCTION_STATE.save(deps.storage, key.clone(), &token_auction_state)?;
-    let mut bids_for_auction = BIDS.load(deps.storage, key.clone()).unwrap_or_default();
-
+    let mut bids_for_auction = BIDS.load(deps.storage, key.clone())?;
     bids_for_auction.push(bid);
-
     BIDS.save(deps.storage, key, &bids_for_auction)?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "bid"),
@@ -219,24 +217,30 @@ pub fn execute_start_auction(
         return Err(ContractError::StartTimeInThePast {});
     }
 
-    let mut next_auction_id = NEXT_AUCTION_ID.load(deps.storage)?;
-
     let latest_auction_id: Uint128 = match AUCTION_IDS.may_load(deps.storage, &token_id)? {
-        None => next_auction_id,
-        Some(auction_ids) => *auction_ids.last().unwrap(),
-    };
-
-    let token_auction_state_option =
-        TOKEN_AUCTION_STATE.may_load(deps.storage, U128Key::new(latest_auction_id.u128()))?;
-    if let Some(token_auction_state) = token_auction_state_option {
-        if env.block.time.seconds() >= token_auction_state.start_time {
-            return Err(ContractError::AuctionAlreadyStarted {});
+        None => get_and_increment_next_auction_id(deps.storage, &token_id)?,
+        Some(auction_ids) => {
+            // If the vec exists there will always be at least one element so unwrapping is fine.
+            let latest_auction_id = *auction_ids.last().unwrap();
+            let token_auction_state =
+                TOKEN_AUCTION_STATE.load(deps.storage, U128Key::new(latest_auction_id.u128()))?;
+            if env.block.time.seconds() < token_auction_state.start_time {
+                token_auction_state.auction_id
+            } else {
+                // Previous auction must be completed before new auction can start.
+                require(
+                    token_auction_state.reward_claimed,
+                    ContractError::AuctionNotEnded {},
+                )?;
+                get_and_increment_next_auction_id(deps.storage, &token_id)?
+            }
         }
-    } else {
-        // In this case there is no existing auction with this ID, so next_auction_id is used.
-        next_auction_id.add_assign(Uint128::from(1u128));
-        NEXT_AUCTION_ID.save(deps.storage, &next_auction_id)?;
-    }
+    };
+    BIDS.save(
+        deps.storage,
+        U128Key::new(latest_auction_id.u128()),
+        &vec![],
+    )?;
 
     TOKEN_AUCTION_STATE.save(
         deps.storage,
@@ -316,7 +320,10 @@ fn get_existing_token_auction_state(
     token_id: &str,
 ) -> Result<TokenAuctionState, ContractError> {
     let latest_auction_id: Uint128 = match AUCTION_IDS.may_load(deps.storage, &token_id)? {
-        None => return Err(ContractError::AuctionDoesNotExist {}),
+        None => {
+            println!("Error before");
+            return Err(ContractError::AuctionDoesNotExist {});
+        }
         Some(auction_ids) => *auction_ids.last().unwrap(),
     };
     let token_auction_state =
@@ -324,13 +331,29 @@ fn get_existing_token_auction_state(
     if let Some(token_auction_state) = token_auction_state {
         return Ok(token_auction_state);
     }
+    println!("Error here");
     return Err(ContractError::AuctionDoesNotExist {});
+}
+
+fn get_and_increment_next_auction_id(
+    storage: &mut dyn Storage,
+    token_id: &str,
+) -> Result<Uint128, ContractError> {
+    let next_auction_id = NEXT_AUCTION_ID.load(storage)?;
+    let incremented_next_auction_id = next_auction_id.checked_add(Uint128::from(1u128))?;
+    NEXT_AUCTION_ID.save(storage, &incremented_next_auction_id)?;
+    let mut auction_ids = match AUCTION_IDS.may_load(storage, token_id)? {
+        None => vec![],
+        Some(vec) => vec,
+    };
+    auction_ids.push(next_auction_id);
+    AUCTION_IDS.save(storage, token_id, &auction_ids)?;
+    Ok(next_auction_id)
 }
 
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        // QueryMsg::GetHighestBid {token_id} =>to_binary(&query_get_highest_bid(deps, token_id)?),
         QueryMsg::LatestAuctionState { token_id } => {
             to_binary(&query_get_latest_auction_state(deps, token_id)?)
         }
@@ -371,10 +394,10 @@ fn query_owner_of(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mock_querier::{mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER};
     use andromeda_protocol::auction::{ExecuteMsg, InstantiateMsg};
-    use andromeda_protocol::testing::mock_querier::mock_dependencies_custom;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{attr, coins, BankMsg, CosmosMsg, Response, Timestamp};
+    use cosmwasm_std::{attr, coins, from_binary, BankMsg, CosmosMsg, Response, Timestamp};
 
     #[test]
     fn test_auction_instantiate() {
@@ -383,29 +406,41 @@ mod tests {
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {
-            token_addr: "token_addr_001".to_string(),
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
         };
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
 
     #[test]
-    fn test_execute_place_bid() {
-        let owner = "creator";
+    fn test_execute_place_bid_non_existing_auction() {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
-        let info = mock_info(owner, &[]);
+        let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            token_addr: "token_addr_001".to_string(),
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::PlaceBid {
-            token_id: "token_id1".to_string(),
+            token_id: "token_001".to_string(),
         };
-        let info = mock_info(owner, &coins(100u128, "uusd".to_string()));
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         assert_eq!(ContractError::AuctionDoesNotExist {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn execute_place_bid_auction_not_started() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
 
         let msg = ExecuteMsg::StartAuction {
             token_id: "token_001".to_string(),
@@ -421,8 +456,182 @@ mod tests {
             token_id: "token_001".to_string(),
         };
 
-        env.block.time = Timestamp::from_seconds(150u64);
+        env.block.time = Timestamp::from_seconds(50u64);
 
+        let info = mock_info("sender", &coins(100, "uusd".to_string()));
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(ContractError::AuctionNotStarted {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn execute_place_bid_auction_ended() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: 100,
+            end_time: 200,
+            coin_denom: "uusd".to_string(),
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: "token_001".to_string(),
+        };
+
+        env.block.time = Timestamp::from_seconds(300);
+
+        let info = mock_info("sender", &coins(100, "uusd".to_string()));
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(ContractError::AuctionEnded {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn execute_place_bid_token_owner_cannot_bid() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: 100,
+            end_time: 200,
+            coin_denom: "uusd".to_string(),
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: "token_001".to_string(),
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &coins(100, "uusd".to_string()));
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(ContractError::TokenOwnerCannotBid {}, res.unwrap_err());
+    }
+    #[test]
+    fn execute_place_bid_highest_bidder_cannot_outbid() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: 100,
+            end_time: 200,
+            coin_denom: "uusd".to_string(),
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: "token_001".to_string(),
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+        let info = mock_info("sender", &coins(100, "uusd".to_string()));
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        env.block.time = Timestamp::from_seconds(160);
+        let info = mock_info("sender", &coins(200, "uusd".to_string()));
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(
+            ContractError::HighestBidderCannotOutBid {},
+            res.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn execute_place_bid_bid_smaller_than_highest_bid() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: 100,
+            end_time: 200,
+            coin_denom: "uusd".to_string(),
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: "token_001".to_string(),
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+        let info = mock_info("sender", &coins(100, "uusd".to_string()));
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        env.block.time = Timestamp::from_seconds(160);
+        let info = mock_info("other", &coins(50, "uusd".to_string()));
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(ContractError::BidSmallerThanHighestBid {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn execute_place_bid_update_existing_bid() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: 100,
+            end_time: 200,
+            coin_denom: "uusd".to_string(),
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: "token_001".to_string(),
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+
+        let info = mock_info("sender", &coins(100, "uusd".to_string()));
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
         assert_eq!(
@@ -430,10 +639,52 @@ mod tests {
             Response::new().add_attributes(vec![
                 attr("action", "bid"),
                 attr("token_id", "token_001"),
-                attr("bider", "creator"),
+                attr("bider", info.sender),
                 attr("amount", "100"),
             ]),
         );
+        let mut expected_response = AuctionStateResponse {
+            start_time: 100,
+            end_time: 200,
+            high_bidder_addr: "sender".to_string(),
+            high_bidder_amount: Uint128::from(100u128),
+            auction_id: Uint128::zero(),
+            coin_denom: "uusd".to_string(),
+            reward_claimed: false,
+        };
+
+        let query_msg = QueryMsg::LatestAuctionState {
+            token_id: "token_001".to_string(),
+        };
+        let res: AuctionStateResponse =
+            from_binary(&query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
+        assert_eq!(expected_response, res);
+
+        env.block.time = Timestamp::from_seconds(160);
+        let info = mock_info("other", &coins(200, "uusd".to_string()));
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        expected_response.high_bidder_addr = "other".to_string();
+        expected_response.high_bidder_amount = Uint128::from(200u128);
+        let query_msg = QueryMsg::LatestAuctionState {
+            token_id: "token_001".to_string(),
+        };
+        let res: AuctionStateResponse =
+            from_binary(&query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
+        assert_eq!(expected_response, res);
+
+        env.block.time = Timestamp::from_seconds(170);
+        let info = mock_info("sender", &coins(150, "uusd".to_string()));
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        expected_response.high_bidder_addr = "sender".to_string();
+        expected_response.high_bidder_amount = Uint128::from(250u128);
+        let query_msg = QueryMsg::LatestAuctionState {
+            token_id: "token_001".to_string(),
+        };
+        let res: AuctionStateResponse =
+            from_binary(&query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
+        assert_eq!(expected_response, res);
     }
 
     /*#[test]
