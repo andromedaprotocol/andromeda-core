@@ -17,19 +17,21 @@ pub enum AndromedaQuery {
     Operators {},
 }
 
-pub fn is_valid_json(val: &str) -> Result<(), ContractError> {
-    if serde_json::from_str::<Value>(val).is_err() {
-        Err(ContractError::InvalidJSON {})
-    } else {
-        Ok(())
-    }
-}
+// pub fn is_valid_json(val: &str) -> Result<(), ContractError> {
+//     if serde_json::from_str::<Value>(val).is_err() {
+//         Err(ContractError::InvalidJSON {})
+//     } else {
+//         Ok(())
+//     }
+// }
 
 pub fn parse_optional_data(val: Option<String>) -> Result<Option<Value>, ContractError> {
     if let Some(json_string) = val {
-        is_valid_json(json_string.as_str())?;
-        let val: Value = serde_json::from_str(json_string.as_str()).unwrap();
-        Ok(Some(val))
+        if let Ok(val) = serde_json::from_str::<Value>(json_string.as_str()) {
+            Ok(Some(val))
+        } else {
+            Err(ContractError::InvalidJSON {})
+        }
     } else {
         Ok(None)
     }
@@ -40,13 +42,15 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_is_valid_json() {
+    fn test_parse_optional_data() {
         let valid_json = "{ \"field\": \"value\" }";
 
-        assert!(is_valid_json(valid_json).is_ok());
+        assert!(parse_optional_data(Some(valid_json.to_string())).is_ok());
 
         let invalid_json = "notjson";
 
-        assert!(is_valid_json(invalid_json).is_err())
+        assert!(parse_optional_data(Some(invalid_json.to_string())).is_err());
+
+        assert!(parse_optional_data(None).is_ok());
     }
 }
