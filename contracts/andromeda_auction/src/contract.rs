@@ -1,6 +1,9 @@
-use crate::state::{Config, TokenAuctionState, CONFIG, FUNDS_BY_BIDDER, TOKEN_AUCTION_STATE};
+use crate::state::{
+    Bid, Config, TokenAuctionState, AUCTION_IDS, BIDS, CONFIG, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
+};
 use andromeda_protocol::{
     auction::{AuctionStateResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
+    error::ContractError,
     token::QueryMsg as TokenQueryMsg,
 };
 use cosmwasm_std::{
@@ -8,7 +11,8 @@ use cosmwasm_std::{
     MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, Uint128, WasmQuery,
 };
 use cw721::OwnerOfResponse;
-use std::ops::Add;
+use cw_storage_plus::U128Key;
+use std::ops::AddAssign;
 
 #[entry_point]
 pub fn instantiate(
@@ -19,10 +23,9 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     let config: Config = Config {
         token_addr: msg.token_addr,
-        stable_denom: msg.stable_denom,
     };
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new())
+    Ok(Response::new().add_attribute("method", "instantiate"))
 }
 
 #[entry_point]
@@ -39,7 +42,8 @@ pub fn execute(
             token_id,
             start_time,
             end_time,
-        } => execute_start_auction(deps, env, info, token_id, start_time, end_time),
+            coin_denom,
+        } => execute_start_auction(deps, env, info, token_id, start_time, end_time, coin_denom),
     }
 }
 
@@ -48,15 +52,17 @@ pub fn execute_place_bid(
     env: Env,
     info: MessageInfo,
     token_id: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let coin_denom = config.stable_denom.clone();
 
     if info.funds.len() > 1usize {
-        return Err(StdError::generic_err(
+        //TODO: use proper error for this.
+        return Err(ContractError::Std(StdError::generic_err(
             "More than one coin is sent; only one asset is supported",
-        ));
+        )));
     }
+    let mut token_auction_state = get_existing_token_auction_state(&deps, &token_id)?;
+    let coin_denom = token_auction_state.coin_denom.clone();
     let payment = info
         .funds
         .iter()
@@ -64,66 +70,65 @@ pub fn execute_place_bid(
         .ok_or_else(|| {
             StdError::generic_err(format!("No {} assets are provided to auction", coin_denom))
         })?;
-    //check after start
-    let token_auction_state = TOKEN_AUCTION_STATE.may_load(deps.storage, token_id.clone())?;
-    if token_auction_state.is_none() {
-        return Err(StdError::generic_err("not started"));
-    }
-    let mut token_auction_state = token_auction_state.unwrap();
 
     if env.block.time.seconds() < token_auction_state.start_time {
-        return Err(StdError::generic_err("not started"));
+        return Err(ContractError::AuctionNotStarted {});
     }
-    // check before end
     if env.block.time.seconds() > token_auction_state.end_time {
-        return Err(StdError::generic_err("ended"));
+        return Err(ContractError::AuctionEnded {});
     }
 
-    //can't bid token's owner
-    let token_owner = query_token_info(deps.querier, config.token_addr, token_id.clone())?;
-
+    let token_owner = query_owner_of(deps.querier, config.token_addr, token_id.clone())?;
     if token_owner.owner == info.sender {
-        return Err(StdError::generic_err(
-            "token owner is not allowed to withdraw",
-        ));
+        return Err(ContractError::TokenOwnerCannotBid {});
     }
 
-    let mut funds_by_bidder_token = FUNDS_BY_BIDDER
-        .load(deps.storage, token_id.clone())
+    if token_auction_state.high_bidder_amount >= payment.amount {
+        return Err(ContractError::BidAmountSmallerThanHighestBid {});
+    } else if token_auction_state.high_bidder_addr == info.sender.to_string() {
+        return Err(ContractError::HighestBidderCannotOutBid {});
+    }
+
+    let bank_msg = BankMsg::Send {
+        to_address: token_auction_state.high_bidder_addr.to_string(),
+        amount: vec![coin(
+            token_auction_state.high_bidder_amount.u128(),
+            token_auction_state.coin_denom,
+        )],
+    };
+    token_auction_state.high_bidder_addr = info.sender;
+    token_auction_state.high_bidder_amount = payment.amount;
+
+    TOKEN_AUCTION_STATE.save(
+        deps.storage,
+        U128Key::new(token_auction_state.auction_id.u128()),
+        &token_auction_state,
+    )?;
+    let mut bids_for_auction = BIDS
+        .load(
+            deps.storage,
+            U128Key::new(token_auction_state.auction_id.u128()),
+        )
         .unwrap_or_default();
 
-    let funds_by_bidder_option = funds_by_bidder_token
-        .iter_mut()
-        .find(|x| x.0 == info.sender.to_string());
+    bids_for_auction.push(Bid {
+        bidder: info.sender.to_string(),
+        amount: payment.amount,
+    });
 
-    if let Some(funds_by_bidder) = funds_by_bidder_option {
-        if funds_by_bidder.1.checked_add(payment.amount)? <= token_auction_state.high_bidder_amount
-        {
-            return Err(StdError::generic_err(
-                "bid amount is small than highest_binding_bid",
-            ));
-        }
-        funds_by_bidder.1 = funds_by_bidder.1.add(payment.amount);
-        token_auction_state.high_bidder_amount = funds_by_bidder.1;
-    } else {
-        if payment.amount <= token_auction_state.high_bidder_amount {
-            return Err(StdError::generic_err(
-                "bid amount is small than highest_binding_bid",
-            ));
-        }
-        funds_by_bidder_token.push((info.sender.to_string(), payment.amount));
-        token_auction_state.high_bidder_amount = payment.amount;
-    }
-    token_auction_state.high_bidder_addr = info.sender.clone();
-
-    TOKEN_AUCTION_STATE.save(deps.storage, token_id.clone(), &token_auction_state)?;
-    FUNDS_BY_BIDDER.save(deps.storage, token_id.clone(), &funds_by_bidder_token)?;
-    Ok(Response::new().add_attributes(vec![
-        attr("action", "bid"),
-        attr("token_id", token_id.clone()),
-        attr("bider", info.sender.to_string()),
-        attr("amount", payment.amount.to_string()),
-    ]))
+    BIDS.save(
+        deps.storage,
+        U128Key::new(token_auction_state.auction_id.u128()),
+        &bids_for_auction,
+    )?;
+    Ok(Response::new()
+        .add_message(CosmosMsg::Bank(bank_msg))
+        .add_attributes(vec![
+            attr("action", "bid"),
+            attr("token_id", token_id.clone()),
+            attr("bider", info.sender.to_string()),
+            attr("amount", payment.amount.to_string()),
+        ]))
 }
 // no high bidder allows to withdraw
 // only withdraw by no high bidder or no owner
@@ -134,39 +139,19 @@ pub fn execute_withdraw(
     env: Env,
     info: MessageInfo,
     token_id: String,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    //let token_owner = query_token_info(deps.querier, config.token_addr, token_id.clone())?;
 
-    let token_auction_state = TOKEN_AUCTION_STATE.may_load(deps.storage, token_id.clone())?;
-    if token_auction_state.is_none() {
-        return Err(StdError::generic_err("not started"));
-    }
-    let token_auction_state = token_auction_state.unwrap();
+    let token_auction_state = get_existing_token_auction_state(&deps, &token_id)?;
 
     if env.block.time.seconds() < token_auction_state.start_time {
-        return Err(StdError::generic_err("not started auction"));
+        return Err(ContractError::AuctionNotStarted {});
     }
 
     if info.sender == token_auction_state.high_bidder_addr {
-        return Err(StdError::generic_err(
-            "high bidder does not allow to withdraw",
-        ));
+        return Err(ContractError::CannotWithdrawHighestBid {});
     }
 
-    // token_owner
-    // let withdraw_amount;
-    // if info.sender == token_owner.owner {
-    //
-    //     let owner_has_withdrawn = OWNER_HAS_WITHDRAWN.load(deps.storage, token_id.clone())?;
-    //     if owner_has_withdrawn {
-    //         return Err(StdError::generic_err("already withdrawn"));
-    //     }
-    //
-    //     withdraw_amount = token_auction_state.high_bidder_amount;
-    //     OWNER_HAS_WITHDRAWN.save(deps.storage, token_id.clone(), &true)?;
-    //
-    // }else{
     let funds_by_bidder_token = FUNDS_BY_BIDDER
         .load(deps.storage, token_id.clone())
         .unwrap_or_default();
@@ -179,16 +164,15 @@ pub fn execute_withdraw(
     } else {
         Uint128::zero()
     };
-    // }
 
     if withdraw_amount.is_zero() {
-        return Err(StdError::generic_err("Withdrawal amount is zero"));
+        return Err(ContractError::WithdrawalIsEmpty {});
     }
 
     Ok(Response::new()
         .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
-            amount: vec![coin(withdraw_amount.u128(), config.stable_denom)],
+            amount: vec![coin(withdraw_amount.u128(), token_auction_state.coin_denom)],
         }))
         .add_attributes(vec![
             attr("action", "withdraw"),
@@ -201,38 +185,53 @@ pub fn execute_withdraw(
 pub fn execute_start_auction(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     token_id: String,
     start_time: u64,
     end_time: u64,
-) -> StdResult<Response> {
+    coin_denom: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let owner_of_response = query_owner_of(deps.querier, config.token_addr, token_id)?;
+    if owner_of_response.owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
     if start_time >= end_time {
-        return Err(StdError::generic_err("auction time is wrong"));
+        return Err(ContractError::StartTimeAfterEndTime {});
     }
     if start_time <= env.block.time.seconds() {
-        return Err(StdError::generic_err("start time is past"));
+        return Err(ContractError::StartTimeInThePast {});
     }
 
-    // OWNER_HAS_WITHDRAWN.save(deps.storage, token_id.clone(), &false)?;
+    let mut next_auction_id = NEXT_AUCTION_ID.load(deps.storage)?;
 
-    //check after start
+    let latest_auction_id: Uint128 = match AUCTION_IDS.may_load(deps.storage, &token_id)? {
+        None => next_auction_id,
+        Some(auction_ids) => *auction_ids.last().unwrap(),
+    };
+
     let token_auction_state_option =
-        TOKEN_AUCTION_STATE.may_load(deps.storage, token_id.clone())?;
-    if token_auction_state_option.is_some() {
-        let token_auction_state = token_auction_state_option.unwrap();
-        if env.block.time.seconds() <= token_auction_state.end_time {
-            return Err(StdError::generic_err("already started"));
+        TOKEN_AUCTION_STATE.may_load(deps.storage, U128Key::new(latest_auction_id.u128()))?;
+    if let Some(token_auction_state) = token_auction_state_option {
+        if env.block.time.seconds() >= token_auction_state.start_time {
+            return Err(ContractError::AuctionAlreadyStarted {});
         }
+    } else {
+        // In this case there is no existing auction with this ID, so next_auction_id is used.
+        next_auction_id.add_assign(Uint128::from(1u128));
+        NEXT_AUCTION_ID.save(deps.storage, &next_auction_id)?;
     }
 
     TOKEN_AUCTION_STATE.save(
         deps.storage,
-        token_id.clone(),
+        U128Key::new(latest_auction_id.u128()),
         &TokenAuctionState {
             start_time,
             end_time,
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
+            coin_denom,
+            auction_id: latest_auction_id,
         },
     )?;
     Ok(Response::new().add_attributes(vec![
@@ -240,6 +239,22 @@ pub fn execute_start_auction(
         attr("start_time", start_time.to_string()),
         attr("end_time", end_time.to_string()),
     ]))
+}
+
+fn get_existing_token_auction_state(
+    deps: &DepsMut,
+    token_id: &str,
+) -> Result<TokenAuctionState, ContractError> {
+    let latest_auction_id: Uint128 = match AUCTION_IDS.may_load(deps.storage, &token_id)? {
+        None => return Err(ContractError::AuctionDoesNotExist {}),
+        Some(auction_ids) => *auction_ids.last().unwrap(),
+    };
+    let token_auction_state =
+        TOKEN_AUCTION_STATE.may_load(deps.storage, U128Key::new(latest_auction_id.u128()))?;
+    if let Some(token_auction_state) = token_auction_state {
+        return Ok(token_auction_state);
+    }
+    return Err(ContractError::AuctionDoesNotExist {});
 }
 
 #[entry_point]
@@ -268,29 +283,27 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 // }
 
 fn query_get_auction_state(deps: Deps, token_id: String) -> StdResult<AuctionStateResponse> {
-    let token_auction_state_option =
-        TOKEN_AUCTION_STATE.may_load(deps.storage, token_id.clone())?;
-    let auction_state_res = if token_auction_state_option.is_none() {
-        AuctionStateResponse {
-            start_time: 0,
-            end_time: 0,
-            high_bidder_addr: "".to_string(),
-            high_bidder_amount: Uint128::zero(),
-        }
-    } else {
-        let token_auction_state = token_auction_state_option.unwrap();
-        AuctionStateResponse {
-            start_time: token_auction_state.start_time,
-            end_time: token_auction_state.end_time,
-            high_bidder_addr: token_auction_state.high_bidder_addr.to_string(),
-            high_bidder_amount: token_auction_state.high_bidder_amount,
-        }
-    };
-
-    Ok(auction_state_res)
+    let token_auction_state_option = TOKEN_AUCTION_STATE.may_load(deps.storage, &token_id)?;
+    Ok(
+        if let Some(token_auction_state) = token_auction_state_option {
+            AuctionStateResponse {
+                start_time: token_auction_state.start_time,
+                end_time: token_auction_state.end_time,
+                high_bidder_addr: token_auction_state.high_bidder_addr.to_string(),
+                high_bidder_amount: token_auction_state.high_bidder_amount,
+            }
+        } else {
+            AuctionStateResponse {
+                start_time: 0,
+                end_time: 0,
+                high_bidder_addr: "".to_string(),
+                high_bidder_amount: Uint128::zero(),
+            }
+        },
+    )
 }
 
-fn query_token_info(
+fn query_owner_of(
     querier: QuerierWrapper,
     token_addr: String,
     token_id: String,
@@ -303,7 +316,7 @@ fn query_token_info(
     Ok(res)
 }
 
-#[cfg(test)]
+/*#[cfg(test)]
 mod tests {
     use crate::contract::{execute, instantiate};
     use andromeda_protocol::auction::{ExecuteMsg, InstantiateMsg};
@@ -465,5 +478,4 @@ mod tests {
                 ]),
         );
     }
-}
-
+}*/

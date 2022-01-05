@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{OverflowError, StdError};
 use std::convert::From;
 use std::string::FromUtf8Error;
 use thiserror::Error;
@@ -82,10 +82,52 @@ pub enum ContractError {
 
     #[error("TokenIsArchived")]
     TokenIsArchived {},
+
+    #[error("AuctionDoesNotExist")]
+    AuctionDoesNotExist {},
+
+    #[error("AuctionNotStarted")]
+    AuctionNotStarted {},
+
+    #[error("AuctionEnded")]
+    AuctionEnded {},
+
+    #[error("TokenOwnerCannotBid")]
+    TokenOwnerCannotBid {},
+
+    #[error("BidAmountSmallerThanHighestBid")]
+    BidAmountSmallerThanHighestBid {},
+
+    #[error("Overflow")]
+    Overflow {},
+
+    #[error("CannotWithdrawHighestBid")]
+    CannotWithdrawHighestBid {},
+
+    #[error("WithdrawalIsEmpty")]
+    WithdrawalIsEmpty {},
+
+    #[error("AuctionAlreadyStarted")]
+    AuctionAlreadyStarted {},
+
+    #[error("StartTimeAfterEndTime")]
+    StartTimeAfterEndTime {},
+
+    #[error("StartTimeInThePast")]
+    StartTimeInThePast {},
+
+    #[error("HighestBidderCannotOutBid")]
+    HighestBidderCannotOutBid {},
 }
 
 impl From<FromUtf8Error> for ContractError {
     fn from(err: FromUtf8Error) -> Self {
         ContractError::Std(StdError::from(err))
+    }
+}
+
+impl From<OverflowError> for ContractError {
+    fn from(_err: OverflowError) -> Self {
+        ContractError::Overflow {}
     }
 }

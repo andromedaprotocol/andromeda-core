@@ -20,7 +20,7 @@ pub enum ExecuteMsg {
         token_id: String,
         start_time: u64,
         end_time: u64,
-        stable_denom: String,
+        coin_denom: String,
     },
 }
 
