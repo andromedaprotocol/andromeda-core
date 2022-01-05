@@ -70,7 +70,7 @@ pub fn execute_place_bid(
     token_id: String,
 ) -> Result<Response, ContractError> {
     require(
-        info.funds.len() > 1usize,
+        info.funds.len() <= 1usize,
         ContractError::MoreThanOneCoinSent {},
     )?;
     let config = CONFIG.load(deps.storage)?;
@@ -368,13 +368,13 @@ fn query_owner_of(
     Ok(res)
 }
 
-/*#[cfg(test)]
+#[cfg(test)]
 mod tests {
-    use crate::contract::{execute, instantiate};
+    use super::*;
     use andromeda_protocol::auction::{ExecuteMsg, InstantiateMsg};
     use andromeda_protocol::testing::mock_querier::mock_dependencies_custom;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{attr, coin, BankMsg, CosmosMsg, Response, StdError, Timestamp};
+    use cosmwasm_std::{attr, coins, BankMsg, CosmosMsg, Response, Timestamp};
 
     #[test]
     fn test_auction_instantiate() {
@@ -384,11 +384,11 @@ mod tests {
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {
             token_addr: "token_addr_001".to_string(),
-            stable_denom: "uusd".to_string(),
         };
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
+
     #[test]
     fn test_execute_place_bid() {
         let owner = "creator";
@@ -397,25 +397,21 @@ mod tests {
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {
             token_addr: "token_addr_001".to_string(),
-            stable_denom: "uusd".to_string(),
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: "token_id1".to_string(),
         };
-        let info = mock_info(owner, &[coin(100u128, "uusd".to_string())]);
+        let info = mock_info(owner, &coins(100u128, "uusd".to_string()));
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        match res {
-            Err(StdError::GenericErr { msg, .. }) => assert_eq!(msg, "not started"),
-            Err(e) => panic!("Unexpected error: {:?}", e),
-            _ => panic!("Must return error"),
-        }
+        assert_eq!(ContractError::AuctionDoesNotExist {}, res.unwrap_err());
 
         let msg = ExecuteMsg::StartAuction {
             token_id: "token_001".to_string(),
             start_time: 100u64,
             end_time: 200u64,
+            coin_denom: "uusd".to_string(),
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0u64);
@@ -424,7 +420,6 @@ mod tests {
         let msg = ExecuteMsg::PlaceBid {
             token_id: "token_001".to_string(),
         };
-        // let info = mock_info(owner, &[coin(100u128, "uusd".to_string())]);
 
         env.block.time = Timestamp::from_seconds(150u64);
 
@@ -441,7 +436,7 @@ mod tests {
         );
     }
 
-    #[test]
+    /*#[test]
     fn execute_start_auction() {
         let owner = "creator";
         let mut deps = mock_dependencies(&[]);
@@ -529,5 +524,5 @@ mod tests {
                     attr("withdraw_amount", "100".to_string())
                 ]),
         );
-    }
-}*/
+    }*/
+}
