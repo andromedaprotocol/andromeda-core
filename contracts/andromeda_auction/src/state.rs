@@ -16,7 +16,7 @@ pub struct TokenAuctionState {
     pub high_bidder_amount: Uint128,
     pub coin_denom: String,
     pub auction_id: Uint128,
-    pub reward_claimed: bool,
+    pub claimed: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

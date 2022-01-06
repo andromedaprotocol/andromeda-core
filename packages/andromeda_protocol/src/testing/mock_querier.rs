@@ -1,11 +1,18 @@
-use crate::{address_list::IncludesAddressResponse, ownership::ContractOwnerResponse};
+use crate::{
+    address_list::IncludesAddressResponse,
+    auction::{AuctionStateResponse, QueryMsg as AuctionQueryMsg},
+    ownership::ContractOwnerResponse,
+};
 use cosmwasm_std::{
-    from_slice,
+    from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SystemError, SystemResult, WasmQuery,
+    to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
+    SystemError, SystemResult, Uint128, WasmQuery,
 };
 use terra_cosmwasm::TerraQueryWrapper;
+
+pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
+pub const MOCK_TOKEN_IN_AUCTION: &str = "token1";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -43,24 +50,46 @@ impl Querier for WasmMockQuerier {
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         match &request {
-            QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr,
-                msg: _,
-            }) => {
-                if contract_addr == &Addr::unchecked("addresslist_contract_address1") {
-                    let msg_response = IncludesAddressResponse { included: true };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
-                } else if contract_addr == &Addr::unchecked("factory_address") {
-                    let msg_response = ContractOwnerResponse {
-                        owner: String::from("creator"),
-                    };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
-                } else {
-                    let msg_response = IncludesAddressResponse { included: false };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+            QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
+                match contract_addr.as_str() {
+                    "addresslist_contract_address1" => {
+                        let msg_response = IncludesAddressResponse { included: true };
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                    }
+                    "factory_address" => {
+                        let msg_response = ContractOwnerResponse {
+                            owner: String::from("creator"),
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                    }
+                    MOCK_AUCTION_CONTRACT => self.handle_auction_query(msg),
+                    _ => {
+                        let msg_response = IncludesAddressResponse { included: false };
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                    }
                 }
             }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_auction_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            AuctionQueryMsg::LatestAuctionState { token_id } => {
+                let mut res = AuctionStateResponse {
+                    start_time: 100,
+                    end_time: 200,
+                    high_bidder_addr: "address".to_string(),
+                    high_bidder_amount: Uint128::from(100u128),
+                    auction_id: Uint128::zero(),
+                    coin_denom: "uusd".to_string(),
+                    claimed: true,
+                };
+                if token_id == MOCK_TOKEN_IN_AUCTION {
+                    res.claimed = false;
+                }
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
         }
     }
 

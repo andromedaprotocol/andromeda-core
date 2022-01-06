@@ -806,7 +806,11 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::token::{Approval, ExecuteMsg};
+    use andromeda_protocol::{
+        modules::auction::AUCTION_CONTRACT,
+        testing::mock_querier::MOCK_AUCTION_CONTRACT,
+        token::{Approval, ExecuteMsg},
+    };
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
@@ -1312,6 +1316,58 @@ mod tests {
             amount,
             purchaser: purchaser.to_string(),
         };
+        execute(deps.as_mut(), env.clone(), info, transfer_agreement_msg).unwrap();
+
+        let agreement_query = QueryMsg::NftInfo { token_id };
+        let res = query(deps.as_ref(), env, agreement_query).unwrap();
+        let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
+        let agreement = token_res.extension.transfer_agreement.unwrap();
+
+        assert_eq!(agreement.purchaser, purchaser);
+        assert_eq!(agreement.amount, coin(amount.u128(), denom))
+    }
+
+    #[test]
+    fn test_transfer_agreement_as_auction_contract() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let purchaser = "purchaser";
+        let info = mock_info(minter, &[]);
+        let token_id = String::default();
+        let denom = "uluna";
+        let amount = Uint128::from(100u64);
+        let metadata = None;
+
+        let instantiate_msg = InstantiateMsg {
+            name: "Token Name".to_string(),
+            symbol: "TS".to_string(),
+            minter: minter.to_string(),
+            modules: vec![],
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+
+        let mint_msg = ExecuteMsg::Mint(MintMsg {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: "Some Token".to_string(),
+            metadata,
+            token_uri: None,
+            pricing: None,
+        });
+        execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
+
+        AUCTION_CONTRACT
+            .save(deps.as_mut().storage, &MOCK_AUCTION_CONTRACT.to_string())
+            .unwrap();
+        let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
+            token_id: token_id.clone(),
+            denom: denom.to_string(),
+            amount,
+            purchaser: purchaser.to_string(),
+        };
+        let info = mock_info(MOCK_AUCTION_CONTRACT, &[]);
         execute(deps.as_mut(), env.clone(), info, transfer_agreement_msg).unwrap();
 
         let agreement_query = QueryMsg::NftInfo { token_id };

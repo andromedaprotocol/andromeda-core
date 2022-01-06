@@ -602,7 +602,12 @@ fn test_mirror_too_many_funds() {
         ExecuteMsg::MirrorMintExecuteMsg(mirror_msg),
     )
     .unwrap_err();
-    assert_eq!(ContractError::MoreThanOneCoinSent {}, res_err);
+    assert_eq!(
+        ContractError::InvalidCoinsSent {
+            msg: "Mirror expects zero or one coin to be sent".to_string()
+        },
+        res_err
+    );
 }
 
 #[test]

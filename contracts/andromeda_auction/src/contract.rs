@@ -9,8 +9,8 @@ use andromeda_protocol::{
     token::{ExecuteMsg as TokenExecuteMsg, QueryMsg as TokenQueryMsg},
 };
 use cosmwasm_std::{
-    attr, coins, entry_point, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, Storage, SubMsg,
+    attr, coins, entry_point, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, Storage, SubMsg,
     Uint128, WasmMsg, WasmQuery,
 };
 use cw721::OwnerOfResponse;
@@ -42,7 +42,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::PlaceBid { token_id } => execute_place_bid(deps, env, info, token_id),
-        ExecuteMsg::ClaimReward { token_id } => execute_claim_reward(deps, env, info, token_id),
+        ExecuteMsg::Claim { token_id } => execute_claim(deps, env, info, token_id),
         ExecuteMsg::Withdraw { auction_id } => execute_withdraw(deps, env, info, auction_id),
         ExecuteMsg::StartAuction {
             token_id,
@@ -60,8 +60,10 @@ pub fn execute_place_bid(
     token_id: String,
 ) -> Result<Response, ContractError> {
     require(
-        info.funds.len() <= 1usize,
-        ContractError::MoreThanOneCoinSent {},
+        info.funds.len() == 1usize,
+        ContractError::InvalidCoinsSent {
+            msg: "Auctions require exactly one coin to be sent.".to_string(),
+        },
     )?;
     let config = CONFIG.load(deps.storage)?;
     let mut token_auction_state = get_existing_token_auction_state(&deps.as_ref(), &token_id)?;
@@ -80,14 +82,13 @@ pub fn execute_place_bid(
     )?;
 
     let coin_denom = token_auction_state.coin_denom.clone();
-    let payment = info
-        .funds
-        .iter()
-        .find(|x| x.denom == coin_denom && x.amount > Uint128::zero())
-        .ok_or_else(|| {
-            StdError::generic_err(format!("No {} assets are provided to auction", coin_denom))
-        })?;
-
+    let payment: &Coin = &info.funds[0];
+    require(
+        payment.denom == coin_denom && payment.amount > Uint128::zero(),
+        ContractError::InvalidCoinsSent {
+            msg: format!("No {} assets are provided to auction", coin_denom),
+        },
+    )?;
     let mut bids = BIDS.load(
         deps.storage,
         U128Key::new(token_auction_state.auction_id.u128()),
@@ -130,7 +131,7 @@ pub fn execute_place_bid(
     ]))
 }
 
-pub fn execute_claim_reward(
+pub fn execute_claim(
     deps: DepsMut,
     env: Env,
     _info: MessageInfo,
@@ -139,8 +140,8 @@ pub fn execute_claim_reward(
     let config = CONFIG.load(deps.storage)?;
     let mut token_auction_state = get_existing_token_auction_state(&deps.as_ref(), &token_id)?;
     require(
-        !token_auction_state.reward_claimed,
-        ContractError::AuctionRewardAlreadyClaimed {},
+        !token_auction_state.claimed,
+        ContractError::AuctionAlreadyClaimed {},
     )?;
     require(
         env.block.time.seconds() > token_auction_state.end_time,
@@ -163,7 +164,7 @@ pub fn execute_claim_reward(
         recipient: token_auction_state.high_bidder_addr.to_string(),
         token_id: token_id.clone(),
     };
-    token_auction_state.reward_claimed = true;
+    token_auction_state.claimed = true;
     TOKEN_AUCTION_STATE.save(
         deps.storage,
         U128Key::new(token_auction_state.auction_id.u128()),
@@ -181,7 +182,7 @@ pub fn execute_claim_reward(
             msg: to_binary(&transfer_nft_msg)?,
             funds: tax_deducted_funds,
         }))
-        .add_attribute("action", "claim_reward")
+        .add_attribute("action", "claim")
         .add_attribute("token_id", token_id)
         .add_attribute("token_contract", config.token_addr)
         .add_attribute("recipient", &token_auction_state.high_bidder_addr)
@@ -222,7 +223,7 @@ pub fn execute_start_auction(
             } else {
                 // Previous auction must be completed before new auction can start.
                 require(
-                    token_auction_state.reward_claimed,
+                    token_auction_state.claimed,
                     ContractError::AuctionNotEnded {},
                 )?;
                 get_and_increment_next_auction_id(deps.storage, &token_id)?
@@ -245,7 +246,7 @@ pub fn execute_start_auction(
             high_bidder_amount: Uint128::zero(),
             coin_denom,
             auction_id: latest_auction_id,
-            reward_claimed: false,
+            claimed: false,
         },
     )?;
     Ok(Response::new().add_attributes(vec![
@@ -313,10 +314,7 @@ fn get_existing_token_auction_state(
     token_id: &str,
 ) -> Result<TokenAuctionState, ContractError> {
     let latest_auction_id: Uint128 = match AUCTION_IDS.may_load(deps.storage, &token_id)? {
-        None => {
-            println!("Error before");
-            return Err(ContractError::AuctionDoesNotExist {});
-        }
+        None => return Err(ContractError::AuctionDoesNotExist {}),
         Some(auction_ids) => *auction_ids.last().unwrap(),
     };
     let token_auction_state =
@@ -324,7 +322,6 @@ fn get_existing_token_auction_state(
     if let Some(token_auction_state) = token_auction_state {
         return Ok(token_auction_state);
     }
-    println!("Error here");
     return Err(ContractError::AuctionDoesNotExist {});
 }
 
@@ -361,7 +358,7 @@ fn query_get_latest_auction_state(deps: Deps, token_id: String) -> StdResult<Auc
             end_time: token_auction_state.end_time,
             high_bidder_addr: token_auction_state.high_bidder_addr.to_string(),
             high_bidder_amount: token_auction_state.high_bidder_amount,
-            reward_claimed: token_auction_state.reward_claimed,
+            claimed: token_auction_state.claimed,
             coin_denom: token_auction_state.coin_denom,
             auction_id: token_auction_state.auction_id,
         });
@@ -391,7 +388,7 @@ mod tests {
     use andromeda_protocol::auction::{ExecuteMsg, InstantiateMsg};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{
-        attr, coins, from_binary, BankMsg, CosmosMsg, Decimal, Response, Timestamp,
+        attr, coin, coins, from_binary, BankMsg, CosmosMsg, Decimal, Response, Timestamp,
     };
 
     fn query_latest_auction_state_helper(deps: Deps, env: Env) -> AuctionStateResponse {
@@ -427,7 +424,7 @@ mod tests {
         let msg = ExecuteMsg::PlaceBid {
             token_id: "token_001".to_string(),
         };
-        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+        let info = mock_info(MOCK_TOKEN_OWNER, &coins(100, "uusd"));
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         assert_eq!(ContractError::AuctionDoesNotExist {}, res.unwrap_err());
     }
@@ -606,6 +603,66 @@ mod tests {
     }
 
     #[test]
+    fn execute_place_bid_invalid_coins_sent() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: 100,
+            end_time: 200,
+            coin_denom: "uusd".to_string(),
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        env.block.time = Timestamp::from_seconds(150);
+
+        let error = ContractError::InvalidCoinsSent {
+            msg: "Auctions require exactly one coin to be sent.".to_string(),
+        };
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: "token_001".to_string(),
+        };
+
+        // No coins sent
+        let info = mock_info("sender", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(error, res.unwrap_err());
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: "token_001".to_string(),
+        };
+
+        // Multiple coins sent
+        let info = mock_info("sender", &[coin(100, "uusd"), coin(100, "uluna")]);
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(error, res.unwrap_err());
+
+        let error = ContractError::InvalidCoinsSent {
+            msg: "No uusd assets are provided to auction".to_string(),
+        };
+
+        // Invalid denom sent
+        let info = mock_info("sender", &[coin(100, "uluna")]);
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(error, res.unwrap_err());
+
+        // Correct denom but empty
+        let info = mock_info("sender", &[coin(0, "uusd")]);
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(error, res.unwrap_err());
+    }
+
+    #[test]
     fn execute_place_bid_update_existing_bid() {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
@@ -652,7 +709,7 @@ mod tests {
             high_bidder_amount: Uint128::from(100u128),
             auction_id: Uint128::zero(),
             coin_denom: "uusd".to_string(),
-            reward_claimed: false,
+            claimed: false,
         };
 
         let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
@@ -989,7 +1046,7 @@ mod tests {
     }
 
     #[test]
-    fn execute_claim_reward() {
+    fn execute_claim() {
         let mut deps = mock_dependencies_custom(&[]);
         deps.querier.with_tax(
             Decimal::percent(10),
@@ -1025,7 +1082,7 @@ mod tests {
 
         env.block.time = Timestamp::from_seconds(250);
 
-        let msg = ExecuteMsg::ClaimReward {
+        let msg = ExecuteMsg::Claim {
             token_id: "token_001".to_string(),
         };
 
@@ -1053,7 +1110,7 @@ mod tests {
                     msg: to_binary(&transfer_nft_msg).unwrap(),
                     funds: coins(90, "uusd",),
                 }))
-                .add_attribute("action", "claim_reward")
+                .add_attribute("action", "claim")
                 .add_attribute("token_id", "token_001")
                 .add_attribute("token_contract", MOCK_TOKEN_ADDR)
                 .add_attribute("recipient", "sender")
@@ -1064,7 +1121,7 @@ mod tests {
     }
 
     #[test]
-    fn execute_claim_reward_auction_not_ended() {
+    fn execute_claim_auction_not_ended() {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
@@ -1094,12 +1151,51 @@ mod tests {
         let info = mock_info("sender", &coins(100, "uusd".to_string()));
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-        let msg = ExecuteMsg::ClaimReward {
+        let msg = ExecuteMsg::Claim {
             token_id: "token_001".to_string(),
         };
 
         let info = mock_info("any_user", &[]);
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         assert_eq!(ContractError::AuctionNotEnded {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn execute_claim_auction_already_claimed() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: 100,
+            end_time: 200,
+            coin_denom: "uusd".to_string(),
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let mut auction_state = TOKEN_AUCTION_STATE
+            .load(deps.as_ref().storage, U128Key::new(0))
+            .unwrap();
+        auction_state.claimed = true;
+        TOKEN_AUCTION_STATE
+            .save(deps.as_mut().storage, U128Key::new(0), &auction_state)
+            .unwrap();
+
+        let msg = ExecuteMsg::Claim {
+            token_id: "token_001".to_string(),
+        };
+
+        let info = mock_info("any_user", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(ContractError::AuctionAlreadyClaimed {}, res.unwrap_err());
     }
 }

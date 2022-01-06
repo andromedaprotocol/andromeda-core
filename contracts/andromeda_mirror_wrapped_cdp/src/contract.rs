@@ -168,7 +168,9 @@ pub fn execute_mirror_msg(
     )?;
     require(
         funds.is_empty() || funds.len() == 1,
-        ContractError::MoreThanOneCoinSent {},
+        ContractError::InvalidCoinsSent {
+            msg: "Mirror expects zero or one coin to be sent".to_string(),
+        },
     )?;
     let tax_deducted_funds = get_tax_deducted_funds(&deps, funds)?;
 

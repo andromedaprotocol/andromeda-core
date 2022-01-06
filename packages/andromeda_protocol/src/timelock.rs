@@ -27,7 +27,12 @@ impl Escrow {
     /// * The Escrow recipient must be a valid address
     /// * Expiration cannot be "Never" or before current time/block
     pub fn validate(self, api: &dyn Api, block: &BlockInfo) -> Result<bool, ContractError> {
-        require(!self.coins.is_empty(), ContractError::EmptyFunds {})?;
+        require(
+            !self.coins.is_empty(),
+            ContractError::InvalidCoinsSent {
+                msg: "Require at least one coin to be sent".to_string(),
+            },
+        )?;
         require(
             api.addr_validate(&self.recipient).is_ok(),
             ContractError::InvalidAddress {},
@@ -204,7 +209,12 @@ mod tests {
         let resp = invalid_coins_escrow
             .validate(deps.as_ref().api, &block)
             .unwrap_err();
-        assert_eq!(ContractError::EmptyFunds {}, resp);
+        assert_eq!(
+            ContractError::InvalidCoinsSent {
+                msg: "Require at least one coin to be sent".to_string()
+            },
+            resp
+        );
 
         let invalid_expiration_escrow = Escrow {
             recipient,

@@ -32,9 +32,6 @@ pub enum ContractError {
     #[error("InvalidAddress")]
     InvalidAddress {},
 
-    #[error("EmptyFunds")]
-    EmptyFunds {},
-
     #[error("ExpirationInPast")]
     ExpirationInPast {},
 
@@ -119,14 +116,17 @@ pub enum ContractError {
     #[error("HighestBidderCannotOutBid")]
     HighestBidderCannotOutBid {},
 
-    #[error("MoreThanOneCoinSent")]
-    MoreThanOneCoinSent {},
+    #[error("InvalidCoinsSent")]
+    InvalidCoinsSent { msg: String },
 
     #[error("AuctionRewardAlreadyClaimed")]
-    AuctionRewardAlreadyClaimed {},
+    AuctionAlreadyClaimed {},
 
     #[error("AuctionNotEnded")]
     AuctionNotEnded {},
+
+    #[error("InvalidCoinDenom")]
+    InvalidCoinDenom { expected: String, actual: String },
 }
 
 impl From<FromUtf8Error> for ContractError {

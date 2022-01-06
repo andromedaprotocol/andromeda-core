@@ -13,7 +13,7 @@ pub enum ExecuteMsg {
     PlaceBid {
         token_id: String,
     },
-    ClaimReward {
+    Claim {
         token_id: String,
     },
     Withdraw {
@@ -41,5 +41,5 @@ pub struct AuctionStateResponse {
     pub high_bidder_amount: Uint128,
     pub auction_id: Uint128,
     pub coin_denom: String,
-    pub reward_claimed: bool,
+    pub claimed: bool,
 }

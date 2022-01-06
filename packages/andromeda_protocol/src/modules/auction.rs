@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_binary, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult, Storage,
-    SubMsg, WasmMsg,
+    to_binary, DepsMut, Env, MessageInfo, QueryRequest, Reply, ReplyOn, Response, StdError,
+    StdResult, Storage, SubMsg, WasmMsg, WasmQuery,
 };
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::response::get_reply_address;
 use crate::{
-    auction::InstantiateMsg as AuctionInstantiateMsg,
+    auction::{
+        AuctionStateResponse, InstantiateMsg as AuctionInstantiateMsg, QueryMsg as AuctionQueryMsg,
+    },
     error::ContractError,
     modules::{
         common::is_unique,
@@ -105,14 +107,25 @@ impl MessageHooks for AuctionModule {
     fn on_transfer(
         &self,
         deps: &DepsMut,
-        info: MessageInfo,
-        env: Env,
-        recipient: String,
+        _info: MessageInfo,
+        _env: Env,
+        _recipient: String,
         token_id: String,
     ) -> Result<HookResponse, ContractError> {
-        let mut res = HookResponse::default();
-
-        Ok(res)
+        let query_msg = AuctionQueryMsg::LatestAuctionState { token_id };
+        let contract_addr = self.address.clone().unwrap();
+        let response: StdResult<AuctionStateResponse> =
+            deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr,
+                msg: to_binary(&query_msg)?,
+            }));
+        // Disallow token transfers while token is in auction.
+        if let Ok(response) = response {
+            if !response.claimed {
+                return Err(ContractError::AuctionNotEnded {});
+            }
+        }
+        Ok(HookResponse::default())
     }
 }
 
@@ -125,22 +138,25 @@ pub fn on_auction_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
     Ok(Response::new())
 }
 
-/*#[cfg(test)]
+#[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::{mock_env, mock_info};
 
-    use crate::{modules::Rate, testing::mock_querier::mock_dependencies_custom};
+    use crate::{
+        modules::Rate,
+        testing::mock_querier::{
+            mock_dependencies_custom, MOCK_AUCTION_CONTRACT, MOCK_TOKEN_IN_AUCTION,
+        },
+    };
 
     use super::*;
-    // use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MockQuerier};
 
     #[test]
     fn test_validate() {
-        let al = AddressListModule {
+        let al = AuctionModule {
             operators: Some(vec![]),
             address: None,
             code_id: Some(1),
-            inclusive: true,
         };
         let mut modules = vec![
             al.as_definition(),
@@ -153,7 +169,7 @@ mod tests {
 
         assert_eq!(al.validate(modules.to_vec()), Ok(true));
 
-        modules.push(ModuleDefinition::Whitelist {
+        modules.push(ModuleDefinition::Auction {
             operators: Some(vec![]),
             address: None,
             code_id: None,
@@ -163,58 +179,49 @@ mod tests {
             al.validate(modules.to_vec()),
             Err(ContractError::ModuleNotUnique {})
         );
-
-        let modules = vec![
-            al.as_definition(),
-            ModuleDefinition::Taxable {
-                rate: Rate::Percent(2),
-                receivers: vec![],
-                description: None,
-            },
-            ModuleDefinition::Blacklist {
-                operators: Some(vec![]),
-                address: None,
-                code_id: None,
-            },
-        ];
-
-        assert_eq!(
-            al.validate(modules.to_vec()),
-            Err(ContractError::Std(StdError::generic_err("An address list module cannot be included alongside an address list module of the opposing type"))
-        ));
     }
 
-    //TODO
     #[test]
-    fn test_on_execute() {
+    fn test_on_transfer_token_in_auction() {
         let sender = "seender";
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info(sender, &[]);
-        let invalid_addresslist = AddressListModule {
+        let auction_module = AuctionModule {
             operators: Some(vec![]),
-            address: Some(String::from("addresslist_contract_address2")),
+            address: Some(MOCK_AUCTION_CONTRACT.to_string()),
             code_id: None,
-            inclusive: true,
         };
 
-        let resp = invalid_addresslist
-            .on_execute(&deps.as_mut(), info.clone(), env.clone())
-            .unwrap_err();
-
-        assert_eq!(resp, ContractError::Unauthorized {});
-
-        let valid_addresslist = AddressListModule {
-            operators: Some(vec![]),
-            address: Some(String::from("addresslist_contract_address1")),
-            code_id: None,
-            inclusive: true,
-        };
-
-        let resp = valid_addresslist
-            .on_execute(&deps.as_mut(), info, env)
-            .unwrap();
-
-        assert_eq!(resp, HookResponse::default());
+        let res = auction_module.on_transfer(
+            &deps.as_mut(),
+            info.clone(),
+            env,
+            "recipient".to_string(),
+            MOCK_TOKEN_IN_AUCTION.to_string(),
+        );
+        assert_eq!(ContractError::AuctionNotEnded {}, res.unwrap_err());
     }
-}*/
+
+    #[test]
+    fn test_on_transfer_token_not_in_auction() {
+        let sender = "seender";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(sender, &[]);
+        let auction_module = AuctionModule {
+            operators: Some(vec![]),
+            address: Some(MOCK_AUCTION_CONTRACT.to_string()),
+            code_id: None,
+        };
+
+        let res = auction_module.on_transfer(
+            &deps.as_mut(),
+            info.clone(),
+            env,
+            "recipient".to_string(),
+            "token2".to_string(),
+        );
+        assert_eq!(HookResponse::default(), res.unwrap());
+    }
+}
