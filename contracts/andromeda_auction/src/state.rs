@@ -1,3 +1,4 @@
+use andromeda_protocol::auction::AuctionStateResponse;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map, U128Key};
 use schemars::JsonSchema;
@@ -17,6 +18,20 @@ pub struct TokenAuctionState {
     pub coin_denom: String,
     pub auction_id: Uint128,
     pub claimed: bool,
+}
+
+impl Into<AuctionStateResponse> for TokenAuctionState {
+    fn into(self) -> AuctionStateResponse {
+        AuctionStateResponse {
+            start_time: self.start_time,
+            end_time: self.end_time,
+            high_bidder_addr: self.high_bidder_addr.to_string(),
+            high_bidder_amount: self.high_bidder_amount,
+            claimed: self.claimed,
+            coin_denom: self.coin_denom,
+            auction_id: self.auction_id,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

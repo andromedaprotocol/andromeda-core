@@ -345,27 +345,26 @@ fn get_and_increment_next_auction_id(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::LatestAuctionState { token_id } => {
-            to_binary(&query_get_latest_auction_state(deps, token_id)?)
+            to_binary(&query_latest_auction_state(deps, token_id)?)
         }
+        QueryMsg::AuctionState { auction_id } => to_binary(&query_auction_state(deps, auction_id)?),
     }
 }
 
-fn query_get_latest_auction_state(deps: Deps, token_id: String) -> StdResult<AuctionStateResponse> {
+fn query_latest_auction_state(deps: Deps, token_id: String) -> StdResult<AuctionStateResponse> {
     let token_auction_state_result = get_existing_token_auction_state(&deps, &token_id);
     if let Ok(token_auction_state) = token_auction_state_result {
-        return Ok(AuctionStateResponse {
-            start_time: token_auction_state.start_time,
-            end_time: token_auction_state.end_time,
-            high_bidder_addr: token_auction_state.high_bidder_addr.to_string(),
-            high_bidder_amount: token_auction_state.high_bidder_amount,
-            claimed: token_auction_state.claimed,
-            coin_denom: token_auction_state.coin_denom,
-            auction_id: token_auction_state.auction_id,
-        });
+        return Ok(token_auction_state.into());
     }
     Err(StdError::NotFound {
         kind: "TokenAuctionState".to_string(),
     })
+}
+
+fn query_auction_state(deps: Deps, auction_id: Uint128) -> StdResult<AuctionStateResponse> {
+    let token_auction_state =
+        TOKEN_AUCTION_STATE.load(deps.storage, U128Key::new(auction_id.u128()))?;
+    Ok(token_auction_state.into())
 }
 
 fn query_owner_of(
@@ -914,6 +913,91 @@ mod tests {
     }
 
     #[test]
+    fn execute_start_auction_after_previous_finished() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: 100,
+            end_time: 200,
+            coin_denom: "uusd".to_string(),
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        // Place the bid.
+        env.block.time = Timestamp::from_seconds(150);
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: "token_001".to_string(),
+        };
+        let info = mock_info("bidder", &coins(100, "uusd"));
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        // Claim the token.
+        env.block.time = Timestamp::from_seconds(250);
+        let msg = ExecuteMsg::Claim {
+            token_id: "token_001".to_string(),
+        };
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        // Start a new auction.
+        env.block.time = Timestamp::from_seconds(300);
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: 400,
+            end_time: 500,
+            coin_denom: "uusd".to_string(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(
+            res,
+            Response::new().add_attributes(vec![
+                attr("action", "start_auction"),
+                attr("start_time", "400"),
+                attr("end_time", "500"),
+            ]),
+        );
+        let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
+        let mut expected_res = AuctionStateResponse {
+            start_time: 400,
+            end_time: 500,
+            high_bidder_addr: "".to_string(),
+            high_bidder_amount: Uint128::zero(),
+            auction_id: Uint128::from(1u128),
+            coin_denom: "uusd".to_string(),
+            claimed: false,
+        };
+        assert_eq!(expected_res, res);
+
+        let auction_ids = AUCTION_IDS
+            .load(deps.as_mut().storage, "token_001")
+            .unwrap();
+        assert_eq!(vec![Uint128::zero(), Uint128::from(1u128)], auction_ids);
+
+        // Place bid in new auction.
+        env.block.time = Timestamp::from_seconds(450);
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: "token_001".to_string(),
+        };
+        let info = mock_info("bidder", &coins(100, "uusd"));
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
+        expected_res.high_bidder_addr = "bidder".to_string();
+        expected_res.high_bidder_amount = Uint128::from(100u128);
+        assert_eq!(expected_res, res);
+    }
+
+    #[test]
     fn execute_withdraw_auction_not_started() {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
@@ -979,6 +1063,36 @@ mod tests {
         env.block.time = Timestamp::from_seconds(160);
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         assert_eq!(ContractError::CannotWithdrawHighestBid {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn execute_withdraw_cannot_withdraw_zero() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: 100,
+            end_time: 200,
+            coin_denom: "uusd".to_string(),
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        env.block.time = Timestamp::from_seconds(160);
+        let msg = ExecuteMsg::Withdraw {
+            auction_id: Uint128::from(0u128),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
     }
 
     #[test]
