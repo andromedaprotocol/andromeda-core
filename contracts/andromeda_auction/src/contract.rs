@@ -2,7 +2,7 @@ use crate::state::{
     Bid, Config, TokenAuctionState, AUCTION_IDS, BIDS, CONFIG, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
 use andromeda_protocol::{
-    auction::{AuctionStateResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
+    auction::{AuctionStateResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     common::get_tax_deducted_funds,
     error::ContractError,
     require,
@@ -26,7 +26,7 @@ pub fn instantiate(
     let config: Config = Config {
         token_addr: msg.token_addr.clone(),
     };
-    NEXT_AUCTION_ID.save(deps.storage, &Uint128::from(0u128))?;
+    NEXT_AUCTION_ID.save(deps.storage, &Uint128::zero())?;
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -41,16 +41,85 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::PlaceBid { token_id } => execute_place_bid(deps, env, info, token_id),
-        ExecuteMsg::Claim { token_id } => execute_claim(deps, env, info, token_id),
-        ExecuteMsg::Withdraw { auction_id } => execute_withdraw(deps, env, info, auction_id),
         ExecuteMsg::StartAuction {
             token_id,
             start_time,
             end_time,
             coin_denom,
         } => execute_start_auction(deps, env, info, token_id, start_time, end_time, coin_denom),
+        ExecuteMsg::PlaceBid { token_id } => execute_place_bid(deps, env, info, token_id),
+        ExecuteMsg::Withdraw { auction_id } => execute_withdraw(deps, env, info, auction_id),
+        ExecuteMsg::Claim { token_id } => execute_claim(deps, env, info, token_id),
     }
+}
+
+pub fn execute_start_auction(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+    start_time: u64,
+    end_time: u64,
+    coin_denom: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let owner_of_response = query_owner_of(deps.querier, config.token_addr, token_id.clone())?;
+    require(
+        owner_of_response.owner == info.sender,
+        ContractError::Unauthorized {},
+    )?;
+    require(
+        start_time < end_time,
+        ContractError::StartTimeAfterEndTime {},
+    )?;
+    require(
+        start_time > env.block.time.seconds(),
+        ContractError::StartTimeInThePast {},
+    )?;
+
+    let auction_id: Uint128 = match AUCTION_IDS.may_load(deps.storage, &token_id)? {
+        None => get_and_increment_next_auction_id(deps.storage, &token_id)?,
+        Some(auction_ids) => {
+            // If the vec exists there will always be at least one element so unwrapping is fine.
+            // By design the last element of the vec is the most recent auction id for the token.
+            let latest_auction_id = *auction_ids.last().unwrap();
+            let token_auction_state =
+                TOKEN_AUCTION_STATE.load(deps.storage, U128Key::new(latest_auction_id.u128()))?;
+            if env.block.time.seconds() < token_auction_state.start_time {
+                // Since the latest auction hasn't started we are allowed to modify it.
+                token_auction_state.auction_id
+            } else {
+                // Previous auction must be completed before new auction can start.
+                require(
+                    token_auction_state.claimed,
+                    ContractError::AuctionNotEnded {},
+                )?;
+                get_and_increment_next_auction_id(deps.storage, &token_id)?
+            }
+        }
+    };
+    BIDS.save(deps.storage, U128Key::new(auction_id.u128()), &vec![])?;
+
+    TOKEN_AUCTION_STATE.save(
+        deps.storage,
+        U128Key::new(auction_id.u128()),
+        &TokenAuctionState {
+            start_time,
+            end_time,
+            high_bidder_addr: Addr::unchecked(""),
+            high_bidder_amount: Uint128::zero(),
+            coin_denom: coin_denom.clone(),
+            auction_id,
+            claimed: false,
+        },
+    )?;
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "start_auction"),
+        attr("start_time", start_time.to_string()),
+        attr("end_time", end_time.to_string()),
+        attr("coin_denom", coin_denom),
+        attr("auction_id", auction_id.to_string()),
+    ]))
 }
 
 pub fn execute_place_bid(
@@ -59,13 +128,19 @@ pub fn execute_place_bid(
     info: MessageInfo,
     token_id: String,
 ) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let token_owner_res = query_owner_of(deps.querier, config.token_addr, token_id.clone())?;
     require(
-        info.funds.len() == 1usize,
+        token_owner_res.owner != info.sender,
+        ContractError::TokenOwnerCannotBid {},
+    )?;
+
+    require(
+        info.funds.len() == 1,
         ContractError::InvalidCoinsSent {
             msg: "Auctions require exactly one coin to be sent.".to_string(),
         },
     )?;
-    let config = CONFIG.load(deps.storage)?;
     let mut token_auction_state = get_existing_token_auction_state(&deps.as_ref(), &token_id)?;
 
     require(
@@ -89,6 +164,10 @@ pub fn execute_place_bid(
             msg: format!("No {} assets are provided to auction", coin_denom),
         },
     )?;
+    let mut bid = Bid {
+        bidder: info.sender.to_string(),
+        amount: Uint128::zero(),
+    };
     let mut bids = BIDS.load(
         deps.storage,
         U128Key::new(token_auction_state.auction_id.u128()),
@@ -97,10 +176,6 @@ pub fn execute_place_bid(
         .iter_mut()
         .find(|bid| bid.bidder == info.sender.to_string());
 
-    let mut bid = Bid {
-        bidder: info.sender.to_string(),
-        amount: Uint128::zero(),
-    };
     if let Some(existing_bid) = existing_bid_option {
         bid.amount = existing_bid.amount;
     }
@@ -110,11 +185,6 @@ pub fn execute_place_bid(
         ContractError::BidSmallerThanHighestBid {},
     )?;
 
-    let token_owner_res = query_owner_of(deps.querier, config.token_addr, token_id.clone())?;
-    require(
-        token_owner_res.owner != info.sender,
-        ContractError::TokenOwnerCannotBid {},
-    )?;
     token_auction_state.high_bidder_addr = info.sender.clone();
     token_auction_state.high_bidder_amount = bid.amount;
 
@@ -129,6 +199,59 @@ pub fn execute_place_bid(
         attr("bider", info.sender.to_string()),
         attr("amount", payment.amount.to_string()),
     ]))
+}
+
+pub fn execute_withdraw(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    auction_id: Uint128,
+) -> Result<Response, ContractError> {
+    let token_auction_state =
+        TOKEN_AUCTION_STATE.load(deps.storage, U128Key::new(auction_id.u128()))?;
+
+    require(
+        env.block.time.seconds() > token_auction_state.start_time,
+        ContractError::AuctionNotStarted {},
+    )?;
+
+    require(
+        info.sender != token_auction_state.high_bidder_addr,
+        ContractError::CannotWithdrawHighestBid {},
+    )?;
+
+    let bids = BIDS.load(deps.storage, U128Key::new(auction_id.u128()))?;
+    let bid = bids
+        .iter()
+        // rfind searches in reverse order which ensures that we get the latest bid
+        // as the caller may have made multiple bids.
+        .rfind(|bid| bid.bidder == info.sender.to_string());
+
+    let withdraw_amount = if let Some(bid) = bid {
+        bid.amount
+    } else {
+        Uint128::zero()
+    };
+    require(
+        !withdraw_amount.is_zero(),
+        ContractError::WithdrawalIsEmpty {},
+    )?;
+    let tax_deducted_funds = get_tax_deducted_funds(
+        &deps,
+        coins(withdraw_amount.u128(), token_auction_state.coin_denom),
+    )?;
+
+    Ok(Response::new()
+        .add_message(CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: tax_deducted_funds,
+        }))
+        .add_attributes(vec![
+            attr("action", "withdraw"),
+            attr("auction_id", token_auction_state.auction_id),
+            attr("receiver", info.sender),
+            attr("withdraw_amount", withdraw_amount),
+        ]))
 }
 
 pub fn execute_claim(
@@ -190,125 +313,6 @@ pub fn execute_claim(
         .add_attribute("auction_id", token_auction_state.auction_id))
 }
 
-pub fn execute_start_auction(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    token_id: String,
-    start_time: u64,
-    end_time: u64,
-    coin_denom: String,
-) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let owner_of_response = query_owner_of(deps.querier, config.token_addr, token_id.clone())?;
-    if owner_of_response.owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-    if start_time >= end_time {
-        return Err(ContractError::StartTimeAfterEndTime {});
-    }
-    if start_time <= env.block.time.seconds() {
-        return Err(ContractError::StartTimeInThePast {});
-    }
-
-    let latest_auction_id: Uint128 = match AUCTION_IDS.may_load(deps.storage, &token_id)? {
-        None => get_and_increment_next_auction_id(deps.storage, &token_id)?,
-        Some(auction_ids) => {
-            // If the vec exists there will always be at least one element so unwrapping is fine.
-            let latest_auction_id = *auction_ids.last().unwrap();
-            let token_auction_state =
-                TOKEN_AUCTION_STATE.load(deps.storage, U128Key::new(latest_auction_id.u128()))?;
-            if env.block.time.seconds() < token_auction_state.start_time {
-                token_auction_state.auction_id
-            } else {
-                // Previous auction must be completed before new auction can start.
-                require(
-                    token_auction_state.claimed,
-                    ContractError::AuctionNotEnded {},
-                )?;
-                get_and_increment_next_auction_id(deps.storage, &token_id)?
-            }
-        }
-    };
-    BIDS.save(
-        deps.storage,
-        U128Key::new(latest_auction_id.u128()),
-        &vec![],
-    )?;
-
-    TOKEN_AUCTION_STATE.save(
-        deps.storage,
-        U128Key::new(latest_auction_id.u128()),
-        &TokenAuctionState {
-            start_time,
-            end_time,
-            high_bidder_addr: Addr::unchecked(""),
-            high_bidder_amount: Uint128::zero(),
-            coin_denom,
-            auction_id: latest_auction_id,
-            claimed: false,
-        },
-    )?;
-    Ok(Response::new().add_attributes(vec![
-        attr("action", "start_auction"),
-        attr("start_time", start_time.to_string()),
-        attr("end_time", end_time.to_string()),
-    ]))
-}
-
-pub fn execute_withdraw(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    auction_id: Uint128,
-) -> Result<Response, ContractError> {
-    let token_auction_state =
-        TOKEN_AUCTION_STATE.load(deps.storage, U128Key::new(auction_id.u128()))?;
-
-    require(
-        env.block.time.seconds() > token_auction_state.start_time,
-        ContractError::AuctionNotStarted {},
-    )?;
-
-    require(
-        info.sender != token_auction_state.high_bidder_addr,
-        ContractError::CannotWithdrawHighestBid {},
-    )?;
-
-    let funds_by_bidder_token = BIDS.load(deps.storage, U128Key::new(auction_id.u128()))?;
-    let funds_by_bidder_option = funds_by_bidder_token
-        .iter()
-        // rfind ensures that we get the latest bid as the caller may have made multiple bids.
-        .rfind(|bid| bid.bidder == info.sender.to_string());
-
-    let withdraw_amount = if let Some(funds_by_bidder) = funds_by_bidder_option {
-        funds_by_bidder.amount
-    } else {
-        Uint128::zero()
-    };
-
-    require(
-        !withdraw_amount.is_zero(),
-        ContractError::WithdrawalIsEmpty {},
-    )?;
-    let tax_deducted_funds = get_tax_deducted_funds(
-        &deps,
-        coins(withdraw_amount.u128(), token_auction_state.coin_denom),
-    )?;
-
-    Ok(Response::new()
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: tax_deducted_funds,
-        }))
-        .add_attributes(vec![
-            attr("action", "withdraw"),
-            attr("auction_id", token_auction_state.auction_id),
-            attr("receiver", info.sender),
-            attr("withdraw_amount", withdraw_amount),
-        ]))
-}
-
 fn get_existing_token_auction_state(
     deps: &Deps,
     token_id: &str,
@@ -318,11 +322,9 @@ fn get_existing_token_auction_state(
         Some(auction_ids) => *auction_ids.last().unwrap(),
     };
     let token_auction_state =
-        TOKEN_AUCTION_STATE.may_load(deps.storage, U128Key::new(latest_auction_id.u128()))?;
-    if let Some(token_auction_state) = token_auction_state {
-        return Ok(token_auction_state);
-    }
-    return Err(ContractError::AuctionDoesNotExist {});
+        TOKEN_AUCTION_STATE.load(deps.storage, U128Key::new(latest_auction_id.u128()))?;
+
+    Ok(token_auction_state)
 }
 
 fn get_and_increment_next_auction_id(
@@ -332,10 +334,7 @@ fn get_and_increment_next_auction_id(
     let next_auction_id = NEXT_AUCTION_ID.load(storage)?;
     let incremented_next_auction_id = next_auction_id.checked_add(Uint128::from(1u128))?;
     NEXT_AUCTION_ID.save(storage, &incremented_next_auction_id)?;
-    let mut auction_ids = match AUCTION_IDS.may_load(storage, token_id)? {
-        None => vec![],
-        Some(vec) => vec,
-    };
+    let mut auction_ids = AUCTION_IDS.load(storage, token_id).unwrap_or_default();
     auction_ids.push(next_auction_id);
     AUCTION_IDS.save(storage, token_id, &auction_ids)?;
     Ok(next_auction_id)
@@ -348,6 +347,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_latest_auction_state(deps, token_id)?)
         }
         QueryMsg::AuctionState { auction_id } => to_binary(&query_auction_state(deps, auction_id)?),
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
     }
 }
 
@@ -365,6 +365,11 @@ fn query_auction_state(deps: Deps, auction_id: Uint128) -> StdResult<AuctionStat
     let token_auction_state =
         TOKEN_AUCTION_STATE.load(deps.storage, U128Key::new(auction_id.u128()))?;
     Ok(token_auction_state.into())
+}
+
+fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+    let config = CONFIG.load(deps.storage)?;
+    Ok(config.into())
 }
 
 fn query_owner_of(
@@ -423,7 +428,7 @@ mod tests {
         let msg = ExecuteMsg::PlaceBid {
             token_id: "token_001".to_string(),
         };
-        let info = mock_info(MOCK_TOKEN_OWNER, &coins(100, "uusd"));
+        let info = mock_info("bidder", &coins(100, "uusd"));
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         assert_eq!(ContractError::AuctionDoesNotExist {}, res.unwrap_err());
     }
@@ -760,6 +765,8 @@ mod tests {
                 attr("action", "start_auction"),
                 attr("start_time", "100"),
                 attr("end_time", "200"),
+                attr("coin_denom", "uusd"),
+                attr("auction_id", "0"),
             ]),
         );
     }
@@ -932,7 +939,17 @@ mod tests {
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
-        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(
+            res,
+            Response::new().add_attributes(vec![
+                attr("action", "start_auction"),
+                attr("start_time", "100"),
+                attr("end_time", "200"),
+                attr("coin_denom", "uusd"),
+                attr("auction_id", "0"),
+            ]),
+        );
 
         // Place the bid.
         env.block.time = Timestamp::from_seconds(150);
@@ -965,6 +982,8 @@ mod tests {
                 attr("action", "start_auction"),
                 attr("start_time", "400"),
                 attr("end_time", "500"),
+                attr("coin_denom", "uusd"),
+                attr("auction_id", "1"),
             ]),
         );
         let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());

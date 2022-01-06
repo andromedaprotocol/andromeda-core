@@ -38,7 +38,6 @@ impl Module for AuctionModule {
     /// Checks the validity of an auction module:
     ///
     /// * Must be unique
-    /// * Cannot be included alongside an address list of the opposite type (no mixing whitelist/blacklist)
     /// * Must include either a contract address or a combination of a valid code id and an optional vector of moderating addresses
     fn validate(&self, all_modules: Vec<ModuleDefinition>) -> Result<bool, ContractError> {
         require(

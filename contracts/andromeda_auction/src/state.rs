@@ -1,4 +1,4 @@
-use andromeda_protocol::auction::AuctionStateResponse;
+use andromeda_protocol::auction::{AuctionStateResponse, ConfigResponse};
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map, U128Key};
 use schemars::JsonSchema;
@@ -7,6 +7,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub token_addr: String,
+}
+
+impl Into<ConfigResponse> for Config {
+    fn into(self) -> ConfigResponse {
+        ConfigResponse {
+            token_addr: self.token_addr,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

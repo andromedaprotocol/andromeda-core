@@ -53,7 +53,7 @@ impl TaxQuerier {
     }
 }
 
-pub(crate) fn caps_to_map(caps: &[(&String, &Uint128)]) -> HashMap<String, Uint128> {
+fn caps_to_map(caps: &[(&String, &Uint128)]) -> HashMap<String, Uint128> {
     let mut owner_map: HashMap<String, Uint128> = HashMap::new();
     for (denom, cap) in caps.iter() {
         owner_map.insert(denom.to_string(), **cap);

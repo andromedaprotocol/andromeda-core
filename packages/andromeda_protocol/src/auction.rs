@@ -32,6 +32,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     LatestAuctionState { token_id: String },
     AuctionState { auction_id: Uint128 },
+    Config {},
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -43,4 +44,9 @@ pub struct AuctionStateResponse {
     pub auction_id: Uint128,
     pub coin_denom: String,
     pub claimed: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct ConfigResponse {
+    pub token_addr: String,
 }

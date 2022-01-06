@@ -124,9 +124,6 @@ pub enum ContractError {
 
     #[error("AuctionNotEnded")]
     AuctionNotEnded {},
-
-    #[error("InvalidCoinDenom")]
-    InvalidCoinDenom { expected: String, actual: String },
 }
 
 impl From<FromUtf8Error> for ContractError {
