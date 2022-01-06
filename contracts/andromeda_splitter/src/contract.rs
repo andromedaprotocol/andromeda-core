@@ -453,7 +453,7 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                recipient: Recipient::ado_from_string(recip_address1.clone()),
+                recipient: Recipient::from_string(recip_address1.clone()),
                 percent: Uint128::from(recip_percent1),
             },
             AddressPercent {

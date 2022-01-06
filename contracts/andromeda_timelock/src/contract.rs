@@ -7,6 +7,8 @@ use cw721::Expiration;
 
 use crate::state::{State, STATE};
 use andromeda_protocol::{
+    common::unwrap_or_err,
+    communication::parse_struct,
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -78,22 +80,38 @@ pub fn execute(
         ExecuteMsg::HoldFunds {
             expiration,
             recipient,
-        } => execute_hold_funds(deps, info, expiration, recipient, env),
+        } => execute_hold_funds(deps, info, env, expiration, recipient),
         ExecuteMsg::ReleaseFunds {} => execute_release_funds(deps, env, info),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateAddressList { address_list } => {
             execute_update_address_list(deps, info, env, address_list)
         }
         ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
+        ExecuteMsg::AndrReceive(msg) => execute_receive(deps, env, info, msg),
+    }
+}
+
+fn execute_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    data: Option<String>,
+) -> Result<Response, ContractError> {
+    let data_string = unwrap_or_err(data, ContractError::MissingJSON {})?;
+    let received: ExecuteMsg = parse_struct(&data_string)?;
+
+    match received {
+        ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+        _ => execute(deps, env, info, received),
     }
 }
 
 fn execute_hold_funds(
     deps: DepsMut,
     info: MessageInfo,
+    env: Env,
     expiration: Option<Expiration>,
     recipient: Option<String>,
-    env: Env,
 ) -> Result<Response, ContractError> {
     let rec = recipient.unwrap_or_else(|| info.sender.to_string());
     //Validate recipient address
@@ -218,6 +236,7 @@ fn query_config(deps: Deps) -> StdResult<GetTimelockConfigResponse> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_protocol::communication::to_json_string;
     use cosmwasm_std::{
         coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
@@ -404,5 +423,34 @@ mod tests {
         let updated = STATE.load(deps.as_mut().storage).unwrap();
 
         assert_eq!(updated.address_list.unwrap(), address_list);
+    }
+
+    #[test]
+    fn test_execute_receive() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let owner = "owner";
+        let funds = vec![Coin::new(1000, "uusd")];
+        let expiration = Expiration::AtHeight(1);
+        let info = mock_info(owner, &funds);
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
+
+        let msg_struct = ExecuteMsg::HoldFunds {
+            expiration: Some(expiration),
+            recipient: None,
+        };
+        let msg_string = to_json_string(&msg_struct).unwrap();
+
+        let msg = ExecuteMsg::AndrReceive(Some(msg_string));
+
+        let received = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let expected = Response::default().add_attributes(vec![
+            attr("action", "hold_funds"),
+            attr("sender", info.sender.to_string()),
+            attr("recipient", "owner"),
+            attr("expiration", expiration.to_string()),
+        ]);
+
+        assert_eq!(expected, received)
     }
 }
