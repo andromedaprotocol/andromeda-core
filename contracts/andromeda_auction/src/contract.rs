@@ -1,10 +1,15 @@
 use crate::state::{
-    Bid, Config, TokenAuctionState, AUCTION_IDS, BIDS, CONFIG, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
+    read_bids, Config, TokenAuctionState, AUCTION_IDS, BIDS, CONFIG, NEXT_AUCTION_ID,
+    TOKEN_AUCTION_STATE,
 };
 use andromeda_protocol::{
-    auction::{AuctionStateResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
-    common::get_tax_deducted_funds,
+    auction::{
+        AuctionStateResponse, Bid, BidsResponse, ConfigResponse, ExecuteMsg, InstantiateMsg,
+        QueryMsg,
+    },
+    common::{get_tax_deducted_funds, OrderBy},
     error::ContractError,
+    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     token::{ExecuteMsg as TokenExecuteMsg, QueryMsg as TokenQueryMsg},
 };
@@ -20,12 +25,13 @@ use cw_storage_plus::U128Key;
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let config: Config = Config {
         token_addr: msg.token_addr.clone(),
     };
+    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     NEXT_AUCTION_ID.save(deps.storage, &Uint128::zero())?;
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new()
@@ -49,6 +55,7 @@ pub fn execute(
         } => execute_start_auction(deps, env, info, token_id, start_time, end_time, coin_denom),
         ExecuteMsg::PlaceBid { token_id } => execute_place_bid(deps, env, info, token_id),
         ExecuteMsg::Claim { token_id } => execute_claim(deps, env, info, token_id),
+        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
 
@@ -299,7 +306,31 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::AuctionState { auction_id } => to_binary(&query_auction_state(deps, auction_id)?),
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::Bids {
+            auction_id,
+            start_after,
+            limit,
+            order_by,
+        } => to_binary(&query_bids(deps, auction_id, start_after, limit, order_by)?),
+        QueryMsg::Owner {} => to_binary(&query_contract_owner(deps)?),
     }
+}
+
+fn query_bids(
+    deps: Deps,
+    auction_id: Uint128,
+    start_after: Option<u64>,
+    limit: Option<u64>,
+    order_by: Option<OrderBy>,
+) -> StdResult<BidsResponse> {
+    let bids = read_bids(
+        deps.storage,
+        U128Key::new(auction_id.u128()),
+        start_after,
+        limit,
+        order_by,
+    )?;
+    Ok(BidsResponse { bids })
 }
 
 fn query_latest_auction_state(deps: Deps, token_id: String) -> StdResult<AuctionStateResponse> {

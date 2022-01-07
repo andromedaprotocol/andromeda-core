@@ -1,8 +1,8 @@
 use andromeda_protocol::{
-    auction::{AuctionStateResponse, ConfigResponse},
+    auction::{AuctionStateResponse, Bid, ConfigResponse},
     common::OrderBy,
 };
-use cosmwasm_std::{Addr, StdResult, Storage, Timestamp, Uint128};
+use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
 use cw_storage_plus::{Item, Map, U128Key};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -47,13 +47,6 @@ impl Into<AuctionStateResponse> for TokenAuctionState {
             auction_id: self.auction_id,
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Bid {
-    pub bidder: String,
-    pub amount: Uint128,
-    pub timestamp: Timestamp,
 }
 
 pub const NEXT_AUCTION_ID: Item<Uint128> = Item::new("next_auction_id");
