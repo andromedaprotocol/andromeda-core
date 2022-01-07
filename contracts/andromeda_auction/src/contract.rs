@@ -194,6 +194,7 @@ pub fn execute_place_bid(
     bids_for_auction.push(Bid {
         bidder: info.sender.to_string(),
         amount: payment.amount,
+        timestamp: env.block.time,
     });
     BIDS.save(deps.storage, key, &bids_for_auction)?;
     Ok(Response::new().add_messages(messages).add_attributes(vec![

@@ -1,6 +1,8 @@
 use crate::error::ContractError;
 use crate::modules::{hooks::HookResponse, Module};
 use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, StdResult};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use terraswap::asset::{Asset, AssetInfo};
 
 //Redundant? Can maybe use `Modules` struct?
@@ -32,4 +34,11 @@ pub fn get_tax_deducted_funds(deps: &DepsMut, coins: Vec<Coin>) -> StdResult<Vec
         tax_deducted_coins.push(asset.deduct_tax(&deps.querier)?);
     }
     Ok(tax_deducted_coins)
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum OrderBy {
+    Asc,
+    Desc,
 }
