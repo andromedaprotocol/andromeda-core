@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use crate::common::get_tax_deducted_funds;
 use crate::error::ContractError;
 use crate::modules::{
     common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
@@ -169,6 +170,13 @@ impl TransferAgreement {
         })?;
 
         for payment in payments.lock().unwrap().to_vec() {
+            let payment = match payment {
+                BankMsg::Send { to_address, amount } => BankMsg::Send {
+                    to_address,
+                    amount: get_tax_deducted_funds(deps, amount)?,
+                },
+                _ => panic!(),
+            };
             res = res.add_message(payment);
         }
 

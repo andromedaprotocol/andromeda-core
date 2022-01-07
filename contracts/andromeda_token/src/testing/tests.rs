@@ -13,7 +13,7 @@ use andromeda_protocol::{
 use cosmwasm_std::{
     attr, coin,
     testing::{mock_env, mock_info},
-    to_binary, BankMsg, CosmosMsg, Event, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
+    to_binary, BankMsg, CosmosMsg, Decimal, Event, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw_storage_plus::Item;
 
@@ -25,6 +25,10 @@ const NUM_TOKENS: Item<u64> = Item::new("numtokens");
 #[test]
 fn test_token_modules() {
     let mut deps = mock_dependencies_custom(&[]);
+    deps.querier.with_tax(
+        Decimal::percent(10),
+        &[(&"uusd".to_string(), &Uint128::from(1500000u128))],
+    );
     let sender = "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v";
     let info = mock_info(<&str>::clone(&sender), &[]);
     let env = mock_env();
@@ -170,15 +174,15 @@ fn test_token_modules() {
         .add_submessages(vec![
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: sender.to_string(),
-                amount: vec![coin(99u128, "uusd".to_string())],
+                amount: vec![coin(90u128, "uusd".to_string())],
             })),
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: "tax_recever1".to_string(),
-                amount: vec![coin(1u128, "uusd".to_string())], // tax %1 for test
+                amount: vec![coin(0u128, "uusd".to_string())], // tax %1 for test
             })),
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: "royality_recever1".to_string(),
-                amount: vec![coin(1u128, "uusd".to_string())], // royality %1 for test
+                amount: vec![coin(0u128, "uusd".to_string())], // royality %1 for test
             })),
             SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: "receipt_contract_address".to_string(),

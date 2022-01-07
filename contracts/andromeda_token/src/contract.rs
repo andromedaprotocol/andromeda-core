@@ -808,7 +808,7 @@ mod tests {
     use super::*;
     use andromeda_protocol::{
         modules::auction::AUCTION_CONTRACT,
-        testing::mock_querier::MOCK_AUCTION_CONTRACT,
+        testing::mock_querier::{mock_dependencies_custom, MOCK_AUCTION_CONTRACT},
         token::{Approval, ExecuteMsg},
     };
     use cosmwasm_std::{
@@ -1329,7 +1329,7 @@ mod tests {
 
     #[test]
     fn test_transfer_agreement_as_auction_contract() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let minter = "minter";
         let purchaser = "purchaser";
