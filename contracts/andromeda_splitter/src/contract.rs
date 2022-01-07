@@ -1,6 +1,6 @@
 use crate::state::SPLITTER;
 use andromeda_protocol::{
-    communication::AndromedaMsg,
+    communication::{AndromedaMsg, ExecuteMsg as AndrExecute},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -139,7 +139,9 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         let msg = match &recipient_addr.recipient {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),
-                msg: to_binary(&AndromedaMsg::Receive(recip.clone().data))?,
+                msg: to_binary(&AndrExecute::AndrReceive(AndromedaMsg::Receive(
+                    recip.clone().msg,
+                )))?,
                 funds: vec_coin,
             }),
             Recipient::Addr(addr) => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {

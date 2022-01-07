@@ -8,7 +8,7 @@ use cw721::Expiration;
 use crate::state::{State, STATE};
 use andromeda_protocol::{
     common::unwrap_or_err,
-    communication::parse_struct,
+    communication::{parse_struct, AndromedaMsg},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -95,14 +95,18 @@ fn execute_receive(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    data: Option<String>,
+    msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
-    let data_string = unwrap_or_err(data, ContractError::MissingJSON {})?;
-    let received: ExecuteMsg = parse_struct(&data_string)?;
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let data_string = unwrap_or_err(data, ContractError::MissingJSON {})?;
+            let received: ExecuteMsg = parse_struct(&data_string)?;
 
-    match received {
-        ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-        _ => execute(deps, env, info, received),
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
     }
 }
 
@@ -236,7 +240,6 @@ fn query_config(deps: Deps) -> StdResult<GetTimelockConfigResponse> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::communication::to_json_string;
     use cosmwasm_std::{
         coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
@@ -439,9 +442,9 @@ mod tests {
             expiration: Some(expiration),
             recipient: None,
         };
-        let msg_string = to_json_string(&msg_struct).unwrap();
+        let msg_string = to_binary(&msg_struct).unwrap();
 
-        let msg = ExecuteMsg::AndrReceive(Some(msg_string));
+        let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(msg_string)));
 
         let received = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let expected = Response::default().add_attributes(vec![

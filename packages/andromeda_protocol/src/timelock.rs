@@ -4,6 +4,7 @@ use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::communication::AndromedaMsg;
 use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
 
@@ -61,7 +62,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    AndrReceive(Option<String>),
+    AndrReceive(AndromedaMsg),
     /// Hold funds in Escrow
     HoldFunds {
         expiration: Option<Expiration>,

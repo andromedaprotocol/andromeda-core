@@ -1,7 +1,7 @@
 use crate::communication::AndromedaMsg;
 use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Binary, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -9,10 +9,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ADORecipient {
     pub addr: String,
-    pub data: Option<String>,
+    pub msg: Option<Binary>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Recipient {
     Addr(String),
     ADO(ADORecipient),
@@ -25,7 +26,7 @@ impl Recipient {
     }
     /// Creates an ADO Recipient from the given string with an empty Data field
     pub fn ado_from_string(addr: String) -> Recipient {
-        Recipient::ADO(ADORecipient { addr, data: None })
+        Recipient::ADO(ADORecipient { addr, msg: None })
     }
 }
 
