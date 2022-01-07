@@ -57,9 +57,6 @@ pub const BIDS: Map<U128Key, Vec<Bid>> = Map::new("bids"); // auction_id -> [bid
 
 pub const TOKEN_AUCTION_STATE: Map<U128Key, TokenAuctionState> = Map::new("auction_token_state");
 
-// The following functions for reading bids were heavily inspired by Mirror's approach with polls
-// here: https://github.com/Mirror-Protocol/mirror-contracts/blob/7441e1494f3808e076e5e2c769482659546e51fb/contracts/mirror_gov/src/state.rs#L155
-
 pub fn read_bids<'a>(
     storage: &'a dyn Storage,
     auction_id: U128Key,
