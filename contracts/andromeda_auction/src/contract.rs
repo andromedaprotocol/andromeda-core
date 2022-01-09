@@ -248,6 +248,22 @@ pub fn execute_claim(
         !token_auction_state.claimed,
         ContractError::AuctionAlreadyClaimed {},
     )?;
+    // This is the case where no-one bid on the token.
+    if token_auction_state.high_bidder_amount.is_zero() {
+        token_auction_state.claimed = true;
+        TOKEN_AUCTION_STATE.save(
+            deps.storage,
+            U128Key::new(token_auction_state.auction_id.u128()),
+            &token_auction_state,
+        )?;
+        return Ok(Response::new()
+            .add_attribute("action", "claim")
+            .add_attribute("token_id", token_id)
+            .add_attribute("token_contract", config.token_addr)
+            .add_attribute("recipient", &token_auction_state.high_bidder_addr)
+            .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
+            .add_attribute("auction_id", token_auction_state.auction_id));
+    }
     let block_time = block_to_expiration(&env.block, token_auction_state.start_time).unwrap();
     require(
         block_time > token_auction_state.end_time,
@@ -1247,6 +1263,53 @@ mod tests {
         expected_res.high_bidder_addr = "bidder".to_string();
         expected_res.high_bidder_amount = Uint128::from(100u128);
         assert_eq!(expected_res, res);
+    }
+
+    #[test]
+    fn execute_claim_no_bids() {
+        let mut deps = mock_dependencies_custom(&[]);
+        deps.querier.with_tax(
+            Decimal::percent(10),
+            &[(&"uusd".to_string(), &Uint128::from(1500000u128))],
+        );
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
+            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+            coin_denom: "uusd".to_string(),
+            whitelist: None,
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        env.block.time = Timestamp::from_seconds(250);
+
+        let msg = ExecuteMsg::Claim {
+            token_id: "token_001".to_string(),
+        };
+
+        let info = mock_info("any_user", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(
+            Response::new()
+                .add_attribute("action", "claim")
+                .add_attribute("token_id", "token_001")
+                .add_attribute("token_contract", MOCK_TOKEN_ADDR)
+                .add_attribute("recipient", "")
+                .add_attribute("winning_bid_amount", Uint128::zero())
+                .add_attribute("auction_id", Uint128::zero()),
+            res
+        );
     }
 
     #[test]

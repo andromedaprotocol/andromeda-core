@@ -76,7 +76,7 @@ impl MessageHooks for AuctionModule {
         &self,
         _deps: &DepsMut,
         info: MessageInfo,
-        _env: Env,
+        env: Env,
     ) -> Result<HookResponse, ContractError> {
         let mut res = HookResponse::default();
         if self.address.is_none() {
@@ -86,7 +86,7 @@ impl MessageHooks for AuctionModule {
                 funds: vec![],
                 label: String::from("Auction instantiation"),
                 msg: to_binary(&AuctionInstantiateMsg {
-                    token_addr: info.sender.to_string(),
+                    token_addr: env.contract.address.to_string(),
                 })?,
             };
 
@@ -112,7 +112,7 @@ impl MessageHooks for AuctionModule {
         token_id: String,
     ) -> Result<HookResponse, ContractError> {
         let query_msg = AuctionQueryMsg::LatestAuctionState { token_id };
-        let contract_addr = self.address.clone().unwrap();
+        let contract_addr = self.get_contract_address(deps.storage).unwrap();
         let response: StdResult<AuctionStateResponse> =
             deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr,
