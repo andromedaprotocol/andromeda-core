@@ -3,6 +3,7 @@ use andromeda_protocol::{
     common::OrderBy,
 };
 use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
+use cw721::Expiration;
 use cw_storage_plus::{Item, Map, U128Key};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -26,8 +27,8 @@ impl Into<ConfigResponse> for Config {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TokenAuctionState {
-    pub start_time: u64,
-    pub end_time: u64,
+    pub start_time: Expiration,
+    pub end_time: Expiration,
     pub high_bidder_addr: Addr,
     pub high_bidder_amount: Uint128,
     pub coin_denom: String,

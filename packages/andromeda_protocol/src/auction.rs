@@ -1,5 +1,6 @@
 use crate::common::OrderBy;
 use cosmwasm_std::{Timestamp, Uint128};
+use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -24,8 +25,8 @@ pub enum ExecuteMsg {
     /// has started but is immutable after that.
     StartAuction {
         token_id: String,
-        start_time: u64,
-        end_time: u64,
+        start_time: Expiration,
+        end_time: Expiration,
         coin_denom: String,
     },
     UpdateOwner {
@@ -66,8 +67,8 @@ pub struct Bid {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct AuctionStateResponse {
-    pub start_time: u64,
-    pub end_time: u64,
+    pub start_time: Expiration,
+    pub end_time: Expiration,
     pub high_bidder_addr: String,
     pub high_bidder_amount: Uint128,
     pub auction_id: Uint128,

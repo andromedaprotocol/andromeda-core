@@ -124,6 +124,12 @@ pub enum ContractError {
 
     #[error("AuctionNotEnded")]
     AuctionNotEnded {},
+
+    #[error("ExpirationMustNotBeNever")]
+    ExpirationMustNotBeNever {},
+
+    #[error("ExpirationsMustBeOfSameType")]
+    ExpirationsMustBeOfSameType {},
 }
 
 impl From<FromUtf8Error> for ContractError {

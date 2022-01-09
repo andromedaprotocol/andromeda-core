@@ -7,8 +7,9 @@ use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult,
-    QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    QueryRequest, SystemError, SystemResult, Timestamp, Uint128, WasmQuery,
 };
+use cw721::Expiration;
 use std::collections::HashMap;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
 
@@ -128,8 +129,8 @@ impl WasmMockQuerier {
         match from_binary(msg).unwrap() {
             AuctionQueryMsg::LatestAuctionState { token_id } => {
                 let mut res = AuctionStateResponse {
-                    start_time: 100,
-                    end_time: 200,
+                    start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
+                    end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
                     high_bidder_addr: "address".to_string(),
                     high_bidder_amount: Uint128::from(100u128),
                     auction_id: Uint128::zero(),
