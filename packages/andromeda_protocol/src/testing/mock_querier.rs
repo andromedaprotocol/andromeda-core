@@ -136,6 +136,7 @@ impl WasmMockQuerier {
                     auction_id: Uint128::zero(),
                     coin_denom: "uusd".to_string(),
                     claimed: true,
+                    whitelist: None,
                 };
                 if token_id == MOCK_TOKEN_IN_AUCTION {
                     res.claimed = false;

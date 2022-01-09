@@ -1,5 +1,5 @@
 use crate::common::OrderBy;
-use cosmwasm_std::{Timestamp, Uint128};
+use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -28,6 +28,7 @@ pub enum ExecuteMsg {
         start_time: Expiration,
         end_time: Expiration,
         coin_denom: String,
+        whitelist: Option<Vec<Addr>>,
     },
     UpdateOwner {
         address: String,
@@ -74,6 +75,7 @@ pub struct AuctionStateResponse {
     pub auction_id: Uint128,
     pub coin_denom: String,
     pub claimed: bool,
+    pub whitelist: Option<Vec<Addr>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

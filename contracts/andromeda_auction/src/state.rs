@@ -34,6 +34,7 @@ pub struct TokenAuctionState {
     pub coin_denom: String,
     pub auction_id: Uint128,
     pub claimed: bool,
+    pub whitelist: Option<Vec<Addr>>,
 }
 
 impl Into<AuctionStateResponse> for TokenAuctionState {
@@ -46,6 +47,7 @@ impl Into<AuctionStateResponse> for TokenAuctionState {
             claimed: self.claimed,
             coin_denom: self.coin_denom,
             auction_id: self.auction_id,
+            whitelist: self.whitelist,
         }
     }
 }

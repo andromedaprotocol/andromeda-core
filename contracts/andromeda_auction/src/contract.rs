@@ -52,7 +52,10 @@ pub fn execute(
             start_time,
             end_time,
             coin_denom,
-        } => execute_start_auction(deps, env, info, token_id, start_time, end_time, coin_denom),
+            whitelist,
+        } => execute_start_auction(
+            deps, env, info, token_id, start_time, end_time, coin_denom, whitelist,
+        ),
         ExecuteMsg::PlaceBid { token_id } => execute_place_bid(deps, env, info, token_id),
         ExecuteMsg::Claim { token_id } => execute_claim(deps, env, info, token_id),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
@@ -67,6 +70,7 @@ pub fn execute_start_auction(
     start_time: Expiration,
     end_time: Expiration,
     coin_denom: String,
+    whitelist: Option<Vec<Addr>>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let owner_of_response = query_owner_of(deps.querier, config.token_addr, token_id.clone())?;
@@ -115,6 +119,8 @@ pub fn execute_start_auction(
     };
     BIDS.save(deps.storage, U128Key::new(auction_id.u128()), &vec![])?;
 
+    let whitelist_str = format!("{:?}", &whitelist);
+
     TOKEN_AUCTION_STATE.save(
         deps.storage,
         U128Key::new(auction_id.u128()),
@@ -126,6 +132,7 @@ pub fn execute_start_auction(
             coin_denom: coin_denom.clone(),
             auction_id,
             claimed: false,
+            whitelist,
         },
     )?;
     Ok(Response::new().add_attributes(vec![
@@ -134,6 +141,7 @@ pub fn execute_start_auction(
         attr("end_time", end_time.to_string()),
         attr("coin_denom", coin_denom),
         attr("auction_id", auction_id.to_string()),
+        attr("whitelist", whitelist_str),
     ]))
 }
 
@@ -157,6 +165,12 @@ pub fn execute_place_bid(
         },
     )?;
     let mut token_auction_state = get_existing_token_auction_state(&deps.as_ref(), &token_id)?;
+    if let Some(ref whitelist) = token_auction_state.whitelist {
+        require(
+            whitelist.iter().any(|x| x == &info.sender),
+            ContractError::Unauthorized {},
+        )?;
+    }
 
     require(
         token_auction_state.high_bidder_addr != info.sender.to_string(),
@@ -452,6 +466,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0u64);
@@ -485,6 +500,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -518,6 +534,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -533,6 +550,43 @@ mod tests {
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         assert_eq!(ContractError::TokenOwnerCannotBid {}, res.unwrap_err());
     }
+
+    #[test]
+    fn execute_place_bid_whitelist() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            token_addr: MOCK_TOKEN_ADDR.to_string(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+
+        let msg = ExecuteMsg::StartAuction {
+            token_id: "token_001".to_string(),
+            start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
+            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+            coin_denom: "uusd".to_string(),
+            whitelist: Some(vec![Addr::unchecked("sender")]),
+        };
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(0);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: "token_001".to_string(),
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+        let info = mock_info("not_sender", &coins(100, "uusd".to_string()));
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+        let info = mock_info("sender", &coins(100, "uusd".to_string()));
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    }
+
     #[test]
     fn execute_place_bid_highest_bidder_cannot_outbid() {
         let mut deps = mock_dependencies_custom(&[]);
@@ -550,6 +604,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -589,6 +644,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -625,6 +681,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -689,6 +746,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -720,6 +778,7 @@ mod tests {
             auction_id: Uint128::zero(),
             coin_denom: "uusd".to_string(),
             claimed: false,
+            whitelist: None,
         };
 
         let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
@@ -790,6 +849,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -802,6 +862,7 @@ mod tests {
                 attr("end_time", "expiration time: 200.000000000"),
                 attr("coin_denom", "uusd"),
                 attr("auction_id", "0"),
+                attr("whitelist", "None"),
             ]),
         );
     }
@@ -823,6 +884,7 @@ mod tests {
             start_time: Expiration::AtHeight(100),
             end_time: Expiration::AtHeight(200),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.height = 0;
@@ -835,6 +897,7 @@ mod tests {
                 attr("end_time", "expiration height: 200"),
                 attr("coin_denom", "uusd"),
                 attr("auction_id", "0"),
+                attr("whitelist", "None"),
             ]),
         );
     }
@@ -856,6 +919,7 @@ mod tests {
             start_time: Expiration::AtHeight(100),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.height = 0;
@@ -883,6 +947,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(150);
@@ -907,6 +972,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(300)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -931,6 +997,7 @@ mod tests {
             start_time: Expiration::Never {},
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -955,6 +1022,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             end_time: Expiration::Never {},
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -979,6 +1047,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -1003,6 +1072,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -1024,6 +1094,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(150)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -1058,6 +1129,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -1068,6 +1140,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(150)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         env.block.time = Timestamp::from_seconds(120);
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
@@ -1091,6 +1164,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -1103,6 +1177,7 @@ mod tests {
                 attr("end_time", "expiration time: 200.000000000"),
                 attr("coin_denom", "uusd"),
                 attr("auction_id", "0"),
+                attr("whitelist", "None"),
             ]),
         );
 
@@ -1129,6 +1204,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(400)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(500)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(
@@ -1139,6 +1215,7 @@ mod tests {
                 attr("end_time", "expiration time: 500.000000000"),
                 attr("coin_denom", "uusd"),
                 attr("auction_id", "1"),
+                attr("whitelist", "None"),
             ]),
         );
         let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
@@ -1150,6 +1227,7 @@ mod tests {
             auction_id: Uint128::from(1u128),
             coin_denom: "uusd".to_string(),
             claimed: false,
+            whitelist: None,
         };
         assert_eq!(expected_res, res);
 
@@ -1192,6 +1270,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -1263,6 +1342,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -1303,6 +1383,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
+            whitelist: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
