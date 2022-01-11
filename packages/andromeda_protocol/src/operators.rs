@@ -1,4 +1,6 @@
-use cosmwasm_std::{attr, Deps, DepsMut, MessageInfo, Order, Response, StdResult, Storage};
+use cosmwasm_std::{
+    attr, Deps, DepsMut, MessageInfo, Order, Response, StdError, StdResult, Storage,
+};
 
 use crate::error::ContractError;
 use crate::ownership::is_contract_owner;
@@ -54,10 +56,26 @@ pub fn query_is_operator(deps: Deps, addr: &str) -> StdResult<IsOperatorResponse
     })
 }
 
+pub fn query_operators(deps: Deps) -> StdResult<OperatorsResponse> {
+    let operators: StdResult<Vec<String>> = OPERATORS
+        .keys(deps.storage, None, None, Order::Ascending)
+        .map(|k| String::from_utf8(k).map_err(|_| StdError::invalid_utf8("parsing escrow key")))
+        .collect();
+    Ok(OperatorsResponse {
+        operators: operators?,
+    })
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct IsOperatorResponse {
     pub is_operator: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct OperatorsResponse {
+    pub operators: Vec<String>,
 }
 
 #[cfg(test)]

@@ -7,7 +7,9 @@ use cw2::set_contract_version;
 
 use crate::state::{DATA, DEFAULT_KEY};
 use andromeda_protocol::{
+    communication::{parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
+    operators::{initialize_operators, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, Primitive, QueryMsg},
     require,
@@ -22,8 +24,9 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    initialize_operators(deps.storage, msg.operators)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new()
@@ -34,14 +37,32 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AndrReceive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::SetValue { name, value } => execute_set_value(deps, info, name, value),
         ExecuteMsg::DeleteValue { name } => execute_delete_value(deps, info, name),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+    }
+}
+
+fn execute_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
     }
 }
 
@@ -89,10 +110,34 @@ pub fn execute_delete_value(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::GetValue { name } => to_binary(&query_value(deps, name)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+    }
+}
+
+fn handle_andromeda_query(deps: Deps, env: Env, msg: AndromedaQuery) -> StdResult<Binary> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received: Result<QueryMsg, ContractError> = parse_message(data);
+            if received.is_err() {
+                return Err(StdError::ParseErr {
+                    target_type: "QueryMsg".to_string(),
+                    msg: "Error unparsing binary".to_string(),
+                });
+            }
+            let received = received.unwrap();
+            match received {
+                QueryMsg::AndrQuery(..) => Err(StdError::ParseErr {
+                    target_type: "QueryMsg".to_string(),
+                    msg: "Not allowed to have nested AndrQuery".to_string(),
+                }),
+                _ => query(deps, env, received),
+            }
+        }
+        AndromedaQuery::Owner {} => to_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => to_binary(&query_operators(deps)?),
     }
 }
 
@@ -126,7 +171,7 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -138,7 +183,7 @@ mod tests {
     fn set_and_update_value_with_name() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -192,7 +237,7 @@ mod tests {
     fn set_and_update_value_without_name() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -244,7 +289,7 @@ mod tests {
     fn cannot_set_nested_vector_primitive() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -263,7 +308,7 @@ mod tests {
     fn delete_value_with_name() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -311,7 +356,7 @@ mod tests {
     fn delete_value_without_name() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -350,7 +395,7 @@ mod tests {
     fn non_creator_cannot_set_value() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -370,7 +415,7 @@ mod tests {
     fn non_creator_cannot_delete_value() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success

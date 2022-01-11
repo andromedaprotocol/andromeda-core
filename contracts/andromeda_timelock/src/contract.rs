@@ -7,8 +7,7 @@ use cw721::Expiration;
 
 use crate::state::{State, STATE};
 use andromeda_protocol::{
-    common::unwrap_or_err,
-    communication::{parse_struct, AndromedaMsg},
+    communication::{parse_message, AndromedaMsg},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -99,8 +98,7 @@ fn execute_receive(
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(data) => {
-            let data_string = unwrap_or_err(data, ContractError::MissingJSON {})?;
-            let received: ExecuteMsg = parse_struct(&data_string)?;
+            let received: ExecuteMsg = parse_message(data)?;
 
             match received {
                 ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),

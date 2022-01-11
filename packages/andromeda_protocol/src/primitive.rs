@@ -1,3 +1,4 @@
+use crate::communication::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::{Addr, StdError, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -60,18 +61,23 @@ impl Primitive {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub operators: Vec<String>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     /// If name is not specified the default key will be used.
     SetValue {
         name: Option<String>,
         value: Primitive,
     },
     /// If name is not specified the default key will be used.
-    DeleteValue { name: Option<String> },
+    DeleteValue {
+        name: Option<String>,
+    },
     /// Update ownership of the contract. Only executable by the current contract owner.
     UpdateOwner {
         /// The address of the new contract owner.
@@ -82,10 +88,11 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// If name is not specified the default key will be used.
-    GetValue { name: Option<String> },
-    /// The current owner of the contract
-    ContractOwner {},
+    GetValue {
+        name: Option<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

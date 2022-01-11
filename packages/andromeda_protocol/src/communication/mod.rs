@@ -2,7 +2,7 @@ use cosmwasm_std::{from_binary, Binary};
 use schemars::{JsonSchema, _serde_json::to_string as serde_to_string};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::error::ContractError;
+use crate::{common::unwrap_or_err, error::ContractError};
 
 pub mod msg;
 
@@ -49,6 +49,11 @@ where
             err: err.to_string(),
         }),
     }
+}
+
+pub fn parse_message<T: DeserializeOwned>(data: Option<Binary>) -> Result<T, ContractError> {
+    let data = unwrap_or_err(data, ContractError::MissingJSON {})?;
+    parse_struct::<T>(&data)
 }
 
 pub fn to_json_string<T>(val: &T) -> Result<String, ContractError>
