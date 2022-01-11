@@ -79,14 +79,6 @@ pub enum ExecuteMsg {
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
-    /// Update ownership of the contract. Only executable by the current contract owner.
-    UpdateOwner {
-        /// The address of the new contract owner.
-        address: String,
-    },
-    UpdateOperator {
-        operators: Vec<String>,
-    },
     AndrMsg(AndromedaMsg),
 }
 

@@ -81,11 +81,9 @@ pub fn execute(
             recipient,
         } => execute_hold_funds(deps, info, env, expiration, recipient),
         ExecuteMsg::ReleaseFunds {} => execute_release_funds(deps, env, info),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateAddressList { address_list } => {
             execute_update_address_list(deps, info, env, address_list)
         }
-        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
         ExecuteMsg::AndrReceive(msg) => execute_receive(deps, env, info, msg),
     }
 }
@@ -104,6 +102,10 @@ fn execute_receive(
                 ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
                 _ => execute(deps, env, info, received),
             }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
         }
     }
 }

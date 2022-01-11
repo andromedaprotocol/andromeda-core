@@ -79,8 +79,6 @@ pub fn execute(
             execute_update_address_list(deps, info, env, address_list)
         }
         ExecuteMsg::Send {} => execute_send(deps, info),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
         ExecuteMsg::AndrMsg(msg) => execute_andromeda(deps, env, info, msg),
     }
 }
@@ -93,7 +91,10 @@ pub fn execute_andromeda(
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(..) => execute_send(deps, info),
-        // _ => Ok(Response::default()),
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
+        }
     }
 }
 
