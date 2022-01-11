@@ -47,6 +47,10 @@ pub enum QueryMsg {
     AuctionState {
         auction_id: Uint128,
     },
+    /// Gets the auction ids for the given token.
+    AuctionIds {
+        token_id: String,
+    },
     /// Gets the config.
     Config {},
     /// Gets the bids for the given auction id. Start_after starts indexing at 0.
@@ -76,6 +80,11 @@ pub struct AuctionStateResponse {
     pub coin_denom: String,
     pub claimed: bool,
     pub whitelist: Option<Vec<Addr>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct AuctionIdsResponse {
+    pub auction_ids: Vec<Uint128>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

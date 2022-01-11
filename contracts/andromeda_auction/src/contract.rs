@@ -4,8 +4,8 @@ use crate::state::{
 };
 use andromeda_protocol::{
     auction::{
-        AuctionStateResponse, Bid, BidsResponse, ConfigResponse, ExecuteMsg, InstantiateMsg,
-        QueryMsg,
+        AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, ConfigResponse, ExecuteMsg,
+        InstantiateMsg, QueryMsg,
     },
     common::{get_tax_deducted_funds, OrderBy},
     error::ContractError,
@@ -361,8 +361,19 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
             order_by,
         } => to_binary(&query_bids(deps, auction_id, start_after, limit, order_by)?),
+        QueryMsg::AuctionIds { token_id } => to_binary(&query_auction_ids(deps, token_id)?),
         QueryMsg::Owner {} => to_binary(&query_contract_owner(deps)?),
     }
+}
+
+fn query_auction_ids(deps: Deps, token_id: String) -> StdResult<AuctionIdsResponse> {
+    let auction_ids = AUCTION_IDS.may_load(deps.storage, &token_id)?;
+    if let Some(auction_ids) = auction_ids {
+        return Ok(AuctionIdsResponse { auction_ids });
+    }
+    return Ok(AuctionIdsResponse {
+        auction_ids: vec![],
+    });
 }
 
 fn query_bids(
