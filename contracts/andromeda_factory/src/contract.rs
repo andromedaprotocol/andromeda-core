@@ -15,7 +15,7 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
-    Response, StdError, StdResult, SubMsg, WasmMsg,
+    Response, StdError, SubMsg, WasmMsg,
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -32,14 +32,16 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(StdError::generic_err(msg.result.unwrap_err()));
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
     }
 
     match msg.id {
         REPLY_CREATE_TOKEN => on_token_creation_reply(deps, msg),
-        _ => Err(StdError::generic_err("reply id is invalid")),
+        _ => Err(ContractError::InvalidReplyId {}),
     }
 }
 
@@ -195,7 +197,7 @@ pub fn add_update_code_id(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetAddress { symbol } => to_binary(&query_address(deps, symbol)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
@@ -204,12 +206,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_address(deps: Deps, symbol: String) -> StdResult<AddressResponse> {
+fn query_address(deps: Deps, symbol: String) -> Result<AddressResponse, ContractError> {
     let address = read_address(deps.storage, symbol)?;
     Ok(AddressResponse { address })
 }
 
-fn query_code_id(deps: Deps, key: String) -> StdResult<CodeIdResponse> {
+fn query_code_id(deps: Deps, key: String) -> Result<CodeIdResponse, ContractError> {
     let code_id = read_code_id(deps.storage, key)?;
     Ok(CodeIdResponse { code_id })
 }

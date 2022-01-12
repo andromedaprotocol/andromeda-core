@@ -9,7 +9,7 @@ use andromeda_protocol::{
     require,
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 };
 
 #[entry_point]
@@ -78,7 +78,7 @@ fn execute_remove_address(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::IncludesAddress { address } => to_binary(&query_address(deps, &address)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
@@ -86,7 +86,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_address(deps: Deps, address: &str) -> StdResult<IncludesAddressResponse> {
+fn query_address(deps: Deps, address: &str) -> Result<IncludesAddressResponse, ContractError> {
     Ok(IncludesAddressResponse {
         included: includes_address(deps.storage, address)?,
     })

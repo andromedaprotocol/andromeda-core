@@ -212,7 +212,7 @@ pub fn execute_update_config(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
@@ -220,7 +220,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse {
         mirror_mint_contract: config.mirror_mint_contract.to_string(),

@@ -12,8 +12,7 @@ use andromeda_protocol::{
     require,
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-    Uint128,
+    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
 };
 
 #[entry_point]
@@ -88,7 +87,7 @@ fn execute_edit_receipt(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Receipt { receipt_id } => to_binary(&query_receipt(deps, receipt_id)?),
         QueryMsg::ContractInfo {} => to_binary(&query_config(deps)?),
@@ -97,12 +96,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_receipt(deps: Deps, receipt_id: Uint128) -> StdResult<ReceiptResponse> {
+fn query_receipt(deps: Deps, receipt_id: Uint128) -> Result<ReceiptResponse, ContractError> {
     let receipt = read_receipt(deps.storage, receipt_id)?;
     Ok(ReceiptResponse { receipt })
 }
 
-fn query_config(deps: Deps) -> StdResult<ContractInfoResponse> {
+fn query_config(deps: Deps) -> Result<ContractInfoResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
     Ok(ContractInfoResponse { config })

@@ -84,14 +84,16 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(StdError::generic_err(msg.result.unwrap_err()));
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
     }
 
     match msg.id {
         REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
-        _ => Err(StdError::generic_err("reply id is invalid")),
+        _ => Err(ContractError::InvalidReplyId {}),
     }
 }
 
@@ -221,7 +223,7 @@ fn execute_update_address_list(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetSplitterConfig {} => to_binary(&query_splitter(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
@@ -229,7 +231,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_splitter(deps: Deps) -> StdResult<GetSplitterConfigResponse> {
+fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError> {
     let splitter = SPLITTER.load(deps.storage)?;
     let address_list_contract = match splitter.clone().address_list {
         Some(addr_list) => addr_list.get_contract_address(deps.storage),

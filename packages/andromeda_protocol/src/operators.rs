@@ -47,7 +47,7 @@ pub fn initialize_operators(storage: &mut dyn Storage, operators: Vec<String>) -
     Ok(())
 }
 
-pub fn query_is_operator(deps: Deps, addr: &str) -> StdResult<IsOperatorResponse> {
+pub fn query_is_operator(deps: Deps, addr: &str) -> Result<IsOperatorResponse, ContractError> {
     let operator = OPERATORS.may_load(deps.storage, addr)?;
     Ok(IsOperatorResponse {
         is_operator: operator.is_some(),

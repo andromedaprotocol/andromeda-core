@@ -1,4 +1,6 @@
-use andromeda_protocol::{ownership::ContractOwnerResponse, token::QueryMsg as TokenQueryMsg};
+use andromeda_protocol::{
+    error::ContractError, ownership::ContractOwnerResponse, token::QueryMsg as TokenQueryMsg,
+};
 use cosmwasm_std::{
     to_binary, DepsMut, QuerierWrapper, QueryRequest, StdResult, Storage, WasmQuery,
 };
@@ -49,14 +51,14 @@ pub fn is_address_defined(storage: &dyn Storage, symbol: String) -> StdResult<bo
     }
 }
 
-pub fn is_creator(deps: &DepsMut, symbol: String, address: String) -> StdResult<bool> {
+pub fn is_creator(deps: &DepsMut, symbol: String, address: String) -> Result<bool, ContractError> {
     let contract_address = read_address(deps.storage, symbol)?;
     let owner = query_ado_owner(deps.querier, contract_address)?;
 
     Ok(owner == address)
 }
 
-fn query_ado_owner(querier: QuerierWrapper, addr: String) -> StdResult<String> {
+fn query_ado_owner(querier: QuerierWrapper, addr: String) -> Result<String, ContractError> {
     let res: ContractOwnerResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: addr,
         msg: to_binary(&TokenQueryMsg::ContractOwner {})?,

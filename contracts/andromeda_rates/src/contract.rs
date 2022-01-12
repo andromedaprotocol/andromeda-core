@@ -50,13 +50,13 @@ fn execute_update_rates(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Payments {} => to_binary(&query_payments(deps)?),
     }
 }
 
-fn query_payments(deps: Deps) -> StdResult<PaymentsResponse> {
+fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let rates = config.rates;
 

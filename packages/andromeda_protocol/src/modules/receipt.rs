@@ -126,7 +126,7 @@ impl MessageHooks for ReceiptModule {
     }
 }
 
-pub fn on_receipt_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
+pub fn on_receipt_reply(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
     let receipt_addr = get_reply_address(&msg)?;
 
     RECEIPT_CONTRACT.save(deps.storage, &receipt_addr)?;

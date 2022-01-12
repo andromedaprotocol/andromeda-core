@@ -74,15 +74,17 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(StdError::generic_err(msg.result.unwrap_err()));
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
     }
 
     match msg.id {
         REPLY_RECEIPT => on_receipt_reply(deps, msg),
         REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
-        _ => Err(StdError::generic_err("reply id is invalid")),
+        _ => Err(ContractError::InvalidReplyId {}),
     }
 }
 
@@ -594,7 +596,7 @@ fn remove_approval(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::OwnerOf { token_id } => to_binary(&query_owner(deps, env, token_id)?),
         QueryMsg::ApprovedForAll {
@@ -627,7 +629,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_owner(deps: Deps, _env: Env, token_id: String) -> StdResult<OwnerOfResponse> {
+fn query_owner(deps: Deps, _env: Env, token_id: String) -> Result<OwnerOfResponse, ContractError> {
     let token = load_token(deps.storage, token_id)?;
     Ok(OwnerOfResponse {
         owner: token.owner.clone(),
@@ -642,7 +644,7 @@ fn query_all_approvals(
     include_expired: bool,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<ApprovedForAllResponse> {
+) -> Result<ApprovedForAllResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start_addr = maybe_addr(deps.api, start_after)?;
     let start = start_addr.map(|addr| Bound::exclusive(addr.as_ref()));
@@ -657,7 +659,7 @@ fn query_all_approvals(
     Ok(ApprovedForAllResponse { operators: res? })
 }
 
-fn query_num_tokens(deps: Deps, _env: Env) -> StdResult<NumTokensResponse> {
+fn query_num_tokens(deps: Deps, _env: Env) -> Result<NumTokensResponse, ContractError> {
     let num_tokens = NUM_TOKENS.load(deps.storage).unwrap_or_default();
     Ok(NumTokensResponse { count: num_tokens })
 }
@@ -665,7 +667,7 @@ fn query_num_tokens(deps: Deps, _env: Env) -> StdResult<NumTokensResponse> {
 fn query_nft_info(
     deps: Deps,
     token_id: String,
-) -> StdResult<NftInfoResponse<NftInfoResponseExtension>> {
+) -> Result<NftInfoResponse<NftInfoResponseExtension>, ContractError> {
     let token = load_token(deps.storage, token_id)?;
     let extension = NftInfoResponseExtension {
         metadata: token.metadata,
@@ -686,14 +688,14 @@ fn query_all_nft_info(
     deps: Deps,
     env: Env,
     token_id: String,
-) -> StdResult<AllNftInfoResponse<NftInfoResponseExtension>> {
+) -> Result<AllNftInfoResponse<NftInfoResponseExtension>, ContractError> {
     let access = query_owner(deps, env, token_id.clone())?;
     let info = query_nft_info(deps, token_id)?;
 
     Ok(AllNftInfoResponse { access, info })
 }
 
-fn query_contract_info(deps: Deps) -> StdResult<ContractInfoResponse> {
+fn query_contract_info(deps: Deps) -> Result<ContractInfoResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     Ok(ContractInfoResponse {
         name: config.name,
@@ -701,7 +703,7 @@ fn query_contract_info(deps: Deps) -> StdResult<ContractInfoResponse> {
     })
 }
 
-fn query_module_info(deps: Deps) -> StdResult<ModuleInfoResponse> {
+fn query_module_info(deps: Deps) -> Result<ModuleInfoResponse, ContractError> {
     let modules = read_modules(deps.storage)?;
     let contracts: Vec<ModuleContract> = modules
         .module_defs
@@ -730,7 +732,7 @@ fn query_owned_tokens(
     owner: String,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<TokensResponse> {
+) -> Result<TokensResponse, ContractError> {
     let owner_addr = deps.api.addr_validate(&owner)?;
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
@@ -753,7 +755,7 @@ fn query_all_tokens(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<TokensResponse> {
+) -> Result<TokensResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 

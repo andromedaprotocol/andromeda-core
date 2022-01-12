@@ -48,14 +48,16 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(StdError::generic_err(msg.result.unwrap_err()));
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
     }
 
     match msg.id {
         REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
-        _ => Err(StdError::generic_err("reply id is invalid")),
+        _ => Err(ContractError::InvalidReplyId {}),
     }
 }
 
@@ -187,7 +189,7 @@ fn execute_update_address_list(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetLockedFunds { address } => to_binary(&query_held_funds(deps, address)?),
         QueryMsg::GetTimelockConfig {} => to_binary(&query_config(deps)?),
@@ -196,12 +198,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_held_funds(deps: Deps, address: String) -> StdResult<GetLockedFundsResponse> {
+fn query_held_funds(deps: Deps, address: String) -> Result<GetLockedFundsResponse, ContractError> {
     let hold_funds = get_funds(deps.storage, address)?;
     Ok(GetLockedFundsResponse { funds: hold_funds })
 }
 
-fn query_config(deps: Deps) -> StdResult<GetTimelockConfigResponse> {
+fn query_config(deps: Deps) -> Result<GetTimelockConfigResponse, ContractError> {
     let state = STATE.load(deps.storage)?;
 
     let address_list_contract = match state.address_list.clone() {
