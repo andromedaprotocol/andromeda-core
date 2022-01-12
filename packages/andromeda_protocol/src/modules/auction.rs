@@ -111,6 +111,36 @@ impl MessageHooks for AuctionModule {
         _recipient: String,
         token_id: String,
     ) -> Result<HookResponse, ContractError> {
+        self.verify_token_not_in_auction(deps, token_id)
+    }
+
+    fn on_burn(
+        &self,
+        deps: &DepsMut,
+        _info: MessageInfo,
+        _env: Env,
+        token_id: String,
+    ) -> Result<HookResponse, ContractError> {
+        self.verify_token_not_in_auction(deps, token_id)
+    }
+
+    fn on_archive(
+        &self,
+        deps: &DepsMut,
+        _info: MessageInfo,
+        _env: Env,
+        token_id: String,
+    ) -> Result<HookResponse, ContractError> {
+        self.verify_token_not_in_auction(deps, token_id)
+    }
+}
+
+impl AuctionModule {
+    fn verify_token_not_in_auction(
+        &self,
+        deps: &DepsMut,
+        token_id: String,
+    ) -> Result<HookResponse, ContractError> {
         let query_msg = AuctionQueryMsg::LatestAuctionState { token_id };
         let contract_addr = self.get_contract_address(deps.storage).unwrap();
         let response: StdResult<AuctionStateResponse> =
@@ -221,6 +251,81 @@ mod tests {
             "recipient".to_string(),
             "token2".to_string(),
         );
+        assert_eq!(HookResponse::default(), res.unwrap());
+    }
+
+    #[test]
+    fn test_on_burn_token_in_auction() {
+        let sender = "seender";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(sender, &[]);
+        let auction_module = AuctionModule {
+            operators: Some(vec![]),
+            address: Some(MOCK_AUCTION_CONTRACT.to_string()),
+            code_id: None,
+        };
+
+        let res = auction_module.on_burn(
+            &deps.as_mut(),
+            info.clone(),
+            env,
+            MOCK_TOKEN_IN_AUCTION.to_string(),
+        );
+        assert_eq!(ContractError::AuctionNotEnded {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_on_burn_token_not_in_auction() {
+        let sender = "seender";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(sender, &[]);
+        let auction_module = AuctionModule {
+            operators: Some(vec![]),
+            address: Some(MOCK_AUCTION_CONTRACT.to_string()),
+            code_id: None,
+        };
+
+        let res = auction_module.on_burn(&deps.as_mut(), info.clone(), env, "token2".to_string());
+        assert_eq!(HookResponse::default(), res.unwrap());
+    }
+
+    #[test]
+    fn test_on_archive_token_in_auction() {
+        let sender = "seender";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(sender, &[]);
+        let auction_module = AuctionModule {
+            operators: Some(vec![]),
+            address: Some(MOCK_AUCTION_CONTRACT.to_string()),
+            code_id: None,
+        };
+
+        let res = auction_module.on_archive(
+            &deps.as_mut(),
+            info.clone(),
+            env,
+            MOCK_TOKEN_IN_AUCTION.to_string(),
+        );
+        assert_eq!(ContractError::AuctionNotEnded {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_on_archive_token_not_in_auction() {
+        let sender = "seender";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(sender, &[]);
+        let auction_module = AuctionModule {
+            operators: Some(vec![]),
+            address: Some(MOCK_AUCTION_CONTRACT.to_string()),
+            code_id: None,
+        };
+
+        let res =
+            auction_module.on_archive(&deps.as_mut(), info.clone(), env, "token2".to_string());
         assert_eq!(HookResponse::default(), res.unwrap());
     }
 }
