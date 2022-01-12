@@ -8,6 +8,7 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const KEY_POSITION_IDX: Item<Uint128> = Item::new("position_idx");
 pub const POSITION: Map<&[u8], Position> = Map::new("position");
 pub const PREV_AUST_BALANCE: Item<Uint128> = Item::new("prev_aust_balance");
+pub const TEMP_BALANCE: Item<Uint128> = Item::new("temp_balance");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config{

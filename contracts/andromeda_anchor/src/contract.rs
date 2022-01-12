@@ -1,6 +1,6 @@
 use cosmwasm_std::{attr, entry_point, to_binary, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, Uint128, WasmMsg, CosmosMsg, coin, SubMsg};
 use cw20::{Cw20ExecuteMsg};
-use crate::state::{Config, CONFIG, KEY_POSITION_IDX, POSITION, Position, PREV_AUST_BALANCE };
+use crate::state::{Config, CONFIG, KEY_POSITION_IDX, POSITION, Position, PREV_AUST_BALANCE, TEMP_BALANCE};
 use andromeda_protocol::{error::ContractError, ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER}, anchor::{ExecuteMsg, InstantiateMsg, QueryMsg}, require};
 use terraswap::querier::{query_balance, query_token_balance};
 
@@ -21,7 +21,7 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     KEY_POSITION_IDX.save(deps.storage, &Uint128::from(1u128))?;
     PREV_AUST_BALANCE.save(deps.storage, &Uint128::zero())?;
-
+    TEMP_BALANCE.save(deps.storage, &Uint128::zero())?;
     CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
     Ok(Response::new()
         .add_attributes(vec![
@@ -118,6 +118,14 @@ pub fn withdraw(
         ContractError::Unauthorized {},
     )?;
 
+    let contract_balance = query_balance(
+        &deps.querier,
+        env.contract.address.clone(),
+        config.stable_denom.clone(),
+    )?;
+    TEMP_BALANCE.save(deps.storage, &contract_balance)?;
+
+
     POSITION.remove(deps.storage, &position_idx.u128().to_be_bytes());
 
     Ok(Response::new().add_messages(vec![
@@ -151,17 +159,25 @@ pub fn transfer_ust(
     receiver: String
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let transfer_amount = query_balance(
+    let current_balance = query_balance(
         &deps.querier,
         env.contract.address,
         config.stable_denom.clone(),
     )?;
-    Ok(
-        Response::new().add_message(
+    let prev_balance = TEMP_BALANCE.load(deps.storage)?;
+    let transfer_amount = current_balance - prev_balance;
+    let mut msg = vec![];
+    if transfer_amount > Uint128::zero() {
+        msg.push(
             CosmosMsg::Bank(BankMsg::Send {
                 to_address: receiver.to_string(),
                 amount: vec![coin(transfer_amount.u128(),config.stable_denom.clone())]
-            }))
+            })
+        );
+    }
+    Ok(
+        Response::new()
+            .add_messages( msg)
             .add_attributes(vec![
                 attr("action", "withdraw"),
                 attr("receiver", receiver.to_string()),
