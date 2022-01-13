@@ -88,6 +88,21 @@ pub enum ContractError {
 
     #[error("InvalidReplyId")]
     InvalidReplyId {},
+
+    #[error("InvalidJSON")]
+    InvalidJSON {},
+
+    #[error("ParsingError")]
+    ParsingError { err: String },
+
+    #[error("InvalidJSONField")]
+    InvalidJSONField { key: String, expected: String },
+
+    #[error("MissingJSON")]
+    MissingJSON {},
+
+    #[error("NestedAndromedaMsg")]
+    NestedAndromedaMsg {},
 }
 
 impl From<FromUtf8Error> for ContractError {

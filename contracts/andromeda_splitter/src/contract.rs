@@ -1,5 +1,6 @@
 use crate::state::SPLITTER;
 use andromeda_protocol::{
+    communication::{AndromedaMsg, ExecuteMsg as AndrExecute},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -9,14 +10,14 @@ use andromeda_protocol::{
     operators::{execute_update_operators, query_is_operator},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
-    splitter::GetSplitterConfigResponse,
     splitter::{
         validate_recipient_list, AddressPercent, ExecuteMsg, InstantiateMsg, QueryMsg, Splitter,
     },
+    splitter::{GetSplitterConfigResponse, Recipient},
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128,
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
 };
 
 #[entry_point]
@@ -80,6 +81,19 @@ pub fn execute(
         ExecuteMsg::Send {} => execute_send(deps, info),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
+        ExecuteMsg::AndrMsg(msg) => execute_andromeda(deps, env, info, msg),
+    }
+}
+
+pub fn execute_andromeda(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(..) => execute_send(deps, info),
+        // _ => Ok(Response::default()),
     }
 }
 
@@ -122,10 +136,23 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
             remainder_funds[i].amount -= recip_coin.amount;
             vec_coin.push(recip_coin);
         }
-        submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: recipient_addr.addr.clone(),
-            amount: vec_coin,
-        })));
+        // ADO receivers must use AndromedaMsg::Receive to execute their functionality
+        // Others may just receive the funds
+        let msg = match &recipient_addr.recipient {
+            Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
+                contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),
+                msg: to_binary(&AndrExecute::AndrReceive(AndromedaMsg::Receive(
+                    recip.clone().msg,
+                )))?,
+                funds: vec_coin,
+            }),
+            Recipient::Addr(addr) => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: addr.clone(),
+                amount: vec_coin,
+            })),
+        };
+
+        submsg.push(msg);
     }
     remainder_funds = remainder_funds
         .into_iter()
@@ -258,7 +285,7 @@ mod tests {
         let msg = InstantiateMsg {
             address_list: None,
             recipients: vec![AddressPercent {
-                addr: String::from("Some Address"),
+                recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Uint128::from(100_u128),
             }],
         };
@@ -369,11 +396,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                addr: "address1".to_string(),
+                recipient: Recipient::from_string(String::from("addr1")),
                 percent: Uint128::from(40_u128),
             },
             AddressPercent {
-                addr: "address1".to_string(),
+                recipient: Recipient::from_string(String::from("addr1")),
                 percent: Uint128::from(60_u128),
             },
         ];
@@ -430,11 +457,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                addr: recip_address1.clone(),
+                recipient: Recipient::from_string(recip_address1.clone()),
                 percent: Uint128::from(recip_percent1),
             },
             AddressPercent {
-                addr: recip_address2.clone(),
+                recipient: Recipient::from_string(recip_address2.clone()),
                 percent: Uint128::from(recip_percent2),
             },
         ];
@@ -542,11 +569,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                addr: recip_address1,
+                recipient: Recipient::from_string(recip_address1),
                 percent: Uint128::from(recip_percent1),
             },
             AddressPercent {
-                addr: recip_address2,
+                recipient: Recipient::from_string(recip_address2),
                 percent: Uint128::from(recip_percent2),
             },
         ];
