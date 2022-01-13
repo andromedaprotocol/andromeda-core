@@ -1,5 +1,6 @@
 use andromeda_protocol::{
-    error::ContractError, ownership::ContractOwnerResponse, token::QueryMsg as TokenQueryMsg,
+    communication::AndromedaQuery, error::ContractError, ownership::ContractOwnerResponse,
+    token::QueryMsg as TokenQueryMsg,
 };
 use cosmwasm_std::{
     to_binary, DepsMut, QuerierWrapper, QueryRequest, StdResult, Storage, WasmQuery,
@@ -61,7 +62,7 @@ pub fn is_creator(deps: &DepsMut, symbol: String, address: String) -> Result<boo
 fn query_ado_owner(querier: QuerierWrapper, addr: String) -> Result<String, ContractError> {
     let res: ContractOwnerResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: addr,
-        msg: to_binary(&TokenQueryMsg::ContractOwner {})?,
+        msg: to_binary(&TokenQueryMsg::AndrQuery(AndromedaQuery::Owner {}))?,
     }))?;
 
     Ok(res.owner)
