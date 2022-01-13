@@ -1,3 +1,4 @@
+use crate::communication::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::{Event, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     /// Mint a new receipt. Only executable by the assigned `minter` address. Generates a receipt ID.
     StoreReceipt {
         receipt: Receipt,
@@ -48,6 +50,7 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// Query receipt by its generated ID.
     Receipt {
         receipt_id: Uint128,
