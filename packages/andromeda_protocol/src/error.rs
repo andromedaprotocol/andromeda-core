@@ -86,6 +86,9 @@ pub enum ContractError {
     #[error("InvalidMirrorFunds")]
     InvalidMirrorFunds { msg: String },
 
+    #[error("InvalidReplyId")]
+    InvalidReplyId {},
+
     #[error("InvalidJSON")]
     InvalidJSON {},
 

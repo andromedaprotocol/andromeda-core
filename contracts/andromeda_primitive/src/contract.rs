@@ -1,13 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
 use cw2::set_contract_version;
 
 use crate::state::{DATA, DEFAULT_KEY};
 use andromeda_protocol::{
-    communication::{parse_message, AndromedaMsg, AndromedaQuery},
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     operators::{execute_update_operators, initialize_operators, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
@@ -113,38 +111,32 @@ pub fn execute_delete_value(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
-        QueryMsg::GetValue { name } => to_binary(&query_value(deps, name)?),
+        QueryMsg::GetValue { name } => encode_binary(&query_value(deps, name)?),
     }
 }
 
-fn handle_andromeda_query(deps: Deps, env: Env, msg: AndromedaQuery) -> StdResult<Binary> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let received: Result<QueryMsg, ContractError> = parse_message(data);
-            if received.is_err() {
-                return Err(StdError::ParseErr {
-                    target_type: "QueryMsg".to_string(),
-                    msg: "Error unparsing binary".to_string(),
-                });
-            }
-            let received = received.unwrap();
+            let received: QueryMsg = parse_message(data)?;
             match received {
-                QueryMsg::AndrQuery(..) => Err(StdError::ParseErr {
-                    target_type: "QueryMsg".to_string(),
-                    msg: "Not allowed to have nested AndrQuery".to_string(),
-                }),
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
                 _ => query(deps, env, received),
             }
         }
-        AndromedaQuery::Owner {} => to_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => to_binary(&query_operators(deps)?),
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
     }
 }
 
-fn query_value(deps: Deps, name: Option<String>) -> StdResult<GetValueResponse> {
+fn query_value(deps: Deps, name: Option<String>) -> Result<GetValueResponse, ContractError> {
     let name = get_name_or_default(&name);
     let value = DATA.load(deps.storage, name)?;
     Ok(GetValueResponse {
@@ -451,7 +443,7 @@ mod tests {
             name: None,
             value: Primitive::String("value1".to_string()),
         };
-        let msg_binary = to_binary(&msg).unwrap();
+        let msg_binary = encode_binary(&msg).unwrap();
         let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(msg_binary)));
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         assert_eq!(
@@ -464,7 +456,7 @@ mod tests {
         );
 
         let msg = QueryMsg::GetValue { name: None };
-        let msg_binary = to_binary(&msg).unwrap();
+        let msg_binary = encode_binary(&msg).unwrap();
         let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(msg_binary)));
         let res: GetValueResponse =
             from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();

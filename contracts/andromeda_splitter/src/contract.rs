@@ -1,5 +1,6 @@
 use crate::state::SPLITTER;
 use andromeda_protocol::{
+    communication::encode_binary,
     communication::{AndromedaMsg, ExecuteMsg as AndrExecute},
     error::ContractError,
     modules::{
@@ -16,8 +17,8 @@ use andromeda_protocol::{
     splitter::{GetSplitterConfigResponse, Recipient},
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
+    attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 
 #[entry_point]
@@ -99,14 +100,16 @@ pub fn execute_andromeda(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(StdError::generic_err(msg.result.unwrap_err()));
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
     }
 
     match msg.id {
         REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
-        _ => Err(StdError::generic_err("reply id is invalid")),
+        _ => Err(ContractError::InvalidReplyId {}),
     }
 }
 
@@ -140,7 +143,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         let msg = match &recipient_addr.recipient {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),
-                msg: to_binary(&AndrExecute::AndrReceive(AndromedaMsg::Receive(
+                msg: encode_binary(&AndrExecute::AndrReceive(AndromedaMsg::Receive(
                     recip.clone().msg,
                 )))?,
                 funds: vec_coin,
@@ -249,15 +252,15 @@ fn execute_update_address_list(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetSplitterConfig {} => to_binary(&query_splitter(deps)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
+        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
+        QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
     }
 }
 
-fn query_splitter(deps: Deps) -> StdResult<GetSplitterConfigResponse> {
+fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError> {
     let splitter = SPLITTER.load(deps.storage)?;
     let address_list_contract = match splitter.clone().address_list {
         Some(addr_list) => addr_list.get_contract_address(deps.storage),

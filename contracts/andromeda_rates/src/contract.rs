@@ -1,11 +1,10 @@
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
+    communication::encode_binary,
     error::ContractError,
     rates::{ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
 };
-use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 #[entry_point]
 pub fn instantiate(
@@ -50,13 +49,13 @@ fn execute_update_rates(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::Payments {} => to_binary(&query_payments(deps)?),
+        QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
     }
 }
 
-fn query_payments(deps: Deps) -> StdResult<PaymentsResponse> {
+fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let rates = config.rates;
 
@@ -67,11 +66,12 @@ fn query_payments(deps: Deps) -> StdResult<PaymentsResponse> {
 mod tests {
     use crate::contract::{instantiate, query};
     use andromeda_protocol::{
+        communication::encode_binary,
         modules::{FlatRate, Rate},
         rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
     };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{to_binary, Addr, Uint128};
+    use cosmwasm_std::{Addr, Uint128};
 
     #[test]
     fn test_instantiate_query() {
@@ -107,7 +107,7 @@ mod tests {
 
         assert_eq!(
             payments,
-            to_binary(&PaymentsResponse { payments: rates }).unwrap()
+            encode_binary(&PaymentsResponse { payments: rates }).unwrap()
         );
 
         //Why does this test error?
