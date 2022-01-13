@@ -46,8 +46,6 @@ pub fn execute(
             receipt,
             receipt_id,
         } => execute_edit_receipt(deps, info, receipt_id, receipt),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
     }
 }
 
@@ -115,7 +113,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::Receipt { receipt_id } => encode_binary(&query_receipt(deps, receipt_id)?),
         QueryMsg::ContractInfo {} => encode_binary(&query_config(deps)?),
-        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
         QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
     }
 }

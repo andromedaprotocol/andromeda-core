@@ -37,14 +37,6 @@ pub enum ExecuteMsg {
         receipt_id: Uint128,
         receipt: Receipt,
     },
-    /// Update ownership of the contract. Only executable by the current contract owner.
-    UpdateOwner {
-        /// The address of the new contract owner.
-        address: String,
-    },
-    UpdateOperator {
-        operators: Vec<String>,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -57,8 +49,6 @@ pub enum QueryMsg {
     },
     /// The current contract config.
     ContractInfo {},
-    /// The current contract owner.
-    ContractOwner {},
     IsOperator {
         address: String,
     },
