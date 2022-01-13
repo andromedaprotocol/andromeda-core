@@ -83,6 +83,9 @@ pub enum ContractError {
     #[error("TokenIsArchived")]
     TokenIsArchived {},
 
+    #[error("MoreThanOneCoin")]
+    MoreThanOneCoin {},
+
     #[error("InvalidMirrorFunds")]
     InvalidMirrorFunds { msg: String },
 
