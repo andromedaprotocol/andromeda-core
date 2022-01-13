@@ -44,6 +44,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-mirror-wrapped-cdp"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.8.1",
+ "cw2",
+ "cw20",
+ "mirror-protocol",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "terraswap",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-primitive"
 version = "0.1.0"
 dependencies = [
@@ -64,7 +83,9 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
+ "cw20",
  "cw721",
+ "mirror-protocol",
  "schemars",
  "serde",
  "terra-cosmwasm",
@@ -514,6 +535,20 @@ name = "libc"
 version = "0.2.108"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8521a1b57e76b1ec69af7599e75e38e7b7fad6610f037db8c79b127201b5d119"
+
+[[package]]
+name = "mirror-protocol"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68b4a3ba65a8fd11cd24862cc49a2c4eebb98e8dfd38d43df72145cde19d9ca6"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw20",
+ "schemars",
+ "serde",
+ "terraswap",
+]
 
 [[package]]
 name = "opaque-debug"

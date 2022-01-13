@@ -3,7 +3,7 @@ use crate::state::{
 };
 use andromeda_protocol::{
     error::ContractError,
-    operators::{execute_update_operators, query_is_operator},
+    operators::{execute_update_operators, initialize_operators, query_is_operator},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     receipt::{
         Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
@@ -23,16 +23,10 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    store_config(
-        deps.storage,
-        &Config {
-            minter: msg.minter,
-            moderators: match msg.moderators {
-                Some(moderators) => moderators,
-                None => vec![],
-            },
-        },
-    )?;
+    store_config(deps.storage, &Config { minter: msg.minter })?;
+    if let Some(operators) = msg.operators {
+        initialize_operators(deps.storage, operators)?;
+    }
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::default()
         .add_attributes(vec![attr("action", "instantiate"), attr("type", "receipt")]))
@@ -99,7 +93,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Receipt { receipt_id } => to_binary(&query_receipt(deps, receipt_id)?),
         QueryMsg::ContractInfo {} => to_binary(&query_config(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
     }
 }
 
@@ -130,7 +124,7 @@ mod tests {
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {
             minter: owner.to_string(),
-            moderators: None,
+            operators: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -145,7 +139,6 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
         let config = Config {
             minter: owner.to_string(),
-            moderators: vec![],
         };
         store_config(deps.as_mut().storage, &config).unwrap();
         CONTRACT_OWNER
@@ -159,7 +152,7 @@ mod tests {
         let res_unauth = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
         assert_eq!(res_unauth, ContractError::Unauthorized {});
 
-        //add address for registered moderator
+        //add address for registered operator
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             Response::new().add_attributes(vec![
@@ -179,7 +172,6 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
         let config = Config {
             minter: owner.to_string(),
-            moderators: vec![],
         };
 
         CONTRACT_OWNER

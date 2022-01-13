@@ -15,7 +15,7 @@ fn test_instantiate() {
     let address_list = Some(AddressListModule {
         address: None,
         code_id: Some(1u64),
-        moderators: Some(vec!["creator".to_string()]),
+        operators: Some(vec!["creator".to_string()]),
         inclusive: true,
     });
     let msg = InstantiateMsg {
@@ -41,7 +41,7 @@ fn test_instantiate() {
                 funds: vec![],
                 label: String::from("Address list instantiation"),
                 msg: to_binary(&AddressListInstantiateMsg {
-                    moderators: vec!["creator".to_string()],
+                    operators: vec!["creator".to_string()],
                 })
                 .unwrap(),
             }),

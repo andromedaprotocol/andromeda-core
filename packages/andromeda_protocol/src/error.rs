@@ -85,6 +85,9 @@ pub enum ContractError {
 
     #[error("MoreThanOneCoin")]
     MoreThanOneCoin {},
+
+    #[error("InvalidMirrorFunds")]
+    InvalidMirrorFunds { msg: String },
 }
 
 impl From<FromUtf8Error> for ContractError {

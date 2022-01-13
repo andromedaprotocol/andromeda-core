@@ -1,6 +1,8 @@
-use crate::msg::{ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo};
 use crate::state::{Config, CONFIG};
-use andromeda_protocol::error::ContractError;
+use andromeda_protocol::{
+    error::ContractError,
+    rates::{ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
+};
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
@@ -64,8 +66,10 @@ fn query_payments(deps: Deps) -> StdResult<PaymentsResponse> {
 #[cfg(test)]
 mod tests {
     use crate::contract::{instantiate, query};
-    use crate::msg::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo};
-    use andromeda_protocol::modules::{FlatRate, Rate};
+    use andromeda_protocol::{
+        modules::{FlatRate, Rate},
+        rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
+    };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{to_binary, Addr, Uint128};
 

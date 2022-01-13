@@ -18,7 +18,6 @@ use cosmwasm_std::{
     attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128,
 };
-// use std::collections::HashMap;
 
 #[entry_point]
 pub fn instantiate(
@@ -155,7 +154,7 @@ fn execute_update_recipients(
     recipients: Vec<AddressPercent>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -178,7 +177,7 @@ fn execute_update_lock(
     lock: bool,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut splitter = SPLITTER.load(deps.storage)?;
@@ -198,7 +197,7 @@ fn execute_update_address_list(
     address_list: Option<AddressListModule>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -226,7 +225,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetSplitterConfig {} => to_binary(&query_splitter(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
     }
 }
 
@@ -330,7 +329,7 @@ mod tests {
         let address_list = AddressListModule {
             address: Some(String::from("terra1contractaddress")),
             code_id: Some(1),
-            moderators: Some(vec![String::from("moderator1")]),
+            operators: Some(vec![String::from("operator1")]),
             inclusive: true,
         };
         let msg = ExecuteMsg::UpdateAddressList {
@@ -495,7 +494,7 @@ mod tests {
             address_list: Some(AddressListModule {
                 address: Some(String::from("somecontractaddress")),
                 code_id: None,
-                moderators: None,
+                operators: None,
                 inclusive: false,
             }),
         };

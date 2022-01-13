@@ -34,7 +34,7 @@ fn test_token_modules() {
     let royality_receivers = vec!["royality_recever1".to_string()];
     let modules = vec![
         ModuleDefinition::Whitelist {
-            moderators: Some(vec![sender.to_string()]),
+            operators: Some(vec![sender.to_string()]),
             address: None,
             code_id: Some(ADDRESS_LIST_CODE_ID),
         },
@@ -51,7 +51,7 @@ fn test_token_modules() {
         ModuleDefinition::Receipt {
             address: Some("receipt_contract_address".to_string()),
             code_id: Some(2u64), //contract code_id
-            moderators: Some(vec![sender.to_string()]),
+            operators: Some(vec![sender.to_string()]),
         },
     ];
     let msg = InstantiateMsg {
@@ -73,7 +73,7 @@ fn test_token_modules() {
                 funds: vec![],
                 label: String::from("Address list instantiation"),
                 msg: to_binary(&AddressListInstantiateMsg {
-                    moderators: vec![sender.to_string()],
+                    operators: vec![sender.to_string()],
                 })
                 .unwrap(),
             }),

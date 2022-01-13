@@ -168,7 +168,7 @@ fn execute_update_address_list(
 ) -> Result<Response, ContractError> {
     let mut state = STATE.load(deps.storage)?;
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -192,7 +192,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetLockedFunds { address } => to_binary(&query_held_funds(deps, address)?),
         QueryMsg::GetTimelockConfig {} => to_binary(&query_config(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
     }
 }
 
@@ -259,7 +259,7 @@ mod tests {
             recipient: None,
         };
 
-        //add address for registered moderator
+        //add address for registered operator
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let expected = Response::default().add_attributes(vec![
@@ -300,7 +300,7 @@ mod tests {
             recipient: None,
         };
 
-        //add address for registered moderator
+        //add address for registered operator
         let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let info = mock_info(owner, &[coin(100u128, "uluna")]);
@@ -327,7 +327,7 @@ mod tests {
             recipient: None,
         };
 
-        //add address for registered moderator
+        //add address for registered operator
         let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let info = mock_info(owner, &[coin(100u128, "uluna")]);
@@ -351,7 +351,7 @@ mod tests {
             expiration: Some(Expiration::AtHeight(10000000)),
             recipient: None,
         };
-        //add address for registered moderator
+        //add address for registered operator
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::ReleaseFunds {};
@@ -378,7 +378,7 @@ mod tests {
         let address_list = AddressListModule {
             address: Some(String::from("terra1contractaddress")),
             code_id: Some(1),
-            moderators: Some(vec![String::from("moderator1")]),
+            operators: Some(vec![String::from("operator1")]),
             inclusive: true,
         };
         let msg = ExecuteMsg::UpdateAddressList {

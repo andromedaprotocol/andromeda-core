@@ -22,14 +22,14 @@ pub const ADDRESS_LIST_CONTRACT: Item<String> = Item::new("addresslistcontract")
 pub const REPLY_ADDRESS_LIST: u64 = 2;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-/// A struct used to define the Address List module. Can be defined by providing either a contract address or the combination of a code ID and a vector of moderators.
+/// A struct used to define the Address List module. Can be defined by providing either a contract address or the combination of a code ID and a vector of operators.
 pub struct AddressListModule {
     /// The address of the module contract
     pub address: Option<String>,
     /// The code ID for the module contract
     pub code_id: Option<u64>,
-    /// An optional vector of addresses to assign as moderators
-    pub moderators: Option<Vec<String>>,
+    /// An optional vector of addresses to assign as operators
+    pub operators: Option<Vec<String>>,
     /// Whether the address list is inclusive, true = whitelist, false = blacklist
     pub inclusive: bool,
 }
@@ -70,7 +70,7 @@ impl Module for AddressListModule {
         let opposite_module = AddressListModule {
             address: self.address.clone(),
             code_id: self.code_id,
-            moderators: self.moderators.clone(),
+            operators: self.operators.clone(),
             inclusive: !self.inclusive,
         };
         let mut includes_opposite = all_modules;
@@ -82,8 +82,8 @@ impl Module for AddressListModule {
         )?;
 
         require(
-            self.address.is_some() || (self.code_id.is_some() && self.moderators.is_some()),
-            ContractError::Std(StdError::generic_err("Address list must include either a contract address or a code id and moderator list")),
+            self.address.is_some() || (self.code_id.is_some() && self.operators.is_some()),
+            ContractError::Std(StdError::generic_err("Address list must include either a contract address or a code id and operator list")),
         )?;
 
         Ok(true)
@@ -93,12 +93,12 @@ impl Module for AddressListModule {
             true => ModuleDefinition::Whitelist {
                 address: self.address.clone(),
                 code_id: self.code_id,
-                moderators: self.moderators.clone(),
+                operators: self.operators.clone(),
             },
             false => ModuleDefinition::Blacklist {
                 address: self.address.clone(),
                 code_id: self.code_id,
-                moderators: self.moderators.clone(),
+                operators: self.operators.clone(),
             },
         }
     }
@@ -127,7 +127,7 @@ impl MessageHooks for AddressListModule {
                 funds: vec![],
                 label: String::from("Address list instantiation"),
                 msg: to_binary(&AddressListInstantiateMsg {
-                    moderators: self.moderators.clone().unwrap(),
+                    operators: self.operators.clone().unwrap(),
                 })?,
             };
 
@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn test_validate() {
         let al = AddressListModule {
-            moderators: Some(vec![]),
+            operators: Some(vec![]),
             address: None,
             code_id: Some(1),
             inclusive: true,
@@ -194,7 +194,7 @@ mod tests {
         assert_eq!(al.validate(modules.to_vec()), Ok(true));
 
         modules.push(ModuleDefinition::Whitelist {
-            moderators: Some(vec![]),
+            operators: Some(vec![]),
             address: None,
             code_id: None,
         });
@@ -212,7 +212,7 @@ mod tests {
                 description: None,
             },
             ModuleDefinition::Blacklist {
-                moderators: Some(vec![]),
+                operators: Some(vec![]),
                 address: None,
                 code_id: None,
             },
@@ -232,7 +232,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info(sender, &[]);
         let invalid_addresslist = AddressListModule {
-            moderators: Some(vec![]),
+            operators: Some(vec![]),
             address: Some(String::from("addresslist_contract_address2")),
             code_id: None,
             inclusive: true,
@@ -245,7 +245,7 @@ mod tests {
         assert_eq!(resp, ContractError::Unauthorized {});
 
         let valid_addresslist = AddressListModule {
-            moderators: Some(vec![]),
+            operators: Some(vec![]),
             address: Some(String::from("addresslist_contract_address1")),
             code_id: None,
             inclusive: true,

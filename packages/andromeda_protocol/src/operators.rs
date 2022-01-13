@@ -1,4 +1,4 @@
-use cosmwasm_std::{attr, Deps, DepsMut, MessageInfo, Order, Response, StdResult};
+use cosmwasm_std::{attr, Deps, DepsMut, MessageInfo, Order, Response, StdResult, Storage};
 
 use crate::error::ContractError;
 use crate::ownership::is_contract_owner;
@@ -7,7 +7,14 @@ use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub const OPERATORS: Map<String, bool> = Map::new("operators");
+pub const OPERATORS: Map<&str, bool> = Map::new("operators");
+
+/// Helper function to query if a given address is a operator.
+///
+/// Returns a boolean value indicating if the given address is a operator.
+pub fn is_operator(storage: &dyn Storage, addr: &str) -> StdResult<bool> {
+    Ok(OPERATORS.may_load(storage, addr)?.is_some())
+}
 
 pub fn execute_update_operators(
     deps: DepsMut,
@@ -15,7 +22,7 @@ pub fn execute_update_operators(
     operators: Vec<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -23,17 +30,24 @@ pub fn execute_update_operators(
         .keys(deps.storage, None, None, Order::Ascending)
         .collect();
     for key in keys.iter() {
-        OPERATORS.remove(deps.storage, String::from_utf8(key.clone())?);
+        OPERATORS.remove(deps.storage, &String::from_utf8(key.clone())?);
     }
 
-    for x in operators.iter() {
-        OPERATORS.save(deps.storage, x.clone(), &true)?;
+    for op in operators.iter() {
+        OPERATORS.save(deps.storage, op, &true)?;
     }
 
     Ok(Response::new().add_attributes(vec![attr("action", "update_operators")]))
 }
 
-pub fn query_is_operator(deps: Deps, addr: String) -> StdResult<IsOperatorResponse> {
+pub fn initialize_operators(storage: &mut dyn Storage, operators: Vec<String>) -> StdResult<()> {
+    for operator in operators.iter() {
+        OPERATORS.save(storage, operator, &true)?;
+    }
+    Ok(())
+}
+
+pub fn query_is_operator(deps: Deps, addr: &str) -> StdResult<IsOperatorResponse> {
     let operator = OPERATORS.may_load(deps.storage, addr)?;
     Ok(IsOperatorResponse {
         is_operator: operator.is_some(),
@@ -77,16 +91,16 @@ mod tests {
         let expected = Response::new().add_attributes(vec![attr("action", "update_operators")]);
         assert_eq!(resp, expected);
         //check
-        let query_resp = query_is_operator(deps.as_ref(), "operator_001".to_string()).unwrap();
+        let query_resp = query_is_operator(deps.as_ref(), "operator_001").unwrap();
         assert!(query_resp.is_operator);
 
         //update another operators
         let _ = execute_update_operators(deps.as_mut(), auth_info, vec!["another".to_string()])
             .unwrap();
         //check to be removed operator_000, operator_001
-        let query_resp = query_is_operator(deps.as_ref(), "operator_001".to_string()).unwrap();
+        let query_resp = query_is_operator(deps.as_ref(), "operator_001").unwrap();
         assert!(!query_resp.is_operator);
-        let query_resp = query_is_operator(deps.as_ref(), "operator_000".to_string()).unwrap();
+        let query_resp = query_is_operator(deps.as_ref(), "operator_000").unwrap();
         assert!(!query_resp.is_operator);
     }
 }

@@ -90,29 +90,29 @@ pub fn create(
         .map(|m| match m {
             ModuleDefinition::Whitelist {
                 address,
-                moderators,
+                operators,
                 code_id: _,
             } => ModuleDefinition::Whitelist {
                 address: address.clone(),
-                moderators: moderators.clone(),
+                operators: operators.clone(),
                 code_id: Some(read_code_id(deps.storage, "address_list".to_string()).unwrap()),
             },
             ModuleDefinition::Blacklist {
                 address,
-                moderators,
+                operators,
                 code_id: _,
             } => ModuleDefinition::Blacklist {
                 address: address.clone(),
-                moderators: moderators.clone(),
+                operators: operators.clone(),
                 code_id: Some(read_code_id(deps.storage, "address_list".to_string()).unwrap()),
             },
             ModuleDefinition::Receipt {
                 address,
-                moderators,
+                operators,
                 code_id: _,
             } => ModuleDefinition::Receipt {
                 address: address.clone(),
-                moderators: moderators.clone(),
+                operators: operators.clone(),
                 code_id: Some(read_code_id(deps.storage, "receipt".to_string()).unwrap()),
             },
             _ => m.clone(),
@@ -165,7 +165,7 @@ pub fn update_address(
 ) -> Result<Response, ContractError> {
     require(
         is_creator(&deps, symbol.clone(), info.sender.to_string())?
-            || is_contract_owner(deps.storage, info.sender.to_string())?,
+            || is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -182,7 +182,7 @@ pub fn add_update_code_id(
     code_id: u64,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     store_code_id(deps.storage, code_id_key.clone(), code_id)?;
@@ -200,7 +200,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetAddress { symbol } => to_binary(&query_address(deps, symbol)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
         QueryMsg::CodeId { key } => to_binary(&query_code_id(deps, key)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address)?),
+        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
     }
 }
 

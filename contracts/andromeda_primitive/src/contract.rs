@@ -52,14 +52,14 @@ pub fn execute_set_value(
     value: Primitive,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     if value.is_invalid() {
         return Err(ContractError::InvalidPrimitive {});
     }
     let name: &str = get_name_or_default(&name);
-    DATA.update::<_, StdError>(deps.storage, &name, |old| match old {
+    DATA.update::<_, StdError>(deps.storage, name, |old| match old {
         Some(_) => Ok(value.clone()),
         None => Ok(value.clone()),
     })?;
@@ -77,7 +77,7 @@ pub fn execute_delete_value(
     name: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.to_string())?,
+        is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let name = get_name_or_default(&name);
@@ -108,7 +108,7 @@ fn query_value(deps: Deps, name: Option<String>) -> StdResult<GetValueResponse> 
 fn get_name_or_default(name: &Option<String>) -> &str {
     match name {
         None => DEFAULT_KEY,
-        Some(s) => &s,
+        Some(s) => s,
     }
 }
 

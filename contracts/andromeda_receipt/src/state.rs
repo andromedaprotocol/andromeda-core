@@ -1,4 +1,5 @@
 use andromeda_protocol::{
+    operators::is_operator,
     ownership::is_contract_owner,
     receipt::{Config, Receipt},
 };
@@ -15,9 +16,7 @@ pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()>
 
 pub fn can_mint_receipt(storage: &dyn Storage, addr: &str) -> StdResult<bool> {
     let config = CONFIG.load(storage)?;
-    Ok(is_contract_owner(storage, addr.to_string())?
-        || addr.eq(&config.minter)
-        || config.moderators.contains(&addr.to_string()))
+    Ok(is_contract_owner(storage, addr)? || addr.eq(&config.minter) || is_operator(storage, addr)?)
 }
 
 // increase receipt ID
@@ -47,6 +46,7 @@ pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Rec
 
 #[cfg(test)]
 mod tests {
+    use andromeda_protocol::operators::OPERATORS;
     use andromeda_protocol::ownership::CONTRACT_OWNER;
     use cosmwasm_std::{testing::mock_dependencies, Addr};
 
@@ -55,15 +55,17 @@ mod tests {
     #[test]
     fn test_can_mint() {
         let minter = String::from("minter");
-        let moderator = String::from("moderator");
+        let operator = String::from("operator");
         let owner = String::from("owner");
         let anyone = String::from("anyone");
 
         let config = Config {
             minter: minter.clone(),
-            moderators: vec![moderator.clone()],
         };
         let mut deps = mock_dependencies(&[]);
+        OPERATORS
+            .save(deps.as_mut().storage, &operator, &true)
+            .unwrap();
 
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
@@ -79,7 +81,7 @@ mod tests {
         let minter_resp = can_mint_receipt(deps.as_ref().storage, &minter).unwrap();
         assert!(minter_resp);
 
-        let moderator_resp = can_mint_receipt(deps.as_ref().storage, &moderator).unwrap();
-        assert!(moderator_resp);
+        let operator_resp = can_mint_receipt(deps.as_ref().storage, &operator).unwrap();
+        assert!(operator_resp);
     }
 }

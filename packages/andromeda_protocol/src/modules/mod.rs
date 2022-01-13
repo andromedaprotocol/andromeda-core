@@ -73,8 +73,8 @@ pub enum ModuleDefinition {
         address: Option<String>,
         /// A valid code ID for the module contract. Used upon contract instantiation to instantiate a new module contract.
         code_id: Option<u64>,
-        /// A vector of contract moderators. Used in combination with a valid `code_id` parameter
-        moderators: Option<Vec<String>>,
+        /// A vector of contract operators. Used in combination with a valid `code_id` parameter
+        operators: Option<Vec<String>>,
     },
     /// A blacklist module
     Blacklist {
@@ -82,8 +82,8 @@ pub enum ModuleDefinition {
         address: Option<String>,
         /// A valid code ID for the module contract. Used upon contract instantiation to instantiate a new module contract.
         code_id: Option<u64>,
-        /// A vector of contract moderators. Used in combination with a valid `code_id` parameter
-        moderators: Option<Vec<String>>,
+        /// A vector of contract operators. Used in combination with a valid `code_id` parameter
+        operators: Option<Vec<String>>,
     },
     /// A tax module. Required payments are paid by the purchaser.
     Taxable {
@@ -109,8 +109,8 @@ pub enum ModuleDefinition {
         address: Option<String>,
         /// A valid code ID for the module contract. Used upon contract instantiation to instantiate a new module contract.
         code_id: Option<u64>,
-        /// A vector of contract moderators. Used in combination with a valid `code_id` parameter
-        moderators: Option<Vec<String>>,
+        /// A vector of contract operators. Used in combination with a valid `code_id` parameter
+        operators: Option<Vec<String>>,
     },
 }
 
@@ -137,9 +137,9 @@ impl ModuleDefinition {
             ModuleDefinition::Whitelist {
                 address,
                 code_id,
-                moderators,
+                operators,
             } => Box::from(AddressListModule {
-                moderators: moderators.clone(),
+                operators: operators.clone(),
                 address: address.clone(),
                 // [MOD-01] Dereferencing the borrows and removing clone for u64.
                 code_id: *code_id,
@@ -148,9 +148,9 @@ impl ModuleDefinition {
             ModuleDefinition::Blacklist {
                 address,
                 code_id,
-                moderators,
+                operators,
             } => Box::from(AddressListModule {
-                moderators: moderators.clone(),
+                operators: operators.clone(),
                 address: address.clone(),
                 code_id: *code_id,
                 inclusive: false,
@@ -174,11 +174,11 @@ impl ModuleDefinition {
                 description: description.clone(),
             }),
             ModuleDefinition::Receipt {
-                moderators,
+                operators,
                 address,
                 code_id,
             } => Box::from(ReceiptModule {
-                moderators: moderators.clone(),
+                operators: operators.clone(),
                 address: address.clone(),
                 code_id: *code_id,
             }),
