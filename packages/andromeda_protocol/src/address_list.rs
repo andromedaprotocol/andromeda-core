@@ -1,3 +1,4 @@
+use crate::error::ContractError;
 use cosmwasm_std::{to_binary, QuerierWrapper, QueryRequest, StdResult, Storage, WasmQuery};
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
@@ -37,7 +38,7 @@ pub fn query_includes_address(
     querier: QuerierWrapper,
     contract_addr: String,
     address: String,
-) -> StdResult<bool> {
+) -> Result<bool, ContractError> {
     let res: IncludesAddressResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr,
         msg: to_binary(&QueryMsg::IncludesAddress { address })?,

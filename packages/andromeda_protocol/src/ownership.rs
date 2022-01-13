@@ -36,7 +36,7 @@ pub fn execute_update_owner(
     ]))
 }
 
-pub fn query_contract_owner(deps: Deps) -> StdResult<ContractOwnerResponse> {
+pub fn query_contract_owner(deps: Deps) -> Result<ContractOwnerResponse, ContractError> {
     let owner = CONTRACT_OWNER.load(deps.storage)?;
 
     Ok(ContractOwnerResponse {

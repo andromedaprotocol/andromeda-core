@@ -1,14 +1,12 @@
-use andromeda_protocol::{response::get_reply_address, token::QueryMsg};
-use cosmwasm_std::{
-    to_binary, DepsMut, QuerierWrapper, QueryRequest, Reply, Response, StdResult, WasmQuery,
-};
+use andromeda_protocol::{error::ContractError, response::get_reply_address, token::QueryMsg};
+use cosmwasm_std::{to_binary, DepsMut, QuerierWrapper, QueryRequest, Reply, Response, WasmQuery};
 use cw721::ContractInfoResponse;
 
 use crate::state::store_address;
 
 pub const REPLY_CREATE_TOKEN: u64 = 1;
 
-pub fn on_token_creation_reply(deps: DepsMut, msg: Reply) -> StdResult<Response> {
+pub fn on_token_creation_reply(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
     let token_addr = get_reply_address(&msg)?;
     let info = query_token_config(deps.querier, token_addr.to_string())?;
 
@@ -17,7 +15,10 @@ pub fn on_token_creation_reply(deps: DepsMut, msg: Reply) -> StdResult<Response>
     Ok(Response::new())
 }
 
-fn query_token_config(querier: QuerierWrapper, addr: String) -> StdResult<ContractInfoResponse> {
+fn query_token_config(
+    querier: QuerierWrapper,
+    addr: String,
+) -> Result<ContractInfoResponse, ContractError> {
     let res: ContractInfoResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: addr,
         msg: to_binary(&QueryMsg::ContractInfo {})?,

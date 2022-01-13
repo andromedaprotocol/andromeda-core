@@ -5,6 +5,7 @@ use crate::{
     },
 };
 use andromeda_protocol::{
+    communication::encode_binary,
     error::ContractError,
     factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     modules::ModuleDefinition,
@@ -14,8 +15,8 @@ use andromeda_protocol::{
     token::InstantiateMsg as TokenInstantiateMsg,
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
-    Response, StdError, StdResult, SubMsg, WasmMsg,
+    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError,
+    SubMsg, WasmMsg,
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -32,14 +33,16 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(StdError::generic_err(msg.result.unwrap_err()));
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
     }
 
     match msg.id {
         REPLY_CREATE_TOKEN => on_token_creation_reply(deps, msg),
-        _ => Err(StdError::generic_err("reply id is invalid")),
+        _ => Err(ContractError::InvalidReplyId {}),
     }
 }
 
@@ -138,7 +141,7 @@ pub fn create(
         code_id: read_code_id(deps.storage, "token".to_string())?,
         funds: vec![],
         label: String::from("Address list instantiation"),
-        msg: to_binary(&token_inst_msg)?,
+        msg: encode_binary(&token_inst_msg)?,
     };
 
     let msg = SubMsg {
@@ -195,21 +198,21 @@ pub fn add_update_code_id(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetAddress { symbol } => to_binary(&query_address(deps, symbol)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::CodeId { key } => to_binary(&query_code_id(deps, key)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::GetAddress { symbol } => encode_binary(&query_address(deps, symbol)?),
+        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
+        QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
+        QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
     }
 }
 
-fn query_address(deps: Deps, symbol: String) -> StdResult<AddressResponse> {
+fn query_address(deps: Deps, symbol: String) -> Result<AddressResponse, ContractError> {
     let address = read_address(deps.storage, symbol)?;
     Ok(AddressResponse { address })
 }
 
-fn query_code_id(deps: Deps, key: String) -> StdResult<CodeIdResponse> {
+fn query_code_id(deps: Deps, key: String) -> Result<CodeIdResponse, ContractError> {
     let code_id = read_code_id(deps.storage, key)?;
     Ok(CodeIdResponse { code_id })
 }
@@ -293,7 +296,7 @@ mod tests {
             code_id: TOKEN_CODE_ID,
             funds: vec![],
             label: String::from("Address list instantiation"),
-            msg: to_binary(&token_inst_msg).unwrap(),
+            msg: encode_binary(&token_inst_msg).unwrap(),
         };
 
         let expected_msg = SubMsg {
