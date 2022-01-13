@@ -2,7 +2,7 @@ use cosmwasm_std::{from_binary, to_binary, Binary};
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::error::ContractError;
+use crate::{common::unwrap_or_err, error::ContractError};
 
 pub mod msg;
 
@@ -10,6 +10,8 @@ pub mod msg;
 #[serde(rename_all = "snake_case")]
 pub enum AndromedaMsg {
     Receive(Option<Binary>),
+    UpdateOwner { address: String },
+    UpdateOperators { operators: Vec<String> },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -37,6 +39,11 @@ where
             err: err.to_string(),
         }),
     }
+}
+
+pub fn parse_message<T: DeserializeOwned>(data: Option<Binary>) -> Result<T, ContractError> {
+    let data = unwrap_or_err(data, ContractError::MissingJSON {})?;
+    parse_struct::<T>(&data)
 }
 
 pub fn encode_binary<T>(val: &T) -> Result<Binary, ContractError>

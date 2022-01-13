@@ -6,8 +6,7 @@ use cw721::Expiration;
 
 use crate::state::{State, STATE};
 use andromeda_protocol::{
-    common::unwrap_or_err,
-    communication::{encode_binary, parse_struct, AndromedaMsg},
+    communication::{encode_binary, parse_message, AndromedaMsg},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -83,11 +82,9 @@ pub fn execute(
             recipient,
         } => execute_hold_funds(deps, info, env, expiration, recipient),
         ExecuteMsg::ReleaseFunds {} => execute_release_funds(deps, env, info),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateAddressList { address_list } => {
             execute_update_address_list(deps, info, env, address_list)
         }
-        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
         ExecuteMsg::AndrReceive(msg) => execute_receive(deps, env, info, msg),
     }
 }
@@ -100,13 +97,16 @@ fn execute_receive(
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(data) => {
-            let data_string = unwrap_or_err(data, ContractError::MissingJSON {})?;
-            let received: ExecuteMsg = parse_struct(&data_string)?;
+            let received: ExecuteMsg = parse_message(data)?;
 
             match received {
                 ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
                 _ => execute(deps, env, info, received),
             }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
         }
     }
 }

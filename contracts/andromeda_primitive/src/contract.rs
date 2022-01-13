@@ -5,8 +5,9 @@ use cw2::set_contract_version;
 
 use crate::state::{DATA, DEFAULT_KEY};
 use andromeda_protocol::{
-    communication::encode_binary,
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
+    operators::{execute_update_operators, initialize_operators, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, Primitive, QueryMsg},
     require,
@@ -21,8 +22,9 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    initialize_operators(deps.storage, msg.operators)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new()
@@ -33,14 +35,35 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AndrReceive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::SetValue { name, value } => execute_set_value(deps, info, name, value),
         ExecuteMsg::DeleteValue { name } => execute_delete_value(deps, info, name),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+    }
+}
+
+fn execute_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
+        }
     }
 }
 
@@ -88,10 +111,32 @@ pub fn execute_delete_value(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::GetValue { name } => encode_binary(&query_value(deps, name)?),
-        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
+    }
+}
+
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => match data {
+            // Treat no binary as request to get value with default key.
+            None => encode_binary(&query_value(deps, None)?),
+            Some(_) => {
+                let received: QueryMsg = parse_message(data)?;
+                match received {
+                    QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                    _ => query(deps, env, received),
+                }
+            }
+        },
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
     }
 }
 
@@ -125,7 +170,7 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -137,7 +182,7 @@ mod tests {
     fn set_and_update_value_with_name() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -191,7 +236,7 @@ mod tests {
     fn set_and_update_value_without_name() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -243,7 +288,7 @@ mod tests {
     fn cannot_set_nested_vector_primitive() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -262,7 +307,7 @@ mod tests {
     fn delete_value_with_name() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -310,7 +355,7 @@ mod tests {
     fn delete_value_without_name() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -349,7 +394,7 @@ mod tests {
     fn non_creator_cannot_set_value() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -369,7 +414,7 @@ mod tests {
     fn non_creator_cannot_delete_value() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -386,5 +431,58 @@ mod tests {
         let res: Result<Response, ContractError> =
             execute(deps.as_mut(), mock_env(), user1.clone(), msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_receive() {
+        let mut deps = mock_dependencies(&[]);
+
+        let msg = InstantiateMsg { operators: vec![] };
+        let info = mock_info("creator", &[]);
+
+        // we can just call .unwrap() to assert this was a success
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let msg = ExecuteMsg::SetValue {
+            name: None,
+            value: Primitive::String("value1".to_string()),
+        };
+        let msg_binary = encode_binary(&msg).unwrap();
+        let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(msg_binary)));
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(
+            Response::new()
+                .add_attribute("method", "set_value")
+                .add_attribute("sender", "creator")
+                .add_attribute("name", DEFAULT_KEY)
+                .add_attribute("value", "String(\"value1\")"),
+            res
+        );
+
+        // Try querying by sending explicit message.
+        let msg = QueryMsg::GetValue { name: None };
+        let msg_binary = encode_binary(&msg).unwrap();
+        let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(msg_binary)));
+        let res: GetValueResponse =
+            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        assert_eq!(
+            GetValueResponse {
+                name: DEFAULT_KEY.to_string(),
+                value: Primitive::String("value1".to_string())
+            },
+            res
+        );
+
+        // Try querying by not providing any binary.
+        let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(None));
+        let res: GetValueResponse =
+            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        assert_eq!(
+            GetValueResponse {
+                name: DEFAULT_KEY.to_string(),
+                value: Primitive::String("value1".to_string())
+            },
+            res
+        );
     }
 }
