@@ -26,29 +26,25 @@ pub fn instantiate(
 #[entry_point]
 pub fn execute(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, info, msg),
         ExecuteMsg::UpdateRates { rates } => execute_update_rates(deps, info, rates),
     }
 }
 
 fn execute_andr_receive(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
+            let rates: Vec<RateInfo> = parse_message(data)?;
+            execute_update_rates(deps, info, rates)
         }
         AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         AndromedaMsg::UpdateOperators { operators } => {
@@ -73,26 +69,16 @@ fn execute_update_rates(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
         QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
     }
 }
 
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
     match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
-        }
+        AndromedaQuery::Get(_) => encode_binary(&query_payments(deps)?),
         AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
         AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
     }
@@ -107,9 +93,10 @@ fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::contract::{instantiate, query};
+    use super::*;
+    use crate::contract::{execute, instantiate, query};
     use andromeda_protocol::{
-        communication::encode_binary,
+        communication::{encode_binary, AndromedaMsg, AndromedaQuery},
         modules::{FlatRate, Rate},
         rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
     };
@@ -154,7 +141,52 @@ mod tests {
         );
 
         //Why does this test error?
-        // let payments = query(deps.as_ref(), env.clone(), QueryMsg::Payments {}).is_err();
-        // assert_eq!(payments, true);
+        //let payments = query(deps.as_ref(), mock_env(), QueryMsg::Payments {}).is_err();
+        //assert_eq!(payments, true);
+    }
+
+    #[test]
+    fn test_andr_receive() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let owner = "owner";
+        let info = mock_info(owner, &[]);
+        let rates = vec![
+            RateInfo {
+                rate: Rate::Percent(10),
+                is_additive: true,
+                description: Some("desc1".to_string()),
+                receivers: vec![Addr::unchecked("")],
+            },
+            RateInfo {
+                rate: Rate::Flat(FlatRate {
+                    amount: Uint128::from(10u128),
+                    denom: "uusd".to_string(),
+                }),
+                is_additive: false,
+                description: Some("desc2".to_string()),
+                receivers: vec![Addr::unchecked("")],
+            },
+        ];
+        let msg = InstantiateMsg { rates: vec![] };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let msg =
+            ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(encode_binary(&rates).unwrap())));
+
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(
+            Response::new().add_attributes(vec![attr("action", "update_rates")]),
+            res
+        );
+
+        let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(None));
+
+        let payments = query(deps.as_ref(), env, msg).unwrap();
+
+        assert_eq!(
+            payments,
+            encode_binary(&PaymentsResponse { payments: rates }).unwrap()
+        );
     }
 }
