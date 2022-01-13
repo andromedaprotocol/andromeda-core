@@ -1,4 +1,4 @@
-use cosmwasm_std::{from_binary, Binary};
+use cosmwasm_std::{from_binary, to_binary, Binary};
 use schemars::{JsonSchema, _serde_json::to_string as serde_to_string};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -51,12 +51,12 @@ where
     }
 }
 
-pub fn to_json_string<T>(val: &T) -> Result<String, ContractError>
+pub fn encode_binary<T>(val: &T) -> Result<Binary, ContractError>
 where
     T: Serialize,
 {
-    match serde_to_string(val) {
-        Ok(val_string) => Ok(val_string),
+    match to_binary(val) {
+        Ok(encoded_val) => Ok(encoded_val),
         Err(err) => Err(ContractError::ParsingError {
             err: err.to_string(),
         }),
