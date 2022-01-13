@@ -1,5 +1,6 @@
 use crate::state::SPLITTER;
 use andromeda_protocol::{
+    communication::encode_binary,
     communication::{AndromedaMsg, ExecuteMsg as AndrExecute},
     error::ContractError,
     modules::{
@@ -16,8 +17,8 @@ use andromeda_protocol::{
     splitter::{GetSplitterConfigResponse, Recipient},
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
+    attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 
 #[entry_point]
@@ -141,7 +142,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         let msg = match &recipient_addr.recipient {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),
-                msg: to_binary(&AndrExecute::AndrReceive(AndromedaMsg::Receive(
+                msg: encode_binary(&AndrExecute::AndrReceive(AndromedaMsg::Receive(
                     recip.clone().msg,
                 )))?,
                 funds: vec_coin,
@@ -252,9 +253,9 @@ fn execute_update_address_list(
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetSplitterConfig {} => to_binary(&query_splitter(deps)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
+        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
+        QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
     }
 }
 

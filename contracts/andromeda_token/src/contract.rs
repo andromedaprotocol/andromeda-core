@@ -2,6 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use andromeda_protocol::{
+    communication::encode_binary,
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
@@ -18,8 +19,8 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    attr, coin, to_binary, Addr, Api, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Pair,
-    Reply, Response, StdError, StdResult,
+    attr, coin, Addr, Api, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Pair, Reply,
+    Response, StdError, StdResult,
 };
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
@@ -598,13 +599,13 @@ fn remove_approval(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::OwnerOf { token_id } => to_binary(&query_owner(deps, env, token_id)?),
+        QueryMsg::OwnerOf { token_id } => encode_binary(&query_owner(deps, env, token_id)?),
         QueryMsg::ApprovedForAll {
             start_after,
             owner,
             include_expired,
             limit,
-        } => to_binary(&query_all_approvals(
+        } => encode_binary(&query_all_approvals(
             deps,
             env,
             owner,
@@ -612,20 +613,22 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             start_after,
             limit,
         )?),
-        QueryMsg::NumTokens {} => to_binary(&query_num_tokens(deps, env)?),
-        QueryMsg::NftInfo { token_id } => to_binary(&query_nft_info(deps, token_id)?),
-        QueryMsg::AllNftInfo { token_id } => to_binary(&query_all_nft_info(deps, env, token_id)?),
+        QueryMsg::NumTokens {} => encode_binary(&query_num_tokens(deps, env)?),
+        QueryMsg::NftInfo { token_id } => encode_binary(&query_nft_info(deps, token_id)?),
+        QueryMsg::AllNftInfo { token_id } => {
+            encode_binary(&query_all_nft_info(deps, env, token_id)?)
+        }
         QueryMsg::Tokens {
             owner,
             start_after,
             limit,
-        } => to_binary(&query_owned_tokens(deps, owner, start_after, limit)?),
+        } => encode_binary(&query_owned_tokens(deps, owner, start_after, limit)?),
         QueryMsg::AllTokens { start_after, limit } => {
-            to_binary(&query_all_tokens(deps, start_after, limit)?)
+            encode_binary(&query_all_tokens(deps, start_after, limit)?)
         }
-        QueryMsg::ContractInfo {} => to_binary(&query_contract_info(deps)?),
-        QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::ContractInfo {} => encode_binary(&query_contract_info(deps)?),
+        QueryMsg::ModuleInfo {} => encode_binary(&query_module_info(deps)?),
+        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
     }
 }
 
@@ -1363,7 +1366,9 @@ mod tests {
 
         assert_eq!(
             query_res,
-            StdError::not_found("core::option::Option<andromeda_protocol::token::Token>")
+            ContractError::Std(StdError::not_found(
+                "core::option::Option<andromeda_protocol::token::Token>"
+            ))
         )
     }
 

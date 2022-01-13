@@ -3,14 +3,13 @@ use andromeda_protocol::{
         add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
         InstantiateMsg, QueryMsg,
     },
+    communication::encode_binary,
     error::ContractError,
     operators::{execute_update_operators, initialize_operators, is_operator, query_is_operator},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
-use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
-};
+use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 #[entry_point]
 pub fn instantiate(
@@ -80,9 +79,9 @@ fn execute_remove_address(
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::IncludesAddress { address } => to_binary(&query_address(deps, &address)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
+        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
+        QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
     }
 }
 

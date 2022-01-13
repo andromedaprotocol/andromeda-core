@@ -1,12 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
 use cw2::set_contract_version;
 
 use crate::state::{DATA, DEFAULT_KEY};
 use andromeda_protocol::{
+    communication::encode_binary,
     error::ContractError,
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, Primitive, QueryMsg},
@@ -91,8 +90,8 @@ pub fn execute_delete_value(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetValue { name } => to_binary(&query_value(deps, name)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::GetValue { name } => encode_binary(&query_value(deps, name)?),
+        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
     }
 }
 

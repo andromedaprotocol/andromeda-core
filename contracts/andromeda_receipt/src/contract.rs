@@ -2,6 +2,7 @@ use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use andromeda_protocol::{
+    communication::encode_binary,
     error::ContractError,
     operators::{execute_update_operators, initialize_operators, query_is_operator},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
@@ -11,9 +12,7 @@ use andromeda_protocol::{
     },
     require,
 };
-use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
-};
+use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 #[entry_point]
 pub fn instantiate(
@@ -89,10 +88,10 @@ fn execute_edit_receipt(
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::Receipt { receipt_id } => to_binary(&query_receipt(deps, receipt_id)?),
-        QueryMsg::ContractInfo {} => to_binary(&query_config(deps)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::Receipt { receipt_id } => encode_binary(&query_receipt(deps, receipt_id)?),
+        QueryMsg::ContractInfo {} => encode_binary(&query_config(deps)?),
+        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
+        QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
     }
 }
 
