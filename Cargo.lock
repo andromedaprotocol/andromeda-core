@@ -16,6 +16,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-anchor"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw20",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "terraswap",
+]
+
+[[package]]
 name = "andromeda-factory"
 version = "0.1.0"
 dependencies = [
