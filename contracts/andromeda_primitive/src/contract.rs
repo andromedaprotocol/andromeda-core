@@ -124,13 +124,17 @@ fn handle_andromeda_query(
     msg: AndromedaQuery,
 ) -> Result<Binary, ContractError> {
     match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
+        AndromedaQuery::Get(data) => match data {
+            // Treat no binary as request to get value with default key.
+            None => encode_binary(&query_value(deps, None)?),
+            Some(_) => {
+                let received: QueryMsg = parse_message(data)?;
+                match received {
+                    QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                    _ => query(deps, env, received),
+                }
             }
-        }
+        },
         AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
         AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
     }
@@ -455,9 +459,22 @@ mod tests {
             res
         );
 
+        // Try querying by sending explicit message.
         let msg = QueryMsg::GetValue { name: None };
         let msg_binary = encode_binary(&msg).unwrap();
         let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(msg_binary)));
+        let res: GetValueResponse =
+            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        assert_eq!(
+            GetValueResponse {
+                name: DEFAULT_KEY.to_string(),
+                value: Primitive::String("value1".to_string())
+            },
+            res
+        );
+
+        // Try querying by not providing any binary.
+        let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(None));
         let res: GetValueResponse =
             from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
         assert_eq!(
