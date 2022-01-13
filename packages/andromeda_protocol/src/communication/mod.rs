@@ -1,5 +1,5 @@
-use cosmwasm_std::{from_binary, Binary};
-use schemars::{JsonSchema, _serde_json::to_string as serde_to_string};
+use cosmwasm_std::{from_binary, to_binary, Binary};
+use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{common::unwrap_or_err, error::ContractError};
@@ -28,18 +28,6 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
 }
 
-// pub fn parse_optional_data(val: Option<String>) -> Result<Option<Value>, ContractError> {
-//     if let Some(json_string) = val {
-//         if let Ok(val) = serde_json::from_str::<Value>(json_string.as_str()) {
-//             Ok(Some(val))
-//         } else {
-//             Err(ContractError::InvalidJSON {})
-//         }
-//     } else {
-//         Ok(None)
-//     }
-// }
-
 pub fn parse_struct<T>(val: &Binary) -> Result<T, ContractError>
 where
     T: DeserializeOwned,
@@ -58,47 +46,17 @@ pub fn parse_message<T: DeserializeOwned>(data: Option<Binary>) -> Result<T, Con
     parse_struct::<T>(&data)
 }
 
-pub fn to_json_string<T>(val: &T) -> Result<String, ContractError>
+pub fn encode_binary<T>(val: &T) -> Result<Binary, ContractError>
 where
     T: Serialize,
 {
-    match serde_to_string(val) {
-        Ok(val_string) => Ok(val_string),
+    match to_binary(val) {
+        Ok(encoded_val) => Ok(encoded_val),
         Err(err) => Err(ContractError::ParsingError {
             err: err.to_string(),
         }),
     }
 }
-
-// pub fn parse_u64(data: Value, key: String) -> Result<u64, ContractError> {
-//     match data[key.clone()].as_u64() {
-//         Some(val) => Ok(val),
-//         None => Err(ContractError::InvalidJSONField {
-//             key,
-//             expected: "u64".to_string(),
-//         }),
-//     }
-// }
-
-// pub fn parse_string(data: &Value, key: &str) -> Result<String, ContractError> {
-//     match data[key].as_str() {
-//         Some(val) => Ok(val.to_string()),
-//         None => Err(ContractError::InvalidJSONField {
-//             key: key.to_string(),
-//             expected: "string".to_string(),
-//         }),
-//     }
-// }
-
-// pub fn parse_object(data: &Value, key: &str) -> Result<Map<String, Value>, ContractError> {
-//     match data[key].as_object() {
-//         Some(val) => Ok(val.clone()),
-//         None => Err(ContractError::InvalidJSONField {
-//             key: key.to_string(),
-//             expected: "object".to_string(),
-//         }),
-//     }
-// }
 
 #[cfg(test)]
 mod test {
