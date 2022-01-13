@@ -1,3 +1,4 @@
+use crate::communication::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,9 +7,8 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum AnchorMarketMsg {
     DepositStable {},
-    RedeemStable{}
+    RedeemStable {},
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -20,24 +20,23 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     Deposit {},
-    Withdraw {  position_idx: Uint128 },
+    Withdraw { position_idx: Uint128 },
     Yourself { yourself_msg: YourselfMsg },
-    UpdateOwner {
-        address: String,
-    },
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum YourselfMsg {
-    TransferUst{ receiver: String },
+    TransferUst { receiver: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    Config{},
-    ContractOwner {},
+    AndrQuery(AndromedaQuery),
+    Config {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -47,5 +46,3 @@ pub struct ConfigResponse {
     pub anchor_token: String,
     pub stable_denom: String,
 }
-
-
