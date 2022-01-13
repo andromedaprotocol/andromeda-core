@@ -1,6 +1,9 @@
-use crate::state::{Config, Position, CONFIG, KEY_POSITION_IDX, POSITION, PREV_AUST_BALANCE, TEMP_BALANCE};
+use crate::state::{
+    Config, Position, CONFIG, KEY_POSITION_IDX, POSITION, PREV_AUST_BALANCE, TEMP_BALANCE,
+};
 use andromeda_protocol::{
     anchor::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    communication::encode_binary,
     error::ContractError,
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
@@ -9,7 +12,7 @@ use cosmwasm_std::{
     attr, coin, entry_point, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
 };
-use cw20::{Cw20ExecuteMsg};
+use cw20::Cw20ExecuteMsg;
 
 use terraswap::querier::{query_balance, query_token_balance};
 
@@ -137,7 +140,6 @@ pub fn withdraw(
     )?;
     TEMP_BALANCE.save(deps.storage, &contract_balance)?;
 
-
     POSITION.remove(deps.storage, &position_idx.u128().to_be_bytes());
 
     Ok(Response::new()
@@ -179,22 +181,16 @@ pub fn transfer_ust(deps: DepsMut, env: Env, receiver: String) -> Result<Respons
     let transfer_amount = current_balance - prev_balance;
     let mut msg = vec![];
     if transfer_amount > Uint128::zero() {
-        msg.push(
-            CosmosMsg::Bank(BankMsg::Send {
-                to_address: receiver.to_string(),
-                amount: vec![coin(transfer_amount.u128(),config.stable_denom.clone())]
-            })
-        );
+        msg.push(CosmosMsg::Bank(BankMsg::Send {
+            to_address: receiver.to_string(),
+            amount: vec![coin(transfer_amount.u128(), config.stable_denom.clone())],
+        }));
     }
-    Ok(
-        Response::new()
-            .add_messages( msg)
-            .add_attributes(vec![
-                attr("action", "withdraw"),
-                attr("receiver", receiver.to_string()),
-                attr("amount", transfer_amount.to_string()),
-            ])
-    )
+    Ok(Response::new().add_messages(msg).add_attributes(vec![
+        attr("action", "withdraw"),
+        attr("receiver", receiver.to_string()),
+        attr("amount", transfer_amount.to_string()),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -230,14 +226,14 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
     }
 }
 
-fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
     Ok(ConfigResponse {
