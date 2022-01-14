@@ -1,4 +1,7 @@
-use crate::modules::Rate;
+use crate::{
+    communication::{AndromedaMsg, AndromedaQuery},
+    modules::Rate,
+};
 use cosmwasm_std::Addr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -11,12 +14,14 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     UpdateRates { rates: Vec<RateInfo> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     Payments {},
 }
 
