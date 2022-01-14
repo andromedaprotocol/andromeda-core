@@ -8,10 +8,10 @@ use cw2::set_contract_version;
 
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
-    communication::encode_binary,
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     mirror_wrapped_cdp::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
-    operators::{execute_update_operators, initialize_operators, is_operator, query_is_operator},
+    operators::{execute_update_operators, initialize_operators, is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
@@ -49,12 +49,13 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     match msg {
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
         ExecuteMsg::MirrorMintExecuteMsg(msg) => execute_mirror_msg(
             deps,
@@ -84,7 +85,6 @@ pub fn execute(
             config.mirror_lock_contract.to_string(),
             encode_binary(&msg)?,
         ),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateConfig {
             mirror_mint_contract,
             mirror_staking_contract,
@@ -98,7 +98,25 @@ pub fn execute(
             mirror_gov_contract,
             mirror_lock_contract,
         ),
-        ExecuteMsg::UpdateOperators { operators } => {
+    }
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
         }
     }
@@ -213,13 +231,28 @@ pub fn execute_update_config(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
-        QueryMsg::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, address.as_str())?)
+    }
+}
+
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received: QueryMsg = parse_message(data)?;
+            match received {
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => query(deps, env, received),
+            }
         }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
     }
 }
 
