@@ -46,3 +46,9 @@ pub struct ConfigResponse {
     pub anchor_token: String,
     pub stable_denom: String,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct PositionIdxsResponse {
+    pub idxs: Vec<Uint128>,
+}

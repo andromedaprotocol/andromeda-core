@@ -1,5 +1,5 @@
 use crate::contract::{execute, instantiate};
-use crate::state::{CONFIG, POSITION};
+use crate::state::{positions, CONFIG, POSITION};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
     anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg, YourselfMsg},
@@ -11,6 +11,7 @@ use cosmwasm_std::{
     to_binary, Api, Coin, CosmosMsg, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
+use cw_storage_plus::U128Key;
 
 #[test]
 fn test_instantiate() {
@@ -106,10 +107,16 @@ fn test_withdraw() {
     let env = mock_env();
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     //set aust_amount to position manually
-    let mut position = POSITION.load(&deps.storage, &1u128.to_be_bytes()).unwrap();
+    //let mut position = POSITION.load(&deps.storage, &1u128.to_be_bytes()).unwrap();
+    let mut position = positions()
+        .load(deps.as_mut().storage, U128Key::new(1u128))
+        .unwrap();
     position.aust_amount = Uint128::from(1000000u128);
-    POSITION
-        .save(deps.as_mut().storage, &1u128.to_be_bytes(), &position)
+    /*POSITION
+    .save(deps.as_mut().storage, &1u128.to_be_bytes(), &position)
+    .unwrap();*/
+    positions()
+        .save(deps.as_mut().storage, U128Key::new(1u128), &position)
         .unwrap();
 
     let msg = ExecuteMsg::Withdraw {
@@ -182,10 +189,15 @@ fn test_andr_receive() {
     assert_eq!(res, expected_res);
 
     //set aust_amount to position manually
-    let mut position = POSITION.load(&deps.storage, &1u128.to_be_bytes()).unwrap();
+    let mut position = positions()
+        .load(deps.as_mut().storage, U128Key::new(1u128))
+        .unwrap();
     position.aust_amount = Uint128::from(1000000u128);
-    POSITION
-        .save(deps.as_mut().storage, &1u128.to_be_bytes(), &position)
+    /*POSITION
+    .save(deps.as_mut().storage, &1u128.to_be_bytes(), &position)
+    .unwrap();*/
+    positions()
+        .save(deps.as_mut().storage, U128Key::new(1u128), &position)
         .unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
@@ -221,4 +233,3 @@ fn test_andr_receive() {
         .add_attributes(vec![attr("action", "withdraw"), attr("position_idx", "1")]);
     assert_eq!(res, expected_res)
 }
-
