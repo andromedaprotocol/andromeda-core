@@ -2,9 +2,11 @@ use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use andromeda_protocol::{
-    communication::encode_binary,
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    operators::{execute_update_operators, initialize_operators, query_is_operator},
+    operators::{
+        execute_update_operators, initialize_operators, query_is_operator, query_operators,
+    },
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     receipt::{
         Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
@@ -33,18 +35,38 @@ pub fn instantiate(
 #[entry_point]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::StoreReceipt { receipt } => execute_store_receipt(deps, info, receipt),
         ExecuteMsg::EditReceipt {
             receipt,
             receipt_id,
         } => execute_edit_receipt(deps, info, receipt_id, receipt),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
+    }
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
+        }
     }
 }
 
@@ -86,12 +108,30 @@ fn execute_edit_receipt(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::Receipt { receipt_id } => encode_binary(&query_receipt(deps, receipt_id)?),
         QueryMsg::ContractInfo {} => encode_binary(&query_config(deps)?),
-        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
         QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
+    }
+}
+
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received: QueryMsg = parse_message(data)?;
+            match received {
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => query(deps, env, received),
+            }
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
     }
 }
 
@@ -218,6 +258,50 @@ mod tests {
         let res = query(deps.as_ref(), env, query_msg).unwrap();
         let val: ReceiptResponse = from_binary(&res).unwrap();
 
+        assert_eq!(val.receipt, new_receipt)
+    }
+
+    #[test]
+    fn test_andr_receive() {
+        let owner = "creator";
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info(owner, &[]);
+        let config = Config {
+            minter: owner.to_string(),
+        };
+        store_config(deps.as_mut().storage, &config).unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+            .unwrap();
+
+        let msg = ExecuteMsg::StoreReceipt {
+            receipt: Receipt { events: vec![] },
+        };
+
+        let msg =
+            ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(encode_binary(&msg).unwrap())));
+
+        //add address for registered operator
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(
+            Response::new().add_attributes(vec![
+                attr("action", "mint_receipt"),
+                attr("receipt_id", "1"),
+            ]),
+            res
+        );
+
+        let query_msg = QueryMsg::Receipt {
+            receipt_id: Uint128::from(1_u128),
+        };
+
+        let query_msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
+            encode_binary(&query_msg).unwrap(),
+        )));
+        let res = query(deps.as_ref(), env, query_msg).unwrap();
+        let val: ReceiptResponse = from_binary(&res).unwrap();
+        let new_receipt = Receipt { events: vec![] };
         assert_eq!(val.receipt, new_receipt)
     }
 }
