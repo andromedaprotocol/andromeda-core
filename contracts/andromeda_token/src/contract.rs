@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use andromeda_protocol::{
-    communication::encode_binary,
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
@@ -10,6 +10,7 @@ use andromeda_protocol::{
         receipt::{on_receipt_reply, REPLY_RECEIPT},
         store_modules, Modules,
     },
+    operators::{execute_update_operators, query_operators},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     token::{
@@ -100,6 +101,7 @@ pub fn execute(
     modules.hook(|module| module.on_execute(&deps, info.clone(), env.clone()))?;
 
     match msg {
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Mint(msg) => execute_mint(deps, env, info, msg),
         ExecuteMsg::TransferNft {
             recipient,
@@ -130,9 +132,29 @@ pub fn execute(
         } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount.u128(), denom),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdatePricing { token_id, price } => {
             execute_update_pricing(deps, env, info, token_id, price)
+        }
+    }
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
         }
     }
 }
@@ -599,6 +621,7 @@ fn remove_approval(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::OwnerOf { token_id } => encode_binary(&query_owner(deps, env, token_id)?),
         QueryMsg::ApprovedForAll {
             start_after,
@@ -628,7 +651,24 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         }
         QueryMsg::ContractInfo {} => encode_binary(&query_contract_info(deps)?),
         QueryMsg::ModuleInfo {} => encode_binary(&query_module_info(deps)?),
-        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
+    }
+}
+
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received = parse_message(data)?;
+            match received {
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => query(deps, env, received),
+            }
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
     }
 }
 
@@ -1539,5 +1579,43 @@ mod tests {
         let val: TokensResponse = from_binary(&res).unwrap();
 
         assert_eq!(val.tokens, vec![token_id.to_string()])
+    }
+
+    #[test]
+    fn test_andr_receive() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let token_id = String::default();
+        let creator = "creator".to_string();
+
+        let mint_msg = MintMsg {
+            token_id: token_id.clone(),
+            owner: creator.clone(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
+            token_uri: None,
+            pricing: None,
+        };
+
+        store_mock_config(deps.as_mut(), String::from("minter"));
+
+        let msg = ExecuteMsg::Mint(mint_msg);
+
+        let msg =
+            ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(encode_binary(&msg).unwrap())));
+
+        execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let query_msg = QueryMsg::OwnerOf { token_id };
+        let query_msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
+            encode_binary(&query_msg).unwrap(),
+        )));
+
+        let query_res = query(deps.as_ref(), env, query_msg).unwrap();
+        let query_val: OwnerOfResponse = from_binary(&query_res).unwrap();
+
+        assert_eq!(query_val.owner, creator)
     }
 }
