@@ -2,11 +2,20 @@ use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
+    modules::Rate,
     operators::{execute_update_operators, query_operators},
-    ownership::{execute_update_owner, query_contract_owner},
-    rates::{ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
+    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
+    primitive::{
+        ExecuteMsg as PrimitiveExecuteMsg, GetValueResponse, Primitive,
+        QueryMsg as PrimitiveQueryMsg,
+    },
+    rates::{ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo, RateResponse},
+    require,
 };
-use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{
+    attr, entry_point, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
+    Uint128, WasmMsg, WasmQuery,
+};
 
 #[entry_point]
 pub fn instantiate(
@@ -16,9 +25,10 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let config = Config {
-        owner: info.sender.to_string(),
         rates: msg.rates,
+        primitive_contract: deps.api.addr_validate(&msg.primitive_contract)?,
     };
+    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "rates")]))
 }
@@ -32,6 +42,9 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, info, msg),
+        ExecuteMsg::UpdateRateData { name, rate } => {
+            execute_update_rate_data(deps, info, name, rate)
+        }
         ExecuteMsg::UpdateRates { rates } => execute_update_rates(deps, info, rates),
     }
 }
@@ -53,15 +66,39 @@ fn execute_andr_receive(
     }
 }
 
+fn execute_update_rate_data(
+    deps: DepsMut,
+    info: MessageInfo,
+    name: Option<String>,
+    rate: Rate,
+) -> Result<Response, ContractError> {
+    require(
+        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let value: Primitive = match rate {
+        Rate::Percent(percent) => Primitive::Uint128(Uint128::from(percent)),
+        Rate::Flat(coin) => Primitive::Coin(coin.clone()),
+    };
+    let config = CONFIG.load(deps.storage)?;
+    let execute_msg = WasmMsg::Execute {
+        contract_addr: config.primitive_contract.to_string(),
+        funds: info.funds,
+        msg: encode_binary(&PrimitiveExecuteMsg::SetValue { name, value })?,
+    };
+    Ok(Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]))
+}
+
 fn execute_update_rates(
     deps: DepsMut,
     info: MessageInfo,
     rates: Vec<RateInfo>,
 ) -> Result<Response, ContractError> {
+    require(
+        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
     let mut config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
     config.rates = rates;
     CONFIG.save(deps.storage, &config)?;
 
@@ -73,6 +110,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
         QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
+        QueryMsg::Rate { name } => encode_binary(&query_rate(deps, name)?),
     }
 }
 
@@ -82,6 +120,24 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
         AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
         AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
     }
+}
+
+fn query_rate(deps: Deps, name: Option<String>) -> Result<RateResponse, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let response: GetValueResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: config.primitive_contract.to_string(),
+        msg: encode_binary(&PrimitiveQueryMsg::GetValue { name: name.clone() })?,
+    }))?;
+    let rate: Rate = match response.value {
+        Primitive::Coin(coin) => Rate::Flat(coin),
+        Primitive::Uint128(value) => Rate::Percent(value.u128()),
+        _ => {
+            return Err(ContractError::ParsingError {
+                err: "Stored rate is not a coin or Uint128".to_string(),
+            })
+        }
+    };
+    Ok(RateResponse { name, rate })
 }
 
 fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
@@ -97,11 +153,11 @@ mod tests {
     use crate::contract::{execute, instantiate, query};
     use andromeda_protocol::{
         communication::{encode_binary, AndromedaMsg, AndromedaQuery},
-        modules::{FlatRate, Rate},
+        modules::Rate,
         rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
     };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{Addr, Uint128};
+    use cosmwasm_std::{Addr, Coin, Uint128};
 
     #[test]
     fn test_instantiate_query() {
@@ -117,7 +173,7 @@ mod tests {
                 receivers: vec![Addr::unchecked("")],
             },
             RateInfo {
-                rate: Rate::Flat(FlatRate {
+                rate: Rate::Flat(Coin {
                     amount: Uint128::from(10u128),
                     denom: "uusd".to_string(),
                 }),
@@ -128,6 +184,7 @@ mod tests {
         ];
         let msg = InstantiateMsg {
             rates: rates.clone(),
+            primitive_contract: "primitive_contract".to_string(),
         };
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -159,7 +216,7 @@ mod tests {
                 receivers: vec![Addr::unchecked("")],
             },
             RateInfo {
-                rate: Rate::Flat(FlatRate {
+                rate: Rate::Flat(Coin {
                     amount: Uint128::from(10u128),
                     denom: "uusd".to_string(),
                 }),
@@ -168,7 +225,10 @@ mod tests {
                 receivers: vec![Addr::unchecked("")],
             },
         ];
-        let msg = InstantiateMsg { rates: vec![] };
+        let msg = InstantiateMsg {
+            rates: vec![],
+            primitive_contract: "primitive_contract".to_string(),
+        };
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg =

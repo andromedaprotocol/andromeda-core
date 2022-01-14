@@ -135,9 +135,8 @@ pub fn deduct_payment(
 mod tests {
     use super::*;
     use crate::modules::address_list::AddressListModule;
-    use crate::modules::FlatRate;
     use crate::modules::Rate;
-    use cosmwasm_std::{coin, Uint128};
+    use cosmwasm_std::{coin, Coin, Uint128};
 
     #[test]
     fn test_is_unique() {
@@ -251,7 +250,7 @@ mod tests {
 
         let payment = coin(125, "uluna");
         let expected = coin(5, "uluna");
-        let fee = Rate::Flat(FlatRate {
+        let fee = Rate::Flat(Coin {
             amount: Uint128::from(5_u128),
             denom: "uluna".to_string(),
         });

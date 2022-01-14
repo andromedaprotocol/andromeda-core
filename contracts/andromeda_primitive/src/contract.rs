@@ -1,13 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, Storage};
 use cw2::set_contract_version;
 
 use crate::state::{DATA, DEFAULT_KEY};
 use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    operators::{execute_update_operators, initialize_operators, query_operators},
+    operators::{execute_update_operators, initialize_operators, is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, Primitive, QueryMsg},
     require,
@@ -74,7 +74,7 @@ pub fn execute_set_value(
     value: Primitive,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        is_authorized(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     if value.is_invalid() {
@@ -99,7 +99,7 @@ pub fn execute_delete_value(
     name: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        is_authorized(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let name = get_name_or_default(&name);
@@ -108,6 +108,10 @@ pub fn execute_delete_value(
         .add_attribute("method", "delete_value")
         .add_attribute("sender", info.sender)
         .add_attribute("name", name))
+}
+
+fn is_authorized(storage: &dyn Storage, address: &str) -> Result<bool, ContractError> {
+    Ok(is_contract_owner(storage, address)? || is_operator(storage, address)?)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

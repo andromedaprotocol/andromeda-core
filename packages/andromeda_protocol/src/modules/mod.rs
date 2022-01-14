@@ -16,31 +16,21 @@ use crate::{
     },
     require,
 };
-use cosmwasm_std::{DepsMut, Env, MessageInfo, StdResult, Storage, Uint128};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, StdResult, Storage};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub const MODULES: Item<Modules> = Item::new("modules");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
-#[serde(rename_all = "snake_case")]
-/// A struct used to define a flat rate fee
-pub struct FlatRate {
-    /// The fee amount
-    pub amount: Uint128,
-    /// The fee denomination
-    pub denom: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 /// An enum used to define various types of fees
 pub enum Rate {
     /// A flat rate fee
-    Flat(FlatRate),
+    Flat(Coin),
     /// A percentage fee (integer)
-    Percent(u64),
+    Percent(u128),
 }
 
 impl Rate {
@@ -63,7 +53,7 @@ impl Rate {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 /// Definitions for each module, used in the `InstantiateMsg` for the token contract to define any modules assigned to the contract
 pub enum ModuleDefinition {
@@ -186,7 +176,7 @@ impl ModuleDefinition {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 /// Helping struct to aid in hook execution.
 /// The `Modules` struct implements all hooks that a `Module` may implement.
 pub struct Modules {
