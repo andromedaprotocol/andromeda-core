@@ -132,7 +132,6 @@ pub fn execute(
         } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount.u128(), denom),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdatePricing { token_id, price } => {
             execute_update_pricing(deps, env, info, token_id, price)
         }
@@ -662,7 +661,7 @@ fn handle_andromeda_query(
 ) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
+            let received = parse_message(data)?;
             match received {
                 QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
                 _ => query(deps, env, received),

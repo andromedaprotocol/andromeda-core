@@ -321,11 +321,6 @@ pub enum ExecuteMsg {
         token_id: String,
         price: Option<Coin>,
     },
-    /// Update ownership of the contract. Only executable by the current contract owner.
-    UpdateOwner {
-        /// The address of the new contract owner.
-        address: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
