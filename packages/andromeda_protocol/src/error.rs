@@ -101,8 +101,8 @@ pub enum ContractError {
     #[error("InvalidJSONField")]
     InvalidJSONField { key: String, expected: String },
 
-    #[error("MissingJSON")]
-    MissingJSON {},
+    #[error("MissingRequiredMessageData")]
+    MissingRequiredMessageData {},
 
     #[error("NestedAndromedaMsg")]
     NestedAndromedaMsg {},
