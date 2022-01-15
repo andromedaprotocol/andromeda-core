@@ -1,5 +1,5 @@
 use crate::communication::{AndromedaMsg, AndromedaQuery};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +37,11 @@ pub enum YourselfMsg {
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     Config {},
+    Positions {
+        address: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -48,7 +53,15 @@ pub struct ConfigResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Position {
+    pub idx: Uint128,
+    pub owner: Addr,
+    pub deposit_amount: Uint128,
+    pub aust_amount: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct PositionIdxsResponse {
-    pub idxs: Vec<Uint128>,
+pub struct PositionsResponse {
+    pub positions: Vec<Position>,
 }

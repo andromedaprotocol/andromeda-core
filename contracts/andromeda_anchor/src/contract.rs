@@ -1,10 +1,7 @@
-use crate::state::{
-    positions, Config, Position, CONFIG, KEY_POSITION_IDX, POSITION, PREV_AUST_BALANCE,
-    TEMP_BALANCE,
-};
+use crate::state::{positions, Config, CONFIG, KEY_POSITION_IDX, PREV_AUST_BALANCE, TEMP_BALANCE};
 use andromeda_protocol::{
     anchor::{
-        AnchorMarketMsg, ConfigResponse, ExecuteMsg, InstantiateMsg, PositionIdxsResponse,
+        AnchorMarketMsg, ConfigResponse, ExecuteMsg, InstantiateMsg, Position, PositionsResponse,
         QueryMsg, YourselfMsg,
     },
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
@@ -122,9 +119,9 @@ pub fn execute_deposit(
 
     positions().save(
         deps.storage,
-        U128Key::new(position_idx.u128()),
+        position_idx.u128().into(),
         &Position {
-            idx: Default::default(),
+            idx: position_idx,
             owner: depositor,
             deposit_amount: payment_amount.clone(),
             aust_amount: Uint128::zero(),
@@ -154,8 +151,7 @@ pub fn withdraw(
     position_idx: Uint128,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    //let position = POSITION.load(deps.storage, &position_idx.u128().to_be_bytes())?;
-    let position = positions().load(deps.storage, U128Key::new(position_idx.u128()))?;
+    let position = positions().load(deps.storage, position_idx.u128().into())?;
 
     require(
         position.owner == info.sender,
@@ -169,8 +165,7 @@ pub fn withdraw(
     )?;
     TEMP_BALANCE.save(deps.storage, &contract_balance)?;
 
-    //POSITION.remove(deps.storage, &position_idx.u128().to_be_bytes());
-    positions().remove(deps.storage, U128Key::new(position.idx.u128()))?;
+    positions().remove(deps.storage, position.idx.u128().into())?;
 
     Ok(Response::new()
         .add_messages(vec![
@@ -241,10 +236,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
                 return Err(StdError::generic_err("no minted aUST token"));
             }
             let position_idx = KEY_POSITION_IDX.load(deps.storage)?;
-            //let mut position = POSITION.load(deps.storage, &position_idx.u128().to_be_bytes())?;
-            let mut position = positions().load(deps.storage, U128Key::new(position_idx.u128()))?;
+            let mut position = positions().load(deps.storage, position_idx.u128().into())?;
             position.aust_amount = new_aust_balance;
-            positions().save(deps.storage, U128Key::new(position_idx.u128()), &position)?;
+            positions().save(deps.storage, position_idx.u128().into(), &position)?;
             KEY_POSITION_IDX.save(deps.storage, &(position_idx + Uint128::from(1u128)))?;
             Ok(Response::new().add_attributes(vec![
                 attr("action", "reply"),
@@ -257,37 +251,35 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
 }
 
 #[entry_point]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+        QueryMsg::Positions {
+            address,
+            start_after,
+            limit,
+        } => encode_binary(&query_owned_positions(deps, address, start_after, limit)?),
     }
 }
 
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
+            let address: String = parse_message(data)?;
+            encode_binary(&query_owned_positions(deps, address, None, None)?)
         }
         AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
         AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
     }
 }
 
-fn query_owned_position_idxs(
+fn query_owned_positions(
     deps: Deps,
     address: String,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> Result<PositionIdxsResponse, ContractError> {
+) -> Result<PositionsResponse, ContractError> {
     let start = start_after.map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let pks: Vec<_> = positions()
@@ -297,10 +289,16 @@ fn query_owned_position_idxs(
         .keys(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .collect();
-    let res: Result<Vec<_>, _> = pks.iter().map(|v| U128Key::new(v[0])).collect();
-    let idxs = res.map_err(StdError::invalid_utf8)?;
+    let idxs: Vec<U128Key> = pks.iter().map(|v| U128Key::from(v.to_vec())).collect();
+    let mut owned_positions = vec![];
+    for idx in idxs.iter() {
+        let position = positions().load(deps.storage, idx.clone())?;
+        owned_positions.push(position);
+    }
 
-    Ok(PositionIdxsResponse { idxs })
+    Ok(PositionsResponse {
+        positions: owned_positions,
+    })
 }
 
 fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {

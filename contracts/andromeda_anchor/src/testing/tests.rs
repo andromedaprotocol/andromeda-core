@@ -1,12 +1,14 @@
-use crate::contract::{execute, instantiate};
-use crate::state::{positions, CONFIG, POSITION};
+use crate::contract::{execute, instantiate, query};
+use crate::state::{positions, CONFIG};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
-    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg, YourselfMsg},
-    communication::AndromedaMsg,
+    anchor::{
+        AnchorMarketMsg, ExecuteMsg, InstantiateMsg, PositionsResponse, QueryMsg, YourselfMsg,
+    },
+    communication::{AndromedaMsg, AndromedaQuery},
 };
 use cosmwasm_std::{
-    attr, coin,
+    attr, coin, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
     to_binary, Api, Coin, CosmosMsg, Response, SubMsg, Uint128, WasmMsg,
 };
@@ -68,7 +70,7 @@ fn test_deposit() {
         }],
     );
     let env = mock_env();
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     let expected_res = Response::new()
         .add_submessage(SubMsg::reply_on_success(
             CosmosMsg::Wasm(WasmMsg::Execute {
@@ -82,7 +84,28 @@ fn test_deposit() {
             attr("action", "deposit"),
             attr("deposit_amount", "1000000"),
         ]);
-    assert_eq!(res, expected_res)
+    assert_eq!(res, expected_res);
+
+    let owned_positions: PositionsResponse = from_binary(
+        &query(
+            deps.as_ref(),
+            env,
+            QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
+                to_binary(&info.sender.to_string()).unwrap(),
+            ))),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        PositionsResponse {
+            positions: vec![positions()
+                .load(deps.as_ref().storage, 1u128.into())
+                .unwrap()]
+        },
+        owned_positions
+    );
 }
 
 #[test]
@@ -107,14 +130,10 @@ fn test_withdraw() {
     let env = mock_env();
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     //set aust_amount to position manually
-    //let mut position = POSITION.load(&deps.storage, &1u128.to_be_bytes()).unwrap();
     let mut position = positions()
         .load(deps.as_mut().storage, U128Key::new(1u128))
         .unwrap();
     position.aust_amount = Uint128::from(1000000u128);
-    /*POSITION
-    .save(deps.as_mut().storage, &1u128.to_be_bytes(), &position)
-    .unwrap();*/
     positions()
         .save(deps.as_mut().storage, U128Key::new(1u128), &position)
         .unwrap();
@@ -193,9 +212,6 @@ fn test_andr_receive() {
         .load(deps.as_mut().storage, U128Key::new(1u128))
         .unwrap();
     position.aust_amount = Uint128::from(1000000u128);
-    /*POSITION
-    .save(deps.as_mut().storage, &1u128.to_be_bytes(), &position)
-    .unwrap();*/
     positions()
         .save(deps.as_mut().storage, U128Key::new(1u128), &position)
         .unwrap();
