@@ -28,9 +28,9 @@ fn test_token_modules() {
     let sender = "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v";
     let info = mock_info(<&str>::clone(&sender), &[]);
     let env = mock_env();
-    let tax_fee: Rate = Rate::Percent(1u64);
+    let tax_fee: Rate = Rate::Percent(Uint128::from(1u128));
     let tax_receivers = vec!["tax_recever1".to_string()];
-    let royality_fee: Rate = Rate::Percent(1u64);
+    let royality_fee: Rate = Rate::Percent(Uint128::from(1u128));
     let royality_receivers = vec!["royality_recever1".to_string()];
     let modules = vec![
         ModuleDefinition::Whitelist {

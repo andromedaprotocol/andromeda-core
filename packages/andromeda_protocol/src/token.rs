@@ -134,11 +134,15 @@ impl TransferAgreement {
         }
     }
     /// Generates a `BankMsg` for a given `Rate` to a given address
-    pub fn generate_fee_payment(&self, to_address: String, rate: Rate) -> BankMsg {
-        BankMsg::Send {
+    pub fn generate_fee_payment(
+        &self,
+        to_address: String,
+        rate: Rate,
+    ) -> Result<BankMsg, ContractError> {
+        Ok(BankMsg::Send {
             to_address,
-            amount: vec![calculate_fee(rate, self.amount.clone())],
-        }
+            amount: vec![calculate_fee(rate, self.amount.clone())?],
+        })
     }
     /// Generates an event related to the agreed transfer of a token
     pub fn generate_event(self) -> Event {

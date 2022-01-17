@@ -41,9 +41,9 @@ fn test_create() {
     let info = mock_info("creator", &[]);
 
     let whitelist_operators = vec!["whitelist_operator1".to_string()];
-    let tax_fee: Rate = Rate::Percent(1u64);
+    let tax_fee: Rate = Rate::Percent(1u128.into());
     let tax_receivers = vec!["tax_recever1".to_string()];
-    let royality_fee: Rate = Rate::Percent(1u64);
+    let royality_fee: Rate = Rate::Percent(1u128.into());
     let royality_receivers = vec!["royality_recever1".to_string()];
     let modules = vec![
         ModuleDefinition::Whitelist {

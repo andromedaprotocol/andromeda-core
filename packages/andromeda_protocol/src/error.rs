@@ -106,6 +106,9 @@ pub enum ContractError {
 
     #[error("NestedAndromedaMsg")]
     NestedAndromedaMsg {},
+
+    #[error("UnexpectedExternalRate")]
+    UnexpectedExternalRate {},
 }
 
 impl From<FromUtf8Error> for ContractError {

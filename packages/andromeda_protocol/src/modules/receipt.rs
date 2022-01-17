@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_binary, CosmosMsg, DepsMut, Env, Event, MessageInfo, Reply, ReplyOn, Response, StdError,
-    StdResult, Storage, SubMsg, WasmMsg,
+    to_binary, CosmosMsg, DepsMut, Env, Event, MessageInfo, QuerierWrapper, Reply, ReplyOn,
+    Response, StdError, StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
@@ -61,7 +61,11 @@ impl Module for ReceiptModule {
     /// Validates the receipt module:
     /// * Must be unique
     /// * Must include either a contract address or a combination of a valid code id and an optional vector of moderating addresses
-    fn validate(&self, all_modules: Vec<ModuleDefinition>) -> Result<bool, ContractError> {
+    fn validate(
+        &self,
+        all_modules: Vec<ModuleDefinition>,
+        _querier: &QuerierWrapper,
+    ) -> Result<bool, ContractError> {
         require(
             is_unique(self, &all_modules),
             ContractError::ModuleNotUnique {},

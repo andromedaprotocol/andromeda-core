@@ -62,7 +62,7 @@ pub fn instantiate(
 
     CONFIG.save(deps.storage, &config)?;
     CONTRACT_OWNER.save(deps.storage, &deps.api.addr_validate(&msg.minter)?)?;
-    store_modules(deps.storage, modules)?;
+    store_modules(deps.storage, modules, &deps.querier)?;
 
     Ok(Response::new()
         .add_submessages(mod_res.msgs)

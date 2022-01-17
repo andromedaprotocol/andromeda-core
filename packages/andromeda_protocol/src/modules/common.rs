@@ -13,14 +13,14 @@ use cosmwasm_std::{coin, BankMsg, Coin, Uint128};
 /// * `payment` - The amount used to calculate the fee
 ///
 /// Returns the fee amount in a `Coin` struct.
-pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
+pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Result<Coin, ContractError> {
     match fee_rate {
-        Rate::Flat(rate) => coin(rate.amount.u128(), rate.denom),
+        Rate::Flat(rate) => Ok(coin(rate.amount.u128(), rate.denom)),
         Rate::Percent(rate) => {
             // [COM-03] Make sure that fee_rate between 0 and 100.
             require(
                 // No need for rate >=0 due to type limits (Question: Should add or remove?)
-                rate <= 100,
+                rate <= Uint128::from(100u128),
                 ContractError::InvalidRate {},
             )
             .unwrap();
@@ -36,9 +36,9 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
                     _ => fee_amount = res.unwrap(),
                 };
             }
-
-            coin(fee_amount, payment.denom)
+            Ok(coin(fee_amount, payment.denom))
         }
+        Rate::External(_) => return Err(ContractError::UnexpectedExternalRate {}),
     }
 }
 
@@ -157,7 +157,7 @@ mod tests {
             code_id: None,
         };
         let other_module = ModuleDefinition::Taxable {
-            rate: Rate::Percent(2),
+            rate: Rate::Percent(2u128.into()),
             receivers: vec![],
             description: None,
         };
@@ -239,8 +239,8 @@ mod tests {
     #[test]
     fn test_calculate_fee() {
         let payment = coin(101, "uluna");
-        let expected = coin(5, "uluna");
-        let fee = Rate::Percent(4);
+        let expected = Ok(coin(5, "uluna"));
+        let fee = Rate::Percent(4u128.into());
 
         let received = calculate_fee(fee, payment);
 
@@ -249,7 +249,6 @@ mod tests {
         assert_eq!(expected, received);
 
         let payment = coin(125, "uluna");
-        let expected = coin(5, "uluna");
         let fee = Rate::Flat(Coin {
             amount: Uint128::from(5_u128),
             denom: "uluna".to_string(),

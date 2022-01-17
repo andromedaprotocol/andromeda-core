@@ -6,6 +6,7 @@ pub mod royalties;
 pub mod taxable;
 
 use crate::{
+    communication::encode_binary,
     error::ContractError,
     modules::{
         address_list::AddressListModule,
@@ -14,9 +15,13 @@ use crate::{
         royalties::Royalty,
         taxable::Taxable,
     },
+    primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
     require,
 };
-use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, StdResult, Storage};
+use cosmwasm_std::{
+    Coin, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, StdResult, Storage, Uint128,
+    WasmQuery,
+};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -25,31 +30,70 @@ pub const MODULES: Item<Modules> = Item::new("modules");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub struct ADORate {
+    pub address: String,
+    pub key: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 /// An enum used to define various types of fees
 pub enum Rate {
     /// A flat rate fee
     Flat(Coin),
     /// A percentage fee (integer)
-    Percent(u128),
+    Percent(Uint128),
+    External(ADORate),
 }
 
 impl Rate {
     /// Validates that a given rate is non-zero
-    pub fn is_non_zero(&self) -> bool {
+    pub fn is_non_zero(&self) -> Result<bool, ContractError> {
         match self {
-            Rate::Flat(rate) => rate.amount.u128() > 0,
-            Rate::Percent(rate) => rate > &0,
+            Rate::Flat(rate) => Ok(rate.amount.u128() > 0),
+            Rate::Percent(rate) => Ok(rate > &Uint128::zero()),
+            Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
         }
     }
 
     pub fn validate(&self) -> Result<(), ContractError> {
-        require(self.is_non_zero(), ContractError::InvalidRate {})?;
+        require(self.is_non_zero()?, ContractError::InvalidRate {})?;
 
         if let Rate::Percent(rate) = self {
-            require(rate <= &100, ContractError::InvalidRate {})?;
+            require(
+                rate <= &Uint128::from(100u128),
+                ContractError::InvalidRate {},
+            )?;
         }
 
         Ok(())
+    }
+
+    /// If `self` is Flat or Percent it returns itself. Otherwise it queries the primitive contract
+    /// and retrieves the actual Flat or Percent rate.
+    fn get_rate(self, querier: &QuerierWrapper) -> Result<Rate, ContractError> {
+        match self {
+            Rate::Flat(_) => Ok(self),
+            Rate::Percent(_) => Ok(self),
+            Rate::External(ado_rate) => {
+                let response: GetValueResponse =
+                    querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                        contract_addr: ado_rate.address.clone(),
+                        msg: encode_binary(&PrimitiveQueryMsg::GetValue {
+                            name: ado_rate.key.clone(),
+                        })?,
+                    }))?;
+                match response.value {
+                    Primitive::Coin(coin) => return Ok(Rate::Flat(coin)),
+                    Primitive::Uint128(value) => return Ok(Rate::Percent(value)),
+                    _ => {
+                        return Err(ContractError::ParsingError {
+                            err: "Stored rate is not a coin or Uint128".to_string(),
+                        })
+                    }
+                };
+            }
+        }
     }
 }
 
@@ -105,7 +149,11 @@ pub enum ModuleDefinition {
 }
 
 pub trait Module: MessageHooks {
-    fn validate(&self, modules: Vec<ModuleDefinition>) -> Result<bool, ContractError>;
+    fn validate(
+        &self,
+        modules: Vec<ModuleDefinition>,
+        querier: &QuerierWrapper,
+    ) -> Result<bool, ContractError>;
     fn as_definition(&self) -> ModuleDefinition;
     fn get_contract_address(&self, _storage: &dyn Storage) -> Option<String> {
         None
@@ -199,9 +247,9 @@ impl Modules {
             .map(|d| d.as_module())
             .collect()
     }
-    pub fn validate(&self) -> Result<bool, ContractError> {
+    pub fn validate(&self, querier: &QuerierWrapper) -> Result<bool, ContractError> {
         for module in self.to_modules() {
-            module.validate(self.module_defs.clone())?;
+            module.validate(self.module_defs.clone(), querier)?;
         }
 
         Ok(true)
@@ -220,9 +268,13 @@ impl Modules {
     }
 }
 
-pub fn store_modules(storage: &mut dyn Storage, modules: Modules) -> Result<(), ContractError> {
+pub fn store_modules(
+    storage: &mut dyn Storage,
+    modules: Modules,
+    querier: &QuerierWrapper,
+) -> Result<(), ContractError> {
     //Validate each module before storing
-    modules.validate()?;
+    modules.validate(querier)?;
 
     Ok(MODULES.save(storage, &modules)?)
 }
