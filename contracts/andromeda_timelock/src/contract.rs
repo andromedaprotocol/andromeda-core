@@ -467,7 +467,7 @@ mod tests {
 
         let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(msg_string)));
 
-        let received = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let received = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
         let expected = Response::default().add_attributes(vec![
             attr("action", "hold_funds"),
             attr("sender", info.sender.to_string()),

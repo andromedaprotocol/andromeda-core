@@ -1002,7 +1002,7 @@ mod tests {
             ))
         );
 
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(Response::default().add_attributes(attrs), res);
 
         let owner = load_token(deps.as_ref().storage, token_id).unwrap().owner;
@@ -1051,7 +1051,7 @@ mod tests {
             )
             .unwrap();
 
-        let res = execute(deps.as_mut(), env.clone(), approval_info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env, approval_info.clone(), msg).unwrap();
         assert_eq!(
             Response::default().add_attributes(vec![
                 attr("action", "transfer"),

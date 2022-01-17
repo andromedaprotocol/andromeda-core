@@ -10,7 +10,7 @@ use andromeda_protocol::{
     require,
 };
 use cosmwasm_std::{
-    attr, entry_point, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
+    attr, entry_point, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
     WasmMsg,
 };
 
@@ -71,8 +71,8 @@ fn execute_update_rate_data(
         ContractError::Unauthorized {},
     )?;
     let value: Primitive = match rate {
-        Rate::Percent(percent) => Primitive::Uint128(Uint128::from(percent)),
-        Rate::Flat(coin) => Primitive::Coin(coin.clone()),
+        Rate::Percent(percent) => Primitive::Uint128(percent),
+        Rate::Flat(coin) => Primitive::Coin(coin),
         Rate::External(_) => return Err(ContractError::UnexpectedExternalRate {}),
     };
     let execute_msg = WasmMsg::Execute {
@@ -244,13 +244,13 @@ mod tests {
             ado_rate: ado_rate.clone(),
             rate: Rate::Percent(10u128.into()),
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
 
         let execute_msg = WasmMsg::Execute {
             contract_addr: ado_rate.address.clone(),
-            funds: info.funds.clone(),
+            funds: info.funds,
             msg: encode_binary(&PrimitiveExecuteMsg::SetValue {
-                name: ado_rate.key.clone(),
+                name: ado_rate.key,
                 value: Primitive::Uint128(10u128.into()),
             })
             .unwrap(),
@@ -312,9 +312,9 @@ mod tests {
 
         let msg = ExecuteMsg::UpdateRateData {
             ado_rate: ado_rate.clone(),
-            rate: Rate::External(ado_rate.clone()),
+            rate: Rate::External(ado_rate),
         };
-        let res = execute(deps.as_mut(), env, info.clone(), msg);
+        let res = execute(deps.as_mut(), env, info, msg);
 
         assert_eq!(ContractError::UnexpectedExternalRate {}, res.unwrap_err());
     }

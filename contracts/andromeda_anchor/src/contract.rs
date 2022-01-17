@@ -35,7 +35,7 @@ pub fn instantiate(
     KEY_POSITION_IDX.save(deps.storage, &Uint128::from(1u128))?;
     PREV_AUST_BALANCE.save(deps.storage, &Uint128::zero())?;
     TEMP_BALANCE.save(deps.storage, &Uint128::zero())?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "anchor")]))
 }
 
@@ -120,7 +120,7 @@ pub fn execute_deposit(
         &Position {
             idx: Default::default(),
             owner: deps.api.addr_canonicalize(depositor.as_str())?,
-            deposit_amount: payment_amount.clone(),
+            deposit_amount: payment_amount,
             aust_amount: Uint128::zero(),
         },
     )?;
@@ -137,7 +137,7 @@ pub fn execute_deposit(
         ))
         .add_attributes(vec![
             attr("action", "deposit"),
-            attr("deposit_amount", payment_amount.clone()),
+            attr("deposit_amount", payment_amount),
         ]))
 }
 
@@ -171,7 +171,7 @@ pub fn withdraw(
                 contract_addr: deps.api.addr_humanize(&config.anchor_token)?.to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
                     contract: deps.api.addr_humanize(&config.anchor_mint)?.to_string(),
-                    amount: position.aust_amount.clone(),
+                    amount: position.aust_amount,
                     msg: to_binary(&AnchorMarketMsg::RedeemStable {})?,
                 })?,
                 funds: vec![],
@@ -206,12 +206,12 @@ pub fn transfer_ust(deps: DepsMut, env: Env, receiver: String) -> Result<Respons
     if transfer_amount > Uint128::zero() {
         msg.push(CosmosMsg::Bank(BankMsg::Send {
             to_address: receiver.to_string(),
-            amount: vec![coin(transfer_amount.u128(), config.stable_denom.clone())],
+            amount: vec![coin(transfer_amount.u128(), config.stable_denom)],
         }));
     }
     Ok(Response::new().add_messages(msg).add_attributes(vec![
         attr("action", "withdraw"),
-        attr("receiver", receiver.to_string()),
+        attr("receiver", receiver),
         attr("amount", transfer_amount.to_string()),
     ]))
 }
