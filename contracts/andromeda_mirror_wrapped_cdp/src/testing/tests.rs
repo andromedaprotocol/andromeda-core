@@ -692,10 +692,10 @@ fn test_update_config() {
         deps.as_ref(),
         msg,
         ConfigResponse {
-            mirror_mint_contract: mirror_mint_contract,
-            mirror_staking_contract: mirror_staking_contract,
-            mirror_gov_contract: mirror_gov_contract,
-            mirror_lock_contract: mirror_lock_contract,
+            mirror_mint_contract,
+            mirror_staking_contract,
+            mirror_gov_contract,
+            mirror_lock_contract,
         },
     );
 }

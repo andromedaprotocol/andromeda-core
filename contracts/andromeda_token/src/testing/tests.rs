@@ -107,7 +107,7 @@ fn test_token_modules() {
         deps.as_mut(),
         env.clone(),
         info.clone(),
-        ExecuteMsg::Mint(mint_msg.clone()),
+        ExecuteMsg::Mint(Box::new(mint_msg.clone())),
     )
     .unwrap();
     let expected = Response::default().add_attributes(vec![

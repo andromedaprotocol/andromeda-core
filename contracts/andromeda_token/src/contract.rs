@@ -931,7 +931,7 @@ mod tests {
 
         store_mock_config(deps.as_mut(), String::from("minter"));
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -1221,7 +1221,7 @@ mod tests {
         //store config
         store_mock_config(deps.as_mut(), minter.to_string());
 
-        let mint_msg = ExecuteMsg::Mint(MintMsg {
+        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
             description: None,
@@ -1229,7 +1229,7 @@ mod tests {
             metadata: None,
             token_uri: None,
             pricing: None,
-        });
+        }));
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
         let transfer_msg = ExecuteMsg::TransferNft {
@@ -1276,7 +1276,7 @@ mod tests {
         //store config
         store_mock_config(deps.as_mut(), minter.to_string());
 
-        let mint_msg = ExecuteMsg::Mint(MintMsg {
+        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
             description: None,
@@ -1284,7 +1284,7 @@ mod tests {
             metadata: None,
             token_uri: None,
             pricing: None,
-        });
+        }));
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
         let approve_all_msg = ExecuteMsg::ApproveAll {
@@ -1339,7 +1339,7 @@ mod tests {
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
 
-        let mint_msg = ExecuteMsg::Mint(MintMsg {
+        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
             description: None,
@@ -1347,7 +1347,7 @@ mod tests {
             metadata,
             token_uri: None,
             pricing: None,
-        });
+        }));
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
         let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
@@ -1386,7 +1386,7 @@ mod tests {
             pricing: None,
         };
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1434,7 +1434,7 @@ mod tests {
             pricing: None,
         };
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1486,7 +1486,7 @@ mod tests {
             pricing: None,
         };
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1536,7 +1536,7 @@ mod tests {
             pricing: None,
         };
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -1570,7 +1570,7 @@ mod tests {
             pricing: None,
         };
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -1604,7 +1604,7 @@ mod tests {
 
         store_mock_config(deps.as_mut(), String::from("minter"));
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         let msg =
             ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(encode_binary(&msg).unwrap())));
