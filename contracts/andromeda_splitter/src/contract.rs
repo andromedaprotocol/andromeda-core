@@ -1,14 +1,14 @@
 use crate::state::SPLITTER;
 use andromeda_protocol::{
     communication::encode_binary,
-    communication::{AndromedaMsg, ExecuteMsg as AndrExecute},
+    communication::{parse_message, AndromedaMsg, AndromedaQuery, ExecuteMsg as AndrExecute},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         hooks::{HookResponse, MessageHooks},
         Module, Modules,
     },
-    operators::{execute_update_operators, query_is_operator},
+    operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     splitter::{
@@ -80,7 +80,7 @@ pub fn execute(
             execute_update_address_list(deps, info, env, address_list)
         }
         ExecuteMsg::Send {} => execute_send(deps, info),
-        ExecuteMsg::AndrMsg(msg) => execute_andromeda(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
     }
 }
 
@@ -252,11 +252,31 @@ fn execute_update_address_list(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
-        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+    }
+}
+
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received: QueryMsg = parse_message(data)?;
+            match received {
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => query(deps, env, received),
+            }
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
     }
 }
 

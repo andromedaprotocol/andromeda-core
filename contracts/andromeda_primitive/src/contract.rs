@@ -7,7 +7,9 @@ use crate::state::{DATA, DEFAULT_KEY};
 use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    operators::{execute_update_operators, initialize_operators, query_operators},
+    operators::{
+        execute_update_operators, initialize_operators, query_is_operator, query_operators,
+    },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, Primitive, QueryMsg},
     require,
@@ -137,6 +139,9 @@ fn handle_andromeda_query(
         },
         AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
         AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
     }
 }
 

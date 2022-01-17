@@ -5,7 +5,7 @@ use andromeda_protocol::{
     anchor::{ExecuteMsg, InstantiateMsg, QueryMsg},
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    operators::{execute_update_operators, query_operators},
+    operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
@@ -271,6 +271,9 @@ fn handle_andromeda_query(
         }
         AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
         AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
     }
 }
 
