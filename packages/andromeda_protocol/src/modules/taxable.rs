@@ -39,8 +39,7 @@ impl MessageHooks for Taxable {
         agreement: TransferAgreement,
     ) -> Result<HookResponse, ContractError> {
         let _contract_addr = env.contract.address;
-        let rate = self.rate.clone().get_rate(&deps.querier)?;
-        rate.validate()?;
+        let rate = self.rate.validate(&deps.querier)?;
         let tax_amount = calculate_fee(rate.clone(), agreement.amount)?;
 
         let mut resp = HookResponse::default();
@@ -81,9 +80,7 @@ impl Module for Taxable {
             !self.receivers.is_empty(),
             ContractError::NoReceivingAddress {},
         )?;
-        let rate = self.rate.clone().get_rate(querier)?;
-        rate.validate()?;
-
+        self.rate.validate(querier)?;
         if self.description.clone().is_some() {
             require(
                 self.description.clone().unwrap().len() <= 200,

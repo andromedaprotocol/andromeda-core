@@ -1,11 +1,17 @@
-use crate::{address_list::IncludesAddressResponse, ownership::ContractOwnerResponse};
+use crate::{
+    address_list::IncludesAddressResponse,
+    ownership::ContractOwnerResponse,
+    primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
+};
 use cosmwasm_std::{
-    from_slice,
+    coin, from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
+    to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
 use terra_cosmwasm::TerraQueryWrapper;
+
+pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -43,24 +49,46 @@ impl Querier for WasmMockQuerier {
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         match &request {
-            QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr,
-                msg: _,
-            }) => {
-                if contract_addr == &Addr::unchecked("addresslist_contract_address1") {
-                    let msg_response = IncludesAddressResponse { included: true };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
-                } else if contract_addr == &Addr::unchecked("factory_address") {
-                    let msg_response = ContractOwnerResponse {
-                        owner: String::from("creator"),
-                    };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
-                } else {
-                    let msg_response = IncludesAddressResponse { included: false };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+            QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
+                match contract_addr.as_str() {
+                    "addresslist_contract_address1" => {
+                        let msg_response = IncludesAddressResponse { included: true };
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                    }
+                    "factory_address" => {
+                        let msg_response = ContractOwnerResponse {
+                            owner: String::from("creator"),
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                    }
+                    MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(&msg),
+                    _ => {
+                        let msg_response = IncludesAddressResponse { included: false };
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                    }
                 }
             }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            PrimitiveQueryMsg::GetValue { name } => {
+                let msg_response = match name.clone().unwrap().as_str() {
+                    "percent" => GetValueResponse {
+                        name: name.unwrap(),
+                        value: Primitive::Uint128(1u128.into()),
+                    },
+                    "flat" => GetValueResponse {
+                        name: name.unwrap(),
+                        value: Primitive::Coin(coin(1u128, "uusd")),
+                    },
+                    _ => panic!("Unsupported rate name"),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
         }
     }
 

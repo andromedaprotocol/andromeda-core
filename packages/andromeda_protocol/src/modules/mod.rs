@@ -31,7 +31,9 @@ pub const MODULES: Item<Modules> = Item::new("modules");
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct ADORate {
+    /// The address of the primitive contract.
     pub address: String,
+    /// The key of the primitive in the primitive contract.
     pub key: Option<String>,
 }
 
@@ -47,26 +49,30 @@ pub enum Rate {
 }
 
 impl Rate {
-    /// Validates that a given rate is non-zero
+    /// Validates that a given rate is non-zero. It is expected that the Rate is not an
+    /// External Rate.
     pub fn is_non_zero(&self) -> Result<bool, ContractError> {
         match self {
-            Rate::Flat(rate) => Ok(rate.amount.u128() > 0),
+            Rate::Flat(coin) => Ok(coin.amount > Uint128::zero()),
             Rate::Percent(rate) => Ok(rate > &Uint128::zero()),
             Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
         }
     }
 
-    pub fn validate(&self) -> Result<(), ContractError> {
-        require(self.is_non_zero()?, ContractError::InvalidRate {})?;
+    /// Validates `self` and returns an "unwrapped" version of itself wherein if it is an External
+    /// Rate, the actual rate value is retrieved from the Primitive Contract.
+    pub fn validate(&self, querier: &QuerierWrapper) -> Result<Rate, ContractError> {
+        let rate = self.clone().get_rate(querier)?;
+        require(rate.is_non_zero()?, ContractError::InvalidRate {})?;
 
-        if let Rate::Percent(rate) = self {
+        if let Rate::Percent(rate) = rate {
             require(
-                rate <= &Uint128::from(100u128),
+                rate <= Uint128::from(100u128),
                 ContractError::InvalidRate {},
             )?;
         }
 
-        Ok(())
+        Ok(rate)
     }
 
     /// If `self` is Flat or Percent it returns itself. Otherwise it queries the primitive contract
@@ -78,10 +84,8 @@ impl Rate {
             Rate::External(ado_rate) => {
                 let response: GetValueResponse =
                     querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: ado_rate.address.clone(),
-                        msg: encode_binary(&PrimitiveQueryMsg::GetValue {
-                            name: ado_rate.key.clone(),
-                        })?,
+                        contract_addr: ado_rate.address,
+                        msg: encode_binary(&PrimitiveQueryMsg::GetValue { name: ado_rate.key })?,
                     }))?;
                 match response.value {
                     Primitive::Coin(coin) => return Ok(Rate::Flat(coin)),
@@ -306,4 +310,33 @@ pub fn generate_instantiate_msgs(
     }
 
     Ok(resp)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT};
+    use cosmwasm_std::coin;
+
+    use super::*;
+
+    #[test]
+    fn test_validate_external_rate() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let rate = Rate::External(ADORate {
+            address: MOCK_PRIMITIVE_CONTRACT.to_string(),
+            key: Some("percent".to_string()),
+        });
+        let validated_rate = rate.validate(&deps.as_mut().querier).unwrap();
+        let expected_rate = Rate::Percent(1u128.into());
+        assert_eq!(expected_rate, validated_rate);
+
+        let rate = Rate::External(ADORate {
+            address: MOCK_PRIMITIVE_CONTRACT.to_string(),
+            key: Some("flat".to_string()),
+        });
+        let validated_rate = rate.validate(&deps.as_mut().querier).unwrap();
+        let expected_rate = Rate::Flat(coin(1u128, "uusd"));
+        assert_eq!(expected_rate, validated_rate);
+    }
 }
