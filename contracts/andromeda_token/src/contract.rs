@@ -163,7 +163,7 @@ pub fn execute_mint(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: MintMsg,
+    msg: Box<MintMsg>,
 ) -> Result<Response, ContractError> {
     deps.api.addr_validate(&msg.owner)?;
     let token = Token {

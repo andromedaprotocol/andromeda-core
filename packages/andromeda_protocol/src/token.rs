@@ -272,7 +272,7 @@ pub struct MintMsg {
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Mints a token
-    Mint(MintMsg),
+    Mint(Box<MintMsg>),
     /// Transfers ownership of a token
     TransferNft {
         recipient: String,

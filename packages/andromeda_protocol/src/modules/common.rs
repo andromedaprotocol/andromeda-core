@@ -27,7 +27,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Result<Coin, ContractErro
             let mut fee_amount = payment.amount.multiply_ratio(rate, 100_u128).u128();
 
             //Always round any remainder up and prioritise the fee receiver
-            let reversed_fee = (fee_amount * 100) / Uint128::from(rate).u128();
+            let reversed_fee = (fee_amount * 100) / rate.u128();
             if payment.amount.u128() > reversed_fee {
                 // [COM-1] Added checked add to fee_amount rather than direct increment
                 let res = fee_amount.checked_add(1);
@@ -38,7 +38,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Result<Coin, ContractErro
             }
             Ok(coin(fee_amount, payment.denom))
         }
-        Rate::External(_) => return Err(ContractError::UnexpectedExternalRate {}),
+        Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
     }
 }
 

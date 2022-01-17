@@ -88,14 +88,12 @@ impl Rate {
                         msg: encode_binary(&PrimitiveQueryMsg::GetValue { name: ado_rate.key })?,
                     }))?;
                 match response.value {
-                    Primitive::Coin(coin) => return Ok(Rate::Flat(coin)),
-                    Primitive::Uint128(value) => return Ok(Rate::Percent(value)),
-                    _ => {
-                        return Err(ContractError::ParsingError {
-                            err: "Stored rate is not a coin or Uint128".to_string(),
-                        })
-                    }
-                };
+                    Primitive::Coin(coin) => Ok(Rate::Flat(coin)),
+                    Primitive::Uint128(value) => Ok(Rate::Percent(value)),
+                    _ => Err(ContractError::ParsingError {
+                        err: "Stored rate is not a coin or Uint128".to_string(),
+                    }),
+                }
             }
         }
     }

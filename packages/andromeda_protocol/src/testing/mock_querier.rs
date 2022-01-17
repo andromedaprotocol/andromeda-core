@@ -61,7 +61,7 @@ impl WasmMockQuerier {
                         };
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
                     }
-                    MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(&msg),
+                    MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     _ => {
                         let msg_response = IncludesAddressResponse { included: false };
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
