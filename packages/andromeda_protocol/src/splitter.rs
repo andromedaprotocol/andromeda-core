@@ -1,4 +1,4 @@
-use crate::communication::AndromedaMsg;
+use crate::communication::{AndromedaMsg, AndromedaQuery};
 use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
 use cosmwasm_std::{Binary, Uint128};
@@ -79,19 +79,15 @@ pub enum ExecuteMsg {
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
-    AndrMsg(AndromedaMsg),
+    AndrReceive(AndromedaMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// The current config of the Splitter contract
     GetSplitterConfig {},
-    /// The current contract owner.
-    ContractOwner {},
-    IsOperator {
-        address: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]

@@ -20,6 +20,7 @@ pub enum AndromedaQuery {
     Get(Option<Binary>),
     Owner {},
     Operators {},
+    IsOperator { address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

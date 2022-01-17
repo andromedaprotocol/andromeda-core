@@ -49,9 +49,6 @@ pub enum QueryMsg {
     },
     /// The current contract config.
     ContractInfo {},
-    IsOperator {
-        address: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

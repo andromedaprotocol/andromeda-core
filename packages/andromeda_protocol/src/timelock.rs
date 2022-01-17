@@ -4,7 +4,7 @@ use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::communication::AndromedaMsg;
+use crate::communication::{AndromedaMsg, AndromedaQuery};
 use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
 
@@ -79,17 +79,13 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// Queries funds held by an address
     GetLockedFunds {
         address: String,
     },
     /// The current config of the contract
     GetTimelockConfig {},
-    /// The current owner of the contract
-    ContractOwner {},
-    IsOperator {
-        address: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

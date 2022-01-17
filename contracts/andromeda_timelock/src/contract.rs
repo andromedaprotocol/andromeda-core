@@ -6,7 +6,7 @@ use cw721::Expiration;
 
 use crate::state::{State, STATE};
 use andromeda_protocol::{
-    communication::{encode_binary, parse_message, AndromedaMsg},
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -14,7 +14,7 @@ use andromeda_protocol::{
         hooks::HookResponse,
     },
     modules::{hooks::MessageHooks, Module},
-    operators::{execute_update_operators, query_is_operator},
+    operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     timelock::{
@@ -210,12 +210,32 @@ fn execute_update_address_list(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetLockedFunds { address } => encode_binary(&query_held_funds(deps, address)?),
         QueryMsg::GetTimelockConfig {} => encode_binary(&query_config(deps)?),
-        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+    }
+}
+
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received: QueryMsg = parse_message(data)?;
+            match received {
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => query(deps, env, received),
+            }
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
     }
 }
 
