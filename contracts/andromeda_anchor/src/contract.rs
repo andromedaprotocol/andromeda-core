@@ -48,7 +48,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
-        ExecuteMsg::Deposit {} => execute_deposit(deps, env, info),
+        ExecuteMsg::Deposit { recipient } => execute_deposit(deps, env, info, recipient),
         ExecuteMsg::Withdraw { position_idx } => withdraw(deps, env, info, position_idx),
         ExecuteMsg::Yourself { yourself_msg } => {
             require(
@@ -70,7 +70,7 @@ fn execute_andr_receive(
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(data) => match data {
-            None => execute_deposit(deps, env, info),
+            None => execute_deposit(deps, env, info, None),
             Some(_) => {
                 let position_idx: Uint128 = parse_message(data)?;
                 withdraw(deps, env, info, position_idx)
@@ -87,10 +87,15 @@ pub fn execute_deposit(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    recipient: Option<String>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let coin_denom = config.stable_denom.clone();
-    let depositor = info.sender.clone();
+    // let depositor = info.sender.clone();
+    let depositor = match recipient {
+        Some(addr) => deps.api.addr_validate(&addr)?,
+        None => info.sender.clone(),
+    };
 
     require(
         info.funds.len() <= 1usize,
@@ -144,17 +149,18 @@ pub fn execute_deposit(
 pub fn withdraw(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     position_idx: Uint128,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let position = POSITION.load(deps.storage, &position_idx.u128().to_be_bytes())?;
-    let position_owner = deps.api.addr_humanize(&position.owner)?;
+    // let position_owner = deps.api.addr_humanize(&position.owner)?;
 
-    require(
-        position_owner == info.sender,
-        ContractError::Unauthorized {},
-    )?;
+    // Is this required?
+    // require(
+    //     position_owner == info.sender,
+    //     ContractError::Unauthorized {},
+    // )?;
 
     let contract_balance = query_balance(
         &deps.querier,
