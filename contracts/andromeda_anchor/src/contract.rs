@@ -149,18 +149,17 @@ pub fn execute_deposit(
 pub fn withdraw(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     position_idx: Uint128,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let position = POSITION.load(deps.storage, &position_idx.u128().to_be_bytes())?;
-    // let position_owner = deps.api.addr_humanize(&position.owner)?;
+    let position_owner = deps.api.addr_humanize(&position.owner)?;
 
-    // Is this required?
-    // require(
-    //     position_owner == info.sender,
-    //     ContractError::Unauthorized {},
-    // )?;
+    require(
+        position_owner == info.sender,
+        ContractError::Unauthorized {},
+    )?;
 
     let contract_balance = query_balance(
         &deps.querier,

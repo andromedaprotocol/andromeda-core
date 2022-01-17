@@ -179,7 +179,7 @@ fn test_withdraw_recipient() {
     let msg = ExecuteMsg::Withdraw {
         position_idx: Uint128::from(1u128),
     };
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(&recipient, &[]);
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let expected_res = Response::new()
