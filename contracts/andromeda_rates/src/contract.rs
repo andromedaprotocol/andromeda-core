@@ -2,17 +2,12 @@ use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    modules::{ADORate, Rate},
     operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    primitive::{ExecuteMsg as PrimitiveExecuteMsg, Primitive},
     rates::{ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
     require,
 };
-use cosmwasm_std::{
-    attr, entry_point, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    WasmMsg,
-};
+use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 #[entry_point]
 pub fn instantiate(
@@ -36,9 +31,6 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, info, msg),
-        ExecuteMsg::UpdateRateData { ado_rate, rate } => {
-            execute_update_rate_data(deps, info, ado_rate, rate)
-        }
         ExecuteMsg::UpdateRates { rates } => execute_update_rates(deps, info, rates),
     }
 }
@@ -58,32 +50,6 @@ fn execute_andr_receive(
             execute_update_operators(deps, info, operators)
         }
     }
-}
-
-fn execute_update_rate_data(
-    deps: DepsMut,
-    info: MessageInfo,
-    ado_rate: ADORate,
-    rate: Rate,
-) -> Result<Response, ContractError> {
-    require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-    let value: Primitive = match rate {
-        Rate::Percent(percent) => Primitive::Uint128(percent),
-        Rate::Flat(coin) => Primitive::Coin(coin),
-        Rate::External(_) => return Err(ContractError::UnexpectedExternalRate {}),
-    };
-    let execute_msg = WasmMsg::Execute {
-        contract_addr: ado_rate.address,
-        funds: info.funds,
-        msg: encode_binary(&PrimitiveExecuteMsg::SetValue {
-            name: ado_rate.key,
-            value,
-        })?,
-    };
-    Ok(Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]))
 }
 
 fn execute_update_rates(
@@ -138,7 +104,7 @@ mod tests {
         rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
     };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coin, Addr, Coin, Uint128};
+    use cosmwasm_std::{Addr, Coin, Uint128};
 
     #[test]
     fn test_instantiate_query() {
@@ -225,97 +191,5 @@ mod tests {
             payments,
             encode_binary(&PaymentsResponse { payments: rates }).unwrap()
         );
-    }
-
-    #[test]
-    fn test_update_rate_data_percent() {
-        let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
-        let owner = "owner";
-        let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg { rates: vec![] };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let ado_rate = ADORate {
-            address: "primitive_contract".to_string(),
-            key: None,
-        };
-        let msg = ExecuteMsg::UpdateRateData {
-            ado_rate: ado_rate.clone(),
-            rate: Rate::Percent(10u128.into()),
-        };
-        let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
-
-        let execute_msg = WasmMsg::Execute {
-            contract_addr: ado_rate.address.clone(),
-            funds: info.funds,
-            msg: encode_binary(&PrimitiveExecuteMsg::SetValue {
-                name: ado_rate.key,
-                value: Primitive::Uint128(10u128.into()),
-            })
-            .unwrap(),
-        };
-        assert_eq!(
-            Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
-            res
-        );
-    }
-
-    #[test]
-    fn test_update_rate_data_flat() {
-        let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
-        let owner = "owner";
-        let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg { rates: vec![] };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let ado_rate = ADORate {
-            address: "primitive_contract".to_string(),
-            key: None,
-        };
-
-        let msg = ExecuteMsg::UpdateRateData {
-            ado_rate: ado_rate.clone(),
-            rate: Rate::Flat(coin(10u128, "uusd")),
-        };
-        let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
-
-        let execute_msg = WasmMsg::Execute {
-            contract_addr: ado_rate.address,
-            funds: info.funds,
-            msg: encode_binary(&PrimitiveExecuteMsg::SetValue {
-                name: ado_rate.key,
-                value: Primitive::Coin(coin(10u128, "uusd")),
-            })
-            .unwrap(),
-        };
-        assert_eq!(
-            Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
-            res
-        );
-    }
-
-    #[test]
-    fn test_update_rate_data_ado_rate() {
-        let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
-        let owner = "owner";
-        let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg { rates: vec![] };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let ado_rate = ADORate {
-            address: "primitive_contract".to_string(),
-            key: None,
-        };
-
-        let msg = ExecuteMsg::UpdateRateData {
-            ado_rate: ado_rate.clone(),
-            rate: Rate::External(ado_rate),
-        };
-        let res = execute(deps.as_mut(), env, info, msg);
-
-        assert_eq!(ContractError::UnexpectedExternalRate {}, res.unwrap_err());
     }
 }

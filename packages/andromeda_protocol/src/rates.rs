@@ -1,6 +1,6 @@
 use crate::{
     communication::{AndromedaMsg, AndromedaQuery},
-    modules::{ADORate, Rate},
+    modules::Rate,
 };
 use cosmwasm_std::Addr;
 use schemars::JsonSchema;
@@ -15,7 +15,6 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    UpdateRateData { ado_rate: ADORate, rate: Rate },
     UpdateRates { rates: Vec<RateInfo> },
 }
 
