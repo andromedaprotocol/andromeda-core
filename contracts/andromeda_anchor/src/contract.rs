@@ -212,9 +212,10 @@ pub fn transfer_ust(
     let transfer_amount = current_balance - prev_balance;
     let mut msgs = vec![];
     if transfer_amount > Uint128::zero() {
-        msgs.push(
-            receiver.generate_msg(&deps, coins(transfer_amount.u128(), config.stable_denom))?,
-        );
+        msgs.push(receiver.generate_msg(
+            &deps.as_ref(),
+            coins(transfer_amount.u128(), config.stable_denom),
+        )?);
     }
     Ok(Response::new().add_submessages(msgs).add_attributes(vec![
         attr("action", "withdraw"),

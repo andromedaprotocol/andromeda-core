@@ -34,7 +34,7 @@ impl MessageHooks for Royalty {
         agreement: TransferAgreement,
     ) -> Result<HookResponse, ContractError> {
         let rate = self.rate.validate(&deps.querier)?;
-        let fee_payment = calculate_fee(rate, agreement.amount)?;
+        let fee_payment = calculate_fee(rate, &agreement.amount)?;
         let mut resp = HookResponse::default();
         let mut event = Event::new("royalty");
 
@@ -207,7 +207,7 @@ mod tests {
         assert_eq!(resp.events[0].attributes[1].key, ATTR_DEDUCTED);
         assert_eq!(
             resp.events[0].attributes[1].value,
-            calculate_fee(royalty.rate.clone(), agreed_amount.clone())
+            calculate_fee(royalty.rate.clone(), &agreed_amount)
                 .unwrap()
                 .to_string()
         );
@@ -216,7 +216,7 @@ mod tests {
             resp.events[0].attributes[2].value,
             PaymentAttribute {
                 receiver: royalty.receivers[0].clone(),
-                amount: calculate_fee(royalty.rate.clone(), agreed_amount).unwrap()
+                amount: calculate_fee(royalty.rate.clone(), &agreed_amount).unwrap()
             }
             .to_string()
         );

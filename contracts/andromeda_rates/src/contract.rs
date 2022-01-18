@@ -1,13 +1,18 @@
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
+    communication::{encode_binary, parse_message, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
+    modules::common::{calculate_fee, deduct_funds},
     operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    rates::{ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
+    rates::{
+        DeductedFundsResponse, ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo,
+    },
     require,
 };
-use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{
+    attr, entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, SubMsg,
+};
 
 #[entry_point]
 pub fn instantiate(
@@ -78,7 +83,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 
 fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
     match msg {
-        AndromedaQuery::Get(_) => encode_binary(&query_payments(deps)?),
+        AndromedaQuery::Get(data) => {
+            let coin: Coin = parse_message(data)?;
+            encode_binary(&query_deducted_funds(deps, coin)?)
+        }
         AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
         AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
         AndromedaQuery::IsOperator { address } => {
@@ -94,17 +102,33 @@ fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
     Ok(PaymentsResponse { payments: rates })
 }
 
+fn query_deducted_funds(deps: Deps, coin: Coin) -> Result<DeductedFundsResponse, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let mut deducted_funds = vec![coin];
+    let mut msgs: Vec<SubMsg> = vec![];
+    for rate_info in config.rates.iter() {
+        // TODO: Figure out what rate_info.is_additive does.
+        let rate = rate_info.rate.validate(&deps.querier)?;
+        let fee = calculate_fee(rate, &deducted_funds[0])?;
+        deduct_funds(&mut deducted_funds, &fee)?;
+        for reciever in rate_info.receivers.iter() {
+            msgs.push(reciever.generate_msg(&deps, vec![fee.clone()])?);
+        }
+    }
+    Ok(DeductedFundsResponse { msgs })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::contract::{execute, instantiate, query};
     use andromeda_protocol::{
-        communication::{encode_binary, AndromedaMsg, AndromedaQuery},
+        communication::{encode_binary, AndromedaMsg, AndromedaQuery, Recipient},
         modules::Rate,
         rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
     };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{Addr, Coin, Uint128};
+    use cosmwasm_std::{Coin, Uint128};
 
     #[test]
     fn test_instantiate_query() {
@@ -117,7 +141,7 @@ mod tests {
                 rate: Rate::Percent(10u128.into()),
                 is_additive: true,
                 description: Some("desc1".to_string()),
-                receivers: vec![Addr::unchecked("")],
+                receivers: vec![Recipient::Addr("".into())],
             },
             RateInfo {
                 rate: Rate::Flat(Coin {
@@ -126,7 +150,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc2".to_string()),
-                receivers: vec![Addr::unchecked("")],
+                receivers: vec![Recipient::Addr("".into())],
             },
         ];
         let msg = InstantiateMsg {
@@ -159,7 +183,7 @@ mod tests {
                 rate: Rate::Percent(10u128.into()),
                 is_additive: true,
                 description: Some("desc1".to_string()),
-                receivers: vec![Addr::unchecked("")],
+                receivers: vec![Recipient::Addr("".into())],
             },
             RateInfo {
                 rate: Rate::Flat(Coin {
@@ -168,7 +192,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc2".to_string()),
-                receivers: vec![Addr::unchecked("")],
+                receivers: vec![Recipient::Addr("".into())],
             },
         ];
         let msg = InstantiateMsg { rates: vec![] };
