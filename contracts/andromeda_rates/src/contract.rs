@@ -2,7 +2,7 @@ use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    modules::common::{calculate_fee, deduct_funds},
+    modules::common::calculate_fee,
     operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     rates::{
@@ -104,13 +104,10 @@ fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
 
 fn query_deducted_funds(deps: Deps, coin: Coin) -> Result<DeductedFundsResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let mut deducted_funds = vec![coin];
     let mut msgs: Vec<SubMsg> = vec![];
     for rate_info in config.rates.iter() {
-        // TODO: Figure out what rate_info.is_additive does.
         let rate = rate_info.rate.validate(&deps.querier)?;
-        let fee = calculate_fee(rate, &deducted_funds[0])?;
-        deduct_funds(&mut deducted_funds, &fee)?;
+        let fee = calculate_fee(rate, &coin)?;
         for reciever in rate_info.receivers.iter() {
             msgs.push(reciever.generate_msg(&deps, vec![fee.clone()])?);
         }
@@ -217,18 +214,18 @@ mod tests {
         let info = mock_info(owner, &[]);
         let rates = vec![
             RateInfo {
-                rate: Rate::Percent(10u128.into()),
-                is_additive: true,
-                description: Some("desc1".to_string()),
-                receivers: vec![Recipient::Addr("1".into())],
-            },
-            RateInfo {
                 rate: Rate::Flat(Coin {
                     amount: Uint128::from(20u128),
                     denom: "uusd".to_string(),
                 }),
                 is_additive: false,
                 description: Some("desc2".to_string()),
+                receivers: vec![Recipient::Addr("1".into())],
+            },
+            RateInfo {
+                rate: Rate::Percent(10u128.into()),
+                is_additive: true,
+                description: Some("desc1".to_string()),
                 receivers: vec![Recipient::Addr("2".into())],
             },
             RateInfo {
@@ -261,11 +258,11 @@ mod tests {
         let expected_msgs: Vec<SubMsg> = vec![
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: "1".into(),
-                amount: coins(10, "uusd"),
+                amount: coins(20, "uusd"),
             })),
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: "2".into(),
-                amount: coins(20, "uusd"),
+                amount: coins(10, "uusd"),
             })),
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: "3".into(),
