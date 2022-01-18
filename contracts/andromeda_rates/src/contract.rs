@@ -1,6 +1,6 @@
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
-    communication::{encode_binary, parse_message, parse_message, AndromedaMsg, AndromedaQuery},
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     modules::common::{calculate_fee, deduct_funds},
     operators::{execute_update_operators, query_is_operator, query_operators},
@@ -124,11 +124,12 @@ mod tests {
     use crate::contract::{execute, instantiate, query};
     use andromeda_protocol::{
         communication::{encode_binary, AndromedaMsg, AndromedaQuery, Recipient},
-        modules::Rate,
+        modules::{ADORate, Rate},
         rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
+        testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT},
     };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{Coin, Uint128};
+    use cosmwasm_std::{coin, coins, from_binary, BankMsg, Coin, CosmosMsg, Uint128};
 
     #[test]
     fn test_instantiate_query() {
@@ -206,14 +207,71 @@ mod tests {
             Response::new().add_attributes(vec![attr("action", "update_rates")]),
             res
         );
+    }
 
-        let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(None));
+    #[test]
+    fn test_query_deducted_funds() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let owner = "owner";
+        let info = mock_info(owner, &[]);
+        let rates = vec![
+            RateInfo {
+                rate: Rate::Percent(10u128.into()),
+                is_additive: true,
+                description: Some("desc1".to_string()),
+                receivers: vec![Recipient::Addr("1".into())],
+            },
+            RateInfo {
+                rate: Rate::Flat(Coin {
+                    amount: Uint128::from(20u128),
+                    denom: "uusd".to_string(),
+                }),
+                is_additive: false,
+                description: Some("desc2".to_string()),
+                receivers: vec![Recipient::Addr("2".into())],
+            },
+            RateInfo {
+                rate: Rate::External(ADORate {
+                    address: MOCK_PRIMITIVE_CONTRACT.into(),
+                    key: Some("flat".into()),
+                }),
+                is_additive: false,
+                description: Some("desc3".to_string()),
+                receivers: vec![Recipient::Addr("3".into())],
+            },
+        ];
+        let msg = InstantiateMsg {
+            rates: rates.clone(),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        let payments = query(deps.as_ref(), env, msg).unwrap();
+        let res: DeductedFundsResponse = from_binary(
+            &query(
+                deps.as_ref(),
+                env,
+                QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
+                    encode_binary(&coin(100, "uusd")).unwrap(),
+                ))),
+            )
+            .unwrap(),
+        )
+        .unwrap();
 
-        assert_eq!(
-            payments,
-            encode_binary(&PaymentsResponse { payments: rates }).unwrap()
-        );
+        let expected_msgs: Vec<SubMsg> = vec![
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "1".into(),
+                amount: coins(10, "uusd"),
+            })),
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "2".into(),
+                amount: coins(20, "uusd"),
+            })),
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "3".into(),
+                amount: coins(1, "uusd"),
+            })),
+        ];
+        assert_eq!(expected_msgs, res.msgs);
     }
 }
