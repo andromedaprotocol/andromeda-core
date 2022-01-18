@@ -1,11 +1,12 @@
 use crate::communication::{AndromedaMsg, AndromedaQuery};
-use cosmwasm_std::{Addr, StdError, Uint128};
+use cosmwasm_std::{Addr, Coin, StdError, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum Primitive {
     Uint128(Uint128),
+    Coin(Coin),
     String(String),
     Bool(bool),
     Vec(Vec<Primitive>),
@@ -56,6 +57,13 @@ impl Primitive {
         match self {
             Primitive::Vec(vector) => Ok(vector.to_vec()),
             _ => Err(parse_error(String::from("Vec"))),
+        }
+    }
+
+    pub fn try_get_coin(&self) -> Result<Coin, StdError> {
+        match self {
+            Primitive::Coin(coin) => Ok(coin.clone()),
+            _ => Err(parse_error(String::from("Coin"))),
         }
     }
 }
