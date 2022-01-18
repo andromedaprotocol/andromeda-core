@@ -33,6 +33,7 @@ impl Recipient {
         Recipient::ADO(ADORecipient { addr, msg: None })
     }
 
+    /// Gets the address of the recipient.
     pub fn get_addr(&self) -> String {
         match &self {
             Recipient::Addr(addr) => addr.clone(),
@@ -40,6 +41,7 @@ impl Recipient {
         }
     }
 
+    /// Generates the sub message depending on the type of the recipient.
     pub fn generate_msg(&self, deps: &DepsMut, funds: Vec<Coin>) -> Result<SubMsg, ContractError> {
         Ok(match &self {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {

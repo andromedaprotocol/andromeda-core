@@ -282,7 +282,7 @@ fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::modules::address_list::AddressListModule;
+    use andromeda_protocol::{communication::Recipient, modules::address_list::AddressListModule};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{from_binary, Addr, Coin, Uint128};
 
