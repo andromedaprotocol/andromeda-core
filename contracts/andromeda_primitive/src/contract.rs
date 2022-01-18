@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, Storage};
 use cw2::set_contract_version;
 
 use crate::state::{DATA, DEFAULT_KEY};
@@ -8,7 +8,8 @@ use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     operators::{
-        execute_update_operators, initialize_operators, query_is_operator, query_operators,
+        execute_update_operators, initialize_operators, is_operator, query_is_operator,
+        query_operators,
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, Primitive, QueryMsg},
@@ -76,7 +77,7 @@ pub fn execute_set_value(
     value: Primitive,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        is_authorized(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     if value.is_invalid() {
@@ -101,7 +102,7 @@ pub fn execute_delete_value(
     name: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        is_authorized(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let name = get_name_or_default(&name);
@@ -110,6 +111,10 @@ pub fn execute_delete_value(
         .add_attribute("method", "delete_value")
         .add_attribute("sender", info.sender)
         .add_attribute("name", name))
+}
+
+fn is_authorized(storage: &dyn Storage, address: &str) -> Result<bool, ContractError> {
+    Ok(is_contract_owner(storage, address)? || is_operator(storage, address)?)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -223,7 +228,7 @@ mod tests {
             name: Some("test1".to_string()),
             value: Primitive::String("value2".to_string()),
         };
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let query_res: GetValueResponse =
             query_value_helper(deps.as_ref(), Some("test1".to_string()));
@@ -276,7 +281,7 @@ mod tests {
             name: None,
             value: Primitive::String("value2".to_string()),
         };
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let query_res: GetValueResponse = query_value_helper(deps.as_ref(), None);
 
@@ -304,7 +309,7 @@ mod tests {
             value: Primitive::Vec(vec![Primitive::Vec(vec![])]),
         };
         let res: Result<Response, ContractError> =
-            execute(deps.as_mut(), mock_env(), info.clone(), msg);
+            execute(deps.as_mut(), mock_env(), info, msg);
         assert_eq!(ContractError::InvalidPrimitive {}, res.unwrap_err());
     }
 
@@ -338,7 +343,7 @@ mod tests {
         let msg = ExecuteMsg::DeleteValue {
             name: Some("test1".to_string()),
         };
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(
             res,
             Response::new()
@@ -383,7 +388,7 @@ mod tests {
         );
 
         let msg = ExecuteMsg::DeleteValue { name: None };
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(
             res,
             Response::new()
@@ -403,7 +408,7 @@ mod tests {
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let user1 = mock_info("user1", &[]);
         let msg = ExecuteMsg::SetValue {
@@ -411,7 +416,7 @@ mod tests {
             value: Primitive::String("value1".to_string()),
         };
         let res: Result<Response, ContractError> =
-            execute(deps.as_mut(), mock_env(), user1.clone(), msg);
+            execute(deps.as_mut(), mock_env(), user1, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 
@@ -429,12 +434,12 @@ mod tests {
             name: None,
             value: Primitive::String("value1".to_string()),
         };
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let user1 = mock_info("user1", &[]);
         let msg = ExecuteMsg::DeleteValue { name: None };
         let res: Result<Response, ContractError> =
-            execute(deps.as_mut(), mock_env(), user1.clone(), msg);
+            execute(deps.as_mut(), mock_env(), user1, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 
@@ -454,7 +459,7 @@ mod tests {
         };
         let msg_binary = encode_binary(&msg).unwrap();
         let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(msg_binary)));
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(
             Response::new()
                 .add_attribute("method", "set_value")

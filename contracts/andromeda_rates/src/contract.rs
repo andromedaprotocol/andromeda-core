@@ -3,8 +3,9 @@ use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, query_contract_owner},
+    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     rates::{ExecuteMsg, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
+    require,
 };
 use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
@@ -15,10 +16,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let config = Config {
-        owner: info.sender.to_string(),
-        rates: msg.rates,
-    };
+    let config = Config { rates: msg.rates };
+    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "rates")]))
 }
@@ -58,10 +57,11 @@ fn execute_update_rates(
     info: MessageInfo,
     rates: Vec<RateInfo>,
 ) -> Result<Response, ContractError> {
+    require(
+        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
     let mut config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
     config.rates = rates;
     CONFIG.save(deps.storage, &config)?;
 
@@ -100,11 +100,11 @@ mod tests {
     use crate::contract::{execute, instantiate, query};
     use andromeda_protocol::{
         communication::{encode_binary, AndromedaMsg, AndromedaQuery},
-        modules::{FlatRate, Rate},
+        modules::Rate,
         rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
     };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{Addr, Uint128};
+    use cosmwasm_std::{Addr, Coin, Uint128};
 
     #[test]
     fn test_instantiate_query() {
@@ -114,13 +114,13 @@ mod tests {
         let info = mock_info(owner, &[]);
         let rates = vec![
             RateInfo {
-                rate: Rate::Percent(10),
+                rate: Rate::Percent(10u128.into()),
                 is_additive: true,
                 description: Some("desc1".to_string()),
                 receivers: vec![Addr::unchecked("")],
             },
             RateInfo {
-                rate: Rate::Flat(FlatRate {
+                rate: Rate::Flat(Coin {
                     amount: Uint128::from(10u128),
                     denom: "uusd".to_string(),
                 }),
@@ -156,13 +156,13 @@ mod tests {
         let info = mock_info(owner, &[]);
         let rates = vec![
             RateInfo {
-                rate: Rate::Percent(10),
+                rate: Rate::Percent(10u128.into()),
                 is_additive: true,
                 description: Some("desc1".to_string()),
                 receivers: vec![Addr::unchecked("")],
             },
             RateInfo {
-                rate: Rate::Flat(FlatRate {
+                rate: Rate::Flat(Coin {
                     amount: Uint128::from(10u128),
                     denom: "uusd".to_string(),
                 }),
