@@ -1,10 +1,63 @@
-use cosmwasm_std::{from_binary, to_binary, Binary};
+use cosmwasm_std::{
+    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, DepsMut, SubMsg, WasmMsg,
+};
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{common::unwrap_or_err, error::ContractError};
 
 pub mod msg;
+
+// ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ADORecipient {
+    pub addr: String,
+    pub msg: Option<Binary>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Recipient {
+    Addr(String),
+    ADO(ADORecipient),
+}
+
+impl Recipient {
+    /// Creates an Addr Recipient from the given string
+    pub fn from_string(addr: String) -> Recipient {
+        Recipient::Addr(addr)
+    }
+
+    /// Creates an ADO Recipient from the given string with an empty Data field
+    pub fn ado_from_string(addr: String) -> Recipient {
+        Recipient::ADO(ADORecipient { addr, msg: None })
+    }
+
+    /// Gets the address of the recipient.
+    pub fn get_addr(&self) -> String {
+        match &self {
+            Recipient::Addr(addr) => addr.clone(),
+            Recipient::ADO(ado_recipient) => ado_recipient.addr.clone(),
+        }
+    }
+
+    /// Generates the sub message depending on the type of the recipient.
+    pub fn generate_msg(&self, deps: &DepsMut, funds: Vec<Coin>) -> Result<SubMsg, ContractError> {
+        Ok(match &self {
+            Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
+                contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),
+                msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(
+                    recip.msg.clone(),
+                )))?,
+                funds,
+            }),
+            Recipient::Addr(addr) => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: addr.clone(),
+                amount: funds,
+            })),
+        })
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
