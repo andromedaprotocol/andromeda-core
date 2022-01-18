@@ -3,7 +3,7 @@ use crate::state::{CONFIG, POSITION};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
     anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg, YourselfMsg},
-    communication::AndromedaMsg,
+    communication::{AndromedaMsg, Recipient},
 };
 use cosmwasm_std::{
     attr, coin,
@@ -85,7 +85,7 @@ fn test_deposit() {
 }
 
 #[test]
-fn test_withdraw() {
+fn test_withdraw_addr_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
         anchor_token: "aust_token".to_string(),
@@ -134,7 +134,7 @@ fn test_withdraw() {
                 contract_addr: "cosmos2contract".to_string(),
                 msg: to_binary(&ExecuteMsg::Yourself {
                     yourself_msg: YourselfMsg::TransferUst {
-                        receiver: "addr0000".to_string(),
+                        receiver: Recipient::Addr("addr0000".to_string()),
                     },
                 })
                 .unwrap(),
@@ -158,7 +158,7 @@ fn test_withdraw_recipient() {
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Deposit {
-        recipient: Some(recipient.clone()),
+        recipient: Some(Recipient::Addr(recipient.clone())),
     };
     let info = mock_info(
         "addr0000",
@@ -179,7 +179,6 @@ fn test_withdraw_recipient() {
     let msg = ExecuteMsg::Withdraw {
         position_idx: Uint128::from(1u128),
     };
-    let info = mock_info(&recipient, &[]);
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let expected_res = Response::new()
@@ -198,7 +197,7 @@ fn test_withdraw_recipient() {
                 contract_addr: "cosmos2contract".to_string(),
                 msg: to_binary(&ExecuteMsg::Yourself {
                     yourself_msg: YourselfMsg::TransferUst {
-                        receiver: recipient.clone(),
+                        receiver: Recipient::Addr(recipient.to_string()),
                     },
                 })
                 .unwrap(),
@@ -275,7 +274,7 @@ fn test_andr_receive() {
                 contract_addr: "cosmos2contract".to_string(),
                 msg: to_binary(&ExecuteMsg::Yourself {
                     yourself_msg: YourselfMsg::TransferUst {
-                        receiver: "addr0000".to_string(),
+                        receiver: Recipient::Addr("addr0000".to_string()),
                     },
                 })
                 .unwrap(),

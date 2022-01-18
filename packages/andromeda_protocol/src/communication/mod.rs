@@ -33,12 +33,19 @@ impl Recipient {
         Recipient::ADO(ADORecipient { addr, msg: None })
     }
 
+    pub fn get_addr(&self) -> String {
+        match &self {
+            Recipient::Addr(addr) => addr.clone(),
+            Recipient::ADO(ado_recipient) => ado_recipient.addr.clone(),
+        }
+    }
+
     pub fn generate_msg(&self, deps: &DepsMut, funds: Vec<Coin>) -> Result<SubMsg, ContractError> {
         Ok(match &self {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),
                 msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(
-                    recip.clone().msg,
+                    recip.msg.clone(),
                 )))?,
                 funds,
             }),

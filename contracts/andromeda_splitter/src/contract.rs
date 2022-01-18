@@ -1,9 +1,7 @@
 use crate::state::SPLITTER;
 use andromeda_protocol::{
     communication::encode_binary,
-    communication::{
-        parse_message, AndromedaMsg, AndromedaQuery, ExecuteMsg as AndrExecute, Recipient,
-    },
+    communication::{parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -20,7 +18,7 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{
     attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, SubMsg, Uint128, WasmMsg,
+    Response, StdError, SubMsg, Uint128,
 };
 
 #[entry_point]
@@ -143,20 +141,6 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
         let msg = recipient_addr.recipient.generate_msg(&deps, vec_coin)?;
-        /*let msg = match &recipient_addr.recipient {
-            Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
-                contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),
-                msg: encode_binary(&AndrExecute::AndrReceive(AndromedaMsg::Receive(
-                    recip.clone().msg,
-                )))?,
-                funds: vec_coin,
-            }),
-            Recipient::Addr(addr) => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: addr.clone(),
-                amount: vec_coin,
-            })),
-        };*/
-
         submsg.push(msg);
     }
     remainder_funds = remainder_funds
