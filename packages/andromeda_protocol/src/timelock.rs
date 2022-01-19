@@ -1,14 +1,11 @@
-use cosmwasm_std::{Api, BlockInfo, Coin, StdResult, Storage};
+use cosmwasm_std::{Addr, Api, BlockInfo, Coin};
 use cw721::Expiration;
-use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::communication::{AndromedaMsg, AndromedaQuery};
 use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
-
-pub const HELD_FUNDS: Map<String, Escrow> = Map::new("funds");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 /// Struct used to define funds being held in Escrow
@@ -19,6 +16,8 @@ pub struct Escrow {
     pub expiration: Option<Expiration>,
     /// The recipient of the funds once Expiration is reached
     pub recipient: String,
+    /// The owner of the Escrow.
+    pub owner: Addr,
 }
 
 impl Escrow {
@@ -27,15 +26,15 @@ impl Escrow {
     /// * Escrowed funds cannot be empty
     /// * The Escrow recipient must be a valid address
     /// * Expiration cannot be "Never" or before current time/block
-    pub fn validate(self, api: &dyn Api, block: &BlockInfo) -> Result<bool, ContractError> {
+    pub fn validate(&self, api: &dyn Api, block: &BlockInfo) -> Result<bool, ContractError> {
         require(!self.coins.is_empty(), ContractError::EmptyFunds {})?;
         require(
             api.addr_validate(&self.recipient).is_ok(),
             ContractError::InvalidAddress {},
         )?;
 
-        if self.expiration.is_some() {
-            match self.expiration.unwrap() {
+        if let Some(expiration) = self.expiration {
+            match expiration {
                 //ACK-01 Change (Check before deleting comment)
                 Expiration::AtTime(time) => {
                     if time < block.time {
@@ -101,39 +100,6 @@ pub struct GetTimelockConfigResponse {
     pub address_list_contract: Option<String>,
 }
 
-/// Stores an Escrow struct for a given address. Used to store funds from an address.
-pub fn hold_funds(
-    funds: Escrow,
-    storage: &mut dyn Storage,
-    addr: String,
-) -> Result<(), ContractError> {
-    require(
-        // Makes sure that HELD_FUNDS is empty before allowing writing into HELD_FUNDS.
-        //Decided to use unwrap instead of unwrap_or_else (correct me if wrong)
-        HELD_FUNDS.may_load(storage, addr.clone()).unwrap() == None,
-        ContractError::CannotOverwriteHeldFunds {},
-    )?;
-    HELD_FUNDS.save(storage, addr, &funds)?;
-    Ok(())
-}
-
-/// Removes the stored Escrow struct for a given address.
-pub fn release_funds(storage: &mut dyn Storage, addr: String) -> Result<(), ContractError> {
-    require(
-        // Makes sure that HELD_FUNDS is NOT empty before allowing removing into HELD_FUNDS.
-        //Decided to use unwrap instead of unwrap_or_else (correct me if wrong)
-        HELD_FUNDS.may_load(storage, addr.clone()).unwrap() != None,
-        ContractError::CannotOverwriteHeldFunds {},
-    )?;
-    HELD_FUNDS.remove(storage, addr);
-    Ok(())
-}
-
-/// Retrieves the stored Escrow struct for a given address
-pub fn get_funds(storage: &dyn Storage, addr: String) -> StdResult<Option<Escrow>> {
-    HELD_FUNDS.may_load(storage, addr)
-}
-
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::mock_dependencies;
@@ -147,11 +113,13 @@ mod tests {
         let expiration = Expiration::AtHeight(1);
         let coins = vec![coin(100u128, "uluna")];
         let recipient = String::from("owner");
+        let owner = Addr::unchecked("owner");
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
             expiration: Some(expiration),
+            owner: owner.clone(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -165,6 +133,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: coins.clone(),
             expiration: None,
+            owner: owner.clone(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -178,6 +147,7 @@ mod tests {
             recipient: String::default(),
             coins: coins.clone(),
             expiration: Some(expiration),
+            owner: owner.clone(),
         };
 
         let resp = invalid_recipient_escrow
@@ -189,6 +159,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![],
             expiration: Some(expiration),
+            owner: owner.clone(),
         };
 
         let resp = invalid_coins_escrow
@@ -200,6 +171,7 @@ mod tests {
             recipient,
             coins,
             expiration: Some(Expiration::Never {}),
+            owner: owner.clone(),
         };
 
         let resp = invalid_expiration_escrow
