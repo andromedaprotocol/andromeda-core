@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Api, BlockInfo, Coin};
+use cosmwasm_std::{Api, BlockInfo, Coin};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -16,8 +16,6 @@ pub struct Escrow {
     pub expiration: Option<Expiration>,
     /// The recipient of the funds once Expiration is reached
     pub recipient: String,
-    /// The owner of the Escrow.
-    pub owner: Addr,
 }
 
 impl Escrow {
@@ -113,13 +111,11 @@ mod tests {
         let expiration = Expiration::AtHeight(1);
         let coins = vec![coin(100u128, "uluna")];
         let recipient = String::from("owner");
-        let owner = Addr::unchecked("owner");
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
             expiration: Some(expiration),
-            owner: owner.clone(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -133,7 +129,6 @@ mod tests {
             recipient: recipient.clone(),
             coins: coins.clone(),
             expiration: None,
-            owner: owner.clone(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -147,7 +142,6 @@ mod tests {
             recipient: String::default(),
             coins: coins.clone(),
             expiration: Some(expiration),
-            owner: owner.clone(),
         };
 
         let resp = invalid_recipient_escrow
@@ -159,7 +153,6 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![],
             expiration: Some(expiration),
-            owner: owner.clone(),
         };
 
         let resp = invalid_coins_escrow
@@ -171,7 +164,6 @@ mod tests {
             recipient,
             coins,
             expiration: Some(Expiration::Never {}),
-            owner: owner.clone(),
         };
 
         let resp = invalid_expiration_escrow

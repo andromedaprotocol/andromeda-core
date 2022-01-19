@@ -129,7 +129,6 @@ fn execute_hold_funds(
             coins: info.funds,
             expiration,
             recipient: rec,
-            owner: info.sender.clone(),
         },
         Some(escrow) => Escrow {
             coins: [info.funds, escrow.coins].concat(),
@@ -332,7 +331,6 @@ mod tests {
             coins: funds,
             expiration: Some(expiration),
             recipient: owner.to_string(),
-            owner: info.sender.clone(),
         };
 
         assert_eq!(val.funds.unwrap(), expected);
