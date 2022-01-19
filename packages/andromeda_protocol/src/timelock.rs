@@ -4,7 +4,7 @@ use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::communication::{AndromedaMsg, AndromedaQuery};
+use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
 use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
 
@@ -18,7 +18,7 @@ pub struct Escrow {
     /// Optional expiration for the Escrow
     pub expiration: Option<Expiration>,
     /// The recipient of the funds once Expiration is reached
-    pub recipient: String,
+    pub recipient: Recipient,
 }
 
 impl Escrow {
@@ -30,7 +30,7 @@ impl Escrow {
     pub fn validate(self, api: &dyn Api, block: &BlockInfo) -> Result<bool, ContractError> {
         require(!self.coins.is_empty(), ContractError::EmptyFunds {})?;
         require(
-            api.addr_validate(&self.recipient).is_ok(),
+            api.addr_validate(&self.recipient.get_addr()).is_ok(),
             ContractError::InvalidAddress {},
         )?;
 
@@ -66,7 +66,7 @@ pub enum ExecuteMsg {
     /// Hold funds in Escrow
     HoldFunds {
         expiration: Option<Expiration>,
-        recipient: Option<String>,
+        recipient: Option<Recipient>,
     },
     /// Update the optional address list module
     UpdateAddressList {
@@ -146,7 +146,7 @@ mod tests {
         let deps = mock_dependencies(&[]);
         let expiration = Expiration::AtHeight(1);
         let coins = vec![coin(100u128, "uluna")];
-        let recipient = String::from("owner");
+        let recipient = Recipient::Addr("owner".into());
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
@@ -175,7 +175,7 @@ mod tests {
         assert!(resp);
 
         let invalid_recipient_escrow = Escrow {
-            recipient: String::default(),
+            recipient: Recipient::Addr(String::default()),
             coins: coins.clone(),
             expiration: Some(expiration),
         };
