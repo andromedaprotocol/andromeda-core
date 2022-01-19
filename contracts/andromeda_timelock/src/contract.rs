@@ -136,8 +136,6 @@ fn execute_hold_funds(
             ..escrow
         },
     };
-    // Defined here to avoid cloning info.sender an additional time.
-    let sender = info.sender.to_string();
 
     escrows().save(deps.storage, &info.sender, &escrow)?;
     escrow.validate(deps.api, &env.block)?;
@@ -148,7 +146,7 @@ fn execute_hold_funds(
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "hold_funds"),
-        attr("sender", sender),
+        attr("sender", info.sender),
         attr("recipient", escrow.recipient),
         attr("expiration", expiration_string),
     ]))
