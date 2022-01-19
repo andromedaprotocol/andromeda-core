@@ -257,7 +257,7 @@ mod tests {
     use cosmwasm_std::{
         coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
-        Addr, Coin,
+        Addr, BankMsg, Coin,
     };
 
     fn mock_state() -> State {
