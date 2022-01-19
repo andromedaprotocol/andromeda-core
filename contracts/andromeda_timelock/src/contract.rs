@@ -123,7 +123,7 @@ fn execute_hold_funds(
     deps.api.addr_validate(&rec)?;
 
     // Add funds to existing escrow if it exists.
-    let existing_escrow = escrows().may_load(deps.storage, info.sender.clone())?;
+    let existing_escrow = escrows().may_load(deps.storage, &info.sender)?;
     let escrow = match existing_escrow {
         None => Escrow {
             coins: info.funds,
@@ -139,9 +139,8 @@ fn execute_hold_funds(
     // Defined here to avoid cloning info.sender an additional time.
     let sender = info.sender.to_string();
 
-    escrows().save(deps.storage, info.sender, &escrow)?;
+    escrows().save(deps.storage, &info.sender, &escrow)?;
     escrow.validate(deps.api, &env.block)?;
-    //hold_funds(escrow.clone(), deps.storage, info.sender.to_string())?;
     let expiration_string = match escrow.expiration {
         Some(e) => e.to_string(),
         None => String::from("none"),
@@ -160,7 +159,7 @@ fn execute_release_funds(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    let result: Option<Escrow> = escrows().may_load(deps.storage, info.sender.clone())?;
+    let result: Option<Escrow> = escrows().may_load(deps.storage, &info.sender)?;
 
     if result.is_none() {
         return Err(ContractError::NoLockedFunds {});
@@ -188,7 +187,7 @@ fn execute_release_funds(
         amount: funds.coins,
     };
 
-    escrows().remove(deps.storage, info.sender)?;
+    escrows().remove(deps.storage, &info.sender)?;
     Ok(Response::new().add_message(bank_msg).add_attributes(vec![
         attr("action", "release_funds"),
         attr("recipient", funds.recipient),
@@ -252,7 +251,7 @@ fn handle_andromeda_query(
 }
 
 fn query_held_funds(deps: Deps, address: String) -> Result<GetLockedFundsResponse, ContractError> {
-    let hold_funds = escrows().may_load(deps.storage, deps.api.addr_validate(&address)?)?;
+    let hold_funds = escrows().may_load(deps.storage, &deps.api.addr_validate(&address)?)?;
     Ok(GetLockedFundsResponse { funds: hold_funds })
 }
 

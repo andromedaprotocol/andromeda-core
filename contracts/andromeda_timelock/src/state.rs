@@ -22,7 +22,7 @@ impl<'a> IndexList<Escrow> for EscrowIndexes<'a> {
     }
 }
 
-pub fn escrows<'a>() -> IndexedMap<'a, Addr, Escrow, EscrowIndexes<'a>> {
+pub fn escrows<'a>() -> IndexedMap<'a, &'a Addr, Escrow, EscrowIndexes<'a>> {
     let indexes = EscrowIndexes {
         owner: MultiIndex::new(
             |e, k| (e.owner.clone(), k.into()),
