@@ -90,7 +90,7 @@ pub fn execute(
             recipient_addr,
             start_after,
             limit,
-        } => execute_release_funds(deps, env, recipient_addr, start_after, limit),
+        } => execute_release_funds(deps, env, info, recipient_addr, start_after, limit),
         ExecuteMsg::UpdateAddressList { address_list } => {
             execute_update_address_list(deps, info, env, address_list)
         }
@@ -158,10 +158,12 @@ fn execute_hold_funds(
 fn execute_release_funds(
     deps: DepsMut,
     env: Env,
-    recipient_addr: String,
+    info: MessageInfo,
+    recipient_addr: Option<String>,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
+    let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 
@@ -195,7 +197,7 @@ fn execute_release_funds(
 
     Ok(Response::new().add_submessages(msgs).add_attributes(vec![
         attr("action", "release_funds"),
-        attr("recipient", recipient_addr),
+        attr("recipient_addr", recipient_addr),
     ]))
 }
 
@@ -421,7 +423,7 @@ mod tests {
 
         env.block.height = 2;
         let msg = ExecuteMsg::ReleaseFunds {
-            recipient_addr: "owner".into(),
+            recipient_addr: None,
             start_after: None,
             limit: None,
         };
@@ -433,7 +435,7 @@ mod tests {
         assert_eq!(
             Response::new().add_message(bank_msg).add_attributes(vec![
                 attr("action", "release_funds"),
-                attr("recipient", "owner"),
+                attr("recipient_addr", "owner"),
             ]),
             res
         );
@@ -454,7 +456,7 @@ mod tests {
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::ReleaseFunds {
-            recipient_addr: "owner".into(),
+            recipient_addr: None,
             start_after: None,
             limit: None,
         };
@@ -466,7 +468,7 @@ mod tests {
         assert_eq!(
             Response::new().add_message(bank_msg).add_attributes(vec![
                 attr("action", "release_funds"),
-                attr("recipient", "owner"),
+                attr("recipient_addr", "owner"),
             ]),
             res
         );
@@ -486,14 +488,34 @@ mod tests {
         let info = mock_info("sender1", &coins(100, "uusd"));
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-        let info = mock_info("sender2", &coins(100, "uusd"));
+        let info = mock_info("sender2", &coins(200, "uusd"));
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
         let msg = ExecuteMsg::ReleaseFunds {
-            recipient_addr: "owner".into(),
+            recipient_addr: Some("recipient".into()),
             start_after: None,
             limit: None,
         };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let bank_msg1 = BankMsg::Send {
+            to_address: "recipient".into(),
+            amount: coins(100, "uusd"),
+        };
+        let bank_msg2 = BankMsg::Send {
+            to_address: "recipient".into(),
+            amount: coins(200, "uusd"),
+        };
+        assert_eq!(
+            Response::new()
+                .add_messages(vec![bank_msg1, bank_msg2])
+                .add_attributes(vec![
+                    attr("action", "release_funds"),
+                    attr("recipient_addr", "recipient"),
+                ]),
+            res
+        );
     }
 
     #[test]
@@ -512,7 +534,7 @@ mod tests {
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::ReleaseFunds {
-            recipient_addr: "owner".into(),
+            recipient_addr: None,
             start_after: None,
             limit: None,
         };
@@ -526,7 +548,7 @@ mod tests {
         assert_eq!(
             Response::new().add_message(bank_msg).add_attributes(vec![
                 attr("action", "release_funds"),
-                attr("recipient", "owner"),
+                attr("recipient_addr", "owner"),
             ]),
             res
         );
@@ -548,7 +570,7 @@ mod tests {
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::ReleaseFunds {
-            recipient_addr: "owner".into(),
+            recipient_addr: None,
             start_after: None,
             limit: None,
         };

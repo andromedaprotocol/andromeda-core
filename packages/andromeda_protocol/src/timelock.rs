@@ -80,7 +80,7 @@ pub enum ExecuteMsg {
     },
     /// Release funds held in Escrow
     ReleaseFunds {
-        recipient_addr: String,
+        recipient_addr: Option<String>,
         start_after: Option<String>,
         limit: Option<u32>,
     },
