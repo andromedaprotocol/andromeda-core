@@ -1,12 +1,12 @@
 use cosmwasm_std::{
-    attr, entry_point, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 
 use cw721::Expiration;
 
 use crate::state::{escrows, State, STATE};
 use andromeda_protocol::{
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -116,11 +116,11 @@ fn execute_hold_funds(
     info: MessageInfo,
     env: Env,
     expiration: Option<Expiration>,
-    recipient: Option<String>,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let rec = recipient.unwrap_or_else(|| info.sender.to_string());
+    let rec = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
     //Validate recipient address
-    deps.api.addr_validate(&rec)?;
+    deps.api.addr_validate(&rec.get_addr())?;
 
     // Add funds to existing escrow if it exists.
     let existing_escrow = escrows().may_load(deps.storage, &info.sender)?;
@@ -138,16 +138,12 @@ fn execute_hold_funds(
 
     escrows().save(deps.storage, &info.sender, &escrow)?;
     escrow.validate(deps.api, &env.block)?;
-    let expiration_string = match escrow.expiration {
-        Some(e) => e.to_string(),
-        None => String::from("none"),
-    };
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "hold_funds"),
         attr("sender", info.sender),
-        attr("recipient", escrow.recipient),
-        attr("expiration", expiration_string),
+        attr("recipient", format!("{:?}", escrow.recipient)),
+        attr("expiration", format!("{:?}", escrow.expiration)),
     ]))
 }
 
@@ -179,15 +175,12 @@ fn execute_release_funds(
         }
     }
 
-    let bank_msg = BankMsg::Send {
-        to_address: funds.recipient.clone(),
-        amount: funds.coins,
-    };
+    let msg = funds.recipient.generate_msg(&deps, funds.coins)?;
 
     escrows().remove(deps.storage, &info.sender)?;
-    Ok(Response::new().add_message(bank_msg).add_attributes(vec![
+    Ok(Response::new().add_submessage(msg).add_attributes(vec![
         attr("action", "release_funds"),
-        attr("recipient", funds.recipient),
+        attr("recipient", format!("{:?}", funds.recipient)),
     ]))
 }
 
@@ -272,7 +265,7 @@ mod tests {
     use cosmwasm_std::{
         coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
-        Addr, Coin,
+        Addr, BankMsg, Coin,
     };
 
     fn mock_state() -> State {
@@ -316,8 +309,11 @@ mod tests {
         let expected = Response::default().add_attributes(vec![
             attr("action", "hold_funds"),
             attr("sender", info.sender.to_string()),
-            attr("recipient", &info.sender),
-            attr("expiration", expiration.to_string()),
+            attr(
+                "recipient",
+                format!("{:?}", Recipient::Addr(info.sender.to_string())),
+            ),
+            attr("expiration", format!("{:?}", Some(expiration))),
         ]);
         assert_eq!(expected, res);
 
@@ -330,7 +326,7 @@ mod tests {
         let expected = Escrow {
             coins: funds,
             expiration: Some(expiration),
-            recipient: owner.to_string(),
+            recipient: Recipient::Addr(owner.to_string()),
         };
 
         assert_eq!(val.funds.unwrap(), expected);
@@ -366,7 +362,10 @@ mod tests {
             .add_message(bank_msg)
             .add_attributes(vec![
                 attr("action", "release_funds"),
-                attr("recipient", info.sender),
+                attr(
+                    "recipient",
+                    format!("{:?}", Recipient::Addr(info.sender.to_string())),
+                ),
             ]);
 
         assert_eq!(res, expected);
@@ -393,7 +392,10 @@ mod tests {
             .add_message(bank_msg)
             .add_attributes(vec![
                 attr("action", "release_funds"),
-                attr("recipient", info.sender.clone()),
+                attr(
+                    "recipient",
+                    format!("{:?}", Recipient::Addr(info.sender.to_string())),
+                ),
             ]);
 
         assert_eq!(res, expected);
@@ -479,8 +481,8 @@ mod tests {
         let expected = Response::default().add_attributes(vec![
             attr("action", "hold_funds"),
             attr("sender", info.sender.to_string()),
-            attr("recipient", "owner"),
-            attr("expiration", expiration.to_string()),
+            attr("recipient", "Addr(\"owner\")"),
+            attr("expiration", format!("{:?}", Some(expiration))),
         ]);
 
         assert_eq!(expected, received)
