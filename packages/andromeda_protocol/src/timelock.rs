@@ -24,14 +24,18 @@ impl Escrow {
     /// * Escrowed funds cannot be empty
     /// * The Escrow recipient must be a valid address
     /// * Expiration cannot be "Never" or before current time/block
-    pub fn validate(&self, api: &dyn Api, block: &BlockInfo) -> Result<bool, ContractError> {
+    pub fn validate(&self, api: &dyn Api, block: &BlockInfo) -> Result<(), ContractError> {
         require(!self.coins.is_empty(), ContractError::EmptyFunds {})?;
         require(
             api.addr_validate(&self.recipient.get_addr()).is_ok(),
             ContractError::InvalidAddress {},
         )?;
 
-        Ok(!self.is_expired(block)?)
+        //Ok(!self.is_expired(block)?)
+        if self.is_expired(block)? && self.expiration.is_some() {
+            return Err(ContractError::ExpirationInPast {});
+        }
+        return Ok(());
     }
 
     pub fn is_expired(&self, block: &BlockInfo) -> Result<bool, ContractError> {
@@ -117,7 +121,7 @@ mod tests {
     #[test]
     fn test_validate() {
         let deps = mock_dependencies(&[]);
-        let expiration = Expiration::AtHeight(1);
+        let expiration = Expiration::AtHeight(1500);
         let coins = vec![coin(100u128, "uluna")];
         let recipient = Recipient::Addr("owner".into());
 
@@ -131,8 +135,7 @@ mod tests {
             time: Timestamp::from_seconds(4444),
             chain_id: "foo".to_string(),
         };
-        let resp = valid_escrow.validate(deps.as_ref().api, &block).unwrap();
-        assert!(resp);
+        valid_escrow.validate(deps.as_ref().api, &block).unwrap();
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
@@ -144,8 +147,7 @@ mod tests {
             time: Timestamp::from_seconds(3333),
             chain_id: "foo".to_string(),
         };
-        let resp = valid_escrow.validate(deps.as_ref().api, &block).unwrap();
-        assert!(resp);
+        valid_escrow.validate(deps.as_ref().api, &block).unwrap();
 
         let invalid_recipient_escrow = Escrow {
             recipient: Recipient::Addr(String::default()),
@@ -170,8 +172,8 @@ mod tests {
         assert_eq!(ContractError::EmptyFunds {}, resp);
 
         let invalid_expiration_escrow = Escrow {
-            recipient,
-            coins,
+            recipient: recipient.clone(),
+            coins: coins.clone(),
             expiration: Some(Expiration::Never {}),
         };
 
@@ -179,5 +181,34 @@ mod tests {
             .validate(deps.as_ref().api, &block)
             .unwrap_err();
         assert_eq!(ContractError::ExpirationNotSpecified {}, resp);
+
+        let invalid_time_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: coins.clone(),
+            expiration: Some(Expiration::AtHeight(10)),
+        };
+        let block = BlockInfo {
+            height: 1000,
+            time: Timestamp::from_seconds(4444),
+            chain_id: "foo".to_string(),
+        };
+        assert_eq!(
+            ContractError::ExpirationInPast {},
+            invalid_time_escrow
+                .validate(deps.as_ref().api, &block)
+                .unwrap_err()
+        );
+
+        let invalid_time_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: coins.clone(),
+            expiration: Some(Expiration::AtTime(Timestamp::from_seconds(100))),
+        };
+        assert_eq!(
+            ContractError::ExpirationInPast {},
+            invalid_time_escrow
+                .validate(deps.as_ref().api, &block)
+                .unwrap_err()
+        );
     }
 }

@@ -184,7 +184,7 @@ fn execute_release_funds(
     let mut msgs: Vec<SubMsg> = vec![];
     for owner in escrow_owners.iter() {
         let funds: Escrow = escrows().load(deps.storage, &owner)?;
-        if !funds.is_expired(&env.block)? {
+        if funds.is_expired(&env.block)? {
             let msg = funds.recipient.generate_msg(&deps, funds.coins)?;
             msgs.push(msg);
             escrows().remove(deps.storage, &owner)?;
@@ -282,7 +282,7 @@ mod tests {
     use cosmwasm_std::{
         coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
-        Addr, BankMsg, Coin,
+        Addr, BankMsg, Coin, Timestamp,
     };
 
     fn mock_state() -> State {
@@ -308,7 +308,7 @@ mod tests {
     #[test]
     fn test_execute_hold_funds() {
         let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
+        let mut env = mock_env();
         let owner = "owner";
         let funds = vec![Coin::new(1000, "uusd")];
         let expiration = Expiration::AtHeight(1);
@@ -319,8 +319,7 @@ mod tests {
             expiration: Some(expiration),
             recipient: None,
         };
-
-        //add address for registered operator
+        env.block.height = 0;
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let expected = Response::default().add_attributes(vec![
@@ -350,97 +349,132 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_release_funds() {
+    fn test_execute_release_funds_block_expiration() {
         let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
+        let mut env = mock_env();
         let owner = "owner";
-        let funds = vec![Coin::new(1000, "uusd")];
         STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
-        let info = mock_info(owner, &funds);
 
-        //test for Expiration::AtHeight(1)
+        let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
             expiration: Some(Expiration::AtHeight(1)),
             recipient: None,
         };
+        env.block.height = 0;
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-        //add address for registered operator
-        let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-
-        let info = mock_info(owner, &[coin(100u128, "uluna")]);
-        let msg = ExecuteMsg::HoldFunds {
-            expiration: None,
-            recipient: None,
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        let bank_msg = BankMsg::Send {
-            to_address: owner.to_string(),
-            amount: funds.clone(),
-        };
-
-        let expected = Response::default()
-            .add_message(bank_msg)
-            .add_attributes(vec![
-                attr("action", "release_funds"),
-                attr(
-                    "recipient",
-                    format!("{:?}", Recipient::Addr(info.sender.to_string())),
-                ),
-            ]);
-
-        assert_eq!(res, expected);
-
-        //test when Expiration is none
-        let info = mock_info(owner, &funds);
-        let msg = ExecuteMsg::HoldFunds {
-            expiration: None,
-            recipient: None,
-        };
-
-        //add address for registered operator
-        let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-
-        let info = mock_info(owner, &[coin(100u128, "uluna")]);
+        env.block.height = 2;
         let msg = ExecuteMsg::ReleaseFunds {
-            recipient_addr: owner.to_string(),
+            recipient_addr: "owner".into(),
             start_after: None,
             limit: None,
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let bank_msg = BankMsg::Send {
-            to_address: owner.to_string(),
-            amount: funds,
+            to_address: "owner".into(),
+            amount: info.funds,
         };
-
-        let expected = Response::default()
-            .add_message(bank_msg)
-            .add_attributes(vec![
+        assert_eq!(
+            Response::new().add_message(bank_msg).add_attributes(vec![
                 attr("action", "release_funds"),
-                attr(
-                    "recipient",
-                    format!("{:?}", Recipient::Addr(info.sender.to_string())),
-                ),
-            ]);
+                attr("recipient", "owner"),
+            ]),
+            res
+        );
+    }
 
-        assert_eq!(res, expected);
+    #[test]
+    fn test_execute_release_funds_no_expiration() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let owner = "owner";
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
+        let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
-            expiration: Some(Expiration::AtHeight(10000000)),
+            expiration: None,
             recipient: None,
         };
-        //add address for registered operator
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::ReleaseFunds {
-            recipient_addr: owner.to_string(),
+            recipient_addr: "owner".into(),
             start_after: None,
             limit: None,
         };
-        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let bank_msg = BankMsg::Send {
+            to_address: "owner".into(),
+            amount: info.funds,
+        };
+        assert_eq!(
+            Response::new().add_message(bank_msg).add_attributes(vec![
+                attr("action", "release_funds"),
+                attr("recipient", "owner"),
+            ]),
+            res
+        );
+    }
 
-        let expected = ContractError::FundsAreLocked {};
+    #[test]
+    fn test_execute_release_funds_time_expiration() {
+        let mut deps = mock_dependencies(&[]);
+        let mut env = mock_env();
+        let owner = "owner";
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
-        assert_eq!(res, expected);
+        let info = mock_info(owner, &[coin(100, "uusd")]);
+        let msg = ExecuteMsg::HoldFunds {
+            expiration: Some(Expiration::AtTime(Timestamp::from_seconds(100))),
+            recipient: None,
+        };
+        env.block.time = Timestamp::from_seconds(50);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let msg = ExecuteMsg::ReleaseFunds {
+            recipient_addr: "owner".into(),
+            start_after: None,
+            limit: None,
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let bank_msg = BankMsg::Send {
+            to_address: "owner".into(),
+            amount: info.funds,
+        };
+        assert_eq!(
+            Response::new().add_message(bank_msg).add_attributes(vec![
+                attr("action", "release_funds"),
+                attr("recipient", "owner"),
+            ]),
+            res
+        );
+    }
+
+    #[test]
+    fn test_execute_release_funds_locked() {
+        let mut deps = mock_dependencies(&[]);
+        let mut env = mock_env();
+        let owner = "owner";
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
+
+        let info = mock_info(owner, &[coin(100, "uusd")]);
+        let msg = ExecuteMsg::HoldFunds {
+            expiration: Some(Expiration::AtTime(Timestamp::from_seconds(100))),
+            recipient: None,
+        };
+        env.block.time = Timestamp::from_seconds(50);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let msg = ExecuteMsg::ReleaseFunds {
+            recipient_addr: "owner".into(),
+            start_after: None,
+            limit: None,
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        assert_eq!(ContractError::FundsAreLocked {}, res.unwrap_err());
     }
 
     #[test]
@@ -493,12 +527,11 @@ mod tests {
         let env = mock_env();
         let owner = "owner";
         let funds = vec![Coin::new(1000, "uusd")];
-        let expiration = Expiration::AtHeight(1);
         let info = mock_info(owner, &funds);
         STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let msg_struct = ExecuteMsg::HoldFunds {
-            expiration: Some(expiration),
+            expiration: None,
             recipient: None,
         };
         let msg_string = encode_binary(&msg_struct).unwrap();
@@ -510,7 +543,7 @@ mod tests {
             attr("action", "hold_funds"),
             attr("sender", info.sender.to_string()),
             attr("recipient", "Addr(\"owner\")"),
-            attr("expiration", format!("{:?}", Some(expiration))),
+            attr("expiration", "None"),
         ]);
 
         assert_eq!(expected, received)
