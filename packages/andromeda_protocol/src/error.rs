@@ -109,6 +109,9 @@ pub enum ContractError {
 
     #[error("UnexpectedExternalRate")]
     UnexpectedExternalRate {},
+
+    #[error("DuplicateCoinDenoms")]
+    DuplicateCoinDenoms {},
 }
 
 impl From<FromUtf8Error> for ContractError {

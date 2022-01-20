@@ -3,7 +3,6 @@ use cosmwasm_std::{
     StdError, SubMsg,
 };
 
-use cw721::Expiration;
 use cw_storage_plus::Bound;
 
 use crate::state::{escrows, State, STATE};
@@ -20,8 +19,8 @@ use andromeda_protocol::{
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     timelock::{
-        Escrow, ExecuteMsg, GetLockedFundsResponse, GetTimelockConfigResponse, InstantiateMsg,
-        QueryMsg,
+        Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsResponse, GetTimelockConfigResponse,
+        InstantiateMsg, QueryMsg,
     },
 };
 
@@ -124,7 +123,7 @@ fn execute_hold_funds(
     deps: DepsMut,
     info: MessageInfo,
     env: Env,
-    expiration: Option<Expiration>,
+    expiration: Option<EscrowCondition>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let rec = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
@@ -184,7 +183,7 @@ fn execute_release_funds(
     let mut msgs: Vec<SubMsg> = vec![];
     for key in keys.iter() {
         let funds: Escrow = escrows().load(deps.storage, key.clone())?;
-        if funds.is_expired(&env.block)? {
+        if funds.is_unlocked(&env.block)? {
             let msg = funds.recipient.generate_msg(&deps, funds.coins)?;
             msgs.push(msg);
             escrows().remove(deps.storage, key.clone())?;
@@ -315,6 +314,7 @@ mod tests {
         testing::{mock_dependencies, mock_env, mock_info},
         Addr, BankMsg, Coin, Timestamp,
     };
+    use cw721::Expiration;
 
     fn mock_state() -> State {
         State { address_list: None }
@@ -342,12 +342,12 @@ mod tests {
         let mut env = mock_env();
         let owner = "owner";
         let funds = vec![Coin::new(1000, "uusd")];
-        let expiration = Expiration::AtHeight(1);
+        let expiration = EscrowCondition::Expiration(Expiration::AtHeight(1));
         let info = mock_info(owner, &funds);
         STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let msg = ExecuteMsg::HoldFunds {
-            expiration: Some(expiration),
+            expiration: Some(expiration.clone()),
             recipient: None,
         };
         env.block.height = 0;
@@ -360,7 +360,7 @@ mod tests {
                 "recipient",
                 format!("{:?}", Recipient::Addr(info.sender.to_string())),
             ),
-            attr("expiration", format!("{:?}", Some(expiration))),
+            attr("expiration", format!("{:?}", Some(expiration.clone()))),
         ]);
         assert_eq!(expected, res);
 
@@ -373,7 +373,7 @@ mod tests {
         let val: GetLockedFundsResponse = from_binary(&res).unwrap();
         let expected = Escrow {
             coins: funds,
-            expiration: Some(expiration),
+            expiration: Some(expiration.clone()),
             recipient: Recipient::Addr(owner.to_string()),
         };
 
@@ -424,7 +424,7 @@ mod tests {
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
-            expiration: Some(Expiration::AtHeight(1)),
+            expiration: Some(EscrowCondition::Expiration(Expiration::AtHeight(1))),
             recipient: None,
         };
         env.block.height = 0;
@@ -536,7 +536,9 @@ mod tests {
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
-            expiration: Some(Expiration::AtTime(Timestamp::from_seconds(100))),
+            expiration: Some(EscrowCondition::Expiration(Expiration::AtTime(
+                Timestamp::from_seconds(100),
+            ))),
             recipient: None,
         };
         env.block.time = Timestamp::from_seconds(50);
@@ -572,7 +574,9 @@ mod tests {
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
-            expiration: Some(Expiration::AtTime(Timestamp::from_seconds(100))),
+            expiration: Some(EscrowCondition::Expiration(Expiration::AtTime(
+                Timestamp::from_seconds(100),
+            ))),
             recipient: None,
         };
         env.block.time = Timestamp::from_seconds(50);

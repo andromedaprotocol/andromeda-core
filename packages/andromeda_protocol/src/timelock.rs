@@ -8,12 +8,19 @@ use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum EscrowCondition {
+    Expiration(Expiration),
+    ExpirationByFunds(Vec<Coin>),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 /// Struct used to define funds being held in Escrow
 pub struct Escrow {
     /// Funds being held within the Escrow
     pub coins: Vec<Coin>,
     /// Optional expiration for the Escrow
-    pub expiration: Option<Expiration>,
+    pub expiration: Option<EscrowCondition>,
     /// The recipient of the funds once Expiration is reached
     pub recipient: Recipient,
 }
@@ -31,31 +38,58 @@ impl Escrow {
             ContractError::InvalidAddress {},
         )?;
 
-        if self.is_expired(block)? && self.expiration.is_some() {
+        if let Some(EscrowCondition::ExpirationByFunds(funds)) = &self.expiration {
+            if funds.is_empty() {
+                return Err(ContractError::EmptyFunds {});
+            }
+            let mut funds: Vec<Coin> = funds.clone();
+            funds.sort_by(|a, b| a.denom.cmp(&b.denom));
+            for i in 0..(funds.len() - 1) {
+                if funds[i].denom == funds[i + 1].denom {
+                    return Err(ContractError::DuplicateCoinDenoms {});
+                }
+            }
+        }
+
+        if self.is_unlocked(block)? && self.expiration.is_some() {
             return Err(ContractError::ExpirationInPast {});
         }
         Ok(())
     }
 
     /// Checks if the current block has surpased the expiration.
-    pub fn is_expired(&self, block: &BlockInfo) -> Result<bool, ContractError> {
-        match self.expiration {
+    pub fn is_unlocked(&self, block: &BlockInfo) -> Result<bool, ContractError> {
+        match &self.expiration {
             None => return Ok(true),
             Some(expiration) => match expiration {
-                Expiration::AtTime(t) => {
-                    if t > block.time {
-                        return Ok(false);
+                EscrowCondition::Expiration(expiration) => match expiration {
+                    Expiration::AtTime(t) => {
+                        if t > &block.time {
+                            return Ok(false);
+                        }
                     }
-                }
-                Expiration::AtHeight(h) => {
-                    if h > block.height {
-                        return Ok(false);
+                    Expiration::AtHeight(h) => {
+                        if h > &block.height {
+                            return Ok(false);
+                        }
                     }
+                    _ => return Err(ContractError::ExpirationNotSpecified {}),
+                },
+                EscrowCondition::ExpirationByFunds(funds) => {
+                    return Ok(self.min_funds_are_locked(funds.clone()))
                 }
-                _ => return Err(ContractError::ExpirationNotSpecified {}),
             },
         }
         Ok(true)
+    }
+
+    fn min_funds_are_locked(&self, funds: Vec<Coin>) -> bool {
+        self.coins.iter().all(|escrow_coin| {
+            funds.iter().any(|deposited_coin| {
+                escrow_coin.denom == deposited_coin.denom
+                    && escrow_coin.amount <= deposited_coin.amount
+            })
+        })
     }
 }
 
@@ -71,7 +105,7 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Hold funds in Escrow
     HoldFunds {
-        expiration: Option<Expiration>,
+        expiration: Option<EscrowCondition>,
         recipient: Option<Recipient>,
     },
     /// Update the optional address list module
@@ -122,14 +156,14 @@ mod tests {
     #[test]
     fn test_validate() {
         let deps = mock_dependencies(&[]);
-        let expiration = Expiration::AtHeight(1500);
+        let expiration = EscrowCondition::Expiration(Expiration::AtHeight(1500));
         let coins = vec![coin(100u128, "uluna")];
         let recipient = Recipient::Addr("owner".into());
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: Some(expiration),
+            expiration: Some(expiration.clone()),
         };
         let block = BlockInfo {
             height: 1000,
@@ -153,7 +187,7 @@ mod tests {
         let invalid_recipient_escrow = Escrow {
             recipient: Recipient::Addr(String::default()),
             coins: coins.clone(),
-            expiration: Some(expiration),
+            expiration: Some(expiration.clone()),
         };
 
         let resp = invalid_recipient_escrow
@@ -175,7 +209,7 @@ mod tests {
         let invalid_expiration_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: Some(Expiration::Never {}),
+            expiration: Some(EscrowCondition::Expiration(Expiration::Never {})),
         };
 
         let resp = invalid_expiration_escrow
@@ -186,7 +220,7 @@ mod tests {
         let invalid_time_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: Some(Expiration::AtHeight(10)),
+            expiration: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
         };
         let block = BlockInfo {
             height: 1000,
@@ -203,7 +237,9 @@ mod tests {
         let invalid_time_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: Some(Expiration::AtTime(Timestamp::from_seconds(100))),
+            expiration: Some(EscrowCondition::Expiration(Expiration::AtTime(
+                Timestamp::from_seconds(100),
+            ))),
         };
         assert_eq!(
             ContractError::ExpirationInPast {},
