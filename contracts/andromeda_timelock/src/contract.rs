@@ -326,7 +326,10 @@ mod tests {
         let expected = Response::default().add_attributes(vec![
             attr("action", "hold_funds"),
             attr("sender", info.sender.to_string()),
-            attr("recipient", info.sender.to_string()),
+            attr(
+                "recipient",
+                format!("{:?}", Recipient::Addr(info.sender.to_string())),
+            ),
             attr("expiration", format!("{:?}", Some(expiration))),
         ]);
         assert_eq!(expected, res);
@@ -379,7 +382,10 @@ mod tests {
             .add_message(bank_msg)
             .add_attributes(vec![
                 attr("action", "release_funds"),
-                attr("recipient", info.sender.to_string()),
+                attr(
+                    "recipient",
+                    format!("{:?}", Recipient::Addr(info.sender.to_string())),
+                ),
             ]);
 
         assert_eq!(res, expected);
@@ -410,7 +416,10 @@ mod tests {
             .add_message(bank_msg)
             .add_attributes(vec![
                 attr("action", "release_funds"),
-                attr("recipient", info.sender.to_string()),
+                attr(
+                    "recipient",
+                    format!("{:?}", Recipient::Addr(info.sender.to_string())),
+                ),
             ]);
 
         assert_eq!(res, expected);
@@ -500,7 +509,7 @@ mod tests {
         let expected = Response::default().add_attributes(vec![
             attr("action", "hold_funds"),
             attr("sender", info.sender.to_string()),
-            attr("recipient", "owner"),
+            attr("recipient", "Addr(\"owner\")"),
             attr("expiration", format!("{:?}", Some(expiration))),
         ]);
 
