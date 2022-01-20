@@ -31,13 +31,13 @@ impl Escrow {
             ContractError::InvalidAddress {},
         )?;
 
-        //Ok(!self.is_expired(block)?)
         if self.is_expired(block)? && self.expiration.is_some() {
             return Err(ContractError::ExpirationInPast {});
         }
-        return Ok(());
+        Ok(())
     }
 
+    /// Checks if the current block has surpased the expiration.
     pub fn is_expired(&self, block: &BlockInfo) -> Result<bool, ContractError> {
         match self.expiration {
             None => return Ok(true),
@@ -92,7 +92,8 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     /// Queries funds held by an address
     GetLockedFunds {
-        address: String,
+        owner: String,
+        recipient: String,
     },
     /// The current config of the contract
     GetTimelockConfig {},

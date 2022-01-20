@@ -227,15 +227,22 @@ fn execute_update_address_list(
         .add_attributes(vec![attr("action", "update_address_list")]))
 }
 
+/// Merges the coins of the same denom into vector `a` in place.
+///
+/// ## Arguments
+/// * `a` - The `Vec<Coin>` that gets modified in place
+/// * `b` - The `Vec<Coin>` that is merged into `a`
+///
+/// Returns nothing as it is done in place.
 fn merge_coins(a: &mut Vec<Coin>, b: Vec<Coin>) {
     for a_coin in a.iter_mut() {
         let same_denom_coin = b.iter().find(|&c| c.denom == a_coin.denom);
         if let Some(b_coin) = same_denom_coin {
-            a_coin.amount = a_coin.amount + b_coin.amount;
+            a_coin.amount += b_coin.amount;
         }
     }
     for b_coin in b.iter() {
-        if a.iter().find(|&c| c.denom == b_coin.denom).is_none() {
+        if !a.iter().any(|c| c.denom == b_coin.denom) {
             a.push(b_coin.clone());
         }
     }
@@ -248,8 +255,8 @@ fn get_key(sender: &str, recipient: &str) -> Vec<u8> {
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetLockedFunds { address } => {
-            encode_binary(&query_held_funds(deps, address.clone(), address)?)
+        QueryMsg::GetLockedFunds { owner, recipient } => {
+            encode_binary(&query_held_funds(deps, owner, recipient)?)
         }
         QueryMsg::GetTimelockConfig {} => encode_binary(&query_config(deps)?),
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
@@ -358,7 +365,8 @@ mod tests {
         assert_eq!(expected, res);
 
         let query_msg = QueryMsg::GetLockedFunds {
-            address: owner.to_string(),
+            owner: owner.to_string(),
+            recipient: owner.to_string(),
         };
 
         let res = query(deps.as_ref(), env, query_msg).unwrap();
@@ -391,7 +399,8 @@ mod tests {
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let query_msg = QueryMsg::GetLockedFunds {
-            address: owner.to_string(),
+            owner: owner.to_string(),
+            recipient: owner.to_string(),
         };
 
         let res = query(deps.as_ref(), env, query_msg).unwrap();
