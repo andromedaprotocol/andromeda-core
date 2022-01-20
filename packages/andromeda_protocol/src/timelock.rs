@@ -60,23 +60,23 @@ impl Escrow {
     /// Checks if the unlock condition has been met.
     pub fn is_locked(&self, block: &BlockInfo) -> Result<bool, ContractError> {
         match &self.condition {
-            None => return Ok(false),
+            None => Ok(false),
             Some(condition) => match condition {
                 EscrowCondition::Expiration(expiration) => match expiration {
-                    Expiration::AtTime(t) => return Ok(t > &block.time),
-                    Expiration::AtHeight(h) => {
-                        return Ok(h > &block.height);
-                    }
-                    _ => return Err(ContractError::ExpirationNotSpecified {}),
+                    Expiration::AtTime(t) => Ok(t > &block.time),
+                    Expiration::AtHeight(h) => Ok(h > &block.height),
+                    _ => Err(ContractError::ExpirationNotSpecified {}),
                 },
                 EscrowCondition::MinimumFunds(funds) => {
-                    return Ok(!self.min_funds_are_deposited(funds.clone()));
+                    Ok(!self.min_funds_deposited(funds.clone()))
                 }
             },
         }
     }
 
-    fn min_funds_are_deposited(&self, required_funds: Vec<Coin>) -> bool {
+    /// Checks if funds deposited in escrow are a subset of `required_funds`. In practice this is
+    /// used for the `EscrowCondition::MinimumFunds(funds)` condition.
+    fn min_funds_deposited(&self, required_funds: Vec<Coin>) -> bool {
         required_funds.iter().all(|required_coin| {
             self.coins.iter().any(|deposited_coin| {
                 deposited_coin.denom == required_coin.denom
@@ -301,27 +301,27 @@ mod tests {
             coins: vec![coin(100, "uluna")],
             condition: None,
         };
-        assert!(!escrow.min_funds_are_deposited(vec![coin(100, "uusd")]));
+        assert!(!escrow.min_funds_deposited(vec![coin(100, "uusd")]));
 
         let escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
         };
-        assert!(!escrow.min_funds_are_deposited(vec![coin(100, "uusd"), coin(100, "uluna")]));
+        assert!(!escrow.min_funds_deposited(vec![coin(100, "uusd"), coin(100, "uluna")]));
 
         let escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
         };
-        assert!(escrow.min_funds_are_deposited(vec![coin(100, "uluna")]));
+        assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
 
         let escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![coin(200, "uluna")],
             condition: None,
         };
-        assert!(escrow.min_funds_are_deposited(vec![coin(100, "uluna")]));
+        assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
     }
 }
