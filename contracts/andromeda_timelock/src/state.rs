@@ -1,5 +1,4 @@
 use andromeda_protocol::{modules::address_list::AddressListModule, timelock::Escrow};
-use cosmwasm_std::Addr;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -22,7 +21,7 @@ impl<'a> IndexList<Escrow> for EscrowIndexes<'a> {
     }
 }
 
-pub fn escrows<'a>() -> IndexedMap<'a, &'a Addr, Escrow, EscrowIndexes<'a>> {
+pub fn escrows<'a>() -> IndexedMap<'a, &'a str, Escrow, EscrowIndexes<'a>> {
     let indexes = EscrowIndexes {
         owner: MultiIndex::new(
             |e, k| (e.recipient.get_addr().to_string(), k),

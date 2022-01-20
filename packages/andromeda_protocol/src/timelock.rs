@@ -31,21 +31,26 @@ impl Escrow {
             ContractError::InvalidAddress {},
         )?;
 
-        if let Some(expiration) = self.expiration {
-            match expiration {
-                //ACK-01 Change (Check before deleting comment)
-                Expiration::AtTime(time) => {
-                    if time < block.time {
-                        return Err(ContractError::ExpirationInPast {});
+        Ok(!self.is_expired(block)?)
+    }
+
+    pub fn is_expired(&self, block: &BlockInfo) -> Result<bool, ContractError> {
+        match self.expiration {
+            None => return Ok(true),
+            Some(expiration) => match expiration {
+                Expiration::AtTime(t) => {
+                    if t > block.time {
+                        return Ok(false);
                     }
                 }
-                Expiration::Never {} => {
-                    return Err(ContractError::ExpirationNotSpecified {});
+                Expiration::AtHeight(h) => {
+                    if h > block.height {
+                        return Ok(false);
+                    }
                 }
-                _ => {}
-            }
+                _ => return Err(ContractError::ExpirationNotSpecified {}),
+            },
         }
-
         Ok(true)
     }
 }
@@ -70,7 +75,11 @@ pub enum ExecuteMsg {
         address_list: Option<AddressListModule>,
     },
     /// Release funds held in Escrow
-    ReleaseFunds {},
+    ReleaseFunds {
+        recipient_addr: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
