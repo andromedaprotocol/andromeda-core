@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response, StdError,
-    SubMsg,
+    attr, entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response,
+    StdError, SubMsg,
 };
 
 use cw721::Expiration;
@@ -128,24 +128,23 @@ fn execute_hold_funds(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let rec = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+
     //Validate recipient address
-    deps.api.addr_validate(&rec.get_addr())?;
-
-    // Add funds to existing escrow if it exists.
-    let existing_escrow = escrows().may_load(deps.storage, info.sender.as_str())?;
-    let escrow = match existing_escrow {
-        None => Escrow {
-            coins: info.funds,
-            expiration,
-            recipient: rec,
-        },
-        Some(escrow) => Escrow {
-            coins: [info.funds, escrow.coins].concat(),
-            ..escrow
-        },
+    let recipient_addr = rec.get_addr();
+    deps.api.addr_validate(&recipient_addr)?;
+    let mut escrow = Escrow {
+        coins: info.funds,
+        expiration,
+        recipient: rec,
     };
+    let key = get_key(info.sender.as_str(), &recipient_addr);
+    // Add funds to existing escrow if it exists.
+    let existing_escrow = escrows().may_load(deps.storage, key.to_vec())?;
+    if let Some(existing_escrow) = existing_escrow {
+        merge_coins(&mut escrow.coins, existing_escrow.coins);
+    }
 
-    escrows().save(deps.storage, &info.sender.as_str(), &escrow)?;
+    escrows().save(deps.storage, key.to_vec(), &escrow)?;
     escrow.validate(deps.api, &env.block)?;
 
     Ok(Response::default().add_attributes(vec![
@@ -174,20 +173,19 @@ fn execute_release_funds(
         .take(limit)
         .collect();
 
-    let res: Result<Vec<_>, _> = pks.iter().map(|v| String::from_utf8(v.to_vec())).collect();
-    let escrow_owners: Vec<String> = res.map_err(StdError::invalid_utf8)?;
+    let keys: Vec<Vec<u8>> = pks.iter().map(|v| v.to_vec()).collect();
 
-    if escrow_owners.is_empty() {
+    if keys.is_empty() {
         return Err(ContractError::NoLockedFunds {});
     }
 
     let mut msgs: Vec<SubMsg> = vec![];
-    for owner in escrow_owners.iter() {
-        let funds: Escrow = escrows().load(deps.storage, &owner)?;
+    for key in keys.iter() {
+        let funds: Escrow = escrows().load(deps.storage, key.clone())?;
         if funds.is_expired(&env.block)? {
             let msg = funds.recipient.generate_msg(&deps, funds.coins)?;
             msgs.push(msg);
-            escrows().remove(deps.storage, &owner)?;
+            escrows().remove(deps.storage, key.clone())?;
         }
     }
 
@@ -227,10 +225,30 @@ fn execute_update_address_list(
         .add_attributes(vec![attr("action", "update_address_list")]))
 }
 
+fn merge_coins(a: &mut Vec<Coin>, b: Vec<Coin>) {
+    for a_coin in a.iter_mut() {
+        let same_denom_coin = b.iter().find(|&c| c.denom == a_coin.denom);
+        if let Some(b_coin) = same_denom_coin {
+            a_coin.amount = a_coin.amount + b_coin.amount;
+        }
+    }
+    for b_coin in b.iter() {
+        if a.iter().find(|&c| c.denom == b_coin.denom).is_none() {
+            a.push(b_coin.clone());
+        }
+    }
+}
+
+fn get_key(sender: &str, recipient: &str) -> Vec<u8> {
+    vec![sender.as_bytes(), recipient.as_bytes()].concat()
+}
+
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetLockedFunds { address } => encode_binary(&query_held_funds(deps, address)?),
+        QueryMsg::GetLockedFunds { address } => {
+            encode_binary(&query_held_funds(deps, address.clone(), address)?)
+        }
         QueryMsg::GetTimelockConfig {} => encode_binary(&query_config(deps)?),
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
@@ -257,8 +275,12 @@ fn handle_andromeda_query(
     }
 }
 
-fn query_held_funds(deps: Deps, address: String) -> Result<GetLockedFundsResponse, ContractError> {
-    let hold_funds = escrows().may_load(deps.storage, &address)?;
+fn query_held_funds(
+    deps: Deps,
+    address: String,
+    recipient: String,
+) -> Result<GetLockedFundsResponse, ContractError> {
+    let hold_funds = escrows().may_load(deps.storage, get_key(&address, &recipient))?;
     Ok(GetLockedFundsResponse { funds: hold_funds })
 }
 
@@ -280,7 +302,7 @@ fn query_config(deps: Deps) -> Result<GetTimelockConfigResponse, ContractError> 
 mod tests {
     use super::*;
     use cosmwasm_std::{
-        coin, from_binary,
+        coin, coins, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
         Addr, BankMsg, Coin, Timestamp,
     };
@@ -342,6 +364,40 @@ mod tests {
         let expected = Escrow {
             coins: funds,
             expiration: Some(expiration),
+            recipient: Recipient::Addr(owner.to_string()),
+        };
+
+        assert_eq!(val.funds.unwrap(), expected);
+    }
+
+    #[test]
+    fn test_execute_hold_funds_escrow_updated() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+
+        let owner = "owner";
+        let info = mock_info(owner, &coins(100, "uusd"));
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
+
+        let msg = ExecuteMsg::HoldFunds {
+            expiration: None,
+            recipient: None,
+        };
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let info = mock_info(owner, &[coin(100, "uusd"), coin(100, "uluna")]);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let query_msg = QueryMsg::GetLockedFunds {
+            address: owner.to_string(),
+        };
+
+        let res = query(deps.as_ref(), env, query_msg).unwrap();
+        let val: GetLockedFundsResponse = from_binary(&res).unwrap();
+        let expected = Escrow {
+            // Coins get merged.
+            coins: vec![coin(200, "uusd"), coin(100, "uluna")],
+            expiration: None,
             recipient: Recipient::Addr(owner.to_string()),
         };
 
@@ -414,6 +470,30 @@ mod tests {
             ]),
             res
         );
+    }
+
+    #[test]
+    fn test_execute_release_multiple_escrows() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let recipient = Recipient::Addr("recipient".into());
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
+
+        let msg = ExecuteMsg::HoldFunds {
+            expiration: None,
+            recipient: Some(recipient),
+        };
+        let info = mock_info("sender1", &coins(100, "uusd"));
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let info = mock_info("sender2", &coins(100, "uusd"));
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let msg = ExecuteMsg::ReleaseFunds {
+            recipient_addr: "owner".into(),
+            start_after: None,
+            limit: None,
+        };
     }
 
     #[test]
