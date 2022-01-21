@@ -137,11 +137,15 @@ pub enum ExecuteMsg {
     UpdateAddressList {
         address_list: Option<AddressListModule>,
     },
-    /// Release funds held in Escrow
+    /// Release funds all held in Escrow for the given recipient
     ReleaseFunds {
         recipient_addr: Option<String>,
         start_after: Option<String>,
         limit: Option<u32>,
+    },
+    ReleaseSpecificFunds {
+        owner: String,
+        recipient_addr: Option<String>,
     },
 }
 

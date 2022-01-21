@@ -84,6 +84,10 @@ pub fn execute(
             start_after,
             limit,
         } => execute_release_funds(deps, env, info, recipient_addr, start_after, limit),
+        ExecuteMsg::ReleaseSpecificFunds {
+            owner,
+            recipient_addr,
+        } => execute_release_specific_funds(deps, env, info, owner, recipient_addr),
         ExecuteMsg::UpdateAddressList { address_list } => {
             execute_update_address_list(deps, info, env, address_list)
         }
@@ -184,6 +188,33 @@ fn execute_release_funds(
     ]))
 }
 
+fn execute_release_specific_funds(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    owner: String,
+    recipient: Option<String>,
+) -> Result<Response, ContractError> {
+    let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
+    let key = get_key(&owner, &recipient);
+    let escrow = escrows().may_load(deps.storage, key.clone())?;
+    match escrow {
+        None => Err(ContractError::NoLockedFunds {}),
+        Some(escrow) => {
+            require(
+                !escrow.is_locked(&env.block)?,
+                ContractError::FundsAreLocked {},
+            )?;
+            escrows().remove(deps.storage, key)?;
+            let msg = escrow.recipient.generate_msg(&deps, escrow.coins)?;
+            Ok(Response::new().add_submessage(msg).add_attributes(vec![
+                attr("action", "release_funds"),
+                attr("recipient_addr", recipient),
+            ]))
+        }
+    }
+}
+
 fn execute_update_address_list(
     deps: DepsMut,
     info: MessageInfo,
@@ -270,10 +301,10 @@ fn query_funds_for_recipient(
 
 fn query_held_funds(
     deps: Deps,
-    address: String,
+    owner: String,
     recipient: String,
 ) -> Result<GetLockedFundsResponse, ContractError> {
-    let hold_funds = escrows().may_load(deps.storage, get_key(&address, &recipient))?;
+    let hold_funds = escrows().may_load(deps.storage, get_key(&owner, &recipient))?;
     Ok(GetLockedFundsResponse { funds: hold_funds })
 }
 
@@ -627,6 +658,145 @@ mod tests {
             recipient_addr: None,
             start_after: None,
             limit: None,
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let bank_msg = BankMsg::Send {
+            to_address: "owner".into(),
+            amount: vec![coin(210, "uusd"), coin(120, "uluna")],
+        };
+        assert_eq!(
+            Response::new().add_message(bank_msg).add_attributes(vec![
+                attr("action", "release_funds"),
+                attr("recipient_addr", "owner"),
+            ]),
+            res
+        );
+    }
+
+    #[test]
+    fn test_execute_release_specific_funds_no_funds_locked() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let owner = "owner";
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
+
+        let info = mock_info(owner, &[]);
+        let msg = ExecuteMsg::ReleaseSpecificFunds {
+            recipient_addr: None,
+            owner: owner.into(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        assert_eq!(ContractError::NoLockedFunds {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_release_specific_funds_no_condition() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let owner = "owner";
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
+
+        let info = mock_info(owner, &[coin(100, "uusd")]);
+        let msg = ExecuteMsg::HoldFunds {
+            condition: None,
+            recipient: None,
+        };
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let msg = ExecuteMsg::ReleaseSpecificFunds {
+            recipient_addr: None,
+            owner: owner.into(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let bank_msg = BankMsg::Send {
+            to_address: "owner".into(),
+            amount: info.funds,
+        };
+        assert_eq!(
+            Response::new().add_message(bank_msg).add_attributes(vec![
+                attr("action", "release_funds"),
+                attr("recipient_addr", "owner"),
+            ]),
+            res
+        );
+    }
+
+    #[test]
+    fn test_execute_release_specific_funds_time_condition() {
+        let mut deps = mock_dependencies(&[]);
+        let mut env = mock_env();
+        let owner = "owner";
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
+
+        let info = mock_info(owner, &[coin(100, "uusd")]);
+        let msg = ExecuteMsg::HoldFunds {
+            condition: Some(EscrowCondition::Expiration(Expiration::AtTime(
+                Timestamp::from_seconds(100),
+            ))),
+            recipient: None,
+        };
+        env.block.time = Timestamp::from_seconds(50);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let msg = ExecuteMsg::ReleaseSpecificFunds {
+            recipient_addr: None,
+            owner: owner.into(),
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let bank_msg = BankMsg::Send {
+            to_address: "owner".into(),
+            amount: info.funds,
+        };
+        assert_eq!(
+            Response::new().add_message(bank_msg).add_attributes(vec![
+                attr("action", "release_funds"),
+                attr("recipient_addr", "owner"),
+            ]),
+            res
+        );
+    }
+
+    #[test]
+    fn test_execute_release_specific_funds_min_funds_condition() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let owner = "owner";
+        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
+
+        let info = mock_info(owner, &[coin(100, "uusd")]);
+        let msg = ExecuteMsg::HoldFunds {
+            condition: Some(EscrowCondition::MinimumFunds(vec![
+                coin(200, "uusd"),
+                coin(100, "uluna"),
+            ])),
+            recipient: None,
+        };
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let msg = ExecuteMsg::ReleaseSpecificFunds {
+            recipient_addr: None,
+            owner: owner.into(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        assert_eq!(ContractError::FundsAreLocked {}, res.unwrap_err());
+
+        // Update the escrow with enough funds.
+        let msg = ExecuteMsg::HoldFunds {
+            condition: None,
+            recipient: None,
+        };
+        let info = mock_info(owner, &[coin(110, "uusd"), coin(120, "uluna")]);
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        // Now try to release funds.
+        let msg = ExecuteMsg::ReleaseSpecificFunds {
+            recipient_addr: None,
+            owner: owner.into(),
         };
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
