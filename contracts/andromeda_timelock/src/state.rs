@@ -15,6 +15,7 @@ pub struct State {
 }
 
 pub struct EscrowIndexes<'a> {
+    /// (recipient, encoded(vec![owner, recipient]))
     pub owner: MultiIndex<'a, (String, Vec<u8>), Escrow>,
 }
 

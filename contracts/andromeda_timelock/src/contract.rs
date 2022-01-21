@@ -164,9 +164,7 @@ fn execute_release_funds(
 
     let keys = get_keys_for_recipient(deps.storage, &recipient_addr, start_after, limit);
 
-    if keys.is_empty() {
-        return Err(ContractError::NoLockedFunds {});
-    }
+    require(!keys.is_empty(), ContractError::NoLockedFunds {})?;
 
     let mut msgs: Vec<SubMsg> = vec![];
     for key in keys.iter() {
@@ -178,9 +176,7 @@ fn execute_release_funds(
         }
     }
 
-    if msgs.is_empty() {
-        return Err(ContractError::FundsAreLocked {});
-    }
+    require(!msgs.is_empty(), ContractError::FundsAreLocked {})?;
 
     Ok(Response::new().add_submessages(msgs).add_attributes(vec![
         attr("action", "release_funds"),
