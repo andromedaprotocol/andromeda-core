@@ -1,11 +1,8 @@
 use cosmwasm_std::{
-    attr, entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response,
-    StdError, SubMsg,
+    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg,
 };
 
-use cw_storage_plus::Bound;
-
-use crate::state::{escrows, State, STATE};
+use crate::state::{escrows, get_key, get_keys_for_recipient, State, STATE};
 use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
@@ -19,13 +16,10 @@ use andromeda_protocol::{
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     timelock::{
-        Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsResponse, GetTimelockConfigResponse,
-        InstantiateMsg, QueryMsg,
+        Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
+        GetLockedFundsResponse, GetTimelockConfigResponse, InstantiateMsg, QueryMsg,
     },
 };
-
-const DEFAULT_LIMIT: u32 = 10u32;
-const MAX_LIMIT: u32 = 30u32;
 
 #[entry_point]
 pub fn instantiate(
@@ -140,11 +134,15 @@ fn execute_hold_funds(
     // Add funds to existing escrow if it exists.
     let existing_escrow = escrows().may_load(deps.storage, key.to_vec())?;
     if let Some(existing_escrow) = existing_escrow {
-        merge_coins(&mut escrow.coins, existing_escrow.coins);
+        // Keep the original condition.
+        escrow.condition = existing_escrow.condition;
+        escrow.add_funds(existing_escrow.coins);
+    } else {
+        // Only want to validate if the escrow doesn't exist already. This is because it might be
+        // unlocked at this point, which is fine if funds are being added to it.
+        escrow.validate(deps.api, &env.block)?;
     }
-
     escrows().save(deps.storage, key.to_vec(), &escrow)?;
-    escrow.validate(deps.api, &env.block)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "hold_funds"),
@@ -163,22 +161,10 @@ fn execute_release_funds(
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
     let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
 
-    let pks: Vec<_> = escrows()
-        .idx
-        .owner
-        .prefix(recipient_addr.clone())
-        .keys(deps.storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect();
+    let keys = get_keys_for_recipient(deps.storage, &recipient_addr, start_after, limit);
 
-    let keys: Vec<Vec<u8>> = pks.iter().map(|v| v.to_vec()).collect();
-
-    if keys.is_empty() {
-        return Err(ContractError::NoLockedFunds {});
-    }
+    require(!keys.is_empty(), ContractError::NoLockedFunds {})?;
 
     let mut msgs: Vec<SubMsg> = vec![];
     for key in keys.iter() {
@@ -190,9 +176,7 @@ fn execute_release_funds(
         }
     }
 
-    if msgs.is_empty() {
-        return Err(ContractError::FundsAreLocked {});
-    }
+    require(!msgs.is_empty(), ContractError::FundsAreLocked {})?;
 
     Ok(Response::new().add_submessages(msgs).add_attributes(vec![
         attr("action", "release_funds"),
@@ -226,37 +210,22 @@ fn execute_update_address_list(
         .add_attributes(vec![attr("action", "update_address_list")]))
 }
 
-/// Merges the coins of the same denom into vector `a` in place.
-///
-/// ## Arguments
-/// * `a` - The `Vec<Coin>` that gets modified in place
-/// * `b` - The `Vec<Coin>` that is merged into `a`
-///
-/// Returns nothing as it is done in place.
-fn merge_coins(a: &mut Vec<Coin>, b: Vec<Coin>) {
-    for a_coin in a.iter_mut() {
-        let same_denom_coin = b.iter().find(|&c| c.denom == a_coin.denom);
-        if let Some(b_coin) = same_denom_coin {
-            a_coin.amount += b_coin.amount;
-        }
-    }
-    for b_coin in b.iter() {
-        if !a.iter().any(|c| c.denom == b_coin.denom) {
-            a.push(b_coin.clone());
-        }
-    }
-}
-
-fn get_key(sender: &str, recipient: &str) -> Vec<u8> {
-    vec![sender.as_bytes(), recipient.as_bytes()].concat()
-}
-
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetLockedFunds { owner, recipient } => {
             encode_binary(&query_held_funds(deps, owner, recipient)?)
         }
+        QueryMsg::GetLockedFundsForRecipient {
+            recipient,
+            start_after,
+            limit,
+        } => encode_binary(&query_funds_for_recipient(
+            deps,
+            recipient,
+            start_after,
+            limit,
+        )?),
         QueryMsg::GetTimelockConfig {} => encode_binary(&query_config(deps)?),
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
@@ -281,6 +250,22 @@ fn handle_andromeda_query(
             encode_binary(&query_is_operator(deps, &address)?)
         }
     }
+}
+
+fn query_funds_for_recipient(
+    deps: Deps,
+    recipient: String,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<GetLockedFundsForRecipientResponse, ContractError> {
+    let keys = get_keys_for_recipient(deps.storage, &recipient, start_after, limit);
+    let mut recipient_escrows: Vec<Escrow> = vec![];
+    for key in keys.iter() {
+        recipient_escrows.push(escrows().load(deps.storage, key.to_vec())?);
+    }
+    Ok(GetLockedFundsForRecipientResponse {
+        funds: recipient_escrows,
+    })
 }
 
 fn query_held_funds(
@@ -383,24 +368,34 @@ mod tests {
     #[test]
     fn test_execute_hold_funds_escrow_updated() {
         let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
+        let mut env = mock_env();
 
         let owner = "owner";
         let info = mock_info(owner, &coins(100, "uusd"));
         STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let msg = ExecuteMsg::HoldFunds {
-            condition: None,
-            recipient: None,
+            condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
+            recipient: Some(Recipient::Addr("recipient".into())),
         };
+
+        env.block.height = 0;
+
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let msg = ExecuteMsg::HoldFunds {
+            condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(100))),
+            recipient: Some(Recipient::Addr("recipient".into())),
+        };
+
+        env.block.height = 120;
 
         let info = mock_info(owner, &[coin(100, "uusd"), coin(100, "uluna")]);
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let query_msg = QueryMsg::GetLockedFunds {
             owner: owner.to_string(),
-            recipient: owner.to_string(),
+            recipient: "recipient".to_string(),
         };
 
         let res = query(deps.as_ref(), env, query_msg).unwrap();
@@ -408,8 +403,9 @@ mod tests {
         let expected = Escrow {
             // Coins get merged.
             coins: vec![coin(200, "uusd"), coin(100, "uluna")],
-            condition: None,
-            recipient: Recipient::Addr(owner.to_string()),
+            // Original expiration remains.
+            condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
+            recipient: Recipient::Addr("recipient".to_string()),
         };
 
         assert_eq!(val.funds.unwrap(), expected);
@@ -633,7 +629,7 @@ mod tests {
             limit: None,
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
         let bank_msg = BankMsg::Send {
             to_address: "owner".into(),

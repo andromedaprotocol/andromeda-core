@@ -84,6 +84,31 @@ impl Escrow {
             })
         })
     }
+
+    /// Adds coins in `coins_to_add` to `self.coins` by merging those of the same denom and
+    /// otherwise appending.
+    ///
+    /// ## Arguments
+    /// * `&mut self`    - Mutable reference to an instance of Escrow
+    /// * `coins_to_add` - The `Vec<Coin>` to add, it is assumed that it contains no coins of the
+    ///                    same denom
+    ///
+    /// Returns nothing as it is done in place.
+    pub fn add_funds(&mut self, coins_to_add: Vec<Coin>) {
+        for deposited_coin in self.coins.iter_mut() {
+            let same_denom_coin = coins_to_add
+                .iter()
+                .find(|&c| c.denom == deposited_coin.denom);
+            if let Some(same_denom_coin) = same_denom_coin {
+                deposited_coin.amount += same_denom_coin.amount;
+            }
+        }
+        for coin_to_add in coins_to_add.iter() {
+            if !self.coins.iter().any(|c| c.denom == coin_to_add.denom) {
+                self.coins.push(coin_to_add.clone());
+            }
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -124,12 +149,24 @@ pub enum QueryMsg {
     },
     /// The current config of the contract
     GetTimelockConfig {},
+    /// Queries the funds for the given recipient.
+    GetLockedFundsForRecipient {
+        recipient: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetLockedFundsResponse {
     pub funds: Option<Escrow>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct GetLockedFundsForRecipientResponse {
+    pub funds: Vec<Escrow>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -323,5 +360,21 @@ mod tests {
             condition: None,
         };
         assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
+    }
+
+    #[test]
+    fn test_add_funds() {
+        let mut escrow = Escrow {
+            coins: vec![coin(100, "uusd"), coin(100, "uluna")],
+            condition: None,
+            recipient: Recipient::Addr("".into()),
+        };
+        let funds_to_add = vec![coin(25, "uluna"), coin(50, "uusd"), coin(100, "ucad")];
+
+        escrow.add_funds(funds_to_add);
+        assert_eq!(
+            vec![coin(150, "uusd"), coin(125, "uluna"), coin(100, "ucad")],
+            escrow.coins
+        );
     }
 }

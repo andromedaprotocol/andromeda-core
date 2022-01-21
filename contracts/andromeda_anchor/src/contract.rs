@@ -69,13 +69,13 @@ fn execute_andr_receive(
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        AndromedaMsg::Receive(data) => match data {
-            None => execute_deposit(deps, env, info, None),
-            Some(_) => {
-                let position_idx: Uint128 = parse_message(data)?;
-                withdraw(deps, env, info, position_idx)
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
             }
-        },
+        }
         AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         AndromedaMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
