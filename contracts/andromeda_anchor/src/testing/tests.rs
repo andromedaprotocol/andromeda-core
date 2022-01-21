@@ -219,7 +219,12 @@ fn test_andr_receive() {
     let info = mock_info("addr0000", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None));
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
+        to_binary(&ExecuteMsg::Deposit {
+            recipient: Some(Recipient::Addr("recipient".into())),
+        })
+        .unwrap(),
+    )));
     let info = mock_info(
         "addr0000",
         &[Coin {
@@ -252,7 +257,10 @@ fn test_andr_receive() {
         .unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-        to_binary(&Uint128::from(1u128)).unwrap(),
+        to_binary(&ExecuteMsg::Withdraw {
+            position_idx: 1u128.into(),
+        })
+        .unwrap(),
     )));
 
     let info = mock_info("addr0000", &[]);
@@ -274,7 +282,7 @@ fn test_andr_receive() {
                 contract_addr: "cosmos2contract".to_string(),
                 msg: to_binary(&ExecuteMsg::Yourself {
                     yourself_msg: YourselfMsg::TransferUst {
-                        receiver: Recipient::Addr("addr0000".to_string()),
+                        receiver: Recipient::Addr("recipient".to_string()),
                     },
                 })
                 .unwrap(),
