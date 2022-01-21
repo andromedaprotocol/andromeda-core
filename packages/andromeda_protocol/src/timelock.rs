@@ -9,8 +9,11 @@ use crate::{modules::address_list::AddressListModule, require};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+/// Enum used to specify the condition which must be met in order for the Escrow to unlock.
 pub enum EscrowCondition {
+    /// Requires a given time or block height to be reached.
     Expiration(Expiration),
+    /// Requires a minimum amount of funds to be deposited.
     MinimumFunds(Vec<Coin>),
 }
 
@@ -21,7 +24,7 @@ pub struct Escrow {
     pub coins: Vec<Coin>,
     /// Optional condition for the Escrow
     pub condition: Option<EscrowCondition>,
-    /// The recipient of the funds once Expiration is reached
+    /// The recipient of the funds once Condition is satisfied
     pub recipient: Recipient,
 }
 
@@ -42,12 +45,16 @@ impl Escrow {
             require(!funds.is_empty(), ContractError::EmptyFunds {})?;
             let mut funds: Vec<Coin> = funds.clone();
             funds.sort_by(|a, b| a.denom.cmp(&b.denom));
-            for i in 0..(funds.len() - 1) {
+            for i in 0..funds.len() - 1 {
                 require(
                     funds[i].denom != funds[i + 1].denom,
                     ContractError::DuplicateCoinDenoms {},
                 )?;
             }
+            // Explicitly stop here as it is alright if the Escrow is unlocked in this case, ie,
+            // the intially deposited funds are greater or equal to the minimum imposed by this
+            // condition.
+            return Ok(());
         }
 
         require(
@@ -296,6 +303,14 @@ mod tests {
             height: 1000,
             time: Timestamp::from_seconds(4444),
             chain_id: "foo".to_string(),
+        };
+        valid_escrow.validate(deps.as_ref().api, &block).unwrap();
+
+        // Funds exceed minimum
+        let valid_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: vec![coin(200, "uluna")],
+            condition: Some(EscrowCondition::MinimumFunds(vec![coin(100, "uluna")])),
         };
         valid_escrow.validate(deps.as_ref().api, &block).unwrap();
 
