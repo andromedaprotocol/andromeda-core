@@ -136,13 +136,15 @@ fn execute_hold_funds(
     // Add funds to existing escrow if it exists.
     let existing_escrow = escrows().may_load(deps.storage, key.to_vec())?;
     if let Some(existing_escrow) = existing_escrow {
+        // Keep the original expiration.
         escrow.expiration = existing_escrow.expiration;
-        escrow.recipient = existing_escrow.recipient;
         escrow.add_funds(existing_escrow.coins);
+    } else {
+        // Only want to validate if the escrow doesn't exist already. This is because it might be
+        // unlocked at this point, which is fine if funds are being added to it.
+        escrow.validate(deps.api, &env.block)?;
     }
-
     escrows().save(deps.storage, key.to_vec(), &escrow)?;
-    escrow.validate(deps.api, &env.block)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "hold_funds"),
@@ -367,24 +369,34 @@ mod tests {
     #[test]
     fn test_execute_hold_funds_escrow_updated() {
         let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
+        let mut env = mock_env();
 
         let owner = "owner";
         let info = mock_info(owner, &coins(100, "uusd"));
         STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let msg = ExecuteMsg::HoldFunds {
-            expiration: None,
-            recipient: None,
+            expiration: Some(Expiration::AtHeight(10)),
+            recipient: Some(Recipient::Addr("recipient".into())),
         };
+
+        env.block.height = 0;
+
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let msg = ExecuteMsg::HoldFunds {
+            expiration: Some(Expiration::AtHeight(100)),
+            recipient: Some(Recipient::Addr("recipient".into())),
+        };
+
+        env.block.height = 120;
 
         let info = mock_info(owner, &[coin(100, "uusd"), coin(100, "uluna")]);
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let query_msg = QueryMsg::GetLockedFunds {
             owner: owner.to_string(),
-            recipient: owner.to_string(),
+            recipient: "recipient".to_string(),
         };
 
         let res = query(deps.as_ref(), env, query_msg).unwrap();
@@ -392,8 +404,9 @@ mod tests {
         let expected = Escrow {
             // Coins get merged.
             coins: vec![coin(200, "uusd"), coin(100, "uluna")],
-            expiration: None,
-            recipient: Recipient::Addr(owner.to_string()),
+            // Original expiration remains.
+            expiration: Some(Expiration::AtHeight(10)),
+            recipient: Recipient::Addr("recipient".to_string()),
         };
 
         assert_eq!(val.funds.unwrap(), expected);
