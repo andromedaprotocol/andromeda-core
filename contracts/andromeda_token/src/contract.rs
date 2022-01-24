@@ -905,7 +905,7 @@ mod tests {
         let creator = "creator".to_string();
 
         let mint_msg = MintMsg {
-            token_id: token_id,
+            token_id,
             owner: creator,
             description: Some("Test Token".to_string()),
             name: "TestToken".to_string(),

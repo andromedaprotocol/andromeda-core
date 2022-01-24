@@ -141,7 +141,7 @@ mod tests {
     #[test]
     fn try_get_bool() {
         let primitive = Primitive::Bool(true);
-        assert_eq!(true, primitive.try_get_bool().unwrap());
+        assert!(primitive.try_get_bool().unwrap());
 
         let primitive = Primitive::String("String".to_string());
         assert_eq!(
