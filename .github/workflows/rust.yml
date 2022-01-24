@@ -21,7 +21,7 @@ jobs:
           override: true
           components: rustfmt, clippy
       - run: cargo fetch --verbose
-      - run: cargo clippy --all --all-targets -- -D warnings
+      - run: cargo clippy --all --all-targets
       - run: cargo fmt -- --check
 
       # `cargo check` command here will use installed `nightly`
