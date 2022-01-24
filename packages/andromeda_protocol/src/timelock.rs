@@ -8,13 +8,23 @@ use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+/// Enum used to specify the condition which must be met in order for the Escrow to unlock.
+pub enum EscrowCondition {
+    /// Requires a given time or block height to be reached.
+    Expiration(Expiration),
+    /// Requires a minimum amount of funds to be deposited.
+    MinimumFunds(Vec<Coin>),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 /// Struct used to define funds being held in Escrow
 pub struct Escrow {
     /// Funds being held within the Escrow
     pub coins: Vec<Coin>,
-    /// Optional expiration for the Escrow
-    pub expiration: Option<Expiration>,
-    /// The recipient of the funds once Expiration is reached
+    /// Optional condition for the Escrow
+    pub condition: Option<EscrowCondition>,
+    /// The recipient of the funds once Condition is satisfied
     pub recipient: Recipient,
 }
 
@@ -31,31 +41,55 @@ impl Escrow {
             ContractError::InvalidAddress {},
         )?;
 
-        if self.is_expired(block)? && self.expiration.is_some() {
-            return Err(ContractError::ExpirationInPast {});
+        if let Some(EscrowCondition::MinimumFunds(funds)) = &self.condition {
+            require(!funds.is_empty(), ContractError::EmptyFunds {})?;
+            let mut funds: Vec<Coin> = funds.clone();
+            funds.sort_by(|a, b| a.denom.cmp(&b.denom));
+            for i in 0..funds.len() - 1 {
+                require(
+                    funds[i].denom != funds[i + 1].denom,
+                    ContractError::DuplicateCoinDenoms {},
+                )?;
+            }
+            // Explicitly stop here as it is alright if the Escrow is unlocked in this case, ie,
+            // the intially deposited funds are greater or equal to the minimum imposed by this
+            // condition.
+            return Ok(());
         }
+
+        require(
+            self.is_locked(block)? || self.condition.is_none(),
+            ContractError::ExpirationInPast {},
+        )?;
         Ok(())
     }
 
-    /// Checks if the current block has surpased the expiration.
-    pub fn is_expired(&self, block: &BlockInfo) -> Result<bool, ContractError> {
-        match self.expiration {
-            None => return Ok(true),
-            Some(expiration) => match expiration {
-                Expiration::AtTime(t) => {
-                    if t > block.time {
-                        return Ok(false);
-                    }
+    /// Checks if the unlock condition has been met.
+    pub fn is_locked(&self, block: &BlockInfo) -> Result<bool, ContractError> {
+        match &self.condition {
+            None => Ok(false),
+            Some(condition) => match condition {
+                EscrowCondition::Expiration(expiration) => match expiration {
+                    Expiration::AtTime(t) => Ok(t > &block.time),
+                    Expiration::AtHeight(h) => Ok(h > &block.height),
+                    _ => Err(ContractError::ExpirationNotSpecified {}),
+                },
+                EscrowCondition::MinimumFunds(funds) => {
+                    Ok(!self.min_funds_deposited(funds.clone()))
                 }
-                Expiration::AtHeight(h) => {
-                    if h > block.height {
-                        return Ok(false);
-                    }
-                }
-                _ => return Err(ContractError::ExpirationNotSpecified {}),
             },
         }
-        Ok(true)
+    }
+
+    /// Checks if funds deposited in escrow are a subset of `required_funds`. In practice this is
+    /// used for the `EscrowCondition::MinimumFunds(funds)` condition.
+    fn min_funds_deposited(&self, required_funds: Vec<Coin>) -> bool {
+        required_funds.iter().all(|required_coin| {
+            self.coins.iter().any(|deposited_coin| {
+                deposited_coin.denom == required_coin.denom
+                    && required_coin.amount <= deposited_coin.amount
+            })
+        })
     }
 
     /// Adds coins in `coins_to_add` to `self.coins` by merging those of the same denom and
@@ -96,7 +130,7 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Hold funds in Escrow
     HoldFunds {
-        expiration: Option<Expiration>,
+        condition: Option<EscrowCondition>,
         recipient: Option<Recipient>,
     },
     /// Update the optional address list module
@@ -159,14 +193,14 @@ mod tests {
     #[test]
     fn test_validate() {
         let deps = mock_dependencies(&[]);
-        let expiration = Expiration::AtHeight(1500);
+        let condition = EscrowCondition::Expiration(Expiration::AtHeight(1500));
         let coins = vec![coin(100u128, "uluna")];
         let recipient = Recipient::Addr("owner".into());
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: Some(expiration),
+            condition: Some(condition.clone()),
         };
         let block = BlockInfo {
             height: 1000,
@@ -178,7 +212,7 @@ mod tests {
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: None,
+            condition: None,
         };
         let block = BlockInfo {
             height: 1000,
@@ -190,7 +224,7 @@ mod tests {
         let invalid_recipient_escrow = Escrow {
             recipient: Recipient::Addr(String::default()),
             coins: coins.clone(),
-            expiration: Some(expiration),
+            condition: Some(condition.clone()),
         };
 
         let resp = invalid_recipient_escrow
@@ -201,7 +235,7 @@ mod tests {
         let invalid_coins_escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![],
-            expiration: Some(expiration),
+            condition: Some(condition),
         };
 
         let resp = invalid_coins_escrow
@@ -209,13 +243,13 @@ mod tests {
             .unwrap_err();
         assert_eq!(ContractError::EmptyFunds {}, resp);
 
-        let invalid_expiration_escrow = Escrow {
+        let invalid_condition_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: Some(Expiration::Never {}),
+            condition: Some(EscrowCondition::Expiration(Expiration::Never {})),
         };
 
-        let resp = invalid_expiration_escrow
+        let resp = invalid_condition_escrow
             .validate(deps.as_ref().api, &block)
             .unwrap_err();
         assert_eq!(ContractError::ExpirationNotSpecified {}, resp);
@@ -223,7 +257,7 @@ mod tests {
         let invalid_time_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: Some(Expiration::AtHeight(10)),
+            condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
         };
         let block = BlockInfo {
             height: 1000,
@@ -240,7 +274,9 @@ mod tests {
         let invalid_time_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
-            expiration: Some(Expiration::AtTime(Timestamp::from_seconds(100))),
+            condition: Some(EscrowCondition::Expiration(Expiration::AtTime(
+                Timestamp::from_seconds(100),
+            ))),
         };
         assert_eq!(
             ContractError::ExpirationInPast {},
@@ -251,10 +287,101 @@ mod tests {
     }
 
     #[test]
+    fn test_validate_funds_condition() {
+        let deps = mock_dependencies(&[]);
+        let recipient = Recipient::Addr("owner".into());
+
+        let valid_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: vec![coin(100, "uluna")],
+            condition: Some(EscrowCondition::MinimumFunds(vec![
+                coin(100, "uusd"),
+                coin(100, "uluna"),
+            ])),
+        };
+        let block = BlockInfo {
+            height: 1000,
+            time: Timestamp::from_seconds(4444),
+            chain_id: "foo".to_string(),
+        };
+        valid_escrow.validate(deps.as_ref().api, &block).unwrap();
+
+        // Funds exceed minimum
+        let valid_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: vec![coin(200, "uluna")],
+            condition: Some(EscrowCondition::MinimumFunds(vec![coin(100, "uluna")])),
+        };
+        valid_escrow.validate(deps.as_ref().api, &block).unwrap();
+
+        // Empty funds
+        let invalid_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: vec![coin(100, "uluna")],
+            condition: Some(EscrowCondition::MinimumFunds(vec![])),
+        };
+        assert_eq!(
+            ContractError::EmptyFunds {},
+            invalid_escrow
+                .validate(deps.as_ref().api, &block)
+                .unwrap_err()
+        );
+
+        // Duplicate funds
+        let invalid_escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: vec![coin(100, "uluna")],
+            condition: Some(EscrowCondition::MinimumFunds(vec![
+                coin(100, "uusd"),
+                coin(100, "uluna"),
+                coin(200, "uusd"),
+            ])),
+        };
+        assert_eq!(
+            ContractError::DuplicateCoinDenoms {},
+            invalid_escrow
+                .validate(deps.as_ref().api, &block)
+                .unwrap_err()
+        );
+    }
+
+    #[test]
+    fn test_min_funds_deposited() {
+        let recipient = Recipient::Addr("owner".into());
+        let escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: vec![coin(100, "uluna")],
+            condition: None,
+        };
+        assert!(!escrow.min_funds_deposited(vec![coin(100, "uusd")]));
+
+        let escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: vec![coin(100, "uluna")],
+            condition: None,
+        };
+        assert!(!escrow.min_funds_deposited(vec![coin(100, "uusd"), coin(100, "uluna")]));
+
+        let escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: vec![coin(100, "uluna")],
+            condition: None,
+        };
+        assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
+
+        let escrow = Escrow {
+            recipient: recipient.clone(),
+            coins: vec![coin(200, "uluna")],
+            condition: None,
+        };
+        assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
+    }
+
+    #[test]
     fn test_add_funds() {
         let mut escrow = Escrow {
             coins: vec![coin(100, "uusd"), coin(100, "uluna")],
-            expiration: None,
+            condition: None,
             recipient: Recipient::Addr("".into()),
         };
         let funds_to_add = vec![coin(25, "uluna"), coin(50, "uusd"), coin(100, "ucad")];
