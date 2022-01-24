@@ -140,7 +140,9 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         }
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
-        let msg = recipient_addr.recipient.generate_msg(&deps, vec_coin)?;
+        let msg = recipient_addr
+            .recipient
+            .generate_msg(&deps.as_ref(), vec_coin)?;
         submsg.push(msg);
     }
     remainder_funds = remainder_funds

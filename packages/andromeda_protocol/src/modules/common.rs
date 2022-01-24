@@ -13,7 +13,7 @@ use cosmwasm_std::{coin, BankMsg, Coin, Uint128};
 /// * `payment` - The amount used to calculate the fee
 ///
 /// Returns the fee amount in a `Coin` struct.
-pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Result<Coin, ContractError> {
+pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractError> {
     match fee_rate {
         Rate::Flat(rate) => Ok(coin(rate.amount.u128(), rate.denom)),
         Rate::Percent(rate) => {
@@ -36,7 +36,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Result<Coin, ContractErro
                     _ => fee_amount = res.unwrap(),
                 };
             }
-            Ok(coin(fee_amount, payment.denom))
+            Ok(coin(fee_amount, payment.denom.clone()))
         }
         Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
     }
@@ -70,7 +70,7 @@ pub fn is_unique<M: Module>(module: &M, all_modules: &[ModuleDefinition]) -> boo
 /// ## Arguments
 /// * `coins` - The vector of `Coin` structs from which to deduct the given funds
 /// * `funds` - The amount to deduct
-pub fn deduct_funds(coins: &mut Vec<Coin>, funds: Coin) -> Result<bool, ContractError> {
+pub fn deduct_funds(coins: &mut Vec<Coin>, funds: &Coin) -> Result<bool, ContractError> {
     let coin_amount = coins.iter_mut().find(|c| c.denom.eq(&funds.denom));
 
     match coin_amount {
@@ -122,7 +122,7 @@ pub fn deduct_payment(
     match payment {
         Some(p) => {
             if let BankMsg::Send { amount: am, .. } = p {
-                deduct_funds(am, amount)?;
+                deduct_funds(am, &amount)?;
             }
             Ok(true)
         }
@@ -177,7 +177,7 @@ mod tests {
     fn test_deduct_funds() {
         let mut funds: Vec<Coin> = vec![coin(100, "uluna")];
 
-        deduct_funds(&mut funds, coin(10, "uluna")).unwrap();
+        deduct_funds(&mut funds, &coin(10, "uluna")).unwrap();
 
         assert_eq!(Uint128::from(90_u64), funds[0].amount);
         assert_eq!(String::from("uluna"), funds[0].denom);
@@ -187,7 +187,7 @@ mod tests {
             amount: Uint128::from(5_u64),
         }];
 
-        let e = deduct_funds(&mut funds, coin(10, "uluna")).unwrap_err();
+        let e = deduct_funds(&mut funds, &coin(10, "uluna")).unwrap_err();
 
         assert_eq!(ContractError::InsufficientFunds {}, e);
     }
@@ -242,7 +242,7 @@ mod tests {
         let expected = Ok(coin(5, "uluna"));
         let fee = Rate::Percent(4u128.into());
 
-        let received = calculate_fee(fee, payment);
+        let received = calculate_fee(fee, &payment);
 
         assert_eq!(expected, received);
 
@@ -254,7 +254,7 @@ mod tests {
             denom: "uluna".to_string(),
         });
 
-        let received = calculate_fee(fee, payment);
+        let received = calculate_fee(fee, &payment);
 
         assert_eq!(expected, received);
     }

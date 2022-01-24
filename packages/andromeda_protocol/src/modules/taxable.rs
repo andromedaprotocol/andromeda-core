@@ -40,7 +40,7 @@ impl MessageHooks for Taxable {
     ) -> Result<HookResponse, ContractError> {
         let _contract_addr = env.contract.address;
         let rate = self.rate.validate(&deps.querier)?;
-        let tax_amount = calculate_fee(rate, agreement.amount)?;
+        let tax_amount = calculate_fee(rate, &agreement.amount)?;
 
         let mut resp = HookResponse::default();
         let mut event = Event::new(TAX_EVENT_ID);
@@ -239,7 +239,7 @@ mod tests {
             resp.events[0].attributes[1].value,
             PaymentAttribute {
                 receiver: t.receivers[0].clone(),
-                amount: calculate_fee(t.rate, agreed_transfer_amount).unwrap()
+                amount: calculate_fee(t.rate, &agreed_transfer_amount).unwrap()
             }
             .to_string()
         );
