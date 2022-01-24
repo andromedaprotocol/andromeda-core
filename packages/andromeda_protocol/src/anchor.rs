@@ -6,9 +6,8 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum AnchorMarketMsg {
     DepositStable {},
-    RedeemStable{}
+    RedeemStable {},
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -21,22 +20,20 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Deposit {},
-    Withdraw {  position_idx: Uint128 },
+    Withdraw { position_idx: Uint128 },
     Yourself { yourself_msg: YourselfMsg },
-    UpdateOwner {
-        address: String,
-    },
+    UpdateOwner { address: String },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum YourselfMsg {
-    TransferUst{ receiver: String },
+    TransferUst { receiver: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    Config{},
+    Config {},
     ContractOwner {},
 }
 
@@ -47,5 +44,3 @@ pub struct ConfigResponse {
     pub anchor_token: String,
     pub stable_denom: String,
 }
-
-

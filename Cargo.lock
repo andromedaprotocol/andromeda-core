@@ -22,11 +22,25 @@ dependencies = [
  "andromeda-protocol",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
- "cw20",
+ "cw20 0.9.1",
  "schemars",
  "serde",
  "terra-cosmwasm",
  "terraswap",
+]
+
+[[package]]
+name = "andromeda-cw20"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw20 0.9.1",
+ "schemars",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -53,7 +67,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-storage-plus 0.8.1",
  "cw2",
- "cw20",
+ "cw20 0.9.1",
  "mirror-protocol",
  "schemars",
  "serde",
@@ -83,7 +97,7 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
- "cw20",
+ "cw20 0.9.1",
  "cw721",
  "mirror-protocol",
  "schemars",
@@ -366,6 +380,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw20"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac49b013ca1e355fd988cc1926acc9a16d7fd45cfb595ee330455582a788b100"
+dependencies = [
+ "cosmwasm-std",
+ "cw0 0.9.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw721"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -544,7 +570,7 @@ checksum = "68b4a3ba65a8fd11cd24862cc49a2c4eebb98e8dfd38d43df72145cde19d9ca6"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw20",
+ "cw20 0.8.1",
  "schemars",
  "serde",
  "terraswap",
@@ -757,7 +783,7 @@ checksum = "96f2c2a6371e9ddf2c942368e64645cc3e8fc2855da70c8c6bed238dcdd5522f"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw20",
+ "cw20 0.8.1",
  "schemars",
  "serde",
  "terra-cosmwasm",
