@@ -90,7 +90,7 @@ pub enum ContractError {
     #[error("InvalidMirrorFunds")]
     InvalidMirrorFunds { msg: String },
 
-    /// BEGIN CW20 ERRORS
+    // BEGIN CW20 ERRORS
     #[error("Cannot set to own account")]
     CannotSetOwnAccount {},
 
@@ -114,6 +114,7 @@ pub enum ContractError {
 
     #[error("Invalid png header")]
     InvalidPngHeader {},
+    // END CW20 ERRORS
 }
 
 impl From<Cw20ContractError> for ContractError {
