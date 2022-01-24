@@ -17,7 +17,7 @@ fn test_instantiate() {
         anchor_mint: "anchor_mint".to_string(),
         stable_denom: "uusd".to_string()
     };
-    let res = instantiate(deps.as_mut(), env, info.clone(), msg.clone()).unwrap();
+    let res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
 
     assert_eq!(0, res.messages.len());
 
@@ -86,7 +86,7 @@ fn test_withdraw(){
         }],
     );
     let env = mock_env();
-    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     //set aust_amount to position manually
     let mut position = POSITION.load(&deps.storage, &1u128.to_be_bytes()).unwrap();
     position.aust_amount = Uint128::from(1000000u128);
@@ -94,7 +94,7 @@ fn test_withdraw(){
 
     let msg = ExecuteMsg::Withdraw { position_idx: Uint128::from(1u128) };
     let info = mock_info("addr0000", &[]);
-    let res = execute(deps.as_mut(), env.clone(),info.clone(),msg).unwrap();
+    let res = execute(deps.as_mut(), env,info,msg).unwrap();
     
     let expected_res = Response::new()
         .add_messages(vec![

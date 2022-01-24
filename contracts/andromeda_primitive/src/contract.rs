@@ -174,7 +174,7 @@ mod tests {
             name: Some("test1".to_string()),
             value: Primitive::String("value2".to_string()),
         };
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let query_res: GetValueResponse =
             query_value_helper(deps.as_ref(), Some("test1".to_string()));
@@ -227,7 +227,7 @@ mod tests {
             name: None,
             value: Primitive::String("value2".to_string()),
         };
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let query_res: GetValueResponse = query_value_helper(deps.as_ref(), None);
 
@@ -255,7 +255,7 @@ mod tests {
             value: Primitive::Vec(vec![Primitive::Vec(vec![])]),
         };
         let res: Result<Response, ContractError> =
-            execute(deps.as_mut(), mock_env(), info.clone(), msg);
+            execute(deps.as_mut(), mock_env(), info, msg);
         assert_eq!(ContractError::InvalidPrimitive {}, res.unwrap_err());
     }
 
@@ -289,7 +289,7 @@ mod tests {
         let msg = ExecuteMsg::DeleteValue {
             name: Some("test1".to_string()),
         };
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(
             res,
             Response::new()
@@ -334,7 +334,7 @@ mod tests {
         );
 
         let msg = ExecuteMsg::DeleteValue { name: None };
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(
             res,
             Response::new()
@@ -354,7 +354,7 @@ mod tests {
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let user1 = mock_info("user1", &[]);
         let msg = ExecuteMsg::SetValue {
@@ -362,7 +362,7 @@ mod tests {
             value: Primitive::String("value1".to_string()),
         };
         let res: Result<Response, ContractError> =
-            execute(deps.as_mut(), mock_env(), user1.clone(), msg);
+            execute(deps.as_mut(), mock_env(), user1, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 
@@ -380,12 +380,12 @@ mod tests {
             name: None,
             value: Primitive::String("value1".to_string()),
         };
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let user1 = mock_info("user1", &[]);
         let msg = ExecuteMsg::DeleteValue { name: None };
         let res: Result<Response, ContractError> =
-            execute(deps.as_mut(), mock_env(), user1.clone(), msg);
+            execute(deps.as_mut(), mock_env(), user1, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 }

@@ -156,7 +156,7 @@ pub fn execute_mint(
     };
     let config = CONFIG.load(deps.storage)?;
     require(
-        info.sender.to_string() == config.minter,
+        info.sender == config.minter,
         ContractError::Unauthorized {},
     )?;
 
@@ -908,8 +908,8 @@ mod tests {
         let creator = "creator".to_string();
 
         let mint_msg = MintMsg {
-            token_id: token_id.clone(),
-            owner: creator.clone(),
+            token_id: token_id,
+            owner: creator,
             description: Some("Test Token".to_string()),
             name: "TestToken".to_string(),
             metadata: None,
@@ -921,7 +921,7 @@ mod tests {
 
         let msg = ExecuteMsg::Mint(mint_msg);
 
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 
@@ -984,7 +984,7 @@ mod tests {
             ))
         );
 
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(Response::default().add_attributes(attrs), res);
 
         let owner = load_token(deps.as_ref().storage, token_id).unwrap().owner;
@@ -1033,7 +1033,7 @@ mod tests {
             )
             .unwrap();
 
-        let res = execute(deps.as_mut(), env.clone(), approval_info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env, approval_info.clone(), msg).unwrap();
         assert_eq!(
             Response::default().add_attributes(vec![
                 attr("action", "transfer"),
