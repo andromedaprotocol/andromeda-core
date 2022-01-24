@@ -1,15 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
-use andromeda_protocol::{cw20::ExecuteMsg, error::ContractError};
+use andromeda_protocol::{
+    cw20::{ExecuteMsg, QueryMsg},
+    error::ContractError,
+};
 use cw20_base::{
     contract::{
         execute as execute_cw20, execute_burn as execute_cw20_burn,
         execute_mint as execute_cw20_mint, execute_send as execute_cw20_send,
         execute_transfer as execute_cw20_transfer, instantiate as cw20_instantiate,
+        query as query_cw20,
     },
     msg::InstantiateMsg,
 };
@@ -87,17 +89,6 @@ fn execute_mint(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env) -> StdResult<Binary> {
-    Ok(to_binary(&true)?)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::testing::mock_dependencies;
-
-    #[test]
-    fn proper_initialization() {
-        let mut deps = mock_dependencies(&[]);
-    }
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    Ok(query_cw20(deps, env, msg.into())?)
 }
