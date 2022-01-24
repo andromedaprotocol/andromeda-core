@@ -155,6 +155,10 @@ pub fn execute_mint(
         publisher: info.sender.to_string(),
     };
     let config = CONFIG.load(deps.storage)?;
+    require(
+        info.sender.to_string() == config.minter,
+        ContractError::Unauthorized {},
+    )?;
 
     mint_token(deps.storage, msg.token_id.to_string(), token)?;
     increment_num_tokens(deps.storage)?;
@@ -867,7 +871,7 @@ mod tests {
     fn test_mint() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
-        let info = mock_info("creator", &[]);
+        let info = mock_info("minter", &[]);
         let token_id = String::default();
         let creator = "creator".to_string();
 
@@ -893,6 +897,32 @@ mod tests {
         let query_val: OwnerOfResponse = from_binary(&query_res).unwrap();
 
         assert_eq!(query_val.owner, creator)
+    }
+
+    #[test]
+    fn test_mint_invalid_minter() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let token_id = String::default();
+        let creator = "creator".to_string();
+
+        let mint_msg = MintMsg {
+            token_id: token_id.clone(),
+            owner: creator.clone(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
+            token_uri: None,
+            pricing: None,
+        };
+
+        store_mock_config(deps.as_mut(), String::from("minter"));
+
+        let msg = ExecuteMsg::Mint(mint_msg);
+
+        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 
     #[test]
