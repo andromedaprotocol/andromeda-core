@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, DepsMut, SubMsg, WasmMsg,
+    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg,
 };
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -41,7 +41,7 @@ impl Recipient {
     }
 
     /// Generates the sub message depending on the type of the recipient.
-    pub fn generate_msg(&self, deps: &DepsMut, funds: Vec<Coin>) -> Result<SubMsg, ContractError> {
+    pub fn generate_msg(&self, deps: &Deps, funds: Vec<Coin>) -> Result<SubMsg, ContractError> {
         Ok(match &self {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),

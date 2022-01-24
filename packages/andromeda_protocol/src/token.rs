@@ -141,7 +141,7 @@ impl TransferAgreement {
     ) -> Result<BankMsg, ContractError> {
         Ok(BankMsg::Send {
             to_address,
-            amount: vec![calculate_fee(rate, self.amount.clone())?],
+            amount: vec![calculate_fee(rate, &self.amount)?],
         })
     }
     /// Generates an event related to the agreed transfer of a token
