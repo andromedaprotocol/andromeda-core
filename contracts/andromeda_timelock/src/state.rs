@@ -57,8 +57,8 @@ pub fn get_keys_for_recipient(
     keys
 }
 
-pub fn get_key(sender: &str, recipient: &str) -> Vec<u8> {
-    vec![sender.as_bytes(), recipient.as_bytes()].concat()
+pub fn get_key(owner: &str, recipient: &str) -> Vec<u8> {
+    vec![owner.as_bytes(), recipient.as_bytes()].concat()
 }
 
 #[cfg(test)]
@@ -67,9 +67,9 @@ mod tests {
 
     #[test]
     fn test_get_key() {
-        let sender = "sender";
+        let owner = "owner";
         let recipient = "recipient";
         // Want to ensure the keys are different.
-        assert_ne!(get_key(sender, recipient), get_key(recipient, sender));
+        assert_ne!(get_key(owner, recipient), get_key(recipient, owner));
     }
 }
