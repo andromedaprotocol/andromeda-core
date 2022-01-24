@@ -204,8 +204,8 @@ impl Modules {
     }
     pub fn to_modules(&self) -> Vec<Box<dyn Module>> {
         self.module_defs
-            .to_vec()
-            .into_iter()
+            .iter()
+            .cloned()
             .map(|d| d.as_module())
             .collect()
     }
