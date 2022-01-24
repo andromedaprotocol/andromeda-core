@@ -1,4 +1,5 @@
 use cosmwasm_std::StdError;
+use cw20_base::ContractError as Cw20ContractError;
 use std::convert::From;
 use std::string::FromUtf8Error;
 use thiserror::Error;
@@ -88,6 +89,48 @@ pub enum ContractError {
 
     #[error("InvalidMirrorFunds")]
     InvalidMirrorFunds { msg: String },
+
+    /// BEGIN CW20 ERRORS
+    #[error("Cannot set to own account")]
+    CannotSetOwnAccount {},
+
+    #[error("Invalid zero amount")]
+    InvalidZeroAmount {},
+
+    #[error("Allowance is expired")]
+    Expired {},
+
+    #[error("No allowance for this account")]
+    NoAllowance {},
+
+    #[error("Minting cannot exceed the cap")]
+    CannotExceedCap {},
+
+    #[error("Logo binary data exceeds 5KB limit")]
+    LogoTooBig {},
+
+    #[error("Invalid xml preamble for SVG")]
+    InvalidXmlPreamble {},
+
+    #[error("Invalid png header")]
+    InvalidPngHeader {},
+}
+
+impl From<Cw20ContractError> for ContractError {
+    fn from(err: Cw20ContractError) -> Self {
+        match err {
+            Cw20ContractError::Std(std) => ContractError::Std(std),
+            Cw20ContractError::Expired {} => ContractError::Expired {},
+            Cw20ContractError::LogoTooBig {} => ContractError::LogoTooBig {},
+            Cw20ContractError::NoAllowance {} => ContractError::NoAllowance {},
+            Cw20ContractError::Unauthorized {} => ContractError::Unauthorized {},
+            Cw20ContractError::CannotExceedCap {} => ContractError::CannotExceedCap {},
+            Cw20ContractError::InvalidPngHeader {} => ContractError::InvalidPngHeader {},
+            Cw20ContractError::InvalidZeroAmount {} => ContractError::InvalidZeroAmount {},
+            Cw20ContractError::InvalidXmlPreamble {} => ContractError::InvalidXmlPreamble {},
+            Cw20ContractError::CannotSetOwnAccount {} => ContractError::CannotSetOwnAccount {},
+        }
+    }
 }
 
 impl From<FromUtf8Error> for ContractError {
