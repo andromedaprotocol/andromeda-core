@@ -155,10 +155,7 @@ pub fn execute_mint(
         publisher: info.sender.to_string(),
     };
     let config = CONFIG.load(deps.storage)?;
-    require(
-        info.sender == config.minter,
-        ContractError::Unauthorized {},
-    )?;
+    require(info.sender == config.minter, ContractError::Unauthorized {})?;
 
     mint_token(deps.storage, msg.token_id.to_string(), token)?;
     increment_num_tokens(deps.storage)?;

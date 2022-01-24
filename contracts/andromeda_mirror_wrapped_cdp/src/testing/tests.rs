@@ -656,13 +656,7 @@ fn test_mirror_cw20_non_authorized_user() {
         ))
         .unwrap(),
     });
-    let res_err = execute(
-        deps.as_mut(),
-        mock_env(),
-        mock_info(TEST_TOKEN, &[]),
-        msg,
-    )
-    .unwrap_err();
+    let res_err = execute(deps.as_mut(), mock_env(), mock_info(TEST_TOKEN, &[]), msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res_err);
 }
 

@@ -1,7 +1,10 @@
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{from_binary, from_slice, to_binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery, Uint128};
+use cosmwasm_std::{
+    from_binary, from_slice, to_binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult,
+    QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+};
 use serde::Deserialize;
-use terra_cosmwasm::{  TerraQueryWrapper};
+use terra_cosmwasm::TerraQueryWrapper;
 
 pub struct WasmMockQuerier {
     base: MockQuerier<TerraQueryWrapper>,
@@ -39,23 +42,21 @@ impl Querier for WasmMockQuerier {
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MockQueryMsg {
-    Balance {
-        address: String,
-    },
+    Balance { address: String },
 }
 
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart {
-                                   contract_addr: _,
-                                   msg,
-                               }) => match from_binary(msg).unwrap() {
+                contract_addr: _,
+                msg,
+            }) => match from_binary(msg).unwrap() {
                 MockQueryMsg::Balance { address: _ } => {
                     SystemResult::Ok(ContractResult::from(to_binary(&cw20::BalanceResponse {
                         balance: self.token_balance,
                     })))
-                },
+                }
             },
             _ => self.base.handle_query(request),
         }
@@ -67,4 +68,3 @@ impl WasmMockQuerier {
         }
     }
 }
-
