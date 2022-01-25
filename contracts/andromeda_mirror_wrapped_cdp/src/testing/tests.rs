@@ -124,7 +124,7 @@ fn assert_execute_msg(
     contract_addr: String,
 ) {
     let tax_deducted_funds = get_tax_deducted_funds(&deps, info.funds.clone()).unwrap();
-    let res = execute(deps, mock_env(), info.clone(), msg.clone()).unwrap();
+    let res = execute(deps, mock_env(), info, msg).unwrap();
     let execute_msg = WasmMsg::Execute {
         contract_addr,
         funds: tax_deducted_funds,
@@ -148,7 +148,7 @@ fn assert_execute_cw20_msg(
         amount: Uint128::from(TEST_AMOUNT),
         msg: to_binary(&cw20_hook_msg).unwrap(),
     });
-    let res = execute(deps, mock_env(), mock_info(TEST_TOKEN, &[]), msg.clone()).unwrap();
+    let res = execute(deps, mock_env(), mock_info(TEST_TOKEN, &[]), msg).unwrap();
     let send_msg = Cw20ExecuteMsg::Send {
         contract: contract_addr,
         amount: Uint128::from(TEST_AMOUNT),
@@ -170,7 +170,7 @@ fn assert_query_msg<T: DeserializeOwned + Debug + PartialEq>(
     msg: QueryMsg,
     expected_res: T,
 ) {
-    let actual_res: T = from_binary(&query(deps, mock_env(), msg.clone()).unwrap()).unwrap();
+    let actual_res: T = from_binary(&query(deps, mock_env(), msg).unwrap()).unwrap();
     assert_eq!(expected_res, actual_res);
 }
 
@@ -223,7 +223,7 @@ fn test_instantiate_with_operator() {
         mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
         operators: Some(vec![operator.sender.to_string()]),
     };
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_query_msg(
         deps.as_ref(),
@@ -597,7 +597,7 @@ fn test_mirror_too_many_funds() {
     let res_err = execute(
         deps.as_mut(),
         mock_env(),
-        info.clone(),
+        info,
         ExecuteMsg::MirrorMintExecuteMsg(mirror_msg),
     )
     .unwrap_err();
@@ -613,7 +613,7 @@ fn test_mirror_too_many_funds() {
 fn test_mirror_non_authorized_user() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
-    assert_intantiate(deps.as_mut(), info.clone());
+    assert_intantiate(deps.as_mut(), info);
 
     let unauth_user = mock_info("user", &[]);
     let mirror_msg = MirrorMintExecuteMsg::OpenPosition {
@@ -632,7 +632,7 @@ fn test_mirror_non_authorized_user() {
     let res_err = execute(
         deps.as_mut(),
         mock_env(),
-        unauth_user.clone(),
+        unauth_user,
         ExecuteMsg::MirrorMintExecuteMsg(mirror_msg),
     )
     .unwrap_err();
@@ -643,7 +643,7 @@ fn test_mirror_non_authorized_user() {
 fn test_mirror_cw20_non_authorized_user() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
-    assert_intantiate(deps.as_mut(), info.clone());
+    assert_intantiate(deps.as_mut(), info);
 
     let unauth_user = mock_info("user", &[]);
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
@@ -656,13 +656,7 @@ fn test_mirror_cw20_non_authorized_user() {
         ))
         .unwrap(),
     });
-    let res_err = execute(
-        deps.as_mut(),
-        mock_env(),
-        mock_info(TEST_TOKEN, &[]),
-        msg.clone(),
-    )
-    .unwrap_err();
+    let res_err = execute(deps.as_mut(), mock_env(), mock_info(TEST_TOKEN, &[]), msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res_err);
 }
 
@@ -691,10 +685,10 @@ fn test_update_config() {
         deps.as_ref(),
         msg,
         ConfigResponse {
-            mirror_mint_contract: mirror_mint_contract.to_string(),
-            mirror_staking_contract: mirror_staking_contract.to_string(),
-            mirror_gov_contract: mirror_gov_contract.to_string(),
-            mirror_lock_contract: mirror_lock_contract.to_string(),
+            mirror_mint_contract,
+            mirror_staking_contract,
+            mirror_gov_contract,
+            mirror_lock_contract,
         },
     );
 }
