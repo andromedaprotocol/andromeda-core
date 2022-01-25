@@ -231,7 +231,7 @@ mod tests {
         let msg =
             ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(encode_binary(&rates).unwrap())));
 
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             Response::new().add_attributes(vec![attr("action", "update_rates")]),
             res
@@ -270,9 +270,7 @@ mod tests {
                 receivers: vec![Recipient::Addr("3".into())],
             },
         ];
-        let msg = InstantiateMsg {
-            rates: rates.clone(),
-        };
+        let msg = InstantiateMsg { rates };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let res: DeductedFundsResponse = from_binary(
@@ -344,9 +342,7 @@ mod tests {
                 receivers: vec![Recipient::Addr("3".into())],
             },
         ];
-        let msg = InstantiateMsg {
-            rates: rates.clone(),
-        };
+        let msg = InstantiateMsg { rates };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let res: DeductedFundsResponse = from_binary(

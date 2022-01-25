@@ -178,7 +178,7 @@ fn test_withdraw_recipient() {
     let msg = ExecuteMsg::Withdraw {
         position_idx: Uint128::from(1u128),
     };
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let expected_res = Response::new()
         .add_messages(vec![
@@ -196,7 +196,7 @@ fn test_withdraw_recipient() {
                 contract_addr: "cosmos2contract".to_string(),
                 msg: to_binary(&ExecuteMsg::Yourself {
                     yourself_msg: YourselfMsg::TransferUst {
-                        receiver: Recipient::Addr(recipient.to_string()),
+                        receiver: Recipient::Addr(recipient),
                     },
                 })
                 .unwrap(),
