@@ -3,6 +3,7 @@ use crate::error::ContractError;
 pub mod address_list;
 pub mod anchor;
 pub mod common;
+pub mod cw20;
 pub mod error;
 pub mod factory;
 pub mod mirror_wrapped_cdp;

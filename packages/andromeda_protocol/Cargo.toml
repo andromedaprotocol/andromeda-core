@@ -20,4 +20,6 @@ cw-storage-plus = "0.9.1"
 terra-cosmwasm = { version = "2.2.0" }
 thiserror = { version = "1.0.21" }
 mirror-protocol = "2.1.1"
-cw20 = { version = "0.8.0" }
+cw20 = { version = "0.9.1" }
+cw0 = "0.9.1"
+cw20-base = "0.9.1"
