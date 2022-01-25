@@ -964,7 +964,7 @@ mod tests {
 
         store_mock_config(deps.as_mut(), String::from("minter"));
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
@@ -1629,7 +1629,7 @@ mod tests {
             pricing: None,
         };
 
-        store_mock_config(deps.as_mut(), String::from("minter"));
+        store_mock_config(deps.as_mut(), String::from("creator"));
 
         let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 

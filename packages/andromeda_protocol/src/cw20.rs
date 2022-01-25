@@ -70,9 +70,9 @@ pub enum ExecuteMsg {
     UploadLogo(Logo),
 }
 
-impl Into<Cw20ExecuteMsg> for ExecuteMsg {
-    fn into(self) -> Cw20ExecuteMsg {
-        match self {
+impl From<ExecuteMsg> for Cw20ExecuteMsg {
+    fn from(msg: ExecuteMsg) -> Self {
+        match msg {
             ExecuteMsg::Transfer { recipient, amount } => {
                 Cw20ExecuteMsg::Transfer { recipient, amount }
             }
@@ -184,9 +184,9 @@ pub enum QueryMsg {
     DownloadLogo {},
 }
 
-impl Into<Cw20QueryMsg> for QueryMsg {
-    fn into(self) -> Cw20QueryMsg {
-        match self {
+impl From<QueryMsg> for Cw20QueryMsg {
+    fn from(msg: QueryMsg) -> Self {
+        match msg {
             QueryMsg::Balance { address } => Cw20QueryMsg::Balance { address },
             QueryMsg::TokenInfo {} => Cw20QueryMsg::TokenInfo {},
             QueryMsg::Minter {} => Cw20QueryMsg::Minter {},
