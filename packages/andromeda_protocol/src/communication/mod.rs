@@ -1,6 +1,7 @@
 use cosmwasm_std::{
     from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg,
 };
+use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -41,7 +42,11 @@ impl Recipient {
     }
 
     /// Generates the sub message depending on the type of the recipient.
-    pub fn generate_msg(&self, deps: &Deps, funds: Vec<Coin>) -> Result<SubMsg, ContractError> {
+    pub fn generate_msg_native(
+        &self,
+        deps: &Deps,
+        funds: Vec<Coin>,
+    ) -> Result<SubMsg, ContractError> {
         Ok(match &self {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),
@@ -54,6 +59,35 @@ impl Recipient {
                 to_address: addr.clone(),
                 amount: funds,
             })),
+        })
+    }
+
+    /// Generates the sub message depending on the type of the recipient.
+    pub fn generate_msg_cw20(
+        &self,
+        deps: &Deps,
+        cw20_coin: Cw20Coin,
+    ) -> Result<SubMsg, ContractError> {
+        Ok(match &self {
+            Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
+                contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),
+                msg: encode_binary(&Cw20ExecuteMsg::Send {
+                    contract: cw20_coin.address,
+                    amount: cw20_coin.amount,
+                    msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(
+                        recip.msg.clone(),
+                    )))?,
+                })?,
+                funds: vec![],
+            }),
+            Recipient::Addr(addr) => SubMsg::new(WasmMsg::Execute {
+                contract_addr: cw20_coin.address,
+                msg: encode_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: addr.to_string(),
+                    amount: cw20_coin.amount,
+                })?,
+                funds: vec![],
+            }),
         })
     }
 }

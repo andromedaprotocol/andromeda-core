@@ -117,6 +117,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-storage-plus 0.9.1",
+ "cw20 0.9.1",
  "schemars",
  "serde",
 ]

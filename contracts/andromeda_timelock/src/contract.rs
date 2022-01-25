@@ -174,7 +174,9 @@ fn execute_release_funds(
     for key in keys.iter() {
         let funds: Escrow = escrows().load(deps.storage, key.clone())?;
         if !funds.is_locked(&env.block)? {
-            let msg = funds.recipient.generate_msg(&deps.as_ref(), funds.coins)?;
+            let msg = funds
+                .recipient
+                .generate_msg_native(&deps.as_ref(), funds.coins)?;
             msgs.push(msg);
             escrows().remove(deps.storage, key.clone())?;
         }
@@ -208,7 +210,7 @@ fn execute_release_specific_funds(
             escrows().remove(deps.storage, key)?;
             let msg = escrow
                 .recipient
-                .generate_msg(&deps.as_ref(), escrow.coins)?;
+                .generate_msg_native(&deps.as_ref(), escrow.coins)?;
             Ok(Response::new().add_submessage(msg).add_attributes(vec![
                 attr("action", "release_funds"),
                 attr("recipient_addr", recipient),
