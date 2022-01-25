@@ -175,7 +175,7 @@ impl TransferAgreement {
             )
         })?;
 
-        for payment in payments.lock().unwrap().to_vec() {
+        for payment in payments.lock().unwrap().iter().cloned() {
             res = res.add_message(payment);
         }
 

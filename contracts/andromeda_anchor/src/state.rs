@@ -24,4 +24,3 @@ pub struct Position {
     pub deposit_amount: Uint128,
     pub aust_amount: Uint128,
 }
-

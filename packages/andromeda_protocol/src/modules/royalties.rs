@@ -42,7 +42,7 @@ impl MessageHooks for Royalty {
             event = event.add_attribute(ATTR_DESC, desc);
         }
 
-        for receiver in self.receivers.to_vec() {
+        for receiver in self.receivers.iter().cloned() {
             // Deducts the required payment since it should be paid by token owner. [ROY-01]/[TAX-02]
             deduct_payment(payments, owner.clone(), fee_payment.clone())?;
             event = event.add_attribute(ATTR_DEDUCTED, fee_payment.to_string());

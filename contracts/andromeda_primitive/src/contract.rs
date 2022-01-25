@@ -308,8 +308,7 @@ mod tests {
             name: None,
             value: Primitive::Vec(vec![Primitive::Vec(vec![])]),
         };
-        let res: Result<Response, ContractError> =
-            execute(deps.as_mut(), mock_env(), info, msg);
+        let res: Result<Response, ContractError> = execute(deps.as_mut(), mock_env(), info, msg);
         assert_eq!(ContractError::InvalidPrimitive {}, res.unwrap_err());
     }
 
@@ -415,8 +414,7 @@ mod tests {
             name: Some("test1".to_string()),
             value: Primitive::String("value1".to_string()),
         };
-        let res: Result<Response, ContractError> =
-            execute(deps.as_mut(), mock_env(), user1, msg);
+        let res: Result<Response, ContractError> = execute(deps.as_mut(), mock_env(), user1, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 
@@ -438,8 +436,7 @@ mod tests {
 
         let user1 = mock_info("user1", &[]);
         let msg = ExecuteMsg::DeleteValue { name: None };
-        let res: Result<Response, ContractError> =
-            execute(deps.as_mut(), mock_env(), user1, msg);
+        let res: Result<Response, ContractError> = execute(deps.as_mut(), mock_env(), user1, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 

@@ -46,7 +46,6 @@ fn test_instantiate() {
     );
     assert_eq!(msg.stable_denom, config.stable_denom);
 }
-
 #[test]
 fn test_deposit() {
     let mut deps = mock_dependencies_custom(&[]);
