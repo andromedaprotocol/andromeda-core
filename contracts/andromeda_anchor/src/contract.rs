@@ -212,7 +212,7 @@ pub fn transfer_ust(
     let transfer_amount = current_balance - prev_balance;
     let mut msgs = vec![];
     if transfer_amount > Uint128::zero() {
-        msgs.push(receiver.generate_msg(
+        msgs.push(receiver.generate_msg_native(
             &deps.as_ref(),
             coins(transfer_amount.u128(), config.stable_denom),
         )?);

@@ -84,6 +84,10 @@ impl WasmMockQuerier {
                         name: name.unwrap(),
                         value: Primitive::Coin(coin(1u128, "uusd")),
                     },
+                    "flat_cw20" => GetValueResponse {
+                        name: name.unwrap(),
+                        value: Primitive::Coin(coin(1u128, "address")),
+                    },
                     _ => panic!("Unsupported rate name"),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
