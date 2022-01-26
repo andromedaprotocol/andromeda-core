@@ -23,6 +23,7 @@ use terraswap::asset::{Asset, AssetInfo};
 
 const TEST_TOKEN: &str = "TEST_TOKEN";
 const TEST_AMOUNT: u128 = 100u128;
+const MOCK_MIRROR_TOKEN_ADDR: &str = "mirror_token";
 const MOCK_MIRROR_MINT_ADDR: &str = "mirror_mint";
 const MOCK_MIRROR_STAKING_ADDR: &str = "mirror_staking";
 const MOCK_MIRROR_GOV_ADDR: &str = "mirror_gov";
@@ -177,6 +178,7 @@ fn assert_query_msg<T: DeserializeOwned + Debug + PartialEq>(
 
 fn assert_intantiate(deps: DepsMut, info: MessageInfo) {
     let msg = InstantiateMsg {
+        mirror_token_contract: MOCK_MIRROR_TOKEN_ADDR.to_string(),
         mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
         mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
         mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
@@ -218,6 +220,7 @@ fn test_instantiate_with_operator() {
     let info = mock_info("creator", &[]);
     let operator = mock_info("operator", &[]);
     let msg = InstantiateMsg {
+        mirror_token_contract: MOCK_MIRROR_TOKEN_ADDR.to_string(),
         mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
         mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
         mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),

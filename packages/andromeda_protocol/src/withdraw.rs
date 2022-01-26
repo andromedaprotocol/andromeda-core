@@ -12,9 +12,9 @@ pub const WITHDRAWABLE_TOKENS: Map<&str, AssetInfo> = Map::new("withdrawable_tok
 pub fn add_token(
     storage: &mut dyn Storage,
     name: &str,
-    asset_info: AssetInfo,
+    asset_info: &AssetInfo,
 ) -> Result<(), ContractError> {
-    Ok(WITHDRAWABLE_TOKENS.save(storage, name, &asset_info)?)
+    Ok(WITHDRAWABLE_TOKENS.save(storage, name, asset_info)?)
 }
 
 pub fn remove_token(storage: &mut dyn Storage, name: &str) -> Result<(), ContractError> {
