@@ -174,7 +174,9 @@ fn execute_release_funds(
     for key in keys.iter() {
         let funds: Escrow = escrows().load(deps.storage, key.clone())?;
         if !funds.is_locked(&env.block)? {
-            let msg = funds.recipient.generate_msg(&deps.as_ref(), funds.coins)?;
+            let msg = funds
+                .recipient
+                .generate_msg_native(&deps.as_ref(), funds.coins)?;
             msgs.push(msg);
             escrows().remove(deps.storage, key.clone())?;
         }
@@ -208,7 +210,7 @@ fn execute_release_specific_funds(
             escrows().remove(deps.storage, key)?;
             let msg = escrow
                 .recipient
-                .generate_msg(&deps.as_ref(), escrow.coins)?;
+                .generate_msg_native(&deps.as_ref(), escrow.coins)?;
             Ok(Response::new().add_submessage(msg).add_attributes(vec![
                 attr("action", "release_funds"),
                 attr("recipient_addr", recipient),
@@ -391,7 +393,7 @@ mod tests {
         let val: GetLockedFundsResponse = from_binary(&res).unwrap();
         let expected = Escrow {
             coins: funds,
-            condition: Some(condition.clone()),
+            condition: Some(condition),
             recipient: Recipient::Addr(owner.to_string()),
         };
 
@@ -414,7 +416,7 @@ mod tests {
 
         env.block.height = 0;
 
-        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let msg = ExecuteMsg::HoldFunds {
             condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(100))),
@@ -424,7 +426,7 @@ mod tests {
         env.block.height = 120;
 
         let info = mock_info(owner, &[coin(100, "uusd"), coin(100, "uluna")]);
-        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let query_msg = QueryMsg::GetLockedFunds {
             owner: owner.to_string(),
@@ -465,7 +467,7 @@ mod tests {
             start_after: None,
             limit: None,
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
         let bank_msg = BankMsg::Send {
             to_address: "owner".into(),
             amount: info.funds,
@@ -498,7 +500,7 @@ mod tests {
             start_after: None,
             limit: None,
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
         let bank_msg = BankMsg::Send {
             to_address: "owner".into(),
             amount: info.funds,
@@ -524,10 +526,10 @@ mod tests {
             recipient: Some(recipient),
         };
         let info = mock_info("sender1", &coins(100, "uusd"));
-        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let _res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
 
         let info = mock_info("sender2", &coins(200, "uusd"));
-        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::ReleaseFunds {
             recipient_addr: Some("recipient".into()),
@@ -535,7 +537,7 @@ mod tests {
             limit: None,
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         let bank_msg1 = BankMsg::Send {
             to_address: "recipient".into(),
@@ -580,7 +582,7 @@ mod tests {
         };
 
         env.block.time = Timestamp::from_seconds(150);
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
         let bank_msg = BankMsg::Send {
             to_address: "owner".into(),
             amount: info.funds,
@@ -617,7 +619,7 @@ mod tests {
             limit: None,
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::FundsAreLocked {}, res.unwrap_err());
     }
 
@@ -644,7 +646,7 @@ mod tests {
             limit: None,
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let res = execute(deps.as_mut(), env.clone(), info, msg);
         assert_eq!(ContractError::FundsAreLocked {}, res.unwrap_err());
 
         // Update the escrow with enough funds.
@@ -662,7 +664,7 @@ mod tests {
             limit: None,
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         let bank_msg = BankMsg::Send {
             to_address: "owner".into(),
@@ -689,7 +691,7 @@ mod tests {
             recipient_addr: None,
             owner: owner.into(),
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::NoLockedFunds {}, res.unwrap_err());
     }
 
@@ -711,7 +713,7 @@ mod tests {
             recipient_addr: None,
             owner: owner.into(),
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
         let bank_msg = BankMsg::Send {
             to_address: "owner".into(),
             amount: info.funds,
@@ -748,7 +750,7 @@ mod tests {
         };
 
         env.block.time = Timestamp::from_seconds(150);
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
         let bank_msg = BankMsg::Send {
             to_address: "owner".into(),
             amount: info.funds,
@@ -784,7 +786,7 @@ mod tests {
             owner: owner.into(),
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let res = execute(deps.as_mut(), env.clone(), info, msg);
         assert_eq!(ContractError::FundsAreLocked {}, res.unwrap_err());
 
         // Update the escrow with enough funds.
@@ -801,7 +803,7 @@ mod tests {
             owner: owner.into(),
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         let bank_msg = BankMsg::Send {
             to_address: "owner".into(),

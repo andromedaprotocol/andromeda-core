@@ -276,8 +276,8 @@ mod tests {
         );
 
         let invalid_time_escrow = Escrow {
-            recipient: recipient.clone(),
-            coins: coins.clone(),
+            recipient,
+            coins,
             condition: Some(EscrowCondition::Expiration(Expiration::AtTime(
                 Timestamp::from_seconds(100),
             ))),
@@ -333,7 +333,7 @@ mod tests {
 
         // Duplicate funds
         let invalid_escrow = Escrow {
-            recipient: recipient.clone(),
+            recipient,
             coins: vec![coin(100, "uluna")],
             condition: Some(EscrowCondition::MinimumFunds(vec![
                 coin(100, "uusd"),
@@ -374,7 +374,7 @@ mod tests {
         assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
 
         let escrow = Escrow {
-            recipient: recipient.clone(),
+            recipient,
             coins: vec![coin(200, "uluna")],
             condition: None,
         };

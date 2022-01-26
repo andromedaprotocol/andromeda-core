@@ -142,7 +142,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         // Others may just receive the funds
         let msg = recipient_addr
             .recipient
-            .generate_msg(&deps.as_ref(), vec_coin)?;
+            .generate_msg_native(&deps.as_ref(), vec_coin)?;
         submsg.push(msg);
     }
     remainder_funds = remainder_funds
