@@ -7,6 +7,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{common::unwrap_or_err, error::ContractError};
 
+pub mod modules;
 pub mod msg;
 
 // ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message

@@ -1,8 +1,9 @@
 use crate::{
     communication::{AndromedaMsg, AndromedaQuery, Recipient},
+    error::ContractError,
     modules::Rate,
 };
-use cosmwasm_std::{Coin, SubMsg};
+use cosmwasm_std::{to_binary, Coin, QuerierWrapper, QueryRequest, SubMsg, WasmQuery};
 use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -49,4 +50,19 @@ pub struct RateInfo {
     pub is_additive: bool,
     pub description: Option<String>,
     pub receivers: Vec<Recipient>,
+}
+
+pub fn on_required_payments(
+    querier: QuerierWrapper,
+    addr: String,
+    amount: Funds,
+) -> Result<DeductedFundsResponse, ContractError> {
+    let res: DeductedFundsResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: addr.to_string(),
+        msg: to_binary(&QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(
+            &amount,
+        )?))))?,
+    }))?;
+
+    Ok(res)
 }

@@ -3,9 +3,12 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use andromeda_protocol::{
+    communication::modules::Module,
     cw20::{ExecuteMsg, QueryMsg},
     error::ContractError,
+    rates::Funds,
 };
+use cw20::Cw20Coin;
 use cw20_base::{
     contract::{
         execute as execute_cw20, execute_burn as execute_cw20_burn,
@@ -55,6 +58,13 @@ fn execute_transfer(
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    Module::Rates("somecontract".to_string()).on_required_payments(
+        deps.querier,
+        Funds::Cw20(Cw20Coin {
+            address: env.contract.address.to_string(),
+            amount: amount.clone(),
+        }),
+    )?;
     Ok(execute_cw20_transfer(deps, env, info, recipient, amount)?)
 }
 

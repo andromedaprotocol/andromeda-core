@@ -1,5 +1,7 @@
 use crate::error::ContractError;
-use cosmwasm_std::{to_binary, QuerierWrapper, QueryRequest, StdResult, Storage, WasmQuery};
+use cosmwasm_std::{
+    to_binary, MessageInfo, QuerierWrapper, QueryRequest, StdResult, Storage, WasmQuery,
+};
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -90,4 +92,13 @@ pub enum QueryMsg {
 pub struct IncludesAddressResponse {
     /// Whether the address is included in the address list
     pub included: bool,
+}
+
+pub fn on_execute(
+    querier: QuerierWrapper,
+    addr: String,
+    info: MessageInfo,
+) -> Result<(), ContractError> {
+    query_includes_address(querier, addr, info.sender.to_string())?;
+    Ok(())
 }
