@@ -1,3 +1,4 @@
+use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
 use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -19,22 +20,23 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Deposit {},
+    AndrReceive(AndromedaMsg),
+    Deposit { recipient: Option<Recipient> },
     Withdraw { position_idx: Uint128 },
     Yourself { yourself_msg: YourselfMsg },
-    UpdateOwner { address: String },
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum YourselfMsg {
-    TransferUst { receiver: String },
+    TransferUst { receiver: Recipient },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     Config {},
-    ContractOwner {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

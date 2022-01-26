@@ -1,13 +1,14 @@
 use super::mock_querier::mock_dependencies_custom;
 use crate::contract::{execute, get_tax_deducted_funds, instantiate, query};
 use andromeda_protocol::{
+    communication::{AndromedaMsg, AndromedaQuery},
     error::ContractError,
     mirror_wrapped_cdp::{
         ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg,
         MirrorGovExecuteMsg, MirrorLockExecuteMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
         MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
-    operators::IsOperatorResponse,
+    operators::OperatorsResponse,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
@@ -227,10 +228,10 @@ fn test_instantiate_with_operator() {
 
     assert_query_msg(
         deps.as_ref(),
-        QueryMsg::IsOperator {
-            address: operator.sender.to_string(),
+        QueryMsg::AndrQuery(AndromedaQuery::Operators {}),
+        OperatorsResponse {
+            operators: vec![operator.sender.to_string()],
         },
-        IsOperatorResponse { is_operator: true },
     );
 }
 
@@ -290,9 +291,9 @@ fn test_mirror_mint_withdraw() {
         deps.as_mut(),
         mock_env(),
         info,
-        ExecuteMsg::UpdateOperators {
+        ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOperators {
             operators: vec![operator.sender.to_string()],
-        },
+        }),
     )
     .unwrap();
 
@@ -352,9 +353,9 @@ fn test_mirror_mint_deposit_cw20() {
         deps.as_mut(),
         mock_env(),
         info,
-        ExecuteMsg::UpdateOperators {
+        ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOperators {
             operators: vec![operator.sender.to_string()],
-        },
+        }),
     )
     .unwrap();
 
@@ -690,5 +691,29 @@ fn test_update_config() {
             mirror_gov_contract,
             mirror_lock_contract,
         },
+    );
+}
+
+#[test]
+fn test_mirror_andr_receive() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info.clone());
+
+    let mirror_msg = MirrorGovExecuteMsg::EndPoll { poll_id: 1_u64 };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
+        to_binary(&ExecuteMsg::MirrorGovExecuteMsg(mirror_msg.clone())).unwrap(),
+    )));
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let execute_msg = WasmMsg::Execute {
+        contract_addr: MOCK_MIRROR_GOV_ADDR.to_string(),
+        funds: vec![],
+        msg: to_binary(&mirror_msg).unwrap(),
+    };
+    assert_eq!(
+        Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
+        res
     );
 }

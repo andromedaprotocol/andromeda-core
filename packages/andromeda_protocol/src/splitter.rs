@@ -1,3 +1,4 @@
+use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
 use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
 use cosmwasm_std::Uint128;
@@ -6,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AddressPercent {
-    pub addr: String,
+    pub recipient: Recipient,
     pub percent: Uint128,
 }
 
@@ -53,26 +54,15 @@ pub enum ExecuteMsg {
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
-    /// Update ownership of the contract. Only executable by the current contract owner.
-    UpdateOwner {
-        /// The address of the new contract owner.
-        address: String,
-    },
-    UpdateOperator {
-        operators: Vec<String>,
-    },
+    AndrReceive(AndromedaMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// The current config of the Splitter contract
     GetSplitterConfig {},
-    /// The current contract owner.
-    ContractOwner {},
-    IsOperator {
-        address: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
@@ -116,7 +106,7 @@ mod tests {
         assert_eq!(res, ContractError::EmptyRecipientsList {});
 
         let inadequate_recipients = vec![AddressPercent {
-            addr: String::from("some address"),
+            recipient: Recipient::from_string(String::from("Some Address")),
             percent: Uint128::from(150_u128),
         }];
         let res = validate_recipient_list(inadequate_recipients).unwrap_err();
@@ -124,11 +114,11 @@ mod tests {
 
         let valid_recipients = vec![
             AddressPercent {
-                addr: String::from("some address"),
+                recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Uint128::from(50_u128),
             },
             AddressPercent {
-                addr: String::from("some address"),
+                recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Uint128::from(50_u128),
             },
         ];

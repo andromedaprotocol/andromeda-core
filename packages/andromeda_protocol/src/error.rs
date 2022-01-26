@@ -90,6 +90,29 @@ pub enum ContractError {
     #[error("InvalidMirrorFunds")]
     InvalidMirrorFunds { msg: String },
 
+    #[error("InvalidReplyId")]
+    InvalidReplyId {},
+
+    #[error("InvalidJSON")]
+    InvalidJSON {},
+
+    #[error("ParsingError")]
+    ParsingError { err: String },
+
+    #[error("InvalidJSONField")]
+    InvalidJSONField { key: String, expected: String },
+
+    #[error("MissingRequiredMessageData")]
+    MissingRequiredMessageData {},
+
+    #[error("NestedAndromedaMsg")]
+    NestedAndromedaMsg {},
+
+    #[error("UnexpectedExternalRate")]
+    UnexpectedExternalRate {},
+
+    #[error("DuplicateCoinDenoms")]
+    DuplicateCoinDenoms {},
     // BEGIN CW20 ERRORS
     #[error("Cannot set to own account")]
     CannotSetOwnAccount {},

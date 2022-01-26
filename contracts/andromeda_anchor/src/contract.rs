@@ -3,13 +3,15 @@ use crate::state::{
 };
 use andromeda_protocol::{
     anchor::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
-    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
+    operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
+    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
 use cosmwasm_std::{
-    attr, coin, entry_point, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
+    attr, coins, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 
@@ -45,7 +47,8 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Deposit {} => execute_deposit(deps, env, info),
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::Deposit { recipient } => execute_deposit(deps, env, info, recipient),
         ExecuteMsg::Withdraw { position_idx } => withdraw(deps, env, info, position_idx),
         ExecuteMsg::Yourself { yourself_msg } => {
             require(
@@ -56,17 +59,42 @@ pub fn execute(
                 YourselfMsg::TransferUst { receiver } => transfer_ust(deps, env, receiver),
             }
         }
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
+        }
+    }
+}
+
 pub fn execute_deposit(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let coin_denom = config.stable_denom.clone();
-    let depositor = info.sender.clone();
+    let depositor = match recipient {
+        Some(recipient) => recipient,
+        None => Recipient::Addr(info.sender.to_string()),
+    };
 
     require(
         info.funds.len() <= 1usize,
@@ -95,7 +123,7 @@ pub fn execute_deposit(
         &position_idx.u128().to_be_bytes(),
         &Position {
             idx: Default::default(),
-            owner: deps.api.addr_canonicalize(depositor.as_str())?,
+            owner: depositor,
             deposit_amount: payment_amount,
             aust_amount: Uint128::zero(),
         },
@@ -125,10 +153,10 @@ pub fn withdraw(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let position = POSITION.load(deps.storage, &position_idx.u128().to_be_bytes())?;
-    let position_owner = deps.api.addr_humanize(&position.owner)?;
 
     require(
-        position_owner == info.sender,
+        is_operator(deps.storage, info.sender.as_str())?
+            || is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -157,7 +185,7 @@ pub fn withdraw(
                 contract_addr: env.contract.address.to_string(),
                 msg: to_binary(&ExecuteMsg::Yourself {
                     yourself_msg: YourselfMsg::TransferUst {
-                        receiver: deps.api.addr_humanize(&position.owner)?.to_string(),
+                        receiver: position.owner,
                     },
                 })?,
                 funds: vec![],
@@ -169,7 +197,11 @@ pub fn withdraw(
         ]))
 }
 
-pub fn transfer_ust(deps: DepsMut, env: Env, receiver: String) -> Result<Response, ContractError> {
+pub fn transfer_ust(
+    deps: DepsMut,
+    env: Env,
+    receiver: Recipient,
+) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let current_balance = query_balance(
         &deps.querier,
@@ -178,16 +210,16 @@ pub fn transfer_ust(deps: DepsMut, env: Env, receiver: String) -> Result<Respons
     )?;
     let prev_balance = TEMP_BALANCE.load(deps.storage)?;
     let transfer_amount = current_balance - prev_balance;
-    let mut msg = vec![];
+    let mut msgs = vec![];
     if transfer_amount > Uint128::zero() {
-        msg.push(CosmosMsg::Bank(BankMsg::Send {
-            to_address: receiver.to_string(),
-            amount: vec![coin(transfer_amount.u128(), config.stable_denom)],
-        }));
+        msgs.push(receiver.generate_msg(
+            &deps.as_ref(),
+            coins(transfer_amount.u128(), config.stable_denom),
+        )?);
     }
-    Ok(Response::new().add_messages(msg).add_attributes(vec![
+    Ok(Response::new().add_submessages(msgs).add_attributes(vec![
         attr("action", "withdraw"),
-        attr("receiver", receiver),
+        attr("receiver", receiver.get_addr()),
         attr("amount", transfer_amount.to_string()),
     ]))
 }
@@ -225,14 +257,35 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
     }
 }
 
-fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received: QueryMsg = parse_message(data)?;
+            match received {
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => query(deps, env, received),
+            }
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
+    }
+}
+
+fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
     Ok(ConfigResponse {

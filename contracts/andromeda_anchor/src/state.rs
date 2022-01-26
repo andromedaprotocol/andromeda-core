@@ -1,3 +1,4 @@
+use andromeda_protocol::communication::Recipient;
 use cosmwasm_std::{CanonicalAddr, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
@@ -19,7 +20,7 @@ pub struct Config {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Position {
     pub idx: Uint128,
-    pub owner: CanonicalAddr,
+    pub owner: Recipient,
     pub deposit_amount: Uint128,
     pub aust_amount: Uint128,
 }
