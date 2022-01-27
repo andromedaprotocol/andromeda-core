@@ -116,7 +116,7 @@ fn execute_mirror_mint_msg(
             collateral_ratio: _,
             short_params,
         } => {
-            handle_open_position_tokens(
+            handle_open_position_withdrawable_tokens(
                 deps.storage,
                 collateral.info,
                 asset_info,
@@ -220,7 +220,7 @@ fn get_asset_name(asset_info: &AssetInfo) -> String {
     }
 }
 
-fn handle_open_position_tokens(
+fn handle_open_position_withdrawable_tokens(
     storage: &mut dyn Storage,
     collateral_info: AssetInfo,
     minted_asset_info: AssetInfo,
@@ -238,7 +238,7 @@ fn handle_open_position_tokens(
             },
         )?;
     } else {
-        // In this case the minted assets will be immediatly sent back to this contract, so
+        // In this case the minted assets will be immediately sent back to this contract, so
         // we want to be able to withdraw it.
         add_withdrawable_token(
             storage,
@@ -318,7 +318,7 @@ fn execute_mirror_mint_cw20_msg(
             collateral_ratio: _,
             short_params,
         } => {
-            handle_open_position_tokens(
+            handle_open_position_withdrawable_tokens(
                 deps.storage,
                 AssetInfo::Token {
                     contract_addr: token_address.clone(),
