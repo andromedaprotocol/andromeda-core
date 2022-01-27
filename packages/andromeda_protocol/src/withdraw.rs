@@ -1,15 +1,24 @@
-use cosmwasm_std::{attr, Addr, Deps, DepsMut, MessageInfo, Response, StdResult, Storage};
+use cosmwasm_std::{
+    attr, coin, Addr, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, Storage, SubMsg,
+    Uint128,
+};
+use cw20::Cw20Coin;
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::error::ContractError;
-use crate::require;
-use terraswap::asset::AssetInfo;
+use crate::{
+    communication::Recipient, error::ContractError, operators::is_operator,
+    ownership::is_contract_owner, require,
+};
+use terraswap::{
+    asset::AssetInfo,
+    querier::{query_balance, query_token_balance},
+};
 
 pub const WITHDRAWABLE_TOKENS: Map<&str, AssetInfo> = Map::new("withdrawable_tokens");
 
-pub fn add_token(
+pub fn add_withdrawable_token(
     storage: &mut dyn Storage,
     name: &str,
     asset_info: &AssetInfo,
@@ -17,6 +26,77 @@ pub fn add_token(
     Ok(WITHDRAWABLE_TOKENS.save(storage, name, asset_info)?)
 }
 
-pub fn remove_token(storage: &mut dyn Storage, name: &str) -> Result<(), ContractError> {
+pub fn remove_withdrawable_token(
+    storage: &mut dyn Storage,
+    name: &str,
+) -> Result<(), ContractError> {
     Ok(WITHDRAWABLE_TOKENS.remove(storage, name))
+}
+
+/// Withdraw all tokens in WITHDRAWABLE_TOKENS with non-zero balance to the given recipient.
+pub fn execute_withdraw(
+    deps: Deps,
+    env: Env,
+    info: MessageInfo,
+    recipient: Recipient,
+) -> Result<Response, ContractError> {
+    let sender = info.sender.as_str();
+    require(
+        is_contract_owner(deps.storage, sender)? || is_operator(deps.storage, sender)?,
+        ContractError::Unauthorized {},
+    )?;
+
+    let keys: Vec<Vec<u8>> = WITHDRAWABLE_TOKENS
+        .keys(deps.storage, None, None, Order::Ascending)
+        .collect();
+
+    let mut msgs: Vec<SubMsg> = vec![];
+
+    for key in keys.iter() {
+        let name = String::from_utf8(key.clone())?;
+        let asset_info: AssetInfo = WITHDRAWABLE_TOKENS.load(deps.storage, &name)?;
+        let msg: Option<SubMsg> = match asset_info {
+            AssetInfo::NativeToken { denom } => {
+                let balance =
+                    query_balance(&deps.querier, env.contract.address.clone(), denom.clone())?;
+                if balance.is_zero() {
+                    None
+                } else {
+                    let coin = coin(balance.u128(), denom);
+                    Some(recipient.generate_msg_native(&deps, vec![coin])?)
+                }
+            }
+            AssetInfo::Token { contract_addr } => {
+                let balance = query_token_balance(
+                    &deps.querier,
+                    env.contract.address.clone(),
+                    deps.api.addr_validate(&contract_addr)?,
+                )?;
+                if balance.is_zero() {
+                    None
+                } else {
+                    let cw20_coin = Cw20Coin {
+                        address: contract_addr,
+                        amount: balance,
+                    };
+                    Some(recipient.generate_msg_cw20(&deps, cw20_coin)?)
+                }
+            }
+        };
+        if let Some(msg) = msg {
+            msgs.push(msg);
+        }
+    }
+    require(!msgs.is_empty(), ContractError::EmptyFunds {})?;
+    Ok(Response::new()
+        .add_submessages(msgs)
+        .add_attribute("action", "withdraw")
+        .add_attribute("recipient", format!("{:?}", recipient)))
+}
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::testing::{mock_dependencies, mock_info};
+
+    use super::*;
 }

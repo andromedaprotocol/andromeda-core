@@ -20,7 +20,7 @@ use andromeda_protocol::{
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
-    withdraw::{add_token, remove_token},
+    withdraw::{add_withdrawable_token, remove_withdrawable_token},
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
@@ -50,7 +50,7 @@ pub fn instantiate(
         .addr_validate(&msg.mirror_token_contract)?
         .to_string();
     // We will need to be able to withdraw the MIR token.
-    add_token(
+    add_withdrawable_token(
         deps.storage,
         &mirror_token_contract.clone(),
         &AssetInfo::Token {
@@ -159,7 +159,7 @@ fn execute_mirror_staking_msg(
             asset_token,
             amount: _,
         } => {
-            add_token(
+            add_withdrawable_token(
                 deps.storage,
                 &asset_token.clone(),
                 &AssetInfo::Token {
@@ -199,10 +199,10 @@ fn handle_open_position_tokens(
     is_short: bool,
 ) -> Result<(), ContractError> {
     // Barring liquidation we will want to withdraw the collateral at some point.
-    add_token(storage, &get_asset_name(&collateral_info), &collateral_info)?;
+    add_withdrawable_token(storage, &get_asset_name(&collateral_info), &collateral_info)?;
     if is_short {
         // If we are shorting we will get UST back eventually.
-        add_token(
+        add_withdrawable_token(
             storage,
             "uusd",
             &AssetInfo::NativeToken {
@@ -212,7 +212,7 @@ fn handle_open_position_tokens(
     } else {
         // In this case the minted assets will be immediatly sent back to this contract, so
         // we want to be able to withdraw it.
-        add_token(
+        add_withdrawable_token(
             storage,
             &get_asset_name(&minted_asset_info),
             &minted_asset_info,
