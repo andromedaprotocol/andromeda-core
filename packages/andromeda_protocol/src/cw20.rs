@@ -1,9 +1,38 @@
 use cosmwasm_std::{Binary, Uint128};
 use cw0::Expiration;
-use cw20::Logo;
-use cw20_base::msg::{ExecuteMsg as Cw20ExecuteMsg, QueryMsg as Cw20QueryMsg};
+use cw20::{Cw20Coin, Logo, MinterResponse};
+use cw20_base::msg::{
+    ExecuteMsg as Cw20ExecuteMsg, InstantiateMarketingInfo, InstantiateMsg as Cw20InstantiateMsg,
+    QueryMsg as Cw20QueryMsg,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+use crate::communication::modules::Module;
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub struct InstantiateMsg {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u8,
+    pub initial_balances: Vec<Cw20Coin>,
+    pub mint: Option<MinterResponse>,
+    pub marketing: Option<InstantiateMarketingInfo>,
+    pub modules: Option<Vec<Module>>,
+}
+
+impl From<InstantiateMsg> for Cw20InstantiateMsg {
+    fn from(msg: InstantiateMsg) -> Self {
+        Cw20InstantiateMsg {
+            name: msg.name,
+            symbol: msg.symbol,
+            decimals: msg.decimals,
+            initial_balances: msg.initial_balances,
+            mint: msg.mint,
+            marketing: msg.marketing,
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]

@@ -1,9 +1,8 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use andromeda_protocol::cw20::{ExecuteMsg, QueryMsg};
+use andromeda_protocol::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use cw20_base::msg::InstantiateMsg;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

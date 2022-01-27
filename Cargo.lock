@@ -7,6 +7,7 @@ name = "andromeda-addresslist"
 version = "0.1.0"
 dependencies = [
  "andromeda-protocol",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-storage-plus 0.9.1",

@@ -138,6 +138,8 @@ pub enum ContractError {
     #[error("Invalid png header")]
     InvalidPngHeader {},
     // END CW20 ERRORS
+    #[error("Invalid Module")]
+    InvalidModule { msg: Option<String> },
 }
 
 impl From<Cw20ContractError> for ContractError {

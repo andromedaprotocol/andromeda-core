@@ -1,5 +1,6 @@
 use cosmwasm_std::{
-    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg,
+    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, QuerierWrapper, QueryRequest,
+    SubMsg, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use schemars::JsonSchema;
@@ -7,6 +8,9 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{common::unwrap_or_err, error::ContractError};
 
+use self::hooks::AndromedaHook;
+
+pub mod hooks;
 pub mod modules;
 pub mod msg;
 
@@ -110,10 +114,18 @@ pub enum AndromedaQuery {
     IsOperator { address: String },
 }
 
+/// Helper enum for serialization
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+}
+
+/// Helper enum for serialization
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum HookMsg {
+    Hook(AndromedaHook),
 }
 
 pub fn parse_struct<T>(val: &Binary) -> Result<T, ContractError>
@@ -144,6 +156,24 @@ where
             err: err.to_string(),
         }),
     }
+}
+
+/// Helper function for querying a contract using AndromedaQuery::Get
+pub fn query_get<T>(
+    data: Option<Binary>,
+    address: String,
+    querier: QuerierWrapper,
+) -> Result<T, ContractError>
+where
+    T: DeserializeOwned,
+{
+    let query_msg = AndromedaQuery::Get(data);
+    let resp: T = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: address,
+        msg: to_binary(&query_msg)?,
+    }))?;
+
+    Ok(resp)
 }
 
 #[cfg(test)]

@@ -58,7 +58,7 @@ pub fn on_required_payments(
     amount: Funds,
 ) -> Result<DeductedFundsResponse, ContractError> {
     let res: DeductedFundsResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: addr.to_string(),
+        contract_addr: addr,
         msg: to_binary(&QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(
             &amount,
         )?))))?,
