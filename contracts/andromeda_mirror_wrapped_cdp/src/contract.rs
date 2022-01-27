@@ -20,7 +20,7 @@ use andromeda_protocol::{
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
-    withdraw::{add_withdrawable_token, remove_withdrawable_token},
+    withdraw::{add_withdrawable_token, execute_withdraw},
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
@@ -238,6 +238,9 @@ fn execute_andr_receive(
         AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         AndromedaMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
+        }
+        AndromedaMsg::Withdraw { recipient } => {
+            execute_withdraw(deps.as_ref(), env, info, recipient)
         }
     }
 }

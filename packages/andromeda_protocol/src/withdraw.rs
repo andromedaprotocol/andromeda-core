@@ -18,7 +18,10 @@ pub fn add_withdrawable_token(
     name: &str,
     asset_info: &AssetInfo,
 ) -> Result<(), ContractError> {
-    Ok(WITHDRAWABLE_TOKENS.save(storage, name, asset_info)?)
+    if !WITHDRAWABLE_TOKENS.has(storage, name) {
+        WITHDRAWABLE_TOKENS.save(storage, name, asset_info)?;
+    }
+    Ok(())
 }
 
 pub fn remove_withdrawable_token(

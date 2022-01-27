@@ -98,6 +98,7 @@ pub enum AndromedaMsg {
     Receive(Option<Binary>),
     UpdateOwner { address: String },
     UpdateOperators { operators: Vec<String> },
+    Withdraw { recipient: Recipient },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

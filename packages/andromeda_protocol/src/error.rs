@@ -138,6 +138,8 @@ pub enum ContractError {
     #[error("Invalid png header")]
     InvalidPngHeader {},
     // END CW20 ERRORS
+    #[error("UnsupportedOperation")]
+    UnsupportedOperation {},
 }
 
 impl From<Cw20ContractError> for ContractError {
