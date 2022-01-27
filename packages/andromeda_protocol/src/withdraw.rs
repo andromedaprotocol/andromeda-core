@@ -28,7 +28,8 @@ pub fn remove_withdrawable_token(
     storage: &mut dyn Storage,
     name: &str,
 ) -> Result<(), ContractError> {
-    Ok(WITHDRAWABLE_TOKENS.remove(storage, name))
+    WITHDRAWABLE_TOKENS.remove(storage, name);
+    Ok(())
 }
 
 /// Withdraw all tokens in WITHDRAWABLE_TOKENS with non-zero balance to the given recipient.

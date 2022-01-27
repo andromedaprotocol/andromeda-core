@@ -217,8 +217,7 @@ fn test_instantiate() {
         1,
         WITHDRAWABLE_TOKENS
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
-            .collect::<Vec<Vec<u8>>>()
-            .len()
+            .count()
     );
 
     assert_eq!(
@@ -296,8 +295,7 @@ fn test_mirror_mint_open_position_not_short() {
         3,
         WITHDRAWABLE_TOKENS
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
-            .collect::<Vec<Vec<u8>>>()
-            .len()
+            .count()
     );
 }
 
@@ -345,8 +343,7 @@ fn test_mirror_mint_open_position_short() {
         3,
         WITHDRAWABLE_TOKENS
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
-            .collect::<Vec<Vec<u8>>>()
-            .len()
+            .count()
     );
 }
 
@@ -454,8 +451,7 @@ fn test_mirror_mint_open_position_cw20_not_short() {
         3,
         WITHDRAWABLE_TOKENS
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
-            .collect::<Vec<Vec<u8>>>()
-            .len()
+            .count()
     );
 }
 
@@ -498,8 +494,7 @@ fn test_mirror_mint_open_position_cw20_short() {
         3,
         WITHDRAWABLE_TOKENS
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
-            .collect::<Vec<Vec<u8>>>()
-            .len()
+            .count()
     );
 }
 
@@ -578,8 +573,7 @@ fn test_mirror_staking_unbond() {
         2,
         WITHDRAWABLE_TOKENS
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
-            .collect::<Vec<Vec<u8>>>()
-            .len()
+            .count()
     );
 }
 
@@ -765,8 +759,7 @@ fn test_lock_unlock_position_funds() {
         2,
         WITHDRAWABLE_TOKENS
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
-            .collect::<Vec<Vec<u8>>>()
-            .len()
+            .count()
     );
 }
 
