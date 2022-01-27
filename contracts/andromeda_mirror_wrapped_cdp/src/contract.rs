@@ -11,8 +11,8 @@ use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     mirror_wrapped_cdp::{
-        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorMintCw20HookMsg,
-        MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
+        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorLockExecuteMsg,
+        MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
     operators::{
         execute_update_operators, initialize_operators, is_operator, query_is_operator,
@@ -85,13 +85,7 @@ pub fn execute(
             config.mirror_gov_contract.to_string(),
             encode_binary(&msg)?,
         ),
-        ExecuteMsg::MirrorLockExecuteMsg(msg) => execute_mirror_msg(
-            deps,
-            info.sender.to_string(),
-            info.funds,
-            config.mirror_lock_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
+        ExecuteMsg::MirrorLockExecuteMsg(msg) => execute_mirror_lock_msg(deps, info, msg),
         ExecuteMsg::UpdateConfig {
             mirror_mint_contract,
             mirror_staking_contract,
@@ -180,6 +174,40 @@ fn execute_mirror_staking_msg(
             info.sender.to_string(),
             info.funds,
             config.mirror_staking_contract.to_string(),
+            binary,
+        ),
+    }
+}
+
+fn execute_mirror_lock_msg(
+    deps: DepsMut,
+    info: MessageInfo,
+    msg: MirrorLockExecuteMsg,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let binary = encode_binary(&msg)?;
+    match msg {
+        MirrorLockExecuteMsg::UnlockPositionFunds { positions_idx: _ } => {
+            add_withdrawable_token(
+                deps.storage,
+                "uusd",
+                &AssetInfo::NativeToken {
+                    denom: "uusd".to_string(),
+                },
+            )?;
+            execute_mirror_msg(
+                deps,
+                info.sender.to_string(),
+                info.funds,
+                config.mirror_lock_contract.to_string(),
+                binary,
+            )
+        }
+        _ => execute_mirror_msg(
+            deps,
+            info.sender.to_string(),
+            info.funds,
+            config.mirror_lock_contract.to_string(),
             binary,
         ),
     }
