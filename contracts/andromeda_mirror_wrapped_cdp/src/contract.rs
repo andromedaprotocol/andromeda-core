@@ -267,9 +267,10 @@ fn execute_andr_receive(
         AndromedaMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
         }
-        AndromedaMsg::Withdraw { recipient } => {
-            execute_withdraw(deps.as_ref(), env, info, recipient)
-        }
+        AndromedaMsg::Withdraw {
+            recipient,
+            tokens_to_withdraw,
+        } => execute_withdraw(deps.as_ref(), env, info, recipient, tokens_to_withdraw),
     }
 }
 

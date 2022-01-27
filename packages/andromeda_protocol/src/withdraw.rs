@@ -1,4 +1,4 @@
-use cosmwasm_std::{coin, Deps, Env, MessageInfo, Order, Response, Storage, SubMsg};
+use cosmwasm_std::{coin, Deps, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg};
 use cw20::Cw20Coin;
 use cw_storage_plus::Map;
 
@@ -38,6 +38,7 @@ pub fn execute_withdraw(
     env: Env,
     info: MessageInfo,
     recipient: Recipient,
+    tokens_to_withdraw: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
     require(
@@ -45,15 +46,23 @@ pub fn execute_withdraw(
         ContractError::Unauthorized {},
     )?;
 
-    let keys: Vec<Vec<u8>> = WITHDRAWABLE_TOKENS
-        .keys(deps.storage, None, None, Order::Ascending)
-        .collect();
+    let keys = match tokens_to_withdraw {
+        Some(tokens_to_withdraw) => tokens_to_withdraw,
+        None => {
+            let keys: Vec<Vec<u8>> = WITHDRAWABLE_TOKENS
+                .keys(deps.storage, None, None, Order::Ascending)
+                .collect();
+
+            let res: Result<Vec<_>, _> =
+                keys.iter().map(|v| String::from_utf8(v.to_vec())).collect();
+            res.map_err(StdError::invalid_utf8)?
+        }
+    };
 
     let mut msgs: Vec<SubMsg> = vec![];
 
     for key in keys.iter() {
-        let name = String::from_utf8(key.clone())?;
-        let asset_info: AssetInfo = WITHDRAWABLE_TOKENS.load(deps.storage, &name)?;
+        let asset_info: AssetInfo = WITHDRAWABLE_TOKENS.load(deps.storage, key)?;
         let msg: Option<SubMsg> = match asset_info {
             AssetInfo::NativeToken { denom } => {
                 let balance =
@@ -118,6 +127,7 @@ mod tests {
             mock_env(),
             info,
             Recipient::Addr("address".to_string()),
+            None,
         );
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
@@ -135,6 +145,7 @@ mod tests {
             mock_env(),
             info,
             Recipient::Addr("address".to_string()),
+            None,
         );
         assert_eq!(ContractError::EmptyFunds {}, res.unwrap_err());
     }
@@ -161,6 +172,7 @@ mod tests {
             mock_env(),
             info,
             Recipient::Addr("address".to_string()),
+            None,
         )
         .unwrap();
         let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -201,6 +213,7 @@ mod tests {
             mock_env(),
             info,
             Recipient::Addr("address".to_string()),
+            None,
         )
         .unwrap();
         let msg = SubMsg::new(WasmMsg::Execute {
@@ -212,6 +225,53 @@ mod tests {
             .unwrap(),
             funds: vec![],
         });
+        assert_eq!(
+            Response::new()
+                .add_submessage(msg)
+                .add_attribute("action", "withdraw")
+                .add_attribute("recipient", "Addr(\"address\")"),
+            res
+        );
+    }
+
+    #[test]
+    fn test_execute_withdraw_selective() {
+        let mut deps = mock_dependencies(&[coin(100, "uusd"), coin(100, "uluna")]);
+        let owner = "owner";
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked(owner))
+            .unwrap();
+        let info = mock_info(owner, &[]);
+        WITHDRAWABLE_TOKENS
+            .save(
+                deps.as_mut().storage,
+                "uusd",
+                &AssetInfo::NativeToken {
+                    denom: "uusd".into(),
+                },
+            )
+            .unwrap();
+        WITHDRAWABLE_TOKENS
+            .save(
+                deps.as_mut().storage,
+                "uluna",
+                &AssetInfo::NativeToken {
+                    denom: "uluna".into(),
+                },
+            )
+            .unwrap();
+        let res = execute_withdraw(
+            deps.as_ref(),
+            mock_env(),
+            info,
+            Recipient::Addr("address".to_string()),
+            Some(vec!["uusd".to_string()]),
+        )
+        .unwrap();
+        let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "address".to_string(),
+            amount: vec![coin(100, "uusd")],
+        }));
         assert_eq!(
             Response::new()
                 .add_submessage(msg)
