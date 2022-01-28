@@ -26,3 +26,4 @@ andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_proto
 schemars = "0.8.3"
 cw-storage-plus = "0.9.1"
 cw721 = "0.9.1"
+cw2 = "0.9.1"

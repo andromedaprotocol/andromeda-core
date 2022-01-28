@@ -1,16 +1,22 @@
 use andromeda_protocol::{
     address_list::{
         add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
-        InstantiateMsg, QueryMsg,
+        InstantiateMsg, MigrateMsg, QueryMsg,
     },
     error::ContractError,
     operators::{execute_update_operators, initialize_operators, is_operator, query_is_operator},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
+use cw2::{get_contract_version, set_contract_version};
+
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-addresslist";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
 pub fn instantiate(
@@ -19,6 +25,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     initialize_operators(deps.storage, msg.operators)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::default().add_attributes(vec![
@@ -75,6 +82,17 @@ fn execute_remove_address(
         attr("action", "remove_address"),
         attr("address", address),
     ]))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[entry_point]
