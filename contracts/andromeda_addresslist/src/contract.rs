@@ -90,9 +90,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Response, ContractError> {
     match msg {
         AndromedaHook::OnExecute { sender, .. } => {
-            let included = includes_address(deps.storage, &sender)?;
+            let is_included = includes_address(deps.storage, &sender)?;
             let is_inclusive = IS_INCLUSIVE.load(deps.storage)?;
-            if (is_inclusive && !included) || (!is_inclusive && included) {
+            if is_included != is_inclusive {
                 Err(ContractError::InvalidAddress {})
             } else {
                 Ok(Response::default())
