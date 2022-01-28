@@ -8,9 +8,11 @@ use cw_storage_plus::{Bound, Item, Map};
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::{communication::query_get, error::ContractError, factory::CodeIdResponse};
+use crate::{
+    communication::query_get, error::ContractError, factory::CodeIdResponse, rates::Funds,
+};
 
-use super::hooks::AndromedaHook;
+use super::hooks::{AndromedaHook, OnFundsTransferResponse};
 
 pub const FACTORY_ADDRESS: &str = "terra1...";
 pub const MODULE_INFO: Map<String, Module> = Map::new("andr_modules");
@@ -224,4 +226,33 @@ where
     }
 
     Ok(resp)
+}
+
+/// Sends the provided hook message to all registered modules
+pub fn on_funds_transfer(
+    storage: &dyn Storage,
+    querier: QuerierWrapper,
+    sender: String,
+    amount: Funds,
+    msg: Binary,
+) -> Result<(Vec<SubMsg>, Funds), ContractError> {
+    let addresses: Vec<String> = load_module_addresses(storage)?;
+    let mut remainder = amount;
+    let mut msgs: Vec<SubMsg> = Vec::new();
+    for addr in addresses {
+        let query_msg = AndromedaHook::OnFundsTransfer {
+            msg: msg.clone(),
+            sender: sender.clone(),
+            amount: remainder,
+        };
+        let mod_resp: OnFundsTransferResponse =
+            querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: addr,
+                msg: to_binary(&query_msg)?,
+            }))?;
+        remainder = mod_resp.leftover_funds;
+        msgs = [msgs, mod_resp.msgs].concat();
+    }
+
+    Ok((msgs, remainder))
 }

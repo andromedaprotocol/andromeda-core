@@ -1,5 +1,5 @@
 use crate::{
-    communication::{AndromedaMsg, AndromedaQuery, Recipient},
+    communication::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     modules::Rate,
 };
@@ -30,6 +30,7 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
+    Hook(AndromedaHook),
     Payments {},
 }
 

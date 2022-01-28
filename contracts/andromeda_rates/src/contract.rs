@@ -1,6 +1,8 @@
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
+    communication::{
+        encode_binary, hooks::AndromedaHook, parse_message, AndromedaMsg, AndromedaQuery,
+    },
     error::ContractError,
     modules::common::{calculate_fee, deduct_funds},
     operators::{execute_update_operators, query_is_operator, query_operators},
@@ -79,6 +81,7 @@ fn execute_update_rates(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+        QueryMsg::Hook(msg) => handle_andromeda_hook(deps, msg),
         QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
     }
 }
@@ -94,6 +97,15 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
         AndromedaQuery::IsOperator { address } => {
             encode_binary(&query_is_operator(deps, &address)?)
         }
+    }
+}
+
+fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaHook::OnFundsTransfer { amount, .. } => {
+            encode_binary(&query_deducted_funds(deps, amount)?)
+        }
+        _ => encode_binary(&false), //TODO: Return contract error (NotImplemented?),
     }
 }
 
