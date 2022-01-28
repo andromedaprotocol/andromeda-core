@@ -9,9 +9,11 @@ use cosmwasm_std::{
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
+use cw20::{BalanceResponse, Cw20QueryMsg};
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
+pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -61,6 +63,7 @@ impl WasmMockQuerier {
                         };
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
                     }
+                    MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     _ => {
                         let msg_response = IncludesAddressResponse { included: false };
@@ -69,6 +72,18 @@ impl WasmMockQuerier {
                 }
             }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_cw20_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            Cw20QueryMsg::Balance { .. } => {
+                let balance_response = BalanceResponse {
+                    balance: 10u128.into(),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&balance_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
         }
     }
 

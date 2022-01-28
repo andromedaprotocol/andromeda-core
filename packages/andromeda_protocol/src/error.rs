@@ -140,6 +140,8 @@ pub enum ContractError {
     // END CW20 ERRORS
     #[error("Invalid Module")]
     InvalidModule { msg: Option<String> },
+    #[error("UnsupportedOperation")]
+    UnsupportedOperation {},
 }
 
 impl From<Cw20ContractError> for ContractError {

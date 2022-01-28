@@ -96,6 +96,7 @@ pub fn execute_andromeda(
         AndromedaMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
         }
+        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
