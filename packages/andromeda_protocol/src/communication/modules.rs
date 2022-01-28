@@ -107,7 +107,7 @@ impl Module {
     ) -> Result<Option<SubMsg>, ContractError> {
         match self.instantiate.clone() {
             InstantiateType::New(msg) => {
-                let msg = self.modify_instantiate_msg(msg)?;
+                let msg = self.enforce_instantiate_msg(msg)?;
                 match self.get_code_id(querier)? {
                     None => Err(ContractError::InvalidModule {
                         msg: Some(String::from(
@@ -132,8 +132,6 @@ impl Module {
     }
 
     pub fn validate(&self, modules: &[Module], ado_type: &ADOType) -> Result<(), ContractError> {
-        //let modules = load_modules(storage)?;
-
         require(self.is_unique(&modules), ContractError::ModuleNotUnique {})?;
 
         match &self.module_type {
@@ -178,19 +176,16 @@ impl Module {
     fn is_unique(&self, all_modules: &[Module]) -> bool {
         let mut total = 0;
         all_modules.iter().for_each(|m| {
-            //Compares enum values of modules.
-            if std::mem::discriminant(m) == std::mem::discriminant(&self) {
+            if self == m {
                 total += 1;
-            } else {
-                total += 0;
             }
         });
 
-        total <= 1
+        total == 1
     }
 
     /// Modifies `msg` to conform to the requirements of the given module.
-    fn modify_instantiate_msg(&self, msg: Binary) -> Result<Binary, ContractError> {
+    fn enforce_instantiate_msg(&self, msg: Binary) -> Result<Binary, ContractError> {
         match self.module_type {
             ModuleType::Whitelist {} => {
                 let mut msg: AddressListInstantiateMsg = parse_struct(&msg)?;
@@ -360,4 +355,131 @@ pub fn on_funds_transfer(
     }
 
     Ok((msgs, remainder))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_whitelist() {
+        let whitelist_module = Module {
+            module_type: ModuleType::Whitelist,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+
+        let res = whitelist_module.validate(
+            &[whitelist_module.clone(), whitelist_module.clone()],
+            &ADOType::CW721,
+        );
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let blacklist_module = Module {
+            module_type: ModuleType::Blacklist,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+
+        let res = whitelist_module.validate(
+            &[whitelist_module.clone(), blacklist_module.clone()],
+            &ADOType::CW721,
+        );
+        assert_eq!(
+            ContractError::IncompatibleModules {
+                msg: "A Whitelist cannot exist along with a Blacklist".to_string()
+            },
+            res.unwrap_err()
+        );
+
+        let auction_module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("".into()),
+        };
+        whitelist_module
+            .validate(&[whitelist_module.clone(), auction_module], &ADOType::CW721)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_validate_blacklist() {
+        let blacklist_module = Module {
+            module_type: ModuleType::Blacklist,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+
+        let res = blacklist_module.validate(
+            &[blacklist_module.clone(), blacklist_module.clone()],
+            &ADOType::CW721,
+        );
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let whitelist_module = Module {
+            module_type: ModuleType::Whitelist,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+
+        let res = blacklist_module.validate(
+            &[whitelist_module.clone(), blacklist_module.clone()],
+            &ADOType::CW721,
+        );
+        assert_eq!(
+            ContractError::IncompatibleModules {
+                msg: "A Blacklist cannot exist along with a Whitelist".to_string()
+            },
+            res.unwrap_err()
+        );
+
+        let auction_module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("".into()),
+        };
+        blacklist_module
+            .validate(&[blacklist_module.clone(), auction_module], &ADOType::CW721)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_validate_auction() {
+        let module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+
+        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let res = module.validate(&[module.clone()], &ADOType::CW20);
+        assert_eq!(
+            ContractError::IncompatibleModules {
+                msg: "An Auction module cannot be used for a CW20 ADO".to_string()
+            },
+            res.unwrap_err()
+        );
+
+        let other_module = Module {
+            module_type: ModuleType::Rates,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+        module
+            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_validate_rates() {
+        let module = Module {
+            module_type: ModuleType::Rates,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+
+        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let other_module = Module {
+            module_type: ModuleType::Whitelist,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+        module
+            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .unwrap();
+    }
 }
