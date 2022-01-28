@@ -98,7 +98,7 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Response, Contract
                 Ok(Response::default())
             }
         }
-        _ => panic!(),
+        _ => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
