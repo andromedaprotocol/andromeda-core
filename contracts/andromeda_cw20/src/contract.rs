@@ -166,7 +166,7 @@ fn execute_transfer(
         }
     }
 
-    // Continues with standard cw20 operation
+    // Continue with standard cw20 operation
     let cw20_resp = execute_cw20_transfer(deps, env, info, recipient, remaining_amount)?;
     resp = resp.add_attributes(cw20_resp.attributes);
     Ok(resp)

@@ -101,8 +101,16 @@ impl Recipient {
 #[serde(rename_all = "snake_case")]
 pub enum AndromedaMsg {
     Receive(Option<Binary>),
-    UpdateOwner { address: String },
-    UpdateOperators { operators: Vec<String> },
+    UpdateOwner {
+        address: String,
+    },
+    UpdateOperators {
+        operators: Vec<String>,
+    },
+    Withdraw {
+        recipient: Recipient,
+        tokens_to_withdraw: Option<Vec<String>>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

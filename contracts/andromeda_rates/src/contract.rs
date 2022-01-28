@@ -58,6 +58,7 @@ fn execute_andr_receive(
         AndromedaMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
         }
+        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
