@@ -388,4 +388,3 @@ pub struct ModuleContract {
 pub struct TokensResponse {
     pub tokens: Vec<String>,
 }
-

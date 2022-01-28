@@ -3,9 +3,10 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use andromeda_protocol::{
-    cw20::{ExecuteMsg, QueryMsg, MigrateMsg},
+    cw20::{ExecuteMsg, MigrateMsg, QueryMsg},
     error::ContractError,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw20_base::{
     contract::{
         execute as execute_cw20, execute_burn as execute_cw20_burn,
@@ -13,9 +14,8 @@ use cw20_base::{
         execute_transfer as execute_cw20_transfer, instantiate as cw20_instantiate,
         query as query_cw20,
     },
-    msg::InstantiateMsg, 
+    msg::InstantiateMsg,
 };
-use cw2::{get_contract_version, set_contract_version};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20";

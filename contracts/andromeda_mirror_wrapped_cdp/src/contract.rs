@@ -9,7 +9,9 @@ use cw2::{get_contract_version, set_contract_version};
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     error::ContractError,
-    mirror_wrapped_cdp::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    mirror_wrapped_cdp::{
+        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    },
     operators::{execute_update_operators, initialize_operators, is_operator, query_is_operator},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
