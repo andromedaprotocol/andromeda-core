@@ -9,7 +9,12 @@ use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
-    communication::query_get, error::ContractError, factory::CodeIdResponse, rates::Funds,
+    address_list::InstantiateMsg as AddressListInstantiateMsg,
+    communication::{encode_binary, parse_struct, query_get},
+    error::ContractError,
+    factory::CodeIdResponse,
+    rates::Funds,
+    require,
 };
 
 use super::hooks::{AndromedaHook, OnFundsTransferResponse};
@@ -24,7 +29,8 @@ pub const MODULE_IDX: Item<u64> = Item::new("andr_module_idx");
 #[serde(rename_all = "snake_case")]
 pub enum ModuleType {
     Rates,
-    AddressList,
+    Whitelist,
+    Blacklist,
     Auction,
     /// Used for external contracts, undocumented
     Other,
@@ -34,7 +40,8 @@ pub enum ModuleType {
 impl From<ModuleType> for String {
     fn from(module_type: ModuleType) -> Self {
         match module_type {
-            ModuleType::AddressList => String::from("address_list"),
+            ModuleType::Whitelist => String::from("whitelist"),
+            ModuleType::Blacklist => String::from("blacklist"),
             ModuleType::Rates => String::from("rates"),
             ModuleType::Auction => String::from("auction"),
             ModuleType::Other => String::from("other"),
@@ -68,6 +75,14 @@ pub struct ModuleInfoWithAddress {
     address: String,
 }
 
+/// The type of ADO that is using these modules.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ADOType {
+    CW721,
+    CW20,
+}
+
 impl Module {
     /// Queries the code id for a module from the factory contract
     pub fn get_code_id(&self, querier: QuerierWrapper) -> Result<Option<u64>, ContractError> {
@@ -92,6 +107,7 @@ impl Module {
     ) -> Result<Option<SubMsg>, ContractError> {
         match self.instantiate.clone() {
             InstantiateType::New(msg) => {
+                let msg = self.modify_instantiate_msg(msg)?;
                 match self.get_code_id(querier)? {
                     None => Err(ContractError::InvalidModule {
                         msg: Some(String::from(
@@ -114,6 +130,86 @@ impl Module {
             _ => Ok(None),
         }
     }
+
+    pub fn validate(&self, modules: &[Module], ado_type: &ADOType) -> Result<(), ContractError> {
+        //let modules = load_modules(storage)?;
+
+        require(self.is_unique(&modules), ContractError::ModuleNotUnique {})?;
+
+        match &self.module_type {
+            ModuleType::Whitelist => {
+                if contains_module(&modules, ModuleType::Blacklist) {
+                    return Err(ContractError::IncompatibleModules {
+                        msg: "A Whitelist cannot exist along with a Blacklist".to_string(),
+                    });
+                }
+            }
+            ModuleType::Blacklist => {
+                if contains_module(&modules, ModuleType::Whitelist) {
+                    return Err(ContractError::IncompatibleModules {
+                        msg: "A Blacklist cannot exist along with a Whitelist".to_string(),
+                    });
+                }
+            }
+            _ => {}
+        }
+
+        match ado_type {
+            &ADOType::CW20 => {
+                if contains_module(&modules, ModuleType::Auction) {
+                    return Err(ContractError::IncompatibleModules {
+                        msg: "An Auction module cannot be used for a CW20 ADO".to_string(),
+                    });
+                }
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    /// Determines if a `Module` is unique within the context of a vector of `Module`
+    ///
+    /// ## Arguments
+    /// * `module` - The module to check for uniqueness
+    /// * `all_modules` - The vector of modules containing the provided module
+    ///
+    /// Returns a `boolean` representing whether the module is unique or not
+    fn is_unique(&self, all_modules: &[Module]) -> bool {
+        let mut total = 0;
+        all_modules.iter().for_each(|m| {
+            //Compares enum values of modules.
+            if std::mem::discriminant(m) == std::mem::discriminant(&self) {
+                total += 1;
+            } else {
+                total += 0;
+            }
+        });
+
+        total <= 1
+    }
+
+    /// Modifies `msg` to conform to the requirements of the given module.
+    fn modify_instantiate_msg(&self, msg: Binary) -> Result<Binary, ContractError> {
+        match self.module_type {
+            ModuleType::Whitelist {} => {
+                let mut msg: AddressListInstantiateMsg = parse_struct(&msg)?;
+                msg.is_inclusive = true;
+                encode_binary(&msg)
+            }
+            ModuleType::Blacklist {} => {
+                let mut msg: AddressListInstantiateMsg = parse_struct(&msg)?;
+                msg.is_inclusive = false;
+                encode_binary(&msg)
+            }
+            _ => Ok(msg),
+        }
+    }
+}
+
+/// Checks if any element of `modules` contains one of type `module_type`.
+fn contains_module(modules: &[Module], module_type: ModuleType) -> bool {
+    modules.iter().any(|m| m.module_type == module_type)
 }
 
 /// Registers a module
@@ -204,6 +300,15 @@ pub fn load_modules_with_address(
     }
 
     Ok(modules_with_addresses)
+}
+
+/// Validates all modules.
+pub fn validate_modules(modules: &[Module], ado_type: ADOType) -> Result<(), ContractError> {
+    for module in modules {
+        module.validate(modules, &ado_type)?;
+    }
+
+    Ok(())
 }
 
 /// Sends the provided hook message to all registered modules
