@@ -275,7 +275,7 @@ mod tests {
 
         let address = "blacklistee";
 
-        // Mark it as a whitelist.
+        // Mark it as a blacklist.
         IS_INCLUSIVE.save(deps.as_mut().storage, &false).unwrap();
         OPERATORS
             .save(deps.as_mut().storage, operator, &true)
