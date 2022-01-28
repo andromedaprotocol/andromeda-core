@@ -246,7 +246,7 @@ mod tests {
         let msg = ExecuteMsg::AddAddress {
             address: address.to_string(),
         };
-        let _res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
             sender: address.to_string(),
@@ -287,7 +287,7 @@ mod tests {
         let msg = ExecuteMsg::AddAddress {
             address: address.to_string(),
         };
-        let _res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
             sender: "random".to_string(),
