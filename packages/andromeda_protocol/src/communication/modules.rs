@@ -132,18 +132,18 @@ impl Module {
     }
 
     pub fn validate(&self, modules: &[Module], ado_type: &ADOType) -> Result<(), ContractError> {
-        require(self.is_unique(&modules), ContractError::ModuleNotUnique {})?;
+        require(self.is_unique(modules), ContractError::ModuleNotUnique {})?;
 
         match &self.module_type {
             ModuleType::Whitelist => {
-                if contains_module(&modules, ModuleType::Blacklist) {
+                if contains_module(modules, ModuleType::Blacklist) {
                     return Err(ContractError::IncompatibleModules {
                         msg: "A Whitelist cannot exist along with a Blacklist".to_string(),
                     });
                 }
             }
             ModuleType::Blacklist => {
-                if contains_module(&modules, ModuleType::Whitelist) {
+                if contains_module(modules, ModuleType::Whitelist) {
                     return Err(ContractError::IncompatibleModules {
                         msg: "A Blacklist cannot exist along with a Whitelist".to_string(),
                     });
@@ -152,15 +152,10 @@ impl Module {
             _ => {}
         }
 
-        match ado_type {
-            &ADOType::CW20 => {
-                if contains_module(&modules, ModuleType::Auction) {
-                    return Err(ContractError::IncompatibleModules {
-                        msg: "An Auction module cannot be used for a CW20 ADO".to_string(),
-                    });
-                }
-            }
-            _ => {}
+        if ado_type == &ADOType::CW20 && contains_module(modules, ModuleType::Auction) {
+            return Err(ContractError::IncompatibleModules {
+                msg: "An Auction module cannot be used for a CW20 ADO".to_string(),
+            });
         }
 
         Ok(())
@@ -380,7 +375,7 @@ mod tests {
         };
 
         let res = whitelist_module.validate(
-            &[whitelist_module.clone(), blacklist_module.clone()],
+            &[whitelist_module.clone(), blacklist_module],
             &ADOType::CW721,
         );
         assert_eq!(
@@ -418,7 +413,7 @@ mod tests {
         };
 
         let res = blacklist_module.validate(
-            &[whitelist_module.clone(), blacklist_module.clone()],
+            &[whitelist_module, blacklist_module.clone()],
             &ADOType::CW721,
         );
         assert_eq!(
