@@ -40,8 +40,8 @@ pub enum ModuleType {
 impl From<ModuleType> for String {
     fn from(module_type: ModuleType) -> Self {
         match module_type {
-            ModuleType::Whitelist => String::from("whitelist"),
-            ModuleType::Blacklist => String::from("blacklist"),
+            ModuleType::Whitelist => String::from("address_list"),
+            ModuleType::Blacklist => String::from("address_list"),
             ModuleType::Rates => String::from("rates"),
             ModuleType::Auction => String::from("auction"),
             ModuleType::Other => String::from("other"),
