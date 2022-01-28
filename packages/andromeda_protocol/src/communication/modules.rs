@@ -77,7 +77,6 @@ pub struct ModuleInfoWithAddress {
 
 /// The type of ADO that is using these modules.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
 pub enum ADOType {
     CW721,
     CW20,
@@ -131,6 +130,8 @@ impl Module {
         }
     }
 
+    /// Validates `self` by checking that it is unique, does not conflict with any other module,
+    /// and does not conflict with the creating ADO.
     pub fn validate(&self, modules: &[Module], ado_type: &ADOType) -> Result<(), ContractError> {
         require(self.is_unique(modules), ContractError::ModuleNotUnique {})?;
 
