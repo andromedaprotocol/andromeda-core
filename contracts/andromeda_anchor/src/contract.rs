@@ -39,7 +39,7 @@ pub fn instantiate(
     KEY_POSITION_IDX.save(deps.storage, &Uint128::from(1u128))?;
     PREV_AUST_BALANCE.save(deps.storage, &Uint128::zero())?;
     TEMP_BALANCE.save(deps.storage, &Uint128::zero())?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender.clone())?;
+    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "anchor")]))
 }
 
