@@ -162,10 +162,9 @@ impl Module {
         Ok(())
     }
 
-    /// Determines if a `Module` is unique within the context of a vector of `Module`
+    /// Determines if `self` is unique within the context of a vector of `Module`
     ///
     /// ## Arguments
-    /// * `module` - The module to check for uniqueness
     /// * `all_modules` - The vector of modules containing the provided module
     ///
     /// Returns a `boolean` representing whether the module is unique or not
@@ -356,6 +355,7 @@ pub fn on_funds_transfer(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cosmwasm_std::from_binary;
 
     #[test]
     fn test_validate_whitelist() {
@@ -477,5 +477,53 @@ mod tests {
         module
             .validate(&[module.clone(), other_module], &ADOType::CW721)
             .unwrap();
+    }
+
+    #[test]
+    fn test_enforce_instantiate_msg_whitelist() {
+        let msg = AddressListInstantiateMsg {
+            operators: vec![],
+            is_inclusive: false,
+        };
+
+        let msg = to_binary(&msg).unwrap();
+
+        let module = Module {
+            module_type: ModuleType::Whitelist,
+            instantiate: InstantiateType::New(msg.clone()),
+        };
+
+        let new_msg = module.enforce_instantiate_msg(msg).unwrap();
+        assert_eq!(
+            AddressListInstantiateMsg {
+                operators: vec![],
+                is_inclusive: true
+            },
+            from_binary(&new_msg).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_enforce_instantiate_msg_blacklist() {
+        let msg = AddressListInstantiateMsg {
+            operators: vec![],
+            is_inclusive: true,
+        };
+
+        let msg = to_binary(&msg).unwrap();
+
+        let module = Module {
+            module_type: ModuleType::Blacklist,
+            instantiate: InstantiateType::New(msg.clone()),
+        };
+
+        let new_msg = module.enforce_instantiate_msg(msg).unwrap();
+        assert_eq!(
+            AddressListInstantiateMsg {
+                operators: vec![],
+                is_inclusive: false
+            },
+            from_binary(&new_msg).unwrap()
+        );
     }
 }
