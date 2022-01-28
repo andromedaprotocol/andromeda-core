@@ -43,6 +43,7 @@ fn test_instantiate() {
                 label: String::from("Address list instantiation"),
                 msg: to_binary(&AddressListInstantiateMsg {
                     operators: vec!["creator".to_string()],
+                    is_inclusive: true,
                 })
                 .unwrap(),
             }),

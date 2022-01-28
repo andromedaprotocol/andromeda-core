@@ -120,7 +120,7 @@ fn execute_transfer(
             amount,
         }),
         to_binary(&ExecuteMsg::Transfer {
-            amount: amount.clone(),
+            amount,
             recipient: recipient.clone(),
         })?,
     )?;
