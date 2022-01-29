@@ -70,7 +70,7 @@ pub fn is_unique<M: Module>(module: &M, all_modules: &[ModuleDefinition]) -> boo
 /// ## Arguments
 /// * `coins` - The vector of `Coin` structs from which to deduct the given funds
 /// * `funds` - The amount to deduct
-pub fn deduct_funds(coins: &mut Vec<Coin>, funds: &Coin) -> Result<bool, ContractError> {
+pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<bool, ContractError> {
     let coin_amount = coins.iter_mut().find(|c| c.denom.eq(&funds.denom));
 
     match coin_amount {
@@ -110,7 +110,7 @@ pub fn add_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) {
 ///
 /// Errors if there is no payment from which to deduct the funds
 pub fn deduct_payment(
-    payments: &mut Vec<BankMsg>,
+    payments: &mut [BankMsg],
     to: String,
     amount: Coin,
 ) -> Result<bool, ContractError> {
