@@ -178,11 +178,13 @@ fn query_config(deps: Deps) -> Result<ContractInfoResponse, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_protocol::rates::Funds;
     use cosmwasm_std::{
-        from_binary,
-        testing::{mock_dependencies, mock_env, mock_info},
-        Addr, Event,
+        coin, from_binary,
+        testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
+        Addr, CosmosMsg, Event, SubMsg, WasmMsg,
     };
+
     #[test]
     fn test_instantiate() {
         let owner = "creator";
@@ -332,5 +334,36 @@ mod tests {
         let val: ReceiptResponse = from_binary(&res).unwrap();
         let new_receipt = Receipt { events: vec![] };
         assert_eq!(val.receipt, new_receipt)
+    }
+
+    #[test]
+    fn test_on_funds_transfer_hook() {
+        let deps = mock_dependencies(&[]);
+        let events: Vec<Event> = vec![Event::new("Event1"), Event::new("Event2")];
+
+        let query_msg = QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
+            sender: "sender".to_string(),
+            payload: encode_binary(&events).unwrap(),
+            amount: Funds::Native(coin(0, "uusd")),
+        });
+
+        let res: OnFundsTransferResponse =
+            from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
+
+        assert_eq!(
+            OnFundsTransferResponse {
+                msgs: vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: MOCK_CONTRACT_ADDR.to_string(),
+                    msg: encode_binary(&ExecuteMsg::StoreReceipt {
+                        receipt: Receipt { events }
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }))],
+                events: vec![],
+                leftover_funds: Funds::Native(coin(0, "uusd"))
+            },
+            res
+        );
     }
 }

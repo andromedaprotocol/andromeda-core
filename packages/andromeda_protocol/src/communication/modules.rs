@@ -251,16 +251,13 @@ pub fn on_funds_transfer(
             receipt_module_address = Some(module.address.clone());
             continue;
         }
-        let query_msg = AndromedaHook::OnFundsTransfer {
-            payload: msg.clone(),
-            sender: sender.clone(),
-            amount: remainder.clone(),
-        };
-        let mod_resp: Result<OnFundsTransferResponse, StdError> =
-            querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: module.address,
-                msg: to_binary(&query_msg)?,
-            }));
+        let mod_resp = query_on_funds_transfer(
+            querier,
+            msg.clone(),
+            sender.clone(),
+            module.address.clone(),
+            remainder.clone(),
+        );
         if let Ok(mod_resp) = mod_resp {
             remainder = mod_resp.leftover_funds;
             msgs = [msgs, mod_resp.msgs].concat();
@@ -268,18 +265,33 @@ pub fn on_funds_transfer(
         }
     }
     if let Some(receipt_module_address) = receipt_module_address {
-        let query_msg = AndromedaHook::OnFundsTransfer {
-            payload: to_binary(&events)?,
+        let mod_resp = query_on_funds_transfer(
+            querier,
+            to_binary(&events)?,
             sender,
-            amount: remainder.clone(),
-        };
-        let mod_resp: OnFundsTransferResponse =
-            querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: receipt_module_address,
-                msg: to_binary(&query_msg)?,
-            }))?;
+            receipt_module_address,
+            remainder.clone(),
+        )?;
         msgs = [msgs, mod_resp.msgs].concat();
     }
 
     Ok((msgs, remainder))
+}
+
+fn query_on_funds_transfer(
+    querier: QuerierWrapper,
+    payload: Binary,
+    sender: String,
+    contract_addr: String,
+    amount: Funds,
+) -> Result<OnFundsTransferResponse, StdError> {
+    let query_msg = AndromedaHook::OnFundsTransfer {
+        payload,
+        sender,
+        amount,
+    };
+    querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr,
+        msg: to_binary(&query_msg)?,
+    }))
 }
