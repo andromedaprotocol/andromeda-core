@@ -2,19 +2,25 @@ use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use andromeda_protocol::{
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
+    communication::{
+        encode_binary,
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        parse_message, AndromedaMsg, AndromedaQuery,
+    },
     error::ContractError,
     operators::{
         execute_update_operators, initialize_operators, query_is_operator, query_operators,
     },
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     receipt::{
-        Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
-        ReceiptResponse,
+        generate_receipt_message, Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg,
+        QueryMsg, Receipt, ReceiptResponse,
     },
     require,
 };
-use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{
+    attr, entry_point, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, Uint128,
+};
 
 #[entry_point]
 pub fn instantiate(
@@ -114,6 +120,26 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::Receipt { receipt_id } => encode_binary(&query_receipt(deps, receipt_id)?),
         QueryMsg::ContractInfo {} => encode_binary(&query_config(deps)?),
+        QueryMsg::AndrHook(msg) => handle_andr_hook(env, msg),
+    }
+}
+
+fn handle_andr_hook(env: Env, msg: AndromedaHook) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaHook::OnFundsTransfer {
+            sender: _,
+            payload,
+            amount,
+        } => {
+            let events: Vec<Event> = parse_message(Some(payload))?;
+            let msg = generate_receipt_message(env.contract.address.to_string(), events)?;
+            encode_binary(&OnFundsTransferResponse {
+                msgs: vec![msg],
+                leftover_funds: amount,
+                events: vec![],
+            })
+        }
+        _ => Err(ContractError::UnsupportedOperation {}),
     }
 }
 

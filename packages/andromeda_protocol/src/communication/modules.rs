@@ -1,8 +1,8 @@
 use std::convert::TryInto;
 
 use cosmwasm_std::{
-    to_binary, wasm_instantiate, Addr, Api, Binary, CosmosMsg, Order, QuerierWrapper, QueryRequest,
-    ReplyOn, Storage, SubMsg, WasmQuery,
+    to_binary, wasm_instantiate, Addr, Api, Binary, CosmosMsg, Event, Order, QuerierWrapper,
+    QueryRequest, ReplyOn, StdError, Storage, SubMsg, WasmQuery,
 };
 use cw_storage_plus::{Bound, Item, Map};
 use schemars::JsonSchema;
@@ -26,6 +26,7 @@ pub enum ModuleType {
     Rates,
     AddressList,
     Auction,
+    Receipt,
     /// Used for external contracts, undocumented
     Other,
 }
@@ -34,6 +35,7 @@ pub enum ModuleType {
 impl From<ModuleType> for String {
     fn from(module_type: ModuleType) -> Self {
         match module_type {
+            ModuleType::Receipt => String::from("receipt"),
             ModuleType::AddressList => String::from("address_list"),
             ModuleType::Rates => String::from("rates"),
             ModuleType::Auction => String::from("auction"),
@@ -218,11 +220,13 @@ where
     let addresses: Vec<String> = load_module_addresses(storage)?;
     let mut resp: Vec<T> = Vec::new();
     for addr in addresses {
-        let mod_resp: T = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        let mod_resp: Result<T, StdError> = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: addr,
             msg: to_binary(&msg)?,
-        }))?;
-        resp.push(mod_resp);
+        }));
+        if let Ok(mod_resp) = mod_resp {
+            resp.push(mod_resp);
+        }
     }
 
     Ok(resp)
@@ -236,21 +240,44 @@ pub fn on_funds_transfer(
     amount: Funds,
     msg: Binary,
 ) -> Result<(Vec<SubMsg>, Funds), ContractError> {
-    let addresses: Vec<String> = load_module_addresses(storage)?;
+    let modules: Vec<ModuleInfoWithAddress> = load_modules_with_address(storage)?;
     let mut remainder = amount;
     let mut msgs: Vec<SubMsg> = Vec::new();
-    for addr in addresses {
+    let mut events: Vec<Event> = Vec::new();
+    let mut receipt_module_address: Option<String> = None;
+    for module in modules {
+        if module.module.module_type == ModuleType::Receipt {
+            // If receipt module exists we want to make sure we do it last.
+            receipt_module_address = Some(module.address.clone());
+            continue;
+        }
         let query_msg = AndromedaHook::OnFundsTransfer {
-            msg: msg.clone(),
+            payload: msg.clone(),
             sender: sender.clone(),
-            amount: remainder,
+            amount: remainder.clone(),
+        };
+        let mod_resp: Result<OnFundsTransferResponse, StdError> =
+            querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: module.address,
+                msg: to_binary(&query_msg)?,
+            }));
+        if let Ok(mod_resp) = mod_resp {
+            remainder = mod_resp.leftover_funds;
+            msgs = [msgs, mod_resp.msgs].concat();
+            events = [events, mod_resp.events].concat();
+        }
+    }
+    if let Some(receipt_module_address) = receipt_module_address {
+        let query_msg = AndromedaHook::OnFundsTransfer {
+            payload: to_binary(&events)?,
+            sender,
+            amount: remainder.clone(),
         };
         let mod_resp: OnFundsTransferResponse =
             querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: addr,
+                contract_addr: receipt_module_address,
                 msg: to_binary(&query_msg)?,
             }))?;
-        remainder = mod_resp.leftover_funds;
         msgs = [msgs, mod_resp.msgs].concat();
     }
 

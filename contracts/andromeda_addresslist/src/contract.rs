@@ -250,7 +250,7 @@ mod tests {
 
         let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
             sender: address.to_string(),
-            msg: encode_binary(&"".to_string()).unwrap(),
+            payload: encode_binary(&"".to_string()).unwrap(),
         });
 
         let res: Response = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
@@ -258,7 +258,7 @@ mod tests {
 
         let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
             sender: "random".to_string(),
-            msg: encode_binary(&"".to_string()).unwrap(),
+            payload: encode_binary(&"".to_string()).unwrap(),
         });
 
         let res_err: ContractError = query(deps.as_ref(), mock_env(), msg).unwrap_err();
@@ -291,7 +291,7 @@ mod tests {
 
         let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
             sender: "random".to_string(),
-            msg: encode_binary(&"".to_string()).unwrap(),
+            payload: encode_binary(&"".to_string()).unwrap(),
         });
 
         let res: Response = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
@@ -299,7 +299,7 @@ mod tests {
 
         let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
             sender: address.to_string(),
-            msg: encode_binary(&"".to_string()).unwrap(),
+            payload: encode_binary(&"".to_string()).unwrap(),
         });
 
         let res_err: ContractError = query(deps.as_ref(), mock_env(), msg).unwrap_err();

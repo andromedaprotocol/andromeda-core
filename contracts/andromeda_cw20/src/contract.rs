@@ -84,7 +84,7 @@ pub fn execute(
         deps.querier,
         AndromedaHook::OnExecute {
             sender: info.sender.to_string(),
-            msg: to_binary(&msg)?,
+            payload: to_binary(&msg)?,
         },
     )?;
     match msg {
