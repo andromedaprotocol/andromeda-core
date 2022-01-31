@@ -3,9 +3,10 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use andromeda_protocol::{
-    cw20::{ExecuteMsg, QueryMsg},
+    cw20::{ExecuteMsg, MigrateMsg, QueryMsg},
     error::ContractError,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw20_base::{
     contract::{
         execute as execute_cw20, execute_burn as execute_cw20_burn,
@@ -16,6 +17,10 @@ use cw20_base::{
     msg::InstantiateMsg,
 };
 
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-cw20";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -23,6 +28,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(cw20_instantiate(deps, env, info, msg)?)
 }
 
@@ -86,6 +92,17 @@ fn execute_mint(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     Ok(execute_cw20_mint(deps, env, info, recipient, amount)?)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

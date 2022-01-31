@@ -11,11 +11,16 @@ use cosmwasm_std::{
     attr, coin, entry_point, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
 
 use terraswap::querier::{query_balance, query_token_balance};
 
-use andromeda_protocol::anchor::{AnchorMarketMsg, ConfigResponse, YourselfMsg};
+use andromeda_protocol::anchor::{AnchorMarketMsg, ConfigResponse, MigrateMsg, YourselfMsg};
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-anchor";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
 pub fn instantiate(
@@ -24,6 +29,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = Config {
         anchor_mint: deps.api.addr_canonicalize(&msg.anchor_mint)?,
         anchor_token: deps.api.addr_canonicalize(&msg.anchor_token)?,
@@ -222,6 +228,17 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
         }
         _ => Err(StdError::generic_err("invalid reply id")),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[entry_point]

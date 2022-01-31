@@ -6,7 +6,7 @@ use crate::{
 };
 use andromeda_protocol::{
     error::ContractError,
-    factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
+    factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     modules::ModuleDefinition,
     operators::{execute_update_operators, query_is_operator},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
@@ -17,6 +17,11 @@ use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
     Response, StdError, StdResult, SubMsg, WasmMsg,
 };
+use cw2::{get_contract_version, set_contract_version};
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-factory";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -25,6 +30,7 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
 
     Ok(Response::default()
@@ -192,6 +198,17 @@ pub fn add_update_code_id(
         attr("code_id_key", code_id_key),
         attr("code_id", code_id.to_string()),
     ]))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -90,6 +90,9 @@ pub enum ContractError {
     #[error("InvalidMirrorFunds")]
     InvalidMirrorFunds { msg: String },
 
+    #[error("Cannot migrate from different contract type: {previous_contract}")]
+    CannotMigrate { previous_contract: String },
+
     // BEGIN CW20 ERRORS
     #[error("Cannot set to own account")]
     CannotSetOwnAccount {},

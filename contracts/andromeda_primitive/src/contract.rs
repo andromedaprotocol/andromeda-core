@@ -3,13 +3,13 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{DATA, DEFAULT_KEY};
 use andromeda_protocol::{
     error::ContractError,
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, Primitive, QueryMsg},
+    primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, MigrateMsg, Primitive, QueryMsg},
     require,
 };
 
@@ -86,6 +86,17 @@ pub fn execute_delete_value(
         .add_attribute("method", "delete_value")
         .add_attribute("sender", info.sender)
         .add_attribute("name", name))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
