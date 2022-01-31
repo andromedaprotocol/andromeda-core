@@ -8,7 +8,10 @@ use cosmwasm_std::{
 use andromeda_protocol::{
     communication::{
         hooks::AndromedaHook,
-        modules::{module_hook, on_funds_transfer, register_module, MODULE_ADDR, MODULE_INFO},
+        modules::{
+            module_hook, on_funds_transfer, register_module, validate_modules, ADOType,
+            MODULE_ADDR, MODULE_INFO,
+        },
     },
     cw20::{ExecuteMsg, InstantiateMsg, QueryMsg},
     error::ContractError,
@@ -33,6 +36,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let mut resp = Response::default();
     if let Some(modules) = msg.modules.clone() {
+        validate_modules(&modules, ADOType::CW20)?;
         for module in modules {
             let idx = register_module(deps.storage, deps.api, &module)?;
             if let Some(inst_msg) = module.generate_instantiate_msg(deps.querier, idx)? {
