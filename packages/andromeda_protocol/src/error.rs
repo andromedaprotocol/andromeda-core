@@ -146,6 +146,9 @@ pub enum ContractError {
 
     #[error("IncompatibleModules")]
     IncompatibleModules { msg: String },
+
+    #[error("ModuleDoesNotExist")]
+    ModuleDoesNotExist {},
 }
 
 impl From<Cw20ContractError> for ContractError {
