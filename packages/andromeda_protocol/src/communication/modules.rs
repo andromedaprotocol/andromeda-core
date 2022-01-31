@@ -187,6 +187,9 @@ fn register_module(
 /// Deregisters a module.
 fn deregister_module(storage: &mut dyn Storage, idx: Uint64) -> Result<(), ContractError> {
     let idx_str = idx.to_string();
+    if !MODULE_INFO.has(storage, &idx_str) {
+        return Err(ContractError::ModuleDoesNotExist {});
+    }
     MODULE_INFO.remove(storage, &idx_str);
     MODULE_ADDR.remove(storage, &idx_str);
 
@@ -597,6 +600,16 @@ mod tests {
             Response::default().add_attribute("action", "register_module"),
             res
         );
+
+        assert_eq!(
+            module,
+            MODULE_INFO.load(deps.as_mut().storage, "1").unwrap()
+        );
+
+        assert_eq!(
+            "address".to_string(),
+            MODULE_ADDR.load(deps.as_mut().storage, "1").unwrap()
+        );
     }
 
     #[test]
@@ -671,9 +684,22 @@ mod tests {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("address".to_string()),
         };
+
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
+
+        MODULE_INFO
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+        MODULE_ADDR
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let module = Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address("other_address".to_string()),
+        };
 
         let res =
             execute_alter_module(deps.as_mut(), info, 1u64.into(), &module, ADOType::CW20).unwrap();
@@ -684,18 +710,54 @@ mod tests {
                 .add_attribute("module_idx", "1"),
             res
         );
+
+        assert_eq!(
+            module,
+            MODULE_INFO.load(deps.as_mut().storage, "1").unwrap()
+        );
+
+        assert_eq!(
+            "other_address".to_string(),
+            MODULE_ADDR.load(deps.as_mut().storage, "1").unwrap()
+        );
     }
 
     #[test]
-    fn test_execute_alter_module_invalid_module() {
+    fn test_execute_alter_module_nonexisting_module() {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         let module = Module {
             module_type: ModuleType::Auction,
             instantiate: InstantiateType::Address("address".to_string()),
         };
+
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = execute_alter_module(deps.as_mut(), info, 1u64.into(), &module, ADOType::CW20);
+
+        assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_alter_module_incompatible_module() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("address".to_string()),
+        };
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        MODULE_INFO
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+        MODULE_ADDR
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
             .unwrap();
 
         let res = execute_alter_module(deps.as_mut(), info, 1u64.into(), &module, ADOType::CW20);
@@ -753,5 +815,18 @@ mod tests {
 
         assert!(!MODULE_ADDR.has(deps.as_mut().storage, "1"));
         assert!(!MODULE_INFO.has(deps.as_mut().storage, "1"));
+    }
+
+    #[test]
+    fn test_execute_deregister_module_nonexisting_module() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = execute_deregister_module(deps.as_mut(), info, 1u64.into());
+
+        assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
     }
 }
