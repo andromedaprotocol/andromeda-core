@@ -115,7 +115,7 @@ fn execute_transfer(
 ) -> Result<Response, ContractError> {
     let mut resp = Response::new();
     let sender = info.sender.clone();
-    let (payments, remainder) = on_funds_transfer(
+    let (payments, events, remainder) = on_funds_transfer(
         deps.storage,
         deps.querier,
         info.sender.to_string(),
@@ -172,7 +172,7 @@ fn execute_transfer(
 
     // Continue with standard cw20 operation
     let cw20_resp = execute_cw20_transfer(deps, env, info, recipient, remaining_amount)?;
-    resp = resp.add_attributes(cw20_resp.attributes);
+    resp = resp.add_attributes(cw20_resp.attributes).add_events(events);
     Ok(resp)
 }
 

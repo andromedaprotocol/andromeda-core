@@ -291,7 +291,7 @@ pub fn on_funds_transfer(
     sender: String,
     amount: Funds,
     msg: Binary,
-) -> Result<(Vec<SubMsg>, Funds), ContractError> {
+) -> Result<(Vec<SubMsg>, Vec<Event>, Funds), ContractError> {
     let modules: Vec<ModuleInfoWithAddress> = load_modules_with_address(storage)?;
     let mut remainder = amount;
     let mut msgs: Vec<SubMsg> = Vec::new();
@@ -325,9 +325,10 @@ pub fn on_funds_transfer(
             remainder.clone(),
         )?;
         msgs = [msgs, mod_resp.msgs].concat();
+        events = [events, mod_resp.events].concat();
     }
 
-    Ok((msgs, remainder))
+    Ok((msgs, events, remainder))
 }
 
 fn query_on_funds_transfer(
@@ -408,6 +409,25 @@ mod tests {
     fn test_validate_rates() {
         let module = Module {
             module_type: ModuleType::Rates,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+
+        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let other_module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+        module
+            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_validate_receipt() {
+        let module = Module {
+            module_type: ModuleType::Receipt,
             instantiate: InstantiateType::Address("".to_string()),
         };
 
