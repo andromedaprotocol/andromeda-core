@@ -197,6 +197,7 @@ pub trait MessageHooks {
         Ok(HookResponse::default())
     }
     /// Called whenever an agreed transfer is taking place
+    #[allow(clippy::ptr_arg)]
     fn on_agreed_transfer(
         &self,
         _deps: &DepsMut,

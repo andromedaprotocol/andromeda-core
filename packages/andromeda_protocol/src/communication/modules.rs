@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
-    communication::query_get, error::ContractError, factory::CodeIdResponse, rates::Funds,
+    communication::query_get, error::ContractError, factory::CodeIdResponse, rates::Funds, require,
 };
 
 use super::hooks::{AndromedaHook, OnFundsTransferResponse};
@@ -68,6 +68,13 @@ pub struct ModuleInfoWithAddress {
     address: String,
 }
 
+/// The type of ADO that is using these modules.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum ADOType {
+    CW721,
+    CW20,
+}
+
 impl Module {
     /// Queries the code id for a module from the factory contract
     pub fn get_code_id(&self, querier: QuerierWrapper) -> Result<Option<u64>, ContractError> {
@@ -114,6 +121,42 @@ impl Module {
             _ => Ok(None),
         }
     }
+
+    /// Validates `self` by checking that it is unique, does not conflict with any other module,
+    /// and does not conflict with the creating ADO.
+    pub fn validate(&self, modules: &[Module], ado_type: &ADOType) -> Result<(), ContractError> {
+        require(self.is_unique(modules), ContractError::ModuleNotUnique {})?;
+
+        if ado_type == &ADOType::CW20 && contains_module(modules, ModuleType::Auction) {
+            return Err(ContractError::IncompatibleModules {
+                msg: "An Auction module cannot be used for a CW20 ADO".to_string(),
+            });
+        }
+
+        Ok(())
+    }
+
+    /// Determines if `self` is unique within the context of a vector of `Module`
+    ///
+    /// ## Arguments
+    /// * `all_modules` - The vector of modules containing the provided module
+    ///
+    /// Returns a `boolean` representing whether the module is unique or not
+    fn is_unique(&self, all_modules: &[Module]) -> bool {
+        let mut total = 0;
+        all_modules.iter().for_each(|m| {
+            if self == m {
+                total += 1;
+            }
+        });
+
+        total == 1
+    }
+}
+
+/// Checks if any element of `modules` contains one of type `module_type`.
+fn contains_module(modules: &[Module], module_type: ModuleType) -> bool {
+    modules.iter().any(|m| m.module_type == module_type)
 }
 
 /// Registers a module
@@ -206,6 +249,15 @@ pub fn load_modules_with_address(
     Ok(modules_with_addresses)
 }
 
+/// Validates all modules.
+pub fn validate_modules(modules: &[Module], ado_type: ADOType) -> Result<(), ContractError> {
+    for module in modules {
+        module.validate(modules, &ado_type)?;
+    }
+
+    Ok(())
+}
+
 /// Sends the provided hook message to all registered modules
 pub fn module_hook<T>(
     storage: &dyn Storage,
@@ -255,4 +307,80 @@ pub fn on_funds_transfer(
     }
 
     Ok((msgs, remainder))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_addresslist() {
+        let addresslist_module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+
+        let res = addresslist_module.validate(
+            &[addresslist_module.clone(), addresslist_module.clone()],
+            &ADOType::CW721,
+        );
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let auction_module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("".into()),
+        };
+        addresslist_module
+            .validate(
+                &[addresslist_module.clone(), auction_module],
+                &ADOType::CW721,
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn test_validate_auction() {
+        let module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+
+        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let res = module.validate(&[module.clone()], &ADOType::CW20);
+        assert_eq!(
+            ContractError::IncompatibleModules {
+                msg: "An Auction module cannot be used for a CW20 ADO".to_string()
+            },
+            res.unwrap_err()
+        );
+
+        let other_module = Module {
+            module_type: ModuleType::Rates,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+        module
+            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_validate_rates() {
+        let module = Module {
+            module_type: ModuleType::Rates,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+
+        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let other_module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("".to_string()),
+        };
+        module
+            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .unwrap();
+    }
 }
