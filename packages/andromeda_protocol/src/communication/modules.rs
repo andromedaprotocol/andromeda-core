@@ -177,8 +177,8 @@ fn register_module(
     let idx_str = idx.to_string();
     MODULE_INFO.save(storage, &idx_str, module)?;
     MODULE_IDX.save(storage, &(idx + 1))?;
-    if let InstantiateType::Address(addr) = module.instantiate.clone() {
-        MODULE_ADDR.save(storage, &idx_str, &api.addr_validate(&addr)?)?;
+    if let InstantiateType::Address(addr) = &module.instantiate {
+        MODULE_ADDR.save(storage, &idx_str, &api.addr_validate(addr)?)?;
     }
 
     Ok(idx)
@@ -211,8 +211,8 @@ fn alter_module(
         return Err(ContractError::ModuleDoesNotExist {});
     }
     MODULE_INFO.save(storage, &idx_str, module)?;
-    if let InstantiateType::Address(addr) = module.instantiate.clone() {
-        MODULE_ADDR.save(storage, &idx_str, &api.addr_validate(&addr)?)?;
+    if let InstantiateType::Address(addr) = &module.instantiate {
+        MODULE_ADDR.save(storage, &idx_str, &api.addr_validate(addr)?)?;
     }
     Ok(())
 }
