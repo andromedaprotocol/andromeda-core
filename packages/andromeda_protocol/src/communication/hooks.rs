@@ -1,4 +1,4 @@
-use cosmwasm_std::{Binary, SubMsg};
+use cosmwasm_std::{Binary, Event, SubMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -9,11 +9,11 @@ use crate::rates::Funds;
 pub enum AndromedaHook {
     OnExecute {
         sender: String,
-        msg: Binary,
+        payload: Binary,
     },
     OnFundsTransfer {
         sender: String,
-        msg: Binary,
+        payload: Binary,
         amount: Funds,
     },
 }
@@ -22,5 +22,6 @@ pub enum AndromedaHook {
 #[serde(rename_all = "snake_case")]
 pub struct OnFundsTransferResponse {
     pub msgs: Vec<SubMsg>,
+    pub events: Vec<Event>,
     pub leftover_funds: Funds,
 }
