@@ -9,12 +9,7 @@ use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
-    address_list::InstantiateMsg as AddressListInstantiateMsg,
-    communication::{encode_binary, parse_struct, query_get},
-    error::ContractError,
-    factory::CodeIdResponse,
-    rates::Funds,
-    require,
+    communication::query_get, error::ContractError, factory::CodeIdResponse, rates::Funds, require,
 };
 
 use super::hooks::{AndromedaHook, OnFundsTransferResponse};
@@ -29,8 +24,7 @@ pub const MODULE_IDX: Item<u64> = Item::new("andr_module_idx");
 #[serde(rename_all = "snake_case")]
 pub enum ModuleType {
     Rates,
-    Whitelist,
-    Blacklist,
+    AddressList,
     Auction,
     /// Used for external contracts, undocumented
     Other,
@@ -40,8 +34,7 @@ pub enum ModuleType {
 impl From<ModuleType> for String {
     fn from(module_type: ModuleType) -> Self {
         match module_type {
-            ModuleType::Whitelist => String::from("address_list"),
-            ModuleType::Blacklist => String::from("address_list"),
+            ModuleType::AddressList => String::from("address_list"),
             ModuleType::Rates => String::from("rates"),
             ModuleType::Auction => String::from("auction"),
             ModuleType::Other => String::from("other"),
@@ -106,7 +99,6 @@ impl Module {
     ) -> Result<Option<SubMsg>, ContractError> {
         match self.instantiate.clone() {
             InstantiateType::New(msg) => {
-                let msg = self.enforce_instantiate_msg(msg)?;
                 match self.get_code_id(querier)? {
                     None => Err(ContractError::InvalidModule {
                         msg: Some(String::from(
@@ -135,24 +127,6 @@ impl Module {
     pub fn validate(&self, modules: &[Module], ado_type: &ADOType) -> Result<(), ContractError> {
         require(self.is_unique(modules), ContractError::ModuleNotUnique {})?;
 
-        match &self.module_type {
-            ModuleType::Whitelist => {
-                if contains_module(modules, ModuleType::Blacklist) {
-                    return Err(ContractError::IncompatibleModules {
-                        msg: "A Whitelist cannot exist along with a Blacklist".to_string(),
-                    });
-                }
-            }
-            ModuleType::Blacklist => {
-                if contains_module(modules, ModuleType::Whitelist) {
-                    return Err(ContractError::IncompatibleModules {
-                        msg: "A Blacklist cannot exist along with a Whitelist".to_string(),
-                    });
-                }
-            }
-            _ => {}
-        }
-
         if ado_type == &ADOType::CW20 && contains_module(modules, ModuleType::Auction) {
             return Err(ContractError::IncompatibleModules {
                 msg: "An Auction module cannot be used for a CW20 ADO".to_string(),
@@ -177,23 +151,6 @@ impl Module {
         });
 
         total == 1
-    }
-
-    /// Modifies `msg` to conform to the requirements of the given module.
-    fn enforce_instantiate_msg(&self, msg: Binary) -> Result<Binary, ContractError> {
-        match self.module_type {
-            ModuleType::Whitelist {} => {
-                let mut msg: AddressListInstantiateMsg = parse_struct(&msg)?;
-                msg.is_inclusive = true;
-                encode_binary(&msg)
-            }
-            ModuleType::Blacklist {} => {
-                let mut msg: AddressListInstantiateMsg = parse_struct(&msg)?;
-                msg.is_inclusive = false;
-                encode_binary(&msg)
-            }
-            _ => Ok(msg),
-        }
     }
 }
 
@@ -355,81 +312,29 @@ pub fn on_funds_transfer(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::from_binary;
 
     #[test]
-    fn test_validate_whitelist() {
-        let whitelist_module = Module {
-            module_type: ModuleType::Whitelist,
+    fn test_validate_addresslist() {
+        let addresslist_module = Module {
+            module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("".to_string()),
         };
 
-        let res = whitelist_module.validate(
-            &[whitelist_module.clone(), whitelist_module.clone()],
+        let res = addresslist_module.validate(
+            &[addresslist_module.clone(), addresslist_module.clone()],
             &ADOType::CW721,
         );
         assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
-
-        let blacklist_module = Module {
-            module_type: ModuleType::Blacklist,
-            instantiate: InstantiateType::Address("".to_string()),
-        };
-
-        let res = whitelist_module.validate(
-            &[whitelist_module.clone(), blacklist_module],
-            &ADOType::CW721,
-        );
-        assert_eq!(
-            ContractError::IncompatibleModules {
-                msg: "A Whitelist cannot exist along with a Blacklist".to_string()
-            },
-            res.unwrap_err()
-        );
 
         let auction_module = Module {
             module_type: ModuleType::Auction,
             instantiate: InstantiateType::Address("".into()),
         };
-        whitelist_module
-            .validate(&[whitelist_module.clone(), auction_module], &ADOType::CW721)
-            .unwrap();
-    }
-
-    #[test]
-    fn test_validate_blacklist() {
-        let blacklist_module = Module {
-            module_type: ModuleType::Blacklist,
-            instantiate: InstantiateType::Address("".to_string()),
-        };
-
-        let res = blacklist_module.validate(
-            &[blacklist_module.clone(), blacklist_module.clone()],
-            &ADOType::CW721,
-        );
-        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
-
-        let whitelist_module = Module {
-            module_type: ModuleType::Whitelist,
-            instantiate: InstantiateType::Address("".to_string()),
-        };
-
-        let res = blacklist_module.validate(
-            &[whitelist_module, blacklist_module.clone()],
-            &ADOType::CW721,
-        );
-        assert_eq!(
-            ContractError::IncompatibleModules {
-                msg: "A Blacklist cannot exist along with a Whitelist".to_string()
-            },
-            res.unwrap_err()
-        );
-
-        let auction_module = Module {
-            module_type: ModuleType::Auction,
-            instantiate: InstantiateType::Address("".into()),
-        };
-        blacklist_module
-            .validate(&[blacklist_module.clone(), auction_module], &ADOType::CW721)
+        addresslist_module
+            .validate(
+                &[addresslist_module.clone(), auction_module],
+                &ADOType::CW721,
+            )
             .unwrap();
     }
 
@@ -471,59 +376,11 @@ mod tests {
         assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
 
         let other_module = Module {
-            module_type: ModuleType::Whitelist,
+            module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("".to_string()),
         };
         module
             .validate(&[module.clone(), other_module], &ADOType::CW721)
             .unwrap();
-    }
-
-    #[test]
-    fn test_enforce_instantiate_msg_whitelist() {
-        let msg = AddressListInstantiateMsg {
-            operators: vec![],
-            is_inclusive: false,
-        };
-
-        let msg = to_binary(&msg).unwrap();
-
-        let module = Module {
-            module_type: ModuleType::Whitelist,
-            instantiate: InstantiateType::New(msg.clone()),
-        };
-
-        let new_msg = module.enforce_instantiate_msg(msg).unwrap();
-        assert_eq!(
-            AddressListInstantiateMsg {
-                operators: vec![],
-                is_inclusive: true
-            },
-            from_binary(&new_msg).unwrap()
-        );
-    }
-
-    #[test]
-    fn test_enforce_instantiate_msg_blacklist() {
-        let msg = AddressListInstantiateMsg {
-            operators: vec![],
-            is_inclusive: true,
-        };
-
-        let msg = to_binary(&msg).unwrap();
-
-        let module = Module {
-            module_type: ModuleType::Blacklist,
-            instantiate: InstantiateType::New(msg.clone()),
-        };
-
-        let new_msg = module.enforce_instantiate_msg(msg).unwrap();
-        assert_eq!(
-            AddressListInstantiateMsg {
-                operators: vec![],
-                is_inclusive: false
-            },
-            from_binary(&new_msg).unwrap()
-        );
     }
 }
