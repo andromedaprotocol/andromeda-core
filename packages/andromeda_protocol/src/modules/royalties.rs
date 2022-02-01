@@ -1,4 +1,4 @@
-use cosmwasm_std::{DepsMut, Env, Event, MessageInfo};
+use cosmwasm_std::{BankMsg, DepsMut, Env, Event, MessageInfo};
 
 use crate::error::ContractError;
 use crate::{require, token::TransferAgreement};
@@ -29,7 +29,7 @@ impl MessageHooks for Royalty {
         _deps: &DepsMut,
         _info: MessageInfo,
         _env: Env,
-        payments: &mut Vec<cosmwasm_std::BankMsg>,
+        payments: &mut Vec<BankMsg>,
         owner: String,
         agreement: TransferAgreement,
     ) -> Result<HookResponse, ContractError> {
