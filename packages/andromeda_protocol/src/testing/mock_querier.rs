@@ -96,7 +96,7 @@ impl WasmMockQuerier {
                     let (new_funds, msg): (Funds, SubMsg) = match amount {
                         Funds::Cw20(ref coin) => (
                             Funds::Cw20(Cw20Coin {
-                                amount: coin.amount.multiply_ratio(10u128, 100u128),
+                                amount: coin.amount.multiply_ratio(90u128, 100u128),
                                 address: coin.address.clone(),
                             }),
                             SubMsg::new(WasmMsg::Execute {
@@ -111,7 +111,7 @@ impl WasmMockQuerier {
                         ),
                         Funds::Native(ref coin) => (
                             Funds::Native(Coin {
-                                amount: coin.amount.multiply_ratio(10u128, 100u128),
+                                amount: coin.amount.multiply_ratio(90u128, 100u128),
                                 denom: coin.denom.clone(),
                             }),
                             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {

@@ -2,6 +2,8 @@ use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
     communication::modules::{InstantiateType, Module, ModuleType},
     cw20::{ExecuteMsg, InstantiateMsg},
+    error::ContractError,
+    receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_CONTRACT,
         MOCK_RECEIPT_CONTRACT,
@@ -10,9 +12,11 @@ use andromeda_protocol::{
 use cosmwasm_std::{
     attr, coin,
     testing::{mock_env, mock_info},
-    to_binary, BankMsg, CosmosMsg, Event, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
+    to_binary, Addr, BankMsg, CosmosMsg, Event, ReplyOn, Response, StdError, SubMsg, Uint128,
+    WasmMsg,
 };
 use cw20::Cw20Coin;
+use cw20_base::state::BALANCES;
 
 #[test]
 fn test_transfer() {
@@ -48,6 +52,72 @@ fn test_transfer() {
         modules: Some(modules),
     };
 
-    let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
+    let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
     assert_eq!(Response::default(), res);
+
+    assert_eq!(
+        Uint128::from(1000u128),
+        BALANCES
+            .load(deps.as_ref().storage, &Addr::unchecked("sender"))
+            .unwrap()
+    );
+
+    let msg = ExecuteMsg::Transfer {
+        recipient: "other".into(),
+        amount: 100u128.into(),
+    };
+
+    let not_whitelisted_info = mock_info("not_whitelisted", &[]);
+    let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
+    assert_eq!(
+        ContractError::Std(StdError::generic_err(
+            "Querier contract error: InvalidAddress"
+        )),
+        res.unwrap_err()
+    );
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let receipt_msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_RECEIPT_CONTRACT.to_string(),
+        msg: to_binary(&ReceiptExecuteMsg::StoreReceipt {
+            receipt: Receipt { events: vec![] },
+        })
+        .unwrap(),
+        funds: vec![],
+    }));
+
+    assert_eq!(
+        Response::new()
+            .add_submessage(receipt_msg)
+            .add_attribute("action", "transfer")
+            .add_attribute("from", "sender")
+            .add_attribute("to", "other")
+            .add_attribute("amount", "90"),
+        res
+    );
+
+    // Funds deducted from the sender.
+    assert_eq!(
+        Uint128::from(900u128),
+        BALANCES
+            .load(deps.as_ref().storage, &Addr::unchecked("sender"))
+            .unwrap()
+    );
+
+    // Funds given to the receiver.
+    assert_eq!(
+        Uint128::from(90u128),
+        BALANCES
+            .load(deps.as_ref().storage, &Addr::unchecked("other"))
+            .unwrap()
+    );
+
+    // Royalty given to rates_recipient
+    assert_eq!(
+        Uint128::from(10u128),
+        BALANCES
+            .load(deps.as_ref().storage, &Addr::unchecked("rates_recipient"))
+            .unwrap()
+    );
 }
