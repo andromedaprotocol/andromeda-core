@@ -854,4 +854,24 @@ mod tests {
 
         assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
     }
+
+    #[test]
+    fn test_process_module_response() {
+        let res: Option<Response> = process_module_response(Ok(Response::new())).unwrap();
+        assert_eq!(Some(Response::new()), res);
+
+        let res: Option<Response> = process_module_response(Err(StdError::generic_err(
+            "XXXXXXX UnsupportedOperation XXXXXXX",
+        )))
+        .unwrap();
+        assert_eq!(None, res);
+
+        let res: ContractError =
+            process_module_response::<Response>(Err(StdError::generic_err("AnotherError")))
+                .unwrap_err();
+        assert_eq!(
+            ContractError::Std(StdError::generic_err("AnotherError")),
+            res
+        );
+    }
 }
