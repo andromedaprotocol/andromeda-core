@@ -9,12 +9,13 @@ use andromeda_protocol::{
     communication::{
         hooks::AndromedaHook,
         modules::{
-            module_hook, on_funds_transfer, register_module, validate_modules, ADOType,
-            MODULE_ADDR, MODULE_INFO,
+            execute_alter_module, execute_deregister_module, execute_register_module, module_hook,
+            on_funds_transfer, validate_modules, ADOType, MODULE_ADDR, MODULE_INFO,
         },
     },
     cw20::{ExecuteMsg, InstantiateMsg, QueryMsg},
     error::ContractError,
+    ownership::CONTRACT_OWNER,
     rates::Funds,
     require,
     response::get_reply_address,
@@ -34,17 +35,23 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     let mut resp = Response::default();
+    let sender = info.sender.as_str();
     if let Some(modules) = msg.modules.clone() {
         validate_modules(&modules, ADOType::CW20)?;
         for module in modules {
-            let idx = register_module(deps.storage, deps.api, &module)?;
-            if let Some(inst_msg) = module.generate_instantiate_msg(deps.querier, idx)? {
-                resp = resp.add_submessage(inst_msg);
-            }
+            resp = execute_register_module(
+                &deps.querier,
+                deps.storage,
+                deps.api,
+                sender,
+                &module,
+                ADOType::CW20,
+                false,
+            )?;
         }
     }
-
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
     resp = resp
         .add_submessages(cw20_resp.messages)
@@ -61,17 +68,14 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         )));
     }
 
+    let id = msg.id.to_string();
     require(
-        MODULE_INFO.load(deps.storage, msg.id.to_string()).is_ok(),
+        MODULE_INFO.load(deps.storage, &id).is_ok(),
         ContractError::InvalidReplyId {},
     )?;
 
     let addr = get_reply_address(&msg)?;
-    MODULE_ADDR.save(
-        deps.storage,
-        msg.id.to_string(),
-        &deps.api.addr_validate(&addr)?,
-    )?;
+    MODULE_ADDR.save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
 
     Ok(Response::default())
 }
@@ -102,6 +106,21 @@ pub fn execute(
             msg,
         } => execute_send(deps, env, info, contract, amount, msg),
         ExecuteMsg::Mint { recipient, amount } => execute_mint(deps, env, info, recipient, amount),
+        ExecuteMsg::RegisterModule { module } => execute_register_module(
+            &deps.querier,
+            deps.storage,
+            deps.api,
+            info.sender.as_str(),
+            &module,
+            ADOType::CW20,
+            true,
+        ),
+        ExecuteMsg::DeregisterModule { module_idx } => {
+            execute_deregister_module(deps, info, module_idx)
+        }
+        ExecuteMsg::AlterModule { module_idx, module } => {
+            execute_alter_module(deps, info, module_idx, &module, ADOType::CW20)
+        }
         _ => Ok(execute_cw20(deps, env, info, msg.into())?),
     }
 }
