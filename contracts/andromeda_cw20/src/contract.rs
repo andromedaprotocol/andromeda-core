@@ -160,22 +160,15 @@ fn execute_transfer(
             CosmosMsg::Wasm(wasm_msg) => match wasm_msg {
                 WasmMsg::Execute { msg: exec_msg, .. } => {
                     // If binary deserializes to a Cw20ExecuteMsg check the message type
-                    if let Ok(transfer_msg) = from_binary::<Cw20ExecuteMsg>(&exec_msg) {
-                        match transfer_msg {
-                            // If the message is a transfer message then transfer the tokens from the current message sender to the recipient
-                            Cw20ExecuteMsg::Transfer { recipient, amount } => {
-                                transfer_tokens(
-                                    deps.storage,
-                                    sender.clone(),
-                                    deps.api.addr_validate(&recipient)?,
-                                    amount,
-                                )?;
-                            }
-                            // Otherwise add to messages to be sent in response
-                            _ => {
-                                resp = resp.add_submessage(msg);
-                            }
-                        }
+                    if let Ok(Cw20ExecuteMsg::Transfer { recipient, amount }) =
+                        from_binary::<Cw20ExecuteMsg>(&exec_msg)
+                    {
+                        transfer_tokens(
+                            deps.storage,
+                            sender.clone(),
+                            deps.api.addr_validate(&recipient)?,
+                            amount,
+                        )?;
                     } else {
                         // Need this so receipt messages will be added too.
                         resp = resp.add_submessage(msg);
