@@ -20,7 +20,7 @@ use crate::{
 
 use super::hooks::{AndromedaHook, OnFundsTransferResponse};
 
-pub const FACTORY_ADDRESS: &str = "terra1m2g9052ejs6em5cffwed83ywxzjgcvgqgp3rqk";
+pub const FACTORY_ADDRESS: &str = "terra1...";
 pub const MODULE_INFO: Map<&str, Module> = Map::new("andr_modules");
 pub const MODULE_ADDR: Map<&str, Addr> = Map::new("andr_module_addresses");
 pub const MODULE_IDX: Item<u64> = Item::new("andr_module_idx");
