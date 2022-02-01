@@ -41,7 +41,7 @@ pub fn instantiate(
     if let Some(modules) = msg.modules.clone() {
         validate_modules(&modules, ADOType::CW20)?;
         for module in modules {
-            resp = execute_register_module(
+            let response = execute_register_module(
                 &deps.querier,
                 deps.storage,
                 deps.api,
@@ -50,6 +50,7 @@ pub fn instantiate(
                 ADOType::CW20,
                 false,
             )?;
+            resp = resp.add_submessages(response.messages);
         }
     }
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
@@ -134,7 +135,7 @@ fn execute_transfer(
 ) -> Result<Response, ContractError> {
     let mut resp = Response::new();
     let sender = info.sender.clone();
-    let (payments, events, remainder) = on_funds_transfer(
+    let (msgs, events, remainder) = on_funds_transfer(
         deps.storage,
         deps.querier,
         info.sender.to_string(),
@@ -153,28 +154,24 @@ fn execute_transfer(
     };
 
     // Filter through payment messages to extract cw20 transfer messages to avoid looping
-    for msg in payments {
+    for msg in msgs {
         match msg.msg.clone() {
             // Transfer messages are CosmosMsg::Wasm type
             CosmosMsg::Wasm(wasm_msg) => match wasm_msg {
                 WasmMsg::Execute { msg: exec_msg, .. } => {
                     // If binary deserializes to a Cw20ExecuteMsg check the message type
-                    if let Ok(transfer_msg) = from_binary::<Cw20ExecuteMsg>(&exec_msg) {
-                        match transfer_msg {
-                            // If the message is a transfer message then transfer the tokens from the current message sender to the recipient
-                            Cw20ExecuteMsg::Transfer { recipient, amount } => {
-                                transfer_tokens(
-                                    deps.storage,
-                                    sender.clone(),
-                                    deps.api.addr_validate(&recipient)?,
-                                    amount,
-                                )?;
-                            }
-                            // Otherwise add to messages to be sent in response
-                            _ => {
-                                resp = resp.add_submessage(msg);
-                            }
-                        }
+                    if let Ok(Cw20ExecuteMsg::Transfer { recipient, amount }) =
+                        from_binary::<Cw20ExecuteMsg>(&exec_msg)
+                    {
+                        transfer_tokens(
+                            deps.storage,
+                            sender.clone(),
+                            deps.api.addr_validate(&recipient)?,
+                            amount,
+                        )?;
+                    } else {
+                        // Need this so receipt messages will be added too.
+                        resp = resp.add_submessage(msg);
                     }
                 }
                 // Otherwise add to messages to be sent in response

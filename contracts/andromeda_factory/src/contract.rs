@@ -6,10 +6,11 @@ use crate::{
 };
 use andromeda_protocol::{
     communication::encode_binary,
+    communication::{parse_message, AndromedaQuery},
     error::ContractError,
     factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     modules::ModuleDefinition,
-    operators::{execute_update_operators, query_is_operator},
+    operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     token::InstantiateMsg as TokenInstantiateMsg,
@@ -204,6 +205,21 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
         QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
         QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+    }
+}
+
+fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let code_id_key: String = parse_message(data)?;
+            encode_binary(&query_code_id(deps, code_id_key)?)
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
     }
 }
 
