@@ -272,13 +272,14 @@ pub fn validate_modules(modules: &[Module], ado_type: ADOType) -> Result<(), Con
 pub fn module_hook<T>(
     storage: &dyn Storage,
     querier: QuerierWrapper,
-    msg: AndromedaHook,
+    hook_msg: AndromedaHook,
 ) -> Result<Vec<T>, ContractError>
 where
     T: DeserializeOwned,
 {
     let addresses: Vec<String> = load_module_addresses(storage)?;
     let mut resp: Vec<T> = Vec::new();
+    let msg = HookMsg::AndrHook(hook_msg);
     for addr in addresses {
         let mod_resp: Result<T, StdError> = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: addr,
