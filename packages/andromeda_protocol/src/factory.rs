@@ -1,4 +1,7 @@
-use crate::modules::ModuleDefinition;
+use crate::{
+    communication::{AndromedaMsg, AndromedaQuery},
+    modules::ModuleDefinition,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -23,13 +26,7 @@ pub enum ExecuteMsg {
         symbol: String,
         new_address: String,
     },
-    /// Update current contract owner
-    UpdateOwner {
-        address: String,
-    },
-    UpdateOperator {
-        operators: Vec<String>,
-    },
+    AndrReceive(AndromedaMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -43,11 +40,7 @@ pub enum QueryMsg {
     CodeId {
         key: String,
     },
-    /// The current contract owner
-    ContractOwner {},
-    IsOperator {
-        address: String,
-    },
+    AndrQuery(AndromedaQuery),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

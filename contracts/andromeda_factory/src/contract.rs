@@ -5,11 +5,11 @@ use crate::{
     },
 };
 use andromeda_protocol::{
-    communication::encode_binary,
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     modules::ModuleDefinition,
-    operators::{execute_update_operators, query_is_operator},
+    operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     token::InstantiateMsg as TokenInstantiateMsg,
@@ -63,12 +63,33 @@ pub fn execute(
             symbol,
             new_address,
         } => update_address(deps, env, info, symbol, new_address),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
         ExecuteMsg::UpdateCodeId {
             code_id_key,
             code_id,
         } => add_update_code_id(deps, env, info, code_id_key, code_id),
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+    }
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
+        }
+        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -198,12 +219,32 @@ pub fn add_update_code_id(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetAddress { symbol } => encode_binary(&query_address(deps, symbol)?),
-        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
         QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
-        QueryMsg::IsOperator { address } => encode_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+    }
+}
+
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received: QueryMsg = parse_message(data)?;
+            match received {
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => query(deps, env, received),
+            }
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
     }
 }
 
