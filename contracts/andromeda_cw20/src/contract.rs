@@ -41,7 +41,7 @@ pub fn instantiate(
     if let Some(modules) = msg.modules.clone() {
         validate_modules(&modules, ADOType::CW20)?;
         for module in modules {
-            resp = execute_register_module(
+            let response = execute_register_module(
                 &deps.querier,
                 deps.storage,
                 deps.api,
@@ -50,6 +50,7 @@ pub fn instantiate(
                 ADOType::CW20,
                 false,
             )?;
+            resp = resp.add_submessages(response.messages);
         }
     }
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;

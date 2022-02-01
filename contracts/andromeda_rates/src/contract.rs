@@ -1,16 +1,14 @@
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     communication::{
-        encode_binary, hooks::AndromedaHook, parse_message, AndromedaMsg, AndromedaQuery,
+        encode_binary, hooks::AndromedaHook, hooks::OnFundsTransferResponse, parse_message,
+        AndromedaMsg, AndromedaQuery,
     },
     error::ContractError,
     modules::common::{calculate_fee, deduct_funds},
     operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    rates::{
-        DeductedFundsResponse, ExecuteMsg, Funds, InstantiateMsg, PaymentsResponse, QueryMsg,
-        RateInfo,
-    },
+    rates::{ExecuteMsg, Funds, InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
     require,
 };
 use cosmwasm_std::{
@@ -106,7 +104,7 @@ fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, Contr
         AndromedaHook::OnFundsTransfer { amount, .. } => {
             encode_binary(&query_deducted_funds(deps, amount)?)
         }
-        _ => encode_binary(&false), //TODO: Return contract error (NotImplemented?),
+        _ => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -117,7 +115,10 @@ fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
     Ok(PaymentsResponse { payments: rates })
 }
 
-fn query_deducted_funds(deps: Deps, funds: Funds) -> Result<DeductedFundsResponse, ContractError> {
+fn query_deducted_funds(
+    deps: Deps,
+    funds: Funds,
+) -> Result<OnFundsTransferResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let mut msgs: Vec<SubMsg> = vec![];
     let (coin, is_native): (Coin, bool) = match funds {
@@ -146,7 +147,7 @@ fn query_deducted_funds(deps: Deps, funds: Funds) -> Result<DeductedFundsRespons
             msgs.push(msg);
         }
     }
-    Ok(DeductedFundsResponse {
+    Ok(OnFundsTransferResponse {
         msgs,
         leftover_funds: if is_native {
             Funds::Native(leftover_funds[0].clone())
@@ -156,6 +157,7 @@ fn query_deducted_funds(deps: Deps, funds: Funds) -> Result<DeductedFundsRespons
                 address: coin.denom,
             })
         },
+        events: vec![],
     })
 }
 
@@ -286,7 +288,7 @@ mod tests {
         let msg = InstantiateMsg { rates };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        let res: DeductedFundsResponse = from_binary(
+        let res: OnFundsTransferResponse = from_binary(
             &query(
                 deps.as_ref(),
                 env,
@@ -313,10 +315,11 @@ mod tests {
             })),
         ];
         assert_eq!(
-            DeductedFundsResponse {
+            OnFundsTransferResponse {
                 msgs: expected_msgs,
                 // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
-                leftover_funds: Funds::Native(coin(89, "uusd"))
+                leftover_funds: Funds::Native(coin(89, "uusd")),
+                events: vec![]
             },
             res
         );
@@ -358,7 +361,7 @@ mod tests {
         let msg = InstantiateMsg { rates };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        let res: DeductedFundsResponse = from_binary(
+        let res: OnFundsTransferResponse = from_binary(
             &query(
                 deps.as_ref(),
                 env,
@@ -404,13 +407,14 @@ mod tests {
             }),
         ];
         assert_eq!(
-            DeductedFundsResponse {
+            OnFundsTransferResponse {
                 msgs: expected_msgs,
                 // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
                 leftover_funds: Funds::Cw20(Cw20Coin {
                     amount: 89u128.into(),
                     address: cw20_address.to_string()
-                })
+                }),
+                events: vec![]
             },
             res
         );

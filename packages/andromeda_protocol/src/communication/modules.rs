@@ -20,7 +20,7 @@ use crate::{
 
 use super::hooks::{AndromedaHook, OnFundsTransferResponse};
 
-pub const FACTORY_ADDRESS: &str = "terra1...";
+pub const FACTORY_ADDRESS: &str = "terra1m2g9052ejs6em5cffwed83ywxzjgcvgqgp3rqk";
 pub const MODULE_INFO: Map<&str, Module> = Map::new("andr_modules");
 pub const MODULE_ADDR: Map<&str, Addr> = Map::new("andr_module_addresses");
 pub const MODULE_IDX: Item<u64> = Item::new("andr_module_idx");
@@ -384,8 +384,16 @@ where
             contract_addr: addr,
             msg: to_binary(&msg)?,
         }));
-        if let Ok(mod_resp) = mod_resp {
-            resp.push(mod_resp);
+        match mod_resp {
+            Ok(mod_resp) => resp.push(mod_resp),
+            Err(StdError::GenericErr { msg }) => {
+                if !msg.contains("UnsupportedOperation") {
+                    return Err(ContractError::Std(StdError::GenericErr { msg }));
+                }
+            }
+            Err(e) => {
+                return Err(e.into());
+            }
         }
     }
 
@@ -417,12 +425,10 @@ pub fn on_funds_transfer(
             sender.clone(),
             module.address.clone(),
             remainder.clone(),
-        );
-        if let Ok(mod_resp) = mod_resp {
-            remainder = mod_resp.leftover_funds;
-            msgs = [msgs, mod_resp.msgs].concat();
-            events = [events, mod_resp.events].concat();
-        }
+        )?;
+        remainder = mod_resp.leftover_funds;
+        msgs = [msgs, mod_resp.msgs].concat();
+        events = [events, mod_resp.events].concat();
     }
     if let Some(receipt_module_address) = receipt_module_address {
         let mod_resp = query_on_funds_transfer(
