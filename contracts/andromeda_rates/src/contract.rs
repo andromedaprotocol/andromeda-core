@@ -82,7 +82,7 @@ fn execute_update_rates(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
-        QueryMsg::Hook(msg) => handle_andromeda_hook(deps, msg),
+        QueryMsg::AndrHook(msg) => handle_andromeda_hook(deps, msg),
         QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
     }
 }

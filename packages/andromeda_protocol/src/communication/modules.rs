@@ -1,15 +1,19 @@
 use std::convert::TryInto;
 
 use cosmwasm_std::{
-    to_binary, wasm_instantiate, Addr, Api, Binary, CosmosMsg, Event, Order, QuerierWrapper,
-    QueryRequest, ReplyOn, StdError, Storage, SubMsg, WasmQuery,
+    to_binary, Addr, Api, Binary, CosmosMsg, Event, Order, QuerierWrapper, QueryRequest, ReplyOn,
+    StdError, Storage, SubMsg, WasmMsg, WasmQuery,
 };
 use cw_storage_plus::{Bound, Item, Map};
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
-    communication::query_get, error::ContractError, factory::CodeIdResponse, rates::Funds, require,
+    communication::{query_get, HookMsg},
+    error::ContractError,
+    factory::CodeIdResponse,
+    rates::Funds,
+    require,
 };
 
 use super::hooks::{AndromedaHook, OnFundsTransferResponse};
@@ -110,12 +114,16 @@ impl Module {
                     Some(code_id) => Ok(Some(SubMsg {
                         id: module_id, //TODO: ADD ID,
                         reply_on: ReplyOn::Always,
-                        msg: CosmosMsg::Wasm(wasm_instantiate(
+                        msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                            admin: None,
                             code_id,
-                            &msg,
-                            vec![],
-                            format!("Instantiate: {}", String::from(self.module_type.clone())),
-                        )?),
+                            msg,
+                            funds: vec![],
+                            label: format!(
+                                "Instantiate: {}",
+                                String::from(self.module_type.clone())
+                            ),
+                        }),
                         gas_limit: None,
                     })),
                 }
@@ -338,11 +346,11 @@ fn query_on_funds_transfer(
     contract_addr: String,
     amount: Funds,
 ) -> Result<OnFundsTransferResponse, StdError> {
-    let query_msg = AndromedaHook::OnFundsTransfer {
+    let query_msg = HookMsg::AndrHook(AndromedaHook::OnFundsTransfer {
         payload,
         sender,
         amount,
-    };
+    });
     querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr,
         msg: to_binary(&query_msg)?,

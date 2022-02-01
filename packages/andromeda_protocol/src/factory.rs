@@ -1,4 +1,4 @@
-use crate::modules::ModuleDefinition;
+use crate::{communication::AndromedaQuery, modules::ModuleDefinition};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +35,7 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// Query token contract address by its symbol
     GetAddress {
         symbol: String,
