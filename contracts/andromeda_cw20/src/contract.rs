@@ -135,7 +135,7 @@ fn execute_transfer(
 ) -> Result<Response, ContractError> {
     let mut resp = Response::new();
     let sender = info.sender.clone();
-    let (payments, events, remainder) = on_funds_transfer(
+    let (msgs, events, remainder) = on_funds_transfer(
         deps.storage,
         deps.querier,
         info.sender.to_string(),
@@ -154,7 +154,7 @@ fn execute_transfer(
     };
 
     // Filter through payment messages to extract cw20 transfer messages to avoid looping
-    for msg in payments {
+    for msg in msgs {
         match msg.msg.clone() {
             // Transfer messages are CosmosMsg::Wasm type
             CosmosMsg::Wasm(wasm_msg) => match wasm_msg {
@@ -176,6 +176,9 @@ fn execute_transfer(
                                 resp = resp.add_submessage(msg);
                             }
                         }
+                    } else {
+                        // Need this so receipt messages will be added too.
+                        resp = resp.add_submessage(msg);
                     }
                 }
                 // Otherwise add to messages to be sent in response
