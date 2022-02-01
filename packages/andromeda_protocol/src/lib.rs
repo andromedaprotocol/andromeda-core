@@ -5,6 +5,7 @@ pub mod anchor;
 pub mod common;
 pub mod communication;
 pub mod cw20;
+pub mod cw721;
 pub mod error;
 pub mod factory;
 pub mod mirror_wrapped_cdp;

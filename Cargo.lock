@@ -118,6 +118,7 @@ dependencies = [
  "cw20 0.9.1",
  "cw20-base",
  "cw721",
+ "cw721-base",
  "mirror-protocol",
  "schemars",
  "serde",
