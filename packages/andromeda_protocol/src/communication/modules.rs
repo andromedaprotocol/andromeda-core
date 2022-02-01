@@ -1,22 +1,23 @@
 use std::convert::TryInto;
 
 use cosmwasm_std::{
-    to_binary, wasm_instantiate, Addr, Api, Binary, CosmosMsg, Event, Order, QuerierWrapper,
-    QueryRequest, ReplyOn, StdError, Storage, SubMsg, WasmQuery,
+    to_binary, wasm_instantiate, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order,
+    QuerierWrapper, QueryRequest, ReplyOn, Response, StdError, Storage, SubMsg, Uint64, WasmQuery,
 };
 use cw_storage_plus::{Bound, Item, Map};
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
-    communication::query_get, error::ContractError, factory::CodeIdResponse, rates::Funds, require,
+    communication::query_get, error::ContractError, factory::CodeIdResponse,
+    operators::is_operator, ownership::is_contract_owner, rates::Funds, require,
 };
 
 use super::hooks::{AndromedaHook, OnFundsTransferResponse};
 
 pub const FACTORY_ADDRESS: &str = "terra1...";
-pub const MODULE_INFO: Map<String, Module> = Map::new("andr_modules");
-pub const MODULE_ADDR: Map<String, Addr> = Map::new("andr_module_addresses");
+pub const MODULE_INFO: Map<&str, Module> = Map::new("andr_modules");
+pub const MODULE_ADDR: Map<&str, Addr> = Map::new("andr_module_addresses");
 pub const MODULE_IDX: Item<u64> = Item::new("andr_module_idx");
 
 /// An enum describing the different available modules for any Andromeda Token contract
@@ -99,28 +100,27 @@ impl Module {
         querier: QuerierWrapper,
         module_id: u64,
     ) -> Result<Option<SubMsg>, ContractError> {
-        match self.instantiate.clone() {
-            InstantiateType::New(msg) => {
-                match self.get_code_id(querier)? {
-                    None => Err(ContractError::InvalidModule {
-                        msg: Some(String::from(
-                            "Module type provided does not have a valid Code Id",
-                        )),
-                    }),
-                    Some(code_id) => Ok(Some(SubMsg {
-                        id: module_id, //TODO: ADD ID,
-                        reply_on: ReplyOn::Always,
-                        msg: CosmosMsg::Wasm(wasm_instantiate(
-                            code_id,
-                            &msg,
-                            vec![],
-                            format!("Instantiate: {}", String::from(self.module_type.clone())),
-                        )?),
-                        gas_limit: None,
-                    })),
-                }
+        if let InstantiateType::New(msg) = &self.instantiate {
+            match self.get_code_id(querier)? {
+                None => Err(ContractError::InvalidModule {
+                    msg: Some(String::from(
+                        "Module type provided does not have a valid Code Id",
+                    )),
+                }),
+                Some(code_id) => Ok(Some(SubMsg {
+                    id: module_id, //TODO: ADD ID,
+                    reply_on: ReplyOn::Always,
+                    msg: CosmosMsg::Wasm(wasm_instantiate(
+                        code_id,
+                        msg,
+                        vec![],
+                        format!("Instantiate: {}", String::from(self.module_type.clone())),
+                    )?),
+                    gas_limit: None,
+                })),
             }
-            _ => Ok(None),
+        } else {
+            Ok(None)
         }
     }
 
@@ -165,7 +165,7 @@ fn contains_module(modules: &[Module], module_type: ModuleType) -> bool {
 /// If the module has provided an address as its form of instantiation this address is recorded
 /// Each module is assigned a u64 index so as it can be unregistered/altered
 /// The assigned u64 index is used as the message id for use in the `reply` entry point of the contract
-pub fn register_module(
+fn register_module(
     storage: &mut dyn Storage,
     api: &dyn Api,
     module: &Module,
@@ -174,13 +174,114 @@ pub fn register_module(
         Ok(index) => index,
         Err(..) => 1u64,
     };
-    MODULE_INFO.save(storage, idx.to_string(), module)?;
+    let idx_str = idx.to_string();
+    MODULE_INFO.save(storage, &idx_str, module)?;
     MODULE_IDX.save(storage, &(idx + 1))?;
-    if let InstantiateType::Address(addr) = module.instantiate.clone() {
-        MODULE_ADDR.save(storage, idx.to_string(), &api.addr_validate(&addr)?)?;
+    if let InstantiateType::Address(addr) = &module.instantiate {
+        MODULE_ADDR.save(storage, &idx_str, &api.addr_validate(addr)?)?;
     }
 
     Ok(idx)
+}
+
+/// Deregisters a module.
+fn deregister_module(storage: &mut dyn Storage, idx: Uint64) -> Result<(), ContractError> {
+    let idx_str = idx.to_string();
+    if !MODULE_INFO.has(storage, &idx_str) {
+        return Err(ContractError::ModuleDoesNotExist {});
+    }
+    MODULE_INFO.remove(storage, &idx_str);
+    MODULE_ADDR.remove(storage, &idx_str);
+
+    Ok(())
+}
+
+/// Alters a module
+/// If the module has provided an address as its form of instantiation this address is recorded
+/// Each module is assigned a u64 index so as it can be unregistered/altered
+/// The assigned u64 index is used as the message id for use in the `reply` entry point of the contract
+fn alter_module(
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    idx: Uint64,
+    module: &Module,
+) -> Result<(), ContractError> {
+    let idx_str = idx.to_string();
+    if !MODULE_INFO.has(storage, &idx_str) {
+        return Err(ContractError::ModuleDoesNotExist {});
+    }
+    MODULE_INFO.save(storage, &idx_str, module)?;
+    if let InstantiateType::Address(addr) = &module.instantiate {
+        MODULE_ADDR.save(storage, &idx_str, &api.addr_validate(addr)?)?;
+    }
+    Ok(())
+}
+
+/// A wrapper for `fn register_module`. The parameters are "extracted" from `DepsMut` to be able to
+/// execute this in a loop without cloning.
+pub fn execute_register_module(
+    querier: &QuerierWrapper,
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    sender: &str,
+    module: &Module,
+    ado_type: ADOType,
+    should_validate: bool,
+) -> Result<Response, ContractError> {
+    require(
+        is_contract_owner(storage, sender)? || is_operator(storage, sender)?,
+        ContractError::Unauthorized {},
+    )?;
+    let mut resp = Response::default();
+    let idx = register_module(storage, api, module)?;
+    if let Some(inst_msg) = module.generate_instantiate_msg(*querier, idx)? {
+        resp = resp.add_submessage(inst_msg);
+    }
+    if should_validate {
+        validate_modules(&load_modules(storage)?, ado_type)?;
+    }
+    Ok(resp.add_attribute("action", "register_module"))
+}
+
+/// A wrapper for `fn alter_module`.
+pub fn execute_alter_module(
+    deps: DepsMut,
+    info: MessageInfo,
+    module_idx: Uint64,
+    module: &Module,
+    ado_type: ADOType,
+) -> Result<Response, ContractError> {
+    let addr = info.sender.as_str();
+    require(
+        is_contract_owner(deps.storage, addr)? || is_operator(deps.storage, addr)?,
+        ContractError::Unauthorized {},
+    )?;
+    let mut resp = Response::default();
+    alter_module(deps.storage, deps.api, module_idx, module)?;
+    if let Some(inst_msg) = module.generate_instantiate_msg(deps.querier, module_idx.u64())? {
+        resp = resp.add_submessage(inst_msg);
+    }
+    validate_modules(&load_modules(deps.storage)?, ado_type)?;
+    Ok(resp
+        .add_attribute("action", "alter_module")
+        .add_attribute("module_idx", module_idx))
+}
+
+/// A wrapper for `fn deregister_module`.
+pub fn execute_deregister_module(
+    deps: DepsMut,
+    info: MessageInfo,
+    module_idx: Uint64,
+) -> Result<Response, ContractError> {
+    let addr = info.sender.as_str();
+    require(
+        is_contract_owner(deps.storage, addr)? || is_operator(deps.storage, addr)?,
+        ContractError::Unauthorized {},
+    )?;
+    deregister_module(deps.storage, module_idx)?;
+    Ok(Response::default()
+        .add_attribute("action", "deregister_module")
+        .add_attribute("module_idx", module_idx))
 }
 
 /// Loads all registered modules in Vector form
@@ -352,6 +453,8 @@ fn query_on_funds_transfer(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ownership::CONTRACT_OWNER;
+    use cosmwasm_std::testing::{mock_dependencies, mock_info};
 
     #[test]
     fn test_validate_addresslist() {
@@ -441,5 +544,289 @@ mod tests {
         module
             .validate(&[module.clone(), other_module], &ADOType::CW721)
             .unwrap();
+    }
+
+    #[test]
+    fn test_execute_register_module_unauthorized() {
+        let mut deps = mock_dependencies(&[]);
+
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+        };
+        let deps_mut = deps.as_mut();
+        CONTRACT_OWNER
+            .save(deps_mut.storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = execute_register_module(
+            &deps_mut.querier,
+            deps_mut.storage,
+            deps_mut.api,
+            "sender",
+            &module,
+            ADOType::CW20,
+            true,
+        );
+
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_register_module_addr() {
+        let mut deps = mock_dependencies(&[]);
+
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+        };
+        let deps_mut = deps.as_mut();
+        CONTRACT_OWNER
+            .save(deps_mut.storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = execute_register_module(
+            &deps_mut.querier,
+            deps_mut.storage,
+            deps_mut.api,
+            "owner",
+            &module,
+            ADOType::CW20,
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            Response::default().add_attribute("action", "register_module"),
+            res
+        );
+
+        assert_eq!(
+            module,
+            MODULE_INFO.load(deps.as_mut().storage, "1").unwrap()
+        );
+
+        assert_eq!(
+            "address".to_string(),
+            MODULE_ADDR.load(deps.as_mut().storage, "1").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_execute_register_module_validate() {
+        let mut deps = mock_dependencies(&[]);
+
+        let module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("address".to_string()),
+        };
+        let deps_mut = deps.as_mut();
+        CONTRACT_OWNER
+            .save(deps_mut.storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = execute_register_module(
+            &deps_mut.querier,
+            deps_mut.storage,
+            deps_mut.api,
+            "owner",
+            &module,
+            ADOType::CW20,
+            true,
+        );
+
+        assert_eq!(
+            ContractError::IncompatibleModules {
+                msg: "An Auction module cannot be used for a CW20 ADO".to_string()
+            },
+            res.unwrap_err(),
+        );
+
+        let res = execute_register_module(
+            &deps_mut.querier,
+            deps_mut.storage,
+            deps_mut.api,
+            "owner",
+            &module,
+            ADOType::CW20,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(
+            Response::default().add_attribute("action", "register_module"),
+            res
+        );
+    }
+
+    #[test]
+    fn test_execute_alter_module_unauthorized() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("sender", &[]);
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+        };
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = execute_alter_module(deps.as_mut(), info, 1u64.into(), &module, ADOType::CW20);
+
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_alter_module_addr() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+        };
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        MODULE_INFO
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+        MODULE_ADDR
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let module = Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address("other_address".to_string()),
+        };
+
+        let res =
+            execute_alter_module(deps.as_mut(), info, 1u64.into(), &module, ADOType::CW20).unwrap();
+
+        assert_eq!(
+            Response::default()
+                .add_attribute("action", "alter_module")
+                .add_attribute("module_idx", "1"),
+            res
+        );
+
+        assert_eq!(
+            module,
+            MODULE_INFO.load(deps.as_mut().storage, "1").unwrap()
+        );
+
+        assert_eq!(
+            "other_address".to_string(),
+            MODULE_ADDR.load(deps.as_mut().storage, "1").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_execute_alter_module_nonexisting_module() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("address".to_string()),
+        };
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = execute_alter_module(deps.as_mut(), info, 1u64.into(), &module, ADOType::CW20);
+
+        assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_alter_module_incompatible_module() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("address".to_string()),
+        };
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        MODULE_INFO
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+        MODULE_ADDR
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let res = execute_alter_module(deps.as_mut(), info, 1u64.into(), &module, ADOType::CW20);
+
+        assert_eq!(
+            ContractError::IncompatibleModules {
+                msg: "An Auction module cannot be used for a CW20 ADO".to_string()
+            },
+            res.unwrap_err(),
+        );
+    }
+
+    #[test]
+    fn test_execute_deregister_module_unauthorized() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("sender", &[]);
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = execute_deregister_module(deps.as_mut(), info, 1u64.into());
+
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_deregister_module() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+        };
+
+        MODULE_INFO
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+
+        MODULE_ADDR
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let res = execute_deregister_module(deps.as_mut(), info, 1u64.into()).unwrap();
+
+        assert_eq!(
+            Response::default()
+                .add_attribute("action", "deregister_module")
+                .add_attribute("module_idx", "1"),
+            res
+        );
+
+        assert!(!MODULE_ADDR.has(deps.as_mut().storage, "1"));
+        assert!(!MODULE_INFO.has(deps.as_mut().storage, "1"));
+    }
+
+    #[test]
+    fn test_execute_deregister_module_nonexisting_module() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = execute_deregister_module(deps.as_mut(), info, 1u64.into());
+
+        assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
     }
 }

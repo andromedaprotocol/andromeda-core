@@ -1,4 +1,4 @@
-use cosmwasm_std::{Binary, Uint128};
+use cosmwasm_std::{Binary, Uint128, Uint64};
 use cw0::Expiration;
 use cw20::{Cw20Coin, Logo, MinterResponse};
 use cw20_base::msg::{
@@ -38,9 +38,14 @@ impl From<InstantiateMsg> for Cw20InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Transfer is a base message to move tokens to another account without triggering actions
-    Transfer { recipient: String, amount: Uint128 },
+    Transfer {
+        recipient: String,
+        amount: Uint128,
+    },
     /// Burn is a base message to destroy tokens forever
-    Burn { amount: Uint128 },
+    Burn {
+        amount: Uint128,
+    },
     /// Send is a base message to transfer tokens to a contract and trigger an action
     /// on the receiving contract.
     Send {
@@ -80,10 +85,16 @@ pub enum ExecuteMsg {
         msg: Binary,
     },
     /// Only with "approval" extension. Destroys tokens forever
-    BurnFrom { owner: String, amount: Uint128 },
+    BurnFrom {
+        owner: String,
+        amount: Uint128,
+    },
     /// Only with the "mintable" extension. If authorized, creates amount new tokens
     /// and adds to the recipient balance.
-    Mint { recipient: String, amount: Uint128 },
+    Mint {
+        recipient: String,
+        amount: Uint128,
+    },
     /// Only with the "marketing" extension. If authorized, updates marketing metadata.
     /// Setting None/null for any of these will leave it unchanged.
     /// Setting Some("") will clear this field on the contract storage
@@ -97,6 +108,17 @@ pub enum ExecuteMsg {
     },
     /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
     UploadLogo(Logo),
+
+    RegisterModule {
+        module: Module,
+    },
+    DeregisterModule {
+        module_idx: Uint64,
+    },
+    AlterModule {
+        module_idx: Uint64,
+        module: Module,
+    },
 }
 
 impl From<ExecuteMsg> for Cw20ExecuteMsg {
@@ -165,6 +187,7 @@ impl From<ExecuteMsg> for Cw20ExecuteMsg {
                 marketing,
             },
             ExecuteMsg::UploadLogo(logo) => Cw20ExecuteMsg::UploadLogo(logo),
+            _ => panic!("Unsupported message"),
         }
     }
 }
