@@ -64,8 +64,8 @@ pub enum InstantiateType {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Module {
-    module_type: ModuleType,
-    instantiate: InstantiateType,
+    pub module_type: ModuleType,
+    pub instantiate: InstantiateType,
 }
 
 /// Struct used to represent a module and its currently recorded address
