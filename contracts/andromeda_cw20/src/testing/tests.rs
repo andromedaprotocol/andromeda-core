@@ -10,10 +10,8 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    attr, coin,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, Event, ReplyOn, Response, StdError, SubMsg, Uint128,
-    WasmMsg,
+    to_binary, Addr, CosmosMsg, Event, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20Coin;
 use cw20_base::state::BALANCES;
@@ -23,16 +21,16 @@ fn test_transfer() {
     // TODO: Test InstantiateType::New() when Fetch contract works.
     let modules: Vec<Module> = vec![
         Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
+        },
+        Module {
             module_type: ModuleType::Rates,
             instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
         },
         Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
-        },
-        Module {
-            module_type: ModuleType::Receipt,
-            instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
         },
     ];
 
@@ -81,7 +79,9 @@ fn test_transfer() {
     let receipt_msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_RECEIPT_CONTRACT.to_string(),
         msg: to_binary(&ReceiptExecuteMsg::StoreReceipt {
-            receipt: Receipt { events: vec![] },
+            receipt: Receipt {
+                events: vec![Event::new("Royalty")],
+            },
         })
         .unwrap(),
         funds: vec![],
@@ -90,6 +90,7 @@ fn test_transfer() {
     assert_eq!(
         Response::new()
             .add_submessage(receipt_msg)
+            .add_event(Event::new("Royalty"))
             .add_attribute("action", "transfer")
             .add_attribute("from", "sender")
             .add_attribute("to", "other")

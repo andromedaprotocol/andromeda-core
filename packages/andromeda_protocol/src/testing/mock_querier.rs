@@ -125,7 +125,7 @@ impl WasmMockQuerier {
                     };
                     let response = OnFundsTransferResponse {
                         msgs: vec![msg],
-                        events: vec![],
+                        events: vec![Event::new("Royalty".to_string())],
                         leftover_funds: new_funds,
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
