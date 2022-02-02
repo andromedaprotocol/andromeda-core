@@ -64,8 +64,8 @@ pub enum InstantiateType {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Module {
-    module_type: ModuleType,
-    instantiate: InstantiateType,
+    pub module_type: ModuleType,
+    pub instantiate: InstantiateType,
 }
 
 /// Struct used to represent a module and its currently recorded address
@@ -853,5 +853,25 @@ mod tests {
         let res = execute_deregister_module(deps.as_mut(), info, 1u64.into());
 
         assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_process_module_response() {
+        let res: Option<Response> = process_module_response(Ok(Response::new())).unwrap();
+        assert_eq!(Some(Response::new()), res);
+
+        let res: Option<Response> = process_module_response(Err(StdError::generic_err(
+            "XXXXXXX UnsupportedOperation XXXXXXX",
+        )))
+        .unwrap();
+        assert_eq!(None, res);
+
+        let res: ContractError =
+            process_module_response::<Response>(Err(StdError::generic_err("AnotherError")))
+                .unwrap_err();
+        assert_eq!(
+            ContractError::Std(StdError::generic_err("AnotherError")),
+            res
+        );
     }
 }

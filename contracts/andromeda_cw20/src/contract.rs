@@ -154,35 +154,24 @@ fn execute_transfer(
     };
 
     // Filter through payment messages to extract cw20 transfer messages to avoid looping
-    for msg in msgs {
-        match msg.msg.clone() {
-            // Transfer messages are CosmosMsg::Wasm type
-            CosmosMsg::Wasm(wasm_msg) => match wasm_msg {
-                WasmMsg::Execute { msg: exec_msg, .. } => {
-                    // If binary deserializes to a Cw20ExecuteMsg check the message type
-                    if let Ok(Cw20ExecuteMsg::Transfer { recipient, amount }) =
-                        from_binary::<Cw20ExecuteMsg>(&exec_msg)
-                    {
-                        transfer_tokens(
-                            deps.storage,
-                            sender.clone(),
-                            deps.api.addr_validate(&recipient)?,
-                            amount,
-                        )?;
-                    } else {
-                        // Need this so receipt messages will be added too.
-                        resp = resp.add_submessage(msg);
-                    }
-                }
-                // Otherwise add to messages to be sent in response
-                _ => {
-                    resp = resp.add_submessage(msg.clone());
-                }
-            },
-            // Otherwise add to messages to be sent in response
-            _ => {
-                resp = resp.add_submessage(msg);
+    for sub_msg in msgs {
+        // Transfer messages are CosmosMsg::Wasm type
+        if let CosmosMsg::Wasm(WasmMsg::Execute { msg: exec_msg, .. }) = sub_msg.msg.clone() {
+            // If binary deserializes to a Cw20ExecuteMsg check the message type
+            if let Ok(Cw20ExecuteMsg::Transfer { recipient, amount }) =
+                from_binary::<Cw20ExecuteMsg>(&exec_msg)
+            {
+                transfer_tokens(
+                    deps.storage,
+                    sender.clone(),
+                    deps.api.addr_validate(&recipient)?,
+                    amount,
+                )?;
+            } else {
+                resp = resp.add_submessage(sub_msg);
             }
+        } else {
+            resp = resp.add_submessage(sub_msg);
         }
     }
 
