@@ -90,6 +90,9 @@ pub enum ContractError {
     #[error("InvalidMirrorFunds")]
     InvalidMirrorFunds { msg: String },
 
+    #[error("InvalidAstroportFunds")]
+    InvalidAstroportFunds { msg: String },
+
     #[error("Cannot migrate from different contract type: {previous_contract}")]
     CannotMigrate { previous_contract: String },
 

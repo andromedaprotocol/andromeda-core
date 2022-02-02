@@ -2,6 +2,7 @@ use crate::error::ContractError;
 
 pub mod address_list;
 pub mod anchor;
+pub mod astroport_wrapped_cdp;
 pub mod common;
 pub mod cw20;
 pub mod error;
