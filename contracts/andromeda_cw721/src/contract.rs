@@ -40,7 +40,7 @@ pub fn instantiate(
     if let Some(modules) = msg.modules.clone() {
         validate_modules(&modules, ADOType::CW721)?;
         for module in modules {
-            resp = execute_register_module(
+            let response = execute_register_module(
                 &deps.querier,
                 deps.storage,
                 deps.api,
@@ -49,6 +49,7 @@ pub fn instantiate(
                 ADOType::CW721,
                 false,
             )?;
+            resp = resp.add_submessages(response.messages);
         }
     }
     let cw721_resp = AndrCW721Contract::default().instantiate(deps, env, info, msg.into())?;
@@ -95,27 +96,27 @@ pub fn execute(
     )?;
 
     // Check if the token is archived before any message that may mutate the token
-    match msg.clone() {
+    match &msg {
         ExecuteMsg::TransferNft { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
+            is_token_archived(deps.storage, &token_id)?;
         }
         ExecuteMsg::SendNft { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
+            is_token_archived(deps.storage, &token_id)?;
         }
         ExecuteMsg::Approve { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
+            is_token_archived(deps.storage, &token_id)?;
         }
         ExecuteMsg::Burn { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
+            is_token_archived(deps.storage, &token_id)?;
         }
         ExecuteMsg::Archive { token_id } => {
-            is_token_archived(deps.storage, token_id)?;
+            is_token_archived(deps.storage, &token_id)?;
         }
         ExecuteMsg::TransferAgreement { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
+            is_token_archived(deps.storage, &token_id)?;
         }
         ExecuteMsg::UpdatePricing { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
+            is_token_archived(deps.storage, &token_id)?;
         }
         _ => {}
     }
@@ -139,7 +140,7 @@ pub fn execute(
             deps.api,
             info.sender.as_str(),
             &module,
-            ADOType::CW20,
+            ADOType::CW721,
             true,
         ),
         ExecuteMsg::DeregisterModule { module_idx } => {
@@ -153,7 +154,7 @@ pub fn execute(
     }
 }
 
-fn is_token_archived(storage: &dyn Storage, token_id: String) -> Result<(), ContractError> {
+fn is_token_archived(storage: &dyn Storage, token_id: &str) -> Result<(), ContractError> {
     let contract = AndrCW721Contract::default();
     let token = contract.tokens.load(storage, &token_id)?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
@@ -241,8 +242,8 @@ fn check_can_send(
         return Ok(());
     }
 
-    // token purchaser can send
-    if let Some(agreement) = token.extension.transfer_agreement.clone() {
+    // token purchaser can send if correct funds are sent
+    if let Some(agreement) = &token.extension.transfer_agreement {
         require(
             has_coins(&info.funds, &agreement.amount),
             ContractError::InsufficientFunds {},
