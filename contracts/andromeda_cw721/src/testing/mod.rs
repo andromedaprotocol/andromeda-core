@@ -82,7 +82,7 @@ fn test_transfer_nft() {
     );
 
     let info = mock_info(creator.as_str(), &[]);
-    assert!(execute(deps.as_mut(), env.clone(), info, transfer_msg.clone()).is_ok());
+    assert!(execute(deps.as_mut(), env.clone(), info, transfer_msg).is_ok());
 
     let query_msg = QueryMsg::OwnerOf {
         token_id,
@@ -113,7 +113,7 @@ fn test_agreed_transfer_nft() {
         TokenExtension {
             description: None,
             name: String::default(),
-            publisher: creator.clone(),
+            publisher: creator,
             transfer_agreement: Some(TransferAgreement {
                 amount: agreed_amount.clone(),
                 purchaser: purchaser.to_string(),
@@ -142,7 +142,7 @@ fn test_agreed_transfer_nft() {
     );
 
     let info = mock_info(purchaser, &[agreed_amount]);
-    assert!(execute(deps.as_mut(), env.clone(), info, transfer_msg.clone()).is_ok());
+    assert!(execute(deps.as_mut(), env.clone(), info, transfer_msg).is_ok());
 
     let query_msg = QueryMsg::OwnerOf {
         token_id,
@@ -187,7 +187,7 @@ fn test_archive() {
     );
 
     let info = mock_info(creator.as_str(), &[]);
-    assert!(execute(deps.as_mut(), env.clone(), info, msg.clone()).is_ok());
+    assert!(execute(deps.as_mut(), env.clone(), info, msg).is_ok());
 
     let query_msg = QueryMsg::NftInfo { token_id };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
@@ -218,13 +218,11 @@ fn test_archived_check() {
         },
     );
 
-    let msg = ExecuteMsg::Burn {
-        token_id: token_id.clone(),
-    };
+    let msg = ExecuteMsg::Burn { token_id };
 
     let info = mock_info(creator.as_str(), &[]);
     assert_eq!(
-        execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err(),
+        execute(deps.as_mut(), env, info, msg).unwrap_err(),
         ContractError::TokenIsArchived {}
     );
 }
@@ -271,7 +269,7 @@ fn test_transfer_agreement() {
     );
 
     let info = mock_info(creator.as_str(), &[]);
-    assert!(execute(deps.as_mut(), env.clone(), info, msg.clone()).is_ok());
+    assert!(execute(deps.as_mut(), env.clone(), info, msg).is_ok());
 
     let query_msg = QueryMsg::NftInfo { token_id };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
@@ -318,7 +316,7 @@ fn test_update_pricing() {
     );
 
     let info = mock_info(creator.as_str(), &[]);
-    assert!(execute(deps.as_mut(), env.clone(), info, msg.clone()).is_ok());
+    assert!(execute(deps.as_mut(), env.clone(), info, msg).is_ok());
 
     let query_msg = QueryMsg::NftInfo { token_id };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();

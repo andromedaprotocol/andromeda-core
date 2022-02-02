@@ -1,4 +1,4 @@
-use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event};
+use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event, Uint64};
 use cw721::Expiration;
 use cw721_base::{
     ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MintMsg,
@@ -199,6 +199,16 @@ pub enum ExecuteMsg {
         token_id: String,
         price: Option<Coin>,
     },
+    RegisterModule {
+        module: Module,
+    },
+    DeregisterModule {
+        module_idx: Uint64,
+    },
+    AlterModule {
+        module_idx: Uint64,
+        module: Module,
+    },
 }
 
 impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
@@ -237,7 +247,7 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
             }
             ExecuteMsg::RevokeAll { operator } => Cw721ExecuteMsg::RevokeAll { operator },
             ExecuteMsg::Mint(msg) => Cw721ExecuteMsg::Mint(*msg),
-            _ => panic!("Invalid CW721 Execute message type"),
+            _ => panic!("Unsupported message"),
         }
     }
 }
@@ -329,7 +339,7 @@ impl From<QueryMsg> for Cw721QueryMsg {
             QueryMsg::AllTokens { start_after, limit } => {
                 Cw721QueryMsg::AllTokens { start_after, limit }
             }
-            _ => panic!("Invalid CW721 Query message type"),
+            _ => panic!("Unsupported message"),
         }
     }
 }

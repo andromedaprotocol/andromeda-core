@@ -9,8 +9,8 @@ use andromeda_protocol::{
     communication::{
         hooks::AndromedaHook,
         modules::{
-            execute_register_module, module_hook, on_funds_transfer, validate_modules, ADOType,
-            MODULE_ADDR, MODULE_INFO,
+            execute_alter_module, execute_deregister_module, execute_register_module, module_hook,
+            on_funds_transfer, validate_modules, ADOType, MODULE_ADDR, MODULE_INFO,
         },
     },
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
@@ -131,6 +131,21 @@ pub fn execute(
             execute_update_pricing(deps, env, info, token_id, price)
         }
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
+        ExecuteMsg::RegisterModule { module } => execute_register_module(
+            &deps.querier,
+            deps.storage,
+            deps.api,
+            info.sender.as_str(),
+            &module,
+            ADOType::CW20,
+            true,
+        ),
+        ExecuteMsg::DeregisterModule { module_idx } => {
+            execute_deregister_module(deps, info, module_idx)
+        }
+        ExecuteMsg::AlterModule { module_idx, module } => {
+            execute_alter_module(deps, info, module_idx, &module, ADOType::CW721)
+        }
         _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
     }
 }
