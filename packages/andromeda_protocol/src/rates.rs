@@ -50,6 +50,20 @@ pub struct RateInfo {
     pub receivers: Vec<Recipient>,
 }
 
+/// An attribute struct used for any events that involve a payment
+pub struct PaymentAttribute {
+    /// The amount paid
+    pub amount: Coin,
+    /// The address the payment was made to
+    pub receiver: String,
+}
+
+impl ToString for PaymentAttribute {
+    fn to_string(&self) -> String {
+        format!("{}<{}", self.receiver, self.amount)
+    }
+}
+
 pub fn on_required_payments(
     querier: QuerierWrapper,
     addr: String,
