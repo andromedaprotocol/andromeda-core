@@ -1,25 +1,26 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdError, Uint128,
+    to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdError, Storage, SubMsg,
 };
 
 use andromeda_protocol::{
     communication::{
         hooks::AndromedaHook,
         modules::{
-            execute_register_module, module_hook, validate_modules, ADOType, MODULE_ADDR,
-            MODULE_INFO,
+            execute_register_module, module_hook, on_funds_transfer, validate_modules, ADOType,
+            MODULE_ADDR, MODULE_INFO,
         },
     },
-    cw721::{InstantiateMsg, QueryMsg, TokenExtension},
+    cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
     error::ContractError,
     ownership::CONTRACT_OWNER,
+    rates::Funds,
     require,
     response::get_reply_address,
-    token::ExecuteMsg,
 };
-use cw721_base::Cw721Contract;
+use cw721_base::{state::TokenInfo, Cw721Contract};
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
 
@@ -43,7 +44,7 @@ pub fn instantiate(
                 deps.api,
                 sender,
                 &module,
-                ADOType::CW20,
+                ADOType::CW721,
                 false,
             )?;
         }
@@ -91,7 +92,55 @@ pub fn execute(
         },
     )?;
 
-    Ok(Response::default())
+    // Check if the token is archived before any message that may mutate the token
+    match msg.clone() {
+        ExecuteMsg::TransferNft { token_id, .. } => {
+            is_token_archived(deps.storage, token_id)?;
+        }
+        ExecuteMsg::SendNft { token_id, .. } => {
+            is_token_archived(deps.storage, token_id)?;
+        }
+        ExecuteMsg::Approve { token_id, .. } => {
+            is_token_archived(deps.storage, token_id)?;
+        }
+        ExecuteMsg::Burn { token_id, .. } => {
+            is_token_archived(deps.storage, token_id)?;
+        }
+        ExecuteMsg::Archive { token_id } => {
+            is_token_archived(deps.storage, token_id)?;
+        }
+        ExecuteMsg::TransferAgreement { token_id, .. } => {
+            is_token_archived(deps.storage, token_id)?;
+        }
+        ExecuteMsg::UpdatePricing { token_id, .. } => {
+            is_token_archived(deps.storage, token_id)?;
+        }
+        _ => {}
+    }
+
+    match msg {
+        ExecuteMsg::TransferNft {
+            recipient,
+            token_id,
+        } => execute_transfer(deps, env, info, recipient, token_id),
+        ExecuteMsg::TransferAgreement {
+            token_id,
+            agreement,
+        } => execute_update_transfer_agreement(deps, env, info, token_id, agreement),
+        ExecuteMsg::UpdatePricing { token_id, price } => {
+            execute_update_pricing(deps, env, info, token_id, price)
+        }
+        ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
+        _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
+    }
+}
+
+fn is_token_archived(storage: &dyn Storage, token_id: String) -> Result<(), ContractError> {
+    let contract = AndrCW721Contract::default();
+    let token = contract.tokens.load(storage, &token_id)?;
+    require(!token.extension.archived, ContractError::TokenIsArchived {})?;
+
+    Ok(())
 }
 
 fn execute_transfer(
@@ -99,8 +148,149 @@ fn execute_transfer(
     env: Env,
     info: MessageInfo,
     recipient: String,
-    amount: Uint128,
+    token_id: String,
 ) -> Result<Response, ContractError> {
+    let contract = AndrCW721Contract::default();
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    require(!token.extension.archived, ContractError::TokenIsArchived {})?;
+
+    let mut resp = Response::default();
+    if let Some(xfer_agreement) = token.extension.transfer_agreement.clone() {
+        let (msgs, events, remainder) = on_funds_transfer(
+            deps.storage,
+            deps.querier,
+            info.sender.to_string(),
+            Funds::Native(xfer_agreement.amount),
+            to_binary(&ExecuteMsg::TransferNft {
+                token_id: token_id.clone(),
+                recipient: recipient.clone(),
+            })?,
+        )?;
+        let remaining_amount = match remainder {
+            Funds::Native(coin) => coin, //What do we do in the case that the rates returns remaining amount as native funds?
+            Funds::Cw20(..) => panic!("Remaining funds returned as incorrect type"),
+        };
+        resp = resp.add_submessages(msgs).add_events(events);
+        resp = resp.add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: token.owner.clone().into(),
+            amount: vec![remaining_amount],
+        })));
+    }
+
+    check_can_send(deps.as_ref(), env, info, &token)?;
+    token.owner = deps.api.addr_validate(recipient.as_str())?;
+    token.approvals = vec![];
+    token.extension.transfer_agreement = None;
+    token.extension.pricing = None;
+    contract
+        .tokens
+        .save(deps.storage, token_id.as_str(), &token)?;
+
+    Ok(resp)
+}
+
+fn check_can_send(
+    deps: Deps,
+    env: Env,
+    info: MessageInfo,
+    token: &TokenInfo<TokenExtension>,
+) -> Result<(), ContractError> {
+    require(!token.extension.archived, ContractError::TokenIsArchived {})?;
+    // owner can send
+    if token.owner == info.sender {
+        return Ok(());
+    }
+
+    // token purchaser can send
+    if let Some(agreement) = token.extension.transfer_agreement.clone() {
+        if agreement.purchaser == info.sender {
+            return Ok(());
+        }
+    }
+
+    // any non-expired token approval can send
+    if token
+        .approvals
+        .iter()
+        .any(|apr| apr.spender == info.sender && !apr.is_expired(&env.block))
+    {
+        return Ok(());
+    }
+
+    // operator can send
+    let op = AndrCW721Contract::default()
+        .operators
+        .may_load(deps.storage, (&token.owner, &info.sender))?;
+    match op {
+        Some(ex) => {
+            if ex.is_expired(&env.block) {
+                Err(ContractError::Unauthorized {})
+            } else {
+                Ok(())
+            }
+        }
+        None => Err(ContractError::Unauthorized {}),
+    }
+}
+
+fn execute_update_transfer_agreement(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    token_id: String,
+    agreement: Option<TransferAgreement>,
+) -> Result<Response, ContractError> {
+    let contract = AndrCW721Contract::default();
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    require(token.owner == info.sender, ContractError::Unauthorized {})?;
+    require(!token.extension.archived, ContractError::TokenIsArchived {})?;
+    if let Some(xfer_agreement) = agreement.clone() {
+        deps.api.addr_validate(&xfer_agreement.purchaser)?;
+    }
+
+    token.extension.transfer_agreement = agreement;
+    contract
+        .tokens
+        .save(deps.storage, token_id.as_str(), &token)?;
+
+    Ok(Response::default())
+}
+
+fn execute_update_pricing(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    token_id: String,
+    pricing: Option<Coin>,
+) -> Result<Response, ContractError> {
+    let contract = AndrCW721Contract::default();
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    require(token.owner == info.sender, ContractError::Unauthorized {})?;
+    require(!token.extension.archived, ContractError::TokenIsArchived {})?;
+
+    token.extension.pricing = pricing;
+    contract
+        .tokens
+        .save(deps.storage, token_id.as_str(), &token)?;
+
+    Ok(Response::default())
+}
+
+fn execute_archive(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    let contract = AndrCW721Contract::default();
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    require(token.owner == info.sender, ContractError::Unauthorized {})?;
+
+    token.extension.archived = true;
+    contract
+        .tokens
+        .save(deps.storage, token_id.as_str(), &token)?;
+
     Ok(Response::default())
 }
 

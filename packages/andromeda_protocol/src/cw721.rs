@@ -1,10 +1,14 @@
-use cosmwasm_std::{attr, BankMsg, Coin, Event};
-use cw721_base::{InstantiateMsg as Cw721InstantiateMsg, QueryMsg as Cw721QueryMsg};
+use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event};
+use cw721::Expiration;
+use cw721_base::{
+    ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MintMsg,
+    QueryMsg as Cw721QueryMsg,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    communication::{modules::Module, AndromedaQuery},
+    communication::{modules::Module, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     modules::common::calculate_fee,
     modules::Rate,
@@ -141,6 +145,105 @@ pub struct TokenExtension {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
+    /// Mints a token
+    Mint(Box<MintMsg<TokenExtension>>),
+    /// Transfers ownership of a token
+    TransferNft {
+        recipient: String,
+        token_id: String,
+    },
+    /// Sends a token to another contract
+    SendNft {
+        contract: String,
+        token_id: String,
+        msg: Binary,
+    },
+    /// Allows operator to transfer / send the token from the owner's account.
+    /// If expiration is set, then this allowance has a time/height limit
+    Approve {
+        spender: String,
+        token_id: String,
+        expires: Option<Expiration>,
+    },
+    /// Remove previously granted Approval
+    Revoke {
+        spender: String,
+        token_id: String,
+    },
+    /// Approves an address for all tokens owned by the sender
+    ApproveAll {
+        operator: String,
+        expires: Option<Expiration>,
+    },
+    /// Remove previously granted ApproveAll permission
+    RevokeAll {
+        operator: String,
+    },
+    /// Burns a token, removing all data related to it. The ID of the token is still reserved.
+    Burn {
+        token_id: String,
+    },
+    /// Archives a token, causing it to be immutable but readable
+    Archive {
+        token_id: String,
+    },
+    /// Assigns a `TransferAgreement` for a token
+    TransferAgreement {
+        token_id: String,
+        agreement: Option<TransferAgreement>,
+    },
+    /// Updates the pricing of a token
+    UpdatePricing {
+        token_id: String,
+        price: Option<Coin>,
+    },
+}
+
+impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
+    fn from(msg: ExecuteMsg) -> Self {
+        match msg {
+            ExecuteMsg::TransferNft {
+                recipient,
+                token_id,
+            } => Cw721ExecuteMsg::TransferNft {
+                recipient,
+                token_id,
+            },
+            ExecuteMsg::SendNft {
+                contract,
+                token_id,
+                msg,
+            } => Cw721ExecuteMsg::SendNft {
+                contract,
+                token_id,
+                msg,
+            },
+            ExecuteMsg::Approve {
+                spender,
+                token_id,
+                expires,
+            } => Cw721ExecuteMsg::Approve {
+                spender,
+                token_id,
+                expires,
+            },
+            ExecuteMsg::Revoke { spender, token_id } => {
+                Cw721ExecuteMsg::Revoke { spender, token_id }
+            }
+            ExecuteMsg::ApproveAll { operator, expires } => {
+                Cw721ExecuteMsg::ApproveAll { operator, expires }
+            }
+            ExecuteMsg::RevokeAll { operator } => Cw721ExecuteMsg::RevokeAll { operator },
+            ExecuteMsg::Mint(msg) => Cw721ExecuteMsg::Mint(*msg),
+            _ => panic!("Invalid CW721 Execute message type"),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     /// Owner of the given token by ID
@@ -226,7 +329,7 @@ impl From<QueryMsg> for Cw721QueryMsg {
             QueryMsg::AllTokens { start_after, limit } => {
                 Cw721QueryMsg::AllTokens { start_after, limit }
             }
-            _ => panic!("Invalid CW721 query message type"),
+            _ => panic!("Invalid CW721 Query message type"),
         }
     }
 }
