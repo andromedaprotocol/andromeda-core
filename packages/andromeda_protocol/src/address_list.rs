@@ -79,7 +79,7 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct IncludesAddressResponse {
     /// Whether the address is included in the address list
     pub included: bool,

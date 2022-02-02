@@ -103,25 +103,18 @@ fn execute_remove_address(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
     }
 }
 
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
+            let address: String = parse_message(data)?;
+            encode_binary(&query_address(deps, &address)?)
         }
         AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
         AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
@@ -142,6 +135,7 @@ mod tests {
     use super::*;
     use andromeda_protocol::address_list::ADDRESS_LIST;
     use andromeda_protocol::operators::OPERATORS;
+    use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
@@ -249,5 +243,23 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
         let res = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, res);
+    }
+
+    #[test]
+    fn test_andr_get_query() {
+        let mut deps = mock_dependencies(&[]);
+
+        let address = "whitelistee";
+
+        ADDRESS_LIST
+            .save(deps.as_mut().storage, address.to_string(), &true)
+            .unwrap();
+
+        let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(encode_binary(&address).unwrap())));
+
+        let res: IncludesAddressResponse =
+            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+        assert_eq!(IncludesAddressResponse { included: true }, res);
     }
 }
