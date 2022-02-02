@@ -98,25 +98,25 @@ pub fn execute(
     // Check if the token is archived before any message that may mutate the token
     match &msg {
         ExecuteMsg::TransferNft { token_id, .. } => {
-            is_token_archived(deps.storage, &token_id)?;
+            is_token_archived(deps.storage, token_id)?;
         }
         ExecuteMsg::SendNft { token_id, .. } => {
-            is_token_archived(deps.storage, &token_id)?;
+            is_token_archived(deps.storage, token_id)?;
         }
         ExecuteMsg::Approve { token_id, .. } => {
-            is_token_archived(deps.storage, &token_id)?;
+            is_token_archived(deps.storage, token_id)?;
         }
         ExecuteMsg::Burn { token_id, .. } => {
-            is_token_archived(deps.storage, &token_id)?;
+            is_token_archived(deps.storage, token_id)?;
         }
         ExecuteMsg::Archive { token_id } => {
-            is_token_archived(deps.storage, &token_id)?;
+            is_token_archived(deps.storage, token_id)?;
         }
         ExecuteMsg::TransferAgreement { token_id, .. } => {
-            is_token_archived(deps.storage, &token_id)?;
+            is_token_archived(deps.storage, token_id)?;
         }
         ExecuteMsg::UpdatePricing { token_id, .. } => {
-            is_token_archived(deps.storage, &token_id)?;
+            is_token_archived(deps.storage, token_id)?;
         }
         _ => {}
     }
@@ -156,7 +156,7 @@ pub fn execute(
 
 fn is_token_archived(storage: &dyn Storage, token_id: &str) -> Result<(), ContractError> {
     let contract = AndrCW721Contract::default();
-    let token = contract.tokens.load(storage, &token_id)?;
+    let token = contract.tokens.load(storage, token_id)?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     Ok(())
