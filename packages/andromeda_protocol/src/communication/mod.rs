@@ -22,6 +22,7 @@ pub struct ADORecipient {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Recipient {
     Addr(String),
     ADO(ADORecipient),
@@ -132,8 +133,15 @@ pub enum ExecuteMsg {
 /// Helper enum for serialization
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
+pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
+}
+
+/// Helper enum for serialization
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
 pub enum HookMsg {
-    Hook(AndromedaHook),
+    AndrHook(AndromedaHook),
 }
 
 pub fn parse_struct<T>(val: &Binary) -> Result<T, ContractError>
@@ -175,7 +183,7 @@ pub fn query_get<T>(
 where
     T: DeserializeOwned,
 {
-    let query_msg = AndromedaQuery::Get(data);
+    let query_msg = QueryMsg::AndrQuery(AndromedaQuery::Get(data));
     let resp: T = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: address,
         msg: to_binary(&query_msg)?,

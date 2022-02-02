@@ -1,16 +1,21 @@
 use std::convert::TryInto;
 
 use cosmwasm_std::{
-    to_binary, wasm_instantiate, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, ReplyOn, Response, StdError, Storage, SubMsg, Uint64, WasmQuery,
+    to_binary, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order, QuerierWrapper,
+    QueryRequest, ReplyOn, Response, StdError, Storage, SubMsg, Uint64, WasmMsg, WasmQuery,
 };
 use cw_storage_plus::{Bound, Item, Map};
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
-    communication::query_get, error::ContractError, factory::CodeIdResponse,
-    operators::is_operator, ownership::is_contract_owner, rates::Funds, require,
+    communication::{query_get, HookMsg},
+    error::ContractError,
+    factory::CodeIdResponse,
+    operators::is_operator,
+    ownership::is_contract_owner,
+    rates::Funds,
+    require,
 };
 
 use super::hooks::{AndromedaHook, OnFundsTransferResponse};
@@ -59,8 +64,8 @@ pub enum InstantiateType {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Module {
-    module_type: ModuleType,
-    instantiate: InstantiateType,
+    pub module_type: ModuleType,
+    pub instantiate: InstantiateType,
 }
 
 /// Struct used to represent a module and its currently recorded address
@@ -110,12 +115,13 @@ impl Module {
                 Some(code_id) => Ok(Some(SubMsg {
                     id: module_id, //TODO: ADD ID,
                     reply_on: ReplyOn::Always,
-                    msg: CosmosMsg::Wasm(wasm_instantiate(
+                    msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                        admin: None,
                         code_id,
-                        msg,
-                        vec![],
-                        format!("Instantiate: {}", String::from(self.module_type.clone())),
-                    )?),
+                        msg: msg.clone(),
+                        funds: vec![],
+                        label: format!("Instantiate: {}", String::from(self.module_type.clone())),
+                    }),
                     gas_limit: None,
                 })),
             }
@@ -365,7 +371,7 @@ pub fn validate_modules(modules: &[Module], ado_type: ADOType) -> Result<(), Con
 pub fn module_hook<T>(
     storage: &dyn Storage,
     querier: QuerierWrapper,
-    msg: AndromedaHook,
+    hook_msg: AndromedaHook,
 ) -> Result<Vec<T>, ContractError>
 where
     T: DeserializeOwned,
@@ -373,16 +379,47 @@ where
     let addresses: Vec<String> = load_module_addresses(storage)?;
     let mut resp: Vec<T> = Vec::new();
     for addr in addresses {
-        let mod_resp: Result<T, StdError> = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: addr,
-            msg: to_binary(&msg)?,
-        }));
-        if let Ok(mod_resp) = mod_resp {
+        let mod_resp: Option<T> = hook_query(querier, hook_msg.clone(), addr)?;
+        if let Some(mod_resp) = mod_resp {
             resp.push(mod_resp);
         }
     }
 
     Ok(resp)
+}
+
+/// Queriers the given address with the given hook message and returns the processed result.
+fn hook_query<T>(
+    querier: QuerierWrapper,
+    hook_msg: AndromedaHook,
+    addr: String,
+) -> Result<Option<T>, ContractError>
+where
+    T: DeserializeOwned,
+{
+    let msg = HookMsg::AndrHook(hook_msg);
+    let mod_resp: Result<T, StdError> = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: addr,
+        msg: to_binary(&msg)?,
+    }));
+    process_module_response(mod_resp)
+}
+
+/// Processes the given module response by hiding the error if it is `UnsupportedOperation` and
+/// bubbling up any other one. A return value of Ok(None) signifies that the operation was not
+/// supported.
+fn process_module_response<T>(mod_resp: Result<T, StdError>) -> Result<Option<T>, ContractError> {
+    match mod_resp {
+        Ok(mod_resp) => Ok(Some(mod_resp)),
+        Err(StdError::GenericErr { msg }) => {
+            if msg.contains("UnsupportedOperation") {
+                Ok(None)
+            } else {
+                Err(ContractError::Std(StdError::GenericErr { msg }))
+            }
+        }
+        Err(e) => Err(e.into()),
+    }
 }
 
 /// Sends the provided hook message to all registered modules
@@ -404,50 +441,38 @@ pub fn on_funds_transfer(
             receipt_module_address = Some(module.address.clone());
             continue;
         }
-        let mod_resp = query_on_funds_transfer(
+        let mod_resp: Option<OnFundsTransferResponse> = hook_query(
             querier,
-            msg.clone(),
-            sender.clone(),
+            AndromedaHook::OnFundsTransfer {
+                payload: msg.clone(),
+                sender: sender.clone(),
+                amount: remainder.clone(),
+            },
             module.address.clone(),
-            remainder.clone(),
-        );
-        if let Ok(mod_resp) = mod_resp {
+        )?;
+        if let Some(mod_resp) = mod_resp {
             remainder = mod_resp.leftover_funds;
             msgs = [msgs, mod_resp.msgs].concat();
             events = [events, mod_resp.events].concat();
         }
     }
     if let Some(receipt_module_address) = receipt_module_address {
-        let mod_resp = query_on_funds_transfer(
+        let mod_resp: Option<OnFundsTransferResponse> = hook_query(
             querier,
-            to_binary(&events)?,
-            sender,
+            AndromedaHook::OnFundsTransfer {
+                payload: to_binary(&events)?,
+                sender,
+                amount: remainder.clone(),
+            },
             receipt_module_address,
-            remainder.clone(),
         )?;
-        msgs = [msgs, mod_resp.msgs].concat();
-        events = [events, mod_resp.events].concat();
+        if let Some(mod_resp) = mod_resp {
+            msgs = [msgs, mod_resp.msgs].concat();
+            events = [events, mod_resp.events].concat();
+        }
     }
 
     Ok((msgs, events, remainder))
-}
-
-fn query_on_funds_transfer(
-    querier: QuerierWrapper,
-    payload: Binary,
-    sender: String,
-    contract_addr: String,
-    amount: Funds,
-) -> Result<OnFundsTransferResponse, StdError> {
-    let query_msg = AndromedaHook::OnFundsTransfer {
-        payload,
-        sender,
-        amount,
-    };
-    querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr,
-        msg: to_binary(&query_msg)?,
-    }))
 }
 
 #[cfg(test)]
@@ -828,5 +853,25 @@ mod tests {
         let res = execute_deregister_module(deps.as_mut(), info, 1u64.into());
 
         assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_process_module_response() {
+        let res: Option<Response> = process_module_response(Ok(Response::new())).unwrap();
+        assert_eq!(Some(Response::new()), res);
+
+        let res: Option<Response> = process_module_response(Err(StdError::generic_err(
+            "XXXXXXX UnsupportedOperation XXXXXXX",
+        )))
+        .unwrap();
+        assert_eq!(None, res);
+
+        let res: ContractError =
+            process_module_response::<Response>(Err(StdError::generic_err("AnotherError")))
+                .unwrap_err();
+        assert_eq!(
+            ContractError::Std(StdError::generic_err("AnotherError")),
+            res
+        );
     }
 }
