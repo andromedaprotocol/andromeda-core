@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
-    Response, StdError, Storage, SubMsg,
+    has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Reply, Response, StdError, Storage, SubMsg,
 };
 
 use andromeda_protocol::{
@@ -203,6 +203,10 @@ fn check_can_send(
 
     // token purchaser can send
     if let Some(agreement) = token.extension.transfer_agreement.clone() {
+        require(
+            has_coins(&info.funds, &agreement.amount),
+            ContractError::InsufficientFunds {},
+        )?;
         if agreement.purchaser == info.sender {
             return Ok(());
         }
