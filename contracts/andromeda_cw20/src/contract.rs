@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, StdResult, Storage, Uint128, WasmMsg,
+    from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
 use andromeda_protocol::{
@@ -133,8 +133,6 @@ fn execute_transfer(
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let mut resp = Response::new();
-    let sender = info.sender.clone();
     let (msgs, events, remainder) = on_funds_transfer(
         deps.storage,
         deps.querier,
@@ -153,27 +151,7 @@ fn execute_transfer(
         Funds::Cw20(coin) => coin.amount,
     };
 
-    // Filter through payment messages to extract cw20 transfer messages to avoid looping
-    for sub_msg in msgs {
-        // Transfer messages are CosmosMsg::Wasm type
-        if let CosmosMsg::Wasm(WasmMsg::Execute { msg: exec_msg, .. }) = sub_msg.msg.clone() {
-            // If binary deserializes to a Cw20ExecuteMsg check the message type
-            if let Ok(Cw20ExecuteMsg::Transfer { recipient, amount }) =
-                from_binary::<Cw20ExecuteMsg>(&exec_msg)
-            {
-                transfer_tokens(
-                    deps.storage,
-                    sender.clone(),
-                    deps.api.addr_validate(&recipient)?,
-                    amount,
-                )?;
-            } else {
-                resp = resp.add_submessage(sub_msg);
-            }
-        } else {
-            resp = resp.add_submessage(sub_msg);
-        }
-    }
+    let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
 
     // Continue with standard cw20 operation
     let cw20_resp = execute_cw20_transfer(deps, env, info, recipient, remaining_amount)?;
@@ -183,20 +161,20 @@ fn execute_transfer(
 
 fn transfer_tokens(
     storage: &mut dyn Storage,
-    sender: Addr,
-    recipient: Addr,
+    sender: &Addr,
+    recipient: &Addr,
     amount: Uint128,
 ) -> Result<(), ContractError> {
     BALANCES.update(
         storage,
-        &sender,
+        sender,
         |balance: Option<Uint128>| -> StdResult<_> {
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
     BALANCES.update(
         storage,
-        &recipient,
+        recipient,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
     Ok(())
@@ -219,7 +197,35 @@ fn execute_send(
     amount: Uint128,
     msg: Binary,
 ) -> Result<Response, ContractError> {
-    Ok(execute_cw20_send(deps, env, info, contract, amount, msg)?)
+    let (msgs, events, remainder) = on_funds_transfer(
+        deps.storage,
+        deps.querier,
+        info.sender.to_string(),
+        Funds::Cw20(Cw20Coin {
+            address: env.contract.address.to_string(),
+            amount,
+        }),
+        to_binary(&ExecuteMsg::Send {
+            amount,
+            contract: contract.clone(),
+            msg: msg.clone(),
+        })?,
+    )?;
+
+    let remaining_amount = match remainder {
+        Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
+        Funds::Cw20(coin) => coin.amount,
+    };
+
+    let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
+
+    let cw20_resp = execute_cw20_send(deps, env, info, contract, remaining_amount, msg)?;
+    resp = resp
+        .add_attributes(cw20_resp.attributes)
+        .add_events(events)
+        .add_submessages(cw20_resp.messages);
+
+    Ok(resp)
 }
 
 fn execute_mint(
@@ -230,6 +236,32 @@ fn execute_mint(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     Ok(execute_cw20_mint(deps, env, info, recipient, amount)?)
+}
+
+fn filter_out_cw20_messages(
+    msgs: Vec<SubMsg>,
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    sender: &Addr,
+) -> Result<Response, ContractError> {
+    let mut resp: Response = Response::new();
+    // Filter through payment messages to extract cw20 transfer messages to avoid looping
+    for sub_msg in msgs {
+        // Transfer messages are CosmosMsg::Wasm type
+        if let CosmosMsg::Wasm(WasmMsg::Execute { msg: exec_msg, .. }) = sub_msg.msg.clone() {
+            // If binary deserializes to a Cw20ExecuteMsg check the message type
+            if let Ok(Cw20ExecuteMsg::Transfer { recipient, amount }) =
+                from_binary::<Cw20ExecuteMsg>(&exec_msg)
+            {
+                transfer_tokens(storage, sender, &api.addr_validate(&recipient)?, amount)?;
+            } else {
+                resp = resp.add_submessage(sub_msg);
+            }
+        } else {
+            resp = resp.add_submessage(sub_msg);
+        }
+    }
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
