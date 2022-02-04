@@ -1,4 +1,7 @@
-use crate::error::ContractError;
+use crate::{
+    communication::{AndromedaMsg, AndromedaQuery},
+    error::ContractError,
+};
 use cosmwasm_std::{to_binary, QuerierWrapper, QueryRequest, StdResult, Storage, WasmQuery};
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
@@ -55,6 +58,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     /// Add an address to the address list
     AddAddress {
         address: String,
@@ -62,13 +66,6 @@ pub enum ExecuteMsg {
     /// Remove an address from the address list
     RemoveAddress {
         address: String,
-    },
-    /// Update ownership of the contract
-    UpdateOwner {
-        address: String,
-    },
-    UpdateOperator {
-        operators: Vec<String>,
     },
 }
 
@@ -79,14 +76,10 @@ pub enum QueryMsg {
     IncludesAddress {
         address: String,
     },
-    /// Query the current contract owner
-    ContractOwner {},
-    IsOperator {
-        address: String,
-    },
+    AndrQuery(AndromedaQuery),
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct IncludesAddressResponse {
     /// Whether the address is included in the address list
     pub included: bool,
