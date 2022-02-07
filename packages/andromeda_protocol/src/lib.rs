@@ -2,6 +2,7 @@ use crate::error::ContractError;
 
 pub mod address_list;
 pub mod anchor;
+pub mod auction;
 pub mod common;
 pub mod communication;
 pub mod cw20;

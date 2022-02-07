@@ -116,7 +116,12 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
 fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let sent_funds: Vec<Coin> = info.funds.clone();
-    require(!sent_funds.is_empty(), ContractError::EmptyFunds {})?;
+    require(
+        !sent_funds.is_empty(),
+        ContractError::InvalidFunds {
+            msg: "Require at least one coin to be sent".to_string(),
+        },
+    )?;
 
     let splitter = SPLITTER.load(deps.storage)?;
     let mut submsg: Vec<SubMsg> = Vec::new();

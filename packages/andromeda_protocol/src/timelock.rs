@@ -35,14 +35,24 @@ impl Escrow {
     /// * The Escrow recipient must be a valid address
     /// * Expiration cannot be "Never" or before current time/block
     pub fn validate(&self, api: &dyn Api, block: &BlockInfo) -> Result<(), ContractError> {
-        require(!self.coins.is_empty(), ContractError::EmptyFunds {})?;
+        require(
+            !self.coins.is_empty(),
+            ContractError::InvalidFunds {
+                msg: "Require at least one coin to be sent".to_string(),
+            },
+        )?;
         require(
             api.addr_validate(&self.recipient.get_addr()).is_ok(),
             ContractError::InvalidAddress {},
         )?;
 
         if let Some(EscrowCondition::MinimumFunds(funds)) = &self.condition {
-            require(!funds.is_empty(), ContractError::EmptyFunds {})?;
+            require(
+                !funds.is_empty(),
+                ContractError::InvalidFunds {
+                    msg: "Minumum funds must not be empty".to_string(),
+                },
+            )?;
             let mut funds: Vec<Coin> = funds.clone();
             funds.sort_by(|a, b| a.denom.cmp(&b.denom));
             for i in 0..funds.len() - 1 {
@@ -245,7 +255,12 @@ mod tests {
         let resp = invalid_coins_escrow
             .validate(deps.as_ref().api, &block)
             .unwrap_err();
-        assert_eq!(ContractError::EmptyFunds {}, resp);
+        assert_eq!(
+            ContractError::InvalidFunds {
+                msg: "Require at least one coin to be sent".to_string()
+            },
+            resp
+        );
 
         let invalid_condition_escrow = Escrow {
             recipient: recipient.clone(),
@@ -325,7 +340,9 @@ mod tests {
             condition: Some(EscrowCondition::MinimumFunds(vec![])),
         };
         assert_eq!(
-            ContractError::EmptyFunds {},
+            ContractError::InvalidFunds {
+                msg: "Minumum funds must not be empty".to_string(),
+            },
             invalid_escrow
                 .validate(deps.as_ref().api, &block)
                 .unwrap_err()

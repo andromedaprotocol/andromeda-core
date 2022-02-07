@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::{
+    common::get_tax_deducted_funds,
     communication::{AndromedaMsg, AndromedaQuery},
     error::ContractError,
     modules::{
@@ -176,6 +177,13 @@ impl TransferAgreement {
         })?;
 
         for payment in payments.lock().unwrap().iter().cloned() {
+            let payment = match payment {
+                BankMsg::Send { to_address, amount } => BankMsg::Send {
+                    to_address,
+                    amount: get_tax_deducted_funds(deps, amount)?,
+                },
+                _ => panic!(),
+            };
             res = res.add_message(payment);
         }
 
