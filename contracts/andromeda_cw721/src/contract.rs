@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Reply, Response, StdError, Storage, SubMsg,
+    attr, has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, Reply, Response, StdError, Storage, SubMsg,
 };
 
 use andromeda_protocol::{
@@ -134,6 +134,7 @@ pub fn execute(
             execute_update_pricing(deps, env, info, token_id, price)
         }
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
+        ExecuteMsg::Burn { token_id } => execute_burn(deps, info, token_id),
         ExecuteMsg::RegisterModule { module } => execute_register_module(
             &deps.querier,
             deps.storage,
@@ -337,6 +338,32 @@ fn execute_archive(
         .save(deps.storage, token_id.as_str(), &token)?;
 
     Ok(Response::default())
+}
+
+fn execute_burn(
+    deps: DepsMut,
+    info: MessageInfo,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    let contract = AndrCW721Contract::default();
+    let token = contract.tokens.load(deps.storage, &token_id)?;
+    require(
+        token.owner.eq(&info.sender.to_string()),
+        ContractError::Unauthorized {},
+    )?;
+    require(!token.extension.archived, ContractError::TokenIsArchived {})?;
+
+    contract.tokens.remove(deps.storage, &token_id)?;
+
+    // Decrement token count.
+    let count = contract.token_count.load(deps.storage)?;
+    contract.token_count.save(deps.storage, &(count - 1))?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "burn"),
+        attr("token_id", token_id),
+        attr("sender", info.sender.to_string()),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
