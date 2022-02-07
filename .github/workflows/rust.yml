@@ -44,6 +44,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build
+        with:
+          toolchain: nightly
+          override: true
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
           "${GITHUB_WORKSPACE}/build.sh"
