@@ -1432,7 +1432,7 @@ mod tests {
             token_uri: None,
             pricing: None,
         }));
-        execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
+        execute(deps.as_mut(), env.clone(), info, mint_msg).unwrap();
 
         AUCTION_CONTRACT
             .save(deps.as_mut().storage, &MOCK_AUCTION_CONTRACT.to_string())

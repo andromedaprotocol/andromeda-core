@@ -241,7 +241,7 @@ impl ModuleDefinition {
             } => Box::from(AuctionModule {
                 address: address.clone(),
                 operators: operators.clone(),
-                code_id: code_id.clone(),
+                code_id: *code_id,
             }),
         }
     }

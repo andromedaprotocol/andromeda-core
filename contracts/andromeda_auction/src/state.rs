@@ -17,10 +17,10 @@ pub struct Config {
     pub token_addr: String,
 }
 
-impl Into<ConfigResponse> for Config {
-    fn into(self) -> ConfigResponse {
+impl From<Config> for ConfigResponse {
+    fn from(config: Config) -> ConfigResponse {
         ConfigResponse {
-            token_addr: self.token_addr,
+            token_addr: config.token_addr,
         }
     }
 }
@@ -37,17 +37,17 @@ pub struct TokenAuctionState {
     pub whitelist: Option<Vec<Addr>>,
 }
 
-impl Into<AuctionStateResponse> for TokenAuctionState {
-    fn into(self) -> AuctionStateResponse {
+impl From<TokenAuctionState> for AuctionStateResponse {
+    fn from(token_auction_state: TokenAuctionState) -> AuctionStateResponse {
         AuctionStateResponse {
-            start_time: self.start_time,
-            end_time: self.end_time,
-            high_bidder_addr: self.high_bidder_addr.to_string(),
-            high_bidder_amount: self.high_bidder_amount,
-            claimed: self.claimed,
-            coin_denom: self.coin_denom,
-            auction_id: self.auction_id,
-            whitelist: self.whitelist,
+            start_time: token_auction_state.start_time,
+            end_time: token_auction_state.end_time,
+            high_bidder_addr: token_auction_state.high_bidder_addr.to_string(),
+            high_bidder_amount: token_auction_state.high_bidder_amount,
+            claimed: token_auction_state.claimed,
+            coin_denom: token_auction_state.coin_denom,
+            auction_id: token_auction_state.auction_id,
+            whitelist: token_auction_state.whitelist,
         }
     }
 }
@@ -60,8 +60,8 @@ pub const BIDS: Map<U128Key, Vec<Bid>> = Map::new("bids"); // auction_id -> [bid
 
 pub const TOKEN_AUCTION_STATE: Map<U128Key, TokenAuctionState> = Map::new("auction_token_state");
 
-pub fn read_bids<'a>(
-    storage: &'a dyn Storage,
+pub fn read_bids(
+    storage: &dyn Storage,
     auction_id: U128Key,
     start_after: Option<u64>,
     limit: Option<u64>,
