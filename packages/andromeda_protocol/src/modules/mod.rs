@@ -1,4 +1,5 @@
 pub mod address_list;
+pub mod auction;
 pub mod common;
 pub mod hooks;
 pub mod receipt;
@@ -10,6 +11,7 @@ use crate::{
     error::ContractError,
     modules::{
         address_list::AddressListModule,
+        auction::AuctionModule,
         hooks::{HookResponse, MessageHooks},
         receipt::ReceiptModule,
         royalties::Royalty,
@@ -148,6 +150,15 @@ pub enum ModuleDefinition {
         /// A vector of contract operators. Used in combination with a valid `code_id` parameter
         operators: Option<Vec<String>>,
     },
+    /// An auction module
+    Auction {
+        /// The address of the module contract
+        address: Option<String>,
+        /// A valid code ID for the module contract. Used upon contract instantiation to instantiate a new module contract.
+        code_id: Option<u64>,
+        /// A vector of contract operators. Used in combination with a valid `code_id` parameter
+        operators: Option<Vec<String>>,
+    },
 }
 
 pub trait Module: MessageHooks {
@@ -170,6 +181,7 @@ impl ModuleDefinition {
             ModuleDefinition::Whitelist { .. } => "whitelist",
             ModuleDefinition::Blacklist { .. } => "blacklist",
             ModuleDefinition::Taxable { .. } => "tax",
+            ModuleDefinition::Auction { .. } => "auction",
         })
     }
     pub fn as_module(&self) -> Box<dyn Module> {
@@ -221,6 +233,15 @@ impl ModuleDefinition {
                 operators: operators.clone(),
                 address: address.clone(),
                 code_id: *code_id,
+            }),
+            ModuleDefinition::Auction {
+                address,
+                code_id,
+                operators,
+            } => Box::from(AuctionModule {
+                address: address.clone(),
+                operators: operators.clone(),
+                code_id: code_id.clone(),
             }),
         }
     }
