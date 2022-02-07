@@ -1,6 +1,7 @@
 use super::mock_querier::mock_dependencies_custom;
-use crate::contract::{execute, get_tax_deducted_funds, instantiate, query};
+use crate::contract::{execute, instantiate, query};
 use andromeda_protocol::{
+    common::get_tax_deducted_funds,
     communication::{AndromedaMsg, AndromedaQuery},
     error::ContractError,
     mirror_wrapped_cdp::{
@@ -789,8 +790,8 @@ fn test_mirror_too_many_funds() {
     )
     .unwrap_err();
     assert_eq!(
-        ContractError::InvalidMirrorFunds {
-            msg: "Mirror expects no funds or a single type of fund to be deposited.".to_string()
+        ContractError::InvalidFunds {
+            msg: "Mirror expects zero or one coin to be sent".to_string()
         },
         res_err
     );

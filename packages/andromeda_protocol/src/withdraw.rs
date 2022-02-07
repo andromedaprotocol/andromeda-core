@@ -95,7 +95,12 @@ pub fn execute_withdraw(
             msgs.push(msg);
         }
     }
-    require(!msgs.is_empty(), ContractError::EmptyFunds {})?;
+    require(
+        !msgs.is_empty(),
+        ContractError::InvalidFunds {
+            msg: "No funds to withdraw".to_string(),
+        },
+    )?;
     Ok(Response::new()
         .add_submessages(msgs)
         .add_attribute("action", "withdraw")
@@ -147,7 +152,12 @@ mod tests {
             Recipient::Addr("address".to_string()),
             None,
         );
-        assert_eq!(ContractError::EmptyFunds {}, res.unwrap_err());
+        assert_eq!(
+            ContractError::InvalidFunds {
+                msg: "No funds to withdraw".to_string(),
+            },
+            res.unwrap_err()
+        );
     }
 
     #[test]

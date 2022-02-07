@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use std::convert::From;
 use std::string::FromUtf8Error;
@@ -32,9 +32,6 @@ pub enum ContractError {
 
     #[error("InvalidAddress")]
     InvalidAddress {},
-
-    #[error("EmptyFunds")]
-    EmptyFunds {},
 
     #[error("ExpirationInPast")]
     ExpirationInPast {},
@@ -84,11 +81,59 @@ pub enum ContractError {
     #[error("TokenIsArchived")]
     TokenIsArchived {},
 
+    #[error("AuctionDoesNotExist")]
+    AuctionDoesNotExist {},
+
+    #[error("AuctionNotStarted")]
+    AuctionNotStarted {},
+
+    #[error("AuctionEnded")]
+    AuctionEnded {},
+
+    #[error("TokenOwnerCannotBid")]
+    TokenOwnerCannotBid {},
+
+    #[error("BidSmallerThanHighestBid")]
+    BidSmallerThanHighestBid {},
+
+    #[error("Overflow")]
+    Overflow {},
+
+    #[error("CannotWithdrawHighestBid")]
+    CannotWithdrawHighestBid {},
+
+    #[error("WithdrawalIsEmpty")]
+    WithdrawalIsEmpty {},
+
+    #[error("AuctionAlreadyStarted")]
+    AuctionAlreadyStarted {},
+
+    #[error("StartTimeAfterEndTime")]
+    StartTimeAfterEndTime {},
+
+    #[error("StartTimeInThePast")]
+    StartTimeInThePast {},
+
+    #[error("HighestBidderCannotOutBid")]
+    HighestBidderCannotOutBid {},
+
+    #[error("InvalidFunds")]
+    InvalidFunds { msg: String },
+
+    #[error("AuctionRewardAlreadyClaimed")]
+    AuctionAlreadyClaimed {},
+
+    #[error("AuctionNotEnded")]
+    AuctionNotEnded {},
+
+    #[error("ExpirationMustNotBeNever")]
+    ExpirationMustNotBeNever {},
+
+    #[error("ExpirationsMustBeOfSameType")]
+    ExpirationsMustBeOfSameType {},
+
     #[error("MoreThanOneCoin")]
     MoreThanOneCoin {},
-
-    #[error("InvalidMirrorFunds")]
-    InvalidMirrorFunds { msg: String },
 
     #[error("InvalidReplyId")]
     InvalidReplyId {},
@@ -162,5 +207,11 @@ impl From<Cw20ContractError> for ContractError {
 impl From<FromUtf8Error> for ContractError {
     fn from(err: FromUtf8Error) -> Self {
         ContractError::Std(StdError::from(err))
+    }
+}
+
+impl From<OverflowError> for ContractError {
+    fn from(_err: OverflowError) -> Self {
+        ContractError::Overflow {}
     }
 }

@@ -1,13 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-    Storage, Uint128, WasmMsg,
+    from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
+    Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
+    common::get_tax_deducted_funds,
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     mirror_wrapped_cdp::{
@@ -23,7 +24,7 @@ use andromeda_protocol::{
     withdraw::{add_withdrawable_token, execute_withdraw},
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use terraswap::asset::{Asset, AssetInfo};
+use terraswap::asset::AssetInfo;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_mirror_wrapped_cdp";
@@ -377,8 +378,8 @@ pub fn execute_mirror_msg(
     )?;
     require(
         funds.is_empty() || funds.len() == 1,
-        ContractError::InvalidMirrorFunds {
-            msg: "Mirror expects no funds or a single type of fund to be deposited.".to_string(),
+        ContractError::InvalidFunds {
+            msg: "Mirror expects zero or one coin to be sent".to_string(),
         },
     )?;
     let tax_deducted_funds = get_tax_deducted_funds(&deps, funds)?;
@@ -457,18 +458,4 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
         mirror_gov_contract: config.mirror_gov_contract.to_string(),
         mirror_lock_contract: config.mirror_lock_contract.to_string(),
     })
-}
-
-pub fn get_tax_deducted_funds(deps: &DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
-    if !coins.is_empty() {
-        let asset = Asset {
-            info: AssetInfo::NativeToken {
-                denom: coins[0].denom.to_string(),
-            },
-            amount: coins[0].amount,
-        };
-        Ok(vec![asset.deduct_tax(&deps.querier)?])
-    } else {
-        Ok(coins)
-    }
 }
