@@ -274,12 +274,8 @@ mod tests {
             code_id: None,
         };
 
-        let res = auction_module.on_burn(
-            &deps.as_mut(),
-            info,
-            env,
-            MOCK_TOKEN_IN_AUCTION.to_string(),
-        );
+        let res =
+            auction_module.on_burn(&deps.as_mut(), info, env, MOCK_TOKEN_IN_AUCTION.to_string());
         assert_eq!(ContractError::AuctionNotEnded {}, res.unwrap_err());
     }
 
@@ -311,12 +307,8 @@ mod tests {
             code_id: None,
         };
 
-        let res = auction_module.on_archive(
-            &deps.as_mut(),
-            info,
-            env,
-            MOCK_TOKEN_IN_AUCTION.to_string(),
-        );
+        let res =
+            auction_module.on_archive(&deps.as_mut(), info, env, MOCK_TOKEN_IN_AUCTION.to_string());
         assert_eq!(ContractError::AuctionNotEnded {}, res.unwrap_err());
     }
 
@@ -332,8 +324,7 @@ mod tests {
             code_id: None,
         };
 
-        let res =
-            auction_module.on_archive(&deps.as_mut(), info, env, "token2".to_string());
+        let res = auction_module.on_archive(&deps.as_mut(), info, env, "token2".to_string());
         assert_eq!(HookResponse::default(), res.unwrap());
     }
 }
