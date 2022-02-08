@@ -13,6 +13,10 @@ use cosmwasm_std::{coin, BankMsg, Coin, StdError, StdResult, Uint128};
 ///
 /// Returns the fee amount in a `Coin` struct.
 pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
+    if payment.amount > Uint128::MAX.checked_div(Uint128::from(100u128)).unwrap() {
+        panic!("Payment amount exceeds maximum value")
+    }
+
     match fee_rate {
         Rate::Flat(rate) => coin(Uint128::from(rate.amount).u128(), rate.denom),
         Rate::Percent(rate) => {
@@ -266,5 +270,14 @@ mod tests {
         let received = calculate_fee(fee, payment);
 
         assert_eq!(expected, received);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_calculate_fee_max() {
+        let payment = coin(Uint128::MAX.u128(), "uluna");
+        let fee = Rate::Percent(4);
+
+        calculate_fee(fee, payment);
     }
 }
