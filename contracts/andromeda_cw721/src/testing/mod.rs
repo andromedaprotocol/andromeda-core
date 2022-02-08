@@ -422,13 +422,13 @@ fn test_modules() {
     init_setup(deps.as_mut(), env.clone(), Some(modules));
     mint_token(
         deps.as_mut(),
-        env.clone(),
+        env,
         token_id.clone(),
         creator.clone(),
         TokenExtension {
             description: None,
             name: String::default(),
-            publisher: creator.clone(),
+            publisher: creator,
             transfer_agreement: None,
             metadata: None,
             archived: false,
@@ -438,7 +438,7 @@ fn test_modules() {
 
     let msg = ExecuteMsg::TransferAgreement {
         token_id: token_id.clone(),
-        agreement: Some(agreement.clone()),
+        agreement: Some(agreement),
     };
 
     let not_whitelisted_info = mock_info("not_whitelisted", &[]);
