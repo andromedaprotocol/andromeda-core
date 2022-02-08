@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, DepsMut, Env};
+use cosmwasm_std::{attr, Coin, DepsMut, Env, Response};
 
 use crate::contract::*;
 use andromeda_protocol::communication::modules::Module;
@@ -193,6 +193,63 @@ fn test_archive() {
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
     let resp: NftInfoResponse<TokenExtension> = from_binary(&query_resp).unwrap();
     assert!(resp.extension.archived)
+}
+
+#[test]
+fn test_burn() {
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let mut deps = mock_dependencies(&[]);
+    let env = mock_env();
+    init_setup(deps.as_mut(), env.clone(), None);
+    mint_token(
+        deps.as_mut(),
+        env.clone(),
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator.clone(),
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let msg = ExecuteMsg::Burn {
+        token_id: token_id.clone(),
+    };
+
+    let unauth_info = mock_info("anyone", &[]);
+    assert_eq!(
+        execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err(),
+        ContractError::Unauthorized {}
+    );
+
+    let info = mock_info(creator.as_str(), &[]);
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::default().add_attributes(vec![
+            attr("action", "burn"),
+            attr("token_id", &token_id),
+            attr("sender", info.sender.to_string()),
+        ]),
+        res
+    );
+
+    let contract = AndrCW721Contract::default();
+    assert_eq!(
+        None,
+        contract
+            .tokens
+            .may_load(deps.as_ref().storage, &token_id)
+            .unwrap()
+    );
+
+    assert_eq!(0, contract.token_count.load(deps.as_ref().storage).unwrap());
 }
 
 #[test]
