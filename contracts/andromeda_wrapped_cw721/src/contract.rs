@@ -89,7 +89,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Receive(msg) => handle_receive_cw721(deps, env, info, msg),
+        ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(deps, env, info, msg),
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
     }
 }
@@ -371,7 +371,7 @@ mod tests {
             .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
             .unwrap();
 
-        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: "not_owner".to_string(),
             token_id: token_id.clone(),
             msg: encode_binary(&Cw721HookMsg::Wrap {
@@ -384,7 +384,7 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: owner.clone(),
             token_id: token_id.clone(),
             msg: encode_binary(&Cw721HookMsg::Wrap {
@@ -461,7 +461,7 @@ mod tests {
             .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
             .unwrap();
 
-        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: owner.clone(),
             token_id: token_id.clone(),
             msg: encode_binary(&Cw721HookMsg::Wrap {
@@ -540,7 +540,7 @@ mod tests {
 
         let info = mock_info(MOCK_CW721_CONTRACT, &[]);
 
-        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: owner,
             token_id,
             msg: encode_binary(&Cw721HookMsg::Unwrap {}).unwrap(),
@@ -568,7 +568,7 @@ mod tests {
 
         let info = mock_info("invalid_address", &[]);
 
-        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: owner,
             token_id,
             msg: encode_binary(&Cw721HookMsg::Unwrap {}).unwrap(),
@@ -599,7 +599,7 @@ mod tests {
 
         let info = mock_info(MOCK_CW721_CONTRACT, &[]);
 
-        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: owner.clone(),
             token_id: token_id.clone(),
             msg: encode_binary(&Cw721HookMsg::Unwrap {}).unwrap(),
