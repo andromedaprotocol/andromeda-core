@@ -1,7 +1,11 @@
 use crate::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     auction::{AuctionStateResponse, QueryMsg as AuctionQueryMsg},
-    communication::hooks::{AndromedaHook, OnFundsTransferResponse},
+    communication::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        AndromedaQuery,
+    },
+    factory::{CodeIdResponse, QueryMsg as FactoryQueryMsg},
     ownership::ContractOwnerResponse,
     primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
     rates::{Funds, QueryMsg as RatesQueryMsg},
@@ -20,13 +24,16 @@ use cw721::Expiration;
 use std::collections::HashMap;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
 
+pub const MOCK_FACTORY_CONTRACT: &str = "factory_contract";
+pub const MOCK_CW721_CONTRACT: &str = "cw721_contract";
 pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
-pub const MOCK_TOKEN_IN_AUCTION: &str = "token1";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_RECEIPT_CONTRACT: &str = "receipt_contract";
+
+pub const MOCK_TOKEN_IN_AUCTION: &str = "token1";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -132,6 +139,7 @@ impl WasmMockQuerier {
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
                     MOCK_RECEIPT_CONTRACT => self.handle_receipt_query(msg),
                     MOCK_AUCTION_CONTRACT => self.handle_auction_query(msg),
+                    MOCK_FACTORY_CONTRACT => self.handle_factory_query(msg),
                     _ => {
                         let msg_response = IncludesAddressResponse { included: false };
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
@@ -233,6 +241,16 @@ impl WasmMockQuerier {
                 }
                 _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
             },
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_factory_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            FactoryQueryMsg::AndrQuery(AndromedaQuery::Get(_)) => {
+                let response = CodeIdResponse { code_id: 1 };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+            }
             _ => panic!("Unsupported Query"),
         }
     }

@@ -1,4 +1,4 @@
-use crate::state::{ANDROMEDA_CW721_ADDR, CAN_UNWRAP, WRAPPED_TOKENS};
+use crate::state::{ANDROMEDA_CW721_ADDR, CAN_UNWRAP};
 use andromeda_protocol::{
     communication::{encode_binary, query_get},
     cw721::{
@@ -13,9 +13,8 @@ use andromeda_protocol::{
     wrapped_cw721::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, QueryMsg},
 };
 use cosmwasm_std::{
-    attr, coins, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, QueryRequest, Reply, ReplyOn,
-    Response, StdError, StdResult, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    entry_point, from_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QuerierWrapper, QueryRequest, Reply, ReplyOn, Response, StdError, SubMsg, WasmMsg, WasmQuery,
 };
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NftInfoResponse};
 use cw721_base::MintMsg;
@@ -108,7 +107,7 @@ fn handle_receive_cw721(
             info.sender,
             wrapped_token_id,
         ),
-        Cw721HookMsg::Unwrap {} => execute_unwrap(deps, env, msg.sender, msg.token_id, info.sender),
+        Cw721HookMsg::Unwrap {} => execute_unwrap(deps, msg.sender, msg.token_id, info.sender),
     }
 }
 
@@ -178,7 +177,6 @@ fn execute_wrap(
 
 fn execute_unwrap(
     deps: DepsMut,
-    env: Env,
     sender: String,
     token_id: String,
     token_address: Addr,
@@ -228,8 +226,8 @@ fn get_original_nft_data(
     if let Some(metadata) = token_info.extension.metadata {
         if let Some(attributes) = metadata.attributes {
             require(attributes.len() == 2, ContractError::InvalidMetadata {})?;
-            let original_token_id = attributes[0].value;
-            let original_token_address = attributes[1].value;
+            let original_token_id = attributes[0].value.clone();
+            let original_token_address = attributes[1].value.clone();
             return Ok((original_token_id, original_token_address));
         }
         return Err(ContractError::InvalidMetadata {});
@@ -240,4 +238,83 @@ fn get_original_nft_data(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     Ok(encode_binary(&"asdf".to_string())?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use andromeda_protocol::{
+        testing::mock_querier::{
+            mock_dependencies_custom, MOCK_CW721_CONTRACT, MOCK_FACTORY_CONTRACT,
+        },
+        wrapped_cw721::Cw721Specification,
+    };
+    use cosmwasm_std::from_binary;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+
+    #[test]
+    fn test_instantiate_address() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("sender", &[]);
+
+        let msg = InstantiateMsg {
+            factory_contract: MOCK_FACTORY_CONTRACT.to_owned(),
+            can_unwrap: true,
+            cw721_instantiate_type: InstantiateType::Address(MOCK_CW721_CONTRACT.to_owned()),
+        };
+
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(Response::new(), res);
+        assert_eq!(
+            "sender".to_string(),
+            CONTRACT_OWNER.load(deps.as_ref().storage).unwrap()
+        );
+        assert_eq!(
+            MOCK_CW721_CONTRACT.to_owned(),
+            ANDROMEDA_CW721_ADDR.load(deps.as_ref().storage).unwrap()
+        );
+        assert_eq!(true, CAN_UNWRAP.load(deps.as_ref().storage).unwrap());
+    }
+
+    #[test]
+    fn test_instantiate_new() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let info = mock_info("sender", &[]);
+
+        let msg = InstantiateMsg {
+            factory_contract: MOCK_FACTORY_CONTRACT.to_owned(),
+            can_unwrap: true,
+            cw721_instantiate_type: InstantiateType::New(Cw721Specification {
+                name: "name".to_string(),
+                symbol: "symbol".to_string(),
+                modules: None,
+            }),
+        };
+
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let cw721_insantiate_msg = Cw721InstantiateMsg {
+            name: "name".to_string(),
+            symbol: "symbol".to_string(),
+            modules: None,
+            minter: mock_env().contract.address.to_string(),
+        };
+        let msg: SubMsg = SubMsg {
+            id: 1,
+            reply_on: ReplyOn::Always,
+            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                admin: None,
+                code_id: 1,
+                msg: encode_binary(&cw721_insantiate_msg).unwrap(),
+                funds: vec![],
+                label: "Instantiate: andromeda_cw721".to_string(),
+            }),
+            gas_limit: None,
+        };
+        assert_eq!(Response::new().add_submessage(msg), res);
+        assert_eq!(
+            "sender".to_string(),
+            CONTRACT_OWNER.load(deps.as_ref().storage).unwrap()
+        );
+        assert_eq!(true, CAN_UNWRAP.load(deps.as_ref().storage).unwrap());
+    }
 }
