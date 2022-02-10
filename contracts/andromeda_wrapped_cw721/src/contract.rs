@@ -14,11 +14,14 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{
     attr, coins, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Reply, ReplyOn, Response, StdError,
-    StdResult, Storage, SubMsg, Uint128, WasmMsg, WasmQuery, QueryRequest
+    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, QueryRequest, Reply, ReplyOn,
+    Response, StdError, StdResult, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NftInfoResponse};
 use cw721_base::MintMsg;
+
+const ORIGINAL_TOKEN_ID: &str = "original_token_id";
+const ORIGINAL_TOKEN_ADDRESS: &str = "original_token_address";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -137,12 +140,12 @@ fn execute_wrap(
             data_url: None,
             attributes: Some(vec![
                 MetadataAttribute {
-                    key: "original_token_id".to_string(),
+                    key: ORIGINAL_TOKEN_ID.to_owned(),
                     value: token_id.clone(),
                     display_label: None,
                 },
                 MetadataAttribute {
-                    key: "original_token_address".to_string(),
+                    key: ORIGINAL_TOKEN_ADDRESS.to_owned(),
                     value: token_address.to_string(),
                     display_label: None,
                 },
@@ -181,14 +184,57 @@ fn execute_unwrap(
     token_address: Addr,
 ) -> Result<Response, ContractError> {
     let can_unwrap = CAN_UNWRAP.load(deps.storage)?;
+    let cw721_contract_addr = ANDROMEDA_CW721_ADDR.load(deps.storage)?;
     require(can_unwrap, ContractError::UnwrappingDisabled {})?;
     require(
-        token_address == env.contract.address,
+        token_address == cw721_contract_addr,
         ContractError::TokenNotWrappedByThisContract {},
     )?;
-    let token_info = deps.querier.query(&QueryRequest::Wasm)
+    let (original_token_id, original_token_address) =
+        get_original_nft_data(&deps.querier, token_id.clone(), token_address.to_string())?;
+
     let burn_msg = Cw721ExecuteMsg::Burn { token_id };
-    Ok(Response::new())
+    let transfer_msg = Cw721ExecuteMsg::TransferNft {
+        recipient: sender,
+        token_id: original_token_id,
+    };
+    Ok(Response::new()
+        .add_message(WasmMsg::Execute {
+            contract_addr: cw721_contract_addr,
+            funds: vec![],
+            msg: encode_binary(&burn_msg)?,
+        })
+        .add_message(WasmMsg::Execute {
+            contract_addr: original_token_address,
+            funds: vec![],
+            msg: encode_binary(&transfer_msg)?,
+        }))
+}
+
+/// Retrieves the original token id and contract address of the wrapped token.
+fn get_original_nft_data(
+    querier: &QuerierWrapper,
+    wrapped_token_id: String,
+    wrapped_token_address: String,
+) -> Result<(String, String), ContractError> {
+    let token_info = querier.query::<NftInfoResponse<TokenExtension>>(&QueryRequest::Wasm(
+        WasmQuery::Smart {
+            contract_addr: wrapped_token_address.to_string(),
+            msg: encode_binary(&Cw721QueryMsg::NftInfo {
+                token_id: wrapped_token_id.clone(),
+            })?,
+        },
+    ))?;
+    if let Some(metadata) = token_info.extension.metadata {
+        if let Some(attributes) = metadata.attributes {
+            require(attributes.len() == 2, ContractError::InvalidMetadata {})?;
+            let original_token_id = attributes[0].value;
+            let original_token_address = attributes[1].value;
+            return Ok((original_token_id, original_token_address));
+        }
+        return Err(ContractError::InvalidMetadata {});
+    }
+    return Err(ContractError::InvalidMetadata {});
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

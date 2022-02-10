@@ -207,6 +207,9 @@ pub enum ContractError {
 
     #[error("TokenNotWrappedByThisContract")]
     TokenNotWrappedByThisContract {},
+
+    #[error("InvalidMetadata")]
+    InvalidMetadata {},
 }
 
 impl From<Cw20ContractError> for ContractError {
