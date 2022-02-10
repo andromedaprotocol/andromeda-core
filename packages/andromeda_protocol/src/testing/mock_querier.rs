@@ -199,9 +199,9 @@ impl WasmMockQuerier {
         match from_binary(msg).unwrap() {
             AddressListQueryMsg::AndrHook(hook_msg) => match hook_msg {
                 AndromedaHook::OnExecute { sender, payload: _ } => {
-                    // Only the "sender" is whitelisted.
+                    let whitelisted_addresses = ["sender", "minter", "purchaser", "creator"];
                     let response: Response = Response::default();
-                    if sender == "sender" {
+                    if whitelisted_addresses.contains(&sender.as_str()) {
                         SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
                     } else {
                         SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
