@@ -1,4 +1,4 @@
-use crate::communication::modules::Module;
+use crate::communication::{modules::Module, AndromedaMsg, AndromedaQuery};
 use cw721::Cw721ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -33,6 +33,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw721ReceiveMsg),
+    AndrReceive(AndromedaMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -44,4 +45,6 @@ pub enum Cw721HookMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
+}
