@@ -1,6 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Deps, DepsMut, Env, IbcMsg, IbcQuery, MessageInfo, Order, PortIdResponse, Response, StdResult, QueryRequest, WasmQuery};
+use cosmwasm_std::{
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Env, IbcMsg, IbcQuery, MessageInfo, Order,
+    PortIdResponse, QueryRequest, Response, StdResult, WasmQuery,
+};
 
 use cw2::{get_contract_version, set_contract_version};
 
@@ -11,9 +14,9 @@ use crate::msg::{
     TransferMsg,
 };
 use crate::state::{Config, CHANNEL_INFO, CONFIG};
+use andromeda_protocol::token::NftInfoResponseExtension;
 use cw0::nonpayable;
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NftInfoResponse};
-use andromeda_protocol::token::NftInfoResponseExtension;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw721-ics721";
@@ -56,10 +59,19 @@ pub fn execute_receive(
 
     let msg: TransferMsg = from_binary(&wrapper.msg)?;
 
-    let token:NftInfoResponse<NftInfoResponseExtension> =  query_nft_info(deps.as_ref(),info.sender.to_string(), &wrapper.token_id)?;
+    let token: NftInfoResponse<NftInfoResponseExtension> =
+        query_nft_info(deps.as_ref(), info.sender.to_string(), &wrapper.token_id)?;
 
     let api = deps.api;
-    execute_transfer(deps, env, msg, wrapper.token_id.clone(), info.sender.to_string(),token, api.addr_validate(&wrapper.sender)?)
+    execute_transfer(
+        deps,
+        env,
+        msg,
+        wrapper.token_id.clone(),
+        info.sender.to_string(),
+        token,
+        api.addr_validate(&wrapper.sender)?,
+    )
 }
 
 pub fn execute_transfer(
@@ -71,8 +83,6 @@ pub fn execute_transfer(
     token: NftInfoResponse<NftInfoResponseExtension>,
     sender: Addr,
 ) -> Result<Response, ContractError> {
-
-
     if !CHANNEL_INFO.has(deps.storage, &msg.channel) {
         return Err(ContractError::NoSuchChannel { id: msg.channel });
     }
@@ -153,24 +163,21 @@ fn query_list(deps: Deps) -> StdResult<ListChannelsResponse> {
 // make public for ibc tests
 pub fn query_channel(deps: Deps, id: String) -> StdResult<ChannelResponse> {
     let info = CHANNEL_INFO.load(deps.storage, &id)?;
-        // we want (Vec<outstanding>, Vec<total>)
+    // we want (Vec<outstanding>, Vec<total>)
 
-
-    Ok(ChannelResponse {
-        info,
-    })
+    Ok(ChannelResponse { info })
 }
 pub fn query_nft_info(
     deps: Deps,
     contract_addr: String,
     token_id: &String,
 ) -> StdResult<NftInfoResponse<NftInfoResponseExtension>> {
-    let token_info: NftInfoResponse<NftInfoResponseExtension> = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr,
-        msg: to_binary(&Cw721QueryMsg::NftInfo {
-            token_id: token_id.to_string(),
-        })?,
-    }))?;
+    let token_info: NftInfoResponse<NftInfoResponseExtension> =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr,
+            msg: to_binary(&Cw721QueryMsg::NftInfo {
+                token_id: token_id.to_string(),
+            })?,
+        }))?;
     Ok(token_info)
 }
-

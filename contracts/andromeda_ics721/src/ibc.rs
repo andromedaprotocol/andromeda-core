@@ -2,16 +2,15 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{
-    attr, entry_point, from_binary, to_binary, Binary, DepsMut, Env, IbcBasicResponse,
-    IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder,
-    IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
-    SubMsg, WasmMsg,
+    attr, entry_point, from_binary, to_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannel,
+    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacket,
+    IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, SubMsg, WasmMsg,
 };
 
 use crate::error::{ContractError, Never};
 use crate::state::{ChannelInfo, CHANNEL_INFO};
-use cw721::{Cw721ExecuteMsg, NftInfoResponse};
 use andromeda_protocol::token::NftInfoResponseExtension;
+use cw721::{Cw721ExecuteMsg, NftInfoResponse};
 
 pub const ICS721_VERSION: &str = "ics721-1";
 pub const ICS721_ORDERING: IbcOrder = IbcOrder::Unordered;
@@ -30,7 +29,13 @@ pub struct Ics721Packet {
 }
 
 impl Ics721Packet {
-    pub fn new(token_id: String, token_addr: String, token_info: NftInfoResponse<NftInfoResponseExtension>, sender: &str, receiver: &str) -> Self {
+    pub fn new(
+        token_id: String,
+        token_addr: String,
+        token_info: NftInfoResponse<NftInfoResponseExtension>,
+        sender: &str,
+        receiver: &str,
+    ) -> Self {
         Ics721Packet {
             token_id,
             token_addr,
@@ -173,7 +178,10 @@ pub fn ibc_packet_receive(
 }
 
 // this does the work of ibc_packet_receive, we wrap it to turn errors into acknowledgements
-fn do_ibc_packet_receive(_deps: DepsMut, packet: &IbcPacket) -> Result<Ics721Packet, ContractError> {
+fn do_ibc_packet_receive(
+    _deps: DepsMut,
+    packet: &IbcPacket,
+) -> Result<Ics721Packet, ContractError> {
     let msg: Ics721Packet = from_binary(&packet.data)?;
 
     Ok(msg)
@@ -217,7 +225,6 @@ fn on_packet_success(_deps: DepsMut, packet: IbcPacket) -> Result<IbcBasicRespon
         attr("success", "true"),
     ];
 
-
     Ok(IbcBasicResponse::new().add_attributes(attributes))
 }
 
@@ -237,19 +244,21 @@ fn on_packet_failure(
         attr("error", err),
     ];
 
-    let msg = send_token(msg.token_id,msg.token_addr, msg.sender);
+    let msg = send_token(msg.token_id, msg.token_addr, msg.sender);
     Ok(IbcBasicResponse::new()
         .add_attributes(attributes)
         .add_submessage(msg))
 }
 
 fn send_token(token_id: String, token_addr: String, recipient: String) -> SubMsg {
-    let msg = Cw721ExecuteMsg::TransferNft { recipient, token_id };
+    let msg = Cw721ExecuteMsg::TransferNft {
+        recipient,
+        token_id,
+    };
     let exec = WasmMsg::Execute {
         contract_addr: token_addr,
         msg: to_binary(&msg).unwrap(),
-        funds: vec![]
+        funds: vec![],
     };
     SubMsg::new(exec)
 }
-
