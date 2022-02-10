@@ -243,9 +243,9 @@ fn get_original_nft_data(
 ) -> Result<(String, String), ContractError> {
     let token_info = querier.query::<NftInfoResponse<TokenExtension>>(&QueryRequest::Wasm(
         WasmQuery::Smart {
-            contract_addr: wrapped_token_address.to_string(),
+            contract_addr: wrapped_token_address,
             msg: encode_binary(&Cw721QueryMsg::NftInfo {
-                token_id: wrapped_token_id.clone(),
+                token_id: wrapped_token_id,
             })?,
         },
     ))?;
@@ -258,7 +258,7 @@ fn get_original_nft_data(
         }
         return Err(ContractError::InvalidMetadata {});
     }
-    return Err(ContractError::InvalidMetadata {});
+    Err(ContractError::InvalidMetadata {})
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -311,7 +311,7 @@ mod tests {
             MOCK_CW721_CONTRACT.to_owned(),
             ANDROMEDA_CW721_ADDR.load(deps.as_ref().storage).unwrap()
         );
-        assert_eq!(true, CAN_UNWRAP.load(deps.as_ref().storage).unwrap());
+        assert!(CAN_UNWRAP.load(deps.as_ref().storage).unwrap());
     }
 
     #[test]
@@ -353,7 +353,7 @@ mod tests {
             "sender".to_string(),
             CONTRACT_OWNER.load(deps.as_ref().storage).unwrap()
         );
-        assert_eq!(true, CAN_UNWRAP.load(deps.as_ref().storage).unwrap());
+        assert!(CAN_UNWRAP.load(deps.as_ref().storage).unwrap());
     }
 
     #[test]
@@ -393,7 +393,7 @@ mod tests {
             .unwrap(),
         });
 
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let extension = TokenExtension {
             name: token_id.clone(),
@@ -422,7 +422,7 @@ mod tests {
         };
         let mint_msg = MintMsg {
             token_id: token_id.clone(),
-            owner: owner.clone(),
+            owner,
             token_uri: None,
             extension,
         };
@@ -471,7 +471,7 @@ mod tests {
         });
 
         let info = mock_info(&token_address, &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let extension = TokenExtension {
             name: wrapped_token_id.clone(),
@@ -500,7 +500,7 @@ mod tests {
         };
         let mint_msg = MintMsg {
             token_id: wrapped_token_id.to_owned(),
-            owner: owner.clone(),
+            owner,
             token_uri: None,
             extension,
         };
@@ -541,12 +541,12 @@ mod tests {
         let info = mock_info(MOCK_CW721_CONTRACT, &[]);
 
         let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
-            sender: owner.clone(),
-            token_id: token_id.clone(),
+            sender: owner,
+            token_id,
             msg: encode_binary(&Cw721HookMsg::Unwrap {}).unwrap(),
         });
 
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        let res = execute(deps.as_mut(), mock_env(), info, msg);
 
         assert_eq!(ContractError::UnwrappingDisabled {}, res.unwrap_err());
     }
@@ -569,12 +569,12 @@ mod tests {
         let info = mock_info("invalid_address", &[]);
 
         let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
-            sender: owner.clone(),
-            token_id: token_id.clone(),
+            sender: owner,
+            token_id,
             msg: encode_binary(&Cw721HookMsg::Unwrap {}).unwrap(),
         });
 
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        let res = execute(deps.as_mut(), mock_env(), info, msg);
 
         assert_eq!(
             ContractError::TokenNotWrappedByThisContract {},
@@ -605,12 +605,10 @@ mod tests {
             msg: encode_binary(&Cw721HookMsg::Unwrap {}).unwrap(),
         });
 
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-        let burn_msg = Cw721ExecuteMsg::Burn {
-            token_id: token_id.clone(),
-        };
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let burn_msg = Cw721ExecuteMsg::Burn { token_id };
         let transfer_msg = Cw721ExecuteMsg::TransferNft {
-            recipient: owner.clone(),
+            recipient: owner,
             token_id: "original_token_id".to_owned(),
         };
         assert_eq!(
