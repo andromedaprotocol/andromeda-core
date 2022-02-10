@@ -50,7 +50,7 @@ pub fn add_channel(mut deps: DepsMut, channel_id: &str) {
     let channel = mock_channel(channel_id);
     let open_msg = IbcChannelOpenMsg::new_init(channel.clone());
     ibc_channel_open(deps.branch(), mock_env(), open_msg).unwrap();
-    let connect_msg = IbcChannelConnectMsg::new_ack(channel, ICS20_VERSION);
+    let connect_msg = IbcChannelConnectMsg::new_ack(channel, ICS721_VERSION);
     ibc_channel_connect(deps.branch(), mock_env(), connect_msg).unwrap();
 }
 
