@@ -128,8 +128,9 @@ fn execute_wrap(
         ContractError::CannotDoubleWrapToken {},
     )?;
 
+    let wrapped_token_id = wrapped_token_id.unwrap_or_else(|| token_id.to_string());
     let extension = TokenExtension {
-        name: token_id.clone(),
+        name: wrapped_token_id.clone(),
         publisher: sender.clone(),
         description: None,
         transfer_agreement: None,
@@ -153,7 +154,6 @@ fn execute_wrap(
         archived: false,
         pricing: None,
     };
-    let wrapped_token_id = wrapped_token_id.unwrap_or_else(|| token_id.to_string());
     let mint_msg = MintMsg {
         token_id: wrapped_token_id.to_string(),
         owner: sender,
@@ -163,7 +163,7 @@ fn execute_wrap(
     let msg = encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msg)))?;
     let cw721_contract_addr = ANDROMEDA_CW721_ADDR.load(deps.storage)?;
     let wasm_msg = WasmMsg::Execute {
-        contract_addr: cw721_contract_addr,
+        contract_addr: cw721_contract_addr.clone(),
         funds: vec![],
         msg,
     };
@@ -172,7 +172,8 @@ fn execute_wrap(
         .add_attribute("action", "wrap")
         .add_attribute("token_id", token_id)
         .add_attribute("token_address", token_address)
-        .add_attribute("wrapped_token_id", wrapped_token_id))
+        .add_attribute("wrapped_token_id", wrapped_token_id)
+        .add_attribute("wrapped_token_address", cw721_contract_addr))
 }
 
 fn execute_unwrap(
@@ -206,7 +207,8 @@ fn execute_unwrap(
             contract_addr: original_token_address,
             funds: vec![],
             msg: encode_binary(&transfer_msg)?,
-        }))
+        })
+        .add_attribute("action", "unwrap"))
 }
 
 /// Retrieves the original token id and contract address of the wrapped token.
@@ -249,7 +251,6 @@ mod tests {
         },
         wrapped_cw721::Cw721Specification,
     };
-    use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
@@ -316,5 +317,279 @@ mod tests {
             CONTRACT_OWNER.load(deps.as_ref().storage).unwrap()
         );
         assert_eq!(true, CAN_UNWRAP.load(deps.as_ref().storage).unwrap());
+    }
+
+    #[test]
+    fn test_wrap() {
+        let mut deps = mock_dependencies(&[]);
+
+        let token_id = String::from("token_id");
+        let owner = String::from("owner");
+        let token_address = String::from("token_address");
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
+            .unwrap();
+        ANDROMEDA_CW721_ADDR
+            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
+            .unwrap();
+
+        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+            sender: "not_owner".to_string(),
+            token_id: token_id.clone(),
+            msg: encode_binary(&Cw721HookMsg::Wrap {
+                wrapped_token_id: None,
+            })
+            .unwrap(),
+        });
+
+        let info = mock_info(&token_address, &[]);
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+            sender: owner.clone(),
+            token_id: token_id.clone(),
+            msg: encode_binary(&Cw721HookMsg::Wrap {
+                wrapped_token_id: None,
+            })
+            .unwrap(),
+        });
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let extension = TokenExtension {
+            name: token_id.clone(),
+            publisher: owner.clone(),
+            description: None,
+            transfer_agreement: None,
+            metadata: Some(TokenMetadata {
+                data_type: MetadataType::Other,
+                external_url: None,
+                data_url: None,
+                attributes: Some(vec![
+                    MetadataAttribute {
+                        key: ORIGINAL_TOKEN_ID.to_owned(),
+                        value: token_id.clone(),
+                        display_label: None,
+                    },
+                    MetadataAttribute {
+                        key: ORIGINAL_TOKEN_ADDRESS.to_owned(),
+                        value: token_address.to_string(),
+                        display_label: None,
+                    },
+                ]),
+            }),
+            archived: false,
+            pricing: None,
+        };
+        let mint_msg = MintMsg {
+            token_id: token_id.clone(),
+            owner: owner.clone(),
+            token_uri: None,
+            extension,
+        };
+        let msg = encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msg))).unwrap();
+        let wasm_msg = WasmMsg::Execute {
+            contract_addr: MOCK_CW721_CONTRACT.to_owned(),
+            funds: vec![],
+            msg,
+        };
+
+        assert_eq!(
+            Response::new()
+                .add_message(wasm_msg)
+                .add_attribute("action", "wrap")
+                .add_attribute("token_id", &token_id)
+                .add_attribute("token_address", token_address)
+                .add_attribute("wrapped_token_id", &token_id)
+                .add_attribute("wrapped_token_address", MOCK_CW721_CONTRACT),
+            res
+        );
+    }
+
+    #[test]
+    fn test_wrap_new_wrapped_token_id() {
+        let mut deps = mock_dependencies(&[]);
+
+        let token_id = String::from("token_id");
+        let wrapped_token_id = String::from("wrapped_token_id");
+        let owner = String::from("owner");
+        let token_address = String::from("token_address");
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
+            .unwrap();
+        ANDROMEDA_CW721_ADDR
+            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
+            .unwrap();
+
+        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+            sender: owner.clone(),
+            token_id: token_id.clone(),
+            msg: encode_binary(&Cw721HookMsg::Wrap {
+                wrapped_token_id: Some(wrapped_token_id.clone()),
+            })
+            .unwrap(),
+        });
+
+        let info = mock_info(&token_address, &[]);
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let extension = TokenExtension {
+            name: wrapped_token_id.clone(),
+            publisher: owner.clone(),
+            description: None,
+            transfer_agreement: None,
+            metadata: Some(TokenMetadata {
+                data_type: MetadataType::Other,
+                external_url: None,
+                data_url: None,
+                attributes: Some(vec![
+                    MetadataAttribute {
+                        key: ORIGINAL_TOKEN_ID.to_owned(),
+                        value: token_id.clone(),
+                        display_label: None,
+                    },
+                    MetadataAttribute {
+                        key: ORIGINAL_TOKEN_ADDRESS.to_owned(),
+                        value: token_address.to_string(),
+                        display_label: None,
+                    },
+                ]),
+            }),
+            archived: false,
+            pricing: None,
+        };
+        let mint_msg = MintMsg {
+            token_id: wrapped_token_id.to_owned(),
+            owner: owner.clone(),
+            token_uri: None,
+            extension,
+        };
+        let msg = encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msg))).unwrap();
+        let wasm_msg = WasmMsg::Execute {
+            contract_addr: MOCK_CW721_CONTRACT.to_owned(),
+            funds: vec![],
+            msg,
+        };
+
+        assert_eq!(
+            Response::new()
+                .add_message(wasm_msg)
+                .add_attribute("action", "wrap")
+                .add_attribute("token_id", &token_id)
+                .add_attribute("token_address", token_address)
+                .add_attribute("wrapped_token_id", &wrapped_token_id)
+                .add_attribute("wrapped_token_address", MOCK_CW721_CONTRACT),
+            res
+        );
+    }
+
+    #[test]
+    fn test_unwrap_unwrap_disabled() {
+        let mut deps = mock_dependencies(&[]);
+
+        let token_id = String::from("token_id");
+        let owner = String::from("owner");
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
+            .unwrap();
+        ANDROMEDA_CW721_ADDR
+            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
+            .unwrap();
+        CAN_UNWRAP.save(deps.as_mut().storage, &false).unwrap();
+
+        let info = mock_info(MOCK_CW721_CONTRACT, &[]);
+
+        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+            sender: owner.clone(),
+            token_id: token_id.clone(),
+            msg: encode_binary(&Cw721HookMsg::Unwrap {}).unwrap(),
+        });
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
+        assert_eq!(ContractError::UnwrappingDisabled {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_unwrap_invalid_token_address() {
+        let mut deps = mock_dependencies(&[]);
+
+        let token_id = String::from("token_id");
+        let owner = String::from("owner");
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
+            .unwrap();
+        ANDROMEDA_CW721_ADDR
+            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
+            .unwrap();
+        CAN_UNWRAP.save(deps.as_mut().storage, &true).unwrap();
+
+        let info = mock_info("invalid_address", &[]);
+
+        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+            sender: owner.clone(),
+            token_id: token_id.clone(),
+            msg: encode_binary(&Cw721HookMsg::Unwrap {}).unwrap(),
+        });
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
+        assert_eq!(
+            ContractError::TokenNotWrappedByThisContract {},
+            res.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn test_unwrap() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let token_id = String::from("token_id");
+        let owner = String::from("owner");
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
+            .unwrap();
+        ANDROMEDA_CW721_ADDR
+            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
+            .unwrap();
+        CAN_UNWRAP.save(deps.as_mut().storage, &true).unwrap();
+
+        let info = mock_info(MOCK_CW721_CONTRACT, &[]);
+
+        let msg = ExecuteMsg::Receive(Cw721ReceiveMsg {
+            sender: owner.clone(),
+            token_id: token_id.clone(),
+            msg: encode_binary(&Cw721HookMsg::Unwrap {}).unwrap(),
+        });
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let burn_msg = Cw721ExecuteMsg::Burn {
+            token_id: token_id.clone(),
+        };
+        let transfer_msg = Cw721ExecuteMsg::TransferNft {
+            recipient: owner.clone(),
+            token_id: "original_token_id".to_owned(),
+        };
+        assert_eq!(
+            Response::new()
+                .add_message(WasmMsg::Execute {
+                    contract_addr: MOCK_CW721_CONTRACT.to_owned(),
+                    funds: vec![],
+                    msg: encode_binary(&burn_msg).unwrap(),
+                })
+                .add_message(WasmMsg::Execute {
+                    contract_addr: "original_token_address".to_owned(),
+                    funds: vec![],
+                    msg: encode_binary(&transfer_msg).unwrap(),
+                })
+                .add_attribute("action", "unwrap"),
+            res
+        );
     }
 }

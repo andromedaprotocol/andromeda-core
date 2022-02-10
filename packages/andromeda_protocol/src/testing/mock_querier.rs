@@ -5,6 +5,9 @@ use crate::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         AndromedaQuery,
     },
+    cw721::{
+        MetadataAttribute, MetadataType, QueryMsg as Cw721QueryMsg, TokenExtension, TokenMetadata,
+    },
     factory::{CodeIdResponse, QueryMsg as FactoryQueryMsg},
     ownership::ContractOwnerResponse,
     primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
@@ -20,7 +23,7 @@ use cosmwasm_std::{
 };
 use cw20::{BalanceResponse, Cw20Coin, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use cw721::Expiration;
+use cw721::{Expiration, NftInfoResponse};
 use std::collections::HashMap;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
 
@@ -134,6 +137,7 @@ impl WasmMockQuerier {
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
                     }
                     MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
+                    MOCK_CW721_CONTRACT => self.handle_cw721_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
@@ -262,6 +266,44 @@ impl WasmMockQuerier {
                     balance: 10u128.into(),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&balance_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_cw721_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            Cw721QueryMsg::NftInfo { .. } => {
+                let extension = TokenExtension {
+                    name: "wrapped_token_id".to_owned(),
+                    publisher: "sender".to_owned(),
+                    description: None,
+                    transfer_agreement: None,
+                    metadata: Some(TokenMetadata {
+                        data_type: MetadataType::Other,
+                        external_url: None,
+                        data_url: None,
+                        attributes: Some(vec![
+                            MetadataAttribute {
+                                key: "original_token_id".to_owned(),
+                                value: "original_token_id".to_owned(),
+                                display_label: None,
+                            },
+                            MetadataAttribute {
+                                key: "original_token_address".to_owned(),
+                                value: "original_token_address".to_owned(),
+                                display_label: None,
+                            },
+                        ]),
+                    }),
+                    archived: false,
+                    pricing: None,
+                };
+                let response = NftInfoResponse {
+                    token_uri: None,
+                    extension,
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
             }
             _ => panic!("Unsupported Query"),
         }
