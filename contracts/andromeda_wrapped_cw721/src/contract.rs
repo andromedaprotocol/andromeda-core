@@ -1,19 +1,24 @@
-use crate::state::{ANDROMEDA_CW721_ADDR, CAN_UNWRAP};
+use crate::state::{ANDROMEDA_CW721_ADDR, CAN_UNWRAP, WRAPPED_TOKENS};
 use andromeda_protocol::{
     communication::{encode_binary, query_get},
-    cw721::InstantiateMsg as Cw721InstantiateMsg,
+    cw721::{
+        ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MetadataAttribute,
+        MetadataType, TokenExtension, TokenMetadata,
+    },
     error::ContractError,
     factory::CodeIdResponse,
-    ownership::CONTRACT_OWNER,
+    ownership::{is_contract_owner, CONTRACT_OWNER},
     require,
     response::get_reply_address,
-    wrapped_cw721::{Cw721Specification, ExecuteMsg, InstantiateMsg, InstantiateType, QueryMsg},
+    wrapped_cw721::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, QueryMsg},
 };
 use cosmwasm_std::{
-    attr, coins, entry_point, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps, DepsMut,
-    Env, MessageInfo, QuerierWrapper, QueryRequest, Reply, ReplyOn, Response, StdError, StdResult,
-    Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, coins, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Reply, ReplyOn, Response, StdError,
+    StdResult, Storage, SubMsg, Uint128, WasmMsg, WasmQuery, QueryRequest
 };
+use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NftInfoResponse};
+use cw721_base::MintMsg;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -80,7 +85,110 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    Ok(Response::default())
+    match msg {
+        ExecuteMsg::Receive(msg) => handle_receive_cw721(deps, env, info, msg),
+    }
+}
+
+fn handle_receive_cw721(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: Cw721ReceiveMsg,
+) -> Result<Response, ContractError> {
+    match from_binary(&msg.msg)? {
+        Cw721HookMsg::Wrap { wrapped_token_id } => execute_wrap(
+            deps,
+            env,
+            msg.sender,
+            msg.token_id,
+            info.sender,
+            wrapped_token_id,
+        ),
+        Cw721HookMsg::Unwrap {} => execute_unwrap(deps, env, msg.sender, msg.token_id, info.sender),
+    }
+}
+
+fn execute_wrap(
+    deps: DepsMut,
+    env: Env,
+    sender: String,
+    token_id: String,
+    token_address: Addr,
+    wrapped_token_id: Option<String>,
+) -> Result<Response, ContractError> {
+    require(
+        is_contract_owner(deps.storage, &sender)?,
+        ContractError::Unauthorized {},
+    )?;
+    require(
+        token_address != env.contract.address,
+        ContractError::CannotDoubleWrapToken {},
+    )?;
+
+    let extension = TokenExtension {
+        name: token_id.clone(),
+        publisher: sender.clone(),
+        description: None,
+        transfer_agreement: None,
+        metadata: Some(TokenMetadata {
+            data_type: MetadataType::Other,
+            external_url: None,
+            data_url: None,
+            attributes: Some(vec![
+                MetadataAttribute {
+                    key: "original_token_id".to_string(),
+                    value: token_id.clone(),
+                    display_label: None,
+                },
+                MetadataAttribute {
+                    key: "original_token_address".to_string(),
+                    value: token_address.to_string(),
+                    display_label: None,
+                },
+            ]),
+        }),
+        archived: false,
+        pricing: None,
+    };
+    let wrapped_token_id = wrapped_token_id.unwrap_or_else(|| token_id.to_string());
+    let mint_msg = MintMsg {
+        token_id: wrapped_token_id.to_string(),
+        owner: sender,
+        token_uri: None,
+        extension,
+    };
+    let msg = encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msg)))?;
+    let cw721_contract_addr = ANDROMEDA_CW721_ADDR.load(deps.storage)?;
+    let wasm_msg = WasmMsg::Execute {
+        contract_addr: cw721_contract_addr,
+        funds: vec![],
+        msg,
+    };
+    Ok(Response::new()
+        .add_message(wasm_msg)
+        .add_attribute("action", "wrap")
+        .add_attribute("token_id", token_id)
+        .add_attribute("token_address", token_address)
+        .add_attribute("wrapped_token_id", wrapped_token_id))
+}
+
+fn execute_unwrap(
+    deps: DepsMut,
+    env: Env,
+    sender: String,
+    token_id: String,
+    token_address: Addr,
+) -> Result<Response, ContractError> {
+    let can_unwrap = CAN_UNWRAP.load(deps.storage)?;
+    require(can_unwrap, ContractError::UnwrappingDisabled {})?;
+    require(
+        token_address == env.contract.address,
+        ContractError::TokenNotWrappedByThisContract {},
+    )?;
+    let token_info = deps.querier.query(&QueryRequest::Wasm)
+    let burn_msg = Cw721ExecuteMsg::Burn { token_id };
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

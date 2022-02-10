@@ -198,6 +198,15 @@ pub enum ContractError {
 
     #[error("token_id already claimed")]
     Claimed {},
+
+    #[error("CannotDoubleWrapToken")]
+    CannotDoubleWrapToken {},
+
+    #[error("UnwrappingDisabled")]
+    UnwrappingDisabled {},
+
+    #[error("TokenNotWrappedByThisContract")]
+    TokenNotWrappedByThisContract {},
 }
 
 impl From<Cw20ContractError> for ContractError {

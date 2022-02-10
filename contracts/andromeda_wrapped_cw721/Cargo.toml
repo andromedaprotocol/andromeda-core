@@ -28,3 +28,4 @@ cw-storage-plus = "0.9.1"
 cw721 = "0.9.1"
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
 terra-cosmwasm = { version = "2.2.0" }
+cw721-base = { version = "0.9.1", features = ["library"] }

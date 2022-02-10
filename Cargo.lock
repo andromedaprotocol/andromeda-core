@@ -213,6 +213,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-storage-plus 0.9.1",
  "cw721",
+ "cw721-base",
  "schemars",
  "serde",
  "terra-cosmwasm",
