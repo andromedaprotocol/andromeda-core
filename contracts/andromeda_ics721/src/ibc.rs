@@ -16,8 +16,7 @@ use andromeda_protocol::token::NftInfoResponseExtension;
 pub const ICS721_VERSION: &str = "ics721-1";
 pub const ICS721_ORDERING: IbcOrder = IbcOrder::Unordered;
 
-/// The format for sending an ics20 packet.
-/// Proto defined here: https://github.com/cosmos/cosmos-sdk/blob/v0.42.0/proto/ibc/applications/transfer/v1/transfer.proto#L11-L20
+/// The format for sending an ics721 packet.
 /// This is compatible with the JSON serialization
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Ics721Packet {

@@ -32,9 +32,6 @@ pub enum ContractError {
     #[error("Only supports unordered channel")]
     OnlyOrderedChannel {},
 
-    #[error("Insufficient funds to redeem voucher on channel")]
-    InsufficientFunds {},
-
     #[error("Only accepts tokens that originate on this chain, not native tokens of remote chain")]
     NoForeignTokens {},
 

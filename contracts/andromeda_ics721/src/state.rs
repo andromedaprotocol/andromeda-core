@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{IbcEndpoint, Uint128};
 use cw_storage_plus::{Item, Map};
 
-pub const CONFIG: Item<Config> = Item::new("ics20_config");
+pub const CONFIG: Item<Config> = Item::new("ics721_config");
 
 // static info on one channel that doesn't change
 pub const CHANNEL_INFO: Map<&str, ChannelInfo> = Map::new("channel_info");

@@ -16,7 +16,7 @@ use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NftInfoResponse};
 use andromeda_protocol::token::NftInfoResponseExtension;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw20-ics20";
+const CONTRACT_NAME: &str = "crates.io:cw721-ics721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -85,7 +85,7 @@ pub fn execute_transfer(
     // timeout is in nanoseconds
     let timeout = env.block.time.plus_seconds(timeout_delta);
 
-    // build ics20 packet
+    // build ics721 packet
     let packet = Ics721Packet::new(
         token_id,
         token_addr,

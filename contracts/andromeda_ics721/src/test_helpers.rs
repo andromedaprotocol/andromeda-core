@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use crate::contract::instantiate;
-use crate::ibc::{ibc_channel_connect, ibc_channel_open, ICS20_ORDERING, ICS20_VERSION};
+use crate::ibc::{ibc_channel_connect, ibc_channel_open, ICS721_ORDERING, ICS721_VERSION};
 use crate::state::ChannelInfo;
 
 use cosmwasm_std::testing::{
@@ -28,8 +28,8 @@ pub fn mock_channel(channel_id: &str) -> IbcChannel {
             port_id: REMOTE_PORT.into(),
             channel_id: format!("{}5", channel_id),
         },
-        ICS20_ORDERING,
-        ICS20_VERSION,
+        ICS721_ORDERING,
+        ICS721_VERSION,
         CONNECTION_ID,
     )
 }

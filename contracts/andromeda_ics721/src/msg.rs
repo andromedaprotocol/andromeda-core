@@ -7,7 +7,7 @@ use crate::state::ChannelInfo;
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 pub struct InitMsg {
-    /// Default timeout for ics20 packets, specified in seconds
+    /// Default timeout for ics721 packets, specified in seconds
     pub default_timeout: u64,
 }
 
