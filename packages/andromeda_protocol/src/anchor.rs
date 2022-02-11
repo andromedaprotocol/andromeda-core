@@ -20,15 +20,13 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    Deposit { recipient: Option<Recipient> },
-    Withdraw { position_idx: Uint128 },
-    Yourself { yourself_msg: YourselfMsg },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum YourselfMsg {
-    TransferUst { receiver: Recipient },
+    Deposit {
+        recipient: Option<Recipient>,
+    },
+    Withdraw {
+        percent: Option<Uint128>,
+        recipient_addr: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
