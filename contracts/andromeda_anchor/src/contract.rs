@@ -2,7 +2,7 @@ use crate::state::{
     Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
 };
 use andromeda_protocol::{
-    anchor::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    anchor::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
@@ -122,7 +122,7 @@ pub fn execute_deposit(
             deps.storage,
             &recipient_addr,
             &Position {
-                owner: recipient,
+                recipient,
                 aust_amount: Uint128::zero(),
             },
         )?;
@@ -242,7 +242,7 @@ fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError
     let transfer_amount = current_balance - prev_balance;
 
     let recipient_addr = RECIPIENT_ADDR.load(deps.storage)?;
-    let recipient = POSITION.load(deps.storage, &recipient_addr)?.owner;
+    let recipient = POSITION.load(deps.storage, &recipient_addr)?.recipient;
     let mut msgs = vec![];
     if transfer_amount > Uint128::zero() {
         msgs.push(
@@ -258,25 +258,18 @@ fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError
 }
 
 #[entry_point]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
     }
 }
 
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
+            let recipient: String = parse_message(data)?;
+            encode_binary(&query_position(deps, recipient)?)
         }
         AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
         AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
@@ -292,5 +285,13 @@ fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     Ok(ConfigResponse {
         anchor_market: deps.api.addr_humanize(&config.anchor_market)?.to_string(),
         aust_token: deps.api.addr_humanize(&config.aust_token)?.to_string(),
+    })
+}
+
+fn query_position(deps: Deps, recipient: String) -> Result<PositionResponse, ContractError> {
+    let position = POSITION.load(deps.storage, &recipient)?;
+    Ok(PositionResponse {
+        recipient: position.recipient,
+        aust_amount: position.aust_amount,
     })
 }

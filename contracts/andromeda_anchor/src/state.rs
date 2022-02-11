@@ -18,6 +18,6 @@ pub struct Config {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Position {
-    pub owner: Recipient,
+    pub recipient: Recipient,
     pub aust_amount: Uint128,
 }

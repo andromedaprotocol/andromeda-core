@@ -37,8 +37,13 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
 pub struct ConfigResponse {
     pub anchor_market: String,
     pub aust_token: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct PositionResponse {
+    pub recipient: Recipient,
+    pub aust_amount: Uint128,
 }

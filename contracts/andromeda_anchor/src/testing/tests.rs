@@ -259,6 +259,62 @@ fn test_deposit_existing_position() {
 }
 
 #[test]
+fn test_deposit_other_recipient() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let amount = 1000000u128;
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Deposit {
+        recipient: Some(Recipient::Addr("recipient".into())),
+    };
+    let info = mock_info(
+        "addr0000",
+        &[Coin {
+            denom: "uusd".to_string(),
+            amount: Uint128::from(amount),
+        }],
+    );
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
+
+    // Suppose exchange rate is 1 uusd = 0.5 aUST.
+    let aust_amount = amount / 2;
+    deps.querier.token_balance = aust_amount.into();
+
+    let my_reply = Reply {
+        id: DEPOSIT_ID,
+        result: ContractResult::Ok(SubMsgExecutionResponse {
+            events: vec![],
+            data: None,
+        }),
+    };
+
+    let res = reply(deps.as_mut(), mock_env(), my_reply.clone()).unwrap();
+
+    assert_eq!(
+        Response::new().add_attributes(vec![
+            attr("action", "reply_update_position"),
+            attr("recipient_addr", "recipient"),
+            attr("aust_amount", aust_amount.to_string()),
+        ]),
+        res
+    );
+
+    assert_eq!(
+        aust_amount,
+        POSITION
+            .load(deps.as_mut().storage, "recipient")
+            .unwrap()
+            .aust_amount
+            .u128()
+    );
+}
+
+#[test]
 fn test_withdraw_percent() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
@@ -272,7 +328,7 @@ fn test_withdraw_percent() {
     let recipient = "recipient";
 
     let position = Position {
-        owner: Recipient::Addr(recipient.to_owned()),
+        recipient: Recipient::Addr(recipient.to_owned()),
         aust_amount: Uint128::from(amount),
     };
     POSITION
@@ -308,7 +364,7 @@ fn test_withdraw_recipient_sender() {
     let recipient = "recipient";
 
     let position = Position {
-        owner: Recipient::Addr(recipient.to_owned()),
+        recipient: Recipient::Addr(recipient.to_owned()),
         aust_amount: Uint128::from(amount),
     };
     POSITION
