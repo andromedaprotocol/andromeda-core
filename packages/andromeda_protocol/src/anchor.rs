@@ -25,7 +25,7 @@ pub enum ExecuteMsg {
     },
     Withdraw {
         percent: Option<Uint128>,
-        recipient_addr: String,
+        recipient_addr: Option<String>,
     },
 }
 

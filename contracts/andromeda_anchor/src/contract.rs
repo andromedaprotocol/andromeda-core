@@ -11,7 +11,7 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{
     attr, coins, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, SubMsg, Uint128, WasmMsg,
+    Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 
@@ -107,7 +107,6 @@ pub fn execute_deposit(
         },
     )?;
 
-    //create position
     let aust_balance = query_token_balance(
         &deps.querier,
         deps.api.addr_humanize(&config.aust_token)?,
@@ -118,14 +117,16 @@ pub fn execute_deposit(
     RECIPIENT_ADDR.save(deps.storage, &recipient_addr)?;
     let payment_amount = payment.amount;
 
-    POSITION.save(
-        deps.storage,
-        &recipient_addr,
-        &Position {
-            owner: recipient,
-            aust_amount: Uint128::zero(),
-        },
-    )?;
+    if !POSITION.has(deps.storage, &recipient_addr) {
+        POSITION.save(
+            deps.storage,
+            &recipient_addr,
+            &Position {
+                owner: recipient,
+                aust_amount: Uint128::zero(),
+            },
+        )?;
+    }
 
     //deposit Anchor Mint
     Ok(Response::new()
@@ -148,9 +149,10 @@ pub fn execute_withdraw(
     env: Env,
     info: MessageInfo,
     percent: Option<Uint128>,
-    recipient_addr: String,
+    recipient_addr: Option<String>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+    let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
     let mut position = POSITION.load(deps.storage, &recipient_addr)?;
 
     let authorized = recipient_addr == info.sender
@@ -198,40 +200,42 @@ pub fn execute_withdraw(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
-        DEPOSIT_ID => {
-            // stores aUST amount to position
-            let config = CONFIG.load(deps.storage)?;
-            let aust_balance = query_token_balance(
-                &deps.querier,
-                deps.api.addr_humanize(&config.aust_token)?,
-                env.contract.address,
-            )?;
-
-            let prev_aust_balance = PREV_AUST_BALANCE.load(deps.storage)?;
-            let new_aust_balance = aust_balance.checked_sub(prev_aust_balance)?;
-            require(
-                new_aust_balance > Uint128::zero(),
-                ContractError::InvalidFunds {
-                    msg: "No aUST tokens minted".to_string(),
-                },
-            )?;
-
-            let recipient_addr = RECIPIENT_ADDR.load(deps.storage)?;
-            let mut position = POSITION.load(deps.storage, &recipient_addr)?;
-            position.aust_amount = new_aust_balance;
-            POSITION.save(deps.storage, &recipient_addr, &position)?;
-            Ok(Response::new().add_attributes(vec![
-                attr("action", "reply"),
-                attr("recipient_addr", recipient_addr.clone().to_string()),
-                attr("aust_amount", new_aust_balance.to_string()),
-            ]))
-        }
-        WITHDRAW_ID => withdraw_ust(deps, env),
+        DEPOSIT_ID => reply_update_position(deps, env),
+        WITHDRAW_ID => reply_withdraw_ust(deps, env),
         _ => Err(ContractError::InvalidReplyId {}),
     }
 }
 
-fn withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
+fn reply_update_position(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
+    // stores aUST amount to position
+    let config = CONFIG.load(deps.storage)?;
+    let aust_balance = query_token_balance(
+        &deps.querier,
+        deps.api.addr_humanize(&config.aust_token)?,
+        env.contract.address,
+    )?;
+
+    let prev_aust_balance = PREV_AUST_BALANCE.load(deps.storage)?;
+    let new_aust_balance = aust_balance.checked_sub(prev_aust_balance)?;
+    require(
+        new_aust_balance > Uint128::zero(),
+        ContractError::InvalidFunds {
+            msg: "No aUST tokens minted".to_string(),
+        },
+    )?;
+
+    let recipient_addr = RECIPIENT_ADDR.load(deps.storage)?;
+    let mut position = POSITION.load(deps.storage, &recipient_addr)?;
+    position.aust_amount += new_aust_balance;
+    POSITION.save(deps.storage, &recipient_addr, &position)?;
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "reply_update_position"),
+        attr("recipient_addr", recipient_addr.clone().to_string()),
+        attr("aust_amount", new_aust_balance.to_string()),
+    ]))
+}
+
+fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     let current_balance =
         query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
     let prev_balance = PREV_UUSD_BALANCE.load(deps.storage)?;
@@ -248,7 +252,7 @@ fn withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     }
     Ok(Response::new()
         .add_submessages(msgs)
-        .add_attribute("action", "withdraw")
+        .add_attribute("action", "reply_withdraw_ust")
         .add_attribute("recipient", recipient_addr)
         .add_attribute("amount", transfer_amount))
 }
