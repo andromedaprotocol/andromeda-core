@@ -12,9 +12,8 @@ pub const TEMP_BALANCE: Item<Uint128> = Item::new("temp_balance");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    pub anchor_mint: CanonicalAddr,
-    pub anchor_token: CanonicalAddr,
-    pub stable_denom: String,
+    pub anchor_market: CanonicalAddr,
+    pub aust_token: CanonicalAddr,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

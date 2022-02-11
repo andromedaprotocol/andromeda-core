@@ -19,6 +19,8 @@ use terraswap::querier::{query_balance, query_token_balance};
 
 use andromeda_protocol::anchor::{AnchorMarketMsg, ConfigResponse, YourselfMsg};
 
+const UUSD_DENOM: &str = "uusd";
+
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
@@ -27,9 +29,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let config = Config {
-        anchor_mint: deps.api.addr_canonicalize(&msg.anchor_mint)?,
-        anchor_token: deps.api.addr_canonicalize(&msg.anchor_token)?,
-        stable_denom: msg.stable_denom,
+        anchor_market: deps.api.addr_canonicalize(&msg.anchor_market)?,
+        aust_token: deps.api.addr_canonicalize(&msg.aust_token)?,
     };
     CONFIG.save(deps.storage, &config)?;
     KEY_POSITION_IDX.save(deps.storage, &Uint128::from(1u128))?;
@@ -91,7 +92,6 @@ pub fn execute_deposit(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let coin_denom = config.stable_denom.clone();
     let depositor = match recipient {
         Some(recipient) => recipient,
         None => Recipient::Addr(info.sender.to_string()),
@@ -105,15 +105,15 @@ pub fn execute_deposit(
     let payment = info
         .funds
         .iter()
-        .find(|x| x.denom == coin_denom && x.amount > Uint128::zero())
+        .find(|x| x.denom == UUSD_DENOM && x.amount > Uint128::zero())
         .ok_or_else(|| {
-            StdError::generic_err(format!("No {} assets are provided to deposit", coin_denom))
+            StdError::generic_err(format!("No {} assets are provided to deposit", UUSD_DENOM))
         })?;
     //create position
     let position_idx = KEY_POSITION_IDX.load(deps.storage)?;
     let aust_balance = query_token_balance(
         &deps.querier,
-        deps.api.addr_humanize(&config.anchor_token)?,
+        deps.api.addr_humanize(&config.aust_token)?,
         env.contract.address,
     )?;
     PREV_AUST_BALANCE.save(deps.storage, &aust_balance)?;
@@ -134,7 +134,7 @@ pub fn execute_deposit(
     Ok(Response::new()
         .add_submessage(SubMsg::reply_on_success(
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: deps.api.addr_humanize(&config.anchor_mint)?.to_string(),
+                contract_addr: deps.api.addr_humanize(&config.anchor_market)?.to_string(),
                 msg: to_binary(&AnchorMarketMsg::DepositStable {})?,
                 funds: vec![payment.clone()],
             }),
@@ -164,7 +164,7 @@ pub fn withdraw(
     let contract_balance = query_balance(
         &deps.querier,
         env.contract.address.clone(),
-        config.stable_denom.clone(),
+        UUSD_DENOM.to_owned(),
     )?;
     TEMP_BALANCE.save(deps.storage, &contract_balance)?;
 
@@ -173,9 +173,9 @@ pub fn withdraw(
     Ok(Response::new()
         .add_messages(vec![
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: deps.api.addr_humanize(&config.anchor_token)?.to_string(),
+                contract_addr: deps.api.addr_humanize(&config.aust_token)?.to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: deps.api.addr_humanize(&config.anchor_mint)?.to_string(),
+                    contract: deps.api.addr_humanize(&config.anchor_market)?.to_string(),
                     amount: position.aust_amount,
                     msg: to_binary(&AnchorMarketMsg::RedeemStable {})?,
                 })?,
@@ -203,20 +203,16 @@ pub fn transfer_ust(
     env: Env,
     receiver: Recipient,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let current_balance = query_balance(
-        &deps.querier,
-        env.contract.address,
-        config.stable_denom.clone(),
-    )?;
+    let current_balance =
+        query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
     let prev_balance = TEMP_BALANCE.load(deps.storage)?;
     let transfer_amount = current_balance - prev_balance;
     let mut msgs = vec![];
     if transfer_amount > Uint128::zero() {
-        msgs.push(receiver.generate_msg_native(
-            &deps.as_ref(),
-            coins(transfer_amount.u128(), config.stable_denom),
-        )?);
+        msgs.push(
+            receiver
+                .generate_msg_native(&deps.as_ref(), coins(transfer_amount.u128(), UUSD_DENOM))?,
+        );
     }
     Ok(Response::new().add_submessages(msgs).add_attributes(vec![
         attr("action", "withdraw"),
@@ -233,7 +229,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
             let config = CONFIG.load(deps.storage)?;
             let aust_balance = query_token_balance(
                 &deps.querier,
-                deps.api.addr_humanize(&config.anchor_token)?,
+                deps.api.addr_humanize(&config.aust_token)?,
                 env.contract.address,
             )?;
 
@@ -290,8 +286,7 @@ fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
     Ok(ConfigResponse {
-        anchor_mint: deps.api.addr_humanize(&config.anchor_mint)?.to_string(),
-        anchor_token: deps.api.addr_humanize(&config.anchor_token)?.to_string(),
-        stable_denom: config.stable_denom,
+        anchor_market: deps.api.addr_humanize(&config.anchor_market)?.to_string(),
+        aust_token: deps.api.addr_humanize(&config.aust_token)?.to_string(),
     })
 }

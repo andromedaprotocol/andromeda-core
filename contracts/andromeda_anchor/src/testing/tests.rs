@@ -19,9 +19,8 @@ fn test_instantiate() {
     let owner = "owner";
     let info = mock_info(owner, &[]);
     let msg = InstantiateMsg {
-        anchor_token: "anchor_token".to_string(),
-        anchor_mint: "anchor_mint".to_string(),
-        stable_denom: "uusd".to_string(),
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
     };
     let res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
 
@@ -31,28 +30,26 @@ fn test_instantiate() {
     let config = CONFIG.load(deps.as_ref().storage).unwrap();
 
     assert_eq!(
-        msg.anchor_token,
+        msg.aust_token,
         deps.api
-            .addr_humanize(&config.anchor_token)
+            .addr_humanize(&config.aust_token)
             .unwrap()
             .to_string()
     );
     assert_eq!(
-        msg.anchor_mint,
+        msg.anchor_market,
         deps.api
-            .addr_humanize(&config.anchor_mint)
+            .addr_humanize(&config.anchor_market)
             .unwrap()
             .to_string()
     );
-    assert_eq!(msg.stable_denom, config.stable_denom);
 }
 #[test]
 fn test_deposit() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        anchor_token: "aust_token".to_string(),
-        anchor_mint: "anchor_mint".to_string(),
-        stable_denom: "uusd".to_string(),
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
     };
     let info = mock_info("addr0000", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -70,7 +67,7 @@ fn test_deposit() {
     let expected_res = Response::new()
         .add_submessage(SubMsg::reply_on_success(
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "anchor_mint".to_string(),
+                contract_addr: "anchor_market".to_string(),
                 msg: to_binary(&AnchorMarketMsg::DepositStable {}).unwrap(),
                 funds: vec![coin(1000000u128, "uusd")],
             }),
@@ -87,9 +84,8 @@ fn test_deposit() {
 fn test_withdraw_addr_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        anchor_token: "aust_token".to_string(),
-        anchor_mint: "anchor_mint".to_string(),
-        stable_denom: "uusd".to_string(),
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
     };
     let info = mock_info("addr0000", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -122,7 +118,7 @@ fn test_withdraw_addr_recipient() {
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: "aust_token".to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: "anchor_mint".to_string(),
+                    contract: "anchor_market".to_string(),
                     amount: Uint128::from(1000000u128),
                     msg: to_binary(&AnchorMarketMsg::RedeemStable {}).unwrap(),
                 })
@@ -148,9 +144,8 @@ fn test_withdraw_addr_recipient() {
 fn test_withdraw_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        anchor_token: "aust_token".to_string(),
-        anchor_mint: "anchor_mint".to_string(),
-        stable_denom: "uusd".to_string(),
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
     };
     let recipient = String::from("recipient");
     let info = mock_info("addr0000", &[]);
@@ -185,7 +180,7 @@ fn test_withdraw_recipient() {
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: "aust_token".to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: "anchor_mint".to_string(),
+                    contract: "anchor_market".to_string(),
                     amount: Uint128::from(1000000u128),
                     msg: to_binary(&AnchorMarketMsg::RedeemStable {}).unwrap(),
                 })
@@ -211,9 +206,8 @@ fn test_withdraw_recipient() {
 fn test_andr_receive() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        anchor_token: "aust_token".to_string(),
-        anchor_mint: "anchor_mint".to_string(),
-        stable_denom: "uusd".to_string(),
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
     };
     let info = mock_info("addr0000", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -236,7 +230,7 @@ fn test_andr_receive() {
     let expected_res = Response::new()
         .add_submessage(SubMsg::reply_on_success(
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "anchor_mint".to_string(),
+                contract_addr: "anchor_market".to_string(),
                 msg: to_binary(&AnchorMarketMsg::DepositStable {}).unwrap(),
                 funds: vec![coin(1000000u128, "uusd")],
             }),
@@ -270,7 +264,7 @@ fn test_andr_receive() {
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: "aust_token".to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: "anchor_mint".to_string(),
+                    contract: "anchor_market".to_string(),
                     amount: Uint128::from(1000000u128),
                     msg: to_binary(&AnchorMarketMsg::RedeemStable {}).unwrap(),
                 })
