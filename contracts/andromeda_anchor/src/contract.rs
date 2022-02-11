@@ -161,11 +161,8 @@ pub fn execute_withdraw(
 
     require(authorized, ContractError::Unauthorized {})?;
 
-    let contract_balance = query_balance(
-        &deps.querier,
-        env.contract.address,
-        UUSD_DENOM.to_owned(),
-    )?;
+    let contract_balance =
+        query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
     PREV_UUSD_BALANCE.save(deps.storage, &contract_balance)?;
     RECIPIENT_ADDR.save(deps.storage, &recipient_addr)?;
     let amount_to_redeem = match percent {
