@@ -7,7 +7,7 @@ use andromeda_protocol::{
     },
     error::ContractError,
     factory::CodeIdResponse,
-    operators::{execute_update_operators, query_is_operator, query_operators},
+    operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     response::get_reply_address,
@@ -144,7 +144,7 @@ fn execute_wrap(
     wrapped_token_id: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, &sender)?,
+        is_contract_owner(deps.storage, &sender)? || is_operator(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -283,6 +283,7 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
 mod tests {
     use super::*;
     use andromeda_protocol::{
+        operators::OPERATORS,
         testing::mock_querier::{
             mock_dependencies_custom, MOCK_CW721_CONTRACT, MOCK_FACTORY_CONTRACT,
         },
@@ -521,6 +522,40 @@ mod tests {
                 .add_attribute("wrapped_token_address", MOCK_CW721_CONTRACT),
             res
         );
+    }
+
+    #[test]
+    fn test_wrap_operator() {
+        let mut deps = mock_dependencies(&[]);
+
+        let token_id = String::from("token_id");
+        let owner = String::from("owner");
+        let operator = String::from("operator");
+        let token_address = String::from("token_address");
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
+            .unwrap();
+        ANDROMEDA_CW721_ADDR
+            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
+            .unwrap();
+        OPERATORS
+            .save(deps.as_mut().storage, &operator, &true)
+            .unwrap();
+
+        let info = mock_info(&token_address, &[]);
+
+        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+            sender: operator,
+            token_id: token_id.clone(),
+            msg: encode_binary(&Cw721HookMsg::Wrap {
+                wrapped_token_id: None,
+            })
+            .unwrap(),
+        });
+
+        // Make sure call does not error by unwrapping.
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     }
 
     #[test]
