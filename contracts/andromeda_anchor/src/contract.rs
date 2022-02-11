@@ -11,17 +11,17 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{
     attr, coins, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
+    Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 
 use terraswap::querier::{query_balance, query_token_balance};
 
-use andromeda_protocol::anchor::{AnchorMarketMsg, ConfigResponse, YourselfMsg};
+use andromeda_protocol::anchor::{AnchorMarketMsg, ConfigResponse};
 
 const UUSD_DENOM: &str = "uusd";
-const DEPOSIT_ID: u64 = 1;
-const WITHDRAW_ID: u64 = 2;
+pub const DEPOSIT_ID: u64 = 1;
+pub const WITHDRAW_ID: u64 = 2;
 
 #[entry_point]
 pub fn instantiate(
@@ -54,7 +54,7 @@ pub fn execute(
         ExecuteMsg::Withdraw {
             percent,
             recipient_addr,
-        } => withdraw(deps, env, info, percent, recipient_addr),
+        } => execute_withdraw(deps, env, info, percent, recipient_addr),
     }
 }
 
@@ -86,7 +86,12 @@ pub fn execute_deposit(
     info: MessageInfo,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    require(info.funds.len() == 1, ContractError::MoreThanOneCoin {})?;
+    require(
+        info.funds.len() == 1,
+        ContractError::InvalidFunds {
+            msg: "Must deposit exactly 1 type of native coin.".to_string(),
+        },
+    )?;
 
     let config = CONFIG.load(deps.storage)?;
     let recipient = match recipient {
@@ -94,13 +99,14 @@ pub fn execute_deposit(
         None => Recipient::Addr(info.sender.to_string()),
     };
 
-    let payment = info
-        .funds
-        .iter()
-        .find(|x| x.denom == UUSD_DENOM && x.amount > Uint128::zero())
-        .ok_or_else(|| {
-            StdError::generic_err(format!("No {} assets are provided to deposit", UUSD_DENOM))
-        })?;
+    let payment = &info.funds[0];
+    require(
+        payment.denom == UUSD_DENOM && payment.amount > Uint128::zero(),
+        ContractError::InvalidFunds {
+            msg: "Must deposit a non-zero quantity of uusd".to_string(),
+        },
+    )?;
+
     //create position
     let aust_balance = query_token_balance(
         &deps.querier,
@@ -117,7 +123,6 @@ pub fn execute_deposit(
         &recipient_addr,
         &Position {
             owner: recipient,
-            deposit_amount: payment_amount,
             aust_amount: Uint128::zero(),
         },
     )?;
@@ -138,7 +143,7 @@ pub fn execute_deposit(
         ]))
 }
 
-pub fn withdraw(
+pub fn execute_withdraw(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -160,6 +165,7 @@ pub fn withdraw(
         UUSD_DENOM.to_owned(),
     )?;
     PREV_UUSD_BALANCE.save(deps.storage, &contract_balance)?;
+    RECIPIENT_ADDR.save(deps.storage, &recipient_addr)?;
     let amount_to_redeem = match percent {
         None => position.aust_amount,
         Some(percent) => {
@@ -203,11 +209,13 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             let prev_aust_balance = PREV_AUST_BALANCE.load(deps.storage)?;
             let new_aust_balance = aust_balance.checked_sub(prev_aust_balance)?;
-            if new_aust_balance <= Uint128::from(1u128) {
-                return Err(ContractError::Std(StdError::generic_err(
-                    "no minted aUST token",
-                )));
-            }
+            require(
+                new_aust_balance > Uint128::zero(),
+                ContractError::InvalidFunds {
+                    msg: "No aUST tokens minted".to_string(),
+                },
+            )?;
+
             let recipient_addr = RECIPIENT_ADDR.load(deps.storage)?;
             let mut position = POSITION.load(deps.storage, &recipient_addr)?;
             position.aust_amount = new_aust_balance;
@@ -238,11 +246,11 @@ fn withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
                 .generate_msg_native(&deps.as_ref(), coins(transfer_amount.u128(), UUSD_DENOM))?,
         );
     }
-    Ok(Response::new().add_submessages(msgs).add_attributes(vec![
-        attr("action", "withdraw"),
-        attr("recipient", recipient_addr),
-        attr("amount", transfer_amount),
-    ]))
+    Ok(Response::new()
+        .add_submessages(msgs)
+        .add_attribute("action", "withdraw")
+        .add_attribute("recipient", recipient_addr)
+        .add_attribute("amount", transfer_amount))
 }
 
 #[entry_point]

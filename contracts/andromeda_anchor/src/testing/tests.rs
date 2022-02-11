@@ -1,8 +1,10 @@
-use crate::contract::{execute, instantiate};
-use crate::state::{CONFIG, POSITION};
+use crate::contract::{execute, instantiate, DEPOSIT_ID, WITHDRAW_ID};
+use crate::state::{
+    Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
+};
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
-    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg, YourselfMsg},
+    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg},
     communication::{AndromedaMsg, Recipient},
 };
 use cosmwasm_std::{
@@ -11,6 +13,33 @@ use cosmwasm_std::{
     to_binary, Api, Coin, CosmosMsg, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
+
+fn deposit_stable_msg(amount: u128) -> SubMsg {
+    SubMsg::reply_on_success(
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "anchor_market".to_string(),
+            msg: to_binary(&AnchorMarketMsg::DepositStable {}).unwrap(),
+            funds: vec![coin(amount, "uusd")],
+        }),
+        DEPOSIT_ID,
+    )
+}
+
+fn redeem_stable_msg(amount: u128) -> SubMsg {
+    SubMsg::reply_on_success(
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "aust_token".to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Send {
+                contract: "anchor_market".to_string(),
+                amount: Uint128::from(amount),
+                msg: to_binary(&AnchorMarketMsg::RedeemStable {}).unwrap(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        WITHDRAW_ID,
+    )
+}
 
 #[test]
 fn test_instantiate() {
@@ -44,6 +73,7 @@ fn test_instantiate() {
             .to_string()
     );
 }
+
 #[test]
 fn test_deposit() {
     let mut deps = mock_dependencies_custom(&[]);
@@ -51,6 +81,7 @@ fn test_deposit() {
         aust_token: "aust_token".to_string(),
         anchor_market: "anchor_market".to_string(),
     };
+    let amount = 1000000u128;
     let info = mock_info("addr0000", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -59,88 +90,116 @@ fn test_deposit() {
         "addr0000",
         &[Coin {
             denom: "uusd".to_string(),
-            amount: Uint128::from(1000000u128),
+            amount: Uint128::from(amount),
         }],
     );
     let env = mock_env();
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let expected_res = Response::new()
-        .add_submessage(SubMsg::reply_on_success(
-            CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "anchor_market".to_string(),
-                msg: to_binary(&AnchorMarketMsg::DepositStable {}).unwrap(),
-                funds: vec![coin(1000000u128, "uusd")],
-            }),
-            1u64,
-        ))
+        .add_submessage(deposit_stable_msg(amount))
         .add_attributes(vec![
             attr("action", "deposit"),
-            attr("deposit_amount", "1000000"),
+            attr("deposit_amount", amount.to_string()),
         ]);
-    assert_eq!(res, expected_res)
+    assert_eq!(res, expected_res);
+    assert!(POSITION.has(deps.as_mut().storage, "addr0000"));
+    assert_eq!(
+        Uint128::zero(),
+        PREV_AUST_BALANCE.load(deps.as_mut().storage).unwrap()
+    );
+    assert_eq!(
+        "addr0000",
+        RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap()
+    )
 }
 
 #[test]
-fn test_withdraw_addr_recipient() {
+fn test_withdraw() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
         aust_token: "aust_token".to_string(),
         anchor_market: "anchor_market".to_string(),
     };
+    let amount = 1000000u128;
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::Deposit { recipient: None };
-    let info = mock_info(
-        "addr0000",
-        &[Coin {
-            denom: "uusd".to_string(),
-            amount: Uint128::from(1000000u128),
-        }],
-    );
-    let env = mock_env();
-    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    //set aust_amount to position manually
-    let mut position = POSITION.load(&deps.storage, &1u128.to_be_bytes()).unwrap();
-    position.aust_amount = Uint128::from(1000000u128);
+    let recipient = "recipient";
+
+    let position = Position {
+        owner: Recipient::Addr(recipient.to_owned()),
+        aust_amount: Uint128::from(amount),
+    };
     POSITION
-        .save(deps.as_mut().storage, &1u128.to_be_bytes(), &position)
+        .save(deps.as_mut().storage, recipient, &position)
         .unwrap();
 
     let msg = ExecuteMsg::Withdraw {
-        position_idx: Uint128::from(1u128),
+        recipient_addr: recipient.to_owned(),
+        percent: None,
     };
-    let info = mock_info("addr0000", &[]);
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
-
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let expected_res = Response::new()
-        .add_messages(vec![
-            CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "aust_token".to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: "anchor_market".to_string(),
-                    amount: Uint128::from(1000000u128),
-                    msg: to_binary(&AnchorMarketMsg::RedeemStable {}).unwrap(),
-                })
-                .unwrap(),
-                funds: vec![],
-            }),
-            CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "cosmos2contract".to_string(),
-                msg: to_binary(&ExecuteMsg::Yourself {
-                    yourself_msg: YourselfMsg::TransferUst {
-                        receiver: Recipient::Addr("addr0000".to_string()),
-                    },
-                })
-                .unwrap(),
-                funds: vec![],
-            }),
-        ])
-        .add_attributes(vec![attr("action", "withdraw"), attr("position_idx", "1")]);
-    assert_eq!(res, expected_res)
+        .add_submessage(redeem_stable_msg(amount))
+        .add_attributes(vec![
+            attr("action", "withdraw"),
+            attr("recipient_addr", recipient),
+        ]);
+    assert_eq!(res, expected_res);
+    assert_eq!(
+        recipient,
+        RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap()
+    );
+    assert_eq!(
+        Uint128::zero(),
+        POSITION
+            .load(deps.as_mut().storage, recipient)
+            .unwrap()
+            .aust_amount
+    );
+    assert_eq!(
+        Uint128::zero(),
+        PREV_UUSD_BALANCE.load(deps.as_mut().storage).unwrap()
+    );
 }
 
 #[test]
+fn test_withdraw_percent() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let amount = 1000000u128;
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let recipient = "recipient";
+
+    let position = Position {
+        owner: Recipient::Addr(recipient.to_owned()),
+        aust_amount: Uint128::from(amount),
+    };
+    POSITION
+        .save(deps.as_mut().storage, recipient, &position)
+        .unwrap();
+
+    let msg = ExecuteMsg::Withdraw {
+        recipient_addr: recipient.to_owned(),
+        percent: Some(50u128.into()),
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let expected_res = Response::new()
+        .add_submessage(redeem_stable_msg(amount / 2))
+        .add_attributes(vec![
+            attr("action", "withdraw"),
+            attr("recipient_addr", recipient),
+        ]);
+    assert_eq!(res, expected_res)
+}
+
+/*#[test]
 fn test_withdraw_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
@@ -284,4 +343,4 @@ fn test_andr_receive() {
         ])
         .add_attributes(vec![attr("action", "withdraw"), attr("position_idx", "1")]);
     assert_eq!(res, expected_res)
-}
+}*/
