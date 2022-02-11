@@ -163,7 +163,7 @@ pub fn execute_withdraw(
 
     let contract_balance = query_balance(
         &deps.querier,
-        env.contract.address.clone(),
+        env.contract.address,
         UUSD_DENOM.to_owned(),
     )?;
     PREV_UUSD_BALANCE.save(deps.storage, &contract_balance)?;
@@ -230,7 +230,7 @@ fn reply_update_position(deps: DepsMut, env: Env) -> Result<Response, ContractEr
     POSITION.save(deps.storage, &recipient_addr, &position)?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "reply_update_position"),
-        attr("recipient_addr", recipient_addr.clone().to_string()),
+        attr("recipient_addr", recipient_addr.clone()),
         attr("aust_amount", new_aust_balance.to_string()),
     ]))
 }

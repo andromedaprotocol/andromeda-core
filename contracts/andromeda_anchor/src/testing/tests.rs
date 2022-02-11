@@ -241,7 +241,7 @@ fn test_deposit_existing_position() {
     );
 
     // Deposit again.
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // The amount of aUST has now doubled.
     deps.querier.token_balance = (aust_amount * 2).into();
@@ -279,7 +279,7 @@ fn test_deposit_other_recipient() {
             amount: Uint128::from(amount),
         }],
     );
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Suppose exchange rate is 1 uusd = 0.5 aUST.
     let aust_amount = amount / 2;
@@ -293,7 +293,7 @@ fn test_deposit_other_recipient() {
         }),
     };
 
-    let res = reply(deps.as_mut(), mock_env(), my_reply.clone()).unwrap();
+    let res = reply(deps.as_mut(), mock_env(), my_reply).unwrap();
 
     assert_eq!(
         Response::new().add_attributes(vec![
@@ -359,7 +359,7 @@ fn test_withdraw_recipient_sender() {
     };
     let amount = 1000000u128;
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let recipient = "recipient";
 
