@@ -1,16 +1,16 @@
-use crate::contract::{execute, instantiate, reply, DEPOSIT_ID, WITHDRAW_ID};
+use crate::contract::{execute, instantiate, query, reply, DEPOSIT_ID, WITHDRAW_ID};
 use crate::state::{
     Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
 };
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
-    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg},
-    communication::{ADORecipient, AndromedaMsg, Recipient},
+    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
+    communication::{ADORecipient, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{
-    attr, coin, coins,
+    attr, coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
     to_binary, Api, BankMsg, Coin, ContractResult, CosmosMsg, Reply, Response, SubMsg,
     SubMsgExecutionResponse, Uint128, WasmMsg,
@@ -154,6 +154,24 @@ fn test_deposit_and_withdraw_ust() {
             .unwrap()
             .aust_amount
             .u128()
+    );
+
+    let query_res: PositionResponse = from_binary(
+        &query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(&"addr0000").unwrap()))),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        PositionResponse {
+            recipient: Recipient::Addr("addr0000".to_string()),
+            aust_amount: Uint128::from(aust_amount),
+        },
+        query_res
     );
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
