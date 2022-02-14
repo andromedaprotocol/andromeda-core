@@ -1,14 +1,10 @@
-use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
+use crate::{
+    communication::{AndromedaMsg, AndromedaQuery, Recipient},
+    withdraw::WithdrawalType,
+};
 use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum WithdrawalType {
-    Amount(Uint128),
-    Percentage(Uint128),
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

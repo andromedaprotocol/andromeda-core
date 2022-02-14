@@ -2,12 +2,13 @@ use crate::state::{
     Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
 };
 use andromeda_protocol::{
-    anchor::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg, WithdrawalType},
+    anchor::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
+    withdraw::WithdrawalType,
 };
 use cosmwasm_std::{
     attr, coins, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,

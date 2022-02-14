@@ -1,15 +1,54 @@
-use cosmwasm_std::{coin, Deps, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg};
-use cw20::Cw20Coin;
-use cw_storage_plus::Map;
-
 use crate::{
     communication::Recipient, error::ContractError, operators::is_operator,
     ownership::is_contract_owner, require,
 };
+use cosmwasm_std::{
+    coin, Deps, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg, Uint128,
+};
+use cw20::Cw20Coin;
+use cw_storage_plus::Map;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use terraswap::{
     asset::AssetInfo,
     querier::{query_balance, query_token_balance},
 };
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WithdrawalType {
+    Amount(Uint128),
+    Percentage(Uint128),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Withdrawal {
+    token: String,
+    withdrawal_type: Option<WithdrawalType>,
+}
+
+impl Withdrawal {
+    fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
+        match self.withdrawal_type.clone() {
+            None => Ok(balance),
+            Some(withdrawal_type) => match withdrawal_type {
+                WithdrawalType::Percentage(percent) => {
+                    require(percent <= 100u128.into(), ContractError::InvalidRate {})?;
+                    Ok(balance.multiply_ratio(percent, 100u128))
+                }
+                WithdrawalType::Amount(amount) => {
+                    require(
+                        amount <= balance,
+                        ContractError::InvalidFunds {
+                            msg: "Requested withdrawal amount exceeds token balance".to_string(),
+                        },
+                    )?;
+                    Ok(amount)
+                }
+            },
+        }
+    }
+}
 
 pub const WITHDRAWABLE_TOKENS: Map<&str, AssetInfo> = Map::new("withdrawable_tokens");
 
@@ -38,7 +77,7 @@ pub fn execute_withdraw(
     env: Env,
     info: MessageInfo,
     recipient: Recipient,
-    tokens_to_withdraw: Option<Vec<String>>,
+    tokens_to_withdraw: Option<Vec<Withdrawal>>,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
     require(
@@ -46,7 +85,7 @@ pub fn execute_withdraw(
         ContractError::Unauthorized {},
     )?;
 
-    let keys = match tokens_to_withdraw {
+    let withdrawals = match tokens_to_withdraw {
         Some(tokens_to_withdraw) => tokens_to_withdraw,
         None => {
             let keys: Vec<Vec<u8>> = WITHDRAWABLE_TOKENS
@@ -55,14 +94,22 @@ pub fn execute_withdraw(
 
             let res: Result<Vec<_>, _> =
                 keys.iter().map(|v| String::from_utf8(v.to_vec())).collect();
-            res.map_err(StdError::invalid_utf8)?
+
+            let res = res.map_err(StdError::invalid_utf8)?;
+
+            res.iter()
+                .map(|k| Withdrawal {
+                    token: k.to_string(),
+                    withdrawal_type: None,
+                })
+                .collect()
         }
     };
 
     let mut msgs: Vec<SubMsg> = vec![];
 
-    for key in keys.iter() {
-        let asset_info: AssetInfo = WITHDRAWABLE_TOKENS.load(deps.storage, key)?;
+    for withdrawal in withdrawals.iter() {
+        let asset_info: AssetInfo = WITHDRAWABLE_TOKENS.load(deps.storage, &withdrawal.token)?;
         let msg: Option<SubMsg> = match asset_info {
             AssetInfo::NativeToken { denom } => {
                 let balance =
@@ -70,7 +117,7 @@ pub fn execute_withdraw(
                 if balance.is_zero() {
                     None
                 } else {
-                    let coin = coin(balance.u128(), denom);
+                    let coin = coin(withdrawal.get_amount(balance)?.u128(), denom);
                     Some(recipient.generate_msg_native(&deps, vec![coin])?)
                 }
             }
@@ -85,7 +132,7 @@ pub fn execute_withdraw(
                 } else {
                     let cw20_coin = Cw20Coin {
                         address: contract_addr,
-                        amount: balance,
+                        amount: withdrawal.get_amount(balance)?,
                     };
                     Some(recipient.generate_msg_cw20(&deps, cw20_coin)?)
                 }
@@ -118,6 +165,64 @@ mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{to_binary, Addr, BankMsg, CosmosMsg, SubMsg, WasmMsg};
     use cw20::Cw20ExecuteMsg;
+
+    #[test]
+    fn test_get_amount_no_withdrawal_type() {
+        let withdrawal = Withdrawal {
+            token: "token".to_string(),
+            withdrawal_type: None,
+        };
+        let balance = Uint128::from(100u128);
+        assert_eq!(balance, withdrawal.get_amount(balance).unwrap());
+    }
+
+    #[test]
+    fn test_get_amount_percentage() {
+        let withdrawal = Withdrawal {
+            token: "token".to_string(),
+            withdrawal_type: Some(WithdrawalType::Percentage(10u128.into())),
+        };
+        let balance = Uint128::from(100u128);
+        assert_eq!(10u128, withdrawal.get_amount(balance).unwrap().u128());
+    }
+
+    #[test]
+    fn test_get_amount_invalid_percentage() {
+        let withdrawal = Withdrawal {
+            token: "token".to_string(),
+            withdrawal_type: Some(WithdrawalType::Percentage(101u128.into())),
+        };
+        let balance = Uint128::from(100u128);
+        assert_eq!(
+            ContractError::InvalidRate {},
+            withdrawal.get_amount(balance).unwrap_err()
+        );
+    }
+
+    #[test]
+    fn test_get_amount_amount() {
+        let withdrawal = Withdrawal {
+            token: "token".to_string(),
+            withdrawal_type: Some(WithdrawalType::Amount(5u128.into())),
+        };
+        let balance = Uint128::from(10u128);
+        assert_eq!(5u128, withdrawal.get_amount(balance).unwrap().u128());
+    }
+
+    #[test]
+    fn test_get_invalid_amount() {
+        let balance = Uint128::from(10u128);
+        let withdrawal = Withdrawal {
+            token: "token".to_string(),
+            withdrawal_type: Some(WithdrawalType::Amount(balance + Uint128::from(1u128))),
+        };
+        assert_eq!(
+            ContractError::InvalidFunds {
+                msg: "Requested withdrawal amount exceeds token balance".to_string(),
+            },
+            withdrawal.get_amount(balance).unwrap_err()
+        );
+    }
 
     #[test]
     fn test_execute_withdraw_not_authorized() {
@@ -275,7 +380,10 @@ mod tests {
             mock_env(),
             info,
             Recipient::Addr("address".to_string()),
-            Some(vec!["uusd".to_string()]),
+            Some(vec![Withdrawal {
+                token: "uusd".to_string(),
+                withdrawal_type: None,
+            }]),
         )
         .unwrap();
         let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {

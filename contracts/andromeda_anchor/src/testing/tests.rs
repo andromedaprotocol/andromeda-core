@@ -4,9 +4,10 @@ use crate::state::{
 };
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
-    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg, WithdrawalType},
+    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg},
     communication::Recipient,
     error::ContractError,
+    withdraw::WithdrawalType,
 };
 use cosmwasm_std::{
     attr, coin, coins,
