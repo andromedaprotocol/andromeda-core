@@ -23,12 +23,12 @@ pub enum WithdrawalType {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Withdrawal {
-    token: String,
-    withdrawal_type: Option<WithdrawalType>,
+    pub token: String,
+    pub withdrawal_type: Option<WithdrawalType>,
 }
 
 impl Withdrawal {
-    fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
+    pub fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
         match self.withdrawal_type.clone() {
             None => Ok(balance),
             Some(withdrawal_type) => match withdrawal_type {
@@ -76,9 +76,10 @@ pub fn execute_withdraw(
     deps: Deps,
     env: Env,
     info: MessageInfo,
-    recipient: Recipient,
+    recipient: Option<Recipient>,
     tokens_to_withdraw: Option<Vec<Withdrawal>>,
 ) -> Result<Response, ContractError> {
+    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
     let sender = info.sender.as_str();
     require(
         is_contract_owner(deps.storage, sender)? || is_operator(deps.storage, sender)?,

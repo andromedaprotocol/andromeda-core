@@ -8,13 +8,13 @@ use andromeda_protocol::{
     operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
-    withdraw::WithdrawalType,
+    withdraw::Withdrawal,
 };
 use cosmwasm_std::{
     attr, coins, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
     Response, SubMsg, Uint128, WasmMsg,
 };
-use cw20::Cw20ExecuteMsg;
+use cw20::{Cw20Coin, Cw20ExecuteMsg};
 
 use terraswap::querier::{query_balance, query_token_balance};
 
@@ -51,11 +51,6 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
-        ExecuteMsg::Deposit { recipient } => execute_deposit(deps, env, info, recipient),
-        ExecuteMsg::Withdraw {
-            withdrawal_type,
-            recipient_addr,
-        } => execute_withdraw(deps, env, info, withdrawal_type, recipient_addr),
     }
 }
 
@@ -67,17 +62,65 @@ fn execute_andr_receive(
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
+            let recipient: Option<Recipient> = parse_message(data)?;
+            execute_deposit(deps, env, info, recipient)
         }
         AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         AndromedaMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
         }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
+        AndromedaMsg::Withdraw {
+            recipient,
+            tokens_to_withdraw,
+        } => handle_withdraw(deps, env, info, recipient, tokens_to_withdraw),
+    }
+}
+
+pub fn handle_withdraw(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    recipient: Option<Recipient>,
+    tokens_to_withdraw: Option<Vec<Withdrawal>>,
+) -> Result<Response, ContractError> {
+    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    require(
+        matches!(recipient, Recipient::Addr(_)),
+        ContractError::InvalidRecipientType {
+            msg: "Only recipients of type Addr are allowed as it only specifies the owner of the position to withdraw from".to_string()
+        },
+    )?;
+    require(
+        tokens_to_withdraw.is_some(),
+        ContractError::InvalidTokensToWithdraw {
+            msg: "Must specify tokens to withdraw".to_string(),
+        },
+    )?;
+    let config = CONFIG.load(deps.storage)?;
+    let aust_address = deps.api.addr_humanize(&config.aust_token)?.to_string();
+    let tokens_to_withdraw = tokens_to_withdraw.unwrap();
+
+    let uusd_withdrawal: Option<&Withdrawal> = tokens_to_withdraw
+        .iter()
+        .find(|w| w.token.to_lowercase() == UUSD_DENOM);
+
+    let aust_withdrawal: Option<&Withdrawal> = tokens_to_withdraw
+        .iter()
+        .find(|w| w.token.to_lowercase() == "aust" || w.token.to_lowercase() == aust_address);
+
+    require(
+        uusd_withdrawal.is_some() != aust_withdrawal.is_some(),
+        ContractError::InvalidTokensToWithdraw {
+            msg: "Must specify exactly one of uusd or aust to withdraw".to_string(),
+        },
+    )?;
+
+    if let Some(uusd_withdrawal) = uusd_withdrawal {
+        withdraw_uusd(deps, env, info, uusd_withdrawal, Some(recipient.get_addr()))
+    } else if let Some(aust_withdrawal) = aust_withdrawal {
+        withdraw_aust(deps, env, info, aust_withdrawal, Some(recipient.get_addr()))
+    } else {
+        Ok(Response::default())
     }
 }
 
@@ -145,11 +188,11 @@ pub fn execute_deposit(
         ]))
 }
 
-pub fn execute_withdraw(
+fn withdraw_uusd(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    withdrawal_type: Option<WithdrawalType>,
+    withdrawal: &Withdrawal,
     recipient_addr: Option<String>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
@@ -166,25 +209,9 @@ pub fn execute_withdraw(
         query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
     PREV_UUSD_BALANCE.save(deps.storage, &contract_balance)?;
     RECIPIENT_ADDR.save(deps.storage, &recipient_addr)?;
-    let amount_to_redeem = match withdrawal_type {
-        None => position.aust_amount,
-        Some(withdrawal_type) => match withdrawal_type {
-            WithdrawalType::Percentage(percent) => {
-                require(percent <= 100u128.into(), ContractError::InvalidRate {})?;
-                position.aust_amount.multiply_ratio(percent, 100u128)
-            }
-            WithdrawalType::Amount(amount) => {
-                require(
-                    amount <= position.aust_amount,
-                    ContractError::InvalidFunds {
-                        msg: "Requested withdrawal amount exceeds amount of aUST in position"
-                            .to_string(),
-                    },
-                )?;
-                amount
-            }
-        },
-    };
+
+    let amount_to_redeem = withdrawal.get_amount(position.aust_amount)?;
+
     position.aust_amount = position.aust_amount.checked_sub(amount_to_redeem)?;
     POSITION.save(deps.storage, &recipient_addr, &position)?;
 
@@ -202,9 +229,45 @@ pub fn execute_withdraw(
             WITHDRAW_ID,
         ))
         .add_attributes(vec![
-            attr("action", "withdraw"),
+            attr("action", "withdraw_uusd"),
             attr("recipient_addr", recipient_addr),
         ]))
+}
+
+fn withdraw_aust(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    withdrawal: &Withdrawal,
+    recipient_addr: Option<String>,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
+    let mut position = POSITION.load(deps.storage, &recipient_addr)?;
+
+    let authorized = recipient_addr == info.sender
+        || is_operator(deps.storage, info.sender.as_str())?
+        || is_contract_owner(deps.storage, info.sender.as_str())?;
+
+    require(authorized, ContractError::Unauthorized {})?;
+
+    let amount = withdrawal.get_amount(position.aust_amount)?;
+
+    position.aust_amount = position.aust_amount.checked_sub(amount)?;
+    POSITION.save(deps.storage, &recipient_addr, &position)?;
+
+    let msg = position.recipient.generate_msg_cw20(
+        &deps.as_ref(),
+        Cw20Coin {
+            address: deps.api.addr_humanize(&config.aust_token)?.to_string(),
+            amount,
+        },
+    )?;
+
+    Ok(Response::new().add_submessage(msg).add_attributes(vec![
+        attr("action", "withdraw_aust"),
+        attr("recipient_addr", recipient_addr),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -185,6 +185,12 @@ pub enum ContractError {
     // END CW20 ERRORS
     #[error("UnsupportedOperation")]
     UnsupportedOperation {},
+
+    #[error("InvalidRecipientType")]
+    InvalidRecipientType { msg: String },
+
+    #[error("InvalidTokensToWithdraw")]
+    InvalidTokensToWithdraw { msg: String },
 }
 
 impl From<Cw20ContractError> for ContractError {
