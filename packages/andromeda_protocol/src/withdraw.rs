@@ -14,12 +14,7 @@ use terraswap::{
     querier::{query_balance, query_token_balance},
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum WithdrawalType {
-    Amount(Uint128),
-    Percentage(Uint128),
-}
+pub const WITHDRAWABLE_TOKENS: Map<&str, AssetInfo> = Map::new("withdrawable_tokens");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Withdrawal {
@@ -27,7 +22,15 @@ pub struct Withdrawal {
     pub withdrawal_type: Option<WithdrawalType>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WithdrawalType {
+    Amount(Uint128),
+    Percentage(Uint128),
+}
+
 impl Withdrawal {
+    /// Calculates the amount to withdraw given the withdrawal type and passed in `balance`.
     pub fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
         match self.withdrawal_type.clone() {
             None => Ok(balance),
@@ -49,8 +52,6 @@ impl Withdrawal {
         }
     }
 }
-
-pub const WITHDRAWABLE_TOKENS: Map<&str, AssetInfo> = Map::new("withdrawable_tokens");
 
 pub fn add_withdrawable_token(
     storage: &mut dyn Storage,

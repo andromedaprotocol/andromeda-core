@@ -99,9 +99,10 @@ pub fn handle_withdraw(
             msg: "Must specify tokens to withdraw".to_string(),
         },
     )?;
+    let tokens_to_withdraw = tokens_to_withdraw.unwrap();
+
     let config = CONFIG.load(deps.storage)?;
     let aust_address = deps.api.addr_humanize(&config.aust_token)?.to_string();
-    let tokens_to_withdraw = tokens_to_withdraw.unwrap();
 
     let uusd_withdrawal: Option<&Withdrawal> = tokens_to_withdraw
         .iter()
@@ -191,6 +192,8 @@ pub fn execute_deposit(
         ]))
 }
 
+// The amount to withdraw specified in `withdrawal` is denominated in aUST. So if the
+// amount is say 50, that would signify exchanging 50 aUST for however much UST that produces.
 fn withdraw_uusd(
     deps: DepsMut,
     env: Env,
