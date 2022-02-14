@@ -2,7 +2,7 @@ use crate::state::{
     Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
 };
 use andromeda_protocol::{
-    anchor::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
+    anchor::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg, WithdrawalType},
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
@@ -52,9 +52,9 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Deposit { recipient } => execute_deposit(deps, env, info, recipient),
         ExecuteMsg::Withdraw {
-            percent,
+            withdrawal_type,
             recipient_addr,
-        } => execute_withdraw(deps, env, info, percent, recipient_addr),
+        } => execute_withdraw(deps, env, info, withdrawal_type, recipient_addr),
     }
 }
 
@@ -148,7 +148,7 @@ pub fn execute_withdraw(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    percent: Option<Uint128>,
+    withdrawal_type: Option<WithdrawalType>,
     recipient_addr: Option<String>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
@@ -165,12 +165,24 @@ pub fn execute_withdraw(
         query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
     PREV_UUSD_BALANCE.save(deps.storage, &contract_balance)?;
     RECIPIENT_ADDR.save(deps.storage, &recipient_addr)?;
-    let amount_to_redeem = match percent {
+    let amount_to_redeem = match withdrawal_type {
         None => position.aust_amount,
-        Some(percent) => {
-            require(percent <= 100u128.into(), ContractError::InvalidRate {})?;
-            position.aust_amount.multiply_ratio(percent, 100u128)
-        }
+        Some(withdrawal_type) => match withdrawal_type {
+            WithdrawalType::Percentage(percent) => {
+                require(percent <= 100u128.into(), ContractError::InvalidRate {})?;
+                position.aust_amount.multiply_ratio(percent, 100u128)
+            }
+            WithdrawalType::Amount(amount) => {
+                require(
+                    amount <= position.aust_amount,
+                    ContractError::InvalidFunds {
+                        msg: "Requested withdrawal amount exceeds amount of aUST in position"
+                            .to_string(),
+                    },
+                )?;
+                amount
+            }
+        },
     };
     position.aust_amount = position.aust_amount.checked_sub(amount_to_redeem)?;
     POSITION.save(deps.storage, &recipient_addr, &position)?;

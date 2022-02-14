@@ -4,8 +4,9 @@ use crate::state::{
 };
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
-    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg},
+    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg, WithdrawalType},
     communication::Recipient,
+    error::ContractError,
 };
 use cosmwasm_std::{
     attr, coin, coins,
@@ -144,7 +145,7 @@ fn test_deposit_and_withdraw() {
 
     let msg = ExecuteMsg::Withdraw {
         recipient_addr: None,
-        percent: None,
+        withdrawal_type: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let expected_res = Response::new()
@@ -337,7 +338,7 @@ fn test_withdraw_percent() {
 
     let msg = ExecuteMsg::Withdraw {
         recipient_addr: Some(recipient.to_owned()),
-        percent: Some(50u128.into()),
+        withdrawal_type: Some(WithdrawalType::Percentage(50u128.into())),
     };
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -347,7 +348,122 @@ fn test_withdraw_percent() {
             attr("action", "withdraw"),
             attr("recipient_addr", recipient),
         ]);
-    assert_eq!(res, expected_res)
+    assert_eq!(res, expected_res);
+    assert_eq!(
+        amount / 2,
+        POSITION
+            .load(deps.as_mut().storage, recipient)
+            .unwrap()
+            .aust_amount
+            .u128()
+    );
+}
+
+#[test]
+fn test_withdraw_invalid_percent() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let amount = 1000000u128;
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let recipient = "recipient";
+
+    let position = Position {
+        recipient: Recipient::Addr(recipient.to_owned()),
+        aust_amount: Uint128::from(amount),
+    };
+    POSITION
+        .save(deps.as_mut().storage, recipient, &position)
+        .unwrap();
+
+    let msg = ExecuteMsg::Withdraw {
+        recipient_addr: Some(recipient.to_owned()),
+        withdrawal_type: Some(WithdrawalType::Percentage(101u128.into())),
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::InvalidRate {}, res.unwrap_err());
+}
+
+#[test]
+fn test_withdraw_amount() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let amount = 1000000u128;
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let recipient = "recipient";
+
+    let position = Position {
+        recipient: Recipient::Addr(recipient.to_owned()),
+        aust_amount: Uint128::from(amount),
+    };
+    POSITION
+        .save(deps.as_mut().storage, recipient, &position)
+        .unwrap();
+
+    let msg = ExecuteMsg::Withdraw {
+        recipient_addr: Some(recipient.to_owned()),
+        withdrawal_type: Some(WithdrawalType::Amount(50u128.into())),
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let expected_res = Response::new()
+        .add_submessage(redeem_stable_msg(50u128))
+        .add_attributes(vec![
+            attr("action", "withdraw"),
+            attr("recipient_addr", recipient),
+        ]);
+    assert_eq!(res, expected_res);
+    assert_eq!(
+        amount - 50u128,
+        POSITION
+            .load(deps.as_mut().storage, recipient)
+            .unwrap()
+            .aust_amount
+            .u128()
+    );
+}
+
+#[test]
+fn test_withdraw_invalid_amount() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let amount = 1000000u128;
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let recipient = "recipient";
+
+    let position = Position {
+        recipient: Recipient::Addr(recipient.to_owned()),
+        aust_amount: Uint128::from(amount),
+    };
+    POSITION
+        .save(deps.as_mut().storage, recipient, &position)
+        .unwrap();
+
+    let msg = ExecuteMsg::Withdraw {
+        recipient_addr: Some(recipient.to_owned()),
+        withdrawal_type: Some(WithdrawalType::Amount((amount + 1).into())),
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(
+        ContractError::InvalidFunds {
+            msg: "Requested withdrawal amount exceeds amount of aUST in position".to_string(),
+        },
+        res.unwrap_err()
+    );
 }
 
 #[test]
@@ -373,7 +489,7 @@ fn test_withdraw_recipient_sender() {
 
     let msg = ExecuteMsg::Withdraw {
         recipient_addr: Some(recipient.to_owned()),
-        percent: None,
+        withdrawal_type: None,
     };
     // Sender is the recipient, NOT the owner of the contract.
     let info = mock_info(recipient, &[]);
