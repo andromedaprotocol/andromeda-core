@@ -1,7 +1,4 @@
-use crate::{
-    communication::{AndromedaMsg, AndromedaQuery, Recipient},
-    withdraw::WithdrawalType,
-};
+use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
 use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

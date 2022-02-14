@@ -5,9 +5,9 @@ use crate::state::{
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
     anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg},
-    communication::Recipient,
+    communication::{ADORecipient, AndromedaMsg, Recipient},
     error::ContractError,
-    withdraw::WithdrawalType,
+    withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{
     attr, coin, coins,
@@ -44,6 +44,18 @@ fn redeem_stable_msg(amount: u128) -> SubMsg {
     )
 }
 
+fn withdraw_aust_msg(amount: u128) -> SubMsg {
+    SubMsg::new(WasmMsg::Execute {
+        contract_addr: "aust_token".to_string(),
+        msg: to_binary(&Cw20ExecuteMsg::Transfer {
+            recipient: "addr0000".to_string(),
+            amount: amount.into(),
+        })
+        .unwrap(),
+        funds: vec![],
+    })
+}
+
 #[test]
 fn test_instantiate() {
     let mut deps = mock_dependencies(&[]);
@@ -77,7 +89,7 @@ fn test_instantiate() {
 }
 
 #[test]
-fn test_deposit_and_withdraw() {
+fn test_deposit_and_withdraw_ust() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
         aust_token: "aust_token".to_string(),
@@ -87,7 +99,7 @@ fn test_deposit_and_withdraw() {
     let info = mock_info("addr0000", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::Deposit { recipient: None };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None));
     let info = mock_info(
         "addr0000",
         &[Coin {
@@ -144,15 +156,18 @@ fn test_deposit_and_withdraw() {
             .u128()
     );
 
-    let msg = ExecuteMsg::Withdraw {
-        recipient_addr: None,
-        withdrawal_type: None,
-    };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: None,
+        tokens_to_withdraw: Some(vec![Withdrawal {
+            token: "uusd".to_string(),
+            withdrawal_type: None,
+        }]),
+    });
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let expected_res = Response::new()
         .add_submessage(redeem_stable_msg(aust_amount))
         .add_attributes(vec![
-            attr("action", "withdraw"),
+            attr("action", "withdraw_uusd"),
             attr("recipient_addr", "addr0000"),
         ]);
     assert_eq!(res, expected_res);
@@ -199,6 +214,98 @@ fn test_deposit_and_withdraw() {
 }
 
 #[test]
+fn test_deposit_and_withdraw_aust() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let amount = 1000000u128;
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None));
+    let info = mock_info(
+        "addr0000",
+        &[Coin {
+            denom: "uusd".to_string(),
+            amount: Uint128::from(amount),
+        }],
+    );
+    let env = mock_env();
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+    let expected_res = Response::new()
+        .add_submessage(deposit_stable_msg(amount))
+        .add_attributes(vec![
+            attr("action", "deposit"),
+            attr("deposit_amount", amount.to_string()),
+        ]);
+    assert_eq!(res, expected_res);
+    assert!(POSITION.has(deps.as_mut().storage, "addr0000"));
+    assert_eq!(
+        Uint128::zero(),
+        PREV_AUST_BALANCE.load(deps.as_mut().storage).unwrap()
+    );
+    assert_eq!(
+        "addr0000",
+        RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap()
+    );
+
+    // Suppose exchange rate is 1 uusd = 0.5 aUST.
+    let aust_amount = amount / 2;
+    deps.querier.token_balance = aust_amount.into();
+
+    let my_reply = Reply {
+        id: DEPOSIT_ID,
+        result: ContractResult::Ok(SubMsgExecutionResponse {
+            events: vec![],
+            data: None,
+        }),
+    };
+
+    let res = reply(deps.as_mut(), mock_env(), my_reply).unwrap();
+    assert_eq!(
+        Response::new().add_attributes(vec![
+            attr("action", "reply_update_position"),
+            attr("recipient_addr", "addr0000"),
+            attr("aust_amount", aust_amount.to_string()),
+        ]),
+        res
+    );
+    assert_eq!(
+        aust_amount,
+        POSITION
+            .load(deps.as_mut().storage, "addr0000")
+            .unwrap()
+            .aust_amount
+            .u128()
+    );
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: None,
+        tokens_to_withdraw: Some(vec![Withdrawal {
+            token: "aust".to_string(),
+            withdrawal_type: None,
+        }]),
+    });
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let expected_res = Response::new()
+        .add_submessage(withdraw_aust_msg(aust_amount))
+        .add_attributes(vec![
+            attr("action", "withdraw_aust"),
+            attr("recipient_addr", "addr0000"),
+        ]);
+    assert_eq!(res, expected_res);
+    assert_eq!(
+        Uint128::zero(),
+        POSITION
+            .load(deps.as_mut().storage, "addr0000")
+            .unwrap()
+            .aust_amount
+    );
+}
+
+#[test]
 fn test_deposit_existing_position() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
@@ -209,7 +316,7 @@ fn test_deposit_existing_position() {
     let info = mock_info("addr0000", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::Deposit { recipient: None };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None));
     let info = mock_info(
         "addr0000",
         &[Coin {
@@ -271,9 +378,9 @@ fn test_deposit_other_recipient() {
     let info = mock_info("addr0000", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::Deposit {
-        recipient: Some(Recipient::Addr("recipient".into())),
-    };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
+        to_binary(&Recipient::Addr("recipient".into())).unwrap(),
+    )));
     let info = mock_info(
         "addr0000",
         &[Coin {
@@ -337,16 +444,19 @@ fn test_withdraw_percent() {
         .save(deps.as_mut().storage, recipient, &position)
         .unwrap();
 
-    let msg = ExecuteMsg::Withdraw {
-        recipient_addr: Some(recipient.to_owned()),
-        withdrawal_type: Some(WithdrawalType::Percentage(50u128.into())),
-    };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        tokens_to_withdraw: Some(vec![Withdrawal {
+            withdrawal_type: Some(WithdrawalType::Percentage(50u128.into())),
+            token: "uusd".to_string(),
+        }]),
+    });
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let expected_res = Response::new()
         .add_submessage(redeem_stable_msg(amount / 2))
         .add_attributes(vec![
-            attr("action", "withdraw"),
+            attr("action", "withdraw_uusd"),
             attr("recipient_addr", recipient),
         ]);
     assert_eq!(res, expected_res);
@@ -381,10 +491,13 @@ fn test_withdraw_invalid_percent() {
         .save(deps.as_mut().storage, recipient, &position)
         .unwrap();
 
-    let msg = ExecuteMsg::Withdraw {
-        recipient_addr: Some(recipient.to_owned()),
-        withdrawal_type: Some(WithdrawalType::Percentage(101u128.into())),
-    };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        tokens_to_withdraw: Some(vec![Withdrawal {
+            withdrawal_type: Some(WithdrawalType::Percentage(101u128.into())),
+            token: "uusd".to_string(),
+        }]),
+    });
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::InvalidRate {}, res.unwrap_err());
 }
@@ -410,16 +523,19 @@ fn test_withdraw_amount() {
         .save(deps.as_mut().storage, recipient, &position)
         .unwrap();
 
-    let msg = ExecuteMsg::Withdraw {
-        recipient_addr: Some(recipient.to_owned()),
-        withdrawal_type: Some(WithdrawalType::Amount(50u128.into())),
-    };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        tokens_to_withdraw: Some(vec![Withdrawal {
+            withdrawal_type: Some(WithdrawalType::Amount(50u128.into())),
+            token: "uusd".to_string(),
+        }]),
+    });
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let expected_res = Response::new()
         .add_submessage(redeem_stable_msg(50u128))
         .add_attributes(vec![
-            attr("action", "withdraw"),
+            attr("action", "withdraw_uusd"),
             attr("recipient_addr", recipient),
         ]);
     assert_eq!(res, expected_res);
@@ -454,17 +570,173 @@ fn test_withdraw_invalid_amount() {
         .save(deps.as_mut().storage, recipient, &position)
         .unwrap();
 
-    let msg = ExecuteMsg::Withdraw {
-        recipient_addr: Some(recipient.to_owned()),
-        withdrawal_type: Some(WithdrawalType::Amount((amount + 1).into())),
-    };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        tokens_to_withdraw: Some(vec![Withdrawal {
+            withdrawal_type: Some(WithdrawalType::Amount((amount + 1).into())),
+            token: "uusd".to_string(),
+        }]),
+    });
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
         ContractError::InvalidFunds {
-            msg: "Requested withdrawal amount exceeds amount of aUST in position".to_string(),
+            msg: "Requested withdrawal amount exceeds token balance".to_string(),
         },
         res.unwrap_err()
     );
+}
+
+#[test]
+fn test_withdraw_invalid_recipient() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let recipient = "recipient";
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::ADO(ADORecipient {
+            addr: recipient.to_owned(),
+            msg: None,
+        })),
+        tokens_to_withdraw: Some(vec![Withdrawal {
+            withdrawal_type: None,
+            token: "uusd".to_string(),
+        }]),
+    });
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(
+        ContractError::InvalidRecipientType {
+            msg: "Only recipients of type Addr are allowed as it only specifies the owner of the position to withdraw from".to_string()
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_withdraw_tokens_none() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let recipient = "recipient";
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        tokens_to_withdraw: None,
+    });
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(
+        ContractError::InvalidTokensToWithdraw {
+            msg: "Must specify tokens to withdraw".to_string(),
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_withdraw_tokens_empty() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let recipient = "recipient";
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        tokens_to_withdraw: Some(vec![]),
+    });
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(
+        ContractError::InvalidTokensToWithdraw {
+            msg: "Must specify exactly one of uusd or aust to withdraw".to_string(),
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_withdraw_tokens_uusd_and_aust_specified() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let recipient = "recipient";
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        tokens_to_withdraw: Some(vec![
+            Withdrawal {
+                withdrawal_type: None,
+                token: "uusd".to_string(),
+            },
+            Withdrawal {
+                withdrawal_type: None,
+                token: "aust".to_string(),
+            },
+        ]),
+    });
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(
+        ContractError::InvalidTokensToWithdraw {
+            msg: "Must specify exactly one of uusd or aust to withdraw".to_string(),
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_withdraw_aust_with_address() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        aust_token: "aust_token".to_string(),
+        anchor_market: "anchor_market".to_string(),
+    };
+    let amount = 1000000u128;
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let position = Position {
+        recipient: Recipient::Addr("addr0000".to_string()),
+        aust_amount: Uint128::from(amount),
+    };
+    POSITION
+        .save(deps.as_mut().storage, "addr0000", &position)
+        .unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::Addr("addr0000".to_string())),
+        tokens_to_withdraw: Some(vec![Withdrawal {
+            withdrawal_type: None,
+            // Specifying the contract address of aust is also valid.
+            token: "aust_token".to_string(),
+        }]),
+    });
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let expected_res = Response::new()
+        .add_submessage(withdraw_aust_msg(amount))
+        .add_attributes(vec![
+            attr("action", "withdraw_aust"),
+            attr("recipient_addr", "addr0000"),
+        ]);
+    assert_eq!(res, expected_res)
 }
 
 #[test]
@@ -488,10 +760,13 @@ fn test_withdraw_recipient_sender() {
         .save(deps.as_mut().storage, recipient, &position)
         .unwrap();
 
-    let msg = ExecuteMsg::Withdraw {
-        recipient_addr: Some(recipient.to_owned()),
-        withdrawal_type: None,
-    };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        tokens_to_withdraw: Some(vec![Withdrawal {
+            withdrawal_type: None,
+            token: "uusd".to_string(),
+        }]),
+    });
     // Sender is the recipient, NOT the owner of the contract.
     let info = mock_info(recipient, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -499,7 +774,7 @@ fn test_withdraw_recipient_sender() {
     let expected_res = Response::new()
         .add_submessage(redeem_stable_msg(amount))
         .add_attributes(vec![
-            attr("action", "withdraw"),
+            attr("action", "withdraw_uusd"),
             attr("recipient_addr", recipient),
         ]);
     assert_eq!(res, expected_res)

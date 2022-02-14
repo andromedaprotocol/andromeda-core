@@ -61,10 +61,13 @@ fn execute_andr_receive(
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        AndromedaMsg::Receive(data) => {
-            let recipient: Option<Recipient> = parse_message(data)?;
-            execute_deposit(deps, env, info, recipient)
-        }
+        AndromedaMsg::Receive(data) => match data {
+            None => execute_deposit(deps, env, info, None),
+            Some(_) => {
+                let recipient: Recipient = parse_message(data)?;
+                execute_deposit(deps, env, info, Some(recipient))
+            }
+        },
         AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         AndromedaMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
@@ -118,7 +121,7 @@ pub fn handle_withdraw(
     if let Some(uusd_withdrawal) = uusd_withdrawal {
         withdraw_uusd(deps, env, info, uusd_withdrawal, Some(recipient.get_addr()))
     } else if let Some(aust_withdrawal) = aust_withdrawal {
-        withdraw_aust(deps, env, info, aust_withdrawal, Some(recipient.get_addr()))
+        withdraw_aust(deps, info, aust_withdrawal, Some(recipient.get_addr()))
     } else {
         Ok(Response::default())
     }
@@ -236,7 +239,6 @@ fn withdraw_uusd(
 
 fn withdraw_aust(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     withdrawal: &Withdrawal,
     recipient_addr: Option<String>,

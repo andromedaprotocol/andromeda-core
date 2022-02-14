@@ -237,7 +237,7 @@ mod tests {
             deps.as_ref(),
             mock_env(),
             info,
-            Recipient::Addr("address".to_string()),
+            Some(Recipient::Addr("address".to_string())),
             None,
         );
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
@@ -255,7 +255,7 @@ mod tests {
             deps.as_ref(),
             mock_env(),
             info,
-            Recipient::Addr("address".to_string()),
+            Some(Recipient::Addr("address".to_string())),
             None,
         );
         assert_eq!(
@@ -287,7 +287,7 @@ mod tests {
             deps.as_ref(),
             mock_env(),
             info,
-            Recipient::Addr("address".to_string()),
+            Some(Recipient::Addr("address".to_string())),
             None,
         )
         .unwrap();
@@ -328,7 +328,7 @@ mod tests {
             deps.as_ref(),
             mock_env(),
             info,
-            Recipient::Addr("address".to_string()),
+            Some(Recipient::Addr("address".to_string())),
             None,
         )
         .unwrap();
@@ -380,7 +380,7 @@ mod tests {
             deps.as_ref(),
             mock_env(),
             info,
-            Recipient::Addr("address".to_string()),
+            Some(Recipient::Addr("address".to_string())),
             Some(vec![Withdrawal {
                 token: "uusd".to_string(),
                 withdrawal_type: None,
