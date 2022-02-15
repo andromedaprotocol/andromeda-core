@@ -547,7 +547,7 @@ mod tests {
 
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: operator,
-            token_id: token_id.clone(),
+            token_id,
             msg: encode_binary(&Cw721HookMsg::Wrap {
                 wrapped_token_id: None,
             })
