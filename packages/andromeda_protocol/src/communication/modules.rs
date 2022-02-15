@@ -120,7 +120,7 @@ impl Module {
                     )),
                 }),
                 Some(code_id) => Ok(Some(SubMsg {
-                    id: module_id, //TODO: ADD ID,
+                    id: module_id,
                     reply_on: ReplyOn::Always,
                     msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
                         admin: None,

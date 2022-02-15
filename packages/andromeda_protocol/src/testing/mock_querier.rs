@@ -150,8 +150,15 @@ impl WasmMockQuerier {
 
     fn handle_factory_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            FactoryQueryMsg::AndrQuery(AndromedaQuery::Get(_)) => {
-                let response = CodeIdResponse { code_id: 1 };
+            FactoryQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
+                let key: String = from_binary(&data.unwrap()).unwrap();
+                let code_id = match key.as_str() {
+                    "receipt" => 1,
+                    "rates" => 2,
+                    "address_list" => 3,
+                    _ => 0,
+                };
+                let response = CodeIdResponse { code_id };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
             }
             _ => panic!("Unsupported Query"),

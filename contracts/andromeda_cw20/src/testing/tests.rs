@@ -13,39 +13,36 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    to_binary, Addr, CosmosMsg, Event, Response, StdError, SubMsg, Uint128, WasmMsg,
+    to_binary, Addr, CosmosMsg, Event, ReplyOn, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;
 
 #[test]
 fn test_instantiate_modules() {
+    let receipt_msg = to_binary(&ReceiptInstantiateMsg {
+        minter: "minter".to_string(),
+        operators: None,
+    })
+    .unwrap();
+    let rates_msg = to_binary(&RatesInstantiateMsg { rates: vec![] }).unwrap();
+    let addresslist_msg = to_binary(&AddressListInstantiateMsg {
+        operators: vec![],
+        is_inclusive: true,
+    })
+    .unwrap();
     let modules: Vec<Module> = vec![
         Module {
             module_type: ModuleType::Receipt,
-            instantiate: InstantiateType::New(
-                to_binary(&ReceiptInstantiateMsg {
-                    minter: "minter".to_string(),
-                    operators: None,
-                })
-                .unwrap(),
-            ),
+            instantiate: InstantiateType::New(receipt_msg.clone()),
         },
         Module {
             module_type: ModuleType::Rates,
-            instantiate: InstantiateType::New(
-                to_binary(&RatesInstantiateMsg { rates: vec![] }).unwrap(),
-            ),
+            instantiate: InstantiateType::New(rates_msg.clone()),
         },
         Module {
             module_type: ModuleType::AddressList,
-            instantiate: InstantiateType::New(
-                to_binary(&AddressListInstantiateMsg {
-                    operators: vec![],
-                    is_inclusive: true,
-                })
-                .unwrap(),
-            ),
+            instantiate: InstantiateType::New(addresslist_msg.clone()),
         },
     ];
     let mut deps = mock_dependencies_custom(&[]);
@@ -66,7 +63,46 @@ fn test_instantiate_modules() {
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
-    //assert_eq!(Response::default(), res);
+
+    let msgs: Vec<SubMsg> = vec![
+        SubMsg {
+            id: 1,
+            reply_on: ReplyOn::Always,
+            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                admin: None,
+                code_id: 1,
+                msg: receipt_msg,
+                funds: vec![],
+                label: "Instantiate: receipt".to_string(),
+            }),
+            gas_limit: None,
+        },
+        SubMsg {
+            id: 2,
+            reply_on: ReplyOn::Always,
+            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                admin: None,
+                code_id: 2,
+                msg: rates_msg,
+                funds: vec![],
+                label: "Instantiate: rates".to_string(),
+            }),
+            gas_limit: None,
+        },
+        SubMsg {
+            id: 3,
+            reply_on: ReplyOn::Always,
+            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                admin: None,
+                code_id: 3,
+                msg: addresslist_msg,
+                funds: vec![],
+                label: "Instantiate: address_list".to_string(),
+            }),
+            gas_limit: None,
+        },
+    ];
+    assert_eq!(Response::new().add_submessages(msgs), res);
 }
 
 #[test]
