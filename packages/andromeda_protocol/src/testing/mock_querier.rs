@@ -1,7 +1,11 @@
 use crate::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     auction::{AuctionStateResponse, QueryMsg as AuctionQueryMsg},
-    communication::hooks::{AndromedaHook, OnFundsTransferResponse},
+    communication::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        AndromedaQuery,
+    },
+    factory::{CodeIdResponse, QueryMsg as FactoryQueryMsg},
     ownership::ContractOwnerResponse,
     primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
     rates::{Funds, QueryMsg as RatesQueryMsg},
@@ -20,6 +24,7 @@ use cw721::Expiration;
 use std::collections::HashMap;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
 
+pub const MOCK_FACTORY_CONTRACT: &str = "factory_contract";
 pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
 pub const MOCK_TOKEN_IN_AUCTION: &str = "token1";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
@@ -132,6 +137,7 @@ impl WasmMockQuerier {
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
                     MOCK_RECEIPT_CONTRACT => self.handle_receipt_query(msg),
                     MOCK_AUCTION_CONTRACT => self.handle_auction_query(msg),
+                    MOCK_FACTORY_CONTRACT => self.handle_factory_query(msg),
                     _ => {
                         let msg_response = IncludesAddressResponse { included: false };
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
@@ -139,6 +145,16 @@ impl WasmMockQuerier {
                 }
             }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_factory_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            FactoryQueryMsg::AndrQuery(AndromedaQuery::Get(_)) => {
+                let response = CodeIdResponse { code_id: 1 };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
         }
     }
 
@@ -251,21 +267,26 @@ impl WasmMockQuerier {
 
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            PrimitiveQueryMsg::GetValue { name } => {
-                let msg_response = match name.clone().unwrap().as_str() {
+            PrimitiveQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
+                let name: String = from_binary(&data.unwrap()).unwrap();
+                let msg_response = match name.as_str() {
                     "percent" => GetValueResponse {
-                        name: name.unwrap(),
+                        name,
                         value: Primitive::Uint128(1u128.into()),
                     },
                     "flat" => GetValueResponse {
-                        name: name.unwrap(),
+                        name,
                         value: Primitive::Coin(coin(1u128, "uusd")),
                     },
                     "flat_cw20" => GetValueResponse {
-                        name: name.unwrap(),
+                        name,
                         value: Primitive::Coin(coin(1u128, "address")),
                     },
-                    _ => panic!("Unsupported rate name"),
+                    "factory" => GetValueResponse {
+                        name,
+                        value: Primitive::String(MOCK_FACTORY_CONTRACT.to_owned()),
+                    },
+                    _ => panic!("Unsupported primitive name"),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
             }

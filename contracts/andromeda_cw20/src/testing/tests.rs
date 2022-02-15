@@ -1,12 +1,14 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
+    address_list::InstantiateMsg as AddressListInstantiateMsg,
     communication::modules::{InstantiateType, Module, ModuleType},
     cw20::{ExecuteMsg, InstantiateMsg},
     error::ContractError,
-    receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
+    rates::InstantiateMsg as RatesInstantiateMsg,
+    receipt::{ExecuteMsg as ReceiptExecuteMsg, InstantiateMsg as ReceiptInstantiateMsg, Receipt},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_CONTRACT,
-        MOCK_RECEIPT_CONTRACT,
+        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
+        MOCK_RATES_CONTRACT, MOCK_RECEIPT_CONTRACT,
     },
 };
 use cosmwasm_std::{
@@ -17,8 +19,58 @@ use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;
 
 #[test]
+fn test_instantiate_modules() {
+    let modules: Vec<Module> = vec![
+        Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::New(
+                to_binary(&ReceiptInstantiateMsg {
+                    minter: "minter".to_string(),
+                    operators: None,
+                })
+                .unwrap(),
+            ),
+        },
+        Module {
+            module_type: ModuleType::Rates,
+            instantiate: InstantiateType::New(
+                to_binary(&RatesInstantiateMsg { rates: vec![] }).unwrap(),
+            ),
+        },
+        Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::New(
+                to_binary(&AddressListInstantiateMsg {
+                    operators: vec![],
+                    is_inclusive: true,
+                })
+                .unwrap(),
+            ),
+        },
+    ];
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("sender", &[]);
+
+    let instantiate_msg = InstantiateMsg {
+        name: "Name".into(),
+        symbol: "Symbol".into(),
+        decimals: 6,
+        initial_balances: vec![Cw20Coin {
+            amount: 1000u128.into(),
+            address: "sender".to_string(),
+        }],
+        mint: None,
+        marketing: None,
+        modules: Some(modules),
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+    };
+
+    let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
+    //assert_eq!(Response::default(), res);
+}
+
+#[test]
 fn test_transfer() {
-    // TODO: Test InstantiateType::New() when Fetch contract works.
     let modules: Vec<Module> = vec![
         Module {
             module_type: ModuleType::Receipt,
@@ -48,6 +100,7 @@ fn test_transfer() {
         mint: None,
         marketing: None,
         modules: Some(modules),
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
@@ -154,6 +207,7 @@ fn test_send() {
         mint: None,
         marketing: None,
         modules: Some(modules),
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();

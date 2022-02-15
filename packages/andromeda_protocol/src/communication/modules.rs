@@ -14,6 +14,7 @@ use crate::{
     factory::CodeIdResponse,
     operators::is_operator,
     ownership::is_contract_owner,
+    primitive::{get_address, AndromedaContract},
     rates::Funds,
     require,
 };
@@ -85,14 +86,19 @@ pub enum ADOType {
 
 impl Module {
     /// Queries the code id for a module from the factory contract
-    pub fn get_code_id(&self, querier: QuerierWrapper) -> Result<Option<u64>, ContractError> {
+    pub fn get_code_id(
+        &self,
+        storage: &dyn Storage,
+        querier: QuerierWrapper,
+    ) -> Result<Option<u64>, ContractError> {
+        let factory_address = get_address(storage, querier, AndromedaContract::Factory)?;
         match self.module_type {
             ModuleType::Other => Ok(None),
             _ => {
                 let code_id_resp: CodeIdResponse = query_get(
                     Some(to_binary(&String::from(self.module_type.clone()))?),
-                    FACTORY_ADDRESS.to_string(),
-                    querier,
+                    factory_address,
+                    &querier,
                 )?;
                 Ok(Some(code_id_resp.code_id))
             }
@@ -102,11 +108,12 @@ impl Module {
     /// Generate an instantiation message for the module if its required
     pub fn generate_instantiate_msg(
         &self,
+        storage: &dyn Storage,
         querier: QuerierWrapper,
         module_id: u64,
     ) -> Result<Option<SubMsg>, ContractError> {
         if let InstantiateType::New(msg) = &self.instantiate {
-            match self.get_code_id(querier)? {
+            match self.get_code_id(storage, querier)? {
                 None => Err(ContractError::InvalidModule {
                     msg: Some(String::from(
                         "Module type provided does not have a valid Code Id",
@@ -240,7 +247,7 @@ pub fn execute_register_module(
     )?;
     let mut resp = Response::default();
     let idx = register_module(storage, api, module)?;
-    if let Some(inst_msg) = module.generate_instantiate_msg(*querier, idx)? {
+    if let Some(inst_msg) = module.generate_instantiate_msg(storage, *querier, idx)? {
         resp = resp.add_submessage(inst_msg);
     }
     if should_validate {
@@ -264,7 +271,9 @@ pub fn execute_alter_module(
     )?;
     let mut resp = Response::default();
     alter_module(deps.storage, deps.api, module_idx, module)?;
-    if let Some(inst_msg) = module.generate_instantiate_msg(deps.querier, module_idx.u64())? {
+    if let Some(inst_msg) =
+        module.generate_instantiate_msg(deps.storage, deps.querier, module_idx.u64())?
+    {
         resp = resp.add_submessage(inst_msg);
     }
     validate_modules(&load_modules(deps.storage)?, ado_type)?;

@@ -16,6 +16,7 @@ use andromeda_protocol::{
     cw20::{ExecuteMsg, InstantiateMsg, QueryMsg},
     error::ContractError,
     ownership::CONTRACT_OWNER,
+    primitive::PRIMITVE_CONTRACT,
     rates::Funds,
     require,
     response::get_reply_address,
@@ -36,6 +37,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
+    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
+
     let mut resp = Response::default();
     let sender = info.sender.as_str();
     if let Some(modules) = msg.modules.clone() {

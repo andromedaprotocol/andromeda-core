@@ -178,7 +178,7 @@ where
 pub fn query_get<T>(
     data: Option<Binary>,
     address: String,
-    querier: QuerierWrapper,
+    querier: &QuerierWrapper,
 ) -> Result<T, ContractError>
 where
     T: DeserializeOwned,

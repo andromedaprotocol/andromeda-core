@@ -10,8 +10,8 @@ use andromeda_protocol::{
     error::ContractError,
     receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_CONTRACT,
-        MOCK_RECEIPT_CONTRACT,
+        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
+        MOCK_RATES_CONTRACT, MOCK_RECEIPT_CONTRACT,
     },
 };
 use cosmwasm_std::{
@@ -33,6 +33,7 @@ fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
         symbol: SYMBOL.to_string(),
         minter: MINTER.to_string(),
         modules,
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
 
     instantiate(deps, env, info, inst_msg).unwrap();
