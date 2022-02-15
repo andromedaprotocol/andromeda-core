@@ -90,7 +90,7 @@ fn test_instantiate_modules() {
         primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
 
-    let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
+    let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
 
     let msgs: Vec<SubMsg> = vec![
         SubMsg {

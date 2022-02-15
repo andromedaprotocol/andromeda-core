@@ -169,18 +169,15 @@ mod tests {
         deps: Deps,
         name: Option<String>,
     ) -> Result<GetValueResponse, ContractError> {
-        let binary_option = match name {
-            None => None,
-            Some(name) => Some(encode_binary(&name).unwrap()),
-        };
+        let binary_option = name.map(|name| encode_binary(&name).unwrap());
         let res = query(
             deps,
             mock_env(),
             QueryMsg::AndrQuery(AndromedaQuery::Get(binary_option)),
         );
         match res {
-            Ok(res) => return Ok(from_binary(&res).unwrap()),
-            Err(err) => return Err(err),
+            Ok(res) => Ok(from_binary(&res).unwrap()),
+            Err(err) => Err(err),
         }
     }
 

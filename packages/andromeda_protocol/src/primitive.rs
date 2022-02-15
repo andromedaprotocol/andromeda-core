@@ -8,9 +8,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-// Used to store the address of a primitive contract for a contract.
+/// Used to store the address of a primitive contract for a contract.
 pub const PRIMITVE_CONTRACT: Item<String> = Item::new("primitive_contract");
 
+/// Enum of possible contracts whose addresses we want to store in a primitive contract.
 pub enum AndromedaContract {
     Factory,
 }
