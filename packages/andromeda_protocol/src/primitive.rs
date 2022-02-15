@@ -37,6 +37,7 @@ pub fn get_address(
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Primitive {
     Uint128(Uint128),
     Coin(Coin),
