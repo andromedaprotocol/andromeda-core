@@ -198,6 +198,12 @@ pub enum ContractError {
 
     #[error("token_id already claimed")]
     Claimed {},
+
+    #[error("OfferAlreadyPlaced")]
+    OfferAlreadyPlaced {},
+
+    #[error("OfferLowerThanCurrent")]
+    OfferLowerThanCurrent {},
 }
 
 impl From<Cw20ContractError> for ContractError {

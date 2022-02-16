@@ -209,6 +209,13 @@ pub enum ExecuteMsg {
         module_idx: Uint64,
         module: Module,
     },
+    PlaceOffer {
+        token_id: String,
+        expiration: Expiration,
+    },
+    AcceptOffer {
+        token_id: String,
+    },
 }
 
 impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {

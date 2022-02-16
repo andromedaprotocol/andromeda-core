@@ -1,8 +1,9 @@
+use crate::state::{get_key, offers, Offer};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdError, Storage, SubMsg,
+    attr, has_coins, to_binary, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps, DepsMut, Empty,
+    Env, MessageInfo, Reply, Response, StdError, Storage, SubMsg,
 };
 
 use andromeda_protocol::{
@@ -22,6 +23,7 @@ use andromeda_protocol::{
     require,
     response::get_reply_address,
 };
+use cw721::Expiration;
 use cw721_base::{state::TokenInfo, Cw721Contract};
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
@@ -150,9 +152,73 @@ pub fn execute(
         ExecuteMsg::AlterModule { module_idx, module } => {
             execute_alter_module(deps, info, module_idx, &module, ADOType::CW721)
         }
+        ExecuteMsg::PlaceOffer {
+            token_id,
+            expiration,
+        } => execute_place_offer(deps, env, info, token_id, expiration),
+        ExecuteMsg::AcceptOffer { token_id } => execute_accept_offer(deps, env, info, token_id),
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
     }
+}
+
+fn execute_place_offer(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+    expiration: Expiration,
+) -> Result<Response, ContractError> {
+    let purchaser = info.sender.as_str();
+    let current_offer = offers().may_load(deps.storage, &token_id)?;
+    require(
+        !expiration.is_expired(&env.block),
+        ContractError::Expired {},
+    )?;
+    require(
+        info.funds.len() == 1,
+        ContractError::InvalidFunds {
+            msg: "Must send one type of funds".to_string(),
+        },
+    )?;
+    let coin: &Coin = &info.funds[0];
+    require(
+        coin.denom == "uusd",
+        ContractError::InvalidFunds {
+            msg: "Only offers in uusd are allowed".to_string(),
+        },
+    )?;
+    let mut msgs: Vec<SubMsg> = vec![];
+    if let Some(current_offer) = current_offer {
+        require(
+            purchaser != current_offer.purchaser,
+            ContractError::OfferAlreadyPlaced {},
+        )?;
+        require(
+            current_offer.amount.amount < coin.amount,
+            ContractError::OfferLowerThanCurrent {},
+        )?;
+        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: current_offer.purchaser,
+            amount: vec![current_offer.amount],
+        })));
+    }
+    let offer = Offer {
+        purchaser: purchaser.to_owned(),
+        amount: coin.to_owned(),
+        expiration,
+    };
+    offers().save(deps.storage, &token_id, &offer)?;
+    Ok(Response::new().add_submessages(msgs))
+}
+
+fn execute_accept_offer(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    Ok(Response::new())
 }
 
 fn is_token_archived(storage: &dyn Storage, token_id: &str) -> Result<(), ContractError> {
