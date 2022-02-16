@@ -33,7 +33,3 @@ pub fn offers<'a>() -> IndexedMap<'a, &'a str, Offer, OfferIndexes<'a>> {
     };
     IndexedMap::new("ownership", indexes)
 }
-
-pub fn get_key(token_id: &str, purchaser: &str) -> Vec<u8> {
-    return vec![token_id.as_bytes(), purchaser.as_bytes()].concat();
-}

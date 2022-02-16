@@ -1,9 +1,9 @@
-use crate::state::{get_key, offers, Offer};
+use crate::state::{offers, Offer};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, to_binary, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps, DepsMut, Empty,
-    Env, MessageInfo, Reply, Response, StdError, Storage, SubMsg,
+    attr, has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, Reply, Response, StdError, Storage, SubMsg,
 };
 
 use andromeda_protocol::{
@@ -171,10 +171,17 @@ fn execute_place_offer(
 ) -> Result<Response, ContractError> {
     let purchaser = info.sender.as_str();
     let current_offer = offers().may_load(deps.storage, &token_id)?;
+    let contract = AndrCW721Contract::default();
+    let token = contract.tokens.load(deps.storage, &token_id)?;
+    require(
+        info.sender != token.owner,
+        ContractError::TokenOwnerCannotBid {},
+    )?;
     require(
         !expiration.is_expired(&env.block),
         ContractError::Expired {},
     )?;
+    is_token_archived(deps.storage, &token_id)?;
     require(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
@@ -209,8 +216,14 @@ fn execute_place_offer(
         expiration,
     };
     offers().save(deps.storage, &token_id, &offer)?;
-    Ok(Response::new().add_submessages(msgs))
+    Ok(Response::new()
+        .add_submessages(msgs)
+        .add_attribute("action", "place_offer")
+        .add_attribute("purchaser", purchaser)
+        .add_attribute("token_id", token_id))
 }
+
+// TODO: Add cancel offer.
 
 fn execute_accept_offer(
     deps: DepsMut,
@@ -218,7 +231,32 @@ fn execute_accept_offer(
     info: MessageInfo,
     token_id: String,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new())
+    is_token_archived(deps.storage, &token_id)?;
+
+    let contract = AndrCW721Contract::default();
+    let offer = offers().load(deps.storage, &token_id)?;
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+
+    require(info.sender == token.owner, ContractError::Unauthorized {})?;
+    require(
+        token.extension.transfer_agreement.is_none(),
+        ContractError::TransferAgreementExists {},
+    )?;
+
+    let transfer_agreement = TransferAgreement {
+        amount: offer.amount,
+        purchaser: offer.purchaser.clone(),
+    };
+    // Can't call execute_update_transfer_agreement as deps can't be cloned.
+    token.extension.transfer_agreement = Some(transfer_agreement);
+    contract
+        .tokens
+        .save(deps.storage, token_id.as_str(), &token)?;
+    let res = execute_transfer(deps, env, info, offer.purchaser.clone(), token_id.clone())?;
+    Ok(res
+        .add_attribute("action", "accept_offer")
+        .add_attribute("purchaser", offer.purchaser)
+        .add_attribute("token_id", token_id))
 }
 
 fn is_token_archived(storage: &dyn Storage, token_id: &str) -> Result<(), ContractError> {

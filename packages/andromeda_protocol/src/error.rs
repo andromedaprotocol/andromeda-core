@@ -204,6 +204,9 @@ pub enum ContractError {
 
     #[error("OfferLowerThanCurrent")]
     OfferLowerThanCurrent {},
+
+    #[error("TransferAgreementExists")]
+    TransferAgreementExists {},
 }
 
 impl From<Cw20ContractError> for ContractError {
