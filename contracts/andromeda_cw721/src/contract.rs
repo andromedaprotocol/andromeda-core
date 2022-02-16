@@ -236,6 +236,7 @@ fn execute_accept_offer(
     let contract = AndrCW721Contract::default();
     let offer = offers().load(deps.storage, &token_id)?;
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    let purchaser = offer.purchaser;
 
     require(info.sender == token.owner, ContractError::Unauthorized {})?;
     require(
@@ -245,17 +246,19 @@ fn execute_accept_offer(
 
     let transfer_agreement = TransferAgreement {
         amount: offer.amount,
-        purchaser: offer.purchaser.clone(),
+        purchaser: purchaser.clone(),
     };
     // Can't call execute_update_transfer_agreement as deps can't be cloned.
     token.extension.transfer_agreement = Some(transfer_agreement);
     contract
         .tokens
         .save(deps.storage, token_id.as_str(), &token)?;
-    let res = execute_transfer(deps, env, info, offer.purchaser.clone(), token_id.clone())?;
+
+    offers().remove(deps.storage, &token_id)?;
+
+    let res = execute_transfer(deps, env, info, purchaser.clone(), token_id.clone())?;
     Ok(res
         .add_attribute("action", "accept_offer")
-        .add_attribute("purchaser", offer.purchaser)
         .add_attribute("token_id", token_id))
 }
 
@@ -301,36 +304,34 @@ fn execute_transfer(
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     let mut resp = Response::default();
-    if let Some(xfer_agreement) = token.extension.transfer_agreement.clone() {
+    if let Some(xfer_agreement) = &token.extension.transfer_agreement {
         let (msgs, events, remainder) = on_funds_transfer(
             deps.storage,
             deps.querier,
             info.sender.to_string(),
-            Funds::Native(xfer_agreement.amount),
+            Funds::Native(xfer_agreement.amount.to_owned()),
             to_binary(&ExecuteMsg::TransferNft {
                 token_id: token_id.clone(),
                 recipient: recipient.clone(),
             })?,
         )?;
         let remaining_amount = match remainder {
-            Funds::Native(coin) => coin, //What do we do in the case that the rates returns remaining amount as native funds?
+            Funds::Native(coin) => coin, //What do we do in the case that the rates returns remaining amount as non-native funds?
             Funds::Cw20(..) => panic!("Remaining funds returned as incorrect type"),
         };
         resp = resp.add_submessages(msgs).add_events(events);
         resp = resp.add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token.owner.clone().into(),
+            to_address: token.owner.to_string(),
             amount: vec![remaining_amount],
         })));
     }
 
     check_can_send(deps.as_ref(), env, info, &token)?;
-    token.owner = deps.api.addr_validate(recipient.as_str())?;
-    token.approvals = vec![];
+    token.owner = deps.api.addr_validate(&recipient)?;
+    token.approvals.clear();
     token.extension.transfer_agreement = None;
     token.extension.pricing = None;
-    contract
-        .tokens
-        .save(deps.storage, token_id.as_str(), &token)?;
+    contract.tokens.save(deps.storage, &token_id, &token)?;
 
     Ok(resp
         .add_attribute("action", "transfer")

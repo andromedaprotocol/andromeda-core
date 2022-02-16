@@ -4,6 +4,7 @@ use cosmwasm_std::{
 };
 
 use crate::contract::*;
+use crate::state::{offers, Offer};
 use andromeda_protocol::{
     communication::modules::{InstantiateType, Module, ModuleType},
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
@@ -19,7 +20,7 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
     Addr, Uint128,
 };
-use cw721::{NftInfoResponse, OwnerOfResponse};
+use cw721::{Expiration, NftInfoResponse, OwnerOfResponse};
 use cw721_base::MintMsg;
 
 const MINTER: &str = "minter";
@@ -492,5 +493,99 @@ fn test_modules() {
             .add_submessages(sub_msgs)
             .add_event(Event::new("Royalty")),
         res
+    );
+}
+
+#[test]
+fn test_place_offer_accept_offer() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let purchaser = String::from("purchaser");
+    let other_purchaser = String::from("other_purchaser");
+
+    // TODO: Add rates module for tax and royalty
+    init_setup(deps.as_mut(), mock_env(), None);
+    mint_token(
+        deps.as_mut(),
+        mock_env(),
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator.clone(),
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let msg = ExecuteMsg::PlaceOffer {
+        token_id: token_id.clone(),
+        expiration: Expiration::Never {},
+    };
+
+    let info = mock_info(&creator, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    assert_eq!(ContractError::TokenOwnerCannotBid {}, res.unwrap_err());
+
+    let info = mock_info(&purchaser, &coins(100u128, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "place_offer")
+            .add_attribute("purchaser", &purchaser)
+            .add_attribute("token_id", &token_id),
+        res
+    );
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    assert_eq!(ContractError::OfferAlreadyPlaced {}, res.unwrap_err());
+
+    let info = mock_info(&other_purchaser, &coins(50u128, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    assert_eq!(ContractError::OfferLowerThanCurrent {}, res.unwrap_err());
+
+    let info = mock_info(&other_purchaser, &coins(150u128, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: purchaser,
+                amount: coins(100u128, "uusd"),
+            })))
+            .add_attribute("action", "place_offer")
+            .add_attribute("purchaser", &other_purchaser)
+            .add_attribute("token_id", &token_id),
+        res
+    );
+
+    let msg = ExecuteMsg::AcceptOffer {
+        token_id: token_id.clone(),
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+    let info = mock_info(&creator, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        to_address: creator,
+        amount: coins(150u128, "uusd"),
+    }));
+    assert_eq!(
+        Response::new()
+            .add_submessage(msg)
+            .add_attribute("action", "transfer")
+            .add_attribute("recipient", other_purchaser)
+            .add_attribute("action", "accept_offer")
+            .add_attribute("token_id", &token_id),
+        res
+    );
+
+    assert_eq!(
+        None,
+        offers().may_load(deps.as_ref().storage, &token_id).unwrap()
     );
 }
