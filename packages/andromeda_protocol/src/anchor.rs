@@ -27,13 +27,6 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    Deposit {
-        recipient: Option<Recipient>,
-    },
-    Withdraw {
-        withdrawal_type: Option<WithdrawalType>,
-        recipient_addr: Option<String>,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
