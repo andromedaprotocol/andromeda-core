@@ -80,7 +80,7 @@ fn test_transfer() {
         contract_addr: MOCK_RECEIPT_CONTRACT.to_string(),
         msg: to_binary(&ReceiptExecuteMsg::StoreReceipt {
             receipt: Receipt {
-                events: vec![Event::new("Royalty")],
+                events: vec![Event::new("Royalty"), Event::new("Tax")],
             },
         })
         .unwrap(),
@@ -91,6 +91,7 @@ fn test_transfer() {
         Response::new()
             .add_submessage(receipt_msg)
             .add_event(Event::new("Royalty"))
+            .add_event(Event::new("Tax"))
             .add_attribute("action", "transfer")
             .add_attribute("from", "sender")
             .add_attribute("to", "other")
@@ -98,9 +99,9 @@ fn test_transfer() {
         res
     );
 
-    // Funds deducted from the sender.
+    // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
-        Uint128::from(900u128),
+        Uint128::from(890u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("sender"))
             .unwrap()
@@ -116,7 +117,7 @@ fn test_transfer() {
 
     // Royalty given to rates_recipient
     assert_eq!(
-        Uint128::from(10u128),
+        Uint128::from(20u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("rates_recipient"))
             .unwrap()
@@ -187,7 +188,7 @@ fn test_send() {
         contract_addr: MOCK_RECEIPT_CONTRACT.to_string(),
         msg: to_binary(&ReceiptExecuteMsg::StoreReceipt {
             receipt: Receipt {
-                events: vec![Event::new("Royalty")],
+                events: vec![Event::new("Royalty"), Event::new("Tax")],
             },
         })
         .unwrap(),
@@ -198,6 +199,7 @@ fn test_send() {
         Response::new()
             .add_submessage(receipt_msg)
             .add_event(Event::new("Royalty"))
+            .add_event(Event::new("Tax"))
             .add_attribute("action", "send")
             .add_attribute("from", "sender")
             .add_attribute("to", "contract")
@@ -214,9 +216,9 @@ fn test_send() {
         res
     );
 
-    // Funds deducted from the sender.
+    // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
-        Uint128::from(900u128),
+        Uint128::from(890u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("sender"))
             .unwrap()
@@ -230,9 +232,9 @@ fn test_send() {
             .unwrap()
     );
 
-    // Royalty given to rates_recipient
+    // Royalty given to rates_recipient (10 from royalty and 10 from tax)
     assert_eq!(
-        Uint128::from(10u128),
+        Uint128::from(20u128),
         BALANCES
             .load(deps.as_ref().storage, &Addr::unchecked("rates_recipient"))
             .unwrap()

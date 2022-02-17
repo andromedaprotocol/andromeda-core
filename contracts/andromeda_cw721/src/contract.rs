@@ -193,6 +193,7 @@ fn execute_place_offer(
     )?;
     let coin: &Coin = &info.funds[0];
     require(
+        // TODO: Add support for other denoms later.
         coin.denom == "uusd",
         ContractError::InvalidFunds {
             msg: "Only offers in uusd are allowed".to_string(),
@@ -206,15 +207,12 @@ fn execute_place_offer(
         )?;
         require(
             current_offer.expiration.is_expired(&env.block)
-                || current_offer.amount.amount < offer_amount,
+                || current_offer.offer_amount < offer_amount,
             ContractError::OfferLowerThanCurrent {},
         )?;
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            amount: vec![current_offer.get_coin()],
             to_address: current_offer.purchaser,
-            amount: vec![Coin {
-                amount: current_offer.amount.amount + current_offer.tax_amount.amount,
-                denom: current_offer.amount.denom,
-            }],
         })));
     }
     let (resp, tax_amount) = get_funds_transfer_response_and_taxes(
@@ -228,37 +226,27 @@ fn execute_place_offer(
         token_id.clone(),
         token.owner.to_string(),
     )?;
-    // require that the sender has sent enough for taxes
-    require(
-        has_coins(
-            &info.funds,
-            &Coin {
-                denom: coin.denom.clone(),
-                amount: offer_amount + tax_amount,
-            },
-        ),
-        ContractError::InsufficientFunds {},
-    )?;
-
     let offer = Offer {
         purchaser: purchaser.to_owned(),
-        amount: Coin {
-            amount: offer_amount,
-            denom: coin.denom.clone(),
-        },
+        denom: coin.denom.clone(),
+        offer_amount,
+        tax_amount,
         expiration,
-        tax_amount: Coin {
-            amount: tax_amount,
-            denom: coin.denom.clone(),
-        },
         msgs: resp.messages,
         events: resp.events,
     };
+    // require that the sender has sent enough for taxes
+    require(
+        has_coins(&info.funds, &offer.get_coin()),
+        ContractError::InsufficientFunds {},
+    )?;
+
     offers().save(deps.storage, &token_id, &offer)?;
     Ok(Response::new()
         .add_submessages(msgs)
         .add_attribute("action", "place_offer")
         .add_attribute("purchaser", purchaser)
+        .add_attribute("offer_amount", offer_amount)
         .add_attribute("token_id", token_id))
 }
 
@@ -275,10 +263,7 @@ fn execute_cancel_offer(
     offers().remove(deps.storage, &token_id)?;
     let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: info.sender.to_string(),
-        amount: vec![Coin {
-            amount: offer.amount.amount + offer.tax_amount.amount,
-            denom: offer.amount.denom,
-        }],
+        amount: vec![offer.get_coin()],
     }));
     Ok(Response::new()
         .add_submessage(msg)

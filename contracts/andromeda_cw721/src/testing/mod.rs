@@ -12,7 +12,7 @@ use andromeda_protocol::{
     receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_CONTRACT,
-        MOCK_RECEIPT_CONTRACT, MOCK_TAX_RATES_CONTRACT,
+        MOCK_RECEIPT_CONTRACT,
     },
 };
 use cosmwasm_std::{
@@ -408,7 +408,7 @@ fn test_modules() {
         },
     ];
 
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
 
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
@@ -454,20 +454,26 @@ fn test_modules() {
     let info = mock_info("creator", &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let purchaser = mock_info("purchaser", &coins(100u128, "uluna"));
-
     let msg = ExecuteMsg::TransferNft {
         token_id,
         recipient: "purchaser".into(),
     };
 
+    // Tax not added by sender, remember that the contract holds 100 uusd which is enough for cover
+    // the taxes in this case.
+    let purchaser = mock_info("purchaser", &coins(100, "uluna"));
+    let res = execute(deps.as_mut(), mock_env(), purchaser, msg.clone());
+    assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+
+    // Add 10 for tax.
+    let purchaser = mock_info("purchaser", &coins(100 + 10, "uluna"));
     let res = execute(deps.as_mut(), mock_env(), purchaser, msg).unwrap();
 
     let receipt_msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_RECEIPT_CONTRACT.to_string(),
         msg: to_binary(&ReceiptExecuteMsg::StoreReceipt {
             receipt: Receipt {
-                events: vec![Event::new("Royalty")],
+                events: vec![Event::new("Royalty"), Event::new("Tax")],
             },
         })
         .unwrap(),
@@ -475,6 +481,12 @@ fn test_modules() {
     }));
 
     let sub_msgs: Vec<SubMsg> = vec![
+        // For royalty.
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "rates_recipient".to_string(),
+            amount: coins(10u128, "uluna"),
+        })),
+        // For tax.
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: "rates_recipient".to_string(),
             amount: coins(10u128, "uluna"),
@@ -491,7 +503,8 @@ fn test_modules() {
             .add_attribute("action", "transfer")
             .add_attribute("recipient", "purchaser")
             .add_submessages(sub_msgs)
-            .add_event(Event::new("Royalty")),
+            .add_event(Event::new("Royalty"))
+            .add_event(Event::new("Tax")),
         res
     );
 }
@@ -506,7 +519,7 @@ fn test_place_offer_accept_offer() {
 
     let modules: Vec<Module> = vec![Module {
         module_type: ModuleType::Rates,
-        instantiate: InstantiateType::Address(MOCK_TAX_RATES_CONTRACT.into()),
+        instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
     }];
 
     init_setup(deps.as_mut(), mock_env(), Some(modules));
@@ -547,6 +560,7 @@ fn test_place_offer_accept_offer() {
         Response::new()
             .add_attribute("action", "place_offer")
             .add_attribute("purchaser", &purchaser)
+            .add_attribute("offer_amount", "100")
             .add_attribute("token_id", &token_id),
         res
     );
@@ -582,6 +596,7 @@ fn test_place_offer_accept_offer() {
             })))
             .add_attribute("action", "place_offer")
             .add_attribute("purchaser", &other_purchaser)
+            .add_attribute("offer_amount", "150")
             .add_attribute("token_id", &token_id),
         res
     );
@@ -600,14 +615,19 @@ fn test_place_offer_accept_offer() {
             amount: coins(15u128, "uusd"),
         })),
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "rates_recipient".to_string(),
+            amount: coins(15u128, "uusd"),
+        })),
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: creator,
-            amount: coins(150u128, "uusd"),
+            amount: coins(135u128, "uusd"),
         })),
     ];
     assert_eq!(
         Response::new()
             .add_submessages(msgs)
-            .add_event(Event::new("Tax".to_string()))
+            .add_event(Event::new("Royalty"))
+            .add_event(Event::new("Tax"))
             .add_attribute("action", "accept_offer")
             .add_attribute("token_id", &token_id),
         res
@@ -684,10 +704,11 @@ fn test_place_offer_previous_expired() {
     );
 
     let offer = Offer {
-        amount: coin(100u128, "uusd"),
+        denom: "uusd".to_string(),
+        offer_amount: 100u128.into(),
+        tax_amount: 0u128.into(),
         expiration: Expiration::AtHeight(10),
         purchaser: purchaser.clone(),
-        tax_amount: coin(0u128, "uusd"),
         msgs: vec![],
         events: vec![],
     };
@@ -714,16 +735,18 @@ fn test_place_offer_previous_expired() {
             .add_submessage(msg)
             .add_attribute("action", "place_offer")
             .add_attribute("purchaser", &other_purchaser)
+            .add_attribute("offer_amount", "50")
             .add_attribute("token_id", &token_id),
         res
     );
 
     assert_eq!(
         Offer {
-            amount: coin(50u128, "uusd"),
+            denom: "uusd".to_string(),
+            offer_amount: 50u128.into(),
+            tax_amount: 0u128.into(),
             expiration: Expiration::AtHeight(15),
             purchaser: other_purchaser,
-            tax_amount: coin(0u128, "uusd"),
             msgs: vec![SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: creator,
                 amount: coins(50u128, "uusd")
@@ -760,10 +783,11 @@ fn test_accept_offer_expired() {
     );
 
     let offer = Offer {
-        amount: coin(100u128, "uusd"),
+        denom: "uusd".to_string(),
+        offer_amount: 50u128.into(),
+        tax_amount: 0u128.into(),
         expiration: Expiration::AtHeight(10),
         purchaser,
-        tax_amount: coin(0u128, "uusd"),
         msgs: vec![],
         events: vec![],
     };
@@ -808,10 +832,11 @@ fn test_accept_offer_existing_transfer_agreement() {
     );
 
     let offer = Offer {
-        amount: coin(100u128, "uusd"),
+        denom: "uusd".to_string(),
+        offer_amount: 100u128.into(),
+        tax_amount: 0u128.into(),
         expiration: Expiration::Never {},
         purchaser,
-        tax_amount: coin(0u128, "uusd"),
         msgs: vec![],
         events: vec![],
     };
@@ -854,10 +879,11 @@ fn test_cancel_offer() {
     );
 
     let offer = Offer {
-        amount: coin(100u128, "uusd"),
+        denom: "uusd".to_string(),
+        offer_amount: 100u128.into(),
+        tax_amount: 10u128.into(),
         expiration: Expiration::Never {},
         purchaser: purchaser.clone(),
-        tax_amount: coin(10u128, "uusd"),
         msgs: vec![],
         events: vec![],
     };

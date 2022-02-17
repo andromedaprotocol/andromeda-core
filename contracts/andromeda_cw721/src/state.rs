@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, Event, SubMsg};
+use cosmwasm_std::{Coin, Event, SubMsg, Uint128};
 use cw721::Expiration;
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 use schemars::JsonSchema;
@@ -6,12 +6,22 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Offer {
-    pub amount: Coin,
+    pub denom: String,
+    pub offer_amount: Uint128,
+    pub tax_amount: Uint128,
     pub expiration: Expiration,
     pub purchaser: String,
-    pub tax_amount: Coin,
     pub msgs: Vec<SubMsg>,
     pub events: Vec<Event>,
+}
+
+impl Offer {
+    pub fn get_coin(&self) -> Coin {
+        Coin {
+            denom: self.denom.clone(),
+            amount: self.offer_amount + self.tax_amount,
+        }
+    }
 }
 
 pub struct OfferIndexes<'a> {
