@@ -25,6 +25,7 @@ pub const MOCK_TOKEN_IN_AUCTION: &str = "token1";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
+pub const MOCK_TAX_RATES_CONTRACT: &str = "tax_rates_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_RECEIPT_CONTRACT: &str = "receipt_contract";
 
@@ -128,7 +129,12 @@ impl WasmMockQuerier {
                     }
                     MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
-                    MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
+                    MOCK_RATES_CONTRACT => {
+                        self.handle_rates_query(msg, /*is_additive=*/ false)
+                    }
+                    MOCK_TAX_RATES_CONTRACT => {
+                        self.handle_rates_query(msg, /*is_additive=*/ true)
+                    }
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
                     MOCK_RECEIPT_CONTRACT => self.handle_receipt_query(msg),
                     MOCK_AUCTION_CONTRACT => self.handle_auction_query(msg),
@@ -142,7 +148,7 @@ impl WasmMockQuerier {
         }
     }
 
-    fn handle_rates_query(&self, msg: &Binary) -> QuerierResult {
+    fn handle_rates_query(&self, msg: &Binary, is_additive: bool) -> QuerierResult {
         match from_binary(msg).unwrap() {
             RatesQueryMsg::AndrHook(hook_msg) => match hook_msg {
                 AndromedaHook::OnFundsTransfer {
@@ -150,11 +156,12 @@ impl WasmMockQuerier {
                     payload: _,
                     amount,
                 } => {
+                    let numerator = if is_additive { 100u128 } else { 90u128 };
                     // Hardcodes a percent rate of 10%.
                     let (new_funds, msg): (Funds, SubMsg) = match amount {
                         Funds::Cw20(ref coin) => (
                             Funds::Cw20(Cw20Coin {
-                                amount: coin.amount.multiply_ratio(90u128, 100u128),
+                                amount: coin.amount.multiply_ratio(numerator, 100u128),
                                 address: coin.address.clone(),
                             }),
                             SubMsg::new(WasmMsg::Execute {
@@ -169,7 +176,7 @@ impl WasmMockQuerier {
                         ),
                         Funds::Native(ref coin) => (
                             Funds::Native(Coin {
-                                amount: coin.amount.multiply_ratio(90u128, 100u128),
+                                amount: coin.amount.multiply_ratio(numerator, 100u128),
                                 denom: coin.denom.clone(),
                             }),
                             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -181,9 +188,10 @@ impl WasmMockQuerier {
                             })),
                         ),
                     };
+                    let event_name = if is_additive { "Tax" } else { "Royalty" };
                     let response = OnFundsTransferResponse {
                         msgs: vec![msg],
-                        events: vec![Event::new("Royalty".to_string())],
+                        events: vec![Event::new(event_name.to_owned())],
                         leftover_funds: new_funds,
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))

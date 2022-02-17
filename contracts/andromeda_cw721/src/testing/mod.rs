@@ -12,7 +12,7 @@ use andromeda_protocol::{
     receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_CONTRACT,
-        MOCK_RECEIPT_CONTRACT,
+        MOCK_RECEIPT_CONTRACT, MOCK_TAX_RATES_CONTRACT,
     },
 };
 use cosmwasm_std::{
@@ -504,8 +504,12 @@ fn test_place_offer_accept_offer() {
     let purchaser = String::from("purchaser");
     let other_purchaser = String::from("other_purchaser");
 
-    // TODO: Add rates module for tax and royalty
-    init_setup(deps.as_mut(), mock_env(), None);
+    let modules: Vec<Module> = vec![Module {
+        module_type: ModuleType::Rates,
+        instantiate: InstantiateType::Address(MOCK_TAX_RATES_CONTRACT.into()),
+    }];
+
+    init_setup(deps.as_mut(), mock_env(), Some(modules));
     mint_token(
         deps.as_mut(),
         mock_env(),
@@ -533,6 +537,11 @@ fn test_place_offer_accept_offer() {
     assert_eq!(ContractError::TokenOwnerCannotBid {}, res.unwrap_err());
 
     let info = mock_info(&purchaser, &coins(100u128, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+    assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+
+    // Add 10uusd for tax.
+    let info = mock_info(&purchaser, &coins(100u128 + 10u128, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
     assert_eq!(
         Response::new()
@@ -551,7 +560,8 @@ fn test_place_offer_accept_offer() {
         offer_amount: 50u128.into(),
     };
 
-    let info = mock_info(&other_purchaser, &coins(50u128, "uusd"));
+    // 5 extra uusd for tax.
+    let info = mock_info(&other_purchaser, &coins(50u128 + 5u128, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
     assert_eq!(ContractError::OfferLowerThanCurrent {}, res.unwrap_err());
 
@@ -561,13 +571,14 @@ fn test_place_offer_accept_offer() {
         offer_amount: 150u128.into(),
     };
 
-    let info = mock_info(&other_purchaser, &coins(150u128, "uusd"));
+    // 15 extra uusd for tax.
+    let info = mock_info(&other_purchaser, &coins(150u128 + 15u128, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
     assert_eq!(
         Response::new()
             .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: purchaser,
-                amount: coins(100u128, "uusd"),
+                amount: coins(110u128, "uusd"),
             })))
             .add_attribute("action", "place_offer")
             .add_attribute("purchaser", &other_purchaser)
@@ -583,13 +594,20 @@ fn test_place_offer_accept_offer() {
 
     let info = mock_info(&creator, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-        to_address: creator,
-        amount: coins(150u128, "uusd"),
-    }));
+    let msgs: Vec<SubMsg> = vec![
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "rates_recipient".to_string(),
+            amount: coins(15u128, "uusd"),
+        })),
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: creator,
+            amount: coins(150u128, "uusd"),
+        })),
+    ];
     assert_eq!(
         Response::new()
-            .add_submessage(msg)
+            .add_submessages(msgs)
+            .add_event(Event::new("Tax".to_string()))
             .add_attribute("action", "accept_offer")
             .add_attribute("token_id", &token_id),
         res
@@ -839,7 +857,7 @@ fn test_cancel_offer() {
         amount: coin(100u128, "uusd"),
         expiration: Expiration::Never {},
         purchaser: purchaser.clone(),
-        tax_amount: coin(0u128, "uusd"),
+        tax_amount: coin(10u128, "uusd"),
         msgs: vec![],
         events: vec![],
     };
@@ -859,7 +877,7 @@ fn test_cancel_offer() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: purchaser,
-        amount: vec![offer.amount],
+        amount: coins(100u128 + 10u128, "uusd"),
     }));
     assert_eq!(
         Response::new()

@@ -206,12 +206,15 @@ fn execute_place_offer(
         )?;
         require(
             current_offer.expiration.is_expired(&env.block)
-                || current_offer.amount.amount < coin.amount,
+                || current_offer.amount.amount < offer_amount,
             ContractError::OfferLowerThanCurrent {},
         )?;
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: current_offer.purchaser,
-            amount: vec![current_offer.amount],
+            amount: vec![Coin {
+                amount: current_offer.amount.amount + current_offer.tax_amount.amount,
+                denom: current_offer.amount.denom,
+            }],
         })));
     }
     let (resp, tax_amount) = get_funds_transfer_response_and_taxes(
@@ -239,7 +242,10 @@ fn execute_place_offer(
 
     let offer = Offer {
         purchaser: purchaser.to_owned(),
-        amount: coin.to_owned(),
+        amount: Coin {
+            amount: offer_amount,
+            denom: coin.denom.clone(),
+        },
         expiration,
         tax_amount: Coin {
             amount: tax_amount,
