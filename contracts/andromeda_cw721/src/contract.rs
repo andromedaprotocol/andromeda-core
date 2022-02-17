@@ -157,6 +157,7 @@ pub fn execute(
             expiration,
         } => execute_place_offer(deps, env, info, token_id, expiration),
         ExecuteMsg::AcceptOffer { token_id } => execute_accept_offer(deps, env, info, token_id),
+        ExecuteMsg::CancelOffer { token_id } => execute_cancel_offer(deps, info, token_id),
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
     }
@@ -202,7 +203,8 @@ fn execute_place_offer(
             ContractError::OfferAlreadyPlaced {},
         )?;
         require(
-            current_offer.amount.amount < coin.amount,
+            current_offer.expiration.is_expired(&env.block)
+                || current_offer.amount.amount < coin.amount,
             ContractError::OfferLowerThanCurrent {},
         )?;
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -223,7 +225,26 @@ fn execute_place_offer(
         .add_attribute("token_id", token_id))
 }
 
-// TODO: Add cancel offer.
+fn execute_cancel_offer(
+    deps: DepsMut,
+    info: MessageInfo,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    let offer = offers().load(deps.storage, &token_id)?;
+    require(
+        info.sender == offer.purchaser,
+        ContractError::Unauthorized {},
+    )?;
+    offers().remove(deps.storage, &token_id)?;
+    let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        to_address: info.sender.to_string(),
+        amount: vec![offer.amount],
+    }));
+    Ok(Response::new()
+        .add_submessage(msg)
+        .add_attribute("action", "cancel_offer")
+        .add_attribute("token_id", token_id))
+}
 
 fn execute_accept_offer(
     deps: DepsMut,
@@ -237,6 +258,10 @@ fn execute_accept_offer(
     let offer = offers().load(deps.storage, &token_id)?;
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
     let purchaser = offer.purchaser;
+    require(
+        !offer.expiration.is_expired(&env.block),
+        ContractError::Expired {},
+    )?;
 
     require(info.sender == token.owner, ContractError::Unauthorized {})?;
     require(

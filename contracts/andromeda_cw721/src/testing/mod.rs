@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    attr, coins, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, Event, Response, StdError,
-    SubMsg, WasmMsg,
+    attr, coin, coins, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, Event, Response,
+    StdError, SubMsg, WasmMsg,
 };
 
 use crate::contract::*;
@@ -587,5 +587,258 @@ fn test_place_offer_accept_offer() {
     assert_eq!(
         None,
         offers().may_load(deps.as_ref().storage, &token_id).unwrap()
+    );
+}
+
+#[test]
+fn test_place_offer_expired() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let purchaser = String::from("purchaser");
+    let mut env = mock_env();
+
+    init_setup(deps.as_mut(), mock_env(), None);
+    mint_token(
+        deps.as_mut(),
+        mock_env(),
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator.clone(),
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let msg = ExecuteMsg::PlaceOffer {
+        token_id: token_id.clone(),
+        expiration: Expiration::AtHeight(10),
+    };
+
+    env.block.height = 12;
+
+    let info = mock_info(&purchaser, &[]);
+    let res = execute(deps.as_mut(), env, info, msg.clone());
+    assert_eq!(ContractError::Expired {}, res.unwrap_err());
+}
+
+#[test]
+fn test_place_offer_previous_expired() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let purchaser = String::from("purchaser");
+    let other_purchaser = String::from("other_purchaser");
+    let mut env = mock_env();
+
+    init_setup(deps.as_mut(), mock_env(), None);
+    mint_token(
+        deps.as_mut(),
+        mock_env(),
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator.clone(),
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let offer = Offer {
+        amount: coin(100u128, "uusd"),
+        expiration: Expiration::AtHeight(10),
+        purchaser: purchaser.clone(),
+    };
+    offers()
+        .save(deps.as_mut().storage, &token_id, &offer)
+        .unwrap();
+
+    env.block.height = 12;
+
+    let msg = ExecuteMsg::PlaceOffer {
+        token_id: token_id.clone(),
+        expiration: Expiration::AtHeight(15),
+    };
+
+    let info = mock_info(&other_purchaser, &coins(50u128, "uusd"));
+    let res = execute(deps.as_mut(), env, info, msg.clone()).unwrap();
+    let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        to_address: purchaser,
+        amount: coins(100u128, "uusd"),
+    }));
+    assert_eq!(
+        Response::new()
+            .add_submessage(msg)
+            .add_attribute("action", "place_offer")
+            .add_attribute("purchaser", &other_purchaser)
+            .add_attribute("token_id", &token_id),
+        res
+    );
+
+    assert_eq!(
+        Offer {
+            amount: coin(50u128, "uusd"),
+            expiration: Expiration::AtHeight(15),
+            purchaser: other_purchaser
+        },
+        offers().load(deps.as_ref().storage, &token_id).unwrap()
+    );
+}
+
+#[test]
+fn test_accept_offer_expired() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let purchaser = String::from("purchaser");
+    let mut env = mock_env();
+
+    init_setup(deps.as_mut(), mock_env(), None);
+    mint_token(
+        deps.as_mut(),
+        mock_env(),
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator.clone(),
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let offer = Offer {
+        amount: coin(100u128, "uusd"),
+        expiration: Expiration::AtHeight(10),
+        purchaser,
+    };
+    offers()
+        .save(deps.as_mut().storage, &token_id, &offer)
+        .unwrap();
+
+    let msg = ExecuteMsg::AcceptOffer {
+        token_id: token_id.clone(),
+    };
+
+    env.block.height = 12;
+
+    let info = mock_info(&creator, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    assert_eq!(ContractError::Expired {}, res.unwrap_err());
+}
+
+#[test]
+fn test_accept_offer_existing_transfer_agreement() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let purchaser = String::from("purchaser");
+
+    init_setup(deps.as_mut(), mock_env(), None);
+    mint_token(
+        deps.as_mut(),
+        mock_env(),
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator.clone(),
+            transfer_agreement: Some(TransferAgreement {
+                amount: coin(100u128, "uusd"),
+                purchaser: purchaser.clone(),
+            }),
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let offer = Offer {
+        amount: coin(100u128, "uusd"),
+        expiration: Expiration::Never {},
+        purchaser,
+    };
+    offers()
+        .save(deps.as_mut().storage, &token_id, &offer)
+        .unwrap();
+
+    let msg = ExecuteMsg::AcceptOffer {
+        token_id: token_id.clone(),
+    };
+
+    let info = mock_info(&creator, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    assert_eq!(ContractError::TransferAgreementExists {}, res.unwrap_err());
+}
+
+#[test]
+fn test_cancel_offer() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let purchaser = String::from("purchaser");
+
+    init_setup(deps.as_mut(), mock_env(), None);
+    mint_token(
+        deps.as_mut(),
+        mock_env(),
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator.clone(),
+            transfer_agreement: Some(TransferAgreement {
+                amount: coin(100u128, "uusd"),
+                purchaser: purchaser.clone(),
+            }),
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let offer = Offer {
+        amount: coin(100u128, "uusd"),
+        expiration: Expiration::Never {},
+        purchaser: purchaser.clone(),
+    };
+    offers()
+        .save(deps.as_mut().storage, &token_id, &offer)
+        .unwrap();
+
+    let msg = ExecuteMsg::CancelOffer {
+        token_id: token_id.clone(),
+    };
+
+    let info = mock_info(&creator, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+    let info = mock_info(&purchaser, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        to_address: purchaser,
+        amount: vec![offer.amount],
+    }));
+    assert_eq!(
+        Response::new()
+            .add_submessage(msg)
+            .add_attribute("action", "cancel_offer")
+            .add_attribute("token_id", token_id),
+        res
     );
 }

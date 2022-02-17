@@ -216,6 +216,9 @@ pub enum ExecuteMsg {
     AcceptOffer {
         token_id: String,
     },
+    CancelOffer {
+        token_id: String,
+    },
 }
 
 impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
