@@ -2,8 +2,8 @@ use crate::state::{offers, Offer};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdError, Storage, SubMsg,
+    attr, has_coins, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, QuerierWrapper, Reply, Response, StdError, Storage, SubMsg, Uint128,
 };
 
 use andromeda_protocol::{
@@ -155,7 +155,8 @@ pub fn execute(
         ExecuteMsg::PlaceOffer {
             token_id,
             expiration,
-        } => execute_place_offer(deps, env, info, token_id, expiration),
+            offer_amount,
+        } => execute_place_offer(deps, env, info, token_id, offer_amount, expiration),
         ExecuteMsg::AcceptOffer { token_id } => execute_accept_offer(deps, env, info, token_id),
         ExecuteMsg::CancelOffer { token_id } => execute_cancel_offer(deps, info, token_id),
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
@@ -168,6 +169,7 @@ fn execute_place_offer(
     env: Env,
     info: MessageInfo,
     token_id: String,
+    offer_amount: Uint128,
     expiration: Expiration,
 ) -> Result<Response, ContractError> {
     let purchaser = info.sender.as_str();
@@ -212,10 +214,39 @@ fn execute_place_offer(
             amount: vec![current_offer.amount],
         })));
     }
+    let (resp, tax_amount) = get_funds_transfer_response_and_taxes(
+        deps.storage,
+        &deps.querier,
+        info.sender.to_string(),
+        Coin {
+            amount: offer_amount,
+            denom: coin.denom.clone(),
+        },
+        token_id.clone(),
+        token.owner.to_string(),
+    )?;
+    // require that the sender has sent enough for taxes
+    require(
+        has_coins(
+            &info.funds,
+            &Coin {
+                denom: coin.denom.clone(),
+                amount: offer_amount + tax_amount,
+            },
+        ),
+        ContractError::InsufficientFunds {},
+    )?;
+
     let offer = Offer {
         purchaser: purchaser.to_owned(),
         amount: coin.to_owned(),
         expiration,
+        tax_amount: Coin {
+            amount: tax_amount,
+            denom: coin.denom.clone(),
+        },
+        msgs: resp.messages,
+        events: resp.events,
     };
     offers().save(deps.storage, &token_id, &offer)?;
     Ok(Response::new()
@@ -238,7 +269,10 @@ fn execute_cancel_offer(
     offers().remove(deps.storage, &token_id)?;
     let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: info.sender.to_string(),
-        amount: vec![offer.amount],
+        amount: vec![Coin {
+            amount: offer.amount.amount + offer.tax_amount.amount,
+            denom: offer.amount.denom,
+        }],
     }));
     Ok(Response::new()
         .add_submessage(msg)
@@ -256,8 +290,7 @@ fn execute_accept_offer(
 
     let contract = AndrCW721Contract::default();
     let offer = offers().load(deps.storage, &token_id)?;
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
-    let purchaser = offer.purchaser;
+    let token = contract.tokens.load(deps.storage, &token_id)?;
     require(
         !offer.expiration.is_expired(&env.block),
         ContractError::Expired {},
@@ -269,20 +302,14 @@ fn execute_accept_offer(
         ContractError::TransferAgreementExists {},
     )?;
 
-    let transfer_agreement = TransferAgreement {
-        amount: offer.amount,
-        purchaser: purchaser.clone(),
-    };
-    // Can't call execute_update_transfer_agreement as deps can't be cloned.
-    token.extension.transfer_agreement = Some(transfer_agreement);
-    contract
-        .tokens
-        .save(deps.storage, token_id.as_str(), &token)?;
+    let resp = Response::new()
+        .add_submessages(offer.msgs)
+        .add_events(offer.events);
 
+    transfer_ownership(deps.storage, deps.api, &token_id, &offer.purchaser)?;
     offers().remove(deps.storage, &token_id)?;
 
-    let res = execute_transfer(deps, env, info, purchaser, token_id.clone())?;
-    Ok(res
+    Ok(resp
         .add_attribute("action", "accept_offer")
         .add_attribute("token_id", token_id))
 }
@@ -325,42 +352,94 @@ fn execute_transfer(
     token_id: String,
 ) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract::default();
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    let token = contract.tokens.load(deps.storage, &token_id)?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
-    let mut resp = Response::default();
-    if let Some(xfer_agreement) = &token.extension.transfer_agreement {
-        let (msgs, events, remainder) = on_funds_transfer(
+    let (resp, tax_amount) = if let Some(agreement) = &token.extension.transfer_agreement {
+        get_funds_transfer_response_and_taxes(
             deps.storage,
-            deps.querier,
+            &deps.querier,
             info.sender.to_string(),
-            Funds::Native(xfer_agreement.amount.to_owned()),
-            to_binary(&ExecuteMsg::TransferNft {
-                token_id: token_id.clone(),
-                recipient: recipient.clone(),
-            })?,
-        )?;
-        let remaining_amount = match remainder {
-            Funds::Native(coin) => coin, //What do we do in the case that the rates returns remaining amount as non-native funds?
-            Funds::Cw20(..) => panic!("Remaining funds returned as incorrect type"),
-        };
-        resp = resp.add_submessages(msgs).add_events(events);
-        resp = resp.add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token.owner.to_string(),
-            amount: vec![remaining_amount],
-        })));
-    }
+            agreement.amount.clone(),
+            token_id.clone(),
+            recipient.clone(),
+        )?
+    } else {
+        (Response::new(), Uint128::zero())
+    };
 
-    check_can_send(deps.as_ref(), env, info, &token)?;
-    token.owner = deps.api.addr_validate(&recipient)?;
-    token.approvals.clear();
-    token.extension.transfer_agreement = None;
-    token.extension.pricing = None;
-    contract.tokens.save(deps.storage, &token_id, &token)?;
+    check_can_send(deps.as_ref(), env, info, &token, tax_amount)?;
+    transfer_ownership(deps.storage, deps.api, &token_id, &recipient)?;
 
     Ok(resp
         .add_attribute("action", "transfer")
         .add_attribute("recipient", recipient))
+}
+
+fn transfer_ownership(
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    token_id: &str,
+    recipient: &str,
+) -> Result<(), ContractError> {
+    let contract = AndrCW721Contract::default();
+    let mut token = contract.tokens.load(storage, token_id)?;
+    token.owner = api.addr_validate(recipient)?;
+    token.approvals.clear();
+    token.extension.transfer_agreement = None;
+    token.extension.pricing = None;
+    contract.tokens.save(storage, &token_id, &token)?;
+    Ok(())
+}
+
+fn get_funds_transfer_response_and_taxes(
+    storage: &dyn Storage,
+    querier: &QuerierWrapper,
+    sender: String,
+    coin: Coin,
+    token_id: String,
+    recipient: String,
+) -> Result<(Response, Uint128), ContractError> {
+    let contract = AndrCW721Contract::default();
+    let token = contract.tokens.load(storage, &token_id)?;
+    let mut resp = Response::new();
+    let (msgs, events, remainder) = on_funds_transfer(
+        storage,
+        *querier,
+        sender,
+        Funds::Native(coin.clone()),
+        to_binary(&ExecuteMsg::TransferNft {
+            token_id: token_id.clone(),
+            recipient: recipient.clone(),
+        })?,
+    )?;
+    let remaining_amount = match remainder {
+        Funds::Native(coin) => coin, //What do we do in the case that the rates returns remaining amount as non-native funds?
+        Funds::Cw20(..) => panic!("Remaining funds returned as incorrect type"),
+    };
+
+    let tax_amount = get_tax_amount(&msgs, coin.amount - remaining_amount.amount);
+
+    resp = resp.add_submessages(msgs).add_events(events);
+    resp = resp.add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        to_address: token.owner.to_string(),
+        amount: vec![remaining_amount],
+    })));
+    Ok((resp, tax_amount))
+}
+
+fn get_tax_amount(msgs: &[SubMsg], deducted_amount: Uint128) -> Uint128 {
+    msgs.iter()
+        .map(|msg| {
+            if let CosmosMsg::Bank(BankMsg::Send { amount, .. }) = &msg.msg {
+                amount[0].amount
+            } else {
+                Uint128::zero()
+            }
+        })
+        .reduce(|total, amount| total + amount)
+        .unwrap_or(Uint128::zero())
+        - deducted_amount
 }
 
 fn check_can_send(
@@ -368,6 +447,7 @@ fn check_can_send(
     env: Env,
     info: MessageInfo,
     token: &TokenInfo<TokenExtension>,
+    tax_amount: Uint128,
 ) -> Result<(), ContractError> {
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
     // owner can send
@@ -378,7 +458,14 @@ fn check_can_send(
     // token purchaser can send if correct funds are sent
     if let Some(agreement) = &token.extension.transfer_agreement {
         require(
-            has_coins(&info.funds, &agreement.amount),
+            has_coins(
+                &info.funds,
+                &Coin {
+                    denom: agreement.amount.denom.to_owned(),
+                    // Ensure that the taxes came from the sender.
+                    amount: agreement.amount.amount + tax_amount,
+                },
+            ),
             ContractError::InsufficientFunds {},
         )?;
         if agreement.purchaser == info.sender {

@@ -1,4 +1,4 @@
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Coin, Event, SubMsg};
 use cw721::Expiration;
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 use schemars::JsonSchema;
@@ -9,6 +9,9 @@ pub struct Offer {
     pub amount: Coin,
     pub expiration: Expiration,
     pub purchaser: String,
+    pub tax_amount: Coin,
+    pub msgs: Vec<SubMsg>,
+    pub events: Vec<Event>,
 }
 
 pub struct OfferIndexes<'a> {

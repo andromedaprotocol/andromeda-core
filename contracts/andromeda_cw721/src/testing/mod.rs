@@ -525,6 +525,7 @@ fn test_place_offer_accept_offer() {
     let msg = ExecuteMsg::PlaceOffer {
         token_id: token_id.clone(),
         expiration: Expiration::Never {},
+        offer_amount: 100u128.into(),
     };
 
     let info = mock_info(&creator, &[]);
@@ -544,9 +545,21 @@ fn test_place_offer_accept_offer() {
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
     assert_eq!(ContractError::OfferAlreadyPlaced {}, res.unwrap_err());
 
+    let msg = ExecuteMsg::PlaceOffer {
+        token_id: token_id.clone(),
+        expiration: Expiration::Never {},
+        offer_amount: 50u128.into(),
+    };
+
     let info = mock_info(&other_purchaser, &coins(50u128, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
     assert_eq!(ContractError::OfferLowerThanCurrent {}, res.unwrap_err());
+
+    let msg = ExecuteMsg::PlaceOffer {
+        token_id: token_id.clone(),
+        expiration: Expiration::Never {},
+        offer_amount: 150u128.into(),
+    };
 
     let info = mock_info(&other_purchaser, &coins(150u128, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -577,8 +590,6 @@ fn test_place_offer_accept_offer() {
     assert_eq!(
         Response::new()
             .add_submessage(msg)
-            .add_attribute("action", "transfer")
-            .add_attribute("recipient", other_purchaser)
             .add_attribute("action", "accept_offer")
             .add_attribute("token_id", &token_id),
         res
@@ -618,6 +629,7 @@ fn test_place_offer_expired() {
     let msg = ExecuteMsg::PlaceOffer {
         token_id,
         expiration: Expiration::AtHeight(10),
+        offer_amount: 100u128.into(),
     };
 
     env.block.height = 12;
@@ -645,7 +657,7 @@ fn test_place_offer_previous_expired() {
         TokenExtension {
             description: None,
             name: String::default(),
-            publisher: creator,
+            publisher: creator.clone(),
             transfer_agreement: None,
             metadata: None,
             archived: false,
@@ -657,6 +669,9 @@ fn test_place_offer_previous_expired() {
         amount: coin(100u128, "uusd"),
         expiration: Expiration::AtHeight(10),
         purchaser: purchaser.clone(),
+        tax_amount: coin(0u128, "uusd"),
+        msgs: vec![],
+        events: vec![],
     };
     offers()
         .save(deps.as_mut().storage, &token_id, &offer)
@@ -667,6 +682,7 @@ fn test_place_offer_previous_expired() {
     let msg = ExecuteMsg::PlaceOffer {
         token_id: token_id.clone(),
         expiration: Expiration::AtHeight(15),
+        offer_amount: 50u128.into(),
     };
 
     let info = mock_info(&other_purchaser, &coins(50u128, "uusd"));
@@ -688,7 +704,13 @@ fn test_place_offer_previous_expired() {
         Offer {
             amount: coin(50u128, "uusd"),
             expiration: Expiration::AtHeight(15),
-            purchaser: other_purchaser
+            purchaser: other_purchaser,
+            tax_amount: coin(0u128, "uusd"),
+            msgs: vec![SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: creator,
+                amount: coins(50u128, "uusd")
+            }))],
+            events: vec![],
         },
         offers().load(deps.as_ref().storage, &token_id).unwrap()
     );
@@ -723,6 +745,9 @@ fn test_accept_offer_expired() {
         amount: coin(100u128, "uusd"),
         expiration: Expiration::AtHeight(10),
         purchaser,
+        tax_amount: coin(0u128, "uusd"),
+        msgs: vec![],
+        events: vec![],
     };
     offers()
         .save(deps.as_mut().storage, &token_id, &offer)
@@ -768,6 +793,9 @@ fn test_accept_offer_existing_transfer_agreement() {
         amount: coin(100u128, "uusd"),
         expiration: Expiration::Never {},
         purchaser,
+        tax_amount: coin(0u128, "uusd"),
+        msgs: vec![],
+        events: vec![],
     };
     offers()
         .save(deps.as_mut().storage, &token_id, &offer)
@@ -811,6 +839,9 @@ fn test_cancel_offer() {
         amount: coin(100u128, "uusd"),
         expiration: Expiration::Never {},
         purchaser: purchaser.clone(),
+        tax_amount: coin(0u128, "uusd"),
+        msgs: vec![],
+        events: vec![],
     };
     offers()
         .save(deps.as_mut().storage, &token_id, &offer)
