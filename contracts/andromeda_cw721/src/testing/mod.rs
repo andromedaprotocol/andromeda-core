@@ -550,7 +550,7 @@ fn test_place_offer_accept_offer() {
     assert_eq!(ContractError::TokenOwnerCannotBid {}, res.unwrap_err());
 
     let info = mock_info(&purchaser, &coins(100u128, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
     assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
 
     // Add 10uusd for tax.
@@ -565,7 +565,7 @@ fn test_place_offer_accept_offer() {
         res
     );
 
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::OfferAlreadyPlaced {}, res.unwrap_err());
 
     let msg = ExecuteMsg::PlaceOffer {
@@ -576,7 +576,7 @@ fn test_place_offer_accept_offer() {
 
     // 5 extra uusd for tax.
     let info = mock_info(&other_purchaser, &coins(50u128 + 5u128, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::OfferLowerThanCurrent {}, res.unwrap_err());
 
     let msg = ExecuteMsg::PlaceOffer {

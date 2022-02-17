@@ -379,7 +379,7 @@ fn transfer_ownership(
     token.approvals.clear();
     token.extension.transfer_agreement = None;
     token.extension.pricing = None;
-    contract.tokens.save(storage, &token_id, &token)?;
+    contract.tokens.save(storage, token_id, &token)?;
     Ok(())
 }
 
@@ -400,8 +400,8 @@ fn get_funds_transfer_response_and_taxes(
         sender,
         Funds::Native(coin.clone()),
         to_binary(&ExecuteMsg::TransferNft {
-            token_id: token_id.clone(),
-            recipient: recipient.clone(),
+            token_id,
+            recipient,
         })?,
     )?;
     let remaining_amount = match remainder {
@@ -429,7 +429,7 @@ fn get_tax_amount(msgs: &[SubMsg], deducted_amount: Uint128) -> Uint128 {
             }
         })
         .reduce(|total, amount| total + amount)
-        .unwrap_or(Uint128::zero())
+        .unwrap_or_else(Uint128::zero)
         - deducted_amount
 }
 
