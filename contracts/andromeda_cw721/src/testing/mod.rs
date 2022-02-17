@@ -549,7 +549,7 @@ fn test_place_offer_accept_offer() {
     assert_eq!(ContractError::OfferLowerThanCurrent {}, res.unwrap_err());
 
     let info = mock_info(&other_purchaser, &coins(150u128, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
     assert_eq!(
         Response::new()
             .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -607,7 +607,7 @@ fn test_place_offer_expired() {
         TokenExtension {
             description: None,
             name: String::default(),
-            publisher: creator.clone(),
+            publisher: creator,
             transfer_agreement: None,
             metadata: None,
             archived: false,
@@ -616,14 +616,14 @@ fn test_place_offer_expired() {
     );
 
     let msg = ExecuteMsg::PlaceOffer {
-        token_id: token_id.clone(),
+        token_id,
         expiration: Expiration::AtHeight(10),
     };
 
     env.block.height = 12;
 
     let info = mock_info(&purchaser, &[]);
-    let res = execute(deps.as_mut(), env, info, msg.clone());
+    let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::Expired {}, res.unwrap_err());
 }
 
@@ -645,7 +645,7 @@ fn test_place_offer_previous_expired() {
         TokenExtension {
             description: None,
             name: String::default(),
-            publisher: creator.clone(),
+            publisher: creator,
             transfer_agreement: None,
             metadata: None,
             archived: false,
@@ -670,7 +670,7 @@ fn test_place_offer_previous_expired() {
     };
 
     let info = mock_info(&other_purchaser, &coins(50u128, "uusd"));
-    let res = execute(deps.as_mut(), env, info, msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: purchaser,
         amount: coins(100u128, "uusd"),
@@ -728,14 +728,12 @@ fn test_accept_offer_expired() {
         .save(deps.as_mut().storage, &token_id, &offer)
         .unwrap();
 
-    let msg = ExecuteMsg::AcceptOffer {
-        token_id: token_id.clone(),
-    };
+    let msg = ExecuteMsg::AcceptOffer { token_id };
 
     env.block.height = 12;
 
     let info = mock_info(&creator, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::Expired {}, res.unwrap_err());
 }
 
@@ -775,12 +773,10 @@ fn test_accept_offer_existing_transfer_agreement() {
         .save(deps.as_mut().storage, &token_id, &offer)
         .unwrap();
 
-    let msg = ExecuteMsg::AcceptOffer {
-        token_id: token_id.clone(),
-    };
+    let msg = ExecuteMsg::AcceptOffer { token_id };
 
     let info = mock_info(&creator, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::TransferAgreementExists {}, res.unwrap_err());
 }
 

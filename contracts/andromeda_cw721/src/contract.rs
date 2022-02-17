@@ -281,7 +281,7 @@ fn execute_accept_offer(
 
     offers().remove(deps.storage, &token_id)?;
 
-    let res = execute_transfer(deps, env, info, purchaser.clone(), token_id.clone())?;
+    let res = execute_transfer(deps, env, info, purchaser, token_id.clone())?;
     Ok(res
         .add_attribute("action", "accept_offer")
         .add_attribute("token_id", token_id))
