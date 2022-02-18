@@ -1,14 +1,9 @@
 use crate::{
-    communication::{
-        hooks::{AndromedaHook, OnFundsTransferResponse},
-        AndromedaMsg, AndromedaQuery, Recipient,
-    },
+    communication::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     modules::Rate,
 };
-use cosmwasm_std::{
-    to_binary, BankMsg, Coin, CosmosMsg, QuerierWrapper, QueryRequest, SubMsg, Uint128, WasmQuery,
-};
+use cosmwasm_std::{BankMsg, Coin, CosmosMsg, SubMsg, Uint128};
 use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

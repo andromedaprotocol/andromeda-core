@@ -123,8 +123,7 @@ fn execute_place_offer(
             amount: offer_amount,
         },
     )?;
-    let remaining_amount: Funds = from_binary(&res.payload)?;
-    let remaining_amount = remaining_amount.try_get_coin()?;
+    let remaining_amount = res.leftover_funds.try_get_coin()?;
     let tax_amount = get_tax_amount(&res.msgs, offer_amount - remaining_amount.amount);
     let offer = Offer {
         purchaser: purchaser.to_owned(),

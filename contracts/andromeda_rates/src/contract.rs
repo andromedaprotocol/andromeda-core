@@ -171,14 +171,14 @@ fn query_deducted_funds(
     }
     Ok(OnFundsTransferResponse {
         msgs,
-        payload: encode_binary(&if is_native {
+        leftover_funds: if is_native {
             Funds::Native(leftover_funds[0].clone())
         } else {
             Funds::Cw20(Cw20Coin {
                 amount: leftover_funds[0].amount,
                 address: coin.denom,
             })
-        })?,
+        },
         events,
     })
 }
@@ -341,7 +341,7 @@ mod tests {
             OnFundsTransferResponse {
                 msgs: expected_msgs,
                 // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
-                payload: encode_binary(&Funds::Native(coin(89, "uusd"))).unwrap(),
+                leftover_funds: Funds::Native(coin(89, "uusd")),
                 events: vec![
                     Event::new("tax")
                         .add_attribute("description", "desc2")
@@ -445,11 +445,10 @@ mod tests {
             OnFundsTransferResponse {
                 msgs: expected_msgs,
                 // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
-                payload: encode_binary(&Funds::Cw20(Cw20Coin {
+                leftover_funds: Funds::Cw20(Cw20Coin {
                     amount: 89u128.into(),
                     address: cw20_address.to_string()
-                }))
-                .unwrap(),
+                }),
                 events: vec![
                     Event::new("tax")
                         .add_attribute("description", "desc2")

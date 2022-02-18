@@ -518,7 +518,7 @@ fn test_modules() {
             bank_sub_msg(10, MOCK_RATES_RECIPIENT),
             receipt_msg,
         ],
-        payload: to_binary(&Funds::Native(coin(90, "uusd"))).unwrap(),
+        leftover_funds: Funds::Native(coin(90, "uusd")),
         events: vec![Event::new("Royalty"), Event::new("Tax")],
     };
     assert_eq!(expected_response, res);

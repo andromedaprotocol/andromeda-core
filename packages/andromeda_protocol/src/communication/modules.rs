@@ -457,8 +457,7 @@ pub fn on_funds_transfer(
             module.address.clone(),
         )?;
         if let Some(mod_resp) = mod_resp {
-            let leftover_funds: Funds = from_binary(&mod_resp.payload)?;
-            remainder = leftover_funds;
+            remainder = mod_resp.leftover_funds;
             msgs = [msgs, mod_resp.msgs].concat();
             events = [events, mod_resp.events].concat();
         }

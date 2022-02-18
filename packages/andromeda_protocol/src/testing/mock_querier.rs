@@ -203,7 +203,7 @@ impl WasmMockQuerier {
                     let response = OnFundsTransferResponse {
                         msgs,
                         events: vec![Event::new("Royalty"), Event::new("Tax")],
-                        payload: to_binary(&new_funds).unwrap(),
+                        leftover_funds: new_funds,
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
                 }
@@ -255,7 +255,7 @@ impl WasmMockQuerier {
                     let response = OnFundsTransferResponse {
                         msgs: vec![receipt_msg],
                         events: vec![],
-                        payload: to_binary(&amount).unwrap(),
+                        leftover_funds: amount,
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
                 }
@@ -302,12 +302,10 @@ impl WasmMockQuerier {
                 let c = amount.try_get_coin().unwrap();
                 let response = OnFundsTransferResponse {
                     events: vec![Event::new("Royalty"), Event::new("Tax")],
-                    // payload represents the remaining amount after royalties (10% in this case).
-                    payload: to_binary(&Funds::Native(coin(
+                    leftover_funds: Funds::Native(coin(
                         c.amount.multiply_ratio(90u128, 100u128).u128(),
                         c.denom.clone(),
-                    )))
-                    .unwrap(),
+                    )),
                     msgs: vec![
                         // 10% tax message.
                         self.get_native_rates_msg(&c, 10, None),

@@ -425,7 +425,7 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             let res = OnFundsTransferResponse {
                 msgs,
                 events,
-                payload: encode_binary(&remainder)?,
+                leftover_funds: remainder,
             };
             Ok(encode_binary(&res)?)
         }
