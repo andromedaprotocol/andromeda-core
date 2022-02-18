@@ -3,6 +3,7 @@ use crate::{
     state::{offers, CW721_CONTRACT},
 };
 use andromeda_protocol::{
+    cw721::ExecuteMsg as Cw721ExecuteMsg,
     cw721_offers::{ExecuteMsg, InstantiateMsg, Offer},
     error::ContractError,
     testing::mock_querier::{
@@ -13,7 +14,7 @@ use andromeda_protocol::{
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
-    BankMsg, CosmosMsg, DepsMut, Event, MessageInfo, Response, SubMsg,
+    to_binary, BankMsg, CosmosMsg, DepsMut, Event, MessageInfo, Response, SubMsg, WasmMsg,
 };
 use cw721::Expiration;
 
@@ -110,10 +111,19 @@ fn test_place_offer_accept_offer() {
 
     let msg = ExecuteMsg::AcceptOffer {
         token_id: token_id.clone(),
-        token_owner: creator.clone(),
     };
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+    let transfer_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_CW721_CONTRACT.to_owned(),
+        msg: to_binary(&Cw721ExecuteMsg::TransferNft {
+            recipient: other_purchaser,
+            token_id: token_id.clone(),
+        })
+        .unwrap(),
+        funds: vec![],
+    });
 
     let info = mock_info(MOCK_CW721_CONTRACT, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -125,6 +135,7 @@ fn test_place_offer_accept_offer() {
     assert_eq!(
         Response::new()
             .add_submessages(msgs)
+            .add_message(transfer_msg)
             .add_event(Event::new("Royalty"))
             .add_event(Event::new("Tax"))
             .add_attribute("action", "accept_offer")
@@ -255,10 +266,7 @@ fn test_accept_offer_expired() {
         .save(deps.as_mut().storage, &token_id, &offer)
         .unwrap();
 
-    let msg = ExecuteMsg::AcceptOffer {
-        token_id,
-        token_owner: creator,
-    };
+    let msg = ExecuteMsg::AcceptOffer { token_id };
 
     env.block.height = 12;
 

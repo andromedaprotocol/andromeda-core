@@ -48,7 +48,6 @@ pub enum ExecuteMsg {
     /// Restricted to Cw721 contract.
     AcceptOffer {
         token_id: String,
-        token_owner: String,
     },
 }
 

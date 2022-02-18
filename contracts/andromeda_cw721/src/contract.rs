@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
 };
 
 use andromeda_protocol::{
@@ -17,7 +17,7 @@ use andromeda_protocol::{
         parse_message, AndromedaMsg,
     },
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
-    cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
+    cw721_offers::ExecuteMsg as OffersExecuteMsg,
     error::ContractError,
     operators::execute_update_operators,
     ownership::{execute_update_owner, CONTRACT_OWNER},
@@ -138,7 +138,7 @@ pub fn execute(
         }
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, info, token_id),
-        ExecuteMsg::AcceptOffer { token_id } => execute_accept_offer(deps, info, token_id),
+        ExecuteMsg::AcceptOffer { token_id } => execute_accept_offer(deps, env, info, token_id),
         ExecuteMsg::RegisterModule { module } => execute_register_module(
             &deps.querier,
             deps.storage,
@@ -246,6 +246,7 @@ fn transfer_ownership(deps: DepsMut, token_id: &str, new_owner: &str) -> Result<
 
 fn execute_accept_offer(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     token_id: String,
 ) -> Result<Response, ContractError> {
@@ -267,24 +268,22 @@ fn execute_accept_offer(
         token.extension.transfer_agreement.is_none(),
         ContractError::TransferAgreementExists {},
     )?;
+    contract.execute(
+        deps,
+        env,
+        info,
+        ExecuteMsg::Approve {
+            spender: offers_contract.to_string(),
+            token_id: token_id.clone(),
+            expires: None,
+        }
+        .into(),
+    )?;
 
-    // Get the owner of the offer.
-    let offer_response: OfferResponse =
-        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: offers_contract.to_string(),
-            msg: encode_binary(&OffersQueryMsg::Offer {
-                token_id: token_id.clone(),
-            })?,
-        }))?;
-
-    transfer_ownership(deps, &token_id, &offer_response.purchaser)?;
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: offers_contract.to_string(),
         funds: vec![],
-        msg: encode_binary(&OffersExecuteMsg::AcceptOffer {
-            token_id,
-            token_owner: token.owner.to_string(),
-        })?,
+        msg: encode_binary(&OffersExecuteMsg::AcceptOffer { token_id })?,
     });
     Ok(Response::new().add_message(msg))
 }

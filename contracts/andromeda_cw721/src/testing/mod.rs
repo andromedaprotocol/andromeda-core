@@ -569,19 +569,17 @@ fn test_accept_offer() {
         funds: vec![],
         msg: to_binary(&OffersExecuteMsg::AcceptOffer {
             token_id: token_id.clone(),
-            token_owner: creator,
         })
         .unwrap(),
     });
     assert_eq!(Response::new().add_message(msg), res);
 
-    let query_msg = QueryMsg::OwnerOf {
-        token_id,
-        include_expired: None,
-    };
-    let query_resp = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-    let resp: OwnerOfResponse = from_binary(&query_resp).unwrap();
-    assert_eq!(resp.owner, "purchaser");
+    let contract = AndrCW721Contract::default();
+    let token = contract
+        .tokens
+        .load(deps.as_ref().storage, &token_id)
+        .unwrap();
+    assert_eq!(MOCK_OFFERS_CONTRACT, token.approvals[0].spender.to_string())
 }
 
 #[test]
@@ -616,7 +614,9 @@ fn test_accept_offer_existing_transfer_agreement() {
         },
     );
 
-    let msg = ExecuteMsg::AcceptOffer { token_id };
+    let msg = ExecuteMsg::AcceptOffer {
+        token_id: token_id.clone(),
+    };
     let info = mock_info(&creator, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::TransferAgreementExists {}, res.unwrap_err());
