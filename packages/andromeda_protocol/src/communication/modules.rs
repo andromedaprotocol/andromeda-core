@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order,
+    to_binary, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order,
     QuerierWrapper, QueryRequest, ReplyOn, Response, StdError, Storage, SubMsg, Uint64, WasmMsg,
     WasmQuery,
 };

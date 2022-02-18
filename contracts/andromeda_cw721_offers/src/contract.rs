@@ -14,7 +14,7 @@ use andromeda_protocol::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Order, QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
     WasmQuery,
 };

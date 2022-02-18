@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, Event,
-    MessageInfo, QuerierWrapper, Reply, Response, StdError, Storage, SubMsg, Uint128,
+    attr, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, Reply, Response, StdError, Storage, SubMsg, Uint128,
 };
 
 use andromeda_protocol::{
