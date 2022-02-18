@@ -1,11 +1,11 @@
-use crate::state::{offers, Offer, CW721_CONTRACT};
+use crate::state::{offers, CW721_CONTRACT};
 use andromeda_protocol::{
     communication::{
         encode_binary,
         hooks::{AndromedaHook, OnFundsTransferResponse},
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
-    cw721_offers::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    cw721_offers::{AllOffersResponse, ExecuteMsg, InstantiateMsg, Offer, OfferResponse, QueryMsg},
     error::ContractError,
     ownership::CONTRACT_OWNER,
     rates::Funds,
@@ -275,8 +275,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     }
 }
 
-fn query_offer(deps: Deps, token_id: String) -> Result<Offer, ContractError> {
-    Ok(offers().load(deps.storage, &token_id)?)
+fn query_offer(deps: Deps, token_id: String) -> Result<OfferResponse, ContractError> {
+    Ok(offers().load(deps.storage, &token_id)?.into())
 }
 
 fn query_all_offers(
@@ -284,7 +284,7 @@ fn query_all_offers(
     purchaser: String,
     limit: Option<u32>,
     start_after: Option<String>,
-) -> Result<Vec<Offer>, ContractError> {
+) -> Result<AllOffersResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 
@@ -297,9 +297,11 @@ fn query_all_offers(
         .collect();
     let res: Result<Vec<String>, _> = pks.iter().map(|v| String::from_utf8(v.to_vec())).collect();
     let keys = res.map_err(StdError::invalid_utf8)?;
-    let mut v: Vec<Offer> = vec![];
+    let mut offer_responses: Vec<OfferResponse> = vec![];
     for key in keys.iter() {
-        v.push(offers().load(deps.storage, key)?);
+        offer_responses.push(offers().load(deps.storage, key)?.into());
     }
-    Ok(v)
+    Ok(AllOffersResponse {
+        offers: offer_responses,
+    })
 }

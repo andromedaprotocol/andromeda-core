@@ -1,30 +1,7 @@
-use cosmwasm_std::{Coin, Event, SubMsg, Uint128};
-use cw721::Expiration;
+use andromeda_protocol::cw721_offers::Offer;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 pub const CW721_CONTRACT: Item<String> = Item::new("cw721_contract");
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Offer {
-    pub denom: String,
-    pub offer_amount: Uint128,
-    pub tax_amount: Uint128,
-    pub expiration: Expiration,
-    pub purchaser: String,
-    pub msgs: Vec<SubMsg>,
-    pub events: Vec<Event>,
-}
-
-impl Offer {
-    pub fn get_full_amount(&self) -> Coin {
-        Coin {
-            denom: self.denom.clone(),
-            amount: self.offer_amount + self.tax_amount,
-        }
-    }
-}
 
 pub struct OfferIndexes<'a> {
     /// (purchaser, token_id))

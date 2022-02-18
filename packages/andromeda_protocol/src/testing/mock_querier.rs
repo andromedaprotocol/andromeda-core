@@ -20,7 +20,6 @@ use cw20::{BalanceResponse, Cw20Coin, Cw20ExecuteMsg, Cw20QueryMsg};
 
 use cw721::{Expiration, NftInfoResponse, OwnerOfResponse};
 use std::collections::HashMap;
-use std::convert::TryInto;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
 
 pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
