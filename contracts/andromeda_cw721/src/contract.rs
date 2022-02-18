@@ -9,7 +9,7 @@ use cosmwasm_std::{
 use andromeda_protocol::{
     communication::{
         encode_binary,
-        hooks::AndromedaHook,
+        hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::{
             execute_alter_module, execute_deregister_module, execute_register_module, module_hook,
             on_funds_transfer, validate_modules, ADOType, MODULE_ADDR, MODULE_INFO,
@@ -156,157 +156,9 @@ pub fn execute(
         ExecuteMsg::AlterModule { module_idx, module } => {
             execute_alter_module(deps, info, module_idx, &module, ADOType::CW721)
         }
-        ExecuteMsg::PlaceOffer {
-            token_id,
-            expiration,
-            offer_amount,
-        } => execute_place_offer(deps, env, info, token_id, offer_amount, expiration),
-        ExecuteMsg::AcceptOffer { token_id } => execute_accept_offer(deps, env, info, token_id),
-        ExecuteMsg::CancelOffer { token_id } => execute_cancel_offer(deps, info, token_id),
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
     }
-}
-
-fn execute_place_offer(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    token_id: String,
-    offer_amount: Uint128,
-    expiration: Expiration,
-) -> Result<Response, ContractError> {
-    let purchaser = info.sender.as_str();
-    let current_offer = offers().may_load(deps.storage, &token_id)?;
-    let contract = AndrCW721Contract::default();
-    let token = contract.tokens.load(deps.storage, &token_id)?;
-    require(
-        info.sender != token.owner,
-        ContractError::TokenOwnerCannotBid {},
-    )?;
-    require(
-        !expiration.is_expired(&env.block),
-        ContractError::Expired {},
-    )?;
-    is_token_archived(deps.storage, &token_id)?;
-    require(
-        info.funds.len() == 1,
-        ContractError::InvalidFunds {
-            msg: "Must send one type of funds".to_string(),
-        },
-    )?;
-    let coin: &Coin = &info.funds[0];
-    require(
-        // TODO: Add support for other denoms later.
-        coin.denom == "uusd",
-        ContractError::InvalidFunds {
-            msg: "Only offers in uusd are allowed".to_string(),
-        },
-    )?;
-    let mut msgs: Vec<SubMsg> = vec![];
-    if let Some(current_offer) = current_offer {
-        require(
-            purchaser != current_offer.purchaser,
-            ContractError::OfferAlreadyPlaced {},
-        )?;
-        require(
-            current_offer.expiration.is_expired(&env.block)
-                || current_offer.offer_amount < offer_amount,
-            ContractError::OfferLowerThanCurrent {},
-        )?;
-        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            amount: vec![current_offer.get_full_amount()],
-            to_address: current_offer.purchaser,
-        })));
-    }
-    let (resp, tax_amount) = get_funds_transfer_response_and_taxes(
-        deps.storage,
-        &deps.querier,
-        info.sender.to_string(),
-        Coin {
-            amount: offer_amount,
-            denom: coin.denom.clone(),
-        },
-        token_id.clone(),
-        token.owner.to_string(),
-    )?;
-    let offer = Offer {
-        purchaser: purchaser.to_owned(),
-        denom: coin.denom.clone(),
-        offer_amount,
-        tax_amount,
-        expiration,
-        msgs: resp.messages,
-        events: resp.events,
-    };
-    // require that the sender has sent enough for taxes
-    require(
-        has_coins(&info.funds, &offer.get_full_amount()),
-        ContractError::InsufficientFunds {},
-    )?;
-
-    offers().save(deps.storage, &token_id, &offer)?;
-    Ok(Response::new()
-        .add_submessages(msgs)
-        .add_attribute("action", "place_offer")
-        .add_attribute("purchaser", purchaser)
-        .add_attribute("offer_amount", offer_amount)
-        .add_attribute("token_id", token_id))
-}
-
-fn execute_cancel_offer(
-    deps: DepsMut,
-    info: MessageInfo,
-    token_id: String,
-) -> Result<Response, ContractError> {
-    let offer = offers().load(deps.storage, &token_id)?;
-    require(
-        info.sender == offer.purchaser,
-        ContractError::Unauthorized {},
-    )?;
-    offers().remove(deps.storage, &token_id)?;
-    let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-        to_address: info.sender.to_string(),
-        amount: vec![offer.get_full_amount()],
-    }));
-    Ok(Response::new()
-        .add_submessage(msg)
-        .add_attribute("action", "cancel_offer")
-        .add_attribute("token_id", token_id))
-}
-
-fn execute_accept_offer(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    token_id: String,
-) -> Result<Response, ContractError> {
-    is_token_archived(deps.storage, &token_id)?;
-
-    let contract = AndrCW721Contract::default();
-    let offer = offers().load(deps.storage, &token_id)?;
-    let token = contract.tokens.load(deps.storage, &token_id)?;
-    require(
-        !offer.expiration.is_expired(&env.block),
-        ContractError::Expired {},
-    )?;
-
-    require(info.sender == token.owner, ContractError::Unauthorized {})?;
-    require(
-        token.extension.transfer_agreement.is_none(),
-        ContractError::TransferAgreementExists {},
-    )?;
-
-    let resp = Response::new()
-        .add_submessages(offer.msgs)
-        .add_events(offer.events);
-
-    transfer_ownership(deps.storage, deps.api, &token_id, &offer.purchaser)?;
-    offers().remove(deps.storage, &token_id)?;
-
-    Ok(resp
-        .add_attribute("action", "accept_offer")
-        .add_attribute("token_id", token_id))
 }
 
 fn is_token_archived(storage: &dyn Storage, token_id: &str) -> Result<(), ContractError> {
@@ -583,41 +435,39 @@ fn execute_burn(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::Offer { token_id } => encode_binary(&query_offer(deps, token_id)?),
-        QueryMsg::AllOffers {
-            purchaser,
-            limit,
-            start_after,
-        } => encode_binary(&query_all_offers(deps, purchaser, limit, start_after)?),
+        QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
         _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
     }
 }
 
-fn query_offer(deps: Deps, token_id: String) -> Result<Offer, ContractError> {
-    Ok(offers().load(deps.storage, &token_id)?)
-}
-
-fn query_all_offers(
-    deps: Deps,
-    purchaser: String,
-    limit: Option<u32>,
-    start_after: Option<String>,
-) -> Result<Vec<Offer>, ContractError> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
-
-    let pks: Vec<_> = offers()
-        .idx
-        .purchaser
-        .prefix(purchaser)
-        .keys(deps.storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect();
-    let res: Result<Vec<String>, _> = pks.iter().map(|v| String::from_utf8(v.to_vec())).collect();
-    let keys = res.map_err(StdError::invalid_utf8)?;
-    let mut v: Vec<Offer> = vec![];
-    for key in keys.iter() {
-        v.push(offers().load(deps.storage, key)?);
+fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaHook::OnFundsTransfer {
+            sender,
+            payload,
+            amount,
+        } => {
+            if let Funds::Native(amount) = amount {
+                let token_id: String = parse_message(Some(payload))?;
+                let (resp, tax_amount) = get_funds_transfer_response_and_taxes(
+                    deps.storage,
+                    &deps.querier,
+                    sender,
+                    amount,
+                    token_id,
+                    // Recipient is unimportant.
+                    String::default(),
+                )?;
+                let res = OnFundsTransferResponse {
+                    msgs: resp.messages,
+                    events: resp.events,
+                    // We may want to alter this based on the sender.
+                    payload: encode_binary(&tax_amount)?,
+                };
+                return Ok(encode_binary(&res)?);
+            }
+            panic!()
+        }
+        _ => Err(ContractError::UnsupportedOperation {}),
     }
-    Ok(v)
 }

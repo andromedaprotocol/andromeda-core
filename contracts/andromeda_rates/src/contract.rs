@@ -171,14 +171,14 @@ fn query_deducted_funds(
     }
     Ok(OnFundsTransferResponse {
         msgs,
-        leftover_funds: if is_native {
+        payload: encode_binary(&if is_native {
             Funds::Native(leftover_funds[0].clone())
         } else {
             Funds::Cw20(Cw20Coin {
                 amount: leftover_funds[0].amount,
                 address: coin.denom,
             })
-        },
+        })?,
         events,
     })
 }

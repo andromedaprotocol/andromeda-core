@@ -23,5 +23,5 @@ pub enum AndromedaHook {
 pub struct OnFundsTransferResponse {
     pub msgs: Vec<SubMsg>,
     pub events: Vec<Event>,
-    pub leftover_funds: Funds,
+    pub payload: Binary,
 }

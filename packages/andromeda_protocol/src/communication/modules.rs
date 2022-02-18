@@ -1,8 +1,9 @@
 use std::convert::TryInto;
 
 use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order, QuerierWrapper,
-    QueryRequest, ReplyOn, Response, StdError, Storage, SubMsg, Uint64, WasmMsg, WasmQuery,
+    from_binary, to_binary, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order,
+    QuerierWrapper, QueryRequest, ReplyOn, Response, StdError, Storage, SubMsg, Uint64, WasmMsg,
+    WasmQuery,
 };
 use cw_storage_plus::{Bound, Item, Map};
 use schemars::JsonSchema;
@@ -451,7 +452,8 @@ pub fn on_funds_transfer(
             module.address.clone(),
         )?;
         if let Some(mod_resp) = mod_resp {
-            remainder = mod_resp.leftover_funds;
+            let leftover_funds: Funds = from_binary(&mod_resp.payload)?;
+            remainder = leftover_funds;
             msgs = [msgs, mod_resp.msgs].concat();
             events = [events, mod_resp.events].concat();
         }

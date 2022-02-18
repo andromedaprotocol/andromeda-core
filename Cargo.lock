@@ -75,6 +75,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-cw721-offers"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.8.1",
+ "cw2 0.8.1",
+ "cw721",
+ "cw721-base",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-factory"
 version = "0.1.0"
 dependencies = [

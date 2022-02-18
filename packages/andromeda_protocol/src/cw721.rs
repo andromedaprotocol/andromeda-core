@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    communication::{modules::Module, AndromedaMsg, AndromedaQuery},
+    communication::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     modules::common::calculate_fee,
     modules::Rate,
@@ -267,6 +267,7 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
+    AndrHook(AndromedaHook),
     /// Owner of the given token by ID
     OwnerOf {
         token_id: String,
