@@ -222,7 +222,7 @@ fn on_funds_transfer(
         contract_addr: address,
         msg: encode_binary(&Cw721QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
             // Not sure sender should be this contract or the info.sender. If we get different
-            // usecases in the future using this contract as sender could allow us to have
+            // usecases in the future, using this contract as sender could allow us to have
             // separate cases for what the hook should return.
             sender,
             payload: encode_binary(&token_id)?,

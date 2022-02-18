@@ -20,6 +20,7 @@ use cw20::{BalanceResponse, Cw20Coin, Cw20ExecuteMsg, Cw20QueryMsg};
 
 use cw721::{Expiration, NftInfoResponse, OwnerOfResponse};
 use std::collections::HashMap;
+use std::convert::TryInto;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
 
 pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
@@ -303,8 +304,7 @@ impl WasmMockQuerier {
                 let response = OnFundsTransferResponse {
                     events: vec![Event::new("Royalty"), Event::new("Tax")],
                     // payload represents the amount of tax (10% in this case).
-                    payload: to_binary(&amount.get_amount().multiply_ratio(10u128, 100u128))
-                        .unwrap(),
+                    payload: to_binary(&coin.amount.multiply_ratio(10u128, 100u128)).unwrap(),
                     msgs: vec![
                         // 10% tax message.
                         self.get_native_rates_msg(&coin, 10, None),

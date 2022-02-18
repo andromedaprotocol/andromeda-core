@@ -1,4 +1,4 @@
-use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event, Uint128, Uint64};
+use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event, Uint64};
 use cw721::Expiration;
 use cw721_base::{
     ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MintMsg,
@@ -209,17 +209,6 @@ pub enum ExecuteMsg {
         module_idx: Uint64,
         module: Module,
     },
-    PlaceOffer {
-        token_id: String,
-        expiration: Expiration,
-        offer_amount: Uint128,
-    },
-    AcceptOffer {
-        token_id: String,
-    },
-    CancelOffer {
-        token_id: String,
-    },
 }
 
 impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
@@ -306,14 +295,6 @@ pub enum QueryMsg {
     ModuleInfo {},
     /// The current config of the contract
     ContractInfo {},
-    Offer {
-        token_id: String,
-    },
-    AllOffers {
-        purchaser: String,
-        limit: Option<u32>,
-        start_after: Option<String>,
-    },
 }
 
 impl From<QueryMsg> for Cw721QueryMsg {

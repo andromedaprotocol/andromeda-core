@@ -235,6 +235,17 @@ fn transfer_ownership(
     Ok(())
 }
 
+/// Calls the `OnFundsTransfer` hook on all modules and returns the msgs and events as a `Response`
+/// along with how much tax needs to be paid.
+///
+/// # Arguments
+///
+/// * `storage` - The Storage
+/// * `querier` - The Querier
+/// * `sender` - The sender of the query
+/// * `coin` - The amount of funds being transfered
+/// * `token_id` - The id of the token being transfered
+/// * `receipient` - The receipient of the transfer
 fn get_funds_transfer_response_and_taxes(
     storage: &dyn Storage,
     querier: &QuerierWrapper,
@@ -256,10 +267,7 @@ fn get_funds_transfer_response_and_taxes(
             recipient,
         })?,
     )?;
-    let remaining_amount = match remainder {
-        Funds::Native(coin) => coin, //What do we do in the case that the rates returns remaining amount as non-native funds?
-        Funds::Cw20(..) => panic!("Remaining funds returned as incorrect type"),
-    };
+    let remaining_amount = remainder.try_get_coin()?;
 
     let tax_amount = get_tax_amount(&msgs, coin.amount - remaining_amount.amount);
 
@@ -271,6 +279,15 @@ fn get_funds_transfer_response_and_taxes(
     Ok((resp, tax_amount))
 }
 
+/// Gets the amount of tax paid by iterating over the `msgs` and comparing it to the
+/// `deducted_amount`. It is assumed that each bank message has a single Coin to send as transfer
+/// agreements only accept a single Coin. It is also assumed that the result will always be
+/// non-negative.
+///
+/// # Arguments
+///
+/// * `msgs` - The vector of submessages containing fund transfers
+/// * `deducted_amount` - The amount deducted after applying royalties, any surplus paid is tax
 fn get_tax_amount(msgs: &[SubMsg], deducted_amount: Uint128) -> Uint128 {
     msgs.iter()
         .map(|msg| {
@@ -461,13 +478,13 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
                 sender,
                 amount.try_get_coin()?,
                 token_id,
-                // Recipient is unimportant.
+                // Recipient is unimportant at the moment, might be important later.
                 String::default(),
             )?;
             let res = OnFundsTransferResponse {
                 msgs: resp.messages,
                 events: resp.events,
-                // We may want to alter this based on the sender.
+                // We may want to alter this based on the sender in the future.
                 payload: encode_binary(&tax_amount)?,
             };
             Ok(encode_binary(&res)?)

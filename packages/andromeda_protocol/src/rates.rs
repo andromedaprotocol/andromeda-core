@@ -6,7 +6,7 @@ use crate::{
     error::ContractError,
     modules::Rate,
 };
-use cosmwasm_std::{to_binary, Coin, QuerierWrapper, QueryRequest, Uint128, WasmQuery};
+use cosmwasm_std::{to_binary, Coin, QuerierWrapper, QueryRequest, WasmQuery};
 use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -18,13 +18,7 @@ pub enum Funds {
 }
 
 impl Funds {
-    pub fn get_amount(&self) -> Uint128 {
-        match self {
-            Funds::Native(coin) => coin.amount,
-            Funds::Cw20(coin) => coin.amount,
-        }
-    }
-
+    // There is probably a more idiomatic way of doing this with From and Into...
     pub fn try_get_coin(&self) -> Result<Coin, ContractError> {
         match self {
             Funds::Native(coin) => Ok(coin.clone()),
