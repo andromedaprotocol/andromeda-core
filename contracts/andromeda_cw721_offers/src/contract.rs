@@ -8,7 +8,7 @@ use andromeda_protocol::{
     cw721_offers::{AllOffersResponse, ExecuteMsg, InstantiateMsg, Offer, OfferResponse, QueryMsg},
     error::ContractError,
     ownership::CONTRACT_OWNER,
-    rates::Funds,
+    rates::{get_tax_amount, Funds},
     require,
 };
 #[cfg(not(feature = "library"))]
@@ -123,11 +123,14 @@ fn execute_place_offer(
             amount: offer_amount,
         },
     )?;
-    let tax_amount: Uint128 = from_binary(&res.payload)?;
+    let remaining_amount: Funds = from_binary(&res.payload)?;
+    let remaining_amount = remaining_amount.try_get_coin()?;
+    let tax_amount = get_tax_amount(&res.msgs, offer_amount - remaining_amount.amount);
     let offer = Offer {
         purchaser: purchaser.to_owned(),
         denom: coin.denom.clone(),
         offer_amount,
+        remaining_amount: remaining_amount.amount,
         tax_amount,
         expiration,
         msgs: res.msgs,
@@ -189,6 +192,13 @@ fn execute_accept_offer(
         ContractError::TransferAgreementExists {},
     )?;
     let address = CW721_CONTRACT.load(deps.storage)?;
+    let payment_msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        to_address: token_owner,
+        amount: vec![Coin {
+            amount: offer.remaining_amount,
+            denom: offer.denom,
+        }],
+    }));
     let transfer_msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: address,
         msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -200,6 +210,7 @@ fn execute_accept_offer(
 
     let resp = Response::new()
         .add_submessages(offer.msgs)
+        .add_submessage(payment_msg)
         .add_submessage(transfer_msg)
         .add_events(offer.events);
 

@@ -6,7 +6,9 @@ use crate::{
     error::ContractError,
     modules::Rate,
 };
-use cosmwasm_std::{to_binary, Coin, QuerierWrapper, QueryRequest, WasmQuery};
+use cosmwasm_std::{
+    to_binary, BankMsg, Coin, CosmosMsg, QuerierWrapper, QueryRequest, SubMsg, Uint128, WasmQuery,
+};
 use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -76,7 +78,7 @@ impl ToString for PaymentAttribute {
     }
 }
 
-pub fn on_required_payments(
+/*pub fn on_required_payments(
     querier: QuerierWrapper,
     addr: String,
     amount: Funds,
@@ -89,4 +91,27 @@ pub fn on_required_payments(
     }))?;
 
     Ok(res)
+}*/
+
+/// Gets the amount of tax paid by iterating over the `msgs` and comparing it to the
+/// `deducted_amount`. It is assumed that each bank message has a single Coin to send as transfer
+/// agreements only accept a single Coin. It is also assumed that the result will always be
+/// non-negative.
+///
+/// # Arguments
+///
+/// * `msgs` - The vector of submessages containing fund transfers
+/// * `deducted_amount` - The amount deducted after applying royalties, any surplus paid is tax
+pub fn get_tax_amount(msgs: &[SubMsg], deducted_amount: Uint128) -> Uint128 {
+    msgs.iter()
+        .map(|msg| {
+            if let CosmosMsg::Bank(BankMsg::Send { amount, .. }) = &msg.msg {
+                amount[0].amount
+            } else {
+                Uint128::zero()
+            }
+        })
+        .reduce(|total, amount| total + amount)
+        .unwrap_or_else(Uint128::zero)
+        - deducted_amount
 }

@@ -185,6 +185,7 @@ fn test_place_offer_previous_expired() {
     let offer = Offer {
         denom: "uusd".to_string(),
         offer_amount: 100u128.into(),
+        remaining_amount: 90u128.into(),
         tax_amount: 10u128.into(),
         expiration: Expiration::AtHeight(10),
         purchaser: purchaser.clone(),
@@ -224,13 +225,13 @@ fn test_place_offer_previous_expired() {
         Offer {
             denom: "uusd".to_string(),
             offer_amount: 50u128.into(),
+            remaining_amount: 45u128.into(),
             tax_amount: 5u128.into(),
             expiration: Expiration::AtHeight(15),
             purchaser: other_purchaser,
             msgs: vec![
                 bank_sub_msg(5, MOCK_RATES_RECIPIENT),
                 bank_sub_msg(5, MOCK_RATES_RECIPIENT),
-                bank_sub_msg(45, &creator),
             ],
             events: vec![Event::new("Royalty"), Event::new("Tax")],
         },
@@ -252,6 +253,7 @@ fn test_accept_offer_expired() {
     let offer = Offer {
         denom: "uusd".to_string(),
         offer_amount: 50u128.into(),
+        remaining_amount: 45u128.into(),
         tax_amount: 5u128.into(),
         expiration: Expiration::AtHeight(10),
         purchaser,
@@ -284,6 +286,7 @@ fn test_accept_offer_existing_transfer_agreement() {
     let offer = Offer {
         denom: "uusd".to_string(),
         offer_amount: 100u128.into(),
+        remaining_amount: 90u128.into(),
         tax_amount: 10u128.into(),
         expiration: Expiration::Never {},
         purchaser,
@@ -314,6 +317,7 @@ fn test_cancel_offer() {
     let offer = Offer {
         denom: "uusd".to_string(),
         offer_amount: 100u128.into(),
+        remaining_amount: 90u128.into(),
         tax_amount: 10u128.into(),
         expiration: Expiration::Never {},
         purchaser: purchaser.clone(),

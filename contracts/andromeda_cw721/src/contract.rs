@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    QuerierWrapper, Reply, Response, StdError, Storage, SubMsg, Uint128,
+    attr, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, Event,
+    MessageInfo, QuerierWrapper, Reply, Response, StdError, Storage, SubMsg, Uint128,
 };
 
 use andromeda_protocol::{
@@ -20,7 +20,7 @@ use andromeda_protocol::{
     error::ContractError,
     operators::execute_update_operators,
     ownership::{execute_update_owner, CONTRACT_OWNER},
-    rates::Funds,
+    rates::{get_tax_amount, Funds},
     require,
     response::get_reply_address,
 };
@@ -198,23 +198,34 @@ fn execute_transfer(
     let token = contract.tokens.load(deps.storage, &token_id)?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
-    let (resp, tax_amount) = if let Some(agreement) = &token.extension.transfer_agreement {
-        get_funds_transfer_response_and_taxes(
+    let (msgs, events, tax_amount) = if let Some(agreement) = &token.extension.transfer_agreement {
+        let (mut msgs, events, remainder) = on_funds_transfer(
             deps.storage,
-            &deps.querier,
+            deps.querier,
             info.sender.to_string(),
-            agreement.amount.clone(),
-            token_id.clone(),
-            recipient.clone(),
-        )?
+            Funds::Native(agreement.amount.clone()),
+            encode_binary(&ExecuteMsg::TransferNft {
+                token_id: token_id.clone(),
+                recipient: recipient.clone(),
+            })?,
+        )?;
+        let remaining_amount = remainder.try_get_coin()?;
+        let tax_amount = get_tax_amount(&msgs, agreement.amount.amount - remaining_amount.amount);
+        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: token.owner.to_string(),
+            amount: vec![remaining_amount],
+        })));
+        (msgs, events, tax_amount)
     } else {
-        (Response::new(), Uint128::zero())
+        (vec![], vec![], Uint128::zero())
     };
 
     check_can_send(deps.as_ref(), env, info, &token, tax_amount)?;
     transfer_ownership(deps.storage, deps.api, &token_id, &recipient)?;
 
-    Ok(resp
+    Ok(Response::new()
+        .add_submessages(msgs)
+        .add_events(events)
         .add_attribute("action", "transfer")
         .add_attribute("recipient", recipient))
 }
@@ -233,73 +244,6 @@ fn transfer_ownership(
     token.extension.pricing = None;
     contract.tokens.save(storage, token_id, &token)?;
     Ok(())
-}
-
-/// Calls the `OnFundsTransfer` hook on all modules and returns the msgs and events as a `Response`
-/// along with how much tax needs to be paid.
-///
-/// # Arguments
-///
-/// * `storage` - The Storage
-/// * `querier` - The Querier
-/// * `sender` - The sender of the query
-/// * `coin` - The amount of funds being transfered
-/// * `token_id` - The id of the token being transfered
-/// * `receipient` - The receipient of the transfer
-fn get_funds_transfer_response_and_taxes(
-    storage: &dyn Storage,
-    querier: &QuerierWrapper,
-    sender: String,
-    coin: Coin,
-    token_id: String,
-    recipient: String,
-) -> Result<(Response, Uint128), ContractError> {
-    let contract = AndrCW721Contract::default();
-    let token = contract.tokens.load(storage, &token_id)?;
-    let mut resp = Response::new();
-    let (msgs, events, remainder) = on_funds_transfer(
-        storage,
-        *querier,
-        sender,
-        Funds::Native(coin.clone()),
-        encode_binary(&ExecuteMsg::TransferNft {
-            token_id,
-            recipient,
-        })?,
-    )?;
-    let remaining_amount = remainder.try_get_coin()?;
-
-    let tax_amount = get_tax_amount(&msgs, coin.amount - remaining_amount.amount);
-
-    resp = resp.add_submessages(msgs).add_events(events);
-    resp = resp.add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-        to_address: token.owner.to_string(),
-        amount: vec![remaining_amount],
-    })));
-    Ok((resp, tax_amount))
-}
-
-/// Gets the amount of tax paid by iterating over the `msgs` and comparing it to the
-/// `deducted_amount`. It is assumed that each bank message has a single Coin to send as transfer
-/// agreements only accept a single Coin. It is also assumed that the result will always be
-/// non-negative.
-///
-/// # Arguments
-///
-/// * `msgs` - The vector of submessages containing fund transfers
-/// * `deducted_amount` - The amount deducted after applying royalties, any surplus paid is tax
-fn get_tax_amount(msgs: &[SubMsg], deducted_amount: Uint128) -> Uint128 {
-    msgs.iter()
-        .map(|msg| {
-            if let CosmosMsg::Bank(BankMsg::Send { amount, .. }) = &msg.msg {
-                amount[0].amount
-            } else {
-                Uint128::zero()
-            }
-        })
-        .reduce(|total, amount| total + amount)
-        .unwrap_or_else(Uint128::zero)
-        - deducted_amount
 }
 
 fn check_can_send(
@@ -468,24 +412,20 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
     match msg {
         AndromedaHook::OnFundsTransfer {
             sender,
-            payload,
+            payload: _,
             amount,
         } => {
-            let token_id: String = parse_message(Some(payload))?;
-            let (resp, tax_amount) = get_funds_transfer_response_and_taxes(
+            let (msgs, events, remainder) = on_funds_transfer(
                 deps.storage,
-                &deps.querier,
+                deps.querier,
                 sender,
-                amount.try_get_coin()?,
-                token_id,
-                // Recipient is unimportant at the moment, might be important later.
-                String::default(),
+                amount,
+                encode_binary(&String::default())?,
             )?;
             let res = OnFundsTransferResponse {
-                msgs: resp.messages,
-                events: resp.events,
-                // We may want to alter this based on the sender in the future.
-                payload: encode_binary(&tax_amount)?,
+                msgs,
+                events,
+                payload: encode_binary(&remainder)?,
             };
             Ok(encode_binary(&res)?)
         }

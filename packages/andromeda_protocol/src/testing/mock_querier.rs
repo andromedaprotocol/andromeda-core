@@ -299,18 +299,20 @@ impl WasmMockQuerier {
                 SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
             }
             Cw721QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer { amount, .. }) => {
-                let coin = amount.try_get_coin().unwrap();
+                let c = amount.try_get_coin().unwrap();
                 let response = OnFundsTransferResponse {
                     events: vec![Event::new("Royalty"), Event::new("Tax")],
-                    // payload represents the amount of tax (10% in this case).
-                    payload: to_binary(&coin.amount.multiply_ratio(10u128, 100u128)).unwrap(),
+                    // payload represents the remaining amount after royalties (10% in this case).
+                    payload: to_binary(&Funds::Native(coin(
+                        c.amount.multiply_ratio(90u128, 100u128).u128(),
+                        c.denom.clone(),
+                    )))
+                    .unwrap(),
                     msgs: vec![
                         // 10% tax message.
-                        self.get_native_rates_msg(&coin, 10, None),
+                        self.get_native_rates_msg(&c, 10, None),
                         // 10% royalty message.
-                        self.get_native_rates_msg(&coin, 10, None),
-                        // Funds after royalty deducted being sent to owner of token.
-                        self.get_native_rates_msg(&coin, 90, Some("creator".to_string())),
+                        self.get_native_rates_msg(&c, 10, None),
                     ],
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))

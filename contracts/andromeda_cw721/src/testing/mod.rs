@@ -517,10 +517,8 @@ fn test_modules() {
             bank_sub_msg(10, MOCK_RATES_RECIPIENT),
             bank_sub_msg(10, MOCK_RATES_RECIPIENT),
             receipt_msg,
-            // purchaser is the new owner of the token.
-            bank_sub_msg(90, "purchaser"),
         ],
-        payload: to_binary(&Uint128::from(10u128)).unwrap(),
+        payload: to_binary(&Funds::Native(coin(90, "uusd"))).unwrap(),
         events: vec![Event::new("Royalty"), Event::new("Tax")],
     };
     assert_eq!(expected_response, res);

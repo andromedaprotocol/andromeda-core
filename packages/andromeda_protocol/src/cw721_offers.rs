@@ -7,7 +7,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Offer {
     pub denom: String,
+    /// What the purchaser offers.
     pub offer_amount: Uint128,
+    /// What the owner of the token will get if they accept (royalties deducted).
+    pub remaining_amount: Uint128,
+    /// The amount of tax the purchaser paid.
     pub tax_amount: Uint128,
     pub expiration: Expiration,
     pub purchaser: String,
