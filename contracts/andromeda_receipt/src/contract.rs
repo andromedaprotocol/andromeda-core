@@ -135,7 +135,7 @@ fn handle_andr_hook(env: Env, msg: AndromedaHook) -> Result<Binary, ContractErro
             let msg = generate_receipt_message(env.contract.address.to_string(), events)?;
             encode_binary(&OnFundsTransferResponse {
                 msgs: vec![msg],
-                payload: encode_binary(&amount),
+                payload: encode_binary(&amount)?,
                 events: vec![],
             })
         }
@@ -361,7 +361,7 @@ mod tests {
                     funds: vec![],
                 }))],
                 events: vec![],
-                leftover_funds: Funds::Native(coin(0, "uusd"))
+                payload: encode_binary(&Funds::Native(coin(0, "uusd"))).unwrap()
             },
             res
         );

@@ -263,8 +263,9 @@ fn get_token_owner(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::AndrHook(_) => Err(ContractError::UnsupportedOperation {}),
         QueryMsg::Offer { token_id } => encode_binary(&query_offer(deps, token_id)?),
         QueryMsg::AllOffers {
             purchaser,

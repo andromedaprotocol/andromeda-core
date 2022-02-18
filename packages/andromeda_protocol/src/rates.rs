@@ -6,7 +6,7 @@ use crate::{
     error::ContractError,
     modules::Rate,
 };
-use cosmwasm_std::{to_binary, Coin, QuerierWrapper, QueryRequest, WasmQuery};
+use cosmwasm_std::{to_binary, Coin, QuerierWrapper, QueryRequest, Uint128, WasmQuery};
 use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,24 @@ use serde::{Deserialize, Serialize};
 pub enum Funds {
     Native(Coin),
     Cw20(Cw20Coin),
+}
+
+impl Funds {
+    pub fn get_amount(&self) -> Uint128 {
+        match self {
+            Funds::Native(coin) => coin.amount,
+            Funds::Cw20(coin) => coin.amount,
+        }
+    }
+
+    pub fn try_get_coin(&self) -> Result<Coin, ContractError> {
+        match self {
+            Funds::Native(coin) => Ok(coin.clone()),
+            Funds::Cw20(_) => Err(ContractError::ParsingError {
+                err: "Funds is not of type Native".to_string(),
+            }),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

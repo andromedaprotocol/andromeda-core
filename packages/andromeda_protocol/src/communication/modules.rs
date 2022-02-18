@@ -191,7 +191,7 @@ fn register_module(
     if let InstantiateType::Address(addr) = &module.instantiate {
         MODULE_ADDR.save(storage, &idx_str, &api.addr_validate(addr)?)?;
     }
-    MODULE_IDXS.save(storage, &String::from(module.module_type), &idx_str)?;
+    MODULE_IDXS.save(storage, &String::from(module.module_type.clone()), &idx_str)?;
 
     Ok(idx)
 }

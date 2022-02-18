@@ -341,7 +341,7 @@ mod tests {
             OnFundsTransferResponse {
                 msgs: expected_msgs,
                 // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
-                leftover_funds: Funds::Native(coin(89, "uusd")),
+                payload: encode_binary(&Funds::Native(coin(89, "uusd"))).unwrap(),
                 events: vec![
                     Event::new("tax")
                         .add_attribute("description", "desc2")
@@ -445,10 +445,11 @@ mod tests {
             OnFundsTransferResponse {
                 msgs: expected_msgs,
                 // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
-                leftover_funds: Funds::Cw20(Cw20Coin {
+                payload: encode_binary(&Funds::Cw20(Cw20Coin {
                     amount: 89u128.into(),
                     address: cw20_address.to_string()
-                }),
+                }))
+                .unwrap(),
                 events: vec![
                     Event::new("tax")
                         .add_attribute("description", "desc2")

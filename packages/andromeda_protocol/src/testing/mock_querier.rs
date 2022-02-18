@@ -2,13 +2,15 @@ use crate::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     auction::{AuctionStateResponse, QueryMsg as AuctionQueryMsg},
     communication::hooks::{AndromedaHook, OnFundsTransferResponse},
+    cw721::{QueryMsg as Cw721QueryMsg, TokenExtension, TransferAgreement},
+    cw721_offers::QueryMsg as OffersQueryMsg,
     ownership::ContractOwnerResponse,
     primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
     rates::{Funds, QueryMsg as RatesQueryMsg},
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };
 use cosmwasm_std::{
-    coin, from_binary, from_slice,
+    coin, coins, from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Decimal, Event, OwnedDeps,
     Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Timestamp,
@@ -16,7 +18,7 @@ use cosmwasm_std::{
 };
 use cw20::{BalanceResponse, Cw20Coin, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use cw721::Expiration;
+use cw721::{Expiration, NftInfoResponse, OwnerOfResponse};
 use std::collections::HashMap;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
 
@@ -24,9 +26,21 @@ pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
 pub const MOCK_TOKEN_IN_AUCTION: &str = "token1";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
+pub const MOCK_CW721_CONTRACT: &str = "cw721_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_RECEIPT_CONTRACT: &str = "receipt_contract";
+pub const MOCK_OFFERS_CONTRACT: &str = "offers_contract";
+
+pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
+pub const MOCK_TOKEN_TRANSFER_AGREEMENT: &str = "token_transfer_agreement";
+
+pub fn bank_sub_msg(amount: u128, recipient: &str) -> SubMsg {
+    SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        to_address: recipient.to_owned(),
+        amount: coins(amount, "uusd"),
+    }))
+}
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -127,9 +141,11 @@ impl WasmMockQuerier {
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
                     }
                     MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
+                    MOCK_CW721_CONTRACT => self.handle_cw721_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
+                    MOCK_OFFERS_CONTRACT => self.handle_offers_query(msg),
                     MOCK_RECEIPT_CONTRACT => self.handle_receipt_query(msg),
                     MOCK_AUCTION_CONTRACT => self.handle_auction_query(msg),
                     _ => {
@@ -154,22 +170,12 @@ impl WasmMockQuerier {
                         SubMsg::new(WasmMsg::Execute {
                             contract_addr: MOCK_CW20_CONTRACT.into(),
                             msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                                recipient: "rates_recipient".to_string(),
+                                recipient: MOCK_RATES_RECIPIENT.to_string(),
                                 amount: coin.amount.multiply_ratio(10u128, 100u128),
                             })
                             .unwrap(),
                             funds: vec![],
                         })
-                    };
-
-                    let get_native_msg = |coin: &Coin| -> SubMsg {
-                        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                            to_address: "rates_recipient".into(),
-                            amount: vec![Coin {
-                                amount: coin.amount.multiply_ratio(10u128, 100u128),
-                                denom: coin.denom.clone(),
-                            }],
-                        }))
                     };
 
                     // Hardcodes a royalty of 10% and tax of 10%.
@@ -188,19 +194,31 @@ impl WasmMockQuerier {
                                 amount: coin.amount.multiply_ratio(90u128, 100u128),
                                 denom: coin.denom.clone(),
                             }),
-                            vec![get_native_msg(coin), get_native_msg(coin)],
+                            vec![
+                                self.get_native_rates_msg(coin, 10, None),
+                                self.get_native_rates_msg(coin, 10, None),
+                            ],
                         ),
                     };
                     let response = OnFundsTransferResponse {
                         msgs,
                         events: vec![Event::new("Royalty"), Event::new("Tax")],
-                        leftover_funds: new_funds,
+                        payload: to_binary(&new_funds).unwrap(),
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
                 }
                 _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
             },
 
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_offers_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            OffersQueryMsg::AndrHook(_) => {
+                SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string()))
+            }
             _ => panic!("Unsupported Query"),
         }
     }
@@ -237,12 +255,67 @@ impl WasmMockQuerier {
                     let response = OnFundsTransferResponse {
                         msgs: vec![receipt_msg],
                         events: vec![],
-                        leftover_funds: amount,
+                        payload: to_binary(&amount).unwrap(),
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
                 }
                 _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
             },
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_cw721_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            Cw721QueryMsg::NftInfo { token_id } => {
+                let transfer_agreement = if token_id == MOCK_TOKEN_TRANSFER_AGREEMENT {
+                    Some(TransferAgreement {
+                        amount: coin(100, "uusd"),
+                        purchaser: "purchaser".to_string(),
+                    })
+                } else {
+                    None
+                };
+                let extension = TokenExtension {
+                    name: token_id.to_owned(),
+                    publisher: "sender".to_owned(),
+                    description: None,
+                    transfer_agreement,
+                    metadata: None,
+                    archived: false,
+                    pricing: None,
+                };
+                let response = NftInfoResponse {
+                    token_uri: None,
+                    extension,
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+            }
+            Cw721QueryMsg::OwnerOf { .. } => {
+                let response = OwnerOfResponse {
+                    owner: "creator".to_string(),
+                    approvals: vec![],
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+            }
+            Cw721QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer { amount, .. }) => {
+                let coin = amount.try_get_coin().unwrap();
+                let response = OnFundsTransferResponse {
+                    events: vec![Event::new("Royalty"), Event::new("Tax")],
+                    // payload represents the amount of tax (10% in this case).
+                    payload: to_binary(&amount.get_amount().multiply_ratio(10u128, 100u128))
+                        .unwrap(),
+                    msgs: vec![
+                        // 10% tax message.
+                        self.get_native_rates_msg(&coin, 10, None),
+                        // 10% royalty message.
+                        self.get_native_rates_msg(&coin, 10, None),
+                        // Funds after royalty deducted being sent to owner of token.
+                        self.get_native_rates_msg(&coin, 90, Some("creator".to_string())),
+                    ],
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+            }
             _ => panic!("Unsupported Query"),
         }
     }
@@ -303,6 +376,22 @@ impl WasmMockQuerier {
             }
             _ => panic!("Unsupported Query"),
         }
+    }
+
+    fn get_native_rates_msg(
+        &self,
+        coin: &Coin,
+        numerator: u128,
+        recipient: Option<String>,
+    ) -> SubMsg {
+        let recipient = recipient.unwrap_or(MOCK_RATES_RECIPIENT.to_string());
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: recipient,
+            amount: vec![Coin {
+                amount: coin.amount.multiply_ratio(numerator, 100u128),
+                denom: coin.denom.clone(),
+            }],
+        }))
     }
 
     pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {

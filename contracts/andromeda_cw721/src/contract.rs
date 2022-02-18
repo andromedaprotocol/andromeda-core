@@ -27,8 +27,6 @@ use andromeda_protocol::{
 use cw721_base::{state::TokenInfo, Cw721Contract};
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
-const DEFAULT_LIMIT: u32 = 10u32;
-const MAX_LIMIT: u32 = 30u32;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -301,9 +299,9 @@ fn check_can_send(
     }
 
     if let Some(offers_module_id) =
-        MODULE_IDXS.may_load(deps.storage, String::from(ModuleType::Offers))?
+        MODULE_IDXS.may_load(deps.storage, &String::from(ModuleType::Offers))?
     {
-        if let Some(offers_address) = MODULE_ADDR.may_load(deps.storage, offers_module_id)? {
+        if let Some(offers_address) = MODULE_ADDR.may_load(deps.storage, &offers_module_id)? {
             // Offers contract is authorized to make transfers.
             if offers_address == info.sender.to_string() {
                 return Ok(());
@@ -456,26 +454,23 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             payload,
             amount,
         } => {
-            if let Funds::Native(amount) = amount {
-                let token_id: String = parse_message(Some(payload))?;
-                let (resp, tax_amount) = get_funds_transfer_response_and_taxes(
-                    deps.storage,
-                    &deps.querier,
-                    sender,
-                    amount,
-                    token_id,
-                    // Recipient is unimportant.
-                    String::default(),
-                )?;
-                let res = OnFundsTransferResponse {
-                    msgs: resp.messages,
-                    events: resp.events,
-                    // We may want to alter this based on the sender.
-                    payload: encode_binary(&tax_amount)?,
-                };
-                return Ok(encode_binary(&res)?);
-            }
-            panic!()
+            let token_id: String = parse_message(Some(payload))?;
+            let (resp, tax_amount) = get_funds_transfer_response_and_taxes(
+                deps.storage,
+                &deps.querier,
+                sender,
+                amount.try_get_coin()?,
+                token_id,
+                // Recipient is unimportant.
+                String::default(),
+            )?;
+            let res = OnFundsTransferResponse {
+                msgs: resp.messages,
+                events: resp.events,
+                // We may want to alter this based on the sender.
+                payload: encode_binary(&tax_amount)?,
+            };
+            Ok(encode_binary(&res)?)
         }
         _ => Err(ContractError::UnsupportedOperation {}),
     }

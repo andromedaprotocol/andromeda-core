@@ -1,3 +1,4 @@
+use crate::communication::hooks::AndromedaHook;
 use cosmwasm_std::Uint128;
 use cw721::Expiration;
 use schemars::JsonSchema;
@@ -28,6 +29,7 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrHook(AndromedaHook),
     Offer {
         token_id: String,
     },
