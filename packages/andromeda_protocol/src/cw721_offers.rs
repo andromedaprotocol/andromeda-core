@@ -68,6 +68,7 @@ pub enum QueryMsg {
 pub struct OfferResponse {
     pub denom: String,
     pub offer_amount: Uint128,
+    pub remaining_amount: Uint128,
     pub tax_amount: Uint128,
     pub expiration: Expiration,
     pub purchaser: String,
@@ -83,6 +84,7 @@ impl From<Offer> for OfferResponse {
         OfferResponse {
             denom: offer.denom,
             offer_amount: offer.offer_amount,
+            remaining_amount: offer.remaining_amount,
             tax_amount: offer.tax_amount,
             expiration: offer.expiration,
             purchaser: offer.purchaser,

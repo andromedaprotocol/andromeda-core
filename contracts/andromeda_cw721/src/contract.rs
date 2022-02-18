@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdError, Storage, SubMsg, Uint128,
+    attr, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Reply, Response, StdError, Storage, SubMsg, Uint128,
 };
 
 use andromeda_protocol::{
@@ -195,10 +195,11 @@ fn execute_transfer(
     token_id: String,
 ) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract::default();
-    let token = contract.tokens.load(deps.storage, &token_id)?;
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
-    let (msgs, events, tax_amount) = if let Some(agreement) = &token.extension.transfer_agreement {
+    let mut resp = Response::new();
+    let tax_amount = if let Some(agreement) = &token.extension.transfer_agreement {
         let (mut msgs, events, remainder) = on_funds_transfer(
             deps.storage,
             deps.querier,
@@ -215,35 +216,22 @@ fn execute_transfer(
             to_address: token.owner.to_string(),
             amount: vec![remaining_amount],
         })));
-        (msgs, events, tax_amount)
+        resp = resp.add_submessages(msgs).add_events(events);
+        tax_amount
     } else {
-        (vec![], vec![], Uint128::zero())
+        Uint128::zero()
     };
 
     check_can_send(deps.as_ref(), env, info, &token, tax_amount)?;
-    transfer_ownership(deps.storage, deps.api, &token_id, &recipient)?;
-
-    Ok(Response::new()
-        .add_submessages(msgs)
-        .add_events(events)
-        .add_attribute("action", "transfer")
-        .add_attribute("recipient", recipient))
-}
-
-fn transfer_ownership(
-    storage: &mut dyn Storage,
-    api: &dyn Api,
-    token_id: &str,
-    recipient: &str,
-) -> Result<(), ContractError> {
-    let contract = AndrCW721Contract::default();
-    let mut token = contract.tokens.load(storage, token_id)?;
-    token.owner = api.addr_validate(recipient)?;
+    token.owner = deps.api.addr_validate(&recipient)?;
     token.approvals.clear();
     token.extension.transfer_agreement = None;
     token.extension.pricing = None;
-    contract.tokens.save(storage, token_id, &token)?;
-    Ok(())
+    contract.tokens.save(deps.storage, &token_id, &token)?;
+
+    Ok(resp
+        .add_attribute("action", "transfer")
+        .add_attribute("recipient", recipient))
 }
 
 fn check_can_send(

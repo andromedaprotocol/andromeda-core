@@ -73,21 +73,6 @@ impl ToString for PaymentAttribute {
     }
 }
 
-/*pub fn on_required_payments(
-    querier: QuerierWrapper,
-    addr: String,
-    amount: Funds,
-) -> Result<OnFundsTransferResponse, ContractError> {
-    let res: OnFundsTransferResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: addr,
-        msg: to_binary(&QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(
-            &amount,
-        )?))))?,
-    }))?;
-
-    Ok(res)
-}*/
-
 /// Gets the amount of tax paid by iterating over the `msgs` and comparing it to the
 /// `deducted_amount`. It is assumed that each bank message has a single Coin to send as transfer
 /// agreements only accept a single Coin. It is also assumed that the result will always be

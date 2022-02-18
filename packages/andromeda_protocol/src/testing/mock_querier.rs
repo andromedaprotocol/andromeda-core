@@ -166,18 +166,6 @@ impl WasmMockQuerier {
                     payload: _,
                     amount,
                 } => {
-                    let get_cw20_msg = |coin: &Cw20Coin| -> SubMsg {
-                        SubMsg::new(WasmMsg::Execute {
-                            contract_addr: MOCK_CW20_CONTRACT.into(),
-                            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                                recipient: MOCK_RATES_RECIPIENT.to_string(),
-                                amount: coin.amount.multiply_ratio(10u128, 100u128),
-                            })
-                            .unwrap(),
-                            funds: vec![],
-                        })
-                    };
-
                     // Hardcodes a royalty of 10% and tax of 10%.
                     let (new_funds, msgs): (Funds, Vec<SubMsg>) = match amount {
                         Funds::Cw20(ref coin) => (
@@ -186,7 +174,7 @@ impl WasmMockQuerier {
                                 amount: coin.amount.multiply_ratio(90u128, 100u128),
                                 address: coin.address.clone(),
                             }),
-                            vec![get_cw20_msg(coin), get_cw20_msg(coin)],
+                            vec![self.get_cw20_rates_msg(coin), self.get_cw20_rates_msg(coin)],
                         ),
                         Funds::Native(ref coin) => (
                             Funds::Native(Coin {
@@ -391,6 +379,18 @@ impl WasmMockQuerier {
                 denom: coin.denom.clone(),
             }],
         }))
+    }
+
+    fn get_cw20_rates_msg(&self, coin: &Cw20Coin) -> SubMsg {
+        SubMsg::new(WasmMsg::Execute {
+            contract_addr: MOCK_CW20_CONTRACT.into(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: MOCK_RATES_RECIPIENT.to_string(),
+                amount: coin.amount.multiply_ratio(10u128, 100u128),
+            })
+            .unwrap(),
+            funds: vec![],
+        })
     }
 
     pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
