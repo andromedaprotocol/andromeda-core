@@ -277,7 +277,7 @@ impl WasmMockQuerier {
                     None
                 };
                 let extension = TokenExtension {
-                    name: token_id.to_owned(),
+                    name: token_id,
                     publisher: "sender".to_owned(),
                     description: None,
                     transfer_agreement,
@@ -384,7 +384,7 @@ impl WasmMockQuerier {
         numerator: u128,
         recipient: Option<String>,
     ) -> SubMsg {
-        let recipient = recipient.unwrap_or(MOCK_RATES_RECIPIENT.to_string());
+        let recipient = recipient.unwrap_or_else(|| MOCK_RATES_RECIPIENT.to_string());
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: recipient,
             amount: vec![Coin {

@@ -1,10 +1,10 @@
 use crate::{
-    contract::{execute, instantiate, query},
+    contract::{execute, instantiate},
     state::{offers, Offer, CW721_CONTRACT},
 };
 use andromeda_protocol::{
     cw721::ExecuteMsg as Cw721ExecuteMsg,
-    cw721_offers::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    cw721_offers::{ExecuteMsg, InstantiateMsg},
     error::ContractError,
     testing::mock_querier::{
         bank_sub_msg, mock_dependencies_custom, MOCK_CW721_CONTRACT, MOCK_RATES_RECIPIENT,

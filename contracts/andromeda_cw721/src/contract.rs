@@ -303,7 +303,7 @@ fn check_can_send(
     {
         if let Some(offers_address) = MODULE_ADDR.may_load(deps.storage, &offers_module_id)? {
             // Offers contract is authorized to make transfers.
-            if offers_address == info.sender.to_string() {
+            if offers_address == info.sender {
                 return Ok(());
             }
         }
