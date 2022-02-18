@@ -459,7 +459,7 @@ fn test_modules() {
         recipient: "purchaser".into(),
     };
 
-    // Tax not added by sender, remember that the contract holds 100 uusd which is enough for cover
+    // Tax not added by sender, remember that the contract holds 100 uusd which is enough to cover
     // the taxes in this case.
     let purchaser = mock_info("purchaser", &coins(100, "uluna"));
     let res = execute(deps.as_mut(), mock_env(), purchaser, msg.clone());

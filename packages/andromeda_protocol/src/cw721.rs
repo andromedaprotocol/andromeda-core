@@ -305,6 +305,14 @@ pub enum QueryMsg {
     ModuleInfo {},
     /// The current config of the contract
     ContractInfo {},
+    Offer {
+        token_id: String,
+    },
+    AllOffers {
+        purchaser: String,
+        limit: Option<u32>,
+        start_after: Option<String>,
+    },
 }
 
 impl From<QueryMsg> for Cw721QueryMsg {

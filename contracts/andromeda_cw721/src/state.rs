@@ -16,7 +16,7 @@ pub struct Offer {
 }
 
 impl Offer {
-    pub fn get_coin(&self) -> Coin {
+    pub fn get_full_amount(&self) -> Coin {
         Coin {
             denom: self.denom.clone(),
             amount: self.offer_amount + self.tax_amount,

@@ -2,12 +2,13 @@ use crate::state::{offers, Offer};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, QuerierWrapper, Reply, Response, StdError, Storage, SubMsg, Uint128,
+    attr, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Order, QuerierWrapper, Reply, Response, StdError, Storage, SubMsg, Uint128,
 };
 
 use andromeda_protocol::{
     communication::{
+        encode_binary,
         hooks::AndromedaHook,
         modules::{
             execute_alter_module, execute_deregister_module, execute_register_module, module_hook,
@@ -25,8 +26,11 @@ use andromeda_protocol::{
 };
 use cw721::Expiration;
 use cw721_base::{state::TokenInfo, Cw721Contract};
+use cw_storage_plus::Bound;
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
+const DEFAULT_LIMIT: u32 = 10u32;
+const MAX_LIMIT: u32 = 30u32;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -93,7 +97,7 @@ pub fn execute(
         deps.querier,
         AndromedaHook::OnExecute {
             sender: info.sender.to_string(),
-            payload: to_binary(&msg)?,
+            payload: encode_binary(&msg)?,
         },
     )?;
 
@@ -211,7 +215,7 @@ fn execute_place_offer(
             ContractError::OfferLowerThanCurrent {},
         )?;
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            amount: vec![current_offer.get_coin()],
+            amount: vec![current_offer.get_full_amount()],
             to_address: current_offer.purchaser,
         })));
     }
@@ -237,7 +241,7 @@ fn execute_place_offer(
     };
     // require that the sender has sent enough for taxes
     require(
-        has_coins(&info.funds, &offer.get_coin()),
+        has_coins(&info.funds, &offer.get_full_amount()),
         ContractError::InsufficientFunds {},
     )?;
 
@@ -263,7 +267,7 @@ fn execute_cancel_offer(
     offers().remove(deps.storage, &token_id)?;
     let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: info.sender.to_string(),
-        amount: vec![offer.get_coin()],
+        amount: vec![offer.get_full_amount()],
     }));
     Ok(Response::new()
         .add_submessage(msg)
@@ -399,7 +403,7 @@ fn get_funds_transfer_response_and_taxes(
         *querier,
         sender,
         Funds::Native(coin.clone()),
-        to_binary(&ExecuteMsg::TransferNft {
+        encode_binary(&ExecuteMsg::TransferNft {
             token_id,
             recipient,
         })?,
@@ -578,5 +582,42 @@ fn execute_burn(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    Ok(AndrCW721Contract::default().query(deps, env, msg.into())?)
+    match msg {
+        QueryMsg::Offer { token_id } => encode_binary(&query_offer(deps, token_id)?),
+        QueryMsg::AllOffers {
+            purchaser,
+            limit,
+            start_after,
+        } => encode_binary(&query_all_offers(deps, purchaser, limit, start_after)?),
+        _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
+    }
+}
+
+fn query_offer(deps: Deps, token_id: String) -> Result<Offer, ContractError> {
+    Ok(offers().load(deps.storage, &token_id)?)
+}
+
+fn query_all_offers(
+    deps: Deps,
+    purchaser: String,
+    limit: Option<u32>,
+    start_after: Option<String>,
+) -> Result<Vec<Offer>, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let pks: Vec<_> = offers()
+        .idx
+        .purchaser
+        .prefix(purchaser)
+        .keys(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect();
+    let res: Result<Vec<String>, _> = pks.iter().map(|v| String::from_utf8(v.to_vec())).collect();
+    let keys = res.map_err(StdError::invalid_utf8)?;
+    let mut v: Vec<Offer> = vec![];
+    for key in keys.iter() {
+        v.push(offers().load(deps.storage, key)?);
+    }
+    Ok(v)
 }
