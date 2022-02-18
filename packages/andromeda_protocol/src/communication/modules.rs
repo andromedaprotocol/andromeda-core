@@ -24,6 +24,8 @@ use super::hooks::{AndromedaHook, OnFundsTransferResponse};
 pub const FACTORY_ADDRESS: &str = "terra1...";
 pub const MODULE_INFO: Map<&str, Module> = Map::new("andr_modules");
 pub const MODULE_ADDR: Map<&str, Addr> = Map::new("andr_module_addresses");
+// Module type -> module id
+pub const MODULE_IDXS: Map<&str, String> = Map::new("module_idxs");
 pub const MODULE_IDX: Item<u64> = Item::new("andr_module_idx");
 
 /// An enum describing the different available modules for any Andromeda Token contract
@@ -31,6 +33,7 @@ pub const MODULE_IDX: Item<u64> = Item::new("andr_module_idx");
 #[serde(rename_all = "snake_case")]
 pub enum ModuleType {
     Rates,
+    Offers,
     AddressList,
     Auction,
     Receipt,
@@ -46,6 +49,7 @@ impl From<ModuleType> for String {
             ModuleType::AddressList => String::from("address_list"),
             ModuleType::Rates => String::from("rates"),
             ModuleType::Auction => String::from("auction"),
+            ModuleType::Offers => String::from("offers"),
             ModuleType::Other => String::from("other"),
         }
     }
@@ -187,6 +191,7 @@ fn register_module(
     if let InstantiateType::Address(addr) = &module.instantiate {
         MODULE_ADDR.save(storage, &idx_str, &api.addr_validate(addr)?)?;
     }
+    MODULE_IDXS.save(storage, &String::from(module.module_type), &idx_str)?;
 
     Ok(idx)
 }

@@ -4,7 +4,7 @@ use andromeda_protocol::{
         encode_binary,
         hooks::{AndromedaHook, OnFundsTransferResponse},
     },
-    cw721::{QueryMsg as Cw721QueryMsg, TokenExtension},
+    cw721::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
     cw721_offers::{ExecuteMsg, InstantiateMsg, QueryMsg},
     error::ContractError,
     ownership::CONTRACT_OWNER,
@@ -15,7 +15,8 @@ use andromeda_protocol::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order, QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg, Uint128, WasmQuery,
+    Order, QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw2::set_contract_version;
 use cw721::{Expiration, NftInfoResponse, OwnerOfResponse};
@@ -174,27 +175,34 @@ fn execute_accept_offer(
     info: MessageInfo,
     token_id: String,
 ) -> Result<Response, ContractError> {
-    is_token_archived(deps.storage, &token_id)?;
-
-    let contract = AndrCW721Contract::default();
     let offer = offers().load(deps.storage, &token_id)?;
-    let token = contract.tokens.load(deps.storage, &token_id)?;
+    let token_extension = get_token_extension(deps.storage, &deps.querier, token_id.clone())?;
+    let token_owner = get_token_owner(deps.storage, &deps.querier, token_id.clone())?;
     require(
         !offer.expiration.is_expired(&env.block),
         ContractError::Expired {},
     )?;
-
-    require(info.sender == token.owner, ContractError::Unauthorized {})?;
+    require(!token_extension.archived, ContractError::TokenIsArchived {})?;
+    require(info.sender == token_owner, ContractError::Unauthorized {})?;
     require(
-        token.extension.transfer_agreement.is_none(),
+        token_extension.transfer_agreement.is_none(),
         ContractError::TransferAgreementExists {},
     )?;
+    let address = CW721_CONTRACT.load(deps.storage)?;
+    let transfer_msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: address,
+        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+            recipient: offer.purchaser,
+            token_id: token_id.clone(),
+        })?,
+        funds: vec![],
+    }));
 
     let resp = Response::new()
         .add_submessages(offer.msgs)
+        .add_submessage(transfer_msg)
         .add_events(offer.events);
 
-    transfer_ownership(deps.storage, deps.api, &token_id, &offer.purchaser)?;
     offers().remove(deps.storage, &token_id)?;
 
     Ok(resp

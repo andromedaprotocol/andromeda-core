@@ -1,9 +1,8 @@
-use crate::state::{offers, Offer};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Order, QuerierWrapper, Reply, Response, StdError, Storage, SubMsg, Uint128,
+    QuerierWrapper, Reply, Response, StdError, Storage, SubMsg, Uint128,
 };
 
 use andromeda_protocol::{
@@ -12,7 +11,8 @@ use andromeda_protocol::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::{
             execute_alter_module, execute_deregister_module, execute_register_module, module_hook,
-            on_funds_transfer, validate_modules, ADOType, MODULE_ADDR, MODULE_INFO,
+            on_funds_transfer, validate_modules, ADOType, ModuleType, MODULE_ADDR, MODULE_IDXS,
+            MODULE_INFO,
         },
         parse_message, AndromedaMsg,
     },
@@ -24,9 +24,7 @@ use andromeda_protocol::{
     require,
     response::get_reply_address,
 };
-use cw721::Expiration;
 use cw721_base::{state::TokenInfo, Cw721Contract};
-use cw_storage_plus::Bound;
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
 const DEFAULT_LIMIT: u32 = 10u32;
@@ -300,6 +298,17 @@ fn check_can_send(
     // owner can send
     if token.owner == info.sender {
         return Ok(());
+    }
+
+    if let Some(offers_module_id) =
+        MODULE_IDXS.may_load(deps.storage, String::from(ModuleType::Offers))?
+    {
+        if let Some(offers_address) = MODULE_ADDR.may_load(deps.storage, offers_module_id)? {
+            // Offers contract is authorized to make transfers.
+            if offers_address == info.sender.to_string() {
+                return Ok(());
+            }
+        }
     }
 
     // token purchaser can send if correct funds are sent
