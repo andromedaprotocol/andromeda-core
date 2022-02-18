@@ -115,7 +115,7 @@ fn test_place_offer_accept_offer() {
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = mock_info(&MOCK_CW721_CONTRACT, &[]);
+    let info = mock_info(MOCK_CW721_CONTRACT, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let msgs: Vec<SubMsg> = vec![
         bank_sub_msg(15, MOCK_RATES_RECIPIENT),
@@ -257,12 +257,12 @@ fn test_accept_offer_expired() {
 
     let msg = ExecuteMsg::AcceptOffer {
         token_id,
-        token_owner: creator.clone(),
+        token_owner: creator,
     };
 
     env.block.height = 12;
 
-    let info = mock_info(&MOCK_CW721_CONTRACT, &[]);
+    let info = mock_info(MOCK_CW721_CONTRACT, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::Expired {}, res.unwrap_err());
 }

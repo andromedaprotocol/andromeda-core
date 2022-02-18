@@ -563,7 +563,7 @@ fn test_accept_offer() {
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
     let info = mock_info(&creator, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_OFFERS_CONTRACT.to_string(),
         funds: vec![],
@@ -618,6 +618,6 @@ fn test_accept_offer_existing_transfer_agreement() {
 
     let msg = ExecuteMsg::AcceptOffer { token_id };
     let info = mock_info(&creator, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::TransferAgreementExists {}, res.unwrap_err());
 }
