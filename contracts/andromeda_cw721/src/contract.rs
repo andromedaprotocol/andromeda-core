@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Reply, Response, StdError, Storage, SubMsg, Uint128,
+    QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 
 use andromeda_protocol::{
@@ -17,6 +17,7 @@ use andromeda_protocol::{
         parse_message, AndromedaMsg,
     },
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
+    cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
     error::ContractError,
     operators::execute_update_operators,
     ownership::{execute_update_owner, CONTRACT_OWNER},
@@ -137,6 +138,7 @@ pub fn execute(
         }
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, info, token_id),
+        ExecuteMsg::AcceptOffer { token_id } => execute_accept_offer(deps, info, token_id),
         ExecuteMsg::RegisterModule { module } => execute_register_module(
             &deps.querier,
             deps.storage,
@@ -195,7 +197,7 @@ fn execute_transfer(
     token_id: String,
 ) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract::default();
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    let token = contract.tokens.load(deps.storage, &token_id)?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     let mut resp = Response::new();
@@ -223,15 +225,68 @@ fn execute_transfer(
     };
 
     check_can_send(deps.as_ref(), env, info, &token, tax_amount)?;
-    token.owner = deps.api.addr_validate(&recipient)?;
-    token.approvals.clear();
-    token.extension.transfer_agreement = None;
-    token.extension.pricing = None;
-    contract.tokens.save(deps.storage, &token_id, &token)?;
+    transfer_ownership(deps, &token_id, &recipient)?;
 
     Ok(resp
         .add_attribute("action", "transfer")
         .add_attribute("recipient", recipient))
+}
+
+fn transfer_ownership(deps: DepsMut, token_id: &str, new_owner: &str) -> Result<(), ContractError> {
+    let contract = AndrCW721Contract::default();
+    let mut token = contract.tokens.load(deps.storage, token_id)?;
+
+    token.owner = deps.api.addr_validate(new_owner)?;
+    token.approvals.clear();
+    token.extension.transfer_agreement = None;
+    token.extension.pricing = None;
+    contract.tokens.save(deps.storage, token_id, &token)?;
+    Ok(())
+}
+
+fn execute_accept_offer(
+    deps: DepsMut,
+    info: MessageInfo,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    let offers_contract = match MODULE_IDXS
+        .may_load(deps.storage, &String::from(ModuleType::Offers))?
+    {
+        None => Err(ContractError::UnsupportedOperation {}),
+        Some(offers_module_id) => match MODULE_ADDR.may_load(deps.storage, &offers_module_id)? {
+            None => Err(ContractError::UnsupportedOperation {}),
+            Some(offers_contract) => Ok(offers_contract),
+        },
+    }?;
+
+    let contract = AndrCW721Contract::default();
+    let token = contract.tokens.load(deps.storage, &token_id)?;
+    require(token.owner == info.sender, ContractError::Unauthorized {})?;
+    require(!token.extension.archived, ContractError::TokenIsArchived {})?;
+    require(
+        token.extension.transfer_agreement.is_none(),
+        ContractError::TransferAgreementExists {},
+    )?;
+
+    // Get the owner of the offer.
+    let offer_response: OfferResponse =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: offers_contract.to_string(),
+            msg: encode_binary(&OffersQueryMsg::Offer {
+                token_id: token_id.clone(),
+            })?,
+        }))?;
+
+    transfer_ownership(deps, &token_id, &offer_response.purchaser)?;
+    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: offers_contract.to_string(),
+        funds: vec![],
+        msg: encode_binary(&OffersExecuteMsg::AcceptOffer {
+            token_id,
+            token_owner: token.owner.to_string(),
+        })?,
+    });
+    Ok(Response::new().add_message(msg))
 }
 
 fn check_can_send(
@@ -245,17 +300,6 @@ fn check_can_send(
     // owner can send
     if token.owner == info.sender {
         return Ok(());
-    }
-
-    if let Some(offers_module_id) =
-        MODULE_IDXS.may_load(deps.storage, &String::from(ModuleType::Offers))?
-    {
-        if let Some(offers_address) = MODULE_ADDR.may_load(deps.storage, &offers_module_id)? {
-            // Offers contract is authorized to make transfers.
-            if offers_address == info.sender {
-                return Ok(());
-            }
-        }
     }
 
     // token purchaser can send if correct funds are sent

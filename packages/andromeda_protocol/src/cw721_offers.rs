@@ -42,11 +42,13 @@ pub enum ExecuteMsg {
         expiration: Expiration,
         offer_amount: Uint128,
     },
-    AcceptOffer {
-        token_id: String,
-    },
     CancelOffer {
         token_id: String,
+    },
+    /// Restricted to Cw721 contract.
+    AcceptOffer {
+        token_id: String,
+        token_owner: String,
     },
 }
 

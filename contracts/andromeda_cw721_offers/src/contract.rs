@@ -4,7 +4,7 @@ use andromeda_protocol::{
         encode_binary,
         hooks::{AndromedaHook, OnFundsTransferResponse},
     },
-    cw721::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
+    cw721::{QueryMsg as Cw721QueryMsg, TokenExtension},
     cw721_offers::{AllOffersResponse, ExecuteMsg, InstantiateMsg, Offer, OfferResponse, QueryMsg},
     error::ContractError,
     ownership::CONTRACT_OWNER,
@@ -14,9 +14,8 @@ use andromeda_protocol::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order, QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
-    WasmQuery,
+    has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg, Uint128, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw721::{Expiration, NftInfoResponse, OwnerOfResponse};
@@ -57,7 +56,10 @@ pub fn execute(
             expiration,
             offer_amount,
         } => execute_place_offer(deps, env, info, token_id, offer_amount, expiration),
-        ExecuteMsg::AcceptOffer { token_id } => execute_accept_offer(deps, env, info, token_id),
+        ExecuteMsg::AcceptOffer {
+            token_id,
+            token_owner,
+        } => execute_accept_offer(deps, env, info, token_id, token_owner),
         ExecuteMsg::CancelOffer { token_id } => execute_cancel_offer(deps, info, token_id),
     }
 }
@@ -176,21 +178,19 @@ fn execute_accept_offer(
     env: Env,
     info: MessageInfo,
     token_id: String,
+    token_owner: String,
 ) -> Result<Response, ContractError> {
     let offer = offers().load(deps.storage, &token_id)?;
-    let token_extension = get_token_extension(deps.storage, &deps.querier, token_id.clone())?;
-    let token_owner = get_token_owner(deps.storage, &deps.querier, token_id.clone())?;
+    let cw721_contract = CW721_CONTRACT.load(deps.storage)?;
     require(
         !offer.expiration.is_expired(&env.block),
         ContractError::Expired {},
     )?;
-    require(!token_extension.archived, ContractError::TokenIsArchived {})?;
-    require(info.sender == token_owner, ContractError::Unauthorized {})?;
+    // Only the cw721 contract can accept offers.
     require(
-        token_extension.transfer_agreement.is_none(),
-        ContractError::TransferAgreementExists {},
+        info.sender == cw721_contract,
+        ContractError::Unauthorized {},
     )?;
-    let address = CW721_CONTRACT.load(deps.storage)?;
     let payment_msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: token_owner,
         amount: vec![Coin {
@@ -198,19 +198,10 @@ fn execute_accept_offer(
             denom: offer.denom,
         }],
     }));
-    let transfer_msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: address,
-        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-            recipient: offer.purchaser,
-            token_id: token_id.clone(),
-        })?,
-        funds: vec![],
-    }));
 
     let resp = Response::new()
         .add_submessages(offer.msgs)
         .add_submessage(payment_msg)
-        .add_submessage(transfer_msg)
         .add_events(offer.events);
 
     offers().remove(deps.storage, &token_id)?;

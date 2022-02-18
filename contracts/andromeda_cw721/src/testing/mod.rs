@@ -7,9 +7,10 @@ use crate::contract::*;
 use andromeda_protocol::{
     communication::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        modules::{InstantiateType, Module, ModuleType, MODULE_IDXS},
+        modules::{InstantiateType, Module, ModuleType},
     },
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
+    cw721_offers::ExecuteMsg as OffersExecuteMsg,
     error::ContractError,
     rates::Funds,
     receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
@@ -525,35 +526,27 @@ fn test_modules() {
 }
 
 #[test]
-fn test_offers_module_can_transfer() {
+fn test_accept_offer() {
     let modules: Vec<Module> = vec![Module {
         module_type: ModuleType::Offers,
-        instantiate: InstantiateType::Address(MOCK_OFFERS_CONTRACT.to_string()),
+        instantiate: InstantiateType::Address(MOCK_OFFERS_CONTRACT.into()),
     }];
 
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
 
-    let recipient = String::from("recipient");
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), Some(modules));
-
-    assert_eq!(
-        "1",
-        MODULE_IDXS.load(deps.as_ref().storage, "offers").unwrap()
-    );
-
     mint_token(
         deps.as_mut(),
-        env.clone(),
+        env,
         token_id.clone(),
         creator.clone(),
         TokenExtension {
             description: None,
             name: String::default(),
-            publisher: creator,
+            publisher: creator.clone(),
             transfer_agreement: None,
             metadata: None,
             archived: false,
@@ -561,19 +554,70 @@ fn test_offers_module_can_transfer() {
         },
     );
 
-    let msg = ExecuteMsg::TransferNft {
+    let msg = ExecuteMsg::AcceptOffer {
         token_id: token_id.clone(),
-        recipient: recipient.clone(),
     };
 
-    let info = mock_info(MOCK_OFFERS_CONTRACT, &[]);
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+    let info = mock_info(&creator, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap();
+    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_OFFERS_CONTRACT.to_string(),
+        funds: vec![],
+        msg: to_binary(&OffersExecuteMsg::AcceptOffer {
+            token_id: token_id.clone(),
+            token_owner: creator,
+        })
+        .unwrap(),
+    });
+    assert_eq!(Response::new().add_message(msg), res);
 
     let query_msg = QueryMsg::OwnerOf {
         token_id,
         include_expired: None,
     };
-    let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
+    let query_resp = query(deps.as_ref(), mock_env(), query_msg).unwrap();
     let resp: OwnerOfResponse = from_binary(&query_resp).unwrap();
-    assert_eq!(recipient, resp.owner);
+    assert_eq!(resp.owner, "purchaser");
+}
+
+#[test]
+fn test_accept_offer_existing_transfer_agreement() {
+    let modules: Vec<Module> = vec![Module {
+        module_type: ModuleType::Offers,
+        instantiate: InstantiateType::Address(MOCK_OFFERS_CONTRACT.into()),
+    }];
+
+    let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
+
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let env = mock_env();
+    init_setup(deps.as_mut(), env.clone(), Some(modules));
+    mint_token(
+        deps.as_mut(),
+        env,
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator.clone(),
+            transfer_agreement: Some(TransferAgreement {
+                amount: coin(0, "uusd"),
+                purchaser: "anyone".to_string(),
+            }),
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let msg = ExecuteMsg::AcceptOffer { token_id };
+    let info = mock_info(&creator, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+    assert_eq!(ContractError::TransferAgreementExists {}, res.unwrap_err());
 }

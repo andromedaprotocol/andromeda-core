@@ -3,7 +3,7 @@ use crate::{
     auction::{AuctionStateResponse, QueryMsg as AuctionQueryMsg},
     communication::hooks::{AndromedaHook, OnFundsTransferResponse},
     cw721::{QueryMsg as Cw721QueryMsg, TokenExtension, TransferAgreement},
-    cw721_offers::QueryMsg as OffersQueryMsg,
+    cw721_offers::{OfferResponse, QueryMsg as OffersQueryMsg},
     ownership::ContractOwnerResponse,
     primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
     rates::{Funds, QueryMsg as RatesQueryMsg},
@@ -206,6 +206,17 @@ impl WasmMockQuerier {
         match from_binary(msg).unwrap() {
             OffersQueryMsg::AndrHook(_) => {
                 SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string()))
+            }
+            OffersQueryMsg::Offer { .. } => {
+                let response = OfferResponse {
+                    denom: "uusd".to_string(),
+                    offer_amount: Uint128::zero(),
+                    tax_amount: Uint128::zero(),
+                    remaining_amount: Uint128::zero(),
+                    expiration: Expiration::Never {},
+                    purchaser: "purchaser".to_string(),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
             }
             _ => panic!("Unsupported Query"),
         }
