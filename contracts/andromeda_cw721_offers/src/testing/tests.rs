@@ -1,10 +1,10 @@
 use crate::{
-    contract::{execute, instantiate},
+    contract::{execute, instantiate, query},
     state::{offers, CW721_CONTRACT},
 };
 use andromeda_protocol::{
-    cw721::ExecuteMsg as Cw721ExecuteMsg,
-    cw721_offers::{ExecuteMsg, InstantiateMsg, Offer},
+    communication::hooks::AndromedaHook,
+    cw721_offers::{ExecuteMsg, InstantiateMsg, Offer, QueryMsg},
     error::ContractError,
     testing::mock_querier::{
         bank_sub_msg, mock_dependencies_custom, MOCK_CW721_CONTRACT, MOCK_RATES_RECIPIENT,
@@ -12,7 +12,7 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    coins,
+    coins, from_binary,
     testing::{mock_env, mock_info},
     to_binary, BankMsg, CosmosMsg, DepsMut, Event, MessageInfo, Response, SubMsg, WasmMsg,
 };
@@ -111,19 +111,10 @@ fn test_place_offer_accept_offer() {
 
     let msg = ExecuteMsg::AcceptOffer {
         token_id: token_id.clone(),
+        recipient: creator.clone(),
     };
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
-
-    let transfer_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: MOCK_CW721_CONTRACT.to_owned(),
-        msg: to_binary(&Cw721ExecuteMsg::TransferNft {
-            recipient: other_purchaser,
-            token_id: token_id.clone(),
-        })
-        .unwrap(),
-        funds: vec![],
-    });
 
     let info = mock_info(MOCK_CW721_CONTRACT, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -135,7 +126,6 @@ fn test_place_offer_accept_offer() {
     assert_eq!(
         Response::new()
             .add_submessages(msgs)
-            .add_message(transfer_msg)
             .add_event(Event::new("Royalty"))
             .add_event(Event::new("Tax"))
             .add_attribute("action", "accept_offer")
@@ -266,7 +256,10 @@ fn test_accept_offer_expired() {
         .save(deps.as_mut().storage, &token_id, &offer)
         .unwrap();
 
-    let msg = ExecuteMsg::AcceptOffer { token_id };
+    let msg = ExecuteMsg::AcceptOffer {
+        token_id,
+        recipient: creator,
+    };
 
     env.block.height = 12;
 
@@ -276,9 +269,43 @@ fn test_accept_offer_expired() {
 }
 
 #[test]
-fn test_cancel_offer() {
+fn test_accept_offer_existing_transfer_agreement() {
     let mut deps = mock_dependencies_custom(&[]);
     let token_id = String::from(MOCK_TOKEN_TRANSFER_AGREEMENT);
+    let creator = String::from("creator");
+    let purchaser = String::from("purchaser");
+
+    let info = mock_info(&creator, &[]);
+    init(deps.as_mut(), info).unwrap();
+
+    let offer = Offer {
+        denom: "uusd".to_string(),
+        offer_amount: 50u128.into(),
+        remaining_amount: 45u128.into(),
+        tax_amount: 5u128.into(),
+        expiration: Expiration::Never {},
+        purchaser,
+        msgs: vec![],
+        events: vec![],
+    };
+    offers()
+        .save(deps.as_mut().storage, &token_id, &offer)
+        .unwrap();
+
+    let msg = ExecuteMsg::AcceptOffer {
+        token_id,
+        recipient: creator,
+    };
+
+    let info = mock_info(MOCK_CW721_CONTRACT, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::TransferAgreementExists {}, res.unwrap_err());
+}
+
+#[test]
+fn test_cancel_offer() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_id = String::from("testtoken");
     let creator = String::from("creator");
     let purchaser = String::from("purchaser");
 
@@ -316,4 +343,49 @@ fn test_cancel_offer() {
             .add_attribute("token_id", token_id),
         res
     );
+}
+
+#[test]
+fn test_on_transfer_hook() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_id = String::from("offer_token");
+    let creator = String::from("creator");
+    let purchaser = String::from("purchaser");
+
+    let info = mock_info(&creator, &[]);
+    init(deps.as_mut(), info).unwrap();
+
+    let offer = Offer {
+        denom: "uusd".to_string(),
+        offer_amount: 50u128.into(),
+        remaining_amount: 45u128.into(),
+        tax_amount: 5u128.into(),
+        expiration: Expiration::AtHeight(10),
+        purchaser: purchaser.clone(),
+        msgs: vec![],
+        events: vec![],
+    };
+
+    offers()
+        .save(deps.as_mut().storage, &token_id, &offer)
+        .unwrap();
+
+    let msg = QueryMsg::AndrHook(AndromedaHook::OnTransfer {
+        token_id: token_id.clone(),
+        sender: "sender".to_owned(),
+        recipient: purchaser,
+    });
+
+    let res: Response = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    let msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: mock_env().contract.address.to_string(),
+        funds: vec![],
+        msg: to_binary(&ExecuteMsg::AcceptOffer {
+            token_id: token_id.clone(),
+            recipient: "sender".to_string(),
+        })
+        .unwrap(),
+    });
+    assert_eq!(Response::new().add_message(msg), res);
 }

@@ -15,6 +15,11 @@ pub enum AndromedaHook {
         payload: Binary,
         amount: Funds,
     },
+    OnTransfer {
+        token_id: String,
+        sender: String,
+        recipient: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

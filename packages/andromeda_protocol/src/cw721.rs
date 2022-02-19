@@ -199,9 +199,6 @@ pub enum ExecuteMsg {
         token_id: String,
         price: Option<Coin>,
     },
-    AcceptOffer {
-        token_id: String,
-    },
     RegisterModule {
         module: Module,
     },

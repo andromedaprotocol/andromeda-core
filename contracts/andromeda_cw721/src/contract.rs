@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
+    Reply, Response, StdError, Storage, SubMsg, Uint128,
 };
 
 use andromeda_protocol::{
@@ -11,13 +11,11 @@ use andromeda_protocol::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::{
             execute_alter_module, execute_deregister_module, execute_register_module, module_hook,
-            on_funds_transfer, validate_modules, ADOType, ModuleType, MODULE_ADDR, MODULE_IDXS,
-            MODULE_INFO,
+            on_funds_transfer, validate_modules, ADOType, MODULE_ADDR, MODULE_INFO,
         },
         parse_message, AndromedaMsg,
     },
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
-    cw721_offers::ExecuteMsg as OffersExecuteMsg,
     error::ContractError,
     operators::execute_update_operators,
     ownership::{execute_update_owner, CONTRACT_OWNER},
@@ -138,7 +136,6 @@ pub fn execute(
         }
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, info, token_id),
-        ExecuteMsg::AcceptOffer { token_id } => execute_accept_offer(deps, env, info, token_id),
         ExecuteMsg::RegisterModule { module } => execute_register_module(
             &deps.querier,
             deps.storage,
@@ -196,11 +193,29 @@ fn execute_transfer(
     recipient: String,
     token_id: String,
 ) -> Result<Response, ContractError> {
+    let responses = module_hook::<Response>(
+        deps.storage,
+        deps.querier,
+        AndromedaHook::OnTransfer {
+            token_id: token_id.clone(),
+            sender: info.sender.to_string(),
+            recipient: recipient.clone(),
+        },
+    )?;
+    // Reduce all responses into one.
+    let mut resp = responses
+        .into_iter()
+        .reduce(|resp, r| {
+            resp.add_submessages(r.messages)
+                .add_events(r.events)
+                .add_attributes(r.attributes)
+        })
+        .unwrap_or_else(Response::new);
+
     let contract = AndrCW721Contract::default();
-    let token = contract.tokens.load(deps.storage, &token_id)?;
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
-    let mut resp = Response::new();
     let tax_amount = if let Some(agreement) = &token.extension.transfer_agreement {
         let (mut msgs, events, remainder) = on_funds_transfer(
             deps.storage,
@@ -225,67 +240,15 @@ fn execute_transfer(
     };
 
     check_can_send(deps.as_ref(), env, info, &token, tax_amount)?;
-    transfer_ownership(deps, &token_id, &recipient)?;
+    token.owner = deps.api.addr_validate(&recipient)?;
+    token.approvals.clear();
+    token.extension.transfer_agreement = None;
+    token.extension.pricing = None;
+    contract.tokens.save(deps.storage, &token_id, &token)?;
 
     Ok(resp
         .add_attribute("action", "transfer")
         .add_attribute("recipient", recipient))
-}
-
-fn transfer_ownership(deps: DepsMut, token_id: &str, new_owner: &str) -> Result<(), ContractError> {
-    let contract = AndrCW721Contract::default();
-    let mut token = contract.tokens.load(deps.storage, token_id)?;
-
-    token.owner = deps.api.addr_validate(new_owner)?;
-    token.approvals.clear();
-    token.extension.transfer_agreement = None;
-    token.extension.pricing = None;
-    contract.tokens.save(deps.storage, token_id, &token)?;
-    Ok(())
-}
-
-fn execute_accept_offer(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    token_id: String,
-) -> Result<Response, ContractError> {
-    let offers_contract = match MODULE_IDXS
-        .may_load(deps.storage, &String::from(ModuleType::Offers))?
-    {
-        None => Err(ContractError::UnsupportedOperation {}),
-        Some(offers_module_id) => match MODULE_ADDR.may_load(deps.storage, &offers_module_id)? {
-            None => Err(ContractError::UnsupportedOperation {}),
-            Some(offers_contract) => Ok(offers_contract),
-        },
-    }?;
-
-    let contract = AndrCW721Contract::default();
-    let token = contract.tokens.load(deps.storage, &token_id)?;
-    require(token.owner == info.sender, ContractError::Unauthorized {})?;
-    require(!token.extension.archived, ContractError::TokenIsArchived {})?;
-    require(
-        token.extension.transfer_agreement.is_none(),
-        ContractError::TransferAgreementExists {},
-    )?;
-    contract.execute(
-        deps,
-        env,
-        info,
-        ExecuteMsg::Approve {
-            spender: offers_contract.to_string(),
-            token_id: token_id.clone(),
-            expires: None,
-        }
-        .into(),
-    )?;
-
-    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: offers_contract.to_string(),
-        funds: vec![],
-        msg: encode_binary(&OffersExecuteMsg::AcceptOffer { token_id })?,
-    });
-    Ok(Response::new().add_message(msg))
 }
 
 fn check_can_send(

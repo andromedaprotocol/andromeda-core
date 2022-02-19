@@ -3,7 +3,7 @@ use crate::{
     auction::{AuctionStateResponse, QueryMsg as AuctionQueryMsg},
     communication::hooks::{AndromedaHook, OnFundsTransferResponse},
     cw721::{QueryMsg as Cw721QueryMsg, TokenExtension, TransferAgreement},
-    cw721_offers::{OfferResponse, QueryMsg as OffersQueryMsg},
+    cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
     ownership::ContractOwnerResponse,
     primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
     rates::{Funds, QueryMsg as RatesQueryMsg},
@@ -204,9 +204,29 @@ impl WasmMockQuerier {
 
     fn handle_offers_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            OffersQueryMsg::AndrHook(_) => {
-                SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string()))
-            }
+            OffersQueryMsg::AndrHook(msg) => match msg {
+                AndromedaHook::OnTransfer {
+                    recipient,
+                    token_id,
+                    sender,
+                } => {
+                    if recipient == "purchaser" {
+                        let msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: MOCK_OFFERS_CONTRACT.to_owned(),
+                            funds: vec![],
+                            msg: to_binary(&OffersExecuteMsg::AcceptOffer {
+                                token_id,
+                                recipient: sender,
+                            })
+                            .unwrap(),
+                        }));
+                        let resp = Response::new().add_submessage(msg);
+                        return SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()));
+                    }
+                    panic!("Unsupported Query")
+                }
+                _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+            },
             OffersQueryMsg::Offer { .. } => {
                 let response = OfferResponse {
                     denom: "uusd".to_string(),

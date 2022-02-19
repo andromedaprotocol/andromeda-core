@@ -1,9 +1,8 @@
 use std::convert::TryInto;
 
 use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, ReplyOn, Response, StdError, Storage, SubMsg, Uint64, WasmMsg,
-    WasmQuery,
+    to_binary, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order, QuerierWrapper,
+    QueryRequest, ReplyOn, Response, StdError, Storage, SubMsg, Uint64, WasmMsg, WasmQuery,
 };
 use cw_storage_plus::{Bound, Item, Map};
 use schemars::JsonSchema;
@@ -24,8 +23,6 @@ use super::hooks::{AndromedaHook, OnFundsTransferResponse};
 pub const FACTORY_ADDRESS: &str = "terra1...";
 pub const MODULE_INFO: Map<&str, Module> = Map::new("andr_modules");
 pub const MODULE_ADDR: Map<&str, Addr> = Map::new("andr_module_addresses");
-// Module type -> module id
-pub const MODULE_IDXS: Map<&str, String> = Map::new("module_idxs");
 pub const MODULE_IDX: Item<u64> = Item::new("andr_module_idx");
 
 /// An enum describing the different available modules for any Andromeda Token contract
@@ -191,7 +188,6 @@ fn register_module(
     if let InstantiateType::Address(addr) = &module.instantiate {
         MODULE_ADDR.save(storage, &idx_str, &api.addr_validate(addr)?)?;
     }
-    MODULE_IDXS.save(storage, &String::from(module.module_type.clone()), &idx_str)?;
 
     Ok(idx)
 }

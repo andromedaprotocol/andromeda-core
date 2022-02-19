@@ -4,7 +4,7 @@ use andromeda_protocol::{
         encode_binary,
         hooks::{AndromedaHook, OnFundsTransferResponse},
     },
-    cw721::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
+    cw721::{QueryMsg as Cw721QueryMsg, TokenExtension},
     cw721_offers::{AllOffersResponse, ExecuteMsg, InstantiateMsg, Offer, OfferResponse, QueryMsg},
     error::ContractError,
     ownership::CONTRACT_OWNER,
@@ -56,7 +56,10 @@ pub fn execute(
             expiration,
             offer_amount,
         } => execute_place_offer(deps, env, info, token_id, offer_amount, expiration),
-        ExecuteMsg::AcceptOffer { token_id } => execute_accept_offer(deps, env, info, token_id),
+        ExecuteMsg::AcceptOffer {
+            token_id,
+            recipient,
+        } => execute_accept_offer(deps, env, info, token_id, recipient),
         ExecuteMsg::CancelOffer { token_id } => execute_cancel_offer(deps, info, token_id),
     }
 }
@@ -175,10 +178,11 @@ fn execute_accept_offer(
     env: Env,
     info: MessageInfo,
     token_id: String,
+    recipient: String,
 ) -> Result<Response, ContractError> {
     let offer = offers().load(deps.storage, &token_id)?;
     let cw721_contract = CW721_CONTRACT.load(deps.storage)?;
-    let token_owner = get_token_owner(deps.storage, &deps.querier, token_id.clone())?;
+    let token_extension = get_token_extension(deps.storage, &deps.querier, token_id.clone())?;
     require(
         !offer.expiration.is_expired(&env.block),
         ContractError::Expired {},
@@ -188,27 +192,21 @@ fn execute_accept_offer(
         info.sender == cw721_contract,
         ContractError::Unauthorized {},
     )?;
+    require(
+        token_extension.transfer_agreement.is_none(),
+        ContractError::TransferAgreementExists {},
+    )?;
     let payment_msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-        to_address: token_owner,
+        to_address: recipient,
         amount: vec![Coin {
             amount: offer.remaining_amount,
             denom: offer.denom,
         }],
     }));
 
-    let transfer_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: cw721_contract,
-        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-            recipient: offer.purchaser,
-            token_id: token_id.clone(),
-        })?,
-        funds: vec![],
-    });
-
     let resp = Response::new()
         .add_submessages(offer.msgs)
         .add_submessage(payment_msg)
-        .add_message(transfer_msg)
         .add_events(offer.events);
 
     offers().remove(deps.storage, &token_id)?;
@@ -271,15 +269,51 @@ fn get_token_owner(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrHook(_) => Err(ContractError::UnsupportedOperation {}),
+        QueryMsg::AndrHook(msg) => handle_andr_hook(deps, env, msg),
         QueryMsg::Offer { token_id } => encode_binary(&query_offer(deps, token_id)?),
         QueryMsg::AllOffers {
             purchaser,
             limit,
             start_after,
         } => encode_binary(&query_all_offers(deps, purchaser, limit, start_after)?),
+    }
+}
+
+fn handle_andr_hook(deps: Deps, env: Env, msg: AndromedaHook) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaHook::OnTransfer {
+            token_id,
+            sender,
+            recipient,
+        } => {
+            let mut resp: Response = Response::new();
+            let offer = offers().may_load(deps.storage, &token_id)?;
+            if let Some(offer) = offer {
+                if offer.purchaser == recipient {
+                    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: env.contract.address.to_string(),
+                        funds: vec![],
+                        // The assumption is that the owner transfering the token to a user that has
+                        // an offer means they want to accept that offer. If the offer is
+                        // expired this message will end up failing and the transfer will not
+                        // happen.
+                        msg: encode_binary(&ExecuteMsg::AcceptOffer {
+                            token_id,
+                            // We require a recipient since the owner of the token will have
+                            // changed once this message gets executed. Sender is assuemd to be the
+                            // orignal owner of the token.
+                            recipient: sender,
+                        })?,
+                    });
+                    resp = resp.add_message(msg);
+                }
+            }
+
+            Ok(encode_binary(&resp)?)
+        }
+        _ => Err(ContractError::UnsupportedOperation {}),
     }
 }
 

@@ -526,7 +526,7 @@ fn test_modules() {
 }
 
 #[test]
-fn test_accept_offer() {
+fn test_transfer_with_offer() {
     let modules: Vec<Module> = vec![Module {
         module_type: ModuleType::Offers,
         instantiate: InstantiateType::Address(MOCK_OFFERS_CONTRACT.into()),
@@ -554,70 +554,26 @@ fn test_accept_offer() {
         },
     );
 
-    let msg = ExecuteMsg::AcceptOffer {
+    let msg = ExecuteMsg::TransferNft {
+        recipient: "purchaser".to_string(),
         token_id: token_id.clone(),
     };
-
-    let info = mock_info("anyone", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
-    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
-
     let info = mock_info(&creator, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: MOCK_OFFERS_CONTRACT.to_string(),
+    let msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_OFFERS_CONTRACT.to_owned(),
         funds: vec![],
         msg: to_binary(&OffersExecuteMsg::AcceptOffer {
-            token_id: token_id.clone(),
+            token_id,
+            recipient: creator,
         })
         .unwrap(),
-    });
-    assert_eq!(Response::new().add_message(msg), res);
-
-    let contract = AndrCW721Contract::default();
-    let token = contract
-        .tokens
-        .load(deps.as_ref().storage, &token_id)
-        .unwrap();
-    assert_eq!(MOCK_OFFERS_CONTRACT, token.approvals[0].spender.to_string())
-}
-
-#[test]
-fn test_accept_offer_existing_transfer_agreement() {
-    let modules: Vec<Module> = vec![Module {
-        module_type: ModuleType::Offers,
-        instantiate: InstantiateType::Address(MOCK_OFFERS_CONTRACT.into()),
-    }];
-
-    let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
-
-    let token_id = String::from("testtoken");
-    let creator = String::from("creator");
-    let env = mock_env();
-    init_setup(deps.as_mut(), env.clone(), Some(modules));
-    mint_token(
-        deps.as_mut(),
-        env,
-        token_id.clone(),
-        creator.clone(),
-        TokenExtension {
-            description: None,
-            name: String::default(),
-            publisher: creator.clone(),
-            transfer_agreement: Some(TransferAgreement {
-                amount: coin(0, "uusd"),
-                purchaser: "anyone".to_string(),
-            }),
-            metadata: None,
-            archived: false,
-            pricing: None,
-        },
+    }));
+    assert_eq!(
+        Response::new()
+            .add_submessage(msg)
+            .add_attribute("action", "transfer")
+            .add_attribute("recipient", "purchaser"),
+        res
     );
-
-    let msg = ExecuteMsg::AcceptOffer {
-        token_id: token_id.clone(),
-    };
-    let info = mock_info(&creator, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
-    assert_eq!(ContractError::TransferAgreementExists {}, res.unwrap_err());
 }
