@@ -394,7 +394,7 @@ fn test_on_transfer_hook() {
         contract_addr: mock_env().contract.address.to_string(),
         funds: vec![],
         msg: to_binary(&ExecuteMsg::AcceptOffer {
-            token_id: token_id.clone(),
+            token_id,
             recipient: "sender".to_string(),
         })
         .unwrap(),
