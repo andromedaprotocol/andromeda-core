@@ -38,6 +38,7 @@ fn test_place_offer_accept_offer() {
     let creator = String::from("creator");
     let purchaser = String::from("purchaser");
     let other_purchaser = String::from("other_purchaser");
+    let current_block_height = mock_env().block.height;
 
     let info = mock_info("creator", &[]);
     init(deps.as_mut(), info).unwrap();
@@ -48,7 +49,7 @@ fn test_place_offer_accept_offer() {
 
     let msg = ExecuteMsg::PlaceOffer {
         token_id: token_id.clone(),
-        expiration: Expiration::Never {},
+        expiration: Expiration::AtHeight(current_block_height + 1),
         offer_amount: 100u128.into(),
     };
 
@@ -78,7 +79,7 @@ fn test_place_offer_accept_offer() {
 
     let msg = ExecuteMsg::PlaceOffer {
         token_id: token_id.clone(),
-        expiration: Expiration::Never {},
+        expiration: Expiration::AtHeight(current_block_height + 1),
         offer_amount: 50u128.into(),
     };
 
@@ -89,7 +90,7 @@ fn test_place_offer_accept_offer() {
 
     let msg = ExecuteMsg::PlaceOffer {
         token_id: token_id.clone(),
-        expiration: Expiration::Never {},
+        expiration: Expiration::AtHeight(current_block_height + 1),
         offer_amount: 150u128.into(),
     };
 
@@ -308,6 +309,7 @@ fn test_cancel_offer() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
     let purchaser = String::from("purchaser");
+    let current_block_height = mock_env().block.height;
 
     let info = mock_info(&creator, &[]);
     init(deps.as_mut(), info).unwrap();
@@ -317,7 +319,7 @@ fn test_cancel_offer() {
         offer_amount: 100u128.into(),
         remaining_amount: 90u128.into(),
         tax_amount: 10u128.into(),
-        expiration: Expiration::Never {},
+        expiration: Expiration::AtHeight(current_block_height + 1),
         purchaser: purchaser.clone(),
         msgs: vec![],
         events: vec![],
@@ -335,13 +337,23 @@ fn test_cancel_offer() {
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
     let info = mock_info(&purchaser, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+    assert_eq!(ContractError::OfferNotExpired {}, res.unwrap_err());
+
+    let mut env = mock_env();
+    env.block.height = current_block_height + 2;
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         Response::new()
             .add_submessage(bank_sub_msg(100 + 10, &purchaser))
             .add_attribute("action", "cancel_offer")
-            .add_attribute("token_id", token_id),
+            .add_attribute("token_id", &token_id),
         res
+    );
+
+    assert_eq!(
+        None,
+        offers().may_load(deps.as_ref().storage, &token_id).unwrap(),
     );
 }
 

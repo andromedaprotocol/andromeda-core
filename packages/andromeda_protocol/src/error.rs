@@ -205,6 +205,9 @@ pub enum ContractError {
     #[error("OfferLowerThanCurrent")]
     OfferLowerThanCurrent {},
 
+    #[error("OfferNotExpired")]
+    OfferNotExpired {},
+
     #[error("TransferAgreementExists")]
     TransferAgreementExists {},
 }

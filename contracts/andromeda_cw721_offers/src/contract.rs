@@ -60,7 +60,7 @@ pub fn execute(
             token_id,
             recipient,
         } => execute_accept_offer(deps, env, info, token_id, recipient),
-        ExecuteMsg::CancelOffer { token_id } => execute_cancel_offer(deps, info, token_id),
+        ExecuteMsg::CancelOffer { token_id } => execute_cancel_offer(deps, env, info, token_id),
     }
 }
 
@@ -79,6 +79,14 @@ fn execute_place_offer(
     require(
         info.sender != token_owner,
         ContractError::TokenOwnerCannotBid {},
+    )?;
+    require(
+        // This is to avoid situations where a user transfers the token to the purchaser thinking
+        // that there is an offer up and having the purchaser pull the offer right before (not
+        // necessariliy malicious, could just be a coincidence). Having a concrete time will
+        // give the seller a window of guaranteed time to accept the offer.
+        expiration != Expiration::Never {},
+        ContractError::ExpirationMustNotBeNever {},
     )?;
     require(
         !expiration.is_expired(&env.block),
@@ -154,6 +162,7 @@ fn execute_place_offer(
 
 fn execute_cancel_offer(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     token_id: String,
 ) -> Result<Response, ContractError> {
@@ -161,6 +170,10 @@ fn execute_cancel_offer(
     require(
         info.sender == offer.purchaser,
         ContractError::Unauthorized {},
+    )?;
+    require(
+        offer.expiration.is_expired(&env.block),
+        ContractError::OfferNotExpired {},
     )?;
     offers().remove(deps.storage, &token_id)?;
     let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
