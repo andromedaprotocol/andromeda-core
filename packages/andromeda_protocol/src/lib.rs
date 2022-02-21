@@ -18,6 +18,7 @@ pub mod rates;
 pub mod receipt;
 pub mod response;
 pub mod splitter;
+pub mod swapper;
 pub mod withdraw;
 
 #[cfg(not(target_arch = "wasm32"))]
