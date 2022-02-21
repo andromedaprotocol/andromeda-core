@@ -3,7 +3,9 @@ use crate::error::ContractError;
 pub mod address_list;
 pub mod anchor;
 pub mod astroport_wrapped_cdp;
+pub mod auction;
 pub mod common;
+pub mod communication;
 pub mod cw20;
 pub mod error;
 pub mod factory;
@@ -16,6 +18,7 @@ pub mod rates;
 pub mod receipt;
 pub mod response;
 pub mod splitter;
+pub mod withdraw;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing;

@@ -1,27 +1,31 @@
 use super::mock_querier::mock_dependencies_custom;
-use crate::contract::{execute, get_tax_deducted_funds, instantiate, query};
+use crate::contract::{execute, instantiate, query};
 use andromeda_protocol::{
+    common::get_tax_deducted_funds,
+    communication::{AndromedaMsg, AndromedaQuery},
     error::ContractError,
     mirror_wrapped_cdp::{
         ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg,
         MirrorGovExecuteMsg, MirrorLockExecuteMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
         MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
-    operators::IsOperatorResponse,
+    operators::OperatorsResponse,
+    withdraw::WITHDRAWABLE_TOKENS,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
     coin, coins, from_binary, to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo,
-    Response, Uint128, WasmMsg,
+    Order, Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use mirror_protocol::gov::VoteOption;
+use mirror_protocol::{gov::VoteOption, mint::ShortParams};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use terraswap::asset::{Asset, AssetInfo};
 
 const TEST_TOKEN: &str = "TEST_TOKEN";
 const TEST_AMOUNT: u128 = 100u128;
+const MOCK_MIRROR_TOKEN_ADDR: &str = "mirror_token";
 const MOCK_MIRROR_MINT_ADDR: &str = "mirror_mint";
 const MOCK_MIRROR_STAKING_ADDR: &str = "mirror_staking";
 const MOCK_MIRROR_GOV_ADDR: &str = "mirror_gov";
@@ -176,6 +180,7 @@ fn assert_query_msg<T: DeserializeOwned + Debug + PartialEq>(
 
 fn assert_intantiate(deps: DepsMut, info: MessageInfo) {
     let msg = InstantiateMsg {
+        mirror_token_contract: MOCK_MIRROR_TOKEN_ADDR.to_string(),
         mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
         mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
         mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
@@ -209,6 +214,21 @@ fn test_instantiate() {
             mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
         },
     );
+    assert_eq!(
+        1,
+        WITHDRAWABLE_TOKENS
+            .keys(deps.as_mut().storage, None, None, Order::Ascending)
+            .count()
+    );
+
+    assert_eq!(
+        AssetInfo::Token {
+            contract_addr: MOCK_MIRROR_TOKEN_ADDR.to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, MOCK_MIRROR_TOKEN_ADDR)
+            .unwrap()
+    );
 }
 
 #[test]
@@ -217,6 +237,7 @@ fn test_instantiate_with_operator() {
     let info = mock_info("creator", &[]);
     let operator = mock_info("operator", &[]);
     let msg = InstantiateMsg {
+        mirror_token_contract: MOCK_MIRROR_TOKEN_ADDR.to_string(),
         mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
         mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
         mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
@@ -227,23 +248,23 @@ fn test_instantiate_with_operator() {
 
     assert_query_msg(
         deps.as_ref(),
-        QueryMsg::IsOperator {
-            address: operator.sender.to_string(),
+        QueryMsg::AndrQuery(AndromedaQuery::Operators {}),
+        OperatorsResponse {
+            operators: vec![operator.sender.to_string()],
         },
-        IsOperatorResponse { is_operator: true },
     );
 }
 
 #[test]
-fn test_mirror_mint_open_position() {
+fn test_mirror_mint_open_position_not_short() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
     assert_intantiate(deps.as_mut(), info.clone());
 
     let mirror_msg = MirrorMintExecuteMsg::OpenPosition {
         collateral: Asset {
-            info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
+            info: AssetInfo::Token {
+                contract_addr: "collateral_token".to_string(),
             },
             amount: Uint128::from(10_u128),
         },
@@ -254,6 +275,77 @@ fn test_mirror_mint_open_position() {
         short_params: None,
     };
     assert_mint_execute_msg(deps.as_mut(), info, mirror_msg);
+
+    assert_eq!(
+        AssetInfo::Token {
+            contract_addr: "collateral_token".to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, "collateral_token")
+            .unwrap()
+    );
+    assert_eq!(
+        AssetInfo::Token {
+            contract_addr: "token_address".to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, "token_address")
+            .unwrap()
+    );
+    assert_eq!(
+        3,
+        WITHDRAWABLE_TOKENS
+            .keys(deps.as_mut().storage, None, None, Order::Ascending)
+            .count()
+    );
+}
+
+#[test]
+fn test_mirror_mint_open_position_short() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info.clone());
+
+    let mirror_msg = MirrorMintExecuteMsg::OpenPosition {
+        collateral: Asset {
+            info: AssetInfo::Token {
+                contract_addr: "collateral_token".to_string(),
+            },
+            amount: Uint128::from(10_u128),
+        },
+        asset_info: AssetInfo::Token {
+            contract_addr: "token_address".to_string(),
+        },
+        collateral_ratio: Decimal::one(),
+        short_params: Some(ShortParams {
+            belief_price: None,
+            max_spread: None,
+        }),
+    };
+    assert_mint_execute_msg(deps.as_mut(), info, mirror_msg);
+
+    assert_eq!(
+        AssetInfo::Token {
+            contract_addr: "collateral_token".to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, "collateral_token")
+            .unwrap()
+    );
+    assert_eq!(
+        AssetInfo::NativeToken {
+            denom: "uusd".to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, "uusd")
+            .unwrap()
+    );
+    assert_eq!(
+        3,
+        WITHDRAWABLE_TOKENS
+            .keys(deps.as_mut().storage, None, None, Order::Ascending)
+            .count()
+    );
 }
 
 #[test]
@@ -290,9 +382,9 @@ fn test_mirror_mint_withdraw() {
         deps.as_mut(),
         mock_env(),
         info,
-        ExecuteMsg::UpdateOperators {
+        ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOperators {
             operators: vec![operator.sender.to_string()],
-        },
+        }),
     )
     .unwrap();
 
@@ -325,20 +417,86 @@ fn test_mirror_mint_mint() {
 }
 
 #[test]
-fn test_mirror_mint_open_position_cw20() {
+fn test_mirror_mint_open_position_cw20_not_short() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
     assert_intantiate(deps.as_mut(), info.clone());
 
     let mirror_msg = MirrorMintCw20HookMsg::OpenPosition {
         asset_info: AssetInfo::Token {
-            contract_addr: TEST_TOKEN.to_string(),
+            contract_addr: "minted_asset_token".to_string(),
         },
         collateral_ratio: Decimal::one(),
         short_params: None,
     };
 
     assert_mint_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
+
+    assert_eq!(
+        AssetInfo::Token {
+            contract_addr: "minted_asset_token".to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, "minted_asset_token")
+            .unwrap()
+    );
+    assert_eq!(
+        AssetInfo::Token {
+            contract_addr: TEST_TOKEN.to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, TEST_TOKEN)
+            .unwrap()
+    );
+    assert_eq!(
+        3,
+        WITHDRAWABLE_TOKENS
+            .keys(deps.as_mut().storage, None, None, Order::Ascending)
+            .count()
+    );
+}
+
+#[test]
+fn test_mirror_mint_open_position_cw20_short() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info.clone());
+
+    let mirror_msg = MirrorMintCw20HookMsg::OpenPosition {
+        asset_info: AssetInfo::Token {
+            contract_addr: "minted_asset_token".to_string(),
+        },
+        collateral_ratio: Decimal::one(),
+        short_params: Some(ShortParams {
+            belief_price: None,
+            max_spread: None,
+        }),
+    };
+
+    assert_mint_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
+
+    assert_eq!(
+        AssetInfo::NativeToken {
+            denom: "uusd".to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, "uusd")
+            .unwrap()
+    );
+    assert_eq!(
+        AssetInfo::Token {
+            contract_addr: TEST_TOKEN.to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, TEST_TOKEN)
+            .unwrap()
+    );
+    assert_eq!(
+        3,
+        WITHDRAWABLE_TOKENS
+            .keys(deps.as_mut().storage, None, None, Order::Ascending)
+            .count()
+    );
 }
 
 #[test]
@@ -352,9 +510,9 @@ fn test_mirror_mint_deposit_cw20() {
         deps.as_mut(),
         mock_env(),
         info,
-        ExecuteMsg::UpdateOperators {
+        ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOperators {
             operators: vec![operator.sender.to_string()],
-        },
+        }),
     )
     .unwrap();
 
@@ -403,6 +561,21 @@ fn test_mirror_staking_unbond() {
     };
 
     assert_staking_execute_msg(deps.as_mut(), info, mirror_msg);
+
+    assert_eq!(
+        AssetInfo::Token {
+            contract_addr: "asset_token".to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, "asset_token")
+            .unwrap()
+    );
+    assert_eq!(
+        2,
+        WITHDRAWABLE_TOKENS
+            .keys(deps.as_mut().storage, None, None, Order::Ascending)
+            .count()
+    );
 }
 
 #[test]
@@ -574,6 +747,21 @@ fn test_lock_unlock_position_funds() {
         positions_idx: vec![Uint128::from(1u128)],
     };
     assert_lock_execute_msg(deps.as_mut(), info, mirror_msg);
+
+    assert_eq!(
+        AssetInfo::NativeToken {
+            denom: "uusd".to_string()
+        },
+        WITHDRAWABLE_TOKENS
+            .load(deps.as_mut().storage, "uusd")
+            .unwrap()
+    );
+    assert_eq!(
+        2,
+        WITHDRAWABLE_TOKENS
+            .keys(deps.as_mut().storage, None, None, Order::Ascending)
+            .count()
+    );
 }
 
 #[test]
@@ -602,8 +790,8 @@ fn test_mirror_too_many_funds() {
     )
     .unwrap_err();
     assert_eq!(
-        ContractError::InvalidMirrorFunds {
-            msg: "Mirror expects no funds or a single type of fund to be deposited.".to_string()
+        ContractError::InvalidFunds {
+            msg: "Mirror expects zero or one coin to be sent".to_string()
         },
         res_err
     );
@@ -690,5 +878,29 @@ fn test_update_config() {
             mirror_gov_contract,
             mirror_lock_contract,
         },
+    );
+}
+
+#[test]
+fn test_mirror_andr_receive() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info.clone());
+
+    let mirror_msg = MirrorGovExecuteMsg::EndPoll { poll_id: 1_u64 };
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
+        to_binary(&ExecuteMsg::MirrorGovExecuteMsg(mirror_msg.clone())).unwrap(),
+    )));
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let execute_msg = WasmMsg::Execute {
+        contract_addr: MOCK_MIRROR_GOV_ADDR.to_string(),
+        funds: vec![],
+        msg: to_binary(&mirror_msg).unwrap(),
+    };
+    assert_eq!(
+        Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
+        res
     );
 }

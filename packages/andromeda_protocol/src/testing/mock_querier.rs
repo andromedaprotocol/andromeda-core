@@ -1,11 +1,25 @@
-use crate::{address_list::IncludesAddressResponse, ownership::ContractOwnerResponse};
-use cosmwasm_std::{
-    from_slice,
-    testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SystemError, SystemResult, WasmQuery,
+use crate::{
+    address_list::IncludesAddressResponse,
+    auction::{AuctionStateResponse, QueryMsg as AuctionQueryMsg},
+    ownership::ContractOwnerResponse,
+    primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
 };
-use terra_cosmwasm::TerraQueryWrapper;
+use cosmwasm_std::{
+    coin, from_binary, from_slice,
+    testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
+    to_binary, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult,
+    QueryRequest, SystemError, SystemResult, Timestamp, Uint128, WasmQuery,
+};
+use cw20::{BalanceResponse, Cw20QueryMsg};
+
+use cw721::Expiration;
+use std::collections::HashMap;
+use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
+
+pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
+pub const MOCK_TOKEN_IN_AUCTION: &str = "token1";
+pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
+pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -22,6 +36,31 @@ pub fn mock_dependencies_custom(
 
 pub struct WasmMockQuerier {
     base: MockQuerier<TerraQueryWrapper>,
+    tax_querier: TaxQuerier,
+}
+
+#[derive(Clone, Default)]
+pub struct TaxQuerier {
+    rate: Decimal,
+    // this lets us iterate over all pairs that match the first string
+    caps: HashMap<String, Uint128>,
+}
+
+impl TaxQuerier {
+    pub fn new(rate: Decimal, caps: &[(&String, &Uint128)]) -> Self {
+        TaxQuerier {
+            rate,
+            caps: caps_to_map(caps),
+        }
+    }
+}
+
+fn caps_to_map(caps: &[(&String, &Uint128)]) -> HashMap<String, Uint128> {
+    let mut owner_map: HashMap<String, Uint128> = HashMap::new();
+    for (denom, cap) in caps.iter() {
+        owner_map.insert(denom.to_string(), **cap);
+    }
+    owner_map
 }
 
 impl Querier for WasmMockQuerier {
@@ -43,28 +82,122 @@ impl Querier for WasmMockQuerier {
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         match &request {
-            QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr,
-                msg: _,
-            }) => {
-                if contract_addr == &Addr::unchecked("addresslist_contract_address1") {
-                    let msg_response = IncludesAddressResponse { included: true };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
-                } else if contract_addr == &Addr::unchecked("factory_address") {
-                    let msg_response = ContractOwnerResponse {
-                        owner: String::from("creator"),
-                    };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+            QueryRequest::Custom(TerraQueryWrapper { route, query_data }) => {
+                if &TerraRoute::Treasury == route {
+                    match query_data {
+                        TerraQuery::TaxRate {} => {
+                            let res = TaxRateResponse {
+                                rate: self.tax_querier.rate,
+                            };
+                            SystemResult::Ok(ContractResult::from(to_binary(&res)))
+                        }
+                        TerraQuery::TaxCap { denom } => {
+                            let cap = self
+                                .tax_querier
+                                .caps
+                                .get(denom)
+                                .copied()
+                                .unwrap_or_default();
+                            let res = TaxCapResponse { cap };
+                            SystemResult::Ok(ContractResult::from(to_binary(&res)))
+                        }
+                        _ => panic!("DO NOT ENTER HERE"),
+                    }
                 } else {
-                    let msg_response = IncludesAddressResponse { included: false };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                    panic!("DO NOT ENTER HERE")
+                }
+            }
+            QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
+                match contract_addr.as_str() {
+                    "addresslist_contract_address1" => {
+                        let msg_response = IncludesAddressResponse { included: true };
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                    }
+                    "factory_address" => {
+                        let msg_response = ContractOwnerResponse {
+                            owner: String::from("creator"),
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                    }
+                    MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
+                    MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
+                    MOCK_AUCTION_CONTRACT => self.handle_auction_query(msg),
+                    _ => {
+                        let msg_response = IncludesAddressResponse { included: false };
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                    }
                 }
             }
             _ => self.base.handle_query(request),
         }
     }
 
+    fn handle_cw20_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            Cw20QueryMsg::Balance { .. } => {
+                let balance_response = BalanceResponse {
+                    balance: 10u128.into(),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&balance_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            PrimitiveQueryMsg::GetValue { name } => {
+                let msg_response = match name.clone().unwrap().as_str() {
+                    "percent" => GetValueResponse {
+                        name: name.unwrap(),
+                        value: Primitive::Uint128(1u128.into()),
+                    },
+                    "flat" => GetValueResponse {
+                        name: name.unwrap(),
+                        value: Primitive::Coin(coin(1u128, "uusd")),
+                    },
+                    "flat_cw20" => GetValueResponse {
+                        name: name.unwrap(),
+                        value: Primitive::Coin(coin(1u128, "address")),
+                    },
+                    _ => panic!("Unsupported rate name"),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_auction_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            AuctionQueryMsg::LatestAuctionState { token_id } => {
+                let mut res = AuctionStateResponse {
+                    start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
+                    end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+                    high_bidder_addr: "address".to_string(),
+                    high_bidder_amount: Uint128::from(100u128),
+                    auction_id: Uint128::zero(),
+                    coin_denom: "uusd".to_string(),
+                    claimed: true,
+                    whitelist: None,
+                };
+                if token_id == MOCK_TOKEN_IN_AUCTION {
+                    res.claimed = false;
+                }
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
     pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
-        WasmMockQuerier { base }
+        WasmMockQuerier {
+            base,
+            tax_querier: TaxQuerier::default(),
+        }
+    }
+
+    pub fn with_tax(&mut self, rate: Decimal, caps: &[(&String, &Uint128)]) {
+        self.tax_querier = TaxQuerier::new(rate, caps);
     }
 }

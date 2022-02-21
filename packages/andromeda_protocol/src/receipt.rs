@@ -1,3 +1,4 @@
+use crate::communication::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::{Event, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     /// Mint a new receipt. Only executable by the assigned `minter` address. Generates a receipt ID.
     StoreReceipt {
         receipt: Receipt,
@@ -34,14 +36,6 @@ pub enum ExecuteMsg {
     EditReceipt {
         receipt_id: Uint128,
         receipt: Receipt,
-    },
-    /// Update ownership of the contract. Only executable by the current contract owner.
-    UpdateOwner {
-        /// The address of the new contract owner.
-        address: String,
-    },
-    UpdateOperator {
-        operators: Vec<String>,
     },
 }
 
@@ -52,17 +46,13 @@ pub struct MigrateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// Query receipt by its generated ID.
     Receipt {
         receipt_id: Uint128,
     },
     /// The current contract config.
     ContractInfo {},
-    /// The current contract owner.
-    ContractOwner {},
-    IsOperator {
-        address: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

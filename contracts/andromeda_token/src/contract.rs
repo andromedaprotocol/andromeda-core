@@ -2,13 +2,16 @@
 use cosmwasm_std::entry_point;
 
 use andromeda_protocol::{
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, REPLY_ADDRESS_LIST},
+        auction::{on_auction_reply, AUCTION_CONTRACT, REPLY_AUCTION},
         read_modules,
         receipt::{on_receipt_reply, REPLY_RECEIPT},
         store_modules, Modules,
     },
+    operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     token::{
@@ -18,8 +21,8 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    attr, coin, to_binary, Addr, Api, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Pair,
-    Reply, Response, StdError, StdResult,
+    attr, coin, Addr, Api, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Pair, Reply,
+    Response, StdError, StdResult,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{
@@ -66,7 +69,7 @@ pub fn instantiate(
 
     CONFIG.save(deps.storage, &config)?;
     CONTRACT_OWNER.save(deps.storage, &deps.api.addr_validate(&msg.minter)?)?;
-    store_modules(deps.storage, modules)?;
+    store_modules(deps.storage, modules, &deps.querier)?;
 
     Ok(Response::new()
         .add_submessages(mod_res.msgs)
@@ -80,15 +83,18 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(StdError::generic_err(msg.result.unwrap_err()));
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
     }
 
     match msg.id {
         REPLY_RECEIPT => on_receipt_reply(deps, msg),
         REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
-        _ => Err(StdError::generic_err("reply id is invalid")),
+        REPLY_AUCTION => on_auction_reply(deps, msg),
+        _ => Err(ContractError::InvalidReplyId {}),
     }
 }
 
@@ -103,6 +109,7 @@ pub fn execute(
     modules.hook(|module| module.on_execute(&deps, info.clone(), env.clone()))?;
 
     match msg {
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Mint(msg) => execute_mint(deps, env, info, msg),
         ExecuteMsg::TransferNft {
             recipient,
@@ -133,10 +140,31 @@ pub fn execute(
         } => execute_transfer_agreement(deps, env, info, token_id, purchaser, amount.u128(), denom),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdatePricing { token_id, price } => {
             execute_update_pricing(deps, env, info, token_id, price)
         }
+    }
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
+        }
+        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -144,7 +172,7 @@ pub fn execute_mint(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: MintMsg,
+    msg: Box<MintMsg>,
 ) -> Result<Response, ContractError> {
     deps.api.addr_validate(&msg.owner)?;
     let token = Token {
@@ -412,11 +440,13 @@ fn execute_transfer_agreement(
         )
     })?;
     let mut token = load_token(deps.storage, token_id.clone())?;
-
-    require(
-        info.sender.to_string().eq(&token.owner),
-        ContractError::Unauthorized {},
-    )?;
+    let mut condition = info.sender.to_string().eq(&token.owner);
+    // If auction is a module for this token we whitelist it to be able to make transfer agreements.
+    let auction_contract = AUCTION_CONTRACT.may_load(deps.storage)?;
+    if let Some(auction_contract) = auction_contract {
+        condition = condition || info.sender.to_string().eq(&auction_contract);
+    }
+    require(condition, ContractError::Unauthorized {})?;
     require(!token.archived, ContractError::TokenIsArchived {})?;
 
     let amount = coin(amount, denom);
@@ -601,15 +631,16 @@ fn remove_approval(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::OwnerOf { token_id } => to_binary(&query_owner(deps, env, token_id)?),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::OwnerOf { token_id } => encode_binary(&query_owner(deps, env, token_id)?),
         QueryMsg::ApprovedForAll {
             start_after,
             owner,
             include_expired,
             limit,
-        } => to_binary(&query_all_approvals(
+        } => encode_binary(&query_all_approvals(
             deps,
             env,
             owner,
@@ -617,24 +648,46 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::NumTokens {} => to_binary(&query_num_tokens(deps, env)?),
-        QueryMsg::NftInfo { token_id } => to_binary(&query_nft_info(deps, token_id)?),
-        QueryMsg::AllNftInfo { token_id } => to_binary(&query_all_nft_info(deps, env, token_id)?),
+        QueryMsg::NumTokens {} => encode_binary(&query_num_tokens(deps, env)?),
+        QueryMsg::NftInfo { token_id } => encode_binary(&query_nft_info(deps, token_id)?),
+        QueryMsg::AllNftInfo { token_id } => {
+            encode_binary(&query_all_nft_info(deps, env, token_id)?)
+        }
         QueryMsg::Tokens {
             owner,
             start_after,
             limit,
-        } => to_binary(&query_owned_tokens(deps, owner, start_after, limit)?),
+        } => encode_binary(&query_owned_tokens(deps, owner, start_after, limit)?),
         QueryMsg::AllTokens { start_after, limit } => {
-            to_binary(&query_all_tokens(deps, start_after, limit)?)
+            encode_binary(&query_all_tokens(deps, start_after, limit)?)
         }
-        QueryMsg::ContractInfo {} => to_binary(&query_contract_info(deps)?),
-        QueryMsg::ModuleInfo {} => to_binary(&query_module_info(deps)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::ContractInfo {} => encode_binary(&query_contract_info(deps)?),
+        QueryMsg::ModuleInfo {} => encode_binary(&query_module_info(deps)?),
     }
 }
 
-fn query_owner(deps: Deps, _env: Env, token_id: String) -> StdResult<OwnerOfResponse> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received = parse_message(data)?;
+            match received {
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => query(deps, env, received),
+            }
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
+    }
+}
+
+fn query_owner(deps: Deps, _env: Env, token_id: String) -> Result<OwnerOfResponse, ContractError> {
     let token = load_token(deps.storage, token_id)?;
     Ok(OwnerOfResponse {
         owner: token.owner.clone(),
@@ -649,7 +702,7 @@ fn query_all_approvals(
     include_expired: bool,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<ApprovedForAllResponse> {
+) -> Result<ApprovedForAllResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start_addr = maybe_addr(deps.api, start_after)?;
     let start = start_addr.map(|addr| Bound::exclusive(addr.as_ref()));
@@ -664,7 +717,7 @@ fn query_all_approvals(
     Ok(ApprovedForAllResponse { operators: res? })
 }
 
-fn query_num_tokens(deps: Deps, _env: Env) -> StdResult<NumTokensResponse> {
+fn query_num_tokens(deps: Deps, _env: Env) -> Result<NumTokensResponse, ContractError> {
     let num_tokens = NUM_TOKENS.load(deps.storage).unwrap_or_default();
     Ok(NumTokensResponse { count: num_tokens })
 }
@@ -672,7 +725,7 @@ fn query_num_tokens(deps: Deps, _env: Env) -> StdResult<NumTokensResponse> {
 fn query_nft_info(
     deps: Deps,
     token_id: String,
-) -> StdResult<NftInfoResponse<NftInfoResponseExtension>> {
+) -> Result<NftInfoResponse<NftInfoResponseExtension>, ContractError> {
     let token = load_token(deps.storage, token_id)?;
     let extension = NftInfoResponseExtension {
         metadata: token.metadata,
@@ -693,14 +746,14 @@ fn query_all_nft_info(
     deps: Deps,
     env: Env,
     token_id: String,
-) -> StdResult<AllNftInfoResponse<NftInfoResponseExtension>> {
+) -> Result<AllNftInfoResponse<NftInfoResponseExtension>, ContractError> {
     let access = query_owner(deps, env, token_id.clone())?;
     let info = query_nft_info(deps, token_id)?;
 
     Ok(AllNftInfoResponse { access, info })
 }
 
-fn query_contract_info(deps: Deps) -> StdResult<ContractInfoResponse> {
+fn query_contract_info(deps: Deps) -> Result<ContractInfoResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     Ok(ContractInfoResponse {
         name: config.name,
@@ -708,7 +761,7 @@ fn query_contract_info(deps: Deps) -> StdResult<ContractInfoResponse> {
     })
 }
 
-fn query_module_info(deps: Deps) -> StdResult<ModuleInfoResponse> {
+fn query_module_info(deps: Deps) -> Result<ModuleInfoResponse, ContractError> {
     let modules = read_modules(deps.storage)?;
     let contracts: Vec<ModuleContract> = modules
         .module_defs
@@ -737,7 +790,7 @@ fn query_owned_tokens(
     owner: String,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<TokensResponse> {
+) -> Result<TokensResponse, ContractError> {
     let owner_addr = deps.api.addr_validate(&owner)?;
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
@@ -760,7 +813,7 @@ fn query_all_tokens(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<TokensResponse> {
+) -> Result<TokensResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 
@@ -815,7 +868,11 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::token::{Approval, ExecuteMsg};
+    use andromeda_protocol::{
+        modules::auction::AUCTION_CONTRACT,
+        testing::mock_querier::{mock_dependencies_custom, MOCK_AUCTION_CONTRACT},
+        token::{Approval, ExecuteMsg},
+    };
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
@@ -896,7 +953,7 @@ mod tests {
 
         store_mock_config(deps.as_mut(), String::from("minter"));
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -928,7 +985,7 @@ mod tests {
 
         store_mock_config(deps.as_mut(), String::from("minter"));
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
@@ -1212,7 +1269,7 @@ mod tests {
         //store config
         store_mock_config(deps.as_mut(), minter.to_string());
 
-        let mint_msg = ExecuteMsg::Mint(MintMsg {
+        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
             description: None,
@@ -1220,7 +1277,7 @@ mod tests {
             metadata: None,
             token_uri: None,
             pricing: None,
-        });
+        }));
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
         let transfer_msg = ExecuteMsg::TransferNft {
@@ -1267,7 +1324,7 @@ mod tests {
         //store config
         store_mock_config(deps.as_mut(), minter.to_string());
 
-        let mint_msg = ExecuteMsg::Mint(MintMsg {
+        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
             description: None,
@@ -1275,7 +1332,7 @@ mod tests {
             metadata: None,
             token_uri: None,
             pricing: None,
-        });
+        }));
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
         let approve_all_msg = ExecuteMsg::ApproveAll {
@@ -1330,7 +1387,7 @@ mod tests {
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
 
-        let mint_msg = ExecuteMsg::Mint(MintMsg {
+        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
             token_id: token_id.clone(),
             owner: minter.to_string(),
             description: None,
@@ -1338,7 +1395,7 @@ mod tests {
             metadata,
             token_uri: None,
             pricing: None,
-        });
+        }));
         execute(deps.as_mut(), env.clone(), info.clone(), mint_msg).unwrap();
 
         let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
@@ -1347,6 +1404,58 @@ mod tests {
             amount,
             purchaser: purchaser.to_string(),
         };
+        execute(deps.as_mut(), env.clone(), info, transfer_agreement_msg).unwrap();
+
+        let agreement_query = QueryMsg::NftInfo { token_id };
+        let res = query(deps.as_ref(), env, agreement_query).unwrap();
+        let token_res: NftInfoResponse<NftInfoResponseExtension> = from_binary(&res).unwrap();
+        let agreement = token_res.extension.transfer_agreement.unwrap();
+
+        assert_eq!(agreement.purchaser, purchaser);
+        assert_eq!(agreement.amount, coin(amount.u128(), denom))
+    }
+
+    #[test]
+    fn test_transfer_agreement_as_auction_contract() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let minter = "minter";
+        let purchaser = "purchaser";
+        let info = mock_info(minter, &[]);
+        let token_id = String::default();
+        let denom = "uluna";
+        let amount = Uint128::from(100u64);
+        let metadata = None;
+
+        let instantiate_msg = InstantiateMsg {
+            name: "Token Name".to_string(),
+            symbol: "TS".to_string(),
+            minter: minter.to_string(),
+            modules: vec![],
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+
+        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
+            token_id: token_id.clone(),
+            owner: minter.to_string(),
+            description: None,
+            name: "Some Token".to_string(),
+            metadata,
+            token_uri: None,
+            pricing: None,
+        }));
+        execute(deps.as_mut(), env.clone(), info, mint_msg).unwrap();
+
+        AUCTION_CONTRACT
+            .save(deps.as_mut().storage, &MOCK_AUCTION_CONTRACT.to_string())
+            .unwrap();
+        let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
+            token_id: token_id.clone(),
+            denom: denom.to_string(),
+            amount,
+            purchaser: purchaser.to_string(),
+        };
+        let info = mock_info(MOCK_AUCTION_CONTRACT, &[]);
         execute(deps.as_mut(), env.clone(), info, transfer_agreement_msg).unwrap();
 
         let agreement_query = QueryMsg::NftInfo { token_id };
@@ -1377,7 +1486,7 @@ mod tests {
             pricing: None,
         };
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1400,7 +1509,9 @@ mod tests {
 
         assert_eq!(
             query_res,
-            StdError::not_found("core::option::Option<andromeda_protocol::token::Token>")
+            ContractError::Std(StdError::not_found(
+                "core::option::Option<andromeda_protocol::token::Token>"
+            ))
         )
     }
 
@@ -1423,7 +1534,7 @@ mod tests {
             pricing: None,
         };
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1475,7 +1586,7 @@ mod tests {
             pricing: None,
         };
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1525,7 +1636,7 @@ mod tests {
             pricing: None,
         };
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -1559,7 +1670,7 @@ mod tests {
             pricing: None,
         };
 
-        let msg = ExecuteMsg::Mint(mint_msg);
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
 
         execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -1571,5 +1682,43 @@ mod tests {
         let val: TokensResponse = from_binary(&res).unwrap();
 
         assert_eq!(val.tokens, vec![token_id.to_string()])
+    }
+
+    #[test]
+    fn test_andr_receive() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let token_id = String::default();
+        let creator = "creator".to_string();
+
+        let mint_msg = MintMsg {
+            token_id: token_id.clone(),
+            owner: creator.clone(),
+            description: Some("Test Token".to_string()),
+            name: "TestToken".to_string(),
+            metadata: None,
+            token_uri: None,
+            pricing: None,
+        };
+
+        store_mock_config(deps.as_mut(), String::from("creator"));
+
+        let msg = ExecuteMsg::Mint(Box::new(mint_msg));
+
+        let msg =
+            ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(encode_binary(&msg).unwrap())));
+
+        execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let query_msg = QueryMsg::OwnerOf { token_id };
+        let query_msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
+            encode_binary(&query_msg).unwrap(),
+        )));
+
+        let query_res = query(deps.as_ref(), env, query_msg).unwrap();
+        let query_val: OwnerOfResponse = from_binary(&query_res).unwrap();
+
+        assert_eq!(query_val.owner, creator)
     }
 }

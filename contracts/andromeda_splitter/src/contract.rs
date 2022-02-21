@@ -1,23 +1,24 @@
 use crate::state::SPLITTER;
 use andromeda_protocol::{
+    communication::encode_binary,
+    communication::{parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         hooks::{HookResponse, MessageHooks},
         Module, Modules,
     },
-    operators::{execute_update_operators, query_is_operator},
+    operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
-    splitter::GetSplitterConfigResponse,
     splitter::{
-        validate_recipient_list, AddressPercent, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-        Splitter,
+        validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse,
+        InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
     },
 };
 use cosmwasm_std::{
-    attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128,
+    attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -84,26 +85,48 @@ pub fn execute(
             execute_update_address_list(deps, info, env, address_list)
         }
         ExecuteMsg::Send {} => execute_send(deps, info),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
+        ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
+    }
+}
+
+pub fn execute_andromeda(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(..) => execute_send(deps, info),
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
+        }
+        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
-        return Err(StdError::generic_err(msg.result.unwrap_err()));
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
     }
 
     match msg.id {
         REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
-        _ => Err(StdError::generic_err("reply id is invalid")),
+        _ => Err(ContractError::InvalidReplyId {}),
     }
 }
 
 fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let sent_funds: Vec<Coin> = info.funds.clone();
-    require(!sent_funds.is_empty(), ContractError::EmptyFunds {})?;
+    require(
+        !sent_funds.is_empty(),
+        ContractError::InvalidFunds {
+            msg: "Require at least one coin to be sent".to_string(),
+        },
+    )?;
 
     let splitter = SPLITTER.load(deps.storage)?;
     let mut submsg: Vec<SubMsg> = Vec::new();
@@ -126,10 +149,12 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
             remainder_funds[i].amount -= recip_coin.amount;
             vec_coin.push(recip_coin);
         }
-        submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: recipient_addr.addr.clone(),
-            amount: vec_coin,
-        })));
+        // ADO receivers must use AndromedaMsg::Receive to execute their functionality
+        // Others may just receive the funds
+        let msg = recipient_addr
+            .recipient
+            .generate_msg_native(&deps.as_ref(), vec_coin)?;
+        submsg.push(msg);
     }
     remainder_funds = remainder_funds
         .into_iter()
@@ -238,15 +263,35 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetSplitterConfig {} => to_binary(&query_splitter(deps)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
 }
 
-fn query_splitter(deps: Deps) -> StdResult<GetSplitterConfigResponse> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received: QueryMsg = parse_message(data)?;
+            match received {
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => query(deps, env, received),
+            }
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
+    }
+}
+
+fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError> {
     let splitter = SPLITTER.load(deps.storage)?;
     let address_list_contract = match splitter.clone().address_list {
         Some(addr_list) => addr_list.get_contract_address(deps.storage),
@@ -261,7 +306,7 @@ fn query_splitter(deps: Deps) -> StdResult<GetSplitterConfigResponse> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::modules::address_list::AddressListModule;
+    use andromeda_protocol::{communication::Recipient, modules::address_list::AddressListModule};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{from_binary, Addr, Coin, Uint128};
 
@@ -273,7 +318,7 @@ mod tests {
         let msg = InstantiateMsg {
             address_list: None,
             recipients: vec![AddressPercent {
-                addr: String::from("Some Address"),
+                recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Uint128::from(100_u128),
             }],
         };
@@ -384,11 +429,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                addr: "address1".to_string(),
+                recipient: Recipient::from_string(String::from("addr1")),
                 percent: Uint128::from(40_u128),
             },
             AddressPercent {
-                addr: "address1".to_string(),
+                recipient: Recipient::from_string(String::from("addr1")),
                 percent: Uint128::from(60_u128),
             },
         ];
@@ -445,11 +490,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                addr: recip_address1.clone(),
+                recipient: Recipient::from_string(recip_address1.clone()),
                 percent: Uint128::from(recip_percent1),
             },
             AddressPercent {
-                addr: recip_address2.clone(),
+                recipient: Recipient::from_string(recip_address2.clone()),
                 percent: Uint128::from(recip_percent2),
             },
         ];
@@ -557,11 +602,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                addr: recip_address1,
+                recipient: Recipient::from_string(recip_address1),
                 percent: Uint128::from(recip_percent1),
             },
             AddressPercent {
-                addr: recip_address2,
+                recipient: Recipient::from_string(recip_address2),
                 percent: Uint128::from(recip_percent2),
             },
         ];

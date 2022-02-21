@@ -3,22 +3,26 @@ use andromeda_protocol::{
         add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
         InstantiateMsg, MigrateMsg, QueryMsg,
     },
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    operators::{execute_update_operators, initialize_operators, is_operator, query_is_operator},
+    operators::{
+        execute_update_operators, initialize_operators, is_operator, query_is_operator,
+        query_operators,
+    },
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
 use cw2::{get_contract_version, set_contract_version};
 
-use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
-
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-addresslist";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[entry_point]
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -34,18 +38,39 @@ pub fn instantiate(
     ]))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::AddAddress { address } => execute_add_address(deps, info, address),
         ExecuteMsg::RemoveAddress { address } => execute_remove_address(deps, info, address),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        ExecuteMsg::UpdateOperator { operators } => execute_update_operators(deps, info, operators),
+    }
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
+        }
+        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -85,6 +110,7 @@ fn execute_remove_address(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version = get_contract_version(deps.storage)?;
     if version.contract != CONTRACT_NAME {
@@ -95,16 +121,29 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
-#[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::IncludesAddress { address } => to_binary(&query_address(deps, &address)?),
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, &address)?),
+        QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
     }
 }
 
-fn query_address(deps: Deps, address: &str) -> StdResult<IncludesAddressResponse> {
+fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let address: String = parse_message(data)?;
+            encode_binary(&query_address(deps, &address)?)
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
+    }
+}
+
+fn query_address(deps: Deps, address: &str) -> Result<IncludesAddressResponse, ContractError> {
     Ok(IncludesAddressResponse {
         included: includes_address(deps.storage, address)?,
     })
@@ -115,6 +154,7 @@ mod tests {
     use super::*;
     use andromeda_protocol::address_list::ADDRESS_LIST;
     use andromeda_protocol::operators::OPERATORS;
+    use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
@@ -222,5 +262,23 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
         let res = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, res);
+    }
+
+    #[test]
+    fn test_andr_get_query() {
+        let mut deps = mock_dependencies(&[]);
+
+        let address = "whitelistee";
+
+        ADDRESS_LIST
+            .save(deps.as_mut().storage, address.to_string(), &true)
+            .unwrap();
+
+        let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(encode_binary(&address).unwrap())));
+
+        let res: IncludesAddressResponse =
+            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+        assert_eq!(IncludesAddressResponse { included: true }, res);
     }
 }

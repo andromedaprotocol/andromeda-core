@@ -1,6 +1,7 @@
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     astroport_wrapped_cdp::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    communication::encode_binary,
     error::ContractError,
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
@@ -220,10 +221,10 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::ContractOwner {} => encode_binary(&query_contract_owner(deps)?),
+        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
     }
 }
 

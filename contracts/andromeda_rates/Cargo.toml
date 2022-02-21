@@ -26,4 +26,5 @@ schemars = "0.8.3"
 cosmwasm-storage = "0.16.0"
 cw-storage-plus = "0.9.1"
 cw2 = "0.9.1"
+cw20 = "0.9.1"
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }

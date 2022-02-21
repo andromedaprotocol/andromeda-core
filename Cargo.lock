@@ -48,6 +48,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-auction"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.9.1",
+ "cw721",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+]
+
+[[package]]
 name = "andromeda-cw20"
 version = "0.1.0"
 dependencies = [
@@ -127,6 +141,7 @@ dependencies = [
  "schemars",
  "serde",
  "terra-cosmwasm",
+ "terraswap",
  "thiserror",
 ]
 
@@ -139,6 +154,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
+ "cw20 0.9.1",
  "schemars",
  "serde",
 ]

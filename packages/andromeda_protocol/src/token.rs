@@ -1,10 +1,14 @@
 use std::sync::{Arc, Mutex};
 
-use crate::error::ContractError;
-use crate::modules::{
-    common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
+use crate::{
+    common::get_tax_deducted_funds,
+    communication::{AndromedaMsg, AndromedaQuery},
+    error::ContractError,
+    modules::{
+        common::calculate_fee, read_modules, receipt::get_receipt_module, ModuleDefinition, Rate,
+    },
+    require,
 };
-use crate::require;
 use cosmwasm_std::{
     attr, Addr, BankMsg, Binary, BlockInfo, Coin, DepsMut, Env, Event, MessageInfo, Response,
     Uint128,
@@ -131,11 +135,15 @@ impl TransferAgreement {
         }
     }
     /// Generates a `BankMsg` for a given `Rate` to a given address
-    pub fn generate_fee_payment(&self, to_address: String, rate: Rate) -> BankMsg {
-        BankMsg::Send {
+    pub fn generate_fee_payment(
+        &self,
+        to_address: String,
+        rate: Rate,
+    ) -> Result<BankMsg, ContractError> {
+        Ok(BankMsg::Send {
             to_address,
-            amount: vec![calculate_fee(rate, self.amount.clone())],
-        }
+            amount: vec![calculate_fee(rate, &self.amount)?],
+        })
     }
     /// Generates an event related to the agreed transfer of a token
     pub fn generate_event(self) -> Event {
@@ -169,6 +177,13 @@ impl TransferAgreement {
         })?;
 
         for payment in payments.lock().unwrap().iter().cloned() {
+            let payment = match payment {
+                BankMsg::Send { to_address, amount } => BankMsg::Send {
+                    to_address,
+                    amount: get_tax_deducted_funds(deps, amount)?,
+                },
+                _ => panic!(),
+            };
             res = res.add_message(payment);
         }
 
@@ -263,10 +278,14 @@ pub struct MintMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     /// Mints a token
-    Mint(MintMsg),
+    Mint(Box<MintMsg>),
     /// Transfers ownership of a token
-    TransferNft { recipient: String, token_id: String },
+    TransferNft {
+        recipient: String,
+        token_id: String,
+    },
     /// Sends a token to another contract
     SendNft {
         contract: String,
@@ -281,18 +300,27 @@ pub enum ExecuteMsg {
         expires: Option<Expiration>,
     },
     /// Remove previously granted Approval
-    Revoke { spender: String, token_id: String },
+    Revoke {
+        spender: String,
+        token_id: String,
+    },
     /// Approves an address for all tokens owned by the sender
     ApproveAll {
         operator: String,
         expires: Option<Expiration>,
     },
     /// Remove previously granted ApproveAll permission
-    RevokeAll { operator: String },
+    RevokeAll {
+        operator: String,
+    },
     /// Burns a token, removing all data related to it. The ID of the token is still reserved.
-    Burn { token_id: String },
+    Burn {
+        token_id: String,
+    },
     /// Archives a token, causing it to be immutable but readable
-    Archive { token_id: String },
+    Archive {
+        token_id: String,
+    },
     /// Assigns a `TransferAgreement` for a token
     TransferAgreement {
         token_id: String,
@@ -305,11 +333,6 @@ pub enum ExecuteMsg {
         token_id: String,
         price: Option<Coin>,
     },
-    /// Update ownership of the contract. Only executable by the current contract owner.
-    UpdateOwner {
-        /// The address of the new contract owner.
-        address: String,
-    },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -318,8 +341,11 @@ pub struct MigrateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// Owner of the given token by ID
-    OwnerOf { token_id: String },
+    OwnerOf {
+        token_id: String,
+    },
     /// Approvals for a given address (paginated)
     ApprovedForAll {
         owner: String,
@@ -330,9 +356,13 @@ pub enum QueryMsg {
     /// Amount of tokens minted by the contract
     NumTokens {},
     /// The data of a token
-    NftInfo { token_id: String },
+    NftInfo {
+        token_id: String,
+    },
     /// The data of a token and any approvals assigned to it
-    AllNftInfo { token_id: String },
+    AllNftInfo {
+        token_id: String,
+    },
     /// All tokens minted by the contract owned by a given address (paginated)
     Tokens {
         owner: String,
@@ -348,8 +378,6 @@ pub enum QueryMsg {
     ModuleInfo {},
     /// The current config of the contract
     ContractInfo {},
-    /// The current owner of the contract
-    ContractOwner {},
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArchivedResponse {

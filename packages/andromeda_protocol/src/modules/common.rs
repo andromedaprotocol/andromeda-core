@@ -13,21 +13,21 @@ use cosmwasm_std::{coin, BankMsg, Coin, Uint128};
 /// * `payment` - The amount used to calculate the fee
 ///
 /// Returns the fee amount in a `Coin` struct.
-pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
+pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractError> {
     match fee_rate {
-        Rate::Flat(rate) => coin(rate.amount.u128(), rate.denom),
+        Rate::Flat(rate) => Ok(coin(rate.amount.u128(), rate.denom)),
         Rate::Percent(rate) => {
             // [COM-03] Make sure that fee_rate between 0 and 100.
             require(
                 // No need for rate >=0 due to type limits (Question: Should add or remove?)
-                rate <= 100,
+                rate <= Uint128::from(100u128),
                 ContractError::InvalidRate {},
             )
             .unwrap();
             let mut fee_amount = payment.amount.multiply_ratio(rate, 100_u128).u128();
 
             //Always round any remainder up and prioritise the fee receiver
-            let reversed_fee = (fee_amount * 100) / Uint128::from(rate).u128();
+            let reversed_fee = (fee_amount * 100) / rate.u128();
             if payment.amount.u128() > reversed_fee {
                 // [COM-1] Added checked add to fee_amount rather than direct increment
                 let res = fee_amount.checked_add(1);
@@ -36,9 +36,9 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
                     _ => fee_amount = res.unwrap(),
                 };
             }
-
-            coin(fee_amount, payment.denom)
+            Ok(coin(fee_amount, payment.denom.clone()))
         }
+        Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
     }
 }
 
@@ -70,8 +70,7 @@ pub fn is_unique<M: Module>(module: &M, all_modules: &[ModuleDefinition]) -> boo
 /// ## Arguments
 /// * `coins` - The vector of `Coin` structs from which to deduct the given funds
 /// * `funds` - The amount to deduct
-#[allow(clippy::ptr_arg)]
-pub fn deduct_funds(coins: &mut Vec<Coin>, funds: Coin) -> Result<bool, ContractError> {
+pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<bool, ContractError> {
     let coin_amount = coins.iter_mut().find(|c| c.denom.eq(&funds.denom));
 
     match coin_amount {
@@ -112,7 +111,7 @@ pub fn add_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) {
 /// Errors if there is no payment from which to deduct the funds
 #[allow(clippy::ptr_arg)]
 pub fn deduct_payment(
-    payments: &mut Vec<BankMsg>,
+    payments: &mut [BankMsg],
     to: String,
     amount: Coin,
 ) -> Result<bool, ContractError> {
@@ -124,7 +123,7 @@ pub fn deduct_payment(
     match payment {
         Some(p) => {
             if let BankMsg::Send { amount: am, .. } = p {
-                deduct_funds(am, amount)?;
+                deduct_funds(am, &amount)?;
             }
             Ok(true)
         }
@@ -137,9 +136,8 @@ pub fn deduct_payment(
 mod tests {
     use super::*;
     use crate::modules::address_list::AddressListModule;
-    use crate::modules::FlatRate;
     use crate::modules::Rate;
-    use cosmwasm_std::{coin, Uint128};
+    use cosmwasm_std::{coin, Coin, Uint128};
 
     #[test]
     fn test_is_unique() {
@@ -160,7 +158,7 @@ mod tests {
             code_id: None,
         };
         let other_module = ModuleDefinition::Taxable {
-            rate: Rate::Percent(2),
+            rate: Rate::Percent(2u128.into()),
             receivers: vec![],
             description: None,
         };
@@ -180,7 +178,7 @@ mod tests {
     fn test_deduct_funds() {
         let mut funds: Vec<Coin> = vec![coin(100, "uluna")];
 
-        deduct_funds(&mut funds, coin(10, "uluna")).unwrap();
+        deduct_funds(&mut funds, &coin(10, "uluna")).unwrap();
 
         assert_eq!(Uint128::from(90_u64), funds[0].amount);
         assert_eq!(String::from("uluna"), funds[0].denom);
@@ -190,7 +188,7 @@ mod tests {
             amount: Uint128::from(5_u64),
         }];
 
-        let e = deduct_funds(&mut funds, coin(10, "uluna")).unwrap_err();
+        let e = deduct_funds(&mut funds, &coin(10, "uluna")).unwrap_err();
 
         assert_eq!(ContractError::InsufficientFunds {}, e);
     }
@@ -242,23 +240,22 @@ mod tests {
     #[test]
     fn test_calculate_fee() {
         let payment = coin(101, "uluna");
-        let expected = coin(5, "uluna");
-        let fee = Rate::Percent(4);
+        let expected = Ok(coin(5, "uluna"));
+        let fee = Rate::Percent(4u128.into());
 
-        let received = calculate_fee(fee, payment);
+        let received = calculate_fee(fee, &payment);
 
         assert_eq!(expected, received);
 
         assert_eq!(expected, received);
 
         let payment = coin(125, "uluna");
-        let expected = coin(5, "uluna");
-        let fee = Rate::Flat(FlatRate {
+        let fee = Rate::Flat(Coin {
             amount: Uint128::from(5_u128),
             denom: "uluna".to_string(),
         });
 
-        let received = calculate_fee(fee, payment);
+        let received = calculate_fee(fee, &payment);
 
         assert_eq!(expected, received);
     }

@@ -1,6 +1,14 @@
+use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
 use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WithdrawalType {
+    Amount(Uint128),
+    Percentage(Uint128),
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -11,23 +19,14 @@ pub enum AnchorMarketMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub anchor_token: String,
-    pub anchor_mint: String,
-    pub stable_denom: String,
+    pub aust_token: String,
+    pub anchor_market: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Deposit {},
-    Withdraw { position_idx: Uint128 },
-    Yourself { yourself_msg: YourselfMsg },
-    UpdateOwner { address: String },
-}
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum YourselfMsg {
-    TransferUst { receiver: String },
+    AndrReceive(AndromedaMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -37,14 +36,18 @@ pub struct MigrateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     Config {},
-    ContractOwner {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
 pub struct ConfigResponse {
-    pub anchor_mint: String,
-    pub anchor_token: String,
-    pub stable_denom: String,
+    pub anchor_market: String,
+    pub aust_token: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct PositionResponse {
+    pub recipient: Recipient,
+    pub aust_amount: Uint128,
 }

@@ -1,23 +1,30 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, Uint128, WasmMsg,
+    from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
+    Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
+    common::get_tax_deducted_funds,
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     mirror_wrapped_cdp::{
-        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, MirrorLockExecuteMsg,
+        MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
-    operators::{execute_update_operators, initialize_operators, is_operator, query_is_operator},
+    operators::{
+        execute_update_operators, initialize_operators, is_operator, query_is_operator,
+        query_operators,
+    },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
+    withdraw::{add_withdrawable_token, execute_withdraw},
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use terraswap::asset::{Asset, AssetInfo};
+use terraswap::asset::AssetInfo;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_mirror_wrapped_cdp";
@@ -40,6 +47,18 @@ pub fn instantiate(
         mirror_gov_contract: deps.api.addr_validate(&msg.mirror_gov_contract)?,
         mirror_lock_contract: deps.api.addr_validate(&msg.mirror_lock_contract)?,
     };
+    let mirror_token_contract = deps
+        .api
+        .addr_validate(&msg.mirror_token_contract)?
+        .to_string();
+    // We will need to be able to withdraw the MIR token.
+    add_withdrawable_token(
+        deps.storage,
+        &mirror_token_contract.clone(),
+        &AssetInfo::Token {
+            contract_addr: mirror_token_contract,
+        },
+    )?;
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
@@ -51,42 +70,24 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     match msg {
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
-        ExecuteMsg::MirrorMintExecuteMsg(msg) => execute_mirror_msg(
-            deps,
-            info.sender.to_string(),
-            info.funds,
-            config.mirror_mint_contract.to_string(),
-            to_binary(&msg)?,
-        ),
-        ExecuteMsg::MirrorStakingExecuteMsg(msg) => execute_mirror_msg(
-            deps,
-            info.sender.to_string(),
-            info.funds,
-            config.mirror_staking_contract.to_string(),
-            to_binary(&msg)?,
-        ),
+        ExecuteMsg::MirrorMintExecuteMsg(msg) => execute_mirror_mint_msg(deps, info, msg),
+        ExecuteMsg::MirrorStakingExecuteMsg(msg) => execute_mirror_staking_msg(deps, info, msg),
         ExecuteMsg::MirrorGovExecuteMsg(msg) => execute_mirror_msg(
             deps,
             info.sender.to_string(),
             info.funds,
             config.mirror_gov_contract.to_string(),
-            to_binary(&msg)?,
+            encode_binary(&msg)?,
         ),
-        ExecuteMsg::MirrorLockExecuteMsg(msg) => execute_mirror_msg(
-            deps,
-            info.sender.to_string(),
-            info.funds,
-            config.mirror_lock_contract.to_string(),
-            to_binary(&msg)?,
-        ),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        ExecuteMsg::MirrorLockExecuteMsg(msg) => execute_mirror_lock_msg(deps, info, msg),
         ExecuteMsg::UpdateConfig {
             mirror_mint_contract,
             mirror_staking_contract,
@@ -100,9 +101,178 @@ pub fn execute(
             mirror_gov_contract,
             mirror_lock_contract,
         ),
-        ExecuteMsg::UpdateOperators { operators } => {
+    }
+}
+
+fn execute_mirror_mint_msg(
+    deps: DepsMut,
+    info: MessageInfo,
+    msg: MirrorMintExecuteMsg,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let binary = encode_binary(&msg)?;
+    match msg {
+        MirrorMintExecuteMsg::OpenPosition {
+            collateral,
+            asset_info,
+            collateral_ratio: _,
+            short_params,
+        } => {
+            handle_open_position_withdrawable_tokens(
+                deps.storage,
+                collateral.info,
+                asset_info,
+                short_params.is_some(),
+            )?;
+
+            execute_mirror_msg(
+                deps,
+                info.sender.to_string(),
+                info.funds,
+                config.mirror_mint_contract.to_string(),
+                binary,
+            )
+        }
+        _ => execute_mirror_msg(
+            deps,
+            info.sender.to_string(),
+            info.funds,
+            config.mirror_mint_contract.to_string(),
+            binary,
+        ),
+    }
+}
+
+fn execute_mirror_staking_msg(
+    deps: DepsMut,
+    info: MessageInfo,
+    msg: MirrorStakingExecuteMsg,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let binary = encode_binary(&msg)?;
+    match msg {
+        MirrorStakingExecuteMsg::Unbond {
+            asset_token,
+            amount: _,
+        } => {
+            add_withdrawable_token(
+                deps.storage,
+                &asset_token.clone(),
+                &AssetInfo::Token {
+                    contract_addr: asset_token,
+                },
+            )?;
+
+            execute_mirror_msg(
+                deps,
+                info.sender.to_string(),
+                info.funds,
+                config.mirror_staking_contract.to_string(),
+                binary,
+            )
+        }
+        _ => execute_mirror_msg(
+            deps,
+            info.sender.to_string(),
+            info.funds,
+            config.mirror_staking_contract.to_string(),
+            binary,
+        ),
+    }
+}
+
+fn execute_mirror_lock_msg(
+    deps: DepsMut,
+    info: MessageInfo,
+    msg: MirrorLockExecuteMsg,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let binary = encode_binary(&msg)?;
+    match msg {
+        MirrorLockExecuteMsg::UnlockPositionFunds { positions_idx: _ } => {
+            add_withdrawable_token(
+                deps.storage,
+                "uusd",
+                &AssetInfo::NativeToken {
+                    denom: "uusd".to_string(),
+                },
+            )?;
+            execute_mirror_msg(
+                deps,
+                info.sender.to_string(),
+                info.funds,
+                config.mirror_lock_contract.to_string(),
+                binary,
+            )
+        }
+        _ => execute_mirror_msg(
+            deps,
+            info.sender.to_string(),
+            info.funds,
+            config.mirror_lock_contract.to_string(),
+            binary,
+        ),
+    }
+}
+
+fn get_asset_name(asset_info: &AssetInfo) -> String {
+    match asset_info {
+        AssetInfo::Token { contract_addr } => contract_addr.clone(),
+        AssetInfo::NativeToken { denom } => denom.clone(),
+    }
+}
+
+fn handle_open_position_withdrawable_tokens(
+    storage: &mut dyn Storage,
+    collateral_info: AssetInfo,
+    minted_asset_info: AssetInfo,
+    is_short: bool,
+) -> Result<(), ContractError> {
+    // Barring liquidation we will want to withdraw the collateral at some point.
+    add_withdrawable_token(storage, &get_asset_name(&collateral_info), &collateral_info)?;
+    if is_short {
+        // If we are shorting we will get UST back eventually.
+        add_withdrawable_token(
+            storage,
+            "uusd",
+            &AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+        )?;
+    } else {
+        // In this case the minted assets will be immediately sent back to this contract, so
+        // we want to be able to withdraw it.
+        add_withdrawable_token(
+            storage,
+            &get_asset_name(&minted_asset_info),
+            &minted_asset_info,
+        )?;
+    }
+    Ok(())
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
         }
+        AndromedaMsg::Withdraw {
+            recipient,
+            tokens_to_withdraw,
+        } => execute_withdraw(deps.as_ref(), env, info, recipient, tokens_to_withdraw),
     }
 }
 
@@ -114,21 +284,16 @@ pub fn receive_cw20(
     let config = CONFIG.load(deps.storage)?;
     let token_address = info.sender.to_string();
     match from_binary(&cw20_msg.msg)? {
-        Cw20HookMsg::MirrorMintCw20HookMsg(msg) => execute_mirror_cw20_msg(
-            deps,
-            cw20_msg.sender,
-            token_address,
-            cw20_msg.amount,
-            config.mirror_mint_contract.to_string(),
-            to_binary(&msg)?,
-        ),
+        Cw20HookMsg::MirrorMintCw20HookMsg(msg) => {
+            execute_mirror_mint_cw20_msg(deps, info, cw20_msg, msg)
+        }
         Cw20HookMsg::MirrorStakingCw20HookMsg(msg) => execute_mirror_cw20_msg(
             deps,
             cw20_msg.sender,
             token_address,
             cw20_msg.amount,
             config.mirror_staking_contract.to_string(),
-            to_binary(&msg)?,
+            encode_binary(&msg)?,
         ),
         Cw20HookMsg::MirrorGovCw20HookMsg(msg) => execute_mirror_cw20_msg(
             deps,
@@ -136,7 +301,50 @@ pub fn receive_cw20(
             token_address,
             cw20_msg.amount,
             config.mirror_gov_contract.to_string(),
-            to_binary(&msg)?,
+            encode_binary(&msg)?,
+        ),
+    }
+}
+
+fn execute_mirror_mint_cw20_msg(
+    deps: DepsMut,
+    info: MessageInfo,
+    cw20_msg: Cw20ReceiveMsg,
+    mirror_msg: MirrorMintCw20HookMsg,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let token_address = info.sender.to_string();
+    let binary = encode_binary(&mirror_msg)?;
+    match mirror_msg {
+        MirrorMintCw20HookMsg::OpenPosition {
+            asset_info,
+            collateral_ratio: _,
+            short_params,
+        } => {
+            handle_open_position_withdrawable_tokens(
+                deps.storage,
+                AssetInfo::Token {
+                    contract_addr: token_address.clone(),
+                },
+                asset_info,
+                short_params.is_some(),
+            )?;
+            execute_mirror_cw20_msg(
+                deps,
+                cw20_msg.sender,
+                token_address,
+                cw20_msg.amount,
+                config.mirror_mint_contract.to_string(),
+                binary,
+            )
+        }
+        _ => execute_mirror_cw20_msg(
+            deps,
+            cw20_msg.sender,
+            token_address,
+            cw20_msg.amount,
+            config.mirror_mint_contract.to_string(),
+            binary,
         ),
     }
 }
@@ -154,7 +362,7 @@ pub fn execute_mirror_cw20_msg(
         amount,
         msg: msg_binary,
     };
-    execute_mirror_msg(deps, sender, vec![], token_addr, to_binary(&msg)?)
+    execute_mirror_msg(deps, sender, vec![], token_addr, encode_binary(&msg)?)
 }
 
 pub fn execute_mirror_msg(
@@ -171,8 +379,8 @@ pub fn execute_mirror_msg(
     )?;
     require(
         funds.is_empty() || funds.len() == 1,
-        ContractError::InvalidMirrorFunds {
-            msg: "Mirror expects no funds or a single type of fund to be deposited.".to_string(),
+        ContractError::InvalidFunds {
+            msg: "Mirror expects zero or one coin to be sent".to_string(),
         },
     )?;
     let tax_deducted_funds = get_tax_deducted_funds(&deps, funds)?;
@@ -226,15 +434,35 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::IsOperator { address } => to_binary(&query_is_operator(deps, address.as_str())?),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
     }
 }
 
-pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let received: QueryMsg = parse_message(data)?;
+            match received {
+                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => query(deps, env, received),
+            }
+        }
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
+    }
+}
+
+pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse {
         mirror_mint_contract: config.mirror_mint_contract.to_string(),
@@ -242,18 +470,4 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         mirror_gov_contract: config.mirror_gov_contract.to_string(),
         mirror_lock_contract: config.mirror_lock_contract.to_string(),
     })
-}
-
-pub fn get_tax_deducted_funds(deps: &DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
-    if !coins.is_empty() {
-        let asset = Asset {
-            info: AssetInfo::NativeToken {
-                denom: coins[0].denom.to_string(),
-            },
-            amount: coins[0].amount,
-        };
-        Ok(vec![asset.deduct_tax(&deps.querier)?])
-    } else {
-        Ok(coins)
-    }
 }
