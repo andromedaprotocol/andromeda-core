@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
+    pub astroport_factory_contract: String,
     pub astroport_router_contract: String,
     pub astroport_staking_contract: String,
     pub astroport_vesting_contract: String,
@@ -32,6 +33,7 @@ pub enum ExecuteMsg {
         address: String,
     },
     UpdateConfig {
+        astroport_factory_contract: Option<String>,
         astroport_router_contract: Option<String>,
         astroport_staking_contract: Option<String>,
         astroport_vesting_contract: Option<String>,
@@ -61,6 +63,7 @@ pub enum Cw20HookMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct ConfigResponse {
+    pub astroport_factory_contract: String,
     pub astroport_router_contract: String,
     pub astroport_staking_contract: String,
     pub astroport_vesting_contract: String,

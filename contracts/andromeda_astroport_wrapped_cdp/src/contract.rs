@@ -29,6 +29,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = Config {
+        astroport_factory_contract: deps.api.addr_validate(&msg.astroport_factory_contract)?,
         astroport_router_contract: deps.api.addr_validate(&msg.astroport_router_contract)?,
         astroport_staking_contract: deps.api.addr_validate(&msg.astroport_staking_contract)?,
         astroport_vesting_contract: deps.api.addr_validate(&msg.astroport_vesting_contract)?,
@@ -83,6 +84,7 @@ pub fn execute(
         ),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateConfig {
+            astroport_factory_contract,
             astroport_router_contract,
             astroport_staking_contract,
             astroport_vesting_contract,
@@ -90,6 +92,7 @@ pub fn execute(
         } => execute_update_config(
             deps,
             info,
+            astroport_factory_contract,
             astroport_router_contract,
             astroport_staking_contract,
             astroport_vesting_contract,
@@ -163,20 +166,19 @@ pub fn execute_astroport_msg(
         },
     )?;
 
-    let tax_deducted_funds = get_tax_deducted_funds(&deps, funds)?;
-
     let execute_msg = WasmMsg::Execute {
         contract_addr,
-        funds: tax_deducted_funds,
+        funds,
         msg: msg_binary,
     };
 
-    Ok(Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]))
+    Ok(Response::new().add_message(CosmosMsg::Wasm(execute_msg)))
 }
 
 pub fn execute_update_config(
     deps: DepsMut,
     info: MessageInfo,
+    astroport_factory_contract: Option<String>,
     astroport_router_contract: Option<String>,
     astroport_staking_contract: Option<String>,
     astroport_vesting_contract: Option<String>,
@@ -187,6 +189,9 @@ pub fn execute_update_config(
         ContractError::Unauthorized {},
     )?;
     let mut config = CONFIG.load(deps.storage)?;
+    if let Some(astroport_factory_contract) = astroport_factory_contract {
+        config.astroport_factory_contract = deps.api.addr_validate(&astroport_factory_contract)?;
+    }
     if let Some(astroport_router_contract) = astroport_router_contract {
         config.astroport_router_contract = deps.api.addr_validate(&astroport_router_contract)?;
     }
@@ -225,23 +230,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse {
+        astroport_factory_contract: config.astroport_factory_contract.to_string(),
         astroport_router_contract: config.astroport_router_contract.to_string(),
         astroport_staking_contract: config.astroport_staking_contract.to_string(),
         astroport_vesting_contract: config.astroport_vesting_contract.to_string(),
         astroport_maker_contract: config.astroport_maker_contract.to_string(),
     })
-}
-
-pub fn get_tax_deducted_funds(deps: &DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
-    if !coins.is_empty() {
-        let asset = Asset {
-            info: AssetInfo::NativeToken {
-                denom: coins[0].denom.to_string(),
-            },
-            amount: coins[0].amount,
-        };
-        Ok(vec![asset.deduct_tax(&deps.querier)?])
-    } else {
-        Ok(coins)
-    }
 }
