@@ -110,7 +110,6 @@ fn execute_remove_address(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version = get_contract_version(deps.storage)?;
     if version.contract != CONTRACT_NAME {

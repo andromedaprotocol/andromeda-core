@@ -8,13 +8,13 @@ use andromeda_protocol::{
     swapper::{AssetInfo, SwapperMsg},
 };
 use astroport::{
-    asset::{AssetInfo as AstroportAssetInfo, PairInfo},
-    factory::QueryMsg as AstroportFactoryQueryMsg,
+    asset::AssetInfo as AstroportAssetInfo,
+    querier::query_pair_info,
     router::{ExecuteMsg as AstroportRouterExecuteMsg, SwapOperation},
 };
 use cosmwasm_std::{
-    attr, entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
+    attr, entry_point, from_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QuerierWrapper, Response, StdResult, Uint128, WasmMsg,
 };
 
 use cw2::{get_contract_version, set_contract_version};
@@ -62,36 +62,26 @@ pub fn execute(
         ExecuteMsg::Swapper(msg) => handle_swapper_msg(deps, info, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
         ExecuteMsg::AstroportFactoryExecuteMsg(msg) => execute_astroport_msg(
-            deps,
-            info.sender.to_string(),
             info.funds,
             config.astroport_factory_contract.to_string(),
             encode_binary(&msg)?,
         ),
         ExecuteMsg::AstroportRouterExecuteMsg(msg) => execute_astroport_msg(
-            deps,
-            info.sender.to_string(),
             info.funds,
             config.astroport_router_contract.to_string(),
             encode_binary(&msg)?,
         ),
         ExecuteMsg::AstroportStakingExecuteMsg(msg) => execute_astroport_msg(
-            deps,
-            info.sender.to_string(),
             info.funds,
             config.astroport_staking_contract.to_string(),
             encode_binary(&msg)?,
         ),
         ExecuteMsg::AstroportVestingExecuteMsg(msg) => execute_astroport_msg(
-            deps,
-            info.sender.to_string(),
             info.funds,
             config.astroport_vesting_contract.to_string(),
             encode_binary(&msg)?,
         ),
         ExecuteMsg::AstroportMakerExecuteMsg(msg) => execute_astroport_msg(
-            deps,
-            info.sender.to_string(),
             info.funds,
             config.astroport_maker_contract.to_string(),
             encode_binary(&msg)?,
@@ -124,24 +114,18 @@ pub fn receive_cw20(
     let token_address = info.sender.to_string();
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::AstroportRouterCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            deps,
-            cw20_msg.sender,
             token_address,
             cw20_msg.amount,
             config.astroport_router_contract.to_string(),
             encode_binary(&msg)?,
         ),
         Cw20HookMsg::AstroportStakingCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            deps,
-            cw20_msg.sender,
             token_address,
             cw20_msg.amount,
             config.astroport_staking_contract.to_string(),
             encode_binary(&msg)?,
         ),
         Cw20HookMsg::AstroportVestingCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            deps,
-            cw20_msg.sender,
             token_address,
             cw20_msg.amount,
             config.astroport_vesting_contract.to_string(),
@@ -204,17 +188,15 @@ fn execute_swap(
         &deps.querier,
         offer_asset_info,
         ask_asset_info,
-        config.astroport_factory_contract.to_string(),
+        config.astroport_factory_contract,
     )?;
     let swap_msg = AstroportRouterExecuteMsg::ExecuteSwapOperations {
-        operations,
+        operations: operations.clone(),
         minimum_receive: None,
         to: Some(info.sender.clone()),
     };
 
     execute_astroport_msg(
-        deps,
-        info.sender.to_string(),
         info.funds,
         config.astroport_router_contract.to_string(),
         encode_binary(&swap_msg)?,
@@ -235,7 +217,7 @@ fn execute_swap_cw20(
         &deps.querier,
         offer_asset_info,
         ask_asset_info,
-        config.astroport_factory_contract.to_string(),
+        config.astroport_factory_contract,
     )?;
     let swap_msg = AstroportRouterExecuteMsg::ExecuteSwapOperations {
         operations,
@@ -244,8 +226,6 @@ fn execute_swap_cw20(
     };
 
     execute_astroport_cw20_msg(
-        deps,
-        sender,
         token_addr,
         amount,
         config.astroport_router_contract.to_string(),
@@ -257,13 +237,15 @@ fn get_swap_operations(
     querier: &QuerierWrapper,
     offer_asset_info: AssetInfo,
     ask_asset_info: AssetInfo,
-    factory_address: String,
+    factory_address: Addr,
 ) -> Result<Vec<SwapOperation>, ContractError> {
-    let existing_pair = get_pair(
-        &querier,
-        offer_asset_info.clone(),
-        ask_asset_info.clone(),
+    let existing_pair = query_pair_info(
+        querier,
         factory_address,
+        &[
+            offer_asset_info.clone().into(),
+            ask_asset_info.clone().into(),
+        ],
     );
     Ok(if existing_pair.is_ok() {
         vec![SwapOperation::AstroSwap {
@@ -278,14 +260,21 @@ fn get_swap_operations(
             ask_denom,
         }]
     } else {
-        // Use uusd as an intermediary (it is very likely that each asset has a uusd pool).
-        vec![
+        let first_swap = if let AssetInfo::NativeToken { denom } = offer_asset_info {
+            SwapOperation::NativeSwap {
+                offer_denom: denom,
+                ask_denom: "uusd".to_string(),
+            }
+        } else {
             SwapOperation::AstroSwap {
                 offer_asset_info: offer_asset_info.into(),
                 ask_asset_info: AstroportAssetInfo::NativeToken {
                     denom: "uusd".to_string(),
                 },
-            },
+            }
+        };
+        vec![
+            first_swap,
             SwapOperation::AstroSwap {
                 offer_asset_info: AstroportAssetInfo::NativeToken {
                     denom: "uusd".to_string(),
@@ -296,28 +285,7 @@ fn get_swap_operations(
     })
 }
 
-fn get_pair(
-    querier: &QuerierWrapper,
-    offer_asset_info: AssetInfo,
-    ask_asset_info: AssetInfo,
-    factory_address: String,
-) -> Result<PairInfo, ContractError> {
-    Ok(
-        querier.query::<PairInfo>(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: factory_address,
-            msg: encode_binary(&AstroportFactoryQueryMsg::Pair {
-                asset_infos: [
-                    offer_asset_info.clone().into(),
-                    ask_asset_info.clone().into(),
-                ],
-            })?,
-        }))?,
-    )
-}
-
 pub fn execute_astroport_cw20_msg(
-    deps: DepsMut,
-    sender: String,
     token_addr: String,
     amount: Uint128,
     contract_addr: String,
@@ -328,12 +296,10 @@ pub fn execute_astroport_cw20_msg(
         amount,
         msg: msg_binary,
     };
-    execute_astroport_msg(deps, sender, vec![], token_addr, encode_binary(&msg)?)
+    execute_astroport_msg(vec![], token_addr, encode_binary(&msg)?)
 }
 
 pub fn execute_astroport_msg(
-    deps: DepsMut,
-    _sender: String,
     funds: Vec<Coin>,
     contract_addr: String,
     msg_binary: Binary,
