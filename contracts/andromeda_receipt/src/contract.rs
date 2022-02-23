@@ -2,19 +2,25 @@ use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use andromeda_protocol::{
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
+    communication::{
+        encode_binary,
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        parse_message, AndromedaMsg, AndromedaQuery,
+    },
     error::ContractError,
     operators::{
         execute_update_operators, initialize_operators, query_is_operator, query_operators,
     },
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     receipt::{
-        Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
-        ReceiptResponse,
+        generate_receipt_message, Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg,
+        QueryMsg, Receipt, ReceiptResponse,
     },
     require,
 };
-use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{
+    attr, entry_point, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, Uint128,
+};
 
 #[entry_point]
 pub fn instantiate(
@@ -114,6 +120,26 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::Receipt { receipt_id } => encode_binary(&query_receipt(deps, receipt_id)?),
         QueryMsg::ContractInfo {} => encode_binary(&query_config(deps)?),
+        QueryMsg::AndrHook(msg) => handle_andr_hook(env, msg),
+    }
+}
+
+fn handle_andr_hook(env: Env, msg: AndromedaHook) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaHook::OnFundsTransfer {
+            sender: _,
+            payload,
+            amount,
+        } => {
+            let events: Vec<Event> = parse_message(Some(payload))?;
+            let msg = generate_receipt_message(env.contract.address.to_string(), events)?;
+            encode_binary(&OnFundsTransferResponse {
+                msgs: vec![msg],
+                leftover_funds: amount,
+                events: vec![],
+            })
+        }
+        _ => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -152,11 +178,13 @@ fn query_config(deps: Deps) -> Result<ContractInfoResponse, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_protocol::rates::Funds;
     use cosmwasm_std::{
-        from_binary,
-        testing::{mock_dependencies, mock_env, mock_info},
-        Addr, Event,
+        coin, from_binary,
+        testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
+        Addr, CosmosMsg, Event, SubMsg, WasmMsg,
     };
+
     #[test]
     fn test_instantiate() {
         let owner = "creator";
@@ -306,5 +334,36 @@ mod tests {
         let val: ReceiptResponse = from_binary(&res).unwrap();
         let new_receipt = Receipt { events: vec![] };
         assert_eq!(val.receipt, new_receipt)
+    }
+
+    #[test]
+    fn test_on_funds_transfer_hook() {
+        let deps = mock_dependencies(&[]);
+        let events: Vec<Event> = vec![Event::new("Event1"), Event::new("Event2")];
+
+        let query_msg = QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
+            sender: "sender".to_string(),
+            payload: encode_binary(&events).unwrap(),
+            amount: Funds::Native(coin(0, "uusd")),
+        });
+
+        let res: OnFundsTransferResponse =
+            from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
+
+        assert_eq!(
+            OnFundsTransferResponse {
+                msgs: vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: MOCK_CONTRACT_ADDR.to_string(),
+                    msg: encode_binary(&ExecuteMsg::StoreReceipt {
+                        receipt: Receipt { events }
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }))],
+                events: vec![],
+                leftover_funds: Funds::Native(coin(0, "uusd"))
+            },
+            res
+        );
     }
 }

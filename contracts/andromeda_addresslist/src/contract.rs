@@ -1,9 +1,11 @@
 use andromeda_protocol::{
     address_list::{
         add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
-        InstantiateMsg, QueryMsg,
+        InstantiateMsg, QueryMsg, IS_INCLUSIVE,
     },
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
+    communication::{
+        encode_binary, hooks::AndromedaHook, parse_message, AndromedaMsg, AndromedaQuery,
+    },
     error::ContractError,
     operators::{
         execute_update_operators, initialize_operators, is_operator, query_is_operator,
@@ -24,6 +26,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     initialize_operators(deps.storage, msg.operators)?;
+    IS_INCLUSIVE.save(deps.storage, &msg.is_inclusive)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::default().add_attributes(vec![
         attr("action", "instantiate"),
@@ -106,7 +109,23 @@ fn execute_remove_address(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
+        QueryMsg::AndrHook(msg) => encode_binary(&handle_andr_hook(deps, msg)?),
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+    }
+}
+
+fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaHook::OnExecute { sender, .. } => {
+            let is_included = includes_address(deps.storage, &sender)?;
+            let is_inclusive = IS_INCLUSIVE.load(deps.storage)?;
+            if is_included != is_inclusive {
+                Err(ContractError::InvalidAddress {})
+            } else {
+                Ok(Response::default())
+            }
+        }
+        _ => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -145,6 +164,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             operators: vec!["11".to_string(), "22".to_string()],
+            is_inclusive: true,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -243,6 +263,88 @@ mod tests {
         let unauth_info = mock_info("anyone", &[]);
         let res = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, res);
+    }
+
+    #[test]
+    fn test_execute_hook_whitelist() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+
+        let operator = "creator";
+        let info = mock_info(operator, &[]);
+
+        let address = "whitelistee";
+
+        // Mark it as a whitelist.
+        IS_INCLUSIVE.save(deps.as_mut().storage, &true).unwrap();
+        OPERATORS
+            .save(deps.as_mut().storage, operator, &true)
+            .unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &info.sender)
+            .unwrap();
+
+        let msg = ExecuteMsg::AddAddress {
+            address: address.to_string(),
+        };
+        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
+            sender: address.to_string(),
+            payload: encode_binary(&"".to_string()).unwrap(),
+        });
+
+        let res: Response = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        assert_eq!(Response::default(), res);
+
+        let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
+            sender: "random".to_string(),
+            payload: encode_binary(&"".to_string()).unwrap(),
+        });
+
+        let res_err: ContractError = query(deps.as_ref(), mock_env(), msg).unwrap_err();
+        assert_eq!(ContractError::InvalidAddress {}, res_err);
+    }
+
+    #[test]
+    fn test_execute_hook_blacklist() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+
+        let operator = "creator";
+        let info = mock_info(operator, &[]);
+
+        let address = "blacklistee";
+
+        // Mark it as a blacklist.
+        IS_INCLUSIVE.save(deps.as_mut().storage, &false).unwrap();
+        OPERATORS
+            .save(deps.as_mut().storage, operator, &true)
+            .unwrap();
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &info.sender)
+            .unwrap();
+
+        let msg = ExecuteMsg::AddAddress {
+            address: address.to_string(),
+        };
+        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
+            sender: "random".to_string(),
+            payload: encode_binary(&"".to_string()).unwrap(),
+        });
+
+        let res: Response = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        assert_eq!(Response::default(), res);
+
+        let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
+            sender: address.to_string(),
+            payload: encode_binary(&"".to_string()).unwrap(),
+        });
+
+        let res_err: ContractError = query(deps.as_ref(), mock_env(), msg).unwrap_err();
+        assert_eq!(ContractError::InvalidAddress {}, res_err);
     }
 
     #[test]

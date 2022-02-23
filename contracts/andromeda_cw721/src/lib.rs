@@ -1,3 +1,3 @@
 pub mod contract;
 #[cfg(test)]
-mod testing;
+pub mod testing;
