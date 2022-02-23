@@ -1,6 +1,8 @@
 use cosmwasm_std::{
-    attr, coins, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, Event, ReplyOn, Response,
-    StdError, SubMsg, WasmMsg,
+    attr, coins, from_binary,
+    testing::{mock_dependencies, mock_env, mock_info},
+    to_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, Event, ReplyOn, Response, StdError,
+    SubMsg, Uint128, WasmMsg,
 };
 
 use crate::contract::*;
@@ -15,11 +17,6 @@ use andromeda_protocol::{
         mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
         MOCK_RATES_CONTRACT, MOCK_RECEIPT_CONTRACT,
     },
-};
-use cosmwasm_std::{
-    from_binary,
-    testing::{mock_dependencies, mock_env, mock_info},
-    Addr, Uint128,
 };
 use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw721_base::MintMsg;

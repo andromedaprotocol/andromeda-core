@@ -6,7 +6,7 @@ use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::{common::unwrap_or_err, error::ContractError};
+use crate::{common::unwrap_or_err, error::ContractError, withdraw::Withdrawal};
 
 use self::hooks::AndromedaHook;
 
@@ -109,8 +109,8 @@ pub enum AndromedaMsg {
         operators: Vec<String>,
     },
     Withdraw {
-        recipient: Recipient,
-        tokens_to_withdraw: Option<Vec<String>>,
+        recipient: Option<Recipient>,
+        tokens_to_withdraw: Option<Vec<Withdrawal>>,
     },
 }
 
