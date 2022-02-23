@@ -1,8 +1,3 @@
-use cosmwasm_std::{
-    attr, coins, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, Event, Response, StdError,
-    SubMsg, WasmMsg,
-};
-
 use crate::contract::*;
 use andromeda_protocol::{
     communication::modules::{InstantiateType, Module, ModuleType},
@@ -15,9 +10,10 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    from_binary,
+    attr, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    Addr, Uint128,
+    to_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, Event, Response, StdError, SubMsg,
+    Uint128, WasmMsg,
 };
 use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw721_base::MintMsg;
