@@ -245,7 +245,6 @@ fn execute_transfer(
     token.extension.transfer_agreement = None;
     token.extension.pricing = None;
     contract.tokens.save(deps.storage, &token_id, &token)?;
-
     Ok(resp
         .add_attribute("action", "transfer")
         .add_attribute("recipient", recipient))

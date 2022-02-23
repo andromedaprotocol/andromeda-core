@@ -2,8 +2,13 @@ use crate::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     auction::{AuctionStateResponse, QueryMsg as AuctionQueryMsg},
     communication::hooks::{AndromedaHook, OnFundsTransferResponse},
-    cw721::{QueryMsg as Cw721QueryMsg, TokenExtension, TransferAgreement},
+    communication::AndromedaQuery,
+    cw721::TransferAgreement,
+    cw721::{
+        MetadataAttribute, MetadataType, QueryMsg as Cw721QueryMsg, TokenExtension, TokenMetadata,
+    },
     cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
+    factory::{CodeIdResponse, QueryMsg as FactoryQueryMsg},
     ownership::ContractOwnerResponse,
     primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
     rates::{Funds, QueryMsg as RatesQueryMsg},
@@ -22,11 +27,11 @@ use cw721::{Expiration, NftInfoResponse, OwnerOfResponse};
 use std::collections::HashMap;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
 
+pub const MOCK_FACTORY_CONTRACT: &str = "factory_contract";
+pub const MOCK_CW721_CONTRACT: &str = "cw721_contract";
 pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
-pub const MOCK_TOKEN_IN_AUCTION: &str = "token1";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
-pub const MOCK_CW721_CONTRACT: &str = "cw721_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_RECEIPT_CONTRACT: &str = "receipt_contract";
@@ -34,6 +39,7 @@ pub const MOCK_OFFERS_CONTRACT: &str = "offers_contract";
 
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 pub const MOCK_TOKEN_TRANSFER_AGREEMENT: &str = "token_transfer_agreement";
+pub const MOCK_TOKEN_IN_AUCTION: &str = "token1";
 
 pub fn bank_sub_msg(amount: u128, recipient: &str) -> SubMsg {
     SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -148,6 +154,7 @@ impl WasmMockQuerier {
                     MOCK_OFFERS_CONTRACT => self.handle_offers_query(msg),
                     MOCK_RECEIPT_CONTRACT => self.handle_receipt_query(msg),
                     MOCK_AUCTION_CONTRACT => self.handle_auction_query(msg),
+                    MOCK_FACTORY_CONTRACT => self.handle_factory_query(msg),
                     _ => {
                         let msg_response = IncludesAddressResponse { included: false };
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
@@ -295,14 +302,42 @@ impl WasmMockQuerier {
                 } else {
                     None
                 };
-                let extension = TokenExtension {
-                    name: token_id,
-                    publisher: "sender".to_owned(),
-                    description: None,
-                    transfer_agreement,
-                    metadata: None,
-                    archived: false,
-                    pricing: None,
+                let extension = if token_id == "original_token_id" {
+                    TokenExtension {
+                        name: "wrapped_token_id".to_owned(),
+                        publisher: "sender".to_owned(),
+                        description: None,
+                        transfer_agreement: None,
+                        metadata: Some(TokenMetadata {
+                            data_type: MetadataType::Other,
+                            external_url: None,
+                            data_url: None,
+                            attributes: Some(vec![
+                                MetadataAttribute {
+                                    key: "original_token_id".to_owned(),
+                                    value: "original_token_id".to_owned(),
+                                    display_label: None,
+                                },
+                                MetadataAttribute {
+                                    key: "original_token_address".to_owned(),
+                                    value: "original_token_address".to_owned(),
+                                    display_label: None,
+                                },
+                            ]),
+                        }),
+                        archived: false,
+                        pricing: None,
+                    }
+                } else {
+                    TokenExtension {
+                        name: token_id,
+                        publisher: "sender".to_owned(),
+                        description: None,
+                        transfer_agreement,
+                        metadata: None,
+                        archived: false,
+                        pricing: None,
+                    }
                 };
                 let response = NftInfoResponse {
                     token_uri: None,
@@ -332,6 +367,16 @@ impl WasmMockQuerier {
                         self.get_native_rates_msg(&c, 10, None),
                     ],
                 };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_factory_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            FactoryQueryMsg::AndrQuery(AndromedaQuery::Get(_)) => {
+                let response = CodeIdResponse { code_id: 1 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
             }
             _ => panic!("Unsupported Query"),

@@ -1,9 +1,15 @@
 use crate::{
-    communication::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery, Recipient},
+    communication::{
+        encode_binary,
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        AndromedaMsg, AndromedaQuery, Recipient,
+    },
     error::ContractError,
     modules::Rate,
 };
-use cosmwasm_std::{BankMsg, Coin, CosmosMsg, SubMsg, Uint128};
+use cosmwasm_std::{
+    BankMsg, Coin, CosmosMsg, QuerierWrapper, QueryRequest, SubMsg, Uint128, WasmQuery,
+};
 use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -94,4 +100,19 @@ pub fn get_tax_amount(msgs: &[SubMsg], deducted_amount: Uint128) -> Uint128 {
         .reduce(|total, amount| total + amount)
         .unwrap_or_else(Uint128::zero)
         - deducted_amount
+}
+
+pub fn on_required_payments(
+    querier: QuerierWrapper,
+    addr: String,
+    amount: Funds,
+) -> Result<OnFundsTransferResponse, ContractError> {
+    let res: OnFundsTransferResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: addr,
+        msg: encode_binary(&QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
+            encode_binary(&amount)?,
+        ))))?,
+    }))?;
+
+    Ok(res)
 }
