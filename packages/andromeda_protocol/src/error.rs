@@ -210,6 +210,12 @@ pub enum ContractError {
 
     #[error("InvalidMetadata")]
     InvalidMetadata {},
+
+    #[error("InvalidRecipientType")]
+    InvalidRecipientType { msg: String },
+
+    #[error("InvalidTokensToWithdraw")]
+    InvalidTokensToWithdraw { msg: String },
 }
 
 impl From<Cw20ContractError> for ContractError {

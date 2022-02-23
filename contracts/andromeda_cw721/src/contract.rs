@@ -228,7 +228,9 @@ fn execute_transfer(
         .tokens
         .save(deps.storage, token_id.as_str(), &token)?;
 
-    Ok(resp)
+    Ok(resp
+        .add_attribute("action", "transfer")
+        .add_attribute("recipient", recipient))
 }
 
 fn check_can_send(
