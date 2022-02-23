@@ -5,12 +5,15 @@ use andromeda_protocol::{
     error::ContractError,
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
-    swapper::{AssetInfo, SwapperMsg},
+    swapper::{AssetInfo, SwapperCw20HookMsg, SwapperMsg},
 };
 use astroport::{
     asset::AssetInfo as AstroportAssetInfo,
     querier::query_pair_info,
-    router::{ExecuteMsg as AstroportRouterExecuteMsg, SwapOperation},
+    router::{
+        Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg,
+        SwapOperation,
+    },
 };
 use cosmwasm_std::{
     attr, entry_point, from_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
@@ -111,33 +114,29 @@ pub fn receive_cw20(
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let token_address = info.sender.to_string();
+    let token_address = info.sender;
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::AstroportRouterCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            token_address,
+            token_address.to_string(),
             cw20_msg.amount,
             config.astroport_router_contract.to_string(),
             encode_binary(&msg)?,
         ),
         Cw20HookMsg::AstroportStakingCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            token_address,
+            token_address.to_string(),
             cw20_msg.amount,
             config.astroport_staking_contract.to_string(),
             encode_binary(&msg)?,
         ),
         Cw20HookMsg::AstroportVestingCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            token_address,
+            token_address.to_string(),
             cw20_msg.amount,
             config.astroport_vesting_contract.to_string(),
             encode_binary(&msg)?,
         ),
-        Cw20HookMsg::Swapper(msg) => handle_swapper_msg_cw20(
-            deps,
-            cw20_msg.sender,
-            msg,
-            info.sender.to_string(),
-            cw20_msg.amount,
-        ),
+        Cw20HookMsg::Swapper(msg) => {
+            handle_swapper_msg_cw20(deps, cw20_msg.sender, msg, token_address, cw20_msg.amount)
+        }
     }
 }
 
@@ -157,20 +156,19 @@ fn handle_swapper_msg(
 fn handle_swapper_msg_cw20(
     deps: DepsMut,
     sender: String,
-    msg: SwapperMsg,
-    token_addr: String,
+    msg: SwapperCw20HookMsg,
+    token_addr: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     match msg {
-        SwapperMsg::Swap {
-            offer_asset_info,
-            ask_asset_info,
-        } => execute_swap_cw20(
+        SwapperCw20HookMsg::Swap { ask_asset_info } => execute_swap_cw20(
             deps,
             sender,
-            token_addr,
+            token_addr.to_string(),
             amount,
-            offer_asset_info,
+            AssetInfo::Token {
+                contract_addr: token_addr,
+            },
             ask_asset_info,
         ),
     }
@@ -219,10 +217,10 @@ fn execute_swap_cw20(
         ask_asset_info,
         config.astroport_factory_contract,
     )?;
-    let swap_msg = AstroportRouterExecuteMsg::ExecuteSwapOperations {
+    let swap_msg = AstroportRouterCw20HookMsg::ExecuteSwapOperations {
         operations,
         minimum_receive: None,
-        to: Some(deps.api.addr_validate(&sender)?),
+        to: Some(sender),
     };
 
     execute_astroport_cw20_msg(

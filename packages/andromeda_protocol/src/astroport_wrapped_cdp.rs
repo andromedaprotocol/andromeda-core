@@ -1,4 +1,4 @@
-use crate::swapper::SwapperMsg;
+use crate::swapper::{SwapperCw20HookMsg, SwapperMsg};
 use astroport::{
     factory::ExecuteMsg as AstroportFactoryExecuteMsg,
     maker::ExecuteMsg as AstroportMakerExecuteMsg,
@@ -59,7 +59,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Cw20HookMsg {
-    Swapper(SwapperMsg),
+    Swapper(SwapperCw20HookMsg),
     AstroportRouterCw20HookMsg(AstroportRouterCw20HookMsg),
     AstroportStakingCw20HookMsg(AstroportStakingCw20HookMsg),
     AstroportVestingCw20HookMsg(AstroportVestingCw20HookMsg),

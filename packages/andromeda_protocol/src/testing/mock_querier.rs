@@ -173,8 +173,20 @@ impl WasmMockQuerier {
                     } else {
                         return SystemResult::Ok(ContractResult::Err("Does not exist".to_string()));
                     }
+                } else if let AssetInfo::NativeToken { denom } = asset_infos[1].clone() {
+                    if denom == "uusd" {
+                        let res = PairInfo {
+                            asset_infos,
+                            contract_addr: Addr::unchecked("addr"),
+                            liquidity_token: Addr::unchecked("addr"),
+                            pair_type: PairType::Xyk {},
+                        };
+                        return SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()));
+                    } else {
+                        return SystemResult::Ok(ContractResult::Err("Does not exist".to_string()));
+                    }
                 } else {
-                    panic!("Unsupported Query")
+                    return SystemResult::Ok(ContractResult::Err("Does not exist".to_string()));
                 }
             }
             _ => panic!("Unsupported Query"),

@@ -14,6 +14,12 @@ pub enum SwapperMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub enum SwapperCw20HookMsg {
+    Swap { ask_asset_info: AssetInfo },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum AssetInfo {
     Token { contract_addr: Addr },
     NativeToken { denom: String },
