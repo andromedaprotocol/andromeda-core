@@ -7,8 +7,8 @@ use serde::Deserialize;
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub struct WasmMockQuerier {
-    base: MockQuerier<TerraQueryWrapper>,
-    token_balance: Uint128,
+    pub base: MockQuerier<TerraQueryWrapper>,
+    pub token_balance: Uint128,
 }
 
 pub fn mock_dependencies_custom(

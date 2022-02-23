@@ -198,6 +198,12 @@ pub enum ContractError {
 
     #[error("token_id already claimed")]
     Claimed {},
+
+    #[error("InvalidRecipientType")]
+    InvalidRecipientType { msg: String },
+
+    #[error("InvalidTokensToWithdraw")]
+    InvalidTokensToWithdraw { msg: String },
 }
 
 impl From<Cw20ContractError> for ContractError {
