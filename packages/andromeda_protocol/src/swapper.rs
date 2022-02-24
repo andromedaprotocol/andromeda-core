@@ -3,6 +3,7 @@ use astroport::asset::AssetInfo as AstroportAssetInfo;
 // To be used in the swapper contract.
 pub use astroport::querier::{query_balance, query_token_balance};
 use cosmwasm_std::Addr;
+use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -18,8 +19,15 @@ pub enum SwapperMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 /// Helper enum for calling contracts that implement the Swapper interface.
-pub enum SwapperExecuteMsg {
+pub enum SwapperImplExecuteMsg {
     Swapper(SwapperMsg),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+/// Helper enum for calling contracts that implement the Swapper interface.
+pub enum SwapperImplCw20HookMsg {
+    Swapper(SwapperCw20HookMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -54,6 +62,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 /// Execute Message for Swapper contract.
 pub enum ExecuteMsg {
+    Receive(Cw20ReceiveMsg),
     Swap {
         ask_asset_info: AssetInfo,
         recipient: Option<Recipient>,
@@ -62,6 +71,16 @@ pub enum ExecuteMsg {
     Send {
         ask_asset_info: AssetInfo,
         recipient: Recipient,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+/// Cw20 Hook Message for Swapper contract.
+pub enum Cw20HookMsg {
+    Swap {
+        ask_asset_info: AssetInfo,
+        recipient: Option<Recipient>,
     },
 }
 

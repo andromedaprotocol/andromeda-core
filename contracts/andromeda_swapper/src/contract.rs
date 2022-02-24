@@ -7,13 +7,15 @@ use andromeda_protocol::{
     require,
     response::get_reply_address,
     swapper::{
-        query_balance, query_token_balance, AssetInfo, ExecuteMsg, InstantiateMsg, MigrateMsg,
-        QueryMsg, SwapperExecuteMsg, SwapperMsg,
+        query_balance, query_token_balance, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
+        MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,
+        SwapperMsg,
     },
 };
 use cosmwasm_std::{
     attr, entry_point, from_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, Reply, ReplyOn, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
+    QuerierWrapper, Reply, ReplyOn, Response, StdError, StdResult, Storage, SubMsg, Uint128,
+    WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -83,6 +85,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::Swap {
             ask_asset_info,
             recipient,
@@ -129,7 +132,7 @@ fn execute_swap(
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr,
             funds: info.funds,
-            msg: encode_binary(&SwapperExecuteMsg::Swapper(SwapperMsg::Swap {
+            msg: encode_binary(&SwapperImplExecuteMsg::Swapper(SwapperMsg::Swap {
                 offer_asset_info: AssetInfo::NativeToken { denom },
                 ask_asset_info: ask_asset_info.clone(),
             }))?,
@@ -179,15 +182,78 @@ fn execute_send(
 
 pub fn receive_cw20(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new())
+    match from_binary(&cw20_msg.msg)? {
+        Cw20HookMsg::Swap {
+            ask_asset_info,
+            recipient,
+        } => execute_swap_cw20(
+            deps,
+            env,
+            info.sender.to_string(),
+            cw20_msg.amount,
+            ask_asset_info,
+            cw20_msg.sender,
+            recipient,
+        ),
+    }
+}
+
+fn execute_swap_cw20(
+    deps: DepsMut,
+    env: Env,
+    offer_token: String,
+    offer_amount: Uint128,
+    ask_asset_info: AssetInfo,
+    sender: String,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
+    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(sender));
+    if let AssetInfo::Token { contract_addr } = &ask_asset_info {
+        if contract_addr.to_string() == offer_token {
+            // Send as is.
+            let msg = recipient.generate_msg_cw20(
+                &deps.as_ref(),
+                Cw20Coin {
+                    address: offer_token,
+                    amount: offer_amount,
+                },
+            )?;
+            return Ok(Response::new()
+                .add_submessage(msg)
+                .add_attribute("action", "swap_cw20"));
+        }
+    }
+    let contract_addr = SWAPPER_IMPL_ADDR.load(deps.storage)?;
+    Ok(Response::new()
+        .add_attribute("action", "swap")
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: offer_token,
+            funds: vec![],
+            msg: encode_binary(&Cw20ExecuteMsg::Send {
+                contract: contract_addr,
+                amount: offer_amount,
+                msg: encode_binary(&SwapperImplCw20HookMsg::Swapper(SwapperCw20HookMsg::Swap {
+                    ask_asset_info: ask_asset_info.clone(),
+                }))?,
+            })?,
+        }))
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: env.contract.address.to_string(),
+            funds: vec![],
+            msg: encode_binary(&ExecuteMsg::Send {
+                ask_asset_info,
+                recipient,
+            })?,
+        })))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    Ok(encode_binary(&"")?)
+pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> Result<Binary, ContractError> {
+    Err(ContractError::UnsupportedOperation {})
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
