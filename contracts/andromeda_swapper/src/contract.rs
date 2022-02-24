@@ -111,9 +111,13 @@ fn execute_swap(
             msg: "Must send at most one native coin".to_string(),
         },
     )?;
-    if info.funds.is_empty() || info.funds[0].amount.is_zero() {
-        return Ok(Response::new());
-    }
+    require(
+        !info.funds.is_empty() && info.funds[0].amount > Uint128::zero(),
+        ContractError::InvalidFunds {
+            msg: "Must send funds to swap".to_string(),
+        },
+    )?;
+
     let coin = &info.funds[0];
     if let AssetInfo::NativeToken { denom } = &ask_asset_info {
         if denom == &coin.denom {
