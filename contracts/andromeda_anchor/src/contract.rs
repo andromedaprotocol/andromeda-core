@@ -11,21 +11,23 @@ use andromeda_protocol::{
     require,
     withdraw::Withdrawal,
 };
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coins, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, SubMsg, Uint128, WasmMsg,
+    attr, coins, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use terraswap::querier::{query_balance, query_token_balance};
 
-// version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-anchor";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
 const UUSD_DENOM: &str = "uusd";
 pub const DEPOSIT_ID: u64 = 1;
 pub const WITHDRAW_ID: u64 = 2;
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-anchor";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
 pub fn instantiate(

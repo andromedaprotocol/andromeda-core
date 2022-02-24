@@ -22,12 +22,15 @@ use andromeda_protocol::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
-use cw20_base::contract::{
-    execute as execute_cw20, execute_burn as execute_cw20_burn, execute_mint as execute_cw20_mint,
-    execute_send as execute_cw20_send, execute_transfer as execute_cw20_transfer,
-    instantiate as cw20_instantiate, query as query_cw20,
+use cw20_base::{
+    contract::{
+        execute as execute_cw20, execute_burn as execute_cw20_burn,
+        execute_mint as execute_cw20_mint, execute_send as execute_cw20_send,
+        execute_transfer as execute_cw20_transfer, instantiate as cw20_instantiate,
+        query as query_cw20,
+    },
+    state::BALANCES,
 };
-use cw20_base::state::BALANCES;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20";
@@ -42,6 +45,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let mut resp = Response::default();
     let sender = info.sender.as_str();
     if let Some(modules) = msg.modules.clone() {

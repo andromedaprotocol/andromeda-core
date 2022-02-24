@@ -19,11 +19,11 @@ use cosmwasm_std::{
     attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw20::Cw20Coin;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rates";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-use cw20::Cw20Coin;
 
 #[entry_point]
 pub fn instantiate(

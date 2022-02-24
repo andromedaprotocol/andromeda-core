@@ -14,15 +14,15 @@ use andromeda_protocol::{
     ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+
 use cw2::{get_contract_version, set_contract_version};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-addresslist";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(

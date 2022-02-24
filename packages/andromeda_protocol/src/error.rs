@@ -162,6 +162,7 @@ pub enum ContractError {
 
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
+
     // BEGIN CW20 ERRORS
     #[error("Cannot set to own account")]
     CannotSetOwnAccount {},
