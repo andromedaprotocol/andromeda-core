@@ -1,4 +1,7 @@
-use crate::swapper::{SwapperCw20HookMsg, SwapperMsg};
+use crate::{
+    communication::{AndromedaMsg, AndromedaQuery},
+    swapper::{SwapperCw20HookMsg, SwapperMsg},
+};
 use astroport::{
     factory::ExecuteMsg as AstroportFactoryExecuteMsg,
     router::{Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg},
@@ -20,14 +23,12 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     Swapper(SwapperMsg),
     Receive(Cw20ReceiveMsg),
     AstroportFactoryExecuteMsg(AstroportFactoryExecuteMsg),
     AstroportRouterExecuteMsg(AstroportRouterExecuteMsg),
     AstroportStakingExecuteMsg(AstroportStakingExecuteMsg),
-    UpdateOwner {
-        address: String,
-    },
     UpdateConfig {
         astroport_factory_contract: Option<String>,
         astroport_router_contract: Option<String>,
@@ -42,7 +43,7 @@ pub struct MigrateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    ContractOwner {},
+    AndrQuery(AndromedaQuery),
     Config {},
 }
 
