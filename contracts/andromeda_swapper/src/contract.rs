@@ -165,7 +165,7 @@ fn execute_send(
         }
         AssetInfo::Token { contract_addr } => {
             let amount =
-                query_token_balance(&deps.querier, env.contract.address, contract_addr.clone())?;
+                query_token_balance(&deps.querier, contract_addr.clone(), env.contract.address)?;
             recipient.generate_msg_cw20(
                 &deps.as_ref(),
                 Cw20Coin {

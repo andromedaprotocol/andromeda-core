@@ -35,10 +35,12 @@ use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrap
 pub const MOCK_FACTORY_CONTRACT: &str = "factory_contract";
 pub const MOCK_CW721_CONTRACT: &str = "cw721_contract";
 pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
+pub const MOCK_ASTROPORT_WRAPPER_CONTRACT: &str = "astroport_wrapper_contract";
 pub const MOCK_ASTROPORT_FACTORY_CONTRACT: &str = "astroport_factory_contract";
 pub const MOCK_ASTROPORT_ROUTER_CONTRACT: &str = "astroport_router_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
+pub const MOCK_CW20_CONTRACT2: &str = "cw20_contract2";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_RECEIPT_CONTRACT: &str = "receipt_contract";
@@ -59,7 +61,7 @@ pub fn mock_dependencies_custom(
 }
 
 pub struct WasmMockQuerier {
-    base: MockQuerier<TerraQueryWrapper>,
+    pub base: MockQuerier<TerraQueryWrapper>,
     tax_querier: TaxQuerier,
 }
 
@@ -144,6 +146,7 @@ impl WasmMockQuerier {
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
                     }
                     MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
+                    MOCK_CW20_CONTRACT2 => self.handle_cw20_query(msg),
                     MOCK_CW721_CONTRACT => self.handle_cw721_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     MOCK_ASTROPORT_FACTORY_CONTRACT => self.handle_astroport_factory_query(msg),
