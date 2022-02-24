@@ -24,6 +24,7 @@ use cosmwasm_std::{
     attr, coin, Addr, Api, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Pair, Reply,
     Response, StdError, StdResult,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw721::{
     AllNftInfoResponse, ApprovedForAllResponse, ContractInfoResponse, Cw721ReceiveMsg, Expiration,
     NftInfoResponse, NumTokensResponse, OwnerOfResponse,
@@ -37,6 +38,10 @@ use crate::state::{
 
 const DEFAULT_LIMIT: u32 = 10u32;
 const MAX_LIMIT: u32 = 30u32;
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-token";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -52,6 +57,7 @@ pub fn instantiate(
         },
     )?;
     msg.validate()?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = TokenConfig {
         name: msg.name.clone(),
         symbol: msg.symbol.clone(),
@@ -849,7 +855,13 @@ fn humanize_approval(approval: &Approval) -> cw721::Approval {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
     Ok(Response::default())
 }
 

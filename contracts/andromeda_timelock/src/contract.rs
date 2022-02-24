@@ -17,9 +17,14 @@ use andromeda_protocol::{
     require,
     timelock::{
         Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
-        GetLockedFundsResponse, GetTimelockConfigResponse, InstantiateMsg, QueryMsg,
+        GetLockedFundsResponse, GetTimelockConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg,
     },
 };
+use cw2::{get_contract_version, set_contract_version};
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-timelock";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
 pub fn instantiate(
@@ -28,6 +33,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let state = State {
         address_list: msg.address_list.clone(),
     };
@@ -244,6 +250,17 @@ fn execute_update_address_list(
         .add_submessages(mod_resp.msgs)
         .add_events(mod_resp.events)
         .add_attributes(vec![attr("action", "update_address_list")]))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[entry_point]

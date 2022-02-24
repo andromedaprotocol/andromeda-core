@@ -31,6 +31,7 @@ cosmwasm-storage = "0.16.0"
 thiserror = { version = "1.0.26" }
 cw-storage-plus = "0.9.1"
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
+cw2 = "0.9.1"
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16.0" }

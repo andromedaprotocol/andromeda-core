@@ -109,6 +109,7 @@ pub fn add_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) {
 /// * `amount` - The amount to be deducted
 ///
 /// Errors if there is no payment from which to deduct the funds
+#[allow(clippy::ptr_arg)]
 pub fn deduct_payment(
     payments: &mut [BankMsg],
     to: String,
