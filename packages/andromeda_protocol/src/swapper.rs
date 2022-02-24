@@ -1,4 +1,4 @@
-use crate::communication::{modules::InstantiateType, Recipient};
+use crate::communication::{modules::InstantiateType, AndromedaMsg, AndromedaQuery, Recipient};
 use astroport::asset::AssetInfo as AstroportAssetInfo;
 // To be used in the swapper contract.
 pub use astroport::querier::{query_balance, query_token_balance};
@@ -62,6 +62,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     Receive(Cw20ReceiveMsg),
     Swap {
         ask_asset_info: AssetInfo,
@@ -87,7 +88,9 @@ pub enum Cw20HookMsg {
 /// Query Message for Swapper contract.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]

@@ -1,9 +1,13 @@
 use crate::state::SWAPPER_IMPL_ADDR;
 use andromeda_protocol::{
-    communication::{encode_binary, modules::InstantiateType, query_get, Recipient},
+    communication::{
+        encode_binary, modules::InstantiateType, parse_message, query_get, AndromedaMsg,
+        AndromedaQuery, Recipient,
+    },
     error::ContractError,
     factory::CodeIdResponse,
-    ownership::CONTRACT_OWNER,
+    operators::{execute_update_operators, query_is_operator, query_operators},
+    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     response::get_reply_address,
     swapper::{
@@ -85,6 +89,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::Swap {
             ask_asset_info,
@@ -94,6 +99,28 @@ pub fn execute(
             ask_asset_info,
             recipient,
         } => execute_send(deps, env, info, ask_asset_info, recipient),
+    }
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        AndromedaMsg::Receive(data) => {
+            let received: ExecuteMsg = parse_message(data)?;
+            match received {
+                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
+                _ => execute(deps, env, info, received),
+            }
+        }
+        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        AndromedaMsg::UpdateOperators { operators } => {
+            execute_update_operators(deps, info, operators)
+        }
+        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -256,8 +283,21 @@ fn execute_swap_cw20(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> Result<Binary, ContractError> {
-    Err(ContractError::UnsupportedOperation {})
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+    }
+}
+
+fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaQuery::Get(_) => Err(ContractError::UnsupportedOperation {}),
+        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
+        AndromedaQuery::IsOperator { address } => {
+            encode_binary(&query_is_operator(deps, &address)?)
+        }
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
