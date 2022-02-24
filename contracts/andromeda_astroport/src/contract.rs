@@ -1,6 +1,6 @@
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
-    astroport_wrapped_cdp::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    astroport::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     communication::encode_binary,
     error::ContractError,
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
@@ -22,8 +22,6 @@ use cosmwasm_std::{
 
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-
-use andromeda_protocol::astroport_wrapped_cdp::{ConfigResponse, Cw20HookMsg};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_astroport_wrapped_cdp";

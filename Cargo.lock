@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-astroport-wrapped-cdp"
+name = "andromeda-astroport"
 version = "0.1.0"
 dependencies = [
  "andromeda-protocol",

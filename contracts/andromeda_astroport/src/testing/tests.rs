@@ -1,6 +1,6 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
-    astroport_wrapped_cdp::{Cw20HookMsg, ExecuteMsg, InstantiateMsg},
+    astroport::{Cw20HookMsg, ExecuteMsg, InstantiateMsg},
     swapper::{AssetInfo, SwapperCw20HookMsg, SwapperMsg},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ASTROPORT_FACTORY_CONTRACT, MOCK_ASTROPORT_ROUTER_CONTRACT,

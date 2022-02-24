@@ -2,7 +2,6 @@ use crate::swapper::{SwapperCw20HookMsg, SwapperMsg};
 use astroport::{
     factory::ExecuteMsg as AstroportFactoryExecuteMsg,
     maker::ExecuteMsg as AstroportMakerExecuteMsg,
-    querier::query_balance,
     router::{Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg},
     staking::{
         Cw20HookMsg as AstroportStakingCw20HookMsg, ExecuteMsg as AstroportStakingExecuteMsg,
