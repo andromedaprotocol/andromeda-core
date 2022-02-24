@@ -1,18 +1,22 @@
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
+    communication::{
+        encode_binary,
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        parse_message, AndromedaMsg, AndromedaQuery,
+    },
     error::ContractError,
     modules::common::{calculate_fee, deduct_funds},
     operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     rates::{
-        DeductedFundsResponse, ExecuteMsg, Funds, InstantiateMsg, MigrateMsg, PaymentsResponse,
+        ExecuteMsg, Funds, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
         QueryMsg, RateInfo,
     },
     require,
 };
 use cosmwasm_std::{
-    attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, SubMsg,
+    attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -97,6 +101,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+        QueryMsg::AndrHook(msg) => handle_andromeda_hook(deps, msg),
         QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
     }
 }
@@ -115,6 +120,15 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
     }
 }
 
+fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaHook::OnFundsTransfer { amount, .. } => {
+            encode_binary(&query_deducted_funds(deps, amount)?)
+        }
+        _ => Err(ContractError::UnsupportedOperation {}),
+    }
+}
+
 fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let rates = config.rates;
@@ -122,21 +136,43 @@ fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
     Ok(PaymentsResponse { payments: rates })
 }
 
-fn query_deducted_funds(deps: Deps, funds: Funds) -> Result<DeductedFundsResponse, ContractError> {
+fn query_deducted_funds(
+    deps: Deps,
+    funds: Funds,
+) -> Result<OnFundsTransferResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let mut msgs: Vec<SubMsg> = vec![];
+    let mut events: Vec<Event> = vec![];
     let (coin, is_native): (Coin, bool) = match funds {
         Funds::Native(coin) => (coin, true),
         Funds::Cw20(cw20_coin) => (coin(cw20_coin.amount.u128(), cw20_coin.address), false),
     };
     let mut leftover_funds = vec![coin.clone()];
     for rate_info in config.rates.iter() {
+        let event_name = if rate_info.is_additive {
+            "tax"
+        } else {
+            "royalty"
+        };
+        let mut event = Event::new(event_name);
+        if let Some(desc) = &rate_info.description {
+            event = event.add_attribute("description", desc);
+        }
         let rate = rate_info.rate.validate(&deps.querier)?;
         let fee = calculate_fee(rate, &coin)?;
         for reciever in rate_info.receivers.iter() {
             if !rate_info.is_additive {
                 deduct_funds(&mut leftover_funds, &fee)?;
+                event = event.add_attribute("deducted", fee.to_string());
             }
+            event = event.add_attribute(
+                "payment",
+                PaymentAttribute {
+                    receiver: reciever.get_addr(),
+                    amount: fee.clone(),
+                }
+                .to_string(),
+            );
             let msg = if is_native {
                 reciever.generate_msg_native(&deps, vec![fee.clone()])?
             } else {
@@ -150,8 +186,9 @@ fn query_deducted_funds(deps: Deps, funds: Funds) -> Result<DeductedFundsRespons
             };
             msgs.push(msg);
         }
+        events.push(event);
     }
-    Ok(DeductedFundsResponse {
+    Ok(OnFundsTransferResponse {
         msgs,
         leftover_funds: if is_native {
             Funds::Native(leftover_funds[0].clone())
@@ -161,6 +198,7 @@ fn query_deducted_funds(deps: Deps, funds: Funds) -> Result<DeductedFundsRespons
                 address: coin.denom,
             })
         },
+        events,
     })
 }
 
@@ -291,7 +329,7 @@ mod tests {
         let msg = InstantiateMsg { rates };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        let res: DeductedFundsResponse = from_binary(
+        let res: OnFundsTransferResponse = from_binary(
             &query(
                 deps.as_ref(),
                 env,
@@ -317,11 +355,25 @@ mod tests {
                 amount: coins(1, "uusd"),
             })),
         ];
+
         assert_eq!(
-            DeductedFundsResponse {
+            OnFundsTransferResponse {
                 msgs: expected_msgs,
                 // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
-                leftover_funds: Funds::Native(coin(89, "uusd"))
+                leftover_funds: Funds::Native(coin(89, "uusd")),
+                events: vec![
+                    Event::new("tax")
+                        .add_attribute("description", "desc2")
+                        .add_attribute("payment", "1<20uusd"),
+                    Event::new("royalty")
+                        .add_attribute("description", "desc1")
+                        .add_attribute("deducted", "10uusd")
+                        .add_attribute("payment", "2<10uusd"),
+                    Event::new("royalty")
+                        .add_attribute("description", "desc3")
+                        .add_attribute("deducted", "1uusd")
+                        .add_attribute("payment", "3<1uusd"),
+                ]
             },
             res
         );
@@ -363,7 +415,7 @@ mod tests {
         let msg = InstantiateMsg { rates };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        let res: DeductedFundsResponse = from_binary(
+        let res: OnFundsTransferResponse = from_binary(
             &query(
                 deps.as_ref(),
                 env,
@@ -409,13 +461,26 @@ mod tests {
             }),
         ];
         assert_eq!(
-            DeductedFundsResponse {
+            OnFundsTransferResponse {
                 msgs: expected_msgs,
                 // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
                 leftover_funds: Funds::Cw20(Cw20Coin {
                     amount: 89u128.into(),
                     address: cw20_address.to_string()
-                })
+                }),
+                events: vec![
+                    Event::new("tax")
+                        .add_attribute("description", "desc2")
+                        .add_attribute("payment", "1<20address"),
+                    Event::new("royalty")
+                        .add_attribute("description", "desc1")
+                        .add_attribute("deducted", "10address")
+                        .add_attribute("payment", "2<10address"),
+                    Event::new("royalty")
+                        .add_attribute("description", "desc3")
+                        .add_attribute("deducted", "1address")
+                        .add_attribute("payment", "3<1address"),
+                ]
             },
             res
         );

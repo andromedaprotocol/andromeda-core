@@ -1,5 +1,6 @@
 use cosmwasm_std::{OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
+use cw721_base::ContractError as Cw721ContractError;
 use std::convert::From;
 use std::string::FromUtf8Error;
 use thiserror::Error;
@@ -189,8 +190,32 @@ pub enum ContractError {
     #[error("Invalid png header")]
     InvalidPngHeader {},
     // END CW20 ERRORS
+    #[error("Invalid Module")]
+    InvalidModule { msg: Option<String> },
+
     #[error("UnsupportedOperation")]
     UnsupportedOperation {},
+
+    #[error("IncompatibleModules")]
+    IncompatibleModules { msg: String },
+
+    #[error("ModuleDoesNotExist")]
+    ModuleDoesNotExist {},
+
+    #[error("token_id already claimed")]
+    Claimed {},
+
+    #[error("CannotDoubleWrapToken")]
+    CannotDoubleWrapToken {},
+
+    #[error("UnwrappingDisabled")]
+    UnwrappingDisabled {},
+
+    #[error("TokenNotWrappedByThisContract")]
+    TokenNotWrappedByThisContract {},
+
+    #[error("InvalidMetadata")]
+    InvalidMetadata {},
 
     #[error("InvalidRecipientType")]
     InvalidRecipientType { msg: String },
@@ -212,6 +237,17 @@ impl From<Cw20ContractError> for ContractError {
             Cw20ContractError::InvalidZeroAmount {} => ContractError::InvalidZeroAmount {},
             Cw20ContractError::InvalidXmlPreamble {} => ContractError::InvalidXmlPreamble {},
             Cw20ContractError::CannotSetOwnAccount {} => ContractError::CannotSetOwnAccount {},
+        }
+    }
+}
+
+impl From<Cw721ContractError> for ContractError {
+    fn from(err: Cw721ContractError) -> Self {
+        match err {
+            Cw721ContractError::Std(std) => ContractError::Std(std),
+            Cw721ContractError::Expired {} => ContractError::Expired {},
+            Cw721ContractError::Unauthorized {} => ContractError::Unauthorized {},
+            Cw721ContractError::Claimed {} => ContractError::Claimed {},
         }
     }
 }

@@ -132,6 +132,7 @@ impl MessageHooks for AddressListModule {
                 label: String::from("Address list instantiation"),
                 msg: to_binary(&AddressListInstantiateMsg {
                     operators: self.operators.clone().unwrap(),
+                    is_inclusive: true,
                 })?,
             };
 

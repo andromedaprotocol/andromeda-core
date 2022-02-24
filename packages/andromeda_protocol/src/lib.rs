@@ -7,6 +7,7 @@ pub mod auction;
 pub mod common;
 pub mod communication;
 pub mod cw20;
+pub mod cw721;
 pub mod error;
 pub mod factory;
 pub mod mirror_wrapped_cdp;
@@ -20,6 +21,7 @@ pub mod response;
 pub mod splitter;
 pub mod swapper;
 pub mod withdraw;
+pub mod wrapped_cw721;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing;

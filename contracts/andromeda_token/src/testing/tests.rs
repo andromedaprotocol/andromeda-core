@@ -78,6 +78,7 @@ fn test_token_modules() {
                 label: String::from("Address list instantiation"),
                 msg: to_binary(&AddressListInstantiateMsg {
                     operators: vec![sender.to_string()],
+                    is_inclusive: true,
                 })
                 .unwrap(),
             }),

@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::modules::{hooks::HookResponse, Module};
-use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, StdResult};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use terraswap::asset::{Asset, AssetInfo};
@@ -27,6 +27,12 @@ pub fn unwrap_or_err<T>(val_opt: Option<T>, err: ContractError) -> Result<T, Con
         Some(val) => Ok(val),
         None => Err(err),
     }
+}
+
+pub fn merge_responses(resp_a: Response, resp_b: Response) -> Response {
+    resp_a
+        .add_attributes(resp_b.attributes)
+        .add_submessages(resp_b.messages)
 }
 
 pub fn get_tax_deducted_funds(deps: &DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {

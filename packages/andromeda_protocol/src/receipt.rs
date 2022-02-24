@@ -1,5 +1,8 @@
-use crate::communication::{AndromedaMsg, AndromedaQuery};
-use cosmwasm_std::{Event, Uint128};
+use crate::{
+    communication::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery},
+    error::ContractError,
+};
+use cosmwasm_std::{to_binary, CosmosMsg, Event, SubMsg, Uint128, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -53,6 +56,7 @@ pub enum QueryMsg {
     },
     /// The current contract config.
     ContractInfo {},
+    AndrHook(AndromedaHook),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -64,4 +68,17 @@ pub struct ContractInfoResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ReceiptResponse {
     pub receipt: Receipt,
+}
+
+pub fn generate_receipt_message(
+    contract_addr: String,
+    events: Vec<Event>,
+) -> Result<SubMsg, ContractError> {
+    let receipt = Receipt { events };
+
+    Ok(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr,
+        msg: to_binary(&ExecuteMsg::StoreReceipt { receipt })?,
+        funds: vec![],
+    })))
 }
