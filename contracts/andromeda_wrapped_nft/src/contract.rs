@@ -186,8 +186,8 @@ pub fn execute_unwrap_nft(
         .add_attributes(vec![
             attr("action", "unwrap_nft"),
             attr("burn_token_id", token_id),
-            attr("receiver", sender.clone()),
-            attr("token_id", original_token_id.clone()),
+            attr("receiver", sender),
+            attr("token_id", original_token_id),
         ]))
 }
 

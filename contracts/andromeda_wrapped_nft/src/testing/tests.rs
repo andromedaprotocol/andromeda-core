@@ -112,13 +112,7 @@ fn test_execute_unwrap_nft() {
     let nft_addr = "NFT_ADDR1".to_string();
     let token_id = "NFT_TOKEN_ID_1".to_string();
 
-    let _res = execute_wrap_nft(
-        deps.as_mut(),
-        sender.clone(),
-        nft_addr.clone(),
-        token_id.clone(),
-    )
-    .unwrap();
+    let _res = execute_wrap_nft(deps.as_mut(), sender.clone(), nft_addr, token_id).unwrap();
 
     let res = execute_unwrap_nft(
         deps.as_mut(),
