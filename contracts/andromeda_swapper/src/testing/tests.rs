@@ -146,7 +146,7 @@ fn test_swap_native_to_cw20() {
 
     let swap_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
-        funds: info.funds.clone(),
+        funds: info.funds,
         msg: to_binary(&SwapperImplExecuteMsg::Swapper(SwapperMsg::Swap {
             offer_asset_info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
@@ -298,7 +298,7 @@ fn test_swap_cw20_same_asset() {
     });
 
     let info = mock_info(MOCK_CW20_CONTRACT, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -335,7 +335,7 @@ fn test_swap_cw20_to_cw20() {
     });
 
     let info = mock_info(MOCK_CW20_CONTRACT, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let swap_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_CW20_CONTRACT.to_owned(),

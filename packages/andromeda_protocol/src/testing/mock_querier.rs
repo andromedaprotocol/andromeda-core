@@ -238,7 +238,7 @@ impl WasmMockQuerier {
                     asset_infos,
                     [AssetInfo::NativeToken { .. }, AssetInfo::NativeToken { .. }]
                 ) {
-                    return SystemResult::Ok(ContractResult::Err("Does not exist".to_string()));
+                    SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
                 } else if let AssetInfo::NativeToken { denom } = asset_infos[0].clone() {
                     if denom == "uusd" {
                         let res = PairInfo {
@@ -247,9 +247,9 @@ impl WasmMockQuerier {
                             liquidity_token: Addr::unchecked("addr"),
                             pair_type: PairType::Xyk {},
                         };
-                        return SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()));
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
                     } else {
-                        return SystemResult::Ok(ContractResult::Err("Does not exist".to_string()));
+                        SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
                     }
                 } else if let AssetInfo::NativeToken { denom } = asset_infos[1].clone() {
                     if denom == "uusd" {
@@ -259,12 +259,12 @@ impl WasmMockQuerier {
                             liquidity_token: Addr::unchecked("addr"),
                             pair_type: PairType::Xyk {},
                         };
-                        return SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()));
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
                     } else {
-                        return SystemResult::Ok(ContractResult::Err("Does not exist".to_string()));
+                        SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
                     }
                 } else {
-                    return SystemResult::Ok(ContractResult::Err("Does not exist".to_string()));
+                    SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
                 }
             }
             _ => panic!("Unsupported Query"),

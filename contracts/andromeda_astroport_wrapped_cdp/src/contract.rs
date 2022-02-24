@@ -189,7 +189,7 @@ fn execute_swap(
         config.astroport_factory_contract,
     )?;
     let swap_msg = AstroportRouterExecuteMsg::ExecuteSwapOperations {
-        operations: operations.clone(),
+        operations,
         minimum_receive: None,
         to: Some(info.sender.clone()),
     };

@@ -171,7 +171,7 @@ fn test_token_to_native() {
     let token_addr = "token_addr";
 
     let info = mock_info(token_addr, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let swap_msg = AstroportRouterCw20HookMsg::ExecuteSwapOperations {
         operations: vec![SwapOperation::AstroSwap {
@@ -222,7 +222,7 @@ fn test_token_to_native_to_token() {
     });
 
     let info = mock_info(offer_token, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let swap_msg = AstroportRouterCw20HookMsg::ExecuteSwapOperations {
         operations: vec![

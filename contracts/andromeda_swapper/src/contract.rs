@@ -13,8 +13,7 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    attr, entry_point, from_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, Reply, ReplyOn, Response, StdError, StdResult, Storage, SubMsg, Uint128,
+    entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, SubMsg, Uint128,
     WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -211,9 +210,9 @@ fn execute_swap_cw20(
     sender: String,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(sender));
+    let recipient = recipient.unwrap_or(Recipient::Addr(sender));
     if let AssetInfo::Token { contract_addr } = &ask_asset_info {
-        if contract_addr.to_string() == offer_token {
+        if *contract_addr == offer_token {
             // Send as is.
             let msg = recipient.generate_msg_cw20(
                 &deps.as_ref(),
