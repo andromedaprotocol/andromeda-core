@@ -10,6 +10,4 @@ pub struct Config {
     pub astroport_factory_contract: Addr,
     pub astroport_router_contract: Addr,
     pub astroport_staking_contract: Addr,
-    pub astroport_vesting_contract: Addr,
-    pub astroport_maker_contract: Addr,
 }

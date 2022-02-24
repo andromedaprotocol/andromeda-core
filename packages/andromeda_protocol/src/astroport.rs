@@ -1,13 +1,9 @@
 use crate::swapper::{SwapperCw20HookMsg, SwapperMsg};
 use astroport::{
     factory::ExecuteMsg as AstroportFactoryExecuteMsg,
-    maker::ExecuteMsg as AstroportMakerExecuteMsg,
     router::{Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg},
     staking::{
         Cw20HookMsg as AstroportStakingCw20HookMsg, ExecuteMsg as AstroportStakingExecuteMsg,
-    },
-    vesting::{
-        Cw20HookMsg as AstroportVestingCw20HookMsg, ExecuteMsg as AstroportVestingExecuteMsg,
     },
 };
 use cw20::Cw20ReceiveMsg;
@@ -19,8 +15,6 @@ pub struct InstantiateMsg {
     pub astroport_factory_contract: String,
     pub astroport_router_contract: String,
     pub astroport_staking_contract: String,
-    pub astroport_vesting_contract: String,
-    pub astroport_maker_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -31,8 +25,6 @@ pub enum ExecuteMsg {
     AstroportFactoryExecuteMsg(AstroportFactoryExecuteMsg),
     AstroportRouterExecuteMsg(AstroportRouterExecuteMsg),
     AstroportStakingExecuteMsg(AstroportStakingExecuteMsg),
-    AstroportVestingExecuteMsg(AstroportVestingExecuteMsg),
-    AstroportMakerExecuteMsg(AstroportMakerExecuteMsg),
     UpdateOwner {
         address: String,
     },
@@ -40,8 +32,6 @@ pub enum ExecuteMsg {
         astroport_factory_contract: Option<String>,
         astroport_router_contract: Option<String>,
         astroport_staking_contract: Option<String>,
-        astroport_vesting_contract: Option<String>,
-        astroport_maker_contract: Option<String>,
     },
 }
 
@@ -62,7 +52,6 @@ pub enum Cw20HookMsg {
     Swapper(SwapperCw20HookMsg),
     AstroportRouterCw20HookMsg(AstroportRouterCw20HookMsg),
     AstroportStakingCw20HookMsg(AstroportStakingCw20HookMsg),
-    AstroportVestingCw20HookMsg(AstroportVestingCw20HookMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -71,6 +60,4 @@ pub struct ConfigResponse {
     pub astroport_factory_contract: String,
     pub astroport_router_contract: String,
     pub astroport_staking_contract: String,
-    pub astroport_vesting_contract: String,
-    pub astroport_maker_contract: String,
 }

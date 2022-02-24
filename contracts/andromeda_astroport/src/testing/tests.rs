@@ -21,9 +21,7 @@ fn init(deps: DepsMut) {
     let msg = InstantiateMsg {
         astroport_factory_contract: MOCK_ASTROPORT_FACTORY_CONTRACT.to_owned(),
         astroport_staking_contract: "staking".to_string(),
-        astroport_maker_contract: "maker".to_string(),
         astroport_router_contract: MOCK_ASTROPORT_ROUTER_CONTRACT.to_owned(),
-        astroport_vesting_contract: "vesting".to_string(),
     };
 
     let _res = instantiate(deps, mock_env(), mock_info("sender", &[]), msg).unwrap();

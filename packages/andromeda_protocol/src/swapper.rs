@@ -16,16 +16,16 @@ pub enum SwapperMsg {
     },
 }
 
+/// Helper enum for calling contracts that implement the Swapper interface.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-/// Helper enum for calling contracts that implement the Swapper interface.
 pub enum SwapperImplExecuteMsg {
     Swapper(SwapperMsg),
 }
 
+/// Helper enum for calling contracts that implement the Swapper interface.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-/// Helper enum for calling contracts that implement the Swapper interface.
 pub enum SwapperImplCw20HookMsg {
     Swapper(SwapperCw20HookMsg),
 }
@@ -52,15 +52,15 @@ impl From<AssetInfo> for AstroportAssetInfo {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 /// Instantiate Message for Swapper contract.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub swapper_impl: InstantiateType,
 }
 
+/// Execute Message for Swapper contract.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-/// Execute Message for Swapper contract.
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     Swap {
@@ -74,9 +74,9 @@ pub enum ExecuteMsg {
     },
 }
 
+/// Cw20 Hook Message for Swapper contract.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-/// Cw20 Hook Message for Swapper contract.
 pub enum Cw20HookMsg {
     Swap {
         ask_asset_info: AssetInfo,
@@ -84,9 +84,9 @@ pub enum Cw20HookMsg {
     },
 }
 
+/// Query Message for Swapper contract.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-/// Query Message for Swapper contract.
 pub enum QueryMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

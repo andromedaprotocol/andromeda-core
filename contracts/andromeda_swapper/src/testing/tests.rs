@@ -302,7 +302,7 @@ fn test_swap_cw20_same_asset() {
 
     assert_eq!(
         Response::new()
-            .add_attribute("action", "swap_cw20")
+            .add_attribute("action", "swap")
             .add_submessage(SubMsg::new(WasmMsg::Execute {
                 contract_addr: MOCK_CW20_CONTRACT.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {

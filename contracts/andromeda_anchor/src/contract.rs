@@ -266,7 +266,7 @@ fn withdraw_aust(
     POSITION.save(deps.storage, &recipient_addr, &position)?;
 
     let msg = position.recipient.generate_msg_cw20(
-        &deps.as_ref(),
+        deps.api,
         Cw20Coin {
             address: deps.api.addr_humanize(&config.aust_token)?.to_string(),
             amount,
@@ -328,8 +328,7 @@ fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError
     let mut msgs = vec![];
     if transfer_amount > Uint128::zero() {
         msgs.push(
-            recipient
-                .generate_msg_native(&deps.as_ref(), coins(transfer_amount.u128(), UUSD_DENOM))?,
+            recipient.generate_msg_native(deps.api, coins(transfer_amount.u128(), UUSD_DENOM))?,
         );
     }
     Ok(Response::new()

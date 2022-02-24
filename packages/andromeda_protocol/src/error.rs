@@ -151,9 +151,6 @@ pub enum ContractError {
     #[error("MissingRequiredMessageData")]
     MissingRequiredMessageData {},
 
-    #[error("InvalidAstroportFunds")]
-    InvalidAstroportFunds { msg: String },
-
     #[error("Cannot migrate from different contract type: {previous_contract}")]
     CannotMigrate { previous_contract: String },
 

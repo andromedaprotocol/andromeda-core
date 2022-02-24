@@ -24,7 +24,7 @@ use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_astroport_wrapped_cdp";
+const CONTRACT_NAME: &str = "crates.io:andromeda_astroport";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
@@ -39,8 +39,6 @@ pub fn instantiate(
         astroport_factory_contract: deps.api.addr_validate(&msg.astroport_factory_contract)?,
         astroport_router_contract: deps.api.addr_validate(&msg.astroport_router_contract)?,
         astroport_staking_contract: deps.api.addr_validate(&msg.astroport_staking_contract)?,
-        astroport_vesting_contract: deps.api.addr_validate(&msg.astroport_vesting_contract)?,
-        astroport_maker_contract: deps.api.addr_validate(&msg.astroport_maker_contract)?,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -77,31 +75,17 @@ pub fn execute(
             config.astroport_staking_contract.to_string(),
             encode_binary(&msg)?,
         ),
-        ExecuteMsg::AstroportVestingExecuteMsg(msg) => execute_astroport_msg(
-            info.funds,
-            config.astroport_vesting_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
-        ExecuteMsg::AstroportMakerExecuteMsg(msg) => execute_astroport_msg(
-            info.funds,
-            config.astroport_maker_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
         ExecuteMsg::UpdateConfig {
             astroport_factory_contract,
             astroport_router_contract,
             astroport_staking_contract,
-            astroport_vesting_contract,
-            astroport_maker_contract,
         } => execute_update_config(
             deps,
             info,
             astroport_factory_contract,
             astroport_router_contract,
             astroport_staking_contract,
-            astroport_vesting_contract,
-            astroport_maker_contract,
         ),
     }
 }
@@ -124,12 +108,6 @@ pub fn receive_cw20(
             token_address.to_string(),
             cw20_msg.amount,
             config.astroport_staking_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
-        Cw20HookMsg::AstroportVestingCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            token_address.to_string(),
-            cw20_msg.amount,
-            config.astroport_vesting_contract.to_string(),
             encode_binary(&msg)?,
         ),
         Cw20HookMsg::Swapper(msg) => {
@@ -302,7 +280,7 @@ pub fn execute_astroport_msg(
 ) -> Result<Response, ContractError> {
     require(
         funds.is_empty() || funds.len() == 1,
-        ContractError::InvalidAstroportFunds {
+        ContractError::InvalidFunds {
             msg: "Astroport expects no funds or a single type of fund to be deposited.".to_string(),
         },
     )?;
@@ -322,8 +300,6 @@ pub fn execute_update_config(
     astroport_factory_contract: Option<String>,
     astroport_router_contract: Option<String>,
     astroport_staking_contract: Option<String>,
-    astroport_vesting_contract: Option<String>,
-    astroport_maker_contract: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -338,12 +314,6 @@ pub fn execute_update_config(
     }
     if let Some(astroport_staking_contract) = astroport_staking_contract {
         config.astroport_staking_contract = deps.api.addr_validate(&astroport_staking_contract)?;
-    }
-    if let Some(astroport_vesting_contract) = astroport_vesting_contract {
-        config.astroport_vesting_contract = deps.api.addr_validate(&astroport_vesting_contract)?;
-    }
-    if let Some(astroport_maker_contract) = astroport_maker_contract {
-        config.astroport_vesting_contract = deps.api.addr_validate(&astroport_maker_contract)?;
     }
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new().add_attribute("action", "update_config"))
@@ -374,7 +344,5 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         astroport_factory_contract: config.astroport_factory_contract.to_string(),
         astroport_router_contract: config.astroport_router_contract.to_string(),
         astroport_staking_contract: config.astroport_staking_contract.to_string(),
-        astroport_vesting_contract: config.astroport_vesting_contract.to_string(),
-        astroport_maker_contract: config.astroport_maker_contract.to_string(),
     })
 }

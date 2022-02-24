@@ -174,10 +174,10 @@ fn query_deducted_funds(
                 .to_string(),
             );
             let msg = if is_native {
-                reciever.generate_msg_native(&deps, vec![fee.clone()])?
+                reciever.generate_msg_native(deps.api, vec![fee.clone()])?
             } else {
                 reciever.generate_msg_cw20(
-                    &deps,
+                    deps.api,
                     Cw20Coin {
                         amount: fee.amount,
                         address: fee.denom.to_string(),

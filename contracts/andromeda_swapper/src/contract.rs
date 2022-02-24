@@ -13,8 +13,8 @@ use andromeda_protocol::{
     },
 };
 use cosmwasm_std::{
-    entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, SubMsg, Uint128,
-    WasmMsg,
+    entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    ReplyOn, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -39,6 +39,7 @@ pub fn instantiate(
         InstantiateType::New(instantiate_msg) => {
             let code_id: u64 = query_get::<CodeIdResponse>(
                 Some(encode_binary(&"cw721")?),
+                // TODO: Replace when Primitive contract change merged.
                 "TEMP_FACTORY".to_string(),
                 deps.querier,
             )?
@@ -117,7 +118,7 @@ fn execute_swap(
     if let AssetInfo::NativeToken { denom } = &ask_asset_info {
         if denom == &coin.denom {
             // Send coins as is as there is no need to swap.
-            let msg = recipient.generate_msg_native(&deps.as_ref(), info.funds)?;
+            let msg = recipient.generate_msg_native(deps.api, info.funds)?;
             return Ok(Response::new()
                 .add_submessage(msg)
                 .add_attribute("action", "swap"));
@@ -160,13 +161,13 @@ fn execute_send(
     let msg: SubMsg = match ask_asset_info {
         AssetInfo::NativeToken { denom } => {
             let amount = query_balance(&deps.querier, env.contract.address, denom.clone())?;
-            recipient.generate_msg_native(&deps.as_ref(), vec![Coin { denom, amount }])?
+            recipient.generate_msg_native(deps.api, vec![Coin { denom, amount }])?
         }
         AssetInfo::Token { contract_addr } => {
             let amount =
                 query_token_balance(&deps.querier, contract_addr.clone(), env.contract.address)?;
             recipient.generate_msg_cw20(
-                &deps.as_ref(),
+                deps.api,
                 Cw20Coin {
                     address: contract_addr.to_string(),
                     amount,
@@ -215,7 +216,7 @@ fn execute_swap_cw20(
         if *contract_addr == offer_token {
             // Send as is.
             let msg = recipient.generate_msg_cw20(
-                &deps.as_ref(),
+                deps.api,
                 Cw20Coin {
                     address: offer_token,
                     amount: offer_amount,
@@ -223,7 +224,7 @@ fn execute_swap_cw20(
             )?;
             return Ok(Response::new()
                 .add_submessage(msg)
-                .add_attribute("action", "swap_cw20"));
+                .add_attribute("action", "swap"));
         }
     }
     let contract_addr = SWAPPER_IMPL_ADDR.load(deps.storage)?;
