@@ -25,8 +25,6 @@ pub enum AssetInfo {
     NativeToken { denom: String },
 }
 
-impl AssetInfo {}
-
 impl From<AssetInfo> for AstroportAssetInfo {
     fn from(asset_info: AssetInfo) -> AstroportAssetInfo {
         match asset_info {
@@ -35,3 +33,18 @@ impl From<AssetInfo> for AstroportAssetInfo {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct InstantiateMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ExecuteMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct MigrateMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryMsg {}

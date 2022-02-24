@@ -186,6 +186,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-swapper"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw2 0.9.1",
+ "cw20 0.9.1",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+]
+
+[[package]]
 name = "andromeda-timelock"
 version = "0.1.0"
 dependencies = [
