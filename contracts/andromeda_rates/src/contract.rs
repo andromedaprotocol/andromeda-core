@@ -9,14 +9,20 @@ use andromeda_protocol::{
     operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     rates::{
-        ExecuteMsg, Funds, InstantiateMsg, PaymentAttribute, PaymentsResponse, QueryMsg, RateInfo,
+        ExecuteMsg, Funds, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
+        QueryMsg, RateInfo,
     },
     require,
 };
 use cosmwasm_std::{
     attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-rates";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
 pub fn instantiate(
@@ -25,8 +31,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let config = Config { rates: msg.rates };
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let config = Config { rates: msg.rates };
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "rates")]))
 }
@@ -76,6 +83,17 @@ fn execute_update_rates(
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new().add_attributes(vec![attr("action", "update_rates")]))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[entry_point]

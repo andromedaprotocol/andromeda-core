@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, Storage};
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{DATA, DEFAULT_KEY};
 use andromeda_protocol::{
@@ -12,7 +12,7 @@ use andromeda_protocol::{
         query_operators,
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, Primitive, QueryMsg},
+    primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, MigrateMsg, Primitive, QueryMsg},
     require,
 };
 
@@ -116,6 +116,17 @@ pub fn execute_delete_value(
 
 fn is_authorized(storage: &dyn Storage, address: &str) -> Result<bool, ContractError> {
     Ok(is_contract_owner(storage, address)? || is_operator(storage, address)?)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

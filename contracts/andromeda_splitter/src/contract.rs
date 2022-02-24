@@ -13,13 +13,18 @@ use andromeda_protocol::{
     require,
     splitter::{
         validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse,
-        InstantiateMsg, QueryMsg, Splitter,
+        InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
     },
 };
 use cosmwasm_std::{
     attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
     Response, StdError, SubMsg, Uint128,
 };
+use cw2::{get_contract_version, set_contract_version};
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-splitter";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
 pub fn instantiate(
@@ -29,7 +34,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     msg.validate()?;
-
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let splitter = Splitter {
         recipients: msg.recipients,
         locked: false,
@@ -244,6 +249,17 @@ fn execute_update_address_list(
         .add_submessages(mod_resp.msgs)
         .add_events(mod_resp.events)
         .add_attributes(vec![attr("action", "update_address_list")]))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[entry_point]

@@ -13,20 +13,28 @@ use andromeda_protocol::{
             on_funds_transfer, validate_modules, ADOType, MODULE_ADDR, MODULE_INFO,
         },
     },
-    cw20::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     error::ContractError,
     ownership::CONTRACT_OWNER,
     rates::Funds,
     require,
     response::get_reply_address,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
-use cw20_base::contract::{
-    execute as execute_cw20, execute_burn as execute_cw20_burn, execute_mint as execute_cw20_mint,
-    execute_send as execute_cw20_send, execute_transfer as execute_cw20_transfer,
-    instantiate as cw20_instantiate, query as query_cw20,
+use cw20_base::{
+    contract::{
+        execute as execute_cw20, execute_burn as execute_cw20_burn,
+        execute_mint as execute_cw20_mint, execute_send as execute_cw20_send,
+        execute_transfer as execute_cw20_transfer, instantiate as cw20_instantiate,
+        query as query_cw20,
+    },
+    state::BALANCES,
 };
-use cw20_base::state::BALANCES;
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-cw20";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -36,6 +44,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let mut resp = Response::default();
     let sender = info.sender.as_str();
     if let Some(modules) = msg.modules.clone() {
@@ -262,6 +271,17 @@ fn filter_out_cw20_messages(
         }
     }
     Ok(resp)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

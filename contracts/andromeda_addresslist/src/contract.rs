@@ -1,7 +1,7 @@
 use andromeda_protocol::{
     address_list::{
         add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
-        InstantiateMsg, QueryMsg, IS_INCLUSIVE,
+        InstantiateMsg, MigrateMsg, QueryMsg, IS_INCLUSIVE,
     },
     communication::{
         encode_binary, hooks::AndromedaHook, parse_message, AndromedaMsg, AndromedaQuery,
@@ -18,6 +18,12 @@ use andromeda_protocol::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
+use cw2::{get_contract_version, set_contract_version};
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-addresslist";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -25,6 +31,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     initialize_operators(deps.storage, msg.operators)?;
     IS_INCLUSIVE.save(deps.storage, &msg.is_inclusive)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
@@ -106,6 +113,17 @@ fn execute_remove_address(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
+}
+
+#[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
