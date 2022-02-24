@@ -181,6 +181,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-wrapped-nft"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw2 0.9.1",
+ "cw721",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -15,6 +15,7 @@ pub mod rates;
 pub mod receipt;
 pub mod response;
 pub mod splitter;
+pub mod wrapped_nft;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing;
