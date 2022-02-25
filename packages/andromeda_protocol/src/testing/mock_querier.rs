@@ -15,7 +15,7 @@ use crate::{
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };
 use astroport::{
-    asset::{AssetInfo, PairInfo},
+    asset::{Asset, AssetInfo, PairInfo},
     factory::{PairType, QueryMsg as AstroportFactoryQueryMsg},
     pair::QueryMsg as AstroportPairQueryMsg,
     router::{QueryMsg as AstroportRouterQueryMsg, SimulateSwapOperationsResponse},
@@ -193,9 +193,26 @@ impl WasmMockQuerier {
                         },
                     ],
                     contract_addr: Addr::unchecked(MOCK_ASTROPORT_PAIR_CONTRACT),
-                    liquidity_token: Addr::unchecked("liquidity_token"),
+                    liquidity_token: Addr::unchecked(MOCK_CW20_CONTRACT),
                     pair_type: PairType::Xyk {},
                 };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
+            AstroportPairQueryMsg::Share { .. } => {
+                let res = vec![
+                    Asset {
+                        info: AssetInfo::Token {
+                            contract_addr: Addr::unchecked("token1"),
+                        },
+                        amount: 10u128.into(),
+                    },
+                    Asset {
+                        info: AssetInfo::Token {
+                            contract_addr: Addr::unchecked("token2"),
+                        },
+                        amount: 20u128.into(),
+                    },
+                ];
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }
             _ => panic!("Unsupported Query"),

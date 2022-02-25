@@ -4,12 +4,12 @@ use andromeda_protocol::{
     swapper::{AssetInfo, SwapperCw20HookMsg, SwapperMsg},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ASTROPORT_FACTORY_CONTRACT, MOCK_ASTROPORT_PAIR_CONTRACT,
-        MOCK_ASTROPORT_ROUTER_CONTRACT,
+        MOCK_ASTROPORT_ROUTER_CONTRACT, MOCK_CW20_CONTRACT,
     },
 };
 use astroport::{
     asset::{Asset, AssetInfo as AstroportAssetInfo},
-    pair::ExecuteMsg as AstroportPairExecuteMsg,
+    pair::{Cw20HookMsg as PairCw20HookMsg, ExecuteMsg as AstroportPairExecuteMsg},
     router::{
         Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg,
         SwapOperation,
@@ -18,7 +18,7 @@ use astroport::{
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
-    to_binary, Addr, CosmosMsg, DepsMut, Response, WasmMsg,
+    to_binary, Addr, CosmosMsg, DepsMut, Response, SubMsg, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
@@ -350,6 +350,55 @@ fn test_provide_liquidity() {
                 })
                 .unwrap(),
                 funds: info.funds,
+            })),
+        res
+    );
+}
+
+#[test]
+fn test_withdraw_liquidity() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("sender", &[]);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::WithdrawLiquidity {
+        pair_address: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
+        amount: None,
+        recipient: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_CW20_CONTRACT.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
+                    amount: 10u128.into(),
+                    msg: to_binary(&PairCw20HookMsg::WithdrawLiquidity {}).unwrap(),
+                })
+                .unwrap(),
+                funds: vec![],
+            })))
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
+                contract_addr: "token1".to_string(),
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: "sender".to_string(),
+                    amount: 10u128.into(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
+                contract_addr: "token2".to_string(),
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: "sender".to_string(),
+                    amount: 20u128.into(),
+                })
+                .unwrap(),
+                funds: vec![],
             })),
         res
     );
