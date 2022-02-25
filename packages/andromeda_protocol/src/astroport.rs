@@ -20,6 +20,7 @@ pub struct InstantiateMsg {
     pub astroport_factory_contract: String,
     pub astroport_router_contract: String,
     pub astroport_staking_contract: String,
+    pub astroport_token_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

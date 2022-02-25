@@ -6,6 +6,7 @@ use andromeda_protocol::{
         mock_dependencies_custom, MOCK_ASTROPORT_FACTORY_CONTRACT, MOCK_ASTROPORT_PAIR_CONTRACT,
         MOCK_ASTROPORT_ROUTER_CONTRACT, MOCK_CW20_CONTRACT,
     },
+    withdraw::WITHDRAWABLE_TOKENS,
 };
 use astroport::{
     asset::{Asset, AssetInfo as AstroportAssetInfo},
@@ -27,8 +28,8 @@ fn init(deps: DepsMut) {
         astroport_factory_contract: MOCK_ASTROPORT_FACTORY_CONTRACT.to_owned(),
         astroport_staking_contract: "staking".to_string(),
         astroport_router_contract: MOCK_ASTROPORT_ROUTER_CONTRACT.to_owned(),
+        astroport_token_contract: "astroport_token".to_string(),
     };
-
     let _res = instantiate(deps, mock_env(), mock_info("sender", &[]), msg).unwrap();
 }
 
@@ -274,6 +275,7 @@ fn test_provide_liquidity() {
     let info = mock_info("sender", &[]);
 
     init(deps.as_mut());
+    assert!(WITHDRAWABLE_TOKENS.has(deps.as_mut().storage, "astroport_token"));
 
     let assets = [
         Asset {
@@ -297,6 +299,8 @@ fn test_provide_liquidity() {
     };
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert!(WITHDRAWABLE_TOKENS.has(deps.as_ref().storage, "liquidity_token"));
 
     assert_eq!(
         Response::new()

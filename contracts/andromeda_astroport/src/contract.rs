@@ -47,7 +47,13 @@ pub fn instantiate(
         astroport_router_contract: deps.api.addr_validate(&msg.astroport_router_contract)?,
         astroport_staking_contract: deps.api.addr_validate(&msg.astroport_staking_contract)?,
     };
-
+    add_withdrawable_token(
+        deps.storage,
+        &msg.astroport_token_contract,
+        &AssetInfo::Token {
+            contract_addr: deps.api.addr_validate(&msg.astroport_token_contract)?,
+        },
+    )?;
     CONFIG.save(deps.storage, &config)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new().add_attributes(vec![
