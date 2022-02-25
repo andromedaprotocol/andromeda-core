@@ -42,7 +42,7 @@ pub fn instantiate(
         InstantiateType::Address(addr) => SWAPPER_IMPL_ADDR.save(deps.storage, &addr)?,
         InstantiateType::New(instantiate_msg) => {
             let code_id: u64 = query_get::<CodeIdResponse>(
-                Some(encode_binary(&"cw721")?),
+                Some(encode_binary(&"swapper")?),
                 // TODO: Replace when Primitive contract change merged.
                 "TEMP_FACTORY".to_string(),
                 deps.querier,
