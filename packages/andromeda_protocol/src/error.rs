@@ -203,6 +203,18 @@ pub enum ContractError {
     #[error("token_id already claimed")]
     Claimed {},
 
+    #[error("OfferAlreadyPlaced")]
+    OfferAlreadyPlaced {},
+
+    #[error("OfferLowerThanCurrent")]
+    OfferLowerThanCurrent {},
+
+    #[error("OfferNotExpired")]
+    OfferNotExpired {},
+
+    #[error("TransferAgreementExists")]
+    TransferAgreementExists {},
+
     #[error("CannotDoubleWrapToken")]
     CannotDoubleWrapToken {},
 

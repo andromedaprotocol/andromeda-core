@@ -1,13 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdError, Storage, SubMsg,
+    attr, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Reply, Response, StdError, Storage, SubMsg, Uint128,
 };
 
 use andromeda_protocol::{
     communication::{
-        hooks::AndromedaHook,
+        encode_binary,
+        hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::{
             execute_alter_module, execute_deregister_module, execute_register_module, module_hook,
             on_funds_transfer, validate_modules, ADOType, MODULE_ADDR, MODULE_INFO,
@@ -18,7 +19,7 @@ use andromeda_protocol::{
     error::ContractError,
     operators::execute_update_operators,
     ownership::{execute_update_owner, CONTRACT_OWNER},
-    rates::Funds,
+    rates::{get_tax_amount, Funds},
     require,
     response::get_reply_address,
 };
@@ -91,7 +92,7 @@ pub fn execute(
         deps.querier,
         AndromedaHook::OnExecute {
             sender: info.sender.to_string(),
-            payload: to_binary(&msg)?,
+            payload: encode_binary(&msg)?,
         },
     )?;
 
@@ -192,42 +193,58 @@ fn execute_transfer(
     recipient: String,
     token_id: String,
 ) -> Result<Response, ContractError> {
+    let responses = module_hook::<Response>(
+        deps.storage,
+        deps.querier,
+        AndromedaHook::OnTransfer {
+            token_id: token_id.clone(),
+            sender: info.sender.to_string(),
+            recipient: recipient.clone(),
+        },
+    )?;
+    // Reduce all responses into one.
+    let mut resp = responses
+        .into_iter()
+        .reduce(|resp, r| {
+            resp.add_submessages(r.messages)
+                .add_events(r.events)
+                .add_attributes(r.attributes)
+        })
+        .unwrap_or_else(Response::new);
+
     let contract = AndrCW721Contract::default();
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
-    let mut resp = Response::default();
-    if let Some(xfer_agreement) = token.extension.transfer_agreement.clone() {
-        let (msgs, events, remainder) = on_funds_transfer(
+    let tax_amount = if let Some(agreement) = &token.extension.transfer_agreement {
+        let (mut msgs, events, remainder) = on_funds_transfer(
             deps.storage,
             deps.querier,
             info.sender.to_string(),
-            Funds::Native(xfer_agreement.amount),
-            to_binary(&ExecuteMsg::TransferNft {
+            Funds::Native(agreement.amount.clone()),
+            encode_binary(&ExecuteMsg::TransferNft {
                 token_id: token_id.clone(),
                 recipient: recipient.clone(),
             })?,
         )?;
-        let remaining_amount = match remainder {
-            Funds::Native(coin) => coin, //What do we do in the case that the rates returns remaining amount as native funds?
-            Funds::Cw20(..) => panic!("Remaining funds returned as incorrect type"),
-        };
-        resp = resp.add_submessages(msgs).add_events(events);
-        resp = resp.add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token.owner.clone().into(),
+        let remaining_amount = remainder.try_get_coin()?;
+        let tax_amount = get_tax_amount(&msgs, agreement.amount.amount - remaining_amount.amount);
+        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: token.owner.to_string(),
             amount: vec![remaining_amount],
         })));
-    }
+        resp = resp.add_submessages(msgs).add_events(events);
+        tax_amount
+    } else {
+        Uint128::zero()
+    };
 
-    check_can_send(deps.as_ref(), env, info, &token)?;
-    token.owner = deps.api.addr_validate(recipient.as_str())?;
-    token.approvals = vec![];
+    check_can_send(deps.as_ref(), env, info, &token, tax_amount)?;
+    token.owner = deps.api.addr_validate(&recipient)?;
+    token.approvals.clear();
     token.extension.transfer_agreement = None;
     token.extension.pricing = None;
-    contract
-        .tokens
-        .save(deps.storage, token_id.as_str(), &token)?;
-
+    contract.tokens.save(deps.storage, &token_id, &token)?;
     Ok(resp
         .add_attribute("action", "transfer")
         .add_attribute("recipient", recipient))
@@ -238,6 +255,7 @@ fn check_can_send(
     env: Env,
     info: MessageInfo,
     token: &TokenInfo<TokenExtension>,
+    tax_amount: Uint128,
 ) -> Result<(), ContractError> {
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
     // owner can send
@@ -248,7 +266,14 @@ fn check_can_send(
     // token purchaser can send if correct funds are sent
     if let Some(agreement) = &token.extension.transfer_agreement {
         require(
-            has_coins(&info.funds, &agreement.amount),
+            has_coins(
+                &info.funds,
+                &Coin {
+                    denom: agreement.amount.denom.to_owned(),
+                    // Ensure that the taxes came from the sender.
+                    amount: agreement.amount.amount + tax_amount,
+                },
+            ),
             ContractError::InsufficientFunds {},
         )?;
         if agreement.purchaser == info.sender {
@@ -370,5 +395,33 @@ fn execute_burn(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    Ok(AndrCW721Contract::default().query(deps, env, msg.into())?)
+    match msg {
+        QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
+        _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
+    }
+}
+
+fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaHook::OnFundsTransfer {
+            sender,
+            payload: _,
+            amount,
+        } => {
+            let (msgs, events, remainder) = on_funds_transfer(
+                deps.storage,
+                deps.querier,
+                sender,
+                amount,
+                encode_binary(&String::default())?,
+            )?;
+            let res = OnFundsTransferResponse {
+                msgs,
+                events,
+                leftover_funds: remainder,
+            };
+            Ok(encode_binary(&res)?)
+        }
+        _ => Err(ContractError::UnsupportedOperation {}),
+    }
 }

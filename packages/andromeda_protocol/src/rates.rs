@@ -1,12 +1,15 @@
 use crate::{
     communication::{
+        encode_binary,
         hooks::{AndromedaHook, OnFundsTransferResponse},
         AndromedaMsg, AndromedaQuery, Recipient,
     },
     error::ContractError,
     modules::Rate,
 };
-use cosmwasm_std::{to_binary, Coin, QuerierWrapper, QueryRequest, WasmQuery};
+use cosmwasm_std::{
+    BankMsg, Coin, CosmosMsg, QuerierWrapper, QueryRequest, SubMsg, Uint128, WasmQuery,
+};
 use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -15,6 +18,18 @@ use serde::{Deserialize, Serialize};
 pub enum Funds {
     Native(Coin),
     Cw20(Cw20Coin),
+}
+
+impl Funds {
+    // There is probably a more idiomatic way of doing this with From and Into...
+    pub fn try_get_coin(&self) -> Result<Coin, ContractError> {
+        match self {
+            Funds::Native(coin) => Ok(coin.clone()),
+            Funds::Cw20(_) => Err(ContractError::ParsingError {
+                err: "Funds is not of type Native".to_string(),
+            }),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -68,6 +83,29 @@ impl ToString for PaymentAttribute {
     }
 }
 
+/// Gets the amount of tax paid by iterating over the `msgs` and comparing it to the
+/// `deducted_amount`. It is assumed that each bank message has a single Coin to send as transfer
+/// agreements only accept a single Coin. It is also assumed that the result will always be
+/// non-negative.
+///
+/// # Arguments
+///
+/// * `msgs` - The vector of submessages containing fund transfers
+/// * `deducted_amount` - The amount deducted after applying royalties, any surplus paid is tax
+pub fn get_tax_amount(msgs: &[SubMsg], deducted_amount: Uint128) -> Uint128 {
+    msgs.iter()
+        .map(|msg| {
+            if let CosmosMsg::Bank(BankMsg::Send { amount, .. }) = &msg.msg {
+                amount[0].amount
+            } else {
+                Uint128::zero()
+            }
+        })
+        .reduce(|total, amount| total + amount)
+        .unwrap_or_else(Uint128::zero)
+        - deducted_amount
+}
+
 pub fn on_required_payments(
     querier: QuerierWrapper,
     addr: String,
@@ -75,9 +113,9 @@ pub fn on_required_payments(
 ) -> Result<OnFundsTransferResponse, ContractError> {
     let res: OnFundsTransferResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: addr,
-        msg: to_binary(&QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(
-            &amount,
-        )?))))?,
+        msg: encode_binary(&QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
+            encode_binary(&amount)?,
+        ))))?,
     }))?;
 
     Ok(res)
