@@ -1,5 +1,5 @@
 use crate::{
-    communication::{AndromedaMsg, AndromedaQuery},
+    communication::{AndromedaMsg, AndromedaQuery, Recipient},
     swapper::{SwapperCw20HookMsg, SwapperMsg},
 };
 use astroport::{
@@ -10,7 +10,7 @@ use astroport::{
         Cw20HookMsg as AstroportStakingCw20HookMsg, ExecuteMsg as AstroportStakingExecuteMsg,
     },
 };
-use cosmwasm_std::Decimal;
+use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -40,6 +40,11 @@ pub enum ExecuteMsg {
         assets: [Asset; 2],
         slippage_tolerance: Option<Decimal>,
         auto_stake: Option<bool>,
+    },
+    WithdrawLiquidity {
+        pair_address: String,
+        amount: Option<Uint128>,
+        recipient: Option<Recipient>,
     },
 }
 

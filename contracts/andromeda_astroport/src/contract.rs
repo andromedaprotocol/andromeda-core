@@ -1,17 +1,20 @@
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     astroport::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
+    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
-    swapper::{AssetInfo, SwapperCw20HookMsg, SwapperMsg},
+    swapper::{query_token_balance, AssetInfo, SwapperCw20HookMsg, SwapperMsg},
     withdraw::{add_withdrawable_token, execute_withdraw},
 };
 use astroport::{
-    asset::{Asset, AssetInfo as AstroportAssetInfo},
-    pair::ExecuteMsg as AstroportPairExecuteMsg,
+    asset::{Asset, AssetInfo as AstroportAssetInfo, PairInfo},
+    pair::{
+        Cw20HookMsg as PairCw20HookMsg, ExecuteMsg as AstroportPairExecuteMsg,
+        QueryMsg as PairQueryMsg,
+    },
     querier::query_pair_info,
     router::{
         Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg,
@@ -20,10 +23,12 @@ use astroport::{
 };
 use cosmwasm_std::{
     attr, entry_point, from_binary, Addr, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, Response, StdResult, Uint128, WasmMsg,
+    MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
+use std::cmp;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_astroport";
@@ -65,6 +70,11 @@ pub fn execute(
             slippage_tolerance,
             auto_stake,
         } => execute_provide_liquidity(deps, env, info, assets, slippage_tolerance, auto_stake),
+        ExecuteMsg::WithdrawLiquidity {
+            pair_address,
+            amount,
+            recipient,
+        } => execute_withdraw_liquidity(deps, env, info, pair_address, amount, recipient),
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Swapper(msg) => handle_swapper_msg(deps, info, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
@@ -175,6 +185,89 @@ fn execute_provide_liquidity(
         funds: info.funds,
     }));
     Ok(Response::new())
+}
+
+fn execute_withdraw_liquidity(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    pair_address: String,
+    amount: Option<Uint128>,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
+    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let pair_info = query_pair_given_address(&deps.querier, pair_address)?;
+    let total_amount = query_token_balance(
+        &deps.querier,
+        pair_info.liquidity_token.clone(),
+        env.contract.address,
+    )?;
+    let withdraw_amount = match amount {
+        None => total_amount,
+        Some(amount) => cmp::min(amount, total_amount),
+    };
+
+    let share = query_pair_share(
+        &deps.querier,
+        pair_info.contract_addr.to_string(),
+        withdraw_amount,
+    )?;
+    let mut withdraw_messages: Vec<SubMsg> = vec![];
+    for asset in share.iter() {
+        match &asset.info {
+            AstroportAssetInfo::Token { contract_addr } => {
+                withdraw_messages.push(recipient.generate_msg_cw20(
+                    deps.api,
+                    Cw20Coin {
+                        address: contract_addr.to_string(),
+                        amount: asset.amount,
+                    },
+                )?)
+            }
+            AstroportAssetInfo::NativeToken { denom } => {
+                withdraw_messages.push(recipient.generate_msg_native(
+                    deps.api,
+                    vec![Coin {
+                        denom: denom.to_owned(),
+                        amount: asset.amount,
+                    }],
+                )?)
+            }
+        }
+    }
+
+    Ok(Response::new()
+        .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: pair_info.liquidity_token.to_string(),
+            msg: encode_binary(&Cw20ExecuteMsg::Send {
+                contract: pair_info.contract_addr.to_string(),
+                amount: withdraw_amount,
+                msg: encode_binary(&PairCw20HookMsg::WithdrawLiquidity {})?,
+            })?,
+            funds: info.funds,
+        })))
+        .add_submessages(withdraw_messages))
+}
+
+fn query_pair_given_address(
+    querier: &QuerierWrapper,
+    pair_address: String,
+) -> Result<PairInfo, ContractError> {
+    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: pair_address,
+        msg: encode_binary(&PairQueryMsg::Pair {})?,
+    }))?)
+}
+
+fn query_pair_share(
+    querier: &QuerierWrapper,
+    pair_address: String,
+    amount: Uint128,
+) -> Result<Vec<Asset>, ContractError> {
+    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: pair_address,
+        msg: encode_binary(&PairQueryMsg::Share { amount })?,
+    }))?)
 }
 
 fn execute_andr_receive(
