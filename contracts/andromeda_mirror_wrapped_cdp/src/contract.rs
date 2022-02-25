@@ -21,10 +21,10 @@ use andromeda_protocol::{
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
+    swapper::AssetInfo,
     withdraw::{add_withdrawable_token, execute_withdraw},
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use terraswap::asset::AssetInfo;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_mirror_wrapped_cdp";
@@ -56,7 +56,7 @@ pub fn instantiate(
         deps.storage,
         &mirror_token_contract.clone(),
         &AssetInfo::Token {
-            contract_addr: mirror_token_contract,
+            contract_addr: deps.api.addr_validate(&mirror_token_contract)?,
         },
     )?;
     CONFIG.save(deps.storage, &config)?;
@@ -120,8 +120,8 @@ fn execute_mirror_mint_msg(
         } => {
             handle_open_position_withdrawable_tokens(
                 deps.storage,
-                collateral.info,
-                asset_info,
+                collateral.info.into(),
+                asset_info.into(),
                 short_params.is_some(),
             )?;
 
@@ -159,7 +159,7 @@ fn execute_mirror_staking_msg(
                 deps.storage,
                 &asset_token.clone(),
                 &AssetInfo::Token {
-                    contract_addr: asset_token,
+                    contract_addr: deps.api.addr_validate(&asset_token)?,
                 },
             )?;
 
@@ -217,7 +217,7 @@ fn execute_mirror_lock_msg(
 
 fn get_asset_name(asset_info: &AssetInfo) -> String {
     match asset_info {
-        AssetInfo::Token { contract_addr } => contract_addr.clone(),
+        AssetInfo::Token { contract_addr } => contract_addr.to_string(),
         AssetInfo::NativeToken { denom } => denom.clone(),
     }
 }
@@ -324,9 +324,9 @@ fn execute_mirror_mint_cw20_msg(
             handle_open_position_withdrawable_tokens(
                 deps.storage,
                 AssetInfo::Token {
-                    contract_addr: token_address.clone(),
+                    contract_addr: deps.api.addr_validate(&token_address)?,
                 },
-                asset_info,
+                asset_info.into(),
                 short_params.is_some(),
             )?;
             execute_mirror_cw20_msg(

@@ -3,13 +3,15 @@ use andromeda_protocol::{
     astroport::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    operators::{execute_update_operators, query_is_operator, query_operators},
+    operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     swapper::{AssetInfo, SwapperCw20HookMsg, SwapperMsg},
+    withdraw::{add_withdrawable_token, execute_withdraw},
 };
 use astroport::{
-    asset::AssetInfo as AstroportAssetInfo,
+    asset::{Asset, AssetInfo as AstroportAssetInfo},
+    pair::ExecuteMsg as AstroportPairExecuteMsg,
     querier::query_pair_info,
     router::{
         Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg,
@@ -17,10 +19,9 @@ use astroport::{
     },
 };
 use cosmwasm_std::{
-    attr, entry_point, from_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, Response, StdResult, Uint128, WasmMsg,
+    attr, entry_point, from_binary, Addr, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    MessageInfo, QuerierWrapper, Response, StdResult, Uint128, WasmMsg,
 };
-
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
@@ -59,6 +60,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     match msg {
+        ExecuteMsg::ProvideLiquidity {
+            assets,
+            slippage_tolerance,
+            auto_stake,
+        } => execute_provide_liquidity(deps, env, info, assets, slippage_tolerance, auto_stake),
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Swapper(msg) => handle_swapper_msg(deps, info, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
@@ -91,6 +97,86 @@ pub fn execute(
     }
 }
 
+fn execute_provide_liquidity(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    assets: [Asset; 2],
+    slippage_tolerance: Option<Decimal>,
+    auto_stake: Option<bool>,
+) -> Result<Response, ContractError> {
+    let sender = info.sender.as_str();
+    require(
+        is_contract_owner(deps.storage, sender)? || is_operator(deps.storage, sender)?,
+        ContractError::Unauthorized {},
+    )?;
+    let config = CONFIG.load(deps.storage)?;
+    let pair = query_pair_info(
+        &deps.querier,
+        config.astroport_factory_contract,
+        &[assets[0].info.clone(), assets[1].info.clone()],
+    )?;
+    // In the case where we want to witdraw the LP token.
+    add_withdrawable_token(
+        deps.storage,
+        &pair.liquidity_token.to_string(),
+        &AssetInfo::Token {
+            contract_addr: pair.liquidity_token,
+        }
+        .into(),
+    )?;
+    let mut messages: Vec<CosmosMsg> = vec![];
+    for asset in assets.iter() {
+        // Once LP tokens are burned we would like to be able to withdraw the underlying tokens.
+        add_withdrawable_token(
+            deps.storage,
+            &asset.info.to_string(),
+            &asset.info.clone().into(),
+        )?;
+
+        if let AstroportAssetInfo::Token { contract_addr } = &asset.info {
+            messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: contract_addr.to_string(),
+                // User needs to allow this contract to transfer tokens.
+                msg: encode_binary(&Cw20ExecuteMsg::TransferFrom {
+                    owner: info.sender.to_string(),
+                    recipient: pair.contract_addr.to_string(),
+                    amount: asset.amount,
+                })?,
+                funds: vec![],
+            }));
+            messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: contract_addr.to_string(),
+                // Allow the pair address to transfer from here.
+                msg: encode_binary(&Cw20ExecuteMsg::IncreaseAllowance {
+                    spender: pair.contract_addr.to_string(),
+                    amount: asset.amount,
+                    expires: None,
+                })?,
+                funds: vec![],
+            }));
+        }
+    }
+    require(
+        !messages.is_empty(),
+        ContractError::InvalidFunds {
+            msg: "Cannot open an LP with two native tokens".to_string(),
+        },
+    )?;
+
+    messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: pair.contract_addr.to_string(),
+        msg: encode_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
+            assets,
+            slippage_tolerance,
+            auto_stake,
+            receiver: Some(env.contract.address.to_string()),
+        })?,
+        funds: info.funds,
+    }));
+    Ok(Response::new())
+}
+
 fn execute_andr_receive(
     deps: DepsMut,
     env: Env,
@@ -109,7 +195,10 @@ fn execute_andr_receive(
         AndromedaMsg::UpdateOperators { operators } => {
             execute_update_operators(deps, info, operators)
         }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
+        AndromedaMsg::Withdraw {
+            recipient,
+            tokens_to_withdraw,
+        } => execute_withdraw(deps.as_ref(), env, info, recipient, tokens_to_withdraw),
     }
 }
 

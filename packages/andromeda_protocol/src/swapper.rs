@@ -6,6 +6,7 @@ use cosmwasm_std::Addr;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use terraswap::asset::AssetInfo as TerraSwapAssetInfo;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -48,6 +49,37 @@ impl From<AssetInfo> for AstroportAssetInfo {
         match asset_info {
             AssetInfo::Token { contract_addr } => AstroportAssetInfo::Token { contract_addr },
             AssetInfo::NativeToken { denom } => AstroportAssetInfo::NativeToken { denom },
+        }
+    }
+}
+
+impl From<AssetInfo> for TerraSwapAssetInfo {
+    fn from(asset_info: AssetInfo) -> TerraSwapAssetInfo {
+        match asset_info {
+            AssetInfo::Token { contract_addr } => TerraSwapAssetInfo::Token {
+                contract_addr: contract_addr.to_string(),
+            },
+            AssetInfo::NativeToken { denom } => TerraSwapAssetInfo::NativeToken { denom },
+        }
+    }
+}
+
+impl From<TerraSwapAssetInfo> for AssetInfo {
+    fn from(asset_info: TerraSwapAssetInfo) -> AssetInfo {
+        match asset_info {
+            TerraSwapAssetInfo::Token { contract_addr } => AssetInfo::Token {
+                contract_addr: Addr::unchecked(contract_addr),
+            },
+            TerraSwapAssetInfo::NativeToken { denom } => AssetInfo::NativeToken { denom },
+        }
+    }
+}
+
+impl From<AstroportAssetInfo> for AssetInfo {
+    fn from(asset_info: AstroportAssetInfo) -> AssetInfo {
+        match asset_info {
+            AstroportAssetInfo::Token { contract_addr } => AssetInfo::Token { contract_addr },
+            AstroportAssetInfo::NativeToken { denom } => AssetInfo::NativeToken { denom },
         }
     }
 }

@@ -1,6 +1,10 @@
 use crate::{
-    communication::Recipient, error::ContractError, operators::is_operator,
-    ownership::is_contract_owner, require,
+    communication::Recipient,
+    error::ContractError,
+    operators::is_operator,
+    ownership::is_contract_owner,
+    require,
+    swapper::{query_balance, query_token_balance, AssetInfo},
 };
 use cosmwasm_std::{
     coin, Deps, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg, Uint128,
@@ -9,10 +13,6 @@ use cw20::Cw20Coin;
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use terraswap::{
-    asset::AssetInfo,
-    querier::{query_balance, query_token_balance},
-};
 
 pub const WITHDRAWABLE_TOKENS: Map<&str, AssetInfo> = Map::new("withdrawable_tokens");
 
@@ -126,14 +126,14 @@ pub fn execute_withdraw(
             AssetInfo::Token { contract_addr } => {
                 let balance = query_token_balance(
                     &deps.querier,
-                    deps.api.addr_validate(&contract_addr)?,
+                    contract_addr.clone(),
                     env.contract.address.clone(),
                 )?;
                 if balance.is_zero() {
                     None
                 } else {
                     let cw20_coin = Cw20Coin {
-                        address: contract_addr,
+                        address: contract_addr.to_string(),
                         amount: withdrawal.get_amount(balance)?,
                     };
                     Some(recipient.generate_msg_cw20(deps.api, cw20_coin)?)
@@ -321,7 +321,7 @@ mod tests {
                 deps.as_mut().storage,
                 MOCK_CW20_CONTRACT,
                 &AssetInfo::Token {
-                    contract_addr: MOCK_CW20_CONTRACT.into(),
+                    contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT),
                 },
             )
             .unwrap();

@@ -3,12 +3,14 @@ use crate::{
     swapper::{SwapperCw20HookMsg, SwapperMsg},
 };
 use astroport::{
+    asset::Asset,
     factory::ExecuteMsg as AstroportFactoryExecuteMsg,
     router::{Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg},
     staking::{
         Cw20HookMsg as AstroportStakingCw20HookMsg, ExecuteMsg as AstroportStakingExecuteMsg,
     },
 };
+use cosmwasm_std::Decimal;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -33,6 +35,11 @@ pub enum ExecuteMsg {
         astroport_factory_contract: Option<String>,
         astroport_router_contract: Option<String>,
         astroport_staking_contract: Option<String>,
+    },
+    ProvideLiquidity {
+        assets: [Asset; 2],
+        slippage_tolerance: Option<Decimal>,
+        auto_stake: Option<bool>,
     },
 }
 

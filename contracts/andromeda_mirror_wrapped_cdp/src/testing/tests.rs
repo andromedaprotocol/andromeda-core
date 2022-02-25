@@ -10,18 +10,19 @@ use andromeda_protocol::{
         MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
     operators::OperatorsResponse,
+    swapper::AssetInfo,
     withdraw::WITHDRAWABLE_TOKENS,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
-    coin, coins, from_binary, to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo,
-    Order, Response, Uint128, WasmMsg,
+    coin, coins, from_binary, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut,
+    MessageInfo, Order, Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use mirror_protocol::{gov::VoteOption, mint::ShortParams};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
-use terraswap::asset::{Asset, AssetInfo};
+use terraswap::asset::Asset;
 
 const TEST_TOKEN: &str = "TEST_TOKEN";
 const TEST_AMOUNT: u128 = 100u128;
@@ -223,7 +224,7 @@ fn test_instantiate() {
 
     assert_eq!(
         AssetInfo::Token {
-            contract_addr: MOCK_MIRROR_TOKEN_ADDR.to_string()
+            contract_addr: Addr::unchecked(MOCK_MIRROR_TOKEN_ADDR),
         },
         WITHDRAWABLE_TOKENS
             .load(deps.as_mut().storage, MOCK_MIRROR_TOKEN_ADDR)
@@ -264,13 +265,15 @@ fn test_mirror_mint_open_position_not_short() {
     let mirror_msg = MirrorMintExecuteMsg::OpenPosition {
         collateral: Asset {
             info: AssetInfo::Token {
-                contract_addr: "collateral_token".to_string(),
-            },
+                contract_addr: Addr::unchecked("collateral_token"),
+            }
+            .into(),
             amount: Uint128::from(10_u128),
         },
         asset_info: AssetInfo::Token {
-            contract_addr: "token_address".to_string(),
-        },
+            contract_addr: Addr::unchecked("token_address"),
+        }
+        .into(),
         collateral_ratio: Decimal::one(),
         short_params: None,
     };
@@ -278,7 +281,7 @@ fn test_mirror_mint_open_position_not_short() {
 
     assert_eq!(
         AssetInfo::Token {
-            contract_addr: "collateral_token".to_string()
+            contract_addr: Addr::unchecked("collateral_token"),
         },
         WITHDRAWABLE_TOKENS
             .load(deps.as_mut().storage, "collateral_token")
@@ -286,7 +289,7 @@ fn test_mirror_mint_open_position_not_short() {
     );
     assert_eq!(
         AssetInfo::Token {
-            contract_addr: "token_address".to_string()
+            contract_addr: Addr::unchecked("token_address"),
         },
         WITHDRAWABLE_TOKENS
             .load(deps.as_mut().storage, "token_address")
@@ -309,13 +312,15 @@ fn test_mirror_mint_open_position_short() {
     let mirror_msg = MirrorMintExecuteMsg::OpenPosition {
         collateral: Asset {
             info: AssetInfo::Token {
-                contract_addr: "collateral_token".to_string(),
-            },
+                contract_addr: Addr::unchecked("collateral_token"),
+            }
+            .into(),
             amount: Uint128::from(10_u128),
         },
         asset_info: AssetInfo::Token {
-            contract_addr: "token_address".to_string(),
-        },
+            contract_addr: Addr::unchecked("token_address"),
+        }
+        .into(),
         collateral_ratio: Decimal::one(),
         short_params: Some(ShortParams {
             belief_price: None,
@@ -326,7 +331,7 @@ fn test_mirror_mint_open_position_short() {
 
     assert_eq!(
         AssetInfo::Token {
-            contract_addr: "collateral_token".to_string()
+            contract_addr: Addr::unchecked("collateral_token"),
         },
         WITHDRAWABLE_TOKENS
             .load(deps.as_mut().storage, "collateral_token")
@@ -362,7 +367,8 @@ fn test_mirror_mint_deposit() {
         collateral: Asset {
             info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
-            },
+            }
+            .into(),
             amount: Uint128::from(10u128),
         },
         position_idx: Uint128::from(1u128),
@@ -406,7 +412,8 @@ fn test_mirror_mint_mint() {
         asset: Asset {
             info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
-            },
+            }
+            .into(),
             amount: Uint128::from(10_u128),
         },
         position_idx: Uint128::from(1_u128),
@@ -424,8 +431,9 @@ fn test_mirror_mint_open_position_cw20_not_short() {
 
     let mirror_msg = MirrorMintCw20HookMsg::OpenPosition {
         asset_info: AssetInfo::Token {
-            contract_addr: "minted_asset_token".to_string(),
-        },
+            contract_addr: Addr::unchecked("minted_asset_token"),
+        }
+        .into(),
         collateral_ratio: Decimal::one(),
         short_params: None,
     };
@@ -434,7 +442,7 @@ fn test_mirror_mint_open_position_cw20_not_short() {
 
     assert_eq!(
         AssetInfo::Token {
-            contract_addr: "minted_asset_token".to_string()
+            contract_addr: Addr::unchecked("minted_asset_token"),
         },
         WITHDRAWABLE_TOKENS
             .load(deps.as_mut().storage, "minted_asset_token")
@@ -442,7 +450,7 @@ fn test_mirror_mint_open_position_cw20_not_short() {
     );
     assert_eq!(
         AssetInfo::Token {
-            contract_addr: TEST_TOKEN.to_string()
+            contract_addr: Addr::unchecked(TEST_TOKEN),
         },
         WITHDRAWABLE_TOKENS
             .load(deps.as_mut().storage, TEST_TOKEN)
@@ -464,8 +472,9 @@ fn test_mirror_mint_open_position_cw20_short() {
 
     let mirror_msg = MirrorMintCw20HookMsg::OpenPosition {
         asset_info: AssetInfo::Token {
-            contract_addr: "minted_asset_token".to_string(),
-        },
+            contract_addr: Addr::unchecked("minted_asset_token"),
+        }
+        .into(),
         collateral_ratio: Decimal::one(),
         short_params: Some(ShortParams {
             belief_price: None,
@@ -485,7 +494,7 @@ fn test_mirror_mint_open_position_cw20_short() {
     );
     assert_eq!(
         AssetInfo::Token {
-            contract_addr: TEST_TOKEN.to_string()
+            contract_addr: Addr::unchecked(TEST_TOKEN),
         },
         WITHDRAWABLE_TOKENS
             .load(deps.as_mut().storage, TEST_TOKEN)
@@ -564,7 +573,7 @@ fn test_mirror_staking_unbond() {
 
     assert_eq!(
         AssetInfo::Token {
-            contract_addr: "asset_token".to_string()
+            contract_addr: Addr::unchecked("asset_token")
         },
         WITHDRAWABLE_TOKENS
             .load(deps.as_mut().storage, "asset_token")
@@ -600,13 +609,15 @@ fn test_mirror_staking_autostake() {
             Asset {
                 info: AssetInfo::NativeToken {
                     denom: "uusd".to_string(),
-                },
+                }
+                .into(),
                 amount: Uint128::from(10_u128),
             },
             Asset {
                 info: AssetInfo::NativeToken {
                     denom: "uusd".to_string(),
-                },
+                }
+                .into(),
                 amount: Uint128::from(10_u128),
             },
         ],
@@ -773,12 +784,14 @@ fn test_mirror_too_many_funds() {
         collateral: Asset {
             info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
-            },
+            }
+            .into(),
             amount: Uint128::from(10_u128),
         },
         asset_info: AssetInfo::Token {
-            contract_addr: "token_address".to_string(),
-        },
+            contract_addr: Addr::unchecked("token_address"),
+        }
+        .into(),
         collateral_ratio: Decimal::one(),
         short_params: None,
     };
@@ -808,12 +821,14 @@ fn test_mirror_non_authorized_user() {
         collateral: Asset {
             info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
-            },
+            }
+            .into(),
             amount: Uint128::from(10_u128),
         },
         asset_info: AssetInfo::Token {
-            contract_addr: "token_address".to_string(),
-        },
+            contract_addr: Addr::unchecked("token_address"),
+        }
+        .into(),
         collateral_ratio: Decimal::one(),
         short_params: None,
     };
