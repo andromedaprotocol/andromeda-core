@@ -120,7 +120,7 @@ pub fn execute_withdraw(
                     None
                 } else {
                     let coin = coin(withdrawal.get_amount(balance)?.u128(), denom);
-                    Some(recipient.generate_msg_native(&deps, vec![coin])?)
+                    Some(recipient.generate_msg_native(deps.api, vec![coin])?)
                 }
             }
             AssetInfo::Token { contract_addr } => {
@@ -136,7 +136,7 @@ pub fn execute_withdraw(
                         address: contract_addr,
                         amount: withdrawal.get_amount(balance)?,
                     };
-                    Some(recipient.generate_msg_cw20(&deps, cw20_coin)?)
+                    Some(recipient.generate_msg_cw20(deps.api, cw20_coin)?)
                 }
             }
         };

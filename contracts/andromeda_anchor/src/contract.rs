@@ -1,6 +1,7 @@
 use crate::state::{
     Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
 };
+use andromeda_protocol::anchor::{AnchorMarketMsg, ConfigResponse};
 use andromeda_protocol::{
     anchor::{ExecuteMsg, InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg},
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
@@ -18,10 +19,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
-
 use terraswap::querier::{query_balance, query_token_balance};
-
-use andromeda_protocol::anchor::{AnchorMarketMsg, ConfigResponse};
 
 const UUSD_DENOM: &str = "uusd";
 pub const DEPOSIT_ID: u64 = 1;
@@ -270,7 +268,7 @@ fn withdraw_aust(
     POSITION.save(deps.storage, &recipient_addr, &position)?;
 
     let msg = position.recipient.generate_msg_cw20(
-        &deps.as_ref(),
+        deps.api,
         Cw20Coin {
             address: deps.api.addr_humanize(&config.aust_token)?.to_string(),
             amount,
@@ -332,8 +330,7 @@ fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError
     let mut msgs = vec![];
     if transfer_amount > Uint128::zero() {
         msgs.push(
-            recipient
-                .generate_msg_native(&deps.as_ref(), coins(transfer_amount.u128(), UUSD_DENOM))?,
+            recipient.generate_msg_native(deps.api, coins(transfer_amount.u128(), UUSD_DENOM))?,
         );
     }
     Ok(Response::new()
@@ -343,7 +340,7 @@ fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError
         .add_attribute("amount", transfer_amount))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
