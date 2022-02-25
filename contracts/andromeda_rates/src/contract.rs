@@ -1,8 +1,9 @@
 use crate::state::{Config, CONFIG};
 use andromeda_protocol::{
     communication::{
-        encode_binary, hooks::AndromedaHook, hooks::OnFundsTransferResponse, parse_message,
-        AndromedaMsg, AndromedaQuery,
+        encode_binary,
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        parse_message, AndromedaMsg, AndromedaQuery,
     },
     error::ContractError,
     modules::common::{calculate_fee, deduct_funds},
@@ -31,9 +32,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = Config { rates: msg.rates };
+    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "rates")]))
 }
@@ -173,10 +174,10 @@ fn query_deducted_funds(
                 .to_string(),
             );
             let msg = if is_native {
-                reciever.generate_msg_native(&deps, vec![fee.clone()])?
+                reciever.generate_msg_native(deps.api, vec![fee.clone()])?
             } else {
                 reciever.generate_msg_cw20(
-                    &deps,
+                    deps.api,
                     Cw20Coin {
                         amount: fee.amount,
                         address: fee.denom.to_string(),

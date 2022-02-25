@@ -627,7 +627,7 @@ mod tests {
     fn test_unwrap() {
         let mut deps = mock_dependencies_custom(&[]);
 
-        let token_id = String::from("token_id");
+        let token_id = String::from("original_token_id");
         let owner = String::from("owner");
 
         CONTRACT_OWNER

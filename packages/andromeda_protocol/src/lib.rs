@@ -2,11 +2,13 @@ use crate::error::ContractError;
 
 pub mod address_list;
 pub mod anchor;
+pub mod astroport;
 pub mod auction;
 pub mod common;
 pub mod communication;
 pub mod cw20;
 pub mod cw721;
+pub mod cw721_offers;
 pub mod error;
 pub mod factory;
 pub mod mirror_wrapped_cdp;
@@ -18,6 +20,7 @@ pub mod rates;
 pub mod receipt;
 pub mod response;
 pub mod splitter;
+pub mod swapper;
 pub mod withdraw;
 pub mod wrapped_cw721;
 

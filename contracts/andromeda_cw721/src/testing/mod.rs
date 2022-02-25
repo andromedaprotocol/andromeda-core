@@ -1,21 +1,25 @@
 use cosmwasm_std::{
-    attr, coins, from_binary,
+    attr, coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, Event, ReplyOn, Response, StdError,
-    SubMsg, Uint128, WasmMsg,
+    to_binary, Addr, Coin, CosmosMsg, DepsMut, Env, Event, ReplyOn, Response, StdError, SubMsg,
+    Uint128, WasmMsg,
 };
 
 use crate::contract::*;
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
-    communication::modules::{InstantiateType, Module, ModuleType},
+    communication::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        modules::{InstantiateType, Module, ModuleType},
+    },
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
+    cw721_offers::ExecuteMsg as OffersExecuteMsg,
     error::ContractError,
-    rates::InstantiateMsg as RatesInstantiateMsg,
+    rates::{Funds, InstantiateMsg as RatesInstantiateMsg},
     receipt::{ExecuteMsg as ReceiptExecuteMsg, InstantiateMsg as ReceiptInstantiateMsg, Receipt},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
-        MOCK_RATES_CONTRACT, MOCK_RECEIPT_CONTRACT,
+        bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
+        MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
     },
 };
 use cw721::{NftInfoResponse, OwnerOfResponse};
@@ -487,7 +491,7 @@ fn test_modules() {
         },
     ];
 
-    let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
 
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
@@ -496,7 +500,7 @@ fn test_modules() {
         purchaser: String::from("purchaser"),
         amount: Coin {
             amount: Uint128::from(100u64),
-            denom: "uluna".to_string(),
+            denom: "uusd".to_string(),
         },
     };
     init_setup(deps.as_mut(), env.clone(), Some(modules));
@@ -508,7 +512,7 @@ fn test_modules() {
         TokenExtension {
             description: None,
             name: String::default(),
-            publisher: creator,
+            publisher: creator.clone(),
             transfer_agreement: None,
             metadata: None,
             archived: false,
@@ -533,20 +537,26 @@ fn test_modules() {
     let info = mock_info("creator", &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let purchaser = mock_info("purchaser", &coins(100u128, "uluna"));
-
     let msg = ExecuteMsg::TransferNft {
-        token_id,
+        token_id: token_id.clone(),
         recipient: "purchaser".into(),
     };
 
+    // Tax not added by sender, remember that the contract holds 100 uusd which is enough to cover
+    // the taxes in this case.
+    let purchaser = mock_info("purchaser", &coins(100, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), purchaser, msg.clone());
+    assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+
+    // Add 10 for tax.
+    let purchaser = mock_info("purchaser", &coins(100 + 10, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), purchaser, msg).unwrap();
 
     let receipt_msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_RECEIPT_CONTRACT.to_string(),
         msg: to_binary(&ReceiptExecuteMsg::StoreReceipt {
             receipt: Receipt {
-                events: vec![Event::new("Royalty")],
+                events: vec![Event::new("Royalty"), Event::new("Tax")],
             },
         })
         .unwrap(),
@@ -554,15 +564,12 @@ fn test_modules() {
     }));
 
     let sub_msgs: Vec<SubMsg> = vec![
-        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "rates_recipient".to_string(),
-            amount: coins(10u128, "uluna"),
-        })),
-        receipt_msg,
-        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "creator".to_string(),
-            amount: coins(90u128, "uluna"),
-        })),
+        // For royalty.
+        bank_sub_msg(10, MOCK_RATES_RECIPIENT),
+        // For tax.
+        bank_sub_msg(10, MOCK_RATES_RECIPIENT),
+        receipt_msg.clone(),
+        bank_sub_msg(90, &creator),
     ];
 
     assert_eq!(
@@ -570,7 +577,82 @@ fn test_modules() {
             .add_attribute("action", "transfer")
             .add_attribute("recipient", "purchaser")
             .add_submessages(sub_msgs)
-            .add_event(Event::new("Royalty")),
+            .add_event(Event::new("Royalty"))
+            .add_event(Event::new("Tax")),
+        res
+    );
+
+    // Test the hook.
+    let msg = QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
+        sender: "sender".to_string(),
+        payload: to_binary(&token_id).unwrap(),
+        amount: Funds::Native(coin(100, "uusd")),
+    });
+
+    let res: OnFundsTransferResponse =
+        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    let expected_response = OnFundsTransferResponse {
+        msgs: vec![
+            bank_sub_msg(10, MOCK_RATES_RECIPIENT),
+            bank_sub_msg(10, MOCK_RATES_RECIPIENT),
+            receipt_msg,
+        ],
+        leftover_funds: Funds::Native(coin(90, "uusd")),
+        events: vec![Event::new("Royalty"), Event::new("Tax")],
+    };
+    assert_eq!(expected_response, res);
+}
+
+#[test]
+fn test_transfer_with_offer() {
+    let modules: Vec<Module> = vec![Module {
+        module_type: ModuleType::Offers,
+        instantiate: InstantiateType::Address(MOCK_OFFERS_CONTRACT.into()),
+    }];
+
+    let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
+
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let env = mock_env();
+    init_setup(deps.as_mut(), env.clone(), Some(modules));
+    mint_token(
+        deps.as_mut(),
+        env,
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator.clone(),
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let msg = ExecuteMsg::TransferNft {
+        recipient: "purchaser".to_string(),
+        token_id: token_id.clone(),
+    };
+    let info = mock_info(&creator, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_OFFERS_CONTRACT.to_owned(),
+        funds: vec![],
+        msg: to_binary(&OffersExecuteMsg::AcceptOffer {
+            token_id,
+            recipient: creator,
+        })
+        .unwrap(),
+    }));
+    assert_eq!(
+        Response::new()
+            .add_submessage(msg)
+            .add_attribute("action", "transfer")
+            .add_attribute("recipient", "purchaser"),
         res
     );
 }

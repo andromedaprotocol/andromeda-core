@@ -44,6 +44,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;

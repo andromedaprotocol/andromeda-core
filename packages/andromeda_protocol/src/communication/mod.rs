@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, QuerierWrapper, QueryRequest,
+    from_binary, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, QueryRequest,
     SubMsg, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
@@ -50,12 +50,12 @@ impl Recipient {
     /// Generates the sub message depending on the type of the recipient.
     pub fn generate_msg_native(
         &self,
-        deps: &Deps,
+        api: &dyn Api,
         funds: Vec<Coin>,
     ) -> Result<SubMsg, ContractError> {
         Ok(match &self {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
-                contract_addr: deps.api.addr_validate(&recip.addr)?.to_string(),
+                contract_addr: api.addr_validate(&recip.addr)?.to_string(),
                 msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(
                     recip.msg.clone(),
                 )))?,
@@ -71,14 +71,14 @@ impl Recipient {
     /// Generates the sub message depending on the type of the recipient.
     pub fn generate_msg_cw20(
         &self,
-        deps: &Deps,
+        api: &dyn Api,
         cw20_coin: Cw20Coin,
     ) -> Result<SubMsg, ContractError> {
         Ok(match &self {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: cw20_coin.address,
                 msg: encode_binary(&Cw20ExecuteMsg::Send {
-                    contract: deps.api.addr_validate(&recip.addr)?.to_string(),
+                    contract: api.addr_validate(&recip.addr)?.to_string(),
                     amount: cw20_coin.amount,
                     msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(
                         recip.msg.clone(),
@@ -228,7 +228,7 @@ mod test {
         let recipient = Recipient::Addr("address".to_string());
         let funds = coins(100, "uusd");
         let msg = recipient
-            .generate_msg_native(&deps.as_ref(), funds.clone())
+            .generate_msg_native(deps.as_ref().api, funds.clone())
             .unwrap();
         let expected_msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: "address".to_string(),
@@ -246,7 +246,7 @@ mod test {
         });
         let funds = coins(100, "uusd");
         let msg = recipient
-            .generate_msg_native(&deps.as_ref(), funds.clone())
+            .generate_msg_native(deps.as_ref().api, funds.clone())
             .unwrap();
         let expected_msg = SubMsg::new(WasmMsg::Execute {
             contract_addr: "address".to_string(),
@@ -265,7 +265,7 @@ mod test {
             address: "cw20_address".to_string(),
         };
         let msg = recipient
-            .generate_msg_cw20(&deps.as_ref(), cw20_coin.clone())
+            .generate_msg_cw20(deps.as_ref().api, cw20_coin.clone())
             .unwrap();
         let expected_msg = SubMsg::new(WasmMsg::Execute {
             contract_addr: cw20_coin.address,
@@ -291,7 +291,7 @@ mod test {
             address: "cw20_address".to_string(),
         };
         let msg = recipient
-            .generate_msg_cw20(&deps.as_ref(), cw20_coin.clone())
+            .generate_msg_cw20(deps.as_ref().api, cw20_coin.clone())
             .unwrap();
         let expected_msg = SubMsg::new(WasmMsg::Execute {
             contract_addr: "cw20_address".to_string(),

@@ -1,8 +1,7 @@
+use crate::rates::Funds;
 use cosmwasm_std::{Binary, Event, SubMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use crate::rates::Funds;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -15,6 +14,11 @@ pub enum AndromedaHook {
         sender: String,
         payload: Binary,
         amount: Funds,
+    },
+    OnTransfer {
+        token_id: String,
+        sender: String,
+        recipient: String,
     },
 }
 

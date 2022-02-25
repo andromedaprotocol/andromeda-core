@@ -31,6 +31,7 @@ pub const MODULE_IDX: Item<u64> = Item::new("andr_module_idx");
 #[serde(rename_all = "snake_case")]
 pub enum ModuleType {
     Rates,
+    Offers,
     AddressList,
     Auction,
     Receipt,
@@ -46,6 +47,7 @@ impl From<ModuleType> for String {
             ModuleType::AddressList => String::from("address_list"),
             ModuleType::Rates => String::from("rates"),
             ModuleType::Auction => String::from("auction"),
+            ModuleType::Offers => String::from("offers"),
             ModuleType::Other => String::from("other"),
         }
     }
