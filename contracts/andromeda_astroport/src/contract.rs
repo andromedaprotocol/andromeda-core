@@ -137,20 +137,13 @@ fn execute_provide_liquidity(
     )?;
     let mut messages: Vec<CosmosMsg> = vec![];
     for asset in assets.iter() {
-        // Once LP tokens are burned we would like to be able to withdraw the underlying tokens.
-        add_withdrawable_token(
-            deps.storage,
-            &asset.info.to_string(),
-            &asset.info.clone().into(),
-        )?;
-
         if let AstroportAssetInfo::Token { contract_addr } = &asset.info {
             messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.to_string(),
                 // User needs to allow this contract to transfer tokens.
                 msg: encode_binary(&Cw20ExecuteMsg::TransferFrom {
                     owner: info.sender.to_string(),
-                    recipient: pair.contract_addr.to_string(),
+                    recipient: env.contract.address.to_string(),
                     amount: asset.amount,
                 })?,
                 funds: vec![],
@@ -184,7 +177,7 @@ fn execute_provide_liquidity(
         })?,
         funds: info.funds,
     }));
-    Ok(Response::new())
+    Ok(Response::new().add_messages(messages))
 }
 
 fn execute_withdraw_liquidity(

@@ -3,12 +3,17 @@ use andromeda_protocol::{
     astroport::{Cw20HookMsg, ExecuteMsg, InstantiateMsg},
     swapper::{AssetInfo, SwapperCw20HookMsg, SwapperMsg},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ASTROPORT_FACTORY_CONTRACT, MOCK_ASTROPORT_ROUTER_CONTRACT,
+        mock_dependencies_custom, MOCK_ASTROPORT_FACTORY_CONTRACT, MOCK_ASTROPORT_PAIR_CONTRACT,
+        MOCK_ASTROPORT_ROUTER_CONTRACT,
     },
 };
-use astroport::router::{
-    Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg,
-    SwapOperation,
+use astroport::{
+    asset::{Asset, AssetInfo as AstroportAssetInfo},
+    pair::ExecuteMsg as AstroportPairExecuteMsg,
+    router::{
+        Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg,
+        SwapOperation,
+    },
 };
 use cosmwasm_std::{
     coins,
@@ -259,6 +264,93 @@ fn test_token_to_native_to_token() {
             funds: vec![],
             msg: to_binary(&msg).unwrap()
         })),
+        res
+    );
+}
+
+#[test]
+fn test_provide_liquidity() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("sender", &[]);
+
+    init(deps.as_mut());
+
+    let assets = [
+        Asset {
+            info: AstroportAssetInfo::Token {
+                contract_addr: Addr::unchecked("token1"),
+            },
+            amount: 100u128.into(),
+        },
+        Asset {
+            info: AstroportAssetInfo::Token {
+                contract_addr: Addr::unchecked("token2"),
+            },
+            amount: 200u128.into(),
+        },
+    ];
+
+    let msg = ExecuteMsg::ProvideLiquidity {
+        assets: assets.clone(),
+        slippage_tolerance: None,
+        auto_stake: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "token1".to_string(),
+                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                    owner: info.sender.to_string(),
+                    recipient: mock_env().contract.address.to_string(),
+                    amount: 100u128.into(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "token1".to_string(),
+                msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
+                    spender: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
+                    amount: 100u128.into(),
+                    expires: None,
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "token2".to_string(),
+                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                    owner: info.sender.to_string(),
+                    recipient: mock_env().contract.address.to_string(),
+                    amount: 200u128.into(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "token2".to_string(),
+                msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
+                    spender: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
+                    amount: 200u128.into(),
+                    expires: None,
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
+                msg: to_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
+                    assets,
+                    slippage_tolerance: None,
+                    auto_stake: None,
+                    receiver: Some(mock_env().contract.address.to_string()),
+                })
+                .unwrap(),
+                funds: info.funds,
+            })),
         res
     );
 }
