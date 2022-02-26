@@ -19,6 +19,7 @@ pub struct InstantiateMsg {
     pub mint: Option<MinterResponse>,
     pub marketing: Option<InstantiateMarketingInfo>,
     pub modules: Option<Vec<Module>>,
+    pub primitive_contract: String,
 }
 
 impl From<InstantiateMsg> for Cw20InstantiateMsg {

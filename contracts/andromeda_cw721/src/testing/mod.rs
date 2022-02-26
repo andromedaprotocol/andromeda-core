@@ -1,5 +1,13 @@
+use cosmwasm_std::{
+    attr, coin, coins, from_binary,
+    testing::{mock_dependencies, mock_env, mock_info},
+    to_binary, Addr, Coin, CosmosMsg, DepsMut, Env, Event, ReplyOn, Response, StdError, SubMsg,
+    Uint128, WasmMsg,
+};
+
 use crate::contract::*;
 use andromeda_protocol::{
+    address_list::InstantiateMsg as AddressListInstantiateMsg,
     communication::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::{InstantiateType, Module, ModuleType},
@@ -7,18 +15,12 @@ use andromeda_protocol::{
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
     cw721_offers::ExecuteMsg as OffersExecuteMsg,
     error::ContractError,
-    rates::Funds,
-    receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
+    rates::{Funds, InstantiateMsg as RatesInstantiateMsg},
+    receipt::{ExecuteMsg as ReceiptExecuteMsg, InstantiateMsg as ReceiptInstantiateMsg, Receipt},
     testing::mock_querier::{
         bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
-        MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
+        MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
     },
-};
-use cosmwasm_std::{
-    attr, coin, coins, from_binary,
-    testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, Coin, CosmosMsg, DepsMut, Env, Event, Response, StdError, SubMsg, Uint128,
-    WasmMsg,
 };
 use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw721_base::MintMsg;
@@ -34,6 +36,7 @@ fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
         symbol: SYMBOL.to_string(),
         minter: MINTER.to_string(),
         modules,
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
 
     instantiate(deps, env, info, inst_msg).unwrap();
@@ -48,6 +51,87 @@ fn mint_token(deps: DepsMut, env: Env, token_id: String, owner: String, extensio
         extension,
     };
     execute(deps, env, info, ExecuteMsg::Mint(Box::new(mint_msg))).unwrap();
+}
+
+#[test]
+fn test_instantiate_modules() {
+    let receipt_msg = to_binary(&ReceiptInstantiateMsg {
+        minter: "minter".to_string(),
+        operators: None,
+    })
+    .unwrap();
+    let rates_msg = to_binary(&RatesInstantiateMsg { rates: vec![] }).unwrap();
+    let addresslist_msg = to_binary(&AddressListInstantiateMsg {
+        operators: vec![],
+        is_inclusive: true,
+    })
+    .unwrap();
+    let modules: Vec<Module> = vec![
+        Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::New(receipt_msg.clone()),
+        },
+        Module {
+            module_type: ModuleType::Rates,
+            instantiate: InstantiateType::New(rates_msg.clone()),
+        },
+        Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::New(addresslist_msg.clone()),
+        },
+    ];
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("sender", &[]);
+
+    let instantiate_msg = InstantiateMsg {
+        name: "Name".into(),
+        symbol: "Symbol".into(),
+        minter: "minter".into(),
+        modules: Some(modules),
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+    };
+
+    let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
+
+    let msgs: Vec<SubMsg> = vec![
+        SubMsg {
+            id: 1,
+            reply_on: ReplyOn::Always,
+            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                admin: None,
+                code_id: 1,
+                msg: receipt_msg,
+                funds: vec![],
+                label: "Instantiate: receipt".to_string(),
+            }),
+            gas_limit: None,
+        },
+        SubMsg {
+            id: 2,
+            reply_on: ReplyOn::Always,
+            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                admin: None,
+                code_id: 2,
+                msg: rates_msg,
+                funds: vec![],
+                label: "Instantiate: rates".to_string(),
+            }),
+            gas_limit: None,
+        },
+        SubMsg {
+            id: 3,
+            reply_on: ReplyOn::Always,
+            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                admin: None,
+                code_id: 3,
+                msg: addresslist_msg,
+                funds: vec![],
+                label: "Instantiate: address_list".to_string(),
+            }),
+            gas_limit: None,
+        },
+    ];
+    assert_eq!(Response::new().add_submessages(msgs), res);
 }
 
 #[test]
@@ -392,7 +476,6 @@ fn test_update_pricing() {
 
 #[test]
 fn test_modules() {
-    // TODO: Test InstantiateType::New() when Fetch contract works.
     let modules: Vec<Module> = vec![
         Module {
             module_type: ModuleType::Receipt,

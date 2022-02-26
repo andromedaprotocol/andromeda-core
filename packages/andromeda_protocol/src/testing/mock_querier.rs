@@ -177,6 +177,24 @@ impl WasmMockQuerier {
         }
     }
 
+    fn handle_factory_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            FactoryQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
+                let key: String = from_binary(&data.unwrap()).unwrap();
+                let code_id = match key.as_str() {
+                    "receipt" => 1,
+                    "rates" => 2,
+                    "address_list" => 3,
+                    "cw721" => 4,
+                    _ => 0,
+                };
+                let response = CodeIdResponse { code_id };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
     fn handle_astroport_router_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             AstroportRouterQueryMsg::SimulateSwapOperations { .. } => {
@@ -437,16 +455,6 @@ impl WasmMockQuerier {
         }
     }
 
-    fn handle_factory_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            FactoryQueryMsg::AndrQuery(AndromedaQuery::Get(_)) => {
-                let response = CodeIdResponse { code_id: 1 };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
-            }
-            _ => panic!("Unsupported Query"),
-        }
-    }
-
     fn handle_cw20_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             Cw20QueryMsg::Balance { .. } => {
@@ -461,21 +469,26 @@ impl WasmMockQuerier {
 
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            PrimitiveQueryMsg::GetValue { name } => {
-                let msg_response = match name.clone().unwrap().as_str() {
+            PrimitiveQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
+                let name: String = from_binary(&data.unwrap()).unwrap();
+                let msg_response = match name.as_str() {
                     "percent" => GetValueResponse {
-                        name: name.unwrap(),
+                        name,
                         value: Primitive::Uint128(1u128.into()),
                     },
                     "flat" => GetValueResponse {
-                        name: name.unwrap(),
+                        name,
                         value: Primitive::Coin(coin(1u128, "uusd")),
                     },
                     "flat_cw20" => GetValueResponse {
-                        name: name.unwrap(),
+                        name,
                         value: Primitive::Coin(coin(1u128, "address")),
                     },
-                    _ => panic!("Unsupported rate name"),
+                    "factory" => GetValueResponse {
+                        name,
+                        value: Primitive::String(MOCK_FACTORY_CONTRACT.to_owned()),
+                    },
+                    _ => panic!("Unsupported primitive name"),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
             }

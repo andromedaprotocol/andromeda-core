@@ -45,7 +45,7 @@ pub fn instantiate(
                 Some(encode_binary(&"swapper")?),
                 // TODO: Replace when Primitive contract change merged.
                 "TEMP_FACTORY".to_string(),
-                deps.querier,
+                &deps.querier,
             )?
             .code_id;
             let msg: SubMsg = SubMsg {
