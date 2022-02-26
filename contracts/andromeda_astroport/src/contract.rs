@@ -138,8 +138,7 @@ fn execute_provide_liquidity(
         &pair.liquidity_token.to_string(),
         &AssetInfo::Token {
             contract_addr: pair.liquidity_token,
-        }
-        .into(),
+        },
     )?;
     let mut messages: Vec<CosmosMsg> = vec![];
     for asset in assets.iter() {

@@ -54,7 +54,7 @@ pub fn instantiate(
     // We will need to be able to withdraw the MIR token.
     add_withdrawable_token(
         deps.storage,
-        &mirror_token_contract.clone(),
+        &mirror_token_contract,
         &AssetInfo::Token {
             contract_addr: deps.api.addr_validate(&mirror_token_contract)?,
         },
@@ -157,7 +157,7 @@ fn execute_mirror_staking_msg(
         } => {
             add_withdrawable_token(
                 deps.storage,
-                &asset_token.clone(),
+                &asset_token,
                 &AssetInfo::Token {
                     contract_addr: deps.api.addr_validate(&asset_token)?,
                 },
