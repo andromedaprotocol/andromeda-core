@@ -111,14 +111,17 @@ fn test_transfer() {
         Module {
             module_type: ModuleType::Receipt,
             instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
+            is_mutable: false,
         },
         Module {
             module_type: ModuleType::Rates,
             instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
+            is_mutable: false,
         },
         Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
+            is_mutable: false,
         },
     ];
 
@@ -219,14 +222,17 @@ fn test_send() {
         Module {
             module_type: ModuleType::Receipt,
             instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
+            is_mutable: false,
         },
         Module {
             module_type: ModuleType::Rates,
             instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
+            is_mutable: false,
         },
         Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
+            is_mutable: false,
         },
     ];
 
