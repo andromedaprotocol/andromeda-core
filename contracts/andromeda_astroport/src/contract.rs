@@ -165,12 +165,6 @@ fn execute_provide_liquidity(
             }));
         }
     }
-    require(
-        !messages.is_empty(),
-        ContractError::InvalidFunds {
-            msg: "Cannot open an LP with two native tokens".to_string(),
-        },
-    )?;
 
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: pair.contract_addr.to_string(),
@@ -205,6 +199,7 @@ fn execute_withdraw_liquidity(
         Some(amount) => cmp::min(amount, total_amount),
     };
 
+    // This represents how many underlying tokens will be withdrawn.
     let share = query_pair_share(
         &deps.querier,
         pair_info.contract_addr.to_string(),
