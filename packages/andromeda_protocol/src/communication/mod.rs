@@ -1,3 +1,4 @@
+use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
     from_binary, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, QueryRequest,
     SubMsg, WasmMsg, WasmQuery,
@@ -95,6 +96,29 @@ impl Recipient {
                 funds: vec![],
             }),
         })
+    }
+
+    pub fn generate_msg_from_asset(
+        &self,
+        api: &dyn Api,
+        asset: Asset,
+    ) -> Result<SubMsg, ContractError> {
+        match asset.info {
+            AssetInfo::Token { contract_addr } => self.generate_msg_cw20(
+                api,
+                Cw20Coin {
+                    address: contract_addr.to_string(),
+                    amount: asset.amount,
+                },
+            ),
+            AssetInfo::NativeToken { denom } => self.generate_msg_native(
+                api,
+                vec![Coin {
+                    denom,
+                    amount: asset.amount,
+                }],
+            ),
+        }
     }
 }
 

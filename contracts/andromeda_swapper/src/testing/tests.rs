@@ -6,10 +6,7 @@ use andromeda_protocol::{
         AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, SwapperCw20HookMsg,
         SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
     },
-    testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ASTROPORT_WRAPPER_CONTRACT, MOCK_CW20_CONTRACT,
-        MOCK_CW20_CONTRACT2,
-    },
+    testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2},
 };
 use cosmwasm_std::{
     coins,
@@ -17,6 +14,8 @@ use cosmwasm_std::{
     to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Response, SubMsg, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+
+const MOCK_ASTROPORT_WRAPPER_CONTRACT: &str = "astroport_wrapper";
 
 fn init(deps: DepsMut) {
     let msg = InstantiateMsg {

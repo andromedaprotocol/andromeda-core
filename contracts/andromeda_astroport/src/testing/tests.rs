@@ -1,11 +1,13 @@
-use crate::contract::{execute, instantiate};
+use crate::{
+    contract::{execute, instantiate},
+    testing::mock_querier::{
+        mock_dependencies_custom, MOCK_ASTROPORT_FACTORY_CONTRACT, MOCK_ASTROPORT_PAIR_CONTRACT,
+        MOCK_ASTROPORT_ROUTER_CONTRACT, MOCK_LP_ASSET1, MOCK_LP_ASSET2, MOCK_LP_TOKEN_CONTRACT,
+    },
+};
 use andromeda_protocol::{
     astroport::{Cw20HookMsg, ExecuteMsg, InstantiateMsg},
     swapper::{AssetInfo, SwapperCw20HookMsg, SwapperMsg},
-    testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ASTROPORT_FACTORY_CONTRACT, MOCK_ASTROPORT_PAIR_CONTRACT,
-        MOCK_ASTROPORT_ROUTER_CONTRACT, MOCK_CW20_CONTRACT,
-    },
     withdraw::WITHDRAWABLE_TOKENS,
 };
 use astroport::{
@@ -280,13 +282,13 @@ fn test_provide_liquidity() {
     let assets = [
         Asset {
             info: AstroportAssetInfo::Token {
-                contract_addr: Addr::unchecked("token1"),
+                contract_addr: Addr::unchecked(MOCK_LP_ASSET1),
             },
             amount: 100u128.into(),
         },
         Asset {
             info: AstroportAssetInfo::Token {
-                contract_addr: Addr::unchecked("token2"),
+                contract_addr: Addr::unchecked(MOCK_LP_ASSET2),
             },
             amount: 200u128.into(),
         },
@@ -300,32 +302,42 @@ fn test_provide_liquidity() {
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    assert!(WITHDRAWABLE_TOKENS.has(deps.as_ref().storage, "liquidity_token"));
+    assert!(WITHDRAWABLE_TOKENS.has(deps.as_ref().storage, MOCK_LP_TOKEN_CONTRACT));
 
     assert_eq!(
         Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "token1".to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
-                    owner: info.sender.to_string(),
-                    recipient: mock_env().contract.address.to_string(),
-                    amount: 100u128.into(),
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
+                // The excess being sent back as the correct ratio is 4:1.
+                contract_addr: MOCK_LP_ASSET1.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: "sender".to_string(),
+                    amount: 50u128.into(),
                 })
                 .unwrap(),
                 funds: vec![],
             }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "token1".to_string(),
+                contract_addr: MOCK_LP_ASSET1.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                    owner: info.sender.to_string(),
+                    recipient: mock_env().contract.address.to_string(),
+                    amount: 50u128.into(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_LP_ASSET1.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
                     spender: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
-                    amount: 100u128.into(),
+                    amount: 50u128.into(),
                     expires: None,
                 })
                 .unwrap(),
                 funds: vec![],
             }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "token2".to_string(),
+                contract_addr: MOCK_LP_ASSET2.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
                     owner: info.sender.to_string(),
                     recipient: mock_env().contract.address.to_string(),
@@ -335,7 +347,7 @@ fn test_provide_liquidity() {
                 funds: vec![],
             }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "token2".to_string(),
+                contract_addr: MOCK_LP_ASSET2.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
                     spender: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
                     amount: 200u128.into(),
@@ -347,13 +359,26 @@ fn test_provide_liquidity() {
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
                 msg: to_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
-                    assets,
+                    assets: [
+                        Asset {
+                            info: AstroportAssetInfo::Token {
+                                contract_addr: Addr::unchecked(MOCK_LP_ASSET1),
+                            },
+                            amount: 50u128.into(),
+                        },
+                        Asset {
+                            info: AstroportAssetInfo::Token {
+                                contract_addr: Addr::unchecked(MOCK_LP_ASSET2),
+                            },
+                            amount: 200u128.into(),
+                        }
+                    ],
                     slippage_tolerance: None,
                     auto_stake: None,
                     receiver: Some(mock_env().contract.address.to_string()),
                 })
                 .unwrap(),
-                funds: info.funds,
+                funds: vec![],
             }))
             .add_attribute("action", "provide_liquidity"),
         res
@@ -378,7 +403,7 @@ fn test_withdraw_liquidity() {
     assert_eq!(
         Response::new()
             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_CW20_CONTRACT.to_owned(),
+                contract_addr: MOCK_LP_TOKEN_CONTRACT.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
                     contract: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
                     amount: 10u128.into(),
@@ -388,7 +413,7 @@ fn test_withdraw_liquidity() {
                 funds: vec![],
             })))
             .add_submessage(SubMsg::new(WasmMsg::Execute {
-                contract_addr: "token1".to_string(),
+                contract_addr: MOCK_LP_ASSET1.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "sender".to_string(),
                     amount: 10u128.into(),
@@ -397,7 +422,7 @@ fn test_withdraw_liquidity() {
                 funds: vec![],
             }))
             .add_submessage(SubMsg::new(WasmMsg::Execute {
-                contract_addr: "token2".to_string(),
+                contract_addr: MOCK_LP_ASSET2.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "sender".to_string(),
                     amount: 20u128.into(),

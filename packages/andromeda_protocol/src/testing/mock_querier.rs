@@ -14,16 +14,10 @@ use crate::{
     rates::{Funds, QueryMsg as RatesQueryMsg},
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };
-use astroport::{
-    asset::{Asset, AssetInfo, PairInfo},
-    factory::{PairType, QueryMsg as AstroportFactoryQueryMsg},
-    pair::QueryMsg as AstroportPairQueryMsg,
-    router::{QueryMsg as AstroportRouterQueryMsg, SimulateSwapOperationsResponse},
-};
 use cosmwasm_std::{
     coin, coins, from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Decimal, Event, OwnedDeps,
+    to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Decimal, Event, OwnedDeps,
     Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Timestamp,
     Uint128, WasmMsg, WasmQuery,
 };
@@ -36,10 +30,6 @@ use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrap
 pub const MOCK_FACTORY_CONTRACT: &str = "factory_contract";
 pub const MOCK_CW721_CONTRACT: &str = "cw721_contract";
 pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
-pub const MOCK_ASTROPORT_PAIR_CONTRACT: &str = "astroport_pair_contract";
-pub const MOCK_ASTROPORT_WRAPPER_CONTRACT: &str = "astroport_wrapper_contract";
-pub const MOCK_ASTROPORT_FACTORY_CONTRACT: &str = "astroport_factory_contract";
-pub const MOCK_ASTROPORT_ROUTER_CONTRACT: &str = "astroport_router_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 pub const MOCK_CW20_CONTRACT2: &str = "cw20_contract2";
@@ -161,9 +151,6 @@ impl WasmMockQuerier {
                     MOCK_CW20_CONTRACT2 => self.handle_cw20_query(msg),
                     MOCK_CW721_CONTRACT => self.handle_cw721_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
-                    MOCK_ASTROPORT_FACTORY_CONTRACT => self.handle_astroport_factory_query(msg),
-                    MOCK_ASTROPORT_PAIR_CONTRACT => self.handle_astroport_pair_query(msg),
-                    MOCK_ASTROPORT_ROUTER_CONTRACT => self.handle_astroport_router_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
                     MOCK_OFFERS_CONTRACT => self.handle_offers_query(msg),
@@ -193,57 +180,6 @@ impl WasmMockQuerier {
                 };
                 let response = CodeIdResponse { code_id };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
-            }
-            _ => panic!("Unsupported Query"),
-        }
-    }
-
-    fn handle_astroport_pair_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            AstroportPairQueryMsg::Pair {} => {
-                let res = PairInfo {
-                    asset_infos: [
-                        AssetInfo::Token {
-                            contract_addr: Addr::unchecked("token1"),
-                        },
-                        AssetInfo::Token {
-                            contract_addr: Addr::unchecked("token2"),
-                        },
-                    ],
-                    contract_addr: Addr::unchecked(MOCK_ASTROPORT_PAIR_CONTRACT),
-                    liquidity_token: Addr::unchecked(MOCK_CW20_CONTRACT),
-                    pair_type: PairType::Xyk {},
-                };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-            }
-            AstroportPairQueryMsg::Share { .. } => {
-                let res = vec![
-                    Asset {
-                        info: AssetInfo::Token {
-                            contract_addr: Addr::unchecked("token1"),
-                        },
-                        amount: 10u128.into(),
-                    },
-                    Asset {
-                        info: AssetInfo::Token {
-                            contract_addr: Addr::unchecked("token2"),
-                        },
-                        amount: 20u128.into(),
-                    },
-                ];
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-            }
-            _ => panic!("Unsupported Query"),
-        }
-    }
-
-    fn handle_astroport_router_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            AstroportRouterQueryMsg::SimulateSwapOperations { .. } => {
-                let res = SimulateSwapOperationsResponse {
-                    amount: Uint128::zero(),
-                };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }
             _ => panic!("Unsupported Query"),
         }
@@ -289,65 +225,6 @@ impl WasmMockQuerier {
                 _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
             },
 
-            _ => panic!("Unsupported Query"),
-        }
-    }
-
-    fn handle_astroport_factory_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            AstroportFactoryQueryMsg::Pair { asset_infos } => {
-                if matches!(
-                    asset_infos,
-                    [AssetInfo::NativeToken { .. }, AssetInfo::NativeToken { .. }]
-                ) {
-                    SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
-                } else if let AssetInfo::NativeToken { denom } = asset_infos[0].clone() {
-                    if denom == "uusd" {
-                        let res = PairInfo {
-                            asset_infos,
-                            contract_addr: Addr::unchecked("addr"),
-                            liquidity_token: Addr::unchecked("addr"),
-                            pair_type: PairType::Xyk {},
-                        };
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-                    } else {
-                        SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
-                    }
-                } else if let AssetInfo::NativeToken { denom } = asset_infos[1].clone() {
-                    if denom == "uusd" {
-                        let res = PairInfo {
-                            asset_infos,
-                            contract_addr: Addr::unchecked("addr"),
-                            liquidity_token: Addr::unchecked("addr"),
-                            pair_type: PairType::Xyk {},
-                        };
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-                    } else {
-                        SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
-                    }
-                } else if let [AssetInfo::Token {
-                    contract_addr: contract_addr1,
-                }, AssetInfo::Token {
-                    contract_addr: contract_addr2,
-                }] = asset_infos.clone()
-                {
-                    if contract_addr1 == Addr::unchecked("token1")
-                        && contract_addr2 == Addr::unchecked("token2")
-                    {
-                        let res = PairInfo {
-                            asset_infos,
-                            contract_addr: Addr::unchecked(MOCK_ASTROPORT_PAIR_CONTRACT),
-                            liquidity_token: Addr::unchecked("liquidity_token"),
-                            pair_type: PairType::Xyk {},
-                        };
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-                    } else {
-                        SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
-                    }
-                } else {
-                    SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
-                }
-            }
             _ => panic!("Unsupported Query"),
         }
     }
