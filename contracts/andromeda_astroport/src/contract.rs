@@ -47,6 +47,7 @@ pub fn instantiate(
         astroport_router_contract: deps.api.addr_validate(&msg.astroport_router_contract)?,
         astroport_staking_contract: deps.api.addr_validate(&msg.astroport_staking_contract)?,
     };
+    // Astro token is obtained from staking LP tokens.
     add_withdrawable_token(
         deps.storage,
         &msg.astroport_token_contract,
@@ -176,7 +177,9 @@ fn execute_provide_liquidity(
         })?,
         funds: info.funds,
     }));
-    Ok(Response::new().add_messages(messages))
+    Ok(Response::new()
+        .add_messages(messages)
+        .add_attribute("action", "provide_liquidity"))
 }
 
 fn execute_withdraw_liquidity(
@@ -239,17 +242,15 @@ fn execute_withdraw_liquidity(
             })?,
             funds: info.funds,
         })))
-        .add_submessages(withdraw_messages))
+        .add_submessages(withdraw_messages)
+        .add_attribute("action", "withdraw_liquidity"))
 }
 
 fn query_pair_given_address(
     querier: &QuerierWrapper,
     pair_address: String,
 ) -> Result<PairInfo, ContractError> {
-    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: pair_address,
-        msg: encode_binary(&PairQueryMsg::Pair {})?,
-    }))?)
+    query_pair_contract(querier, pair_address, PairQueryMsg::Pair {})
 }
 
 fn query_pair_share(
@@ -257,9 +258,17 @@ fn query_pair_share(
     pair_address: String,
     amount: Uint128,
 ) -> Result<Vec<Asset>, ContractError> {
+    query_pair_contract(querier, pair_address, PairQueryMsg::Share { amount })
+}
+
+fn query_pair_contract<T: serde::de::DeserializeOwned>(
+    querier: &QuerierWrapper,
+    pair_address: String,
+    msg: PairQueryMsg,
+) -> Result<T, ContractError> {
     Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: pair_address,
-        msg: encode_binary(&PairQueryMsg::Share { amount })?,
+        msg: encode_binary(&msg)?,
     }))?)
 }
 

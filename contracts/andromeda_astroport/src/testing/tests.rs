@@ -354,7 +354,8 @@ fn test_provide_liquidity() {
                 })
                 .unwrap(),
                 funds: info.funds,
-            })),
+            }))
+            .add_attribute("action", "provide_liquidity"),
         res
     );
 }
@@ -403,7 +404,8 @@ fn test_withdraw_liquidity() {
                 })
                 .unwrap(),
                 funds: vec![],
-            })),
+            }))
+            .add_attribute("action", "withdraw_liquidity"),
         res
     );
 }
