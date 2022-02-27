@@ -141,7 +141,6 @@ fn execute_provide_liquidity(
         assets,
         Recipient::Addr(info.sender.to_string()),
     )?;
-    let native_funds = get_native_funds_from_assets(&assets);
 
     // In the case where we want to witdraw the LP token.
     add_withdrawable_token(
@@ -177,6 +176,7 @@ fn execute_provide_liquidity(
         }
     }
 
+    let native_funds = get_native_funds_from_assets(&assets);
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: pair.contract_addr.to_string(),
         msg: encode_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
@@ -622,11 +622,11 @@ fn modify_ratio(
     Ok([
         Asset {
             info: assets[0].info.clone(),
-            amount: std::cmp::min(assets[0].amount, required_first_amount),
+            amount: cmp::min(assets[0].amount, required_first_amount),
         },
         Asset {
             info: assets[1].info.clone(),
-            amount: std::cmp::min(assets[1].amount, required_second_amount),
+            amount: cmp::min(assets[1].amount, required_second_amount),
         },
     ])
 }
