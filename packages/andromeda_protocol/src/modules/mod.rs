@@ -7,7 +7,7 @@ pub mod royalties;
 pub mod taxable;
 
 use crate::{
-    communication::encode_binary,
+    communication::{encode_binary, query_get},
     error::ContractError,
     modules::{
         address_list::AddressListModule,
@@ -17,13 +17,10 @@ use crate::{
         royalties::Royalty,
         taxable::Taxable,
     },
-    primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
+    primitive::{GetValueResponse, Primitive},
     require,
 };
-use cosmwasm_std::{
-    Coin, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, StdResult, Storage, Uint128,
-    WasmQuery,
-};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, QuerierWrapper, StdResult, Storage, Uint128};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -84,11 +81,11 @@ impl Rate {
             Rate::Flat(_) => Ok(self),
             Rate::Percent(_) => Ok(self),
             Rate::External(ado_rate) => {
-                let response: GetValueResponse =
-                    querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: ado_rate.address,
-                        msg: encode_binary(&PrimitiveQueryMsg::GetValue { name: ado_rate.key })?,
-                    }))?;
+                let response: GetValueResponse = query_get(
+                    Some(encode_binary(&ado_rate.key)?),
+                    ado_rate.address,
+                    querier,
+                )?;
                 match response.value {
                     Primitive::Coin(coin) => Ok(Rate::Flat(coin)),
                     Primitive::Uint128(value) => Ok(Rate::Percent(value)),

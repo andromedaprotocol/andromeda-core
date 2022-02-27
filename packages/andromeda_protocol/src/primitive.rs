@@ -1,9 +1,43 @@
-use crate::communication::{AndromedaMsg, AndromedaQuery};
-use cosmwasm_std::{Addr, Coin, StdError, Uint128};
+use crate::{
+    communication::{encode_binary, query_get, AndromedaMsg, AndromedaQuery},
+    error::ContractError,
+};
+use cosmwasm_std::{Addr, Coin, QuerierWrapper, StdError, Storage, Uint128};
+use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+
+/// Used to store the address of a primitive contract for a contract.
+pub const PRIMITVE_CONTRACT: Item<String> = Item::new("primitive_contract");
+
+/// Enum of possible contracts whose addresses we want to store in a primitive contract.
+pub enum AndromedaContract {
+    Factory,
+}
+
+impl fmt::Display for AndromedaContract {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let string = match self {
+            AndromedaContract::Factory => "factory",
+        };
+        write!(f, "{}", string)
+    }
+}
+
+pub fn get_address(
+    storage: &dyn Storage,
+    querier: QuerierWrapper,
+    contract: AndromedaContract,
+) -> Result<String, ContractError> {
+    let address = PRIMITVE_CONTRACT.load(storage)?;
+    let data = encode_binary(&contract.to_string())?;
+    let res: GetValueResponse = query_get(Some(data), address, &querier)?;
+    Ok(res.value.try_get_string()?)
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Primitive {
     Uint128(Uint128),
     Coin(Coin),
@@ -96,10 +130,6 @@ pub struct MigrateMsg {}
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
-    /// If name is not specified the default key will be used.
-    GetValue {
-        name: Option<String>,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

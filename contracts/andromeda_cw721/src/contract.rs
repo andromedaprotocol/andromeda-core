@@ -19,6 +19,7 @@ use andromeda_protocol::{
     error::ContractError,
     operators::execute_update_operators,
     ownership::{execute_update_owner, CONTRACT_OWNER},
+    primitive::PRIMITVE_CONTRACT,
     rates::{get_tax_amount, Funds},
     require,
     response::get_reply_address,
@@ -35,6 +36,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
+    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
 
     let sender = info.sender.as_str();
     let mut resp = Response::default();

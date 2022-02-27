@@ -232,6 +232,9 @@ pub enum ContractError {
 
     #[error("InvalidTokensToWithdraw")]
     InvalidTokensToWithdraw { msg: String },
+
+    #[error("ModuleImmutable")]
+    ModuleImmutable {},
 }
 
 impl From<Cw20ContractError> for ContractError {

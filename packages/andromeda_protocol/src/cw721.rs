@@ -21,14 +21,14 @@ pub struct InstantiateMsg {
     pub name: String,
     /// Symbol of the NFT contract
     pub symbol: String,
-
     /// The minter is the only one who can create new NFTs.
     /// This is designed for a base NFT that is controlled by an external program
     /// or contract. You will likely replace this with custom logic in custom NFTs
     pub minter: String,
-
-    //The attached Andromeda modules
+    ///The attached Andromeda modules
     pub modules: Option<Vec<Module>>,
+    /// The primitive contract address used to retrieve contract addresses.
+    pub primitive_contract: String,
 }
 
 impl From<InstantiateMsg> for Cw721InstantiateMsg {

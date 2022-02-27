@@ -14,6 +14,7 @@ use crate::{
     factory::CodeIdResponse,
     operators::is_operator,
     ownership::is_contract_owner,
+    primitive::{get_address, AndromedaContract},
     rates::Funds,
     require,
 };
@@ -68,6 +69,7 @@ pub enum InstantiateType {
 pub struct Module {
     pub module_type: ModuleType,
     pub instantiate: InstantiateType,
+    pub is_mutable: bool,
 }
 
 /// Struct used to represent a module and its currently recorded address
@@ -87,14 +89,19 @@ pub enum ADOType {
 
 impl Module {
     /// Queries the code id for a module from the factory contract
-    pub fn get_code_id(&self, querier: QuerierWrapper) -> Result<Option<u64>, ContractError> {
+    pub fn get_code_id(
+        &self,
+        storage: &dyn Storage,
+        querier: QuerierWrapper,
+    ) -> Result<Option<u64>, ContractError> {
+        let factory_address = get_address(storage, querier, AndromedaContract::Factory)?;
         match self.module_type {
             ModuleType::Other => Ok(None),
             _ => {
                 let code_id_resp: CodeIdResponse = query_get(
                     Some(to_binary(&String::from(self.module_type.clone()))?),
-                    FACTORY_ADDRESS.to_string(),
-                    querier,
+                    factory_address,
+                    &querier,
                 )?;
                 Ok(Some(code_id_resp.code_id))
             }
@@ -104,18 +111,19 @@ impl Module {
     /// Generate an instantiation message for the module if its required
     pub fn generate_instantiate_msg(
         &self,
+        storage: &dyn Storage,
         querier: QuerierWrapper,
         module_id: u64,
     ) -> Result<Option<SubMsg>, ContractError> {
         if let InstantiateType::New(msg) = &self.instantiate {
-            match self.get_code_id(querier)? {
+            match self.get_code_id(storage, querier)? {
                 None => Err(ContractError::InvalidModule {
                     msg: Some(String::from(
                         "Module type provided does not have a valid Code Id",
                     )),
                 }),
                 Some(code_id) => Ok(Some(SubMsg {
-                    id: module_id, //TODO: ADD ID,
+                    id: module_id,
                     reply_on: ReplyOn::Always,
                     msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
                         admin: None,
@@ -155,7 +163,7 @@ impl Module {
     fn is_unique(&self, all_modules: &[Module]) -> bool {
         let mut total = 0;
         all_modules.iter().for_each(|m| {
-            if self == m {
+            if self.module_type == m.module_type {
                 total += 1;
             }
         });
@@ -195,9 +203,7 @@ fn register_module(
 /// Deregisters a module.
 fn deregister_module(storage: &mut dyn Storage, idx: Uint64) -> Result<(), ContractError> {
     let idx_str = idx.to_string();
-    if !MODULE_INFO.has(storage, &idx_str) {
-        return Err(ContractError::ModuleDoesNotExist {});
-    }
+    check_module_mutability(storage, &idx_str)?;
     MODULE_INFO.remove(storage, &idx_str);
     MODULE_ADDR.remove(storage, &idx_str);
 
@@ -215,9 +221,7 @@ fn alter_module(
     module: &Module,
 ) -> Result<(), ContractError> {
     let idx_str = idx.to_string();
-    if !MODULE_INFO.has(storage, &idx_str) {
-        return Err(ContractError::ModuleDoesNotExist {});
-    }
+    check_module_mutability(storage, &idx_str)?;
     MODULE_INFO.save(storage, &idx_str, module)?;
     if let InstantiateType::Address(addr) = &module.instantiate {
         MODULE_ADDR.save(storage, &idx_str, &api.addr_validate(addr)?)?;
@@ -242,7 +246,7 @@ pub fn execute_register_module(
     )?;
     let mut resp = Response::default();
     let idx = register_module(storage, api, module)?;
-    if let Some(inst_msg) = module.generate_instantiate_msg(*querier, idx)? {
+    if let Some(inst_msg) = module.generate_instantiate_msg(storage, *querier, idx)? {
         resp = resp.add_submessage(inst_msg);
     }
     if should_validate {
@@ -266,7 +270,9 @@ pub fn execute_alter_module(
     )?;
     let mut resp = Response::default();
     alter_module(deps.storage, deps.api, module_idx, module)?;
-    if let Some(inst_msg) = module.generate_instantiate_msg(deps.querier, module_idx.u64())? {
+    if let Some(inst_msg) =
+        module.generate_instantiate_msg(deps.storage, deps.querier, module_idx.u64())?
+    {
         resp = resp.add_submessage(inst_msg);
     }
     validate_modules(&load_modules(deps.storage)?, ado_type)?;
@@ -290,6 +296,19 @@ pub fn execute_deregister_module(
     Ok(Response::default()
         .add_attribute("action", "deregister_module")
         .add_attribute("module_idx", module_idx))
+}
+
+fn check_module_mutability(storage: &dyn Storage, idx_str: &str) -> Result<(), ContractError> {
+    let existing_module = MODULE_INFO.may_load(storage, idx_str)?;
+    match existing_module {
+        None => return Err(ContractError::ModuleDoesNotExist {}),
+        Some(m) => {
+            if !m.is_mutable {
+                return Err(ContractError::ModuleImmutable {});
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Loads all registered modules in Vector form
@@ -488,6 +507,7 @@ mod tests {
         let addresslist_module = Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
         };
 
         let res = addresslist_module.validate(
@@ -499,6 +519,7 @@ mod tests {
         let auction_module = Module {
             module_type: ModuleType::Auction,
             instantiate: InstantiateType::Address("".into()),
+            is_mutable: false,
         };
         addresslist_module
             .validate(
@@ -513,6 +534,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::Auction,
             instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
         };
 
         let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
@@ -529,6 +551,7 @@ mod tests {
         let other_module = Module {
             module_type: ModuleType::Rates,
             instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
         };
         module
             .validate(&[module.clone(), other_module], &ADOType::CW721)
@@ -540,6 +563,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::Rates,
             instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
         };
 
         let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
@@ -548,6 +572,7 @@ mod tests {
         let other_module = Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
         };
         module
             .validate(&[module.clone(), other_module], &ADOType::CW721)
@@ -559,6 +584,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::Receipt,
             instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
         };
 
         let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
@@ -567,10 +593,29 @@ mod tests {
         let other_module = Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
         };
         module
             .validate(&[module.clone(), other_module], &ADOType::CW721)
             .unwrap();
+    }
+
+    #[test]
+    fn test_validate_uniqueness() {
+        let module1 = Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address("addr1".to_string()),
+            is_mutable: false,
+        };
+
+        let module2 = Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address("addr2".to_string()),
+            is_mutable: false,
+        };
+
+        let res = module1.validate(&[module1.clone(), module2], &ADOType::CW721);
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
     }
 
     #[test]
@@ -580,6 +625,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: false,
         };
         let deps_mut = deps.as_mut();
         CONTRACT_OWNER
@@ -606,6 +652,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: false,
         };
         let deps_mut = deps.as_mut();
         CONTRACT_OWNER
@@ -646,6 +693,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::Auction,
             instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: false,
         };
         let deps_mut = deps.as_mut();
         CONTRACT_OWNER
@@ -693,6 +741,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: true,
         };
         CONTRACT_OWNER
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
@@ -710,6 +759,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: true,
         };
 
         CONTRACT_OWNER
@@ -726,6 +776,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::Receipt,
             instantiate: InstantiateType::Address("other_address".to_string()),
+            is_mutable: true,
         };
 
         let res =
@@ -750,12 +801,45 @@ mod tests {
     }
 
     #[test]
+    fn test_execute_alter_module_immutable() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: false,
+        };
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        MODULE_INFO
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+        MODULE_ADDR
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let module = Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address("other_address".to_string()),
+            is_mutable: true,
+        };
+
+        let res = execute_alter_module(deps.as_mut(), info, 1u64.into(), &module, ADOType::CW20);
+
+        assert_eq!(ContractError::ModuleImmutable {}, res.unwrap_err());
+    }
+
+    #[test]
     fn test_execute_alter_module_nonexisting_module() {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         let module = Module {
             module_type: ModuleType::Auction,
             instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: true,
         };
 
         CONTRACT_OWNER
@@ -774,6 +858,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::Auction,
             instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: true,
         };
 
         CONTRACT_OWNER
@@ -821,6 +906,7 @@ mod tests {
         let module = Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: true,
         };
 
         MODULE_INFO
@@ -842,6 +928,32 @@ mod tests {
 
         assert!(!MODULE_ADDR.has(deps.as_mut().storage, "1"));
         assert!(!MODULE_INFO.has(deps.as_mut().storage, "1"));
+    }
+
+    #[test]
+    fn test_execute_deregister_module_immutable() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: false,
+        };
+
+        MODULE_INFO
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+
+        MODULE_ADDR
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let res = execute_deregister_module(deps.as_mut(), info, 1u64.into());
+        assert_eq!(ContractError::ModuleImmutable {}, res.unwrap_err());
     }
 
     #[test]

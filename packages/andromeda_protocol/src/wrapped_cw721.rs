@@ -20,8 +20,7 @@ pub struct Cw721Specification {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    //TODO : Replace with Fetch contract once that is in.
-    pub factory_contract: String,
+    pub primitive_contract: String,
     /// The cw721 contract can be instantiated or an existing address can be used. In the case that
     /// an existing address is used, the minter must be set to be this contract.
     pub cw721_instantiate_type: InstantiateType,
