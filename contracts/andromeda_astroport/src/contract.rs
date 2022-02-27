@@ -141,6 +141,7 @@ fn execute_provide_liquidity(
         assets,
         Recipient::Addr(info.sender.to_string()),
     )?;
+    let native_funds = get_native_funds_from_assets(&assets);
 
     // In the case where we want to witdraw the LP token.
     add_withdrawable_token(
@@ -185,7 +186,7 @@ fn execute_provide_liquidity(
             // Not strictly neccessary but to be explicit.
             receiver: Some(env.contract.address.to_string()),
         })?,
-        funds: info.funds,
+        funds: native_funds,
     }));
     Ok(Response::new()
         .add_submessages(sub_messages)
@@ -584,6 +585,10 @@ fn verify_asset_ratio(
     assets: [Asset; 2],
     overflow_recipient: Recipient,
 ) -> Result<([Asset; 2], Vec<SubMsg>), ContractError> {
+    if pooled_assets[0].amount.is_zero() && pooled_assets[1].amount.is_zero() {
+        return Ok((assets, vec![]));
+    }
+    println!("{:?}", pooled_assets);
     // Do it twice for improved precision. From testing it doesn't appear like doing more than
     // two iterations has any improvement.
     let modified_assets = modify_ratio(&pooled_assets, &modify_ratio(&pooled_assets, &assets)?)?;
@@ -624,6 +629,19 @@ fn modify_ratio(
             amount: std::cmp::min(assets[1].amount, required_second_amount),
         },
     ])
+}
+
+fn get_native_funds_from_assets(assets: &[Asset; 2]) -> Vec<Coin> {
+    let mut coins: Vec<Coin> = vec![];
+    for asset in assets.iter() {
+        if let AstroportAssetInfo::NativeToken { denom } = &asset.info {
+            coins.push(Coin {
+                denom: denom.clone(),
+                amount: asset.amount,
+            });
+        }
+    }
+    coins
 }
 
 #[cfg(test)]

@@ -7,8 +7,9 @@ use astroport::{
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SystemError, SystemResult, Uint128, WasmQuery,
+    to_binary, Addr, BalanceResponse as NativeBalanceResponse, BankQuery, Binary, Coin,
+    ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult,
+    Uint128, WasmQuery,
 };
 use cw20::{BalanceResponse, Cw20QueryMsg};
 
@@ -57,6 +58,19 @@ impl Querier for WasmMockQuerier {
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         match &request {
+            QueryRequest::Bank(BankQuery::Balance { address, denom }) => {
+                if address == MOCK_ASTROPORT_PAIR_CONTRACT {
+                    let res = NativeBalanceResponse {
+                        amount: Coin {
+                            denom: denom.to_owned(),
+                            amount: 10u128.into(),
+                        },
+                    };
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+                } else {
+                    self.base.handle_query(request)
+                }
+            }
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_LP_ASSET1 => self.handle_lp_asset1_query(msg),

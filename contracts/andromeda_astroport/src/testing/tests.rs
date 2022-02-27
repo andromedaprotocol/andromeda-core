@@ -21,7 +21,7 @@ use astroport::{
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
-    to_binary, Addr, CosmosMsg, DepsMut, Response, SubMsg, WasmMsg,
+    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Response, SubMsg, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
@@ -272,7 +272,7 @@ fn test_token_to_native_to_token() {
 }
 
 #[test]
-fn test_provide_liquidity() {
+fn test_provide_liquidity_cw20_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("sender", &[]);
 
@@ -379,6 +379,94 @@ fn test_provide_liquidity() {
                 })
                 .unwrap(),
                 funds: vec![],
+            }))
+            .add_attribute("action", "provide_liquidity"),
+        res
+    );
+}
+
+#[test]
+fn test_provide_liquidity_native_cw20() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("sender", &coins(100, "uusd"));
+
+    init(deps.as_mut());
+    assert!(WITHDRAWABLE_TOKENS.has(deps.as_mut().storage, "astroport_token"));
+
+    let assets = [
+        Asset {
+            info: AstroportAssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: 100u128.into(),
+        },
+        Asset {
+            info: AstroportAssetInfo::Token {
+                contract_addr: Addr::unchecked(MOCK_LP_ASSET2),
+            },
+            amount: 200u128.into(),
+        },
+    ];
+
+    let msg = ExecuteMsg::ProvideLiquidity {
+        assets: assets.clone(),
+        slippage_tolerance: None,
+        auto_stake: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert!(WITHDRAWABLE_TOKENS.has(deps.as_ref().storage, MOCK_LP_TOKEN_CONTRACT));
+
+    assert_eq!(
+        Response::new()
+            .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "sender".to_string(),
+                amount: coins(50, "uusd"),
+            })))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_LP_ASSET2.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                    owner: info.sender.to_string(),
+                    recipient: mock_env().contract.address.to_string(),
+                    amount: 200u128.into(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_LP_ASSET2.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
+                    spender: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
+                    amount: 200u128.into(),
+                    expires: None,
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
+                msg: to_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
+                    assets: [
+                        Asset {
+                            info: AstroportAssetInfo::NativeToken {
+                                denom: "uusd".to_string()
+                            },
+                            amount: 50u128.into(),
+                        },
+                        Asset {
+                            info: AstroportAssetInfo::Token {
+                                contract_addr: Addr::unchecked(MOCK_LP_ASSET2),
+                            },
+                            amount: 200u128.into(),
+                        }
+                    ],
+                    slippage_tolerance: None,
+                    auto_stake: None,
+                    receiver: Some(mock_env().contract.address.to_string()),
+                })
+                .unwrap(),
+                funds: coins(50, "uusd"),
             }))
             .add_attribute("action", "provide_liquidity"),
         res
