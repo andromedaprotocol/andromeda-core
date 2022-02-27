@@ -695,7 +695,7 @@ mod tests {
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
             pooled_assets,
-            deposited_assets.clone(),
+            deposited_assets,
             Recipient::Addr("sender".to_string()),
         )
         .unwrap();
@@ -724,7 +724,7 @@ mod tests {
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
             pooled_assets,
-            deposited_assets.clone(),
+            deposited_assets,
             Recipient::Addr("sender".to_string()),
         )
         .unwrap();
@@ -753,7 +753,7 @@ mod tests {
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
             pooled_assets,
-            deposited_assets.clone(),
+            deposited_assets,
             Recipient::Addr("sender".to_string()),
         )
         .unwrap();
@@ -793,7 +793,7 @@ mod tests {
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
             pooled_assets,
-            deposited_assets.clone(),
+            deposited_assets,
             Recipient::Addr("sender".to_string()),
         )
         .unwrap();

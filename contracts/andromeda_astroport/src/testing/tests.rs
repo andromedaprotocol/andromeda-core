@@ -295,7 +295,7 @@ fn test_provide_liquidity_cw20_cw20() {
     ];
 
     let msg = ExecuteMsg::ProvideLiquidity {
-        assets: assets.clone(),
+        assets,
         slippage_tolerance: None,
         auto_stake: None,
     };
@@ -409,7 +409,7 @@ fn test_provide_liquidity_native_cw20() {
     ];
 
     let msg = ExecuteMsg::ProvideLiquidity {
-        assets: assets.clone(),
+        assets,
         slippage_tolerance: None,
         auto_stake: None,
     };
