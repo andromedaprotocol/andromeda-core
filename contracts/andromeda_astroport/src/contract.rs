@@ -135,7 +135,7 @@ fn execute_provide_liquidity(
     )?;
 
     let pooled_assets = pair.query_pools(&deps.querier, pair.contract_addr.clone())?;
-    let (assets, sub_messages) = verify_asset_ratio(
+    let (assets, overflow_messages) = verify_asset_ratio(
         deps.api,
         pooled_assets,
         assets,
@@ -150,10 +150,10 @@ fn execute_provide_liquidity(
             contract_addr: pair.liquidity_token,
         },
     )?;
-    let mut messages: Vec<CosmosMsg> = vec![];
+    let mut initial_transfer_messages: Vec<SubMsg> = vec![];
     for asset in assets.iter() {
         if let AstroportAssetInfo::Token { contract_addr } = &asset.info {
-            messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+            initial_transfer_messages.push(SubMsg::new(WasmMsg::Execute {
                 contract_addr: contract_addr.to_string(),
                 // User needs to allow this contract to transfer tokens.
                 msg: encode_binary(&Cw20ExecuteMsg::TransferFrom {
@@ -163,7 +163,7 @@ fn execute_provide_liquidity(
                 })?,
                 funds: vec![],
             }));
-            messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+            initial_transfer_messages.push(SubMsg::new(WasmMsg::Execute {
                 contract_addr: contract_addr.to_string(),
                 // Allow the pair address to transfer from here.
                 msg: encode_binary(&Cw20ExecuteMsg::IncreaseAllowance {
@@ -177,20 +177,21 @@ fn execute_provide_liquidity(
     }
 
     let native_funds = get_native_funds_from_assets(&assets);
-    messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: pair.contract_addr.to_string(),
-        msg: encode_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
-            assets,
-            slippage_tolerance,
-            auto_stake,
-            // Not strictly neccessary but to be explicit.
-            receiver: Some(env.contract.address.to_string()),
-        })?,
-        funds: native_funds,
-    }));
     Ok(Response::new()
-        .add_submessages(sub_messages)
-        .add_messages(messages)
+        .add_submessages(initial_transfer_messages)
+        // These must be sent after the initial transfers.
+        .add_submessages(overflow_messages)
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: pair.contract_addr.to_string(),
+            msg: encode_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
+                assets,
+                slippage_tolerance,
+                auto_stake,
+                // Not strictly neccessary but to be explicit.
+                receiver: Some(env.contract.address.to_string()),
+            })?,
+            funds: native_funds,
+        }))
         .add_attribute("action", "provide_liquidity"))
 }
 
@@ -588,9 +589,10 @@ fn verify_asset_ratio(
     if pooled_assets[0].amount.is_zero() && pooled_assets[1].amount.is_zero() {
         return Ok((assets, vec![]));
     }
-    println!("{:?}", pooled_assets);
-    // Do it twice for improved precision. From testing it doesn't appear like doing more than
-    // two iterations has any improvement.
+
+    // This is done twice to improve precision as often when one of the token balances gets changed
+    // we get a better approximation for the second. Tests have shown that further iterations do
+    // not make a difference due to precision limitiations.
     let modified_assets = modify_ratio(&pooled_assets, &modify_ratio(&pooled_assets, &assets)?)?;
     let mut messages: Vec<SubMsg> = vec![];
     for i in 0..2 {
@@ -603,7 +605,6 @@ fn verify_asset_ratio(
         }
     }
 
-    println!("{:?}", modified_assets);
     Ok((modified_assets, messages))
 }
 
@@ -778,7 +779,7 @@ mod tests {
                     })
                     .unwrap(),
                     funds: vec![],
-                })
+                }),
             ],
             msgs
         );
@@ -787,7 +788,7 @@ mod tests {
     #[test]
     fn test_verify_asset_ratio_rounding() {
         let pooled_assets = get_assets(30, 80);
-        let deposited_assets = get_assets(56, 91);
+        let deposited_assets = get_assets(56, 93);
         let deps = mock_dependencies(&[]);
 
         let (assets, msgs) = verify_asset_ratio(
@@ -814,7 +815,7 @@ mod tests {
                     contract_addr: "token2".to_owned(),
                     msg: encode_binary(&Cw20ExecuteMsg::Transfer {
                         recipient: "sender".to_string(),
-                        amount: 1u128.into(),
+                        amount: 3u128.into(),
                     })
                     .unwrap(),
                     funds: vec![],

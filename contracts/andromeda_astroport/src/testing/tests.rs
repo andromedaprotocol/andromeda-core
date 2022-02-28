@@ -307,51 +307,51 @@ fn test_provide_liquidity_cw20_cw20() {
     assert_eq!(
         Response::new()
             .add_submessage(SubMsg::new(WasmMsg::Execute {
+                contract_addr: MOCK_LP_ASSET1.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                    owner: info.sender.to_string(),
+                    recipient: mock_env().contract.address.to_string(),
+                    amount: 50u128.into(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
+                contract_addr: MOCK_LP_ASSET1.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
+                    spender: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
+                    amount: 50u128.into(),
+                    expires: None,
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
+                contract_addr: MOCK_LP_ASSET2.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                    owner: info.sender.to_string(),
+                    recipient: mock_env().contract.address.to_string(),
+                    amount: 200u128.into(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
+                contract_addr: MOCK_LP_ASSET2.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
+                    spender: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
+                    amount: 200u128.into(),
+                    expires: None,
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
                 // The excess being sent back as the correct ratio is 4:1.
                 contract_addr: MOCK_LP_ASSET1.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: "sender".to_string(),
                     amount: 50u128.into(),
-                })
-                .unwrap(),
-                funds: vec![],
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_LP_ASSET1.to_owned(),
-                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
-                    owner: info.sender.to_string(),
-                    recipient: mock_env().contract.address.to_string(),
-                    amount: 50u128.into(),
-                })
-                .unwrap(),
-                funds: vec![],
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_LP_ASSET1.to_owned(),
-                msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
-                    spender: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
-                    amount: 50u128.into(),
-                    expires: None,
-                })
-                .unwrap(),
-                funds: vec![],
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_LP_ASSET2.to_owned(),
-                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
-                    owner: info.sender.to_string(),
-                    recipient: mock_env().contract.address.to_string(),
-                    amount: 200u128.into(),
-                })
-                .unwrap(),
-                funds: vec![],
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_LP_ASSET2.to_owned(),
-                msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
-                    spender: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
-                    amount: 200u128.into(),
-                    expires: None,
                 })
                 .unwrap(),
                 funds: vec![],
@@ -420,11 +420,7 @@ fn test_provide_liquidity_native_cw20() {
 
     assert_eq!(
         Response::new()
-            .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: "sender".to_string(),
-                amount: coins(50, "uusd"),
-            })))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
                 contract_addr: MOCK_LP_ASSET2.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
                     owner: info.sender.to_string(),
@@ -434,7 +430,7 @@ fn test_provide_liquidity_native_cw20() {
                 .unwrap(),
                 funds: vec![],
             }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
                 contract_addr: MOCK_LP_ASSET2.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
                     spender: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
@@ -444,6 +440,10 @@ fn test_provide_liquidity_native_cw20() {
                 .unwrap(),
                 funds: vec![],
             }))
+            .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "sender".to_string(),
+                amount: coins(50, "uusd"),
+            })))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
                 msg: to_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
