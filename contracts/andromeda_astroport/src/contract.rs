@@ -576,7 +576,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 /// ## Arguments
 /// * `api` - The api
 /// * `pooled_assets` - The assets the make up the pool
-/// * `assets` - The two assets sent to the pool
+/// * `sent_assets` - The two assets sent to the pool
 /// * `overflow_recipient` - The recipient of any excess tokens
 ///
 /// Returns the deducted assets and vector of sub messages for sending back excess, or
@@ -584,23 +584,23 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 fn verify_asset_ratio(
     api: &dyn Api,
     pooled_assets: [Asset; 2],
-    assets: [Asset; 2],
+    sent_assets: [Asset; 2],
     overflow_recipient: Recipient,
 ) -> Result<([Asset; 2], Vec<SubMsg>), ContractError> {
     if pooled_assets[0].amount.is_zero() && pooled_assets[1].amount.is_zero() {
-        return Ok((assets, vec![]));
+        return Ok((sent_assets, vec![]));
     }
 
     // Ensure that the indices of the deposited assets and pooled assets line up.
     let pooled_amounts: [Uint128; 2] = [
         pooled_assets
             .iter()
-            .find(|a| a.info.equal(&assets[0].info))
+            .find(|a| a.info.equal(&sent_assets[0].info))
             .map(|a| a.amount)
             .expect("Wrong asset info is given"),
         pooled_assets
             .iter()
-            .find(|a| a.info.equal(&assets[1].info))
+            .find(|a| a.info.equal(&sent_assets[1].info))
             .map(|a| a.amount)
             .expect("Wrong asset info is given"),
     ];
@@ -608,11 +608,14 @@ fn verify_asset_ratio(
     // This is done twice to improve precision as often when one of the token balances gets changed
     // we get a better approximation for the second. Tests have shown that further iterations do
     // not make a difference due to precision limitiations.
-    let modified_assets = modify_ratio(&pooled_amounts, &modify_ratio(&pooled_amounts, &assets)?)?;
+    let modified_assets = modify_ratio(
+        &pooled_amounts,
+        &modify_ratio(&pooled_amounts, &sent_assets)?,
+    )?;
     let mut messages: Vec<SubMsg> = vec![];
     for i in 0..2 {
         let delta_asset = Asset {
-            amount: assets[i].amount - modified_assets[i].amount,
+            amount: sent_assets[i].amount - modified_assets[i].amount,
             info: modified_assets[i].info.clone(),
         };
         // Messages for cw20 tokens not needed since the deducted amounts will be transfered in.
