@@ -177,9 +177,7 @@ impl WasmMockQuerier {
                     contract_addr: contract_addr2,
                 }] = asset_infos.clone()
                 {
-                    if contract_addr1 == MOCK_LP_ASSET1
-                        && contract_addr2 == MOCK_LP_ASSET2
-                    {
+                    if contract_addr1 == MOCK_LP_ASSET1 && contract_addr2 == MOCK_LP_ASSET2 {
                         let res = PairInfo {
                             asset_infos,
                             contract_addr: Addr::unchecked(MOCK_ASTROPORT_PAIR_CONTRACT),
