@@ -311,6 +311,7 @@ fn test_provide_liquidity_cw20_cw20() {
                 msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
                     owner: info.sender.to_string(),
                     recipient: mock_env().contract.address.to_string(),
+                    // Reduced amount being transfered.
                     amount: 50u128.into(),
                 })
                 .unwrap(),
@@ -346,16 +347,6 @@ fn test_provide_liquidity_cw20_cw20() {
                 .unwrap(),
                 funds: vec![],
             }))
-            .add_submessage(SubMsg::new(WasmMsg::Execute {
-                // The excess being sent back as the correct ratio is 4:1.
-                contract_addr: MOCK_LP_ASSET1.to_owned(),
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: "sender".to_string(),
-                    amount: 50u128.into(),
-                })
-                .unwrap(),
-                funds: vec![],
-            }))
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
                 msg: to_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
@@ -364,6 +355,7 @@ fn test_provide_liquidity_cw20_cw20() {
                             info: AstroportAssetInfo::Token {
                                 contract_addr: Addr::unchecked(MOCK_LP_ASSET1),
                             },
+                            // Reduced amount being sent.
                             amount: 50u128.into(),
                         },
                         Asset {

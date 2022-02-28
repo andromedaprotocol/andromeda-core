@@ -159,6 +159,7 @@ fn execute_provide_liquidity(
                 msg: encode_binary(&Cw20ExecuteMsg::TransferFrom {
                     owner: info.sender.to_string(),
                     recipient: env.contract.address.to_string(),
+                    // The excess is already deducted from this amount.
                     amount: asset.amount,
                 })?,
                 funds: vec![],
@@ -168,6 +169,7 @@ fn execute_provide_liquidity(
                 // Allow the pair address to transfer from here.
                 msg: encode_binary(&Cw20ExecuteMsg::IncreaseAllowance {
                     spender: pair.contract_addr.to_string(),
+                    // The excess is already deducted from this amount.
                     amount: asset.amount,
                     expires: None,
                 })?,
@@ -179,7 +181,6 @@ fn execute_provide_liquidity(
     let native_funds = get_native_funds_from_assets(&assets);
     Ok(Response::new()
         .add_submessages(initial_transfer_messages)
-        // These must be sent after the initial transfers.
         .add_submessages(overflow_messages)
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: pair.contract_addr.to_string(),
@@ -590,17 +591,36 @@ fn verify_asset_ratio(
         return Ok((assets, vec![]));
     }
 
+    // Ensure that the indices of the deposited assets and pooled assets line up.
+    let pooled_amounts: [Uint128; 2] = [
+        pooled_assets
+            .iter()
+            .find(|a| a.info.equal(&assets[0].info))
+            .map(|a| a.amount)
+            .expect("Wrong asset info is given"),
+        pooled_assets
+            .iter()
+            .find(|a| a.info.equal(&assets[1].info))
+            .map(|a| a.amount)
+            .expect("Wrong asset info is given"),
+    ];
+
     // This is done twice to improve precision as often when one of the token balances gets changed
     // we get a better approximation for the second. Tests have shown that further iterations do
     // not make a difference due to precision limitiations.
-    let modified_assets = modify_ratio(&pooled_assets, &modify_ratio(&pooled_assets, &assets)?)?;
+    let modified_assets = modify_ratio(&pooled_amounts, &modify_ratio(&pooled_amounts, &assets)?)?;
     let mut messages: Vec<SubMsg> = vec![];
     for i in 0..2 {
         let delta_asset = Asset {
             amount: assets[i].amount - modified_assets[i].amount,
             info: modified_assets[i].info.clone(),
         };
-        if delta_asset.amount > Uint128::zero() {
+        // Messages for cw20 tokens not needed since the deducted amounts will be transfered in.
+        // Alternatively we could have pulled in the original amount and sent back the excess, but
+        // that requires an extra message to be sent for no reason.
+        if delta_asset.amount > Uint128::zero()
+            && matches!(delta_asset.info, AstroportAssetInfo::NativeToken { .. })
+        {
             messages.push(overflow_recipient.generate_msg_from_asset(api, delta_asset)?);
         }
     }
@@ -609,16 +629,16 @@ fn verify_asset_ratio(
 }
 
 fn modify_ratio(
-    pooled_assets: &[Asset; 2],
+    pooled_amounts: &[Uint128; 2],
     assets: &[Asset; 2],
 ) -> Result<[Asset; 2], ContractError> {
     let required_second_amount = assets[0]
         .amount
-        .multiply_ratio(pooled_assets[1].amount, pooled_assets[0].amount);
+        .multiply_ratio(pooled_amounts[1], pooled_amounts[0]);
 
     let required_first_amount = assets[1]
         .amount
-        .multiply_ratio(pooled_assets[0].amount, pooled_assets[1].amount);
+        .multiply_ratio(pooled_amounts[0], pooled_amounts[1]);
 
     Ok([
         Asset {
@@ -648,7 +668,26 @@ fn get_native_funds_from_assets(assets: &[Asset; 2]) -> Vec<Coin> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::mock_dependencies;
+    use cosmwasm_std::{coins, testing::mock_dependencies, BankMsg};
+
+    fn get_assets_second_native(asset1_amount: u128, asset2_amount: u128) -> [Asset; 2] {
+        [
+            Asset {
+                info: AssetInfo::Token {
+                    contract_addr: Addr::unchecked("token1".to_owned()),
+                }
+                .into(),
+                amount: asset1_amount.into(),
+            },
+            Asset {
+                info: AssetInfo::NativeToken {
+                    denom: "uusd".to_string(),
+                }
+                .into(),
+                amount: asset2_amount.into(),
+            },
+        ]
+    }
 
     fn get_assets(asset1_amount: u128, asset2_amount: u128) -> [Asset; 2] {
         [
@@ -702,18 +741,42 @@ mod tests {
         .unwrap();
 
         assert_eq!(get_assets(10, 20), assets);
-        assert_eq!(
-            vec![SubMsg::new(WasmMsg::Execute {
-                contract_addr: "token1".to_owned(),
-                msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: "sender".to_string(),
-                    amount: 8u128.into(),
-                })
-                .unwrap(),
-                funds: vec![],
-            })],
-            msgs
-        );
+        assert!(msgs.is_empty());
+    }
+
+    #[test]
+    fn test_verify_asset_ratio_order_agnostic() {
+        // Here token2 is first and token1 is second.
+        let pooled_assets = [
+            Asset {
+                info: AssetInfo::Token {
+                    contract_addr: Addr::unchecked("token2".to_owned()),
+                }
+                .into(),
+                amount: 200u128.into(),
+            },
+            Asset {
+                info: AssetInfo::Token {
+                    contract_addr: Addr::unchecked("token1".to_owned()),
+                }
+                .into(),
+                amount: 100u128.into(),
+            },
+        ];
+        // Here token1 is first and token2 is second.
+        let deposited_assets = get_assets(18, 20);
+        let deps = mock_dependencies(&[]);
+
+        let (assets, msgs) = verify_asset_ratio(
+            deps.as_ref().api,
+            pooled_assets,
+            deposited_assets,
+            Recipient::Addr("sender".to_string()),
+        )
+        .unwrap();
+
+        assert_eq!(get_assets(10, 20), assets);
+        assert!(msgs.is_empty());
     }
 
     #[test]
@@ -731,18 +794,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(get_assets(10, 20), assets);
-        assert_eq!(
-            vec![SubMsg::new(WasmMsg::Execute {
-                contract_addr: "token2".to_owned(),
-                msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: "sender".to_string(),
-                    amount: 20u128.into(),
-                })
-                .unwrap(),
-                funds: vec![],
-            })],
-            msgs
-        );
+        assert!(msgs.is_empty());
     }
 
     #[test]
@@ -760,29 +812,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(get_assets(10, 20), assets);
-        assert_eq!(
-            vec![
-                SubMsg::new(WasmMsg::Execute {
-                    contract_addr: "token1".to_owned(),
-                    msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-                        recipient: "sender".to_string(),
-                        amount: 8u128.into(),
-                    })
-                    .unwrap(),
-                    funds: vec![],
-                }),
-                SubMsg::new(WasmMsg::Execute {
-                    contract_addr: "token2".to_owned(),
-                    msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-                        recipient: "sender".to_string(),
-                        amount: 1u128.into(),
-                    })
-                    .unwrap(),
-                    funds: vec![],
-                }),
-            ],
-            msgs
-        );
+        assert!(msgs.is_empty());
     }
 
     #[test]
@@ -800,27 +830,29 @@ mod tests {
         .unwrap();
 
         assert_eq!(get_assets(34, 90), assets);
+        assert!(msgs.is_empty());
+    }
+
+    #[test]
+    fn test_verify_asset_second_native() {
+        let pooled_assets = get_assets_second_native(10, 20);
+        let deposited_assets = get_assets_second_native(18, 33);
+        let deps = mock_dependencies(&[]);
+
+        let (assets, msgs) = verify_asset_ratio(
+            deps.as_ref().api,
+            pooled_assets,
+            deposited_assets,
+            Recipient::Addr("sender".to_string()),
+        )
+        .unwrap();
+
+        assert_eq!(get_assets_second_native(16, 32), assets);
         assert_eq!(
-            vec![
-                SubMsg::new(WasmMsg::Execute {
-                    contract_addr: "token1".to_owned(),
-                    msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-                        recipient: "sender".to_string(),
-                        amount: 22u128.into(),
-                    })
-                    .unwrap(),
-                    funds: vec![],
-                }),
-                SubMsg::new(WasmMsg::Execute {
-                    contract_addr: "token2".to_owned(),
-                    msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-                        recipient: "sender".to_string(),
-                        amount: 3u128.into(),
-                    })
-                    .unwrap(),
-                    funds: vec![],
-                }),
-            ],
+            vec![SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "sender".to_string(),
+                amount: coins(1, "uusd")
+            }))],
             msgs
         );
     }
