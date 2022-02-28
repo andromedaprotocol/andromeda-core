@@ -3,12 +3,8 @@ use crate::{
     swapper::{SwapperCw20HookMsg, SwapperMsg},
 };
 use astroport::{
-    asset::Asset,
+    asset::{Asset, AssetInfo},
     factory::ExecuteMsg as AstroportFactoryExecuteMsg,
-    router::{Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg},
-    staking::{
-        Cw20HookMsg as AstroportStakingCw20HookMsg, ExecuteMsg as AstroportStakingExecuteMsg,
-    },
 };
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
@@ -30,8 +26,6 @@ pub enum ExecuteMsg {
     Swapper(SwapperMsg),
     Receive(Cw20ReceiveMsg),
     AstroportFactoryExecuteMsg(AstroportFactoryExecuteMsg),
-    AstroportRouterExecuteMsg(AstroportRouterExecuteMsg),
-    AstroportStakingExecuteMsg(AstroportStakingExecuteMsg),
     UpdateConfig {
         astroport_factory_contract: Option<String>,
         astroport_router_contract: Option<String>,
@@ -46,6 +40,23 @@ pub enum ExecuteMsg {
         pair_address: String,
         amount: Option<Uint128>,
         recipient: Option<Recipient>,
+    },
+    StakeLp {
+        lp_token_contract: String,
+        amount: Option<Uint128>,
+    },
+    UnstakeLp {
+        lp_token_contract: String,
+        amount: Option<Uint128>,
+    },
+    ClaimLpStakingRewards {
+        auto_stake: Option<bool>,
+    },
+    StakeAstro {
+        amount: Option<Uint128>,
+    },
+    UnstakeAstro {
+        amount: Option<Uint128>,
     },
 }
 
@@ -64,8 +75,6 @@ pub enum QueryMsg {
 #[serde(rename_all = "snake_case")]
 pub enum Cw20HookMsg {
     Swapper(SwapperCw20HookMsg),
-    AstroportRouterCw20HookMsg(AstroportRouterCw20HookMsg),
-    AstroportStakingCw20HookMsg(AstroportStakingCw20HookMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

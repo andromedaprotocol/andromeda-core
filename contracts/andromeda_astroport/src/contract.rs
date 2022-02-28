@@ -1,4 +1,10 @@
-use crate::state::{Config, CONFIG};
+use crate::{
+    staking::{
+        execute_claim_lp_staking_rewards, execute_stake_astro, execute_stake_lp,
+        execute_unstake_astro, execute_unstake_lp,
+    },
+    state::{Config, CONFIG},
+};
 use andromeda_protocol::{
     astroport::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
@@ -82,22 +88,25 @@ pub fn execute(
             amount,
             recipient,
         } => execute_withdraw_liquidity(deps, env, info, pair_address, amount, recipient),
+        ExecuteMsg::StakeLp {
+            lp_token_contract,
+            amount,
+        } => execute_stake_lp(deps, env, info, lp_token_contract, amount),
+        ExecuteMsg::UnstakeLp {
+            lp_token_contract,
+            amount,
+        } => execute_unstake_lp(deps, env, info, lp_token_contract, amount),
+        ExecuteMsg::ClaimLpStakingRewards { auto_stake } => {
+            execute_claim_lp_staking_rewards(deps, env, info, auto_stake)
+        }
+        ExecuteMsg::StakeAstro { amount } => execute_stake_astro(deps, env, info, amount),
+        ExecuteMsg::UnstakeAstro { amount } => execute_unstake_astro(deps, env, info, amount),
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Swapper(msg) => handle_swapper_msg(deps, info, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
         ExecuteMsg::AstroportFactoryExecuteMsg(msg) => execute_astroport_msg(
             info.funds,
             config.astroport_factory_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
-        ExecuteMsg::AstroportRouterExecuteMsg(msg) => execute_astroport_msg(
-            info.funds,
-            config.astroport_router_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
-        ExecuteMsg::AstroportStakingExecuteMsg(msg) => execute_astroport_msg(
-            info.funds,
-            config.astroport_staking_contract.to_string(),
             encode_binary(&msg)?,
         ),
         ExecuteMsg::UpdateConfig {
@@ -297,21 +306,8 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
     let token_address = info.sender;
     match from_binary(&cw20_msg.msg)? {
-        Cw20HookMsg::AstroportRouterCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            token_address.to_string(),
-            cw20_msg.amount,
-            config.astroport_router_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
-        Cw20HookMsg::AstroportStakingCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            token_address.to_string(),
-            cw20_msg.amount,
-            config.astroport_staking_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
         Cw20HookMsg::Swapper(msg) => {
             handle_swapper_msg_cw20(deps, cw20_msg.sender, msg, token_address, cw20_msg.amount)
         }
