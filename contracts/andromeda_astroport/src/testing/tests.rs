@@ -7,6 +7,7 @@ use crate::{
 };
 use andromeda_protocol::{
     astroport::{Cw20HookMsg, ExecuteMsg, InstantiateMsg},
+    error::ContractError,
     swapper::{AssetInfo, SwapperCw20HookMsg, SwapperMsg},
     withdraw::WITHDRAWABLE_TOKENS,
 };
@@ -272,6 +273,39 @@ fn test_token_to_native_to_token() {
 }
 
 #[test]
+fn test_provide_liquidity_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    init(deps.as_mut());
+    assert!(WITHDRAWABLE_TOKENS.has(deps.as_mut().storage, "astroport_token"));
+
+    let assets = [
+        Asset {
+            info: AstroportAssetInfo::Token {
+                contract_addr: Addr::unchecked(MOCK_LP_ASSET1),
+            },
+            amount: 100u128.into(),
+        },
+        Asset {
+            info: AstroportAssetInfo::Token {
+                contract_addr: Addr::unchecked(MOCK_LP_ASSET2),
+            },
+            amount: 200u128.into(),
+        },
+    ];
+
+    let msg = ExecuteMsg::ProvideLiquidity {
+        assets,
+        slippage_tolerance: None,
+        auto_stake: None,
+    };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
 fn test_provide_liquidity_cw20_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("sender", &[]);
@@ -513,4 +547,21 @@ fn test_withdraw_liquidity() {
             .add_attribute("action", "withdraw_liquidity"),
         res
     );
+}
+
+#[test]
+fn test_withdraw_liquidity_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::WithdrawLiquidity {
+        pair_address: MOCK_ASTROPORT_PAIR_CONTRACT.to_owned(),
+        amount: None,
+        recipient: None,
+    };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }

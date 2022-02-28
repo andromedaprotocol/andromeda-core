@@ -204,7 +204,12 @@ fn execute_withdraw_liquidity(
     amount: Option<Uint128>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let sender = info.sender.as_str();
+    require(
+        is_contract_owner(deps.storage, sender)? || is_operator(deps.storage, sender)?,
+        ContractError::Unauthorized {},
+    )?;
+    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(sender.to_owned()));
     let pair_info = query_pair_given_address(&deps.querier, pair_address)?;
     let total_amount = query_token_balance(
         &deps.querier,
