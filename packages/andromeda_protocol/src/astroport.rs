@@ -2,10 +2,7 @@ use crate::{
     communication::{AndromedaMsg, AndromedaQuery, Recipient},
     swapper::{SwapperCw20HookMsg, SwapperMsg},
 };
-use astroport::{
-    asset::{Asset, AssetInfo},
-    factory::ExecuteMsg as AstroportFactoryExecuteMsg,
-};
+use astroport::{asset::Asset, factory::ExecuteMsg as AstroportFactoryExecuteMsg};
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
@@ -16,7 +13,8 @@ pub struct InstantiateMsg {
     pub astroport_factory_contract: String,
     pub astroport_router_contract: String,
     pub astroport_staking_contract: String,
-    pub astroport_token_contract: String,
+    pub astro_token_contract: String,
+    pub xastro_token_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -50,6 +48,7 @@ pub enum ExecuteMsg {
         amount: Option<Uint128>,
     },
     ClaimLpStakingRewards {
+        lp_token_contract: String,
         auto_stake: Option<bool>,
     },
     StakeAstro {
@@ -83,4 +82,6 @@ pub struct ConfigResponse {
     pub astroport_factory_contract: String,
     pub astroport_router_contract: String,
     pub astroport_staking_contract: String,
+    pub astro_token_contract: String,
+    pub xastro_token_contract: String,
 }

@@ -1,4 +1,5 @@
 use crate::{
+    auth::require_is_authorized,
     staking::{
         execute_claim_lp_staking_rewards, execute_stake_astro, execute_stake_lp,
         execute_unstake_astro, execute_unstake_lp,
@@ -9,7 +10,7 @@ use andromeda_protocol::{
     astroport::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
-    operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
+    operators::{execute_update_operators, query_is_operator, query_operators},
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     swapper::{query_token_balance, AssetInfo, SwapperCw20HookMsg, SwapperMsg},
@@ -52,16 +53,26 @@ pub fn instantiate(
         astroport_factory_contract: deps.api.addr_validate(&msg.astroport_factory_contract)?,
         astroport_router_contract: deps.api.addr_validate(&msg.astroport_router_contract)?,
         astroport_staking_contract: deps.api.addr_validate(&msg.astroport_staking_contract)?,
+        astro_token_contract: deps.api.addr_validate(&msg.astro_token_contract)?,
+        xastro_token_contract: deps.api.addr_validate(&msg.xastro_token_contract)?,
     };
+    CONFIG.save(deps.storage, &config)?;
     // Astro token is obtained from staking LP tokens.
     add_withdrawable_token(
         deps.storage,
-        &msg.astroport_token_contract,
+        &msg.astro_token_contract,
         &AssetInfo::Token {
-            contract_addr: deps.api.addr_validate(&msg.astroport_token_contract)?,
+            contract_addr: config.astro_token_contract,
         },
     )?;
-    CONFIG.save(deps.storage, &config)?;
+    // xAstro is obtained from staking Astro.
+    add_withdrawable_token(
+        deps.storage,
+        &msg.xastro_token_contract,
+        &AssetInfo::Token {
+            contract_addr: config.xastro_token_contract,
+        },
+    )?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "instantiate"),
@@ -96,9 +107,10 @@ pub fn execute(
             lp_token_contract,
             amount,
         } => execute_unstake_lp(deps, env, info, lp_token_contract, amount),
-        ExecuteMsg::ClaimLpStakingRewards { auto_stake } => {
-            execute_claim_lp_staking_rewards(deps, env, info, auto_stake)
-        }
+        ExecuteMsg::ClaimLpStakingRewards {
+            lp_token_contract,
+            auto_stake,
+        } => execute_claim_lp_staking_rewards(deps, env, info, lp_token_contract, auto_stake),
         ExecuteMsg::StakeAstro { amount } => execute_stake_astro(deps, env, info, amount),
         ExecuteMsg::UnstakeAstro { amount } => execute_unstake_astro(deps, env, info, amount),
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
@@ -131,11 +143,7 @@ fn execute_provide_liquidity(
     slippage_tolerance: Option<Decimal>,
     auto_stake: Option<bool>,
 ) -> Result<Response, ContractError> {
-    let sender = info.sender.as_str();
-    require(
-        is_contract_owner(deps.storage, sender)? || is_operator(deps.storage, sender)?,
-        ContractError::Unauthorized {},
-    )?;
+    require_is_authorized(deps.storage, info.sender.as_str())?;
     let config = CONFIG.load(deps.storage)?;
     let pair = query_pair_info(
         &deps.querier,
@@ -214,10 +222,7 @@ fn execute_withdraw_liquidity(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
-    require(
-        is_contract_owner(deps.storage, sender)? || is_operator(deps.storage, sender)?,
-        ContractError::Unauthorized {},
-    )?;
+    require_is_authorized(deps.storage, sender)?;
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(sender.to_owned()));
     let pair_info = query_pair_given_address(&deps.querier, pair_address)?;
     let total_amount = query_token_balance(
@@ -568,6 +573,8 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         astroport_factory_contract: config.astroport_factory_contract.to_string(),
         astroport_router_contract: config.astroport_router_contract.to_string(),
         astroport_staking_contract: config.astroport_staking_contract.to_string(),
+        astro_token_contract: config.astro_token_contract.to_string(),
+        xastro_token_contract: config.xastro_token_contract.to_string(),
     })
 }
 

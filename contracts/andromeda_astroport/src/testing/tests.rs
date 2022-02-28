@@ -31,7 +31,8 @@ fn init(deps: DepsMut) {
         astroport_factory_contract: MOCK_ASTROPORT_FACTORY_CONTRACT.to_owned(),
         astroport_staking_contract: "staking".to_string(),
         astroport_router_contract: MOCK_ASTROPORT_ROUTER_CONTRACT.to_owned(),
-        astroport_token_contract: "astroport_token".to_string(),
+        astro_token_contract: "astroport_token".to_string(),
+        xastro_token_contract: "xastroport_token".to_string(),
     };
     let _res = instantiate(deps, mock_env(), mock_info("sender", &[]), msg).unwrap();
 }
