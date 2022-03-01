@@ -1,7 +1,8 @@
 use crate::{
     contract::{execute, instantiate},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ASTROPORT_FACTORY_CONTRACT, MOCK_ASTROPORT_PAIR_CONTRACT,
+        mock_dependencies_custom, MOCK_ASTROPORT_FACTORY_CONTRACT,
+        MOCK_ASTROPORT_GENERATOR_CONTRACT, MOCK_ASTROPORT_PAIR_CONTRACT,
         MOCK_ASTROPORT_ROUTER_CONTRACT, MOCK_LP_ASSET1, MOCK_LP_ASSET2, MOCK_LP_TOKEN_CONTRACT,
     },
 };
@@ -13,6 +14,7 @@ use andromeda_protocol::{
 };
 use astroport::{
     asset::{Asset, AssetInfo as AstroportAssetInfo},
+    generator::{Cw20HookMsg as GeneratorCw20HookMsg, ExecuteMsg as GeneratorExecuteMsg},
     pair::{Cw20HookMsg as PairCw20HookMsg, ExecuteMsg as AstroportPairExecuteMsg},
     router::{
         Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg,
@@ -565,4 +567,83 @@ fn test_withdraw_liquidity_unauthorized() {
     let info = mock_info("anyone", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_stake_lp() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("sender", &[]);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::StakeLp {
+        lp_token_contract: MOCK_LP_TOKEN_CONTRACT.to_owned(),
+        amount: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_LP_TOKEN_CONTRACT.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: MOCK_ASTROPORT_GENERATOR_CONTRACT.to_owned(),
+                    amount: 10u128.into(),
+                    msg: to_binary(&GeneratorCw20HookMsg::Deposit {}).unwrap(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("action", "stake_lp")
+            .add_attribute("amount", "10")
+            .add_attribute("lp_token", MOCK_LP_TOKEN_CONTRACT),
+        res
+    );
+}
+
+#[test]
+fn test_stake_lp_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::StakeLp {
+        lp_token_contract: MOCK_LP_TOKEN_CONTRACT.to_owned(),
+        amount: None,
+    };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_unstake_lp() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("sender", &[]);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::UnstakeLp {
+        lp_token_contract: MOCK_LP_TOKEN_CONTRACT.to_owned(),
+        amount: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_ASTROPORT_GENERATOR_CONTRACT.to_owned(),
+                funds: vec![],
+                msg: to_binary(&GeneratorExecuteMsg::Withdraw {
+                    amount: 10u128.into(),
+                    lp_token: Addr::unchecked(MOCK_LP_TOKEN_CONTRACT)
+                })
+                .unwrap(),
+            }))
+            .add_attribute("action", "unstake_lp")
+            .add_attribute("amount", "10")
+            .add_attribute("lp_token", MOCK_LP_TOKEN_CONTRACT),
+        res
+    );
 }
