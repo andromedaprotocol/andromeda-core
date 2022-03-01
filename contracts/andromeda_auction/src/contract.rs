@@ -157,7 +157,7 @@ fn execute_update_auction(
 ) -> Result<Response, ContractError> {
     let mut token_auction_state = get_existing_token_auction_state(deps.storage, &token_id)?;
     require(
-        info.sender.to_string() == token_auction_state.owner,
+        info.sender == token_auction_state.owner,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -303,7 +303,7 @@ fn execute_cancel(
 ) -> Result<Response, ContractError> {
     let mut token_auction_state = get_existing_token_auction_state(deps.storage, &token_id)?;
     require(
-        info.sender.to_string() == token_auction_state.owner,
+        info.sender == token_auction_state.owner,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -314,7 +314,7 @@ fn execute_cancel(
         contract_addr: token_auction_state.token_address.clone(),
         msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
             recipient: info.sender.to_string(),
-            token_id: token_id.clone(),
+            token_id,
         })?,
         funds: vec![],
     })];
@@ -562,7 +562,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(0u64);
 
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-        let _res = execute(deps, env.clone(), info, msg).unwrap();
+        let _res = execute(deps, env, info, msg).unwrap();
     }
 
     fn assert_auction_created(deps: Deps, whitelist: Option<Vec<Addr>>) {
@@ -949,7 +949,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(0u64);
 
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         assert_eq!(
             res,
@@ -988,7 +988,7 @@ mod tests {
         env.block.height = 0;
 
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         assert_eq!(
             res,
@@ -1026,7 +1026,7 @@ mod tests {
         env.block.height = 0;
 
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
 
         assert_eq!(
             ContractError::ExpirationsMustBeOfSameType {},
@@ -1168,7 +1168,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(0);
 
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
 
         assert_eq!(
             ContractError::ExpirationsMustBeOfSameType {},
@@ -1198,7 +1198,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(0);
 
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
 
         assert_eq!(ContractError::StartTimeInThePast {}, res.unwrap_err());
     }
@@ -1225,7 +1225,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(0);
 
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
 
         assert_eq!(ContractError::StartTimeAfterEndTime {}, res.unwrap_err());
     }
@@ -1251,7 +1251,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(0);
 
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
 
         assert_eq!(ContractError::ExpirationMustNotBeNever {}, res.unwrap_err());
     }
@@ -1277,7 +1277,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(0);
 
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
 
         assert_eq!(ContractError::ExpirationMustNotBeNever {}, res.unwrap_err());
     }
@@ -1304,7 +1304,7 @@ mod tests {
         env.block.height = 0;
 
         let info = mock_info("not_owner", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 
@@ -1330,7 +1330,7 @@ mod tests {
         env.block.height = 0;
 
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::AuctionAlreadyStarted {}, res.unwrap_err());
     }
 
@@ -1356,7 +1356,7 @@ mod tests {
         env.block.height = 0;
 
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             TokenAuctionState {
                 start_time: Expiration::AtHeight(100),
@@ -1401,7 +1401,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(250);
 
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             Response::new().add_attributes(vec![
                 attr("action", "start_auction"),
@@ -1480,7 +1480,7 @@ mod tests {
         };
 
         let info = mock_info("any_user", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
         let transfer_nft_msg = Cw721ExecuteMsg::TransferNft {
             recipient: "sender".to_string(),
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
