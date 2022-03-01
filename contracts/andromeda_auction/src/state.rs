@@ -1,5 +1,5 @@
 use andromeda_protocol::{
-    auction::{AuctionStateResponse, Bid, ConfigResponse},
+    auction::{AuctionStateResponse, Bid},
     common::OrderBy,
 };
 use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
@@ -11,19 +11,6 @@ use std::cmp;
 
 const MAX_LIMIT: u64 = 30;
 const DEFAULT_LIMIT: u64 = 10;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Config {
-    pub token_addr: String,
-}
-
-impl From<Config> for ConfigResponse {
-    fn from(config: Config) -> ConfigResponse {
-        ConfigResponse {
-            token_addr: config.token_addr,
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TokenAuctionState {
@@ -55,7 +42,6 @@ impl From<TokenAuctionState> for AuctionStateResponse {
 }
 
 pub const NEXT_AUCTION_ID: Item<Uint128> = Item::new("next_auction_id");
-pub const CONFIG: Item<Config> = Item::new("config");
 
 pub const AUCTION_IDS: Map<&str, Vec<Uint128>> = Map::new("auction_ids"); // token_id -> [auction_ids]
 pub const BIDS: Map<U128Key, Vec<Bid>> = Map::new("bids"); // auction_id -> [bids]

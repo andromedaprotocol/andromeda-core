@@ -861,10 +861,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::{
-        testing::mock_querier::mock_dependencies_custom,
-        token::{Approval, ExecuteMsg},
-    };
+    use andromeda_protocol::token::{Approval, ExecuteMsg};
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},

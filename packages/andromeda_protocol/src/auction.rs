@@ -5,9 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {
-    pub token_addr: String,
-}
+pub struct InstantiateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -21,6 +19,13 @@ pub enum ExecuteMsg {
     /// Transfers the given token to the auction winner's address once the auction is over.
     Claim {
         token_id: String,
+    },
+    UpdateAuction {
+        token_id: String,
+        start_time: Expiration,
+        end_time: Expiration,
+        coin_denom: String,
+        whitelist: Option<Vec<Addr>>,
     },
     UpdateOwner {
         address: String,
@@ -59,8 +64,6 @@ pub enum QueryMsg {
     AuctionIds {
         token_id: String,
     },
-    /// Gets the config.
-    Config {},
     /// Gets the bids for the given auction id. Start_after starts indexing at 0.
     Bids {
         auction_id: Uint128,
@@ -93,11 +96,6 @@ pub struct AuctionStateResponse {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct AuctionIdsResponse {
     pub auction_ids: Vec<Uint128>,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct ConfigResponse {
-    pub token_addr: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
