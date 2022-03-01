@@ -11,8 +11,8 @@ use astroport::{
     staking::Cw20HookMsg as StakingCw20HookMsg,
 };
 use cosmwasm_std::{
-    CosmosMsg, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, Uint128,
-    WasmMsg, WasmQuery,
+    Addr, CosmosMsg, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
+    Uint128, WasmMsg, WasmQuery,
 };
 use cw20::Cw20ExecuteMsg;
 use std::cmp;
@@ -58,13 +58,12 @@ pub fn execute_unstake_lp(
     require_is_authorized(deps.storage, info.sender.as_str())?;
     let generator_contract = query_generator_address(&deps.querier, deps.storage)?;
     let lp_token = deps.api.addr_validate(&lp_token_contract)?;
-    let amount_staked: Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: generator_contract.clone(),
-        msg: encode_binary(&GeneratorQueryMsg::Deposit {
-            lp_token: lp_token.clone(),
-            user: env.contract.address,
-        })?,
-    }))?;
+    let amount_staked = query_amount_staked(
+        &deps.querier,
+        generator_contract.clone(),
+        lp_token.clone(),
+        env.contract.address,
+    )?;
 
     let amount = cmp::min(amount.unwrap_or(amount_staked), amount_staked);
     Ok(Response::new()
@@ -98,26 +97,23 @@ pub fn execute_claim_lp_staking_rewards(
             lp_token: lp_token.clone(),
         })?,
     });
-    let pending_token_response: PendingTokenResponse =
-        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: generator_contract,
-            msg: encode_binary(&GeneratorQueryMsg::PendingToken {
-                lp_token,
-                user: env.contract.address.clone(),
-            })?,
-        }))?;
+    let pending_reward = query_pending_reward(
+        &deps.querier,
+        generator_contract,
+        lp_token,
+        env.contract.address.clone(),
+    )?;
     let auto_stake = auto_stake.unwrap_or(false);
+    let res = Response::new()
+        .add_attribute("action", "claim_lp_staking_rewards")
+        .add_message(lp_unstake_msg);
     if auto_stake {
-        let stake_res = execute_stake_astro(deps, env, info, Some(pending_token_response.pending))?;
-        Ok(Response::new()
-            .add_attribute("action", "claim_lp_staking_rewards")
+        let stake_res = execute_stake_astro(deps, env, info, Some(pending_reward))?;
+        Ok(res
             .add_attributes(stake_res.attributes)
-            .add_message(lp_unstake_msg)
             .add_submessages(stake_res.messages))
     } else {
-        Ok(Response::new()
-            .add_attribute("action", "claim_lp_staking_rewards")
-            .add_message(lp_unstake_msg))
+        Ok(res)
     }
 }
 
@@ -127,27 +123,7 @@ pub fn execute_stake_astro(
     info: MessageInfo,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    require_is_authorized(deps.storage, info.sender.as_str())?;
-    let config = CONFIG.load(deps.storage)?;
-    let balance = query_token_balance(
-        &deps.querier,
-        config.astro_token_contract.clone(),
-        env.contract.address,
-    )?;
-    let amount = cmp::min(amount.unwrap_or(balance), balance);
-
-    Ok(Response::new()
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: config.astro_token_contract.to_string(),
-            msg: encode_binary(&Cw20ExecuteMsg::Send {
-                contract: config.astroport_staking_contract.to_string(),
-                amount,
-                msg: encode_binary(&StakingCw20HookMsg::Enter {})?,
-            })?,
-            funds: vec![],
-        }))
-        .add_attribute("action", "stake_astro")
-        .add_attribute("amount", amount))
+    stake_or_unstake_astro(deps, env, info, amount, true)
 }
 
 pub fn execute_unstake_astro(
@@ -156,22 +132,35 @@ pub fn execute_unstake_astro(
     info: MessageInfo,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
+    stake_or_unstake_astro(deps, env, info, amount, false)
+}
+
+fn stake_or_unstake_astro(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Option<Uint128>,
+    stake: bool,
+) -> Result<Response, ContractError> {
     require_is_authorized(deps.storage, info.sender.as_str())?;
+
     let config = CONFIG.load(deps.storage)?;
-    let balance = query_token_balance(
-        &deps.querier,
-        config.xastro_token_contract.clone(),
-        env.contract.address,
-    )?;
+    let (token_addr, msg) = if stake {
+        (config.astro_token_contract, StakingCw20HookMsg::Enter {})
+    } else {
+        (config.xastro_token_contract, StakingCw20HookMsg::Leave {})
+    };
+
+    let balance = query_token_balance(&deps.querier, token_addr.clone(), env.contract.address)?;
     let amount = cmp::min(amount.unwrap_or(balance), balance);
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: config.xastro_token_contract.to_string(),
+            contract_addr: token_addr.to_string(),
             msg: encode_binary(&Cw20ExecuteMsg::Send {
                 contract: config.astroport_staking_contract.to_string(),
                 amount,
-                msg: encode_binary(&StakingCw20HookMsg::Leave {})?,
+                msg: encode_binary(&msg)?,
             })?,
             funds: vec![],
         }))
@@ -190,4 +179,33 @@ fn query_generator_address(
         None => Err(ContractError::GeneratorNotSpecified {}),
         Some(generator) => Ok(generator.to_string()),
     }
+}
+
+fn query_amount_staked(
+    querier: &QuerierWrapper,
+    generator_contract: String,
+    lp_token: Addr,
+    user: Addr,
+) -> Result<Uint128, ContractError> {
+    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: generator_contract,
+        msg: encode_binary(&GeneratorQueryMsg::Deposit {
+            lp_token: lp_token.clone(),
+            user,
+        })?,
+    }))?)
+}
+
+fn query_pending_reward(
+    querier: &QuerierWrapper,
+    generator_contract: String,
+    lp_token: Addr,
+    user: Addr,
+) -> Result<Uint128, ContractError> {
+    let pending_token_response: PendingTokenResponse =
+        querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: generator_contract,
+            msg: encode_binary(&GeneratorQueryMsg::PendingToken { lp_token, user })?,
+        }))?;
+    Ok(pending_token_response.pending)
 }
