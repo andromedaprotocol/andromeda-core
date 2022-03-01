@@ -36,6 +36,7 @@ pub struct TokenAuctionState {
     pub whitelist: Option<Vec<Addr>>,
     pub owner: String,
     pub token_address: String,
+    pub is_cancelled: bool,
 }
 
 impl From<TokenAuctionState> for AuctionStateResponse {
@@ -48,6 +49,7 @@ impl From<TokenAuctionState> for AuctionStateResponse {
             coin_denom: token_auction_state.coin_denom,
             auction_id: token_auction_state.auction_id,
             whitelist: token_auction_state.whitelist,
+            is_cancelled: token_auction_state.is_cancelled,
         }
     }
 }

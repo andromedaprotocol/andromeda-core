@@ -127,6 +127,9 @@ pub enum ContractError {
     #[error("AuctionNotEnded")]
     AuctionNotEnded {},
 
+    #[error("AuctionCancelled")]
+    AuctionCancelled {},
+
     #[error("ExpirationMustNotBeNever")]
     ExpirationMustNotBeNever {},
 

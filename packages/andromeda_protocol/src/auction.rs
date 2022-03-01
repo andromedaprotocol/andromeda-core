@@ -25,6 +25,9 @@ pub enum ExecuteMsg {
     UpdateOwner {
         address: String,
     },
+    CancelAuction {
+        token_id: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -84,6 +87,7 @@ pub struct AuctionStateResponse {
     pub auction_id: Uint128,
     pub coin_denom: String,
     pub whitelist: Option<Vec<Addr>>,
+    pub is_cancelled: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

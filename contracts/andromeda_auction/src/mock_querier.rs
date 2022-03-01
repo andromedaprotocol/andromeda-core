@@ -1,11 +1,10 @@
-use andromeda_protocol::token::QueryMsg as TokenQueryMsg;
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
-use cw721::OwnerOfResponse;
+use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_TOKEN_ADDR: &str = "token0001";
@@ -60,7 +59,7 @@ impl WasmMockQuerier {
 
     fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            TokenQueryMsg::OwnerOf { token_id } => {
+            Cw721QueryMsg::OwnerOf { token_id, .. } => {
                 let res = if token_id == MOCK_UNCLAIMED_TOKEN {
                     OwnerOfResponse {
                         owner: mock_env().contract.address.to_string(),
