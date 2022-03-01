@@ -1,6 +1,6 @@
 use crate::common::OrderBy;
 use cosmwasm_std::{Addr, Timestamp, Uint128};
-use cw721::Expiration;
+use cw721::{Cw721ReceiveMsg, Expiration};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +12,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    ReceiveNft(Cw721ReceiveMsg),
     /// Places a bid on the current auction for the given token_id. The previous largest bid gets
     /// automatically sent back to the bidder when they are outbid.
     PlaceBid {
@@ -21,17 +22,21 @@ pub enum ExecuteMsg {
     Claim {
         token_id: String,
     },
+    UpdateOwner {
+        address: String,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Cw721HookMsg {
     /// Starts a new auction with the given parameters. The auction info can be modified before it
     /// has started but is immutable after that.
     StartAuction {
-        token_id: String,
         start_time: Expiration,
         end_time: Expiration,
         coin_denom: String,
         whitelist: Option<Vec<Addr>>,
-    },
-    UpdateOwner {
-        address: String,
     },
 }
 
@@ -78,7 +83,6 @@ pub struct AuctionStateResponse {
     pub high_bidder_amount: Uint128,
     pub auction_id: Uint128,
     pub coin_denom: String,
-    pub claimed: bool,
     pub whitelist: Option<Vec<Addr>>,
 }
 

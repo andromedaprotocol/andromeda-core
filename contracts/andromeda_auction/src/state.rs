@@ -33,8 +33,9 @@ pub struct TokenAuctionState {
     pub high_bidder_amount: Uint128,
     pub coin_denom: String,
     pub auction_id: Uint128,
-    pub claimed: bool,
     pub whitelist: Option<Vec<Addr>>,
+    pub owner: String,
+    pub token_address: String,
 }
 
 impl From<TokenAuctionState> for AuctionStateResponse {
@@ -44,7 +45,6 @@ impl From<TokenAuctionState> for AuctionStateResponse {
             end_time: token_auction_state.end_time,
             high_bidder_addr: token_auction_state.high_bidder_addr.to_string(),
             high_bidder_amount: token_auction_state.high_bidder_amount,
-            claimed: token_auction_state.claimed,
             coin_denom: token_auction_state.coin_denom,
             auction_id: token_auction_state.auction_id,
             whitelist: token_auction_state.whitelist,
