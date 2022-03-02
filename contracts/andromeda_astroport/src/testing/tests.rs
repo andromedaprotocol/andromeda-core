@@ -753,3 +753,89 @@ fn test_claim_lp_staking_rewards_unauthorized() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
+
+#[test]
+fn test_stake_astro() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::StakeAstro { amount: None };
+
+    let info = mock_info("sender", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "stake_astro")
+            .add_attribute("amount", "10")
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_ASTRO_TOKEN.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: "staking".to_string(),
+                    amount: 10u128.into(),
+                    msg: to_binary(&StakingCw20HookMsg::Enter {}).unwrap(),
+                })
+                .unwrap(),
+                funds: vec![],
+            })),
+        res
+    );
+}
+
+#[test]
+fn test_stake_astro_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::StakeAstro { amount: None };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_unstake_astro() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::UnstakeAstro { amount: None };
+
+    let info = mock_info("sender", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "unstake_astro")
+            .add_attribute("amount", "10")
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_XASTRO_TOKEN.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: "staking".to_string(),
+                    amount: 10u128.into(),
+                    msg: to_binary(&StakingCw20HookMsg::Leave {}).unwrap(),
+                })
+                .unwrap(),
+                funds: vec![],
+            })),
+        res
+    );
+}
+
+#[test]
+fn test_unstake_astro_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::UnstakeAstro { amount: None };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}

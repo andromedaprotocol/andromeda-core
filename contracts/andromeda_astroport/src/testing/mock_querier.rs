@@ -78,6 +78,7 @@ impl WasmMockQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_ASTRO_TOKEN => self.handle_astro_token_query(msg),
+                    MOCK_XASTRO_TOKEN => self.handle_xastro_token_query(msg),
                     MOCK_LP_ASSET1 => self.handle_lp_asset1_query(msg),
                     MOCK_LP_ASSET2 => self.handle_lp_asset2_query(msg),
                     MOCK_LP_TOKEN_CONTRACT => self.handle_lp_token_query(msg),
@@ -229,6 +230,18 @@ impl WasmMockQuerier {
     }
 
     fn handle_astro_token_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            Cw20QueryMsg::Balance { .. } => {
+                let balance_response = BalanceResponse {
+                    balance: 10u128.into(),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&balance_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_xastro_token_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             Cw20QueryMsg::Balance { .. } => {
                 let balance_response = BalanceResponse {
