@@ -125,12 +125,16 @@ pub fn execute(
             astroport_factory_contract,
             astroport_router_contract,
             astroport_staking_contract,
+            astro_token_contract,
+            xastro_token_contract,
         } => execute_update_config(
             deps,
             info,
             astroport_factory_contract,
             astroport_router_contract,
             astroport_staking_contract,
+            astro_token_contract,
+            xastro_token_contract,
         ),
     }
 }
@@ -508,6 +512,8 @@ pub fn execute_update_config(
     astroport_factory_contract: Option<String>,
     astroport_router_contract: Option<String>,
     astroport_staking_contract: Option<String>,
+    astro_token_contract: Option<String>,
+    xastro_token_contract: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
         is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -522,6 +528,12 @@ pub fn execute_update_config(
     }
     if let Some(astroport_staking_contract) = astroport_staking_contract {
         config.astroport_staking_contract = deps.api.addr_validate(&astroport_staking_contract)?;
+    }
+    if let Some(astro_token_contract) = astro_token_contract {
+        config.astro_token_contract = deps.api.addr_validate(&astro_token_contract)?;
+    }
+    if let Some(xastro_token_contract) = xastro_token_contract {
+        config.xastro_token_contract = deps.api.addr_validate(&xastro_token_contract)?;
     }
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new().add_attribute("action", "update_config"))

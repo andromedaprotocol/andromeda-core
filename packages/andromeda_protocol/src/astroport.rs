@@ -28,6 +28,8 @@ pub enum ExecuteMsg {
         astroport_factory_contract: Option<String>,
         astroport_router_contract: Option<String>,
         astroport_staking_contract: Option<String>,
+        astro_token_contract: Option<String>,
+        xastro_token_contract: Option<String>,
     },
     ProvideLiquidity {
         assets: [Asset; 2],
