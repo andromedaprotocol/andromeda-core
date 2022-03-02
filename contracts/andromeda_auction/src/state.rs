@@ -1,10 +1,11 @@
 use andromeda_protocol::{
     auction::{AuctionStateResponse, Bid},
     common::OrderBy,
+    error::ContractError,
 };
-use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage, Uint128};
 use cw721::Expiration;
-use cw_storage_plus::{Item, Map, U128Key};
+use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex, U128Key};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::cmp;
@@ -22,8 +23,26 @@ pub struct TokenAuctionState {
     pub auction_id: Uint128,
     pub whitelist: Option<Vec<Addr>>,
     pub owner: String,
+    pub token_id: String,
     pub token_address: String,
     pub is_cancelled: bool,
+}
+
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AuctionInfo {
+    pub auction_ids: Vec<Uint128>,
+    pub token_address: String,
+    pub token_id: String,
+}
+
+impl AuctionInfo {
+    pub fn last(&self) -> Option<&Uint128> {
+        self.auction_ids.last()
+    }
+
+    pub fn push(&mut self, e: Uint128) {
+        self.auction_ids.push(e)
+    }
 }
 
 impl From<TokenAuctionState> for AuctionStateResponse {
@@ -43,10 +62,32 @@ impl From<TokenAuctionState> for AuctionStateResponse {
 
 pub const NEXT_AUCTION_ID: Item<Uint128> = Item::new("next_auction_id");
 
-pub const AUCTION_IDS: Map<&str, Vec<Uint128>> = Map::new("auction_ids"); // token_id -> [auction_ids]
 pub const BIDS: Map<U128Key, Vec<Bid>> = Map::new("bids"); // auction_id -> [bids]
 
 pub const TOKEN_AUCTION_STATE: Map<U128Key, TokenAuctionState> = Map::new("auction_token_state");
+
+pub struct AuctionIdIndices<'a> {
+    /// (token_address, token_id + token_address)
+    pub token: MultiIndex<'a, (String, Vec<u8>), AuctionInfo>,
+}
+
+impl<'a> IndexList<AuctionInfo> for AuctionIdIndices<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<AuctionInfo>> + '_> {
+        let v: Vec<&dyn Index<AuctionInfo>> = vec![&self.token];
+        Box::new(v.into_iter())
+    }
+}
+
+pub fn auction_infos<'a>() -> IndexedMap<'a, &'a str, AuctionInfo, AuctionIdIndices<'a>> {
+    let indexes = AuctionIdIndices {
+        token: MultiIndex::new(
+            |r, k| (r.token_address.clone(), k),
+            "ownership",
+            "token_index",
+        ),
+    };
+    IndexedMap::new("ownership", indexes)
+}
 
 pub fn read_bids(
     storage: &dyn Storage,
@@ -85,6 +126,32 @@ pub fn read_bids(
     }
 
     Ok(slice.to_vec())
+}
+
+pub fn read_auction_infos(
+    storage: &dyn Storage,
+    token_address: String,
+    start_after: Option<String>,
+    limit: Option<u64>,
+) -> Result<Vec<AuctionInfo>, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let keys: Vec<String> = auction_infos()
+        .idx
+        .token
+        .prefix(token_address)
+        .keys(storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|v| String::from_utf8(v.to_vec()))
+        .collect::<Result<Vec<String>, _>>()
+        .map_err(StdError::invalid_utf8)?;
+
+    let mut res: Vec<AuctionInfo> = vec![];
+    for key in keys.iter() {
+        res.push(auction_infos().load(storage, key)?);
+    }
+    Ok(res)
 }
 
 #[cfg(test)]

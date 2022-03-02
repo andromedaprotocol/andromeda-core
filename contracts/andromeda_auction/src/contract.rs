@@ -1,5 +1,6 @@
 use crate::state::{
-    read_bids, TokenAuctionState, AUCTION_IDS, BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
+    auction_infos, read_auction_infos, read_bids, AuctionInfo, TokenAuctionState, BIDS,
+    NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
 use andromeda_protocol::{
     auction::{
@@ -148,6 +149,7 @@ fn execute_start_auction(
             auction_id,
             whitelist,
             owner: sender,
+            token_id,
             token_address,
             is_cancelled: false,
         },
@@ -437,9 +439,9 @@ fn get_existing_token_auction_state(
     token_address: &str,
 ) -> Result<TokenAuctionState, ContractError> {
     let key = token_id.to_owned() + token_address;
-    let latest_auction_id: Uint128 = match AUCTION_IDS.may_load(storage, &key)? {
+    let latest_auction_id: Uint128 = match auction_infos().may_load(storage, &key)? {
         None => return Err(ContractError::AuctionDoesNotExist {}),
-        Some(auction_ids) => *auction_ids.last().unwrap(),
+        Some(auction_info) => *auction_info.last().unwrap(),
     };
     let token_auction_state =
         TOKEN_AUCTION_STATE.load(storage, U128Key::new(latest_auction_id.u128()))?;
@@ -466,9 +468,13 @@ fn get_and_increment_next_auction_id(
 
     let key = token_id.to_owned() + token_address;
 
-    let mut auction_ids = AUCTION_IDS.load(storage, &key).unwrap_or_default();
-    auction_ids.push(next_auction_id);
-    AUCTION_IDS.save(storage, &key, &auction_ids)?;
+    let mut auction_info = auction_infos().load(storage, &key).unwrap_or_default();
+    auction_info.push(next_auction_id);
+    if auction_info.token_address.is_empty() {
+        auction_info.token_address = token_address.to_owned();
+        auction_info.token_id = token_id.to_owned();
+    }
+    auction_infos().save(storage, &key, &auction_info)?;
     Ok(next_auction_id)
 }
 
@@ -488,27 +494,48 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             limit,
             order_by,
         } => encode_binary(&query_bids(deps, auction_id, start_after, limit, order_by)?),
-        QueryMsg::AuctionIds {
+        QueryMsg::AuctionInfos {
             token_id,
             token_address,
-        } => encode_binary(&query_auction_ids(deps, token_id, token_address)?),
+        } => encode_binary(&query_auction_infos(deps, token_id, token_address)?),
+        QueryMsg::AuctionInfosForAddress {
+            token_address,
+            start_after,
+            limit,
+        } => encode_binary(&query_auction_infos_for_address(
+            deps,
+            token_address,
+            start_after,
+            limit,
+        )?),
         QueryMsg::Owner {} => encode_binary(&query_contract_owner(deps)?),
     }
 }
 
-fn query_auction_ids(
+fn query_auction_infos(
     deps: Deps,
     token_id: String,
     token_address: String,
 ) -> Result<AuctionIdsResponse, ContractError> {
     let key = token_id + &token_address;
-    let auction_ids = AUCTION_IDS.may_load(deps.storage, &key)?;
-    if let Some(auction_ids) = auction_ids {
-        return Ok(AuctionIdsResponse { auction_ids });
+    let auction_info = auction_infos().may_load(deps.storage, &key)?;
+    if let Some(auction_info) = auction_info {
+        return Ok(AuctionIdsResponse {
+            auction_ids: auction_info.auction_ids,
+        });
     }
     Ok(AuctionIdsResponse {
         auction_ids: vec![],
     })
+}
+
+pub fn query_auction_infos_for_address(
+    deps: Deps,
+    token_address: String,
+    start_after: Option<String>,
+    limit: Option<u64>,
+) -> Result<Vec<AuctionInfo>, ContractError> {
+    read_auction_infos(deps.storage, token_address, start_after, limit)
 }
 
 fn query_bids(
@@ -572,6 +599,7 @@ mod tests {
     use crate::mock_querier::{
         mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     };
+    use crate::state::AuctionInfo;
     use andromeda_protocol::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{attr, coin, coins, from_binary, BankMsg, CosmosMsg, Response, Timestamp};
@@ -615,6 +643,7 @@ mod tests {
                 auction_id: 1u128.into(),
                 whitelist,
                 owner: MOCK_TOKEN_OWNER.to_string(),
+                token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
                 token_address: MOCK_TOKEN_ADDR.to_owned(),
                 is_cancelled: false,
             },
@@ -624,8 +653,12 @@ mod tests {
         );
 
         assert_eq!(
-            vec![Uint128::from(1u128)],
-            AUCTION_IDS
+            AuctionInfo {
+                auction_ids: vec![Uint128::from(1u128)],
+                token_address: MOCK_TOKEN_ADDR.to_owned(),
+                token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            },
+            auction_infos()
                 .load(
                     deps.storage,
                     &(MOCK_UNCLAIMED_TOKEN.to_owned() + MOCK_TOKEN_ADDR)
@@ -1428,6 +1461,7 @@ mod tests {
                 auction_id: 1u128.into(),
                 whitelist: Some(vec![Addr::unchecked("user")]),
                 owner: MOCK_TOKEN_OWNER.to_string(),
+                token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
                 token_address: MOCK_TOKEN_ADDR.to_owned(),
                 is_cancelled: false,
             },
