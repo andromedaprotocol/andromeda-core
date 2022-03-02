@@ -43,16 +43,34 @@ pub fn execute(
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(deps, env, info, msg),
         ExecuteMsg::UpdateAuction {
             token_id,
+            token_address,
             start_time,
             end_time,
             coin_denom,
             whitelist,
         } => execute_update_auction(
-            deps, env, info, token_id, start_time, end_time, coin_denom, whitelist,
+            deps,
+            env,
+            info,
+            token_id,
+            token_address,
+            start_time,
+            end_time,
+            coin_denom,
+            whitelist,
         ),
-        ExecuteMsg::PlaceBid { token_id } => execute_place_bid(deps, env, info, token_id),
-        ExecuteMsg::CancelAuction { token_id } => execute_cancel(deps, env, info, token_id),
-        ExecuteMsg::Claim { token_id } => execute_claim(deps, env, info, token_id),
+        ExecuteMsg::PlaceBid {
+            token_id,
+            token_address,
+        } => execute_place_bid(deps, env, info, token_id, token_address),
+        ExecuteMsg::CancelAuction {
+            token_id,
+            token_address,
+        } => execute_cancel(deps, env, info, token_id, token_address),
+        ExecuteMsg::Claim {
+            token_id,
+            token_address,
+        } => execute_claim(deps, env, info, token_id, token_address),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
@@ -113,7 +131,7 @@ fn execute_start_auction(
         ContractError::StartTimeInThePast {},
     )?;
 
-    let auction_id = get_and_increment_next_auction_id(deps.storage, &token_id)?;
+    let auction_id = get_and_increment_next_auction_id(deps.storage, &token_id, &token_address)?;
     BIDS.save(deps.storage, U128Key::new(auction_id.u128()), &vec![])?;
 
     let whitelist_str = format!("{:?}", &whitelist);
@@ -150,12 +168,14 @@ fn execute_update_auction(
     env: Env,
     info: MessageInfo,
     token_id: String,
+    token_address: String,
     start_time: Expiration,
     end_time: Expiration,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
 ) -> Result<Response, ContractError> {
-    let mut token_auction_state = get_existing_token_auction_state(deps.storage, &token_id)?;
+    let mut token_auction_state =
+        get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     require(
         info.sender == token_auction_state.owner,
         ContractError::Unauthorized {},
@@ -205,8 +225,10 @@ fn execute_place_bid(
     env: Env,
     info: MessageInfo,
     token_id: String,
+    token_address: String,
 ) -> Result<Response, ContractError> {
-    let mut token_auction_state = get_existing_token_auction_state(deps.storage, &token_id)?;
+    let mut token_auction_state =
+        get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
     require(
         !token_auction_state.is_cancelled,
@@ -296,8 +318,10 @@ fn execute_cancel(
     env: Env,
     info: MessageInfo,
     token_id: String,
+    token_address: String,
 ) -> Result<Response, ContractError> {
-    let mut token_auction_state = get_existing_token_auction_state(deps.storage, &token_id)?;
+    let mut token_auction_state =
+        get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     require(
         info.sender == token_auction_state.owner,
         ContractError::Unauthorized {},
@@ -341,8 +365,10 @@ fn execute_claim(
     env: Env,
     _info: MessageInfo,
     token_id: String,
+    token_address: String,
 ) -> Result<Response, ContractError> {
-    let token_auction_state = get_existing_token_auction_state(deps.storage, &token_id)?;
+    let token_auction_state =
+        get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     require(
         token_auction_state.end_time.is_expired(&env.block),
         ContractError::AuctionNotEnded {},
@@ -408,8 +434,10 @@ fn execute_claim(
 fn get_existing_token_auction_state(
     storage: &dyn Storage,
     token_id: &str,
+    token_address: &str,
 ) -> Result<TokenAuctionState, ContractError> {
-    let latest_auction_id: Uint128 = match AUCTION_IDS.may_load(storage, token_id)? {
+    let key = token_id.to_owned() + token_address;
+    let latest_auction_id: Uint128 = match AUCTION_IDS.may_load(storage, &key)? {
         None => return Err(ContractError::AuctionDoesNotExist {}),
         Some(auction_ids) => *auction_ids.last().unwrap(),
     };
@@ -430,22 +458,27 @@ fn block_to_expiration(block: &BlockInfo, model: Expiration) -> Option<Expiratio
 fn get_and_increment_next_auction_id(
     storage: &mut dyn Storage,
     token_id: &str,
+    token_address: &str,
 ) -> Result<Uint128, ContractError> {
     let next_auction_id = NEXT_AUCTION_ID.load(storage)?;
     let incremented_next_auction_id = next_auction_id.checked_add(Uint128::from(1u128))?;
     NEXT_AUCTION_ID.save(storage, &incremented_next_auction_id)?;
-    let mut auction_ids = AUCTION_IDS.load(storage, token_id).unwrap_or_default();
+
+    let key = token_id.to_owned() + token_address;
+
+    let mut auction_ids = AUCTION_IDS.load(storage, &key).unwrap_or_default();
     auction_ids.push(next_auction_id);
-    AUCTION_IDS.save(storage, token_id, &auction_ids)?;
+    AUCTION_IDS.save(storage, &key, &auction_ids)?;
     Ok(next_auction_id)
 }
 
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::LatestAuctionState { token_id } => {
-            encode_binary(&query_latest_auction_state(deps, token_id)?)
-        }
+        QueryMsg::LatestAuctionState {
+            token_id,
+            token_address,
+        } => encode_binary(&query_latest_auction_state(deps, token_id, token_address)?),
         QueryMsg::AuctionState { auction_id } => {
             encode_binary(&query_auction_state(deps, auction_id)?)
         }
@@ -455,13 +488,21 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             limit,
             order_by,
         } => encode_binary(&query_bids(deps, auction_id, start_after, limit, order_by)?),
-        QueryMsg::AuctionIds { token_id } => encode_binary(&query_auction_ids(deps, token_id)?),
+        QueryMsg::AuctionIds {
+            token_id,
+            token_address,
+        } => encode_binary(&query_auction_ids(deps, token_id, token_address)?),
         QueryMsg::Owner {} => encode_binary(&query_contract_owner(deps)?),
     }
 }
 
-fn query_auction_ids(deps: Deps, token_id: String) -> Result<AuctionIdsResponse, ContractError> {
-    let auction_ids = AUCTION_IDS.may_load(deps.storage, &token_id)?;
+fn query_auction_ids(
+    deps: Deps,
+    token_id: String,
+    token_address: String,
+) -> Result<AuctionIdsResponse, ContractError> {
+    let key = token_id + &token_address;
+    let auction_ids = AUCTION_IDS.may_load(deps.storage, &key)?;
     if let Some(auction_ids) = auction_ids {
         return Ok(AuctionIdsResponse { auction_ids });
     }
@@ -490,8 +531,10 @@ fn query_bids(
 fn query_latest_auction_state(
     deps: Deps,
     token_id: String,
+    token_address: String,
 ) -> Result<AuctionStateResponse, ContractError> {
-    let token_auction_state_result = get_existing_token_auction_state(deps.storage, &token_id);
+    let token_auction_state_result =
+        get_existing_token_auction_state(deps.storage, &token_id, &token_address);
     if let Ok(token_auction_state) = token_auction_state_result {
         return Ok(token_auction_state.into());
     }
@@ -537,6 +580,7 @@ mod tests {
     fn query_latest_auction_state_helper(deps: Deps, env: Env) -> AuctionStateResponse {
         let query_msg = QueryMsg::LatestAuctionState {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_owned(),
         };
         from_binary(&query(deps, env, query_msg).unwrap()).unwrap()
     }
@@ -582,7 +626,10 @@ mod tests {
         assert_eq!(
             vec![Uint128::from(1u128)],
             AUCTION_IDS
-                .load(deps.storage, MOCK_UNCLAIMED_TOKEN)
+                .load(
+                    deps.storage,
+                    &(MOCK_UNCLAIMED_TOKEN.to_owned() + MOCK_TOKEN_ADDR)
+                )
                 .unwrap()
         );
     }
@@ -608,6 +655,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
         let info = mock_info("bidder", &coins(100, "uusd"));
         let res = execute(deps.as_mut(), env, info, msg);
@@ -627,6 +675,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         env.block.time = Timestamp::from_seconds(50u64);
@@ -649,6 +698,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         env.block.time = Timestamp::from_seconds(300);
@@ -671,6 +721,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         env.block.time = Timestamp::from_seconds(150);
@@ -693,6 +744,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         env.block.time = Timestamp::from_seconds(150);
@@ -717,6 +769,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         env.block.time = Timestamp::from_seconds(150);
@@ -745,6 +798,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         env.block.time = Timestamp::from_seconds(150);
@@ -775,6 +829,7 @@ mod tests {
         };
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         // No coins sent
@@ -815,6 +870,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         env.block.time = Timestamp::from_seconds(150);
@@ -906,6 +962,7 @@ mod tests {
 
         let msg = ExecuteMsg::CancelAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         env.block.time = Timestamp::from_seconds(150);
@@ -914,6 +971,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         let info = mock_info("sender", &coins(100, "uusd".to_string()));
@@ -1153,6 +1211,7 @@ mod tests {
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
             start_time: Expiration::AtHeight(100),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
@@ -1183,6 +1242,7 @@ mod tests {
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
             start_time: Expiration::AtHeight(100),
             end_time: Expiration::AtHeight(200),
             coin_denom: "uusd".to_string(),
@@ -1210,6 +1270,7 @@ mod tests {
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
             start_time: Expiration::AtHeight(200),
             end_time: Expiration::AtHeight(100),
             coin_denom: "uusd".to_string(),
@@ -1237,6 +1298,7 @@ mod tests {
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
             start_time: Expiration::Never {},
             end_time: Expiration::AtHeight(200),
             coin_denom: "uusd".to_string(),
@@ -1263,6 +1325,7 @@ mod tests {
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
             start_time: Expiration::AtHeight(100),
             end_time: Expiration::Never {},
             coin_denom: "uusd".to_string(),
@@ -1289,6 +1352,7 @@ mod tests {
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
             start_time: Expiration::AtHeight(100),
             end_time: Expiration::AtHeight(200),
             coin_denom: "uluna".to_string(),
@@ -1315,6 +1379,7 @@ mod tests {
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
             start_time: Expiration::AtHeight(100),
             end_time: Expiration::AtHeight(200),
             coin_denom: "uluna".to_string(),
@@ -1341,6 +1406,7 @@ mod tests {
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
             start_time: Expiration::AtHeight(100),
             end_time: Expiration::AtHeight(200),
             coin_denom: "uluna".to_string(),
@@ -1424,6 +1490,7 @@ mod tests {
 
         let msg = ExecuteMsg::Claim {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         let info = mock_info("any_user", &[]);
@@ -1461,6 +1528,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         env.block.time = Timestamp::from_seconds(150);
@@ -1472,6 +1540,7 @@ mod tests {
 
         let msg = ExecuteMsg::Claim {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         let info = mock_info("any_user", &[]);
@@ -1513,6 +1582,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         env.block.time = Timestamp::from_seconds(150);
@@ -1522,6 +1592,7 @@ mod tests {
 
         let msg = ExecuteMsg::Claim {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         let info = mock_info("any_user", &[]);
@@ -1559,6 +1630,7 @@ mod tests {
 
         let msg = ExecuteMsg::Claim {
             token_id: "claimed_token".to_string(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         let info = mock_info("any_user", &[]);
@@ -1578,6 +1650,7 @@ mod tests {
 
         let msg = ExecuteMsg::CancelAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         // Auction start and end are 100 and 200.
@@ -1619,6 +1692,7 @@ mod tests {
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
         // Auction start and end are 100 and 200.
         env.block.time = Timestamp::from_seconds(150);
@@ -1628,6 +1702,7 @@ mod tests {
 
         let msg = ExecuteMsg::CancelAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
@@ -1671,6 +1746,7 @@ mod tests {
 
         let msg = ExecuteMsg::CancelAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         // Auction start and end are 100 and 200.
@@ -1693,6 +1769,7 @@ mod tests {
 
         let msg = ExecuteMsg::CancelAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
         // Auction start and end are 100 and 200.

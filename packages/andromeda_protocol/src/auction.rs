@@ -15,13 +15,16 @@ pub enum ExecuteMsg {
     /// automatically sent back to the bidder when they are outbid.
     PlaceBid {
         token_id: String,
+        token_address: String,
     },
     /// Transfers the given token to the auction winner's address once the auction is over.
     Claim {
         token_id: String,
+        token_address: String,
     },
     UpdateAuction {
         token_id: String,
+        token_address: String,
         start_time: Expiration,
         end_time: Expiration,
         coin_denom: String,
@@ -32,6 +35,7 @@ pub enum ExecuteMsg {
     },
     CancelAuction {
         token_id: String,
+        token_address: String,
     },
 }
 
@@ -55,6 +59,7 @@ pub enum QueryMsg {
     /// if there is one in progress or the last completed one.
     LatestAuctionState {
         token_id: String,
+        token_address: String,
     },
     /// Gets the auction state for the given auction id.
     AuctionState {
@@ -63,6 +68,7 @@ pub enum QueryMsg {
     /// Gets the auction ids for the given token.
     AuctionIds {
         token_id: String,
+        token_address: String,
     },
     /// Gets the bids for the given auction id. Start_after starts indexing at 0.
     Bids {
