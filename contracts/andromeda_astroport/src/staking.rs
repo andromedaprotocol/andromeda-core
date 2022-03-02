@@ -145,10 +145,18 @@ fn stake_or_unstake_astro(
     require_is_authorized(deps.storage, info.sender.as_str())?;
 
     let config = CONFIG.load(deps.storage)?;
-    let (token_addr, msg) = if stake {
-        (config.astro_token_contract, StakingCw20HookMsg::Enter {})
+    let (token_addr, msg, action) = if stake {
+        (
+            config.astro_token_contract,
+            StakingCw20HookMsg::Enter {},
+            "stake_astro",
+        )
     } else {
-        (config.xastro_token_contract, StakingCw20HookMsg::Leave {})
+        (
+            config.xastro_token_contract,
+            StakingCw20HookMsg::Leave {},
+            "unstake_astro",
+        )
     };
 
     let balance = query_token_balance(&deps.querier, token_addr.clone(), env.contract.address)?;
@@ -164,7 +172,7 @@ fn stake_or_unstake_astro(
             })?,
             funds: vec![],
         }))
-        .add_attribute("action", "unstake_astro")
+        .add_attribute("action", action)
         .add_attribute("amount", amount))
 }
 
