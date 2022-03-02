@@ -494,10 +494,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             limit,
             order_by,
         } => encode_binary(&query_bids(deps, auction_id, start_after, limit, order_by)?),
-        QueryMsg::AuctionInfos {
+        QueryMsg::AuctionIds {
             token_id,
             token_address,
-        } => encode_binary(&query_auction_infos(deps, token_id, token_address)?),
+        } => encode_binary(&query_auction_ids(deps, token_id, token_address)?),
         QueryMsg::AuctionInfosForAddress {
             token_address,
             start_after,
@@ -512,7 +512,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     }
 }
 
-fn query_auction_infos(
+fn query_auction_ids(
     deps: Deps,
     token_id: String,
     token_address: String,

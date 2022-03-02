@@ -66,11 +66,11 @@ pub enum QueryMsg {
         auction_id: Uint128,
     },
     /// Gets the auction ids for the given token.
-    AuctionInfos {
+    AuctionIds {
         token_id: String,
         token_address: String,
     },
-    /// Gets all of the auction ids for a given token address.
+    /// Gets all of the auction infos for a given token address.
     AuctionInfosForAddress {
         token_address: String,
         start_after: Option<String>,
