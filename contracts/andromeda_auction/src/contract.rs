@@ -176,17 +176,14 @@ fn execute_update_auction(
         start_time < end_time,
         ContractError::StartTimeAfterEndTime {},
     )?;
-    let block_time = block_to_expiration(&env.block, start_time).unwrap();
     require(
-        start_time > block_time,
+        !start_time.is_expired(&env.block),
         ContractError::StartTimeInThePast {},
     )?;
 
-    let whitelist_str = format!("{:?}", &whitelist);
-
     token_auction_state.start_time = start_time;
     token_auction_state.end_time = end_time;
-    token_auction_state.whitelist = whitelist;
+    token_auction_state.whitelist = whitelist.clone();
     token_auction_state.coin_denom = coin_denom.clone();
     TOKEN_AUCTION_STATE.save(
         deps.storage,
@@ -199,7 +196,7 @@ fn execute_update_auction(
         attr("end_time", end_time.to_string()),
         attr("coin_denom", coin_denom),
         attr("auction_id", token_auction_state.auction_id.to_string()),
-        attr("whitelist", whitelist_str),
+        attr("whitelist", format!("{:?}", &whitelist)),
     ]))
 }
 
@@ -216,13 +213,12 @@ fn execute_place_bid(
         ContractError::AuctionCancelled {},
     )?;
 
-    let block_time = block_to_expiration(&env.block, token_auction_state.start_time).unwrap();
     require(
-        block_time >= token_auction_state.start_time,
+        token_auction_state.start_time.is_expired(&env.block),
         ContractError::AuctionNotStarted {},
     )?;
     require(
-        block_time < token_auction_state.end_time,
+        !token_auction_state.end_time.is_expired(&env.block),
         ContractError::AuctionEnded {},
     )?;
 
@@ -347,9 +343,8 @@ fn execute_claim(
     token_id: String,
 ) -> Result<Response, ContractError> {
     let token_auction_state = get_existing_token_auction_state(deps.storage, &token_id)?;
-    let block_time = block_to_expiration(&env.block, token_auction_state.start_time).unwrap();
     require(
-        block_time > token_auction_state.end_time,
+        token_auction_state.end_time.is_expired(&env.block),
         ContractError::AuctionNotEnded {},
     )?;
     let token_owner = query_owner_of(
