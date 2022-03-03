@@ -1,9 +1,11 @@
 use crate::state::{
     Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
 };
-use andromeda_protocol::anchor::{AnchorMarketMsg, ConfigResponse};
 use andromeda_protocol::{
-    anchor::{ExecuteMsg, InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg},
+    anchor::{
+        BLunaHubExecuteMsg, BLunaHubQueryMsg, BLunaHubStateResponse, ConfigResponse, ExecuteMsg,
+        InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg,
+    },
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
@@ -14,11 +16,22 @@ use andromeda_protocol::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coins, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    SubMsg, Uint128, WasmMsg,
+    attr, coins, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
+    QueryRequest, Reply, Response, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
+use moneymarket::{
+    custody::{
+        ConfigResponse as CustodyConfigResponse, Cw20HookMsg as CustodyCw20HookMsg,
+        QueryMsg as CustodyQueryMsg,
+    },
+    market::{
+        ConfigResponse as MarketConfigResponse, Cw20HookMsg as MarketCw20HookMsg,
+        ExecuteMsg as MarketExecuteMsg, QueryMsg as MarketQueryMsg,
+    },
+    overseer::ExecuteMsg as OverseerExecuteMsg,
+};
 use terraswap::querier::{query_balance, query_token_balance};
 
 const UUSD_DENOM: &str = "uusd";
@@ -37,15 +50,41 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let market_config = query_market_config(&deps.querier, msg.anchor_market.clone())?;
+    let custody_config = query_custody_config(&deps.querier, msg.anchor_bluna_custody.clone())?;
     let config = Config {
-        anchor_market: deps.api.addr_canonicalize(&msg.anchor_market)?,
-        aust_token: deps.api.addr_canonicalize(&msg.aust_token)?,
+        aust_token: deps.api.addr_validate(&market_config.aterra_contract)?,
+        bluna_token: deps.api.addr_validate(&custody_config.collateral_token)?,
+        anchor_market: deps.api.addr_validate(&msg.anchor_market)?,
+        anchor_overseer: deps.api.addr_validate(&market_config.overseer_contract)?,
+        anchor_bluna_hub: deps.api.addr_validate(&msg.anchor_bluna_hub)?,
+        anchor_bluna_custody: deps.api.addr_validate(&msg.anchor_bluna_custody)?,
     };
     CONFIG.save(deps.storage, &config)?;
     PREV_AUST_BALANCE.save(deps.storage, &Uint128::zero())?;
     PREV_UUSD_BALANCE.save(deps.storage, &Uint128::zero())?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "anchor")]))
+}
+
+fn query_market_config(
+    querier: &QuerierWrapper,
+    anchor_market: String,
+) -> Result<MarketConfigResponse, ContractError> {
+    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: anchor_market,
+        msg: encode_binary(&MarketQueryMsg::Config {})?,
+    }))?)
+}
+
+fn query_custody_config(
+    querier: &QuerierWrapper,
+    anchor_custody: String,
+) -> Result<CustodyConfigResponse, ContractError> {
+    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: anchor_custody,
+        msg: encode_binary(&CustodyQueryMsg::Config {})?,
+    }))?)
 }
 
 #[entry_point]
@@ -57,6 +96,8 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::DepositCollateral {} => execute_deposit_collateral(deps, env, info),
+        _ => panic!(),
     }
 }
 
@@ -108,7 +149,7 @@ pub fn handle_withdraw(
     let tokens_to_withdraw = tokens_to_withdraw.unwrap();
 
     let config = CONFIG.load(deps.storage)?;
-    let aust_address = deps.api.addr_humanize(&config.aust_token)?.to_string();
+    let aust_address = config.aust_token.to_string();
 
     let uusd_withdrawal: Option<&Withdrawal> = tokens_to_withdraw
         .iter()
@@ -132,6 +173,65 @@ pub fn handle_withdraw(
     } else {
         Ok(Response::default())
     }
+}
+
+fn execute_deposit_collateral(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    require(
+        info.funds.len() == 1,
+        ContractError::InvalidFunds {
+            msg: "Must deposit exactly 1 type of native coin.".to_string(),
+        },
+    )?;
+    let collateral = &info.funds[0];
+    require(
+        collateral.denom == "uluna",
+        ContractError::InvalidFunds {
+            msg: "Only accept uluna as collateral".to_string(),
+        },
+    )?;
+    let config = CONFIG.load(deps.storage)?;
+    let bluna_hub_state = query_hub_state(&deps.querier, config.anchor_bluna_hub.to_string())?;
+    let bluna_amount = bluna_hub_state.bluna_exchange_rate * collateral.amount;
+
+    Ok(Response::new()
+        // Convert luna -> bluna
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: config.anchor_bluna_hub.to_string(),
+            funds: info.funds,
+            msg: encode_binary(&BLunaHubExecuteMsg::Bond {})?,
+        }))
+        // Provide collateral
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: config.bluna_token.to_string(),
+            funds: vec![],
+            msg: encode_binary(&Cw20ExecuteMsg::Send {
+                contract: config.anchor_bluna_custody.to_string(),
+                msg: encode_binary(&CustodyCw20HookMsg::DepositCollateral {})?,
+                amount: bluna_amount,
+            })?,
+        }))
+        // Lock collateral
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: config.anchor_overseer.to_string(),
+            msg: encode_binary(&OverseerExecuteMsg::LockCollateral {
+                collaterals: vec![(config.bluna_token.to_string(), bluna_amount.into())],
+            })?,
+            funds: vec![],
+        })))
+}
+
+fn query_hub_state(
+    querier: &QuerierWrapper,
+    bluna_hub: String,
+) -> Result<BLunaHubStateResponse, ContractError> {
+    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: bluna_hub,
+        msg: encode_binary(&BLunaHubQueryMsg::State {})?,
+    }))?)
 }
 
 pub fn execute_deposit(
@@ -161,11 +261,7 @@ pub fn execute_deposit(
         },
     )?;
 
-    let aust_balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_humanize(&config.aust_token)?,
-        env.contract.address,
-    )?;
+    let aust_balance = query_token_balance(&deps.querier, config.aust_token, env.contract.address)?;
     let recipient_addr = recipient.get_addr();
     PREV_AUST_BALANCE.save(deps.storage, &aust_balance)?;
     RECIPIENT_ADDR.save(deps.storage, &recipient_addr)?;
@@ -186,8 +282,8 @@ pub fn execute_deposit(
     Ok(Response::new()
         .add_submessage(SubMsg::reply_on_success(
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: deps.api.addr_humanize(&config.anchor_market)?.to_string(),
-                msg: to_binary(&AnchorMarketMsg::DepositStable {})?,
+                contract_addr: config.anchor_market.to_string(),
+                msg: to_binary(&MarketExecuteMsg::DepositStable {})?,
                 funds: vec![payment.clone()],
             }),
             DEPOSIT_ID,
@@ -230,11 +326,11 @@ fn withdraw_uusd(
     Ok(Response::new()
         .add_submessage(SubMsg::reply_on_success(
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: deps.api.addr_humanize(&config.aust_token)?.to_string(),
+                contract_addr: config.aust_token.to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: deps.api.addr_humanize(&config.anchor_market)?.to_string(),
+                    contract: config.anchor_market.to_string(),
                     amount: amount_to_redeem,
-                    msg: to_binary(&AnchorMarketMsg::RedeemStable {})?,
+                    msg: to_binary(&MarketCw20HookMsg::RedeemStable {})?,
                 })?,
                 funds: vec![],
             }),
@@ -270,7 +366,7 @@ fn withdraw_aust(
     let msg = position.recipient.generate_msg_cw20(
         deps.api,
         Cw20Coin {
-            address: deps.api.addr_humanize(&config.aust_token)?.to_string(),
+            address: config.aust_token.to_string(),
             amount,
         },
     )?;

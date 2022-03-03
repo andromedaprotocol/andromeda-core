@@ -4,7 +4,7 @@ use crate::state::{
 };
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
-    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
+    anchor::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
     communication::{ADORecipient, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     withdraw::{Withdrawal, WithdrawalType},
@@ -16,6 +16,7 @@ use cosmwasm_std::{
     SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
+use moneymarket::market::{Cw20HookMsg as MarketCw20HookMsg, ExecuteMsg as MarketExecuteMsg};
 
 fn deposit_stable_msg(amount: u128) -> SubMsg {
     SubMsg::reply_on_success(
@@ -35,7 +36,7 @@ fn redeem_stable_msg(amount: u128) -> SubMsg {
             msg: to_binary(&Cw20ExecuteMsg::Send {
                 contract: "anchor_market".to_string(),
                 amount: Uint128::from(amount),
-                msg: to_binary(&AnchorMarketMsg::RedeemStable {}).unwrap(),
+                msg: to_binary(&MarketCw20HookMsg::RedeemStable {}).unwrap(),
             })
             .unwrap(),
             funds: vec![],
@@ -63,7 +64,8 @@ fn test_instantiate() {
     let owner = "owner";
     let info = mock_info(owner, &[]);
     let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
+        anchor_bluna_hub: "bluna_hub".to_string(),
+        anchor_bluna_custody: "bluna_custody".to_string(),
         anchor_market: "anchor_market".to_string(),
     };
     let res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();

@@ -28,6 +28,7 @@ cw20 = { version = "0.9.1" }
 cw2 = "0.9.1"
 terraswap = "2.4.0"
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
+moneymarket = "0.3.0"
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }
