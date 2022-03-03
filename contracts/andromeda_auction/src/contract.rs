@@ -1,6 +1,6 @@
 use crate::state::{
-    auction_infos, read_auction_infos, read_bids, AuctionInfo, TokenAuctionState, AUCTION_RATES,
-    BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
+    auction_infos, calculate_required_payments, read_auction_infos, read_bids, AuctionInfo,
+    TokenAuctionState, AUCTION_RATES, BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
 use andromeda_protocol::{
     auction::{
@@ -14,9 +14,9 @@ use andromeda_protocol::{
     require,
 };
 use cosmwasm_std::{
-    attr, coins, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, Storage, Uint128,
-    WasmMsg, WasmQuery,
+    attr, coin, coins, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg,
+    Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, Storage,
+    Uint128, WasmMsg, WasmQuery,
 };
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
 use cw_storage_plus::U128Key;
@@ -392,9 +392,18 @@ fn execute_claim(
         token_owner == env.contract.address,
         ContractError::AuctionAlreadyClaimed {},
     )?;
+
+    let mut resp = Response::new()
+        .add_attribute("action", "claim")
+        .add_attribute("token_id", token_id.clone())
+        .add_attribute("token_contract", token_auction_state.token_address.clone())
+        .add_attribute("recipient", &token_auction_state.high_bidder_addr)
+        .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
+        .add_attribute("auction_id", token_auction_state.auction_id);
+
     // This is the case where no-one bid on the token.
     if token_auction_state.high_bidder_amount.is_zero() {
-        return Ok(Response::new()
+        return Ok(resp
             // Send NFT back to the original owner.
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: token_auction_state.token_address.clone(),
@@ -403,23 +412,32 @@ fn execute_claim(
                     token_id: token_id.clone(),
                 })?,
                 funds: vec![],
-            }))
-            .add_attribute("action", "claim")
-            .add_attribute("token_id", token_id)
-            .add_attribute("token_contract", token_auction_state.token_address)
-            .add_attribute("recipient", &token_auction_state.high_bidder_addr)
-            .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
-            .add_attribute("auction_id", token_auction_state.auction_id));
+            })));
     }
 
-    Ok(Response::new()
-        // Send funds to the original owner.
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: token_auction_state.owner,
-            amount: coins(
-                token_auction_state.high_bidder_amount.u128(),
+    let rates_opt = AUCTION_RATES.may_load(deps.storage)?;
+    let mut seller_receives = coins(
+        token_auction_state.high_bidder_amount.u128(),
+        token_auction_state.coin_denom.clone(),
+    );
+
+    if let Some(rates) = rates_opt {
+        let (events, msgs, remaining_funds) = calculate_required_payments(
+            &deps,
+            coin(
+                token_auction_state.high_bidder_amount.clone().u128(),
                 token_auction_state.coin_denom.clone(),
             ),
+            rates,
+        )?;
+        resp = resp.add_events(events).add_submessages(msgs);
+        seller_receives = remaining_funds
+    }
+
+    resp = resp // Send funds to the original owner.
+        .add_message(CosmosMsg::Bank(BankMsg::Send {
+            to_address: token_auction_state.owner,
+            amount: seller_receives,
         }))
         // Send NFT to auction winner.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -429,13 +447,9 @@ fn execute_claim(
                 token_id: token_id.clone(),
             })?,
             funds: vec![],
-        }))
-        .add_attribute("action", "claim")
-        .add_attribute("token_id", token_id)
-        .add_attribute("token_contract", token_auction_state.token_address)
-        .add_attribute("recipient", &token_auction_state.high_bidder_addr)
-        .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
-        .add_attribute("auction_id", token_auction_state.auction_id))
+        }));
+
+    Ok(resp)
 }
 
 fn get_existing_token_auction_state(
