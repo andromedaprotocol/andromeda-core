@@ -1,11 +1,13 @@
-use crate::common::OrderBy;
+use crate::{common::OrderBy, rates::RateInfo};
 use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw721::{Cw721ReceiveMsg, Expiration};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub rates: Option<Vec<RateInfo>>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

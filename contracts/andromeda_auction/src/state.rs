@@ -2,8 +2,15 @@ use andromeda_protocol::{
     auction::{AuctionStateResponse, Bid},
     common::OrderBy,
     error::ContractError,
+    modules::{
+        common::{calculate_fee, deduct_funds},
+        hooks::PaymentAttribute,
+    },
+    rates::RateInfo,
 };
-use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage, Uint128};
+use cosmwasm_std::{
+    Addr, Coin, DepsMut, Event, Order, StdError, StdResult, Storage, SubMsg, Uint128,
+};
 use cw721::Expiration;
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex, U128Key};
 use schemars::JsonSchema;
@@ -65,6 +72,8 @@ pub const NEXT_AUCTION_ID: Item<Uint128> = Item::new("next_auction_id");
 pub const BIDS: Map<U128Key, Vec<Bid>> = Map::new("bids"); // auction_id -> [bids]
 
 pub const TOKEN_AUCTION_STATE: Map<U128Key, TokenAuctionState> = Map::new("auction_token_state");
+
+pub const AUCTION_RATES: Item<Vec<RateInfo>> = Item::new("auction_rates");
 
 pub struct AuctionIdIndices<'a> {
     /// (token_address, token_id + token_address)
@@ -154,11 +163,56 @@ pub fn read_auction_infos(
     Ok(res)
 }
 
+pub fn calculate_required_payments(
+    deps: &DepsMut,
+    coin: Coin,
+    rates: Vec<RateInfo>,
+) -> Result<(Vec<Event>, Vec<SubMsg>, Vec<Coin>), ContractError> {
+    // let config = CONFIG.load(deps.storage)?;
+    let mut msgs: Vec<SubMsg> = vec![];
+    let mut events: Vec<Event> = vec![];
+    let mut leftover_funds = vec![coin.clone()];
+    for rate_info in rates.iter() {
+        let event_name = if rate_info.is_additive {
+            "tax"
+        } else {
+            "royalty"
+        };
+        let mut event = Event::new(event_name);
+        if let Some(desc) = &rate_info.description {
+            event = event.add_attribute("description", desc);
+        }
+        let rate = rate_info.rate.validate(&deps.querier)?;
+        let fee = calculate_fee(rate, &coin)?;
+        for reciever in rate_info.receivers.iter() {
+            if !rate_info.is_additive {
+                deduct_funds(&mut leftover_funds, &fee)?;
+                event = event.add_attribute("deducted", fee.to_string());
+            }
+            event = event.add_attribute(
+                "payment",
+                PaymentAttribute {
+                    receiver: reciever.get_addr(),
+                    amount: fee.clone(),
+                }
+                .to_string(),
+            );
+            let msg = reciever.generate_msg_native(deps.api, vec![fee.clone()])?;
+            msgs.push(msg);
+        }
+        events.push(event);
+    }
+
+    Ok((events, msgs, leftover_funds))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_protocol::communication::Recipient;
+    use andromeda_protocol::modules::Rate;
     use cosmwasm_std::testing::mock_dependencies;
-    use cosmwasm_std::Timestamp;
+    use cosmwasm_std::{coin, Timestamp};
 
     fn get_mock_bids() -> Vec<Bid> {
         vec![
@@ -377,5 +431,117 @@ mod tests {
 
         let bids = func(OrderBy::Desc);
         assert!(bids.is_empty());
+    }
+
+    #[test]
+    fn test_calculate_required_payments() {
+        let mut deps = mock_dependencies(&[]);
+        let payment_amount = coin(100, "uluna");
+        let recipient_one = Recipient::Addr(String::from("recipientone"));
+        let recipient_two = Recipient::Addr(String::from("recipienttwo"));
+
+        let empty_rates = Vec::<RateInfo>::new();
+        let expected = (
+            Vec::<Event>::new(),
+            Vec::<SubMsg>::new(),
+            vec![payment_amount.clone()],
+        );
+        let result =
+            calculate_required_payments(&deps.as_mut(), payment_amount.clone(), empty_rates)
+                .unwrap();
+
+        assert_eq!(result, expected);
+
+        let single_rate = vec![RateInfo {
+            is_additive: false,
+            receivers: vec![recipient_one.clone()],
+            description: Some("Some royalty".to_string()),
+            rate: Rate::Percent(Uint128::from(1u128)),
+        }];
+        let expected = (
+            vec![Event::new("royalty")
+                .add_attribute("description", String::from("Some royalty"))
+                .add_attribute("deducted", coin(1, "uluna").to_string())
+                .add_attribute(
+                    "payment",
+                    PaymentAttribute {
+                        receiver: String::from("recipientone"),
+                        amount: coin(1, "uluna"),
+                    }
+                    .to_string(),
+                )],
+            vec![recipient_one
+                .clone()
+                .generate_msg_native(mock_dependencies(&[]).as_mut().api, vec![coin(1, "uluna")])
+                .unwrap()],
+            vec![coin(99, "uluna")],
+        );
+        let result =
+            calculate_required_payments(&deps.as_mut(), payment_amount.clone(), single_rate)
+                .unwrap();
+
+        assert_eq!(result, expected);
+
+        let multi_rate = vec![
+            RateInfo {
+                is_additive: false,
+                receivers: vec![recipient_one.clone()],
+                description: Some("Some royalty".to_string()),
+                rate: Rate::Percent(Uint128::from(1u128)),
+            },
+            RateInfo {
+                is_additive: true,
+                receivers: vec![recipient_two.clone()],
+                description: Some("Some tax".to_string()),
+                rate: Rate::Percent(Uint128::from(5u128)),
+            },
+        ];
+        let expected = (
+            vec![
+                Event::new("royalty")
+                    .add_attribute("description", String::from("Some royalty"))
+                    .add_attribute("deducted", coin(1, "uluna").to_string())
+                    .add_attribute(
+                        "payment",
+                        PaymentAttribute {
+                            receiver: String::from("recipientone"),
+                            amount: coin(1, "uluna"),
+                        }
+                        .to_string(),
+                    ),
+                Event::new("tax")
+                    .add_attribute("description", String::from("Some tax"))
+                    .add_attribute(
+                        "payment",
+                        PaymentAttribute {
+                            receiver: String::from("recipienttwo"),
+                            amount: coin(5, "uluna"),
+                        }
+                        .to_string(),
+                    ),
+            ],
+            vec![
+                recipient_one
+                    .clone()
+                    .generate_msg_native(
+                        mock_dependencies(&[]).as_mut().api,
+                        vec![coin(1, "uluna")],
+                    )
+                    .unwrap(),
+                recipient_two
+                    .clone()
+                    .generate_msg_native(
+                        mock_dependencies(&[]).as_mut().api,
+                        vec![coin(5, "uluna")],
+                    )
+                    .unwrap(),
+            ],
+            vec![coin(99, "uluna")],
+        );
+        let result =
+            calculate_required_payments(&deps.as_mut(), payment_amount.clone(), multi_rate)
+                .unwrap();
+
+        assert_eq!(result, expected)
     }
 }
