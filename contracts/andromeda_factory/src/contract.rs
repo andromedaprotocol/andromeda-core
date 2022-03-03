@@ -146,15 +146,6 @@ pub fn create(
                 operators: operators.clone(),
                 code_id: Some(read_code_id(deps.storage, "receipt".to_string()).unwrap()),
             },
-            ModuleDefinition::Auction {
-                address,
-                operators,
-                code_id: _,
-            } => ModuleDefinition::Auction {
-                address: address.clone(),
-                operators: operators.clone(),
-                code_id: Some(read_code_id(deps.storage, "auction".to_string()).unwrap()),
-            },
             _ => m.clone(),
         })
         .collect();
