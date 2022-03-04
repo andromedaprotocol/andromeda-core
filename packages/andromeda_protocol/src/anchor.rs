@@ -1,6 +1,7 @@
 use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
 use astroport::asset::Asset;
 use cosmwasm_std::{Decimal, Uint128};
+use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +22,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    Receive(Cw20ReceiveMsg),
     AndrReceive(AndromedaMsg),
     /// Deposit LUNA as collateral which will be converted to bLUNA.
     DepositCollateral {},
@@ -35,6 +37,13 @@ pub enum ExecuteMsg {
     },
     /// Repays any existing loan with sent stable coins.
     RepayLoan {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Cw20HookMsg {
+    /// Deposit Cw20 assets as collateral.
+    DepositCollateral {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

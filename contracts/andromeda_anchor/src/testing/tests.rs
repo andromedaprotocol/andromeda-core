@@ -7,7 +7,9 @@ use crate::testing::mock_querier::{
     MOCK_CUSTODY_CONTRACT, MOCK_MARKET_CONTRACT, MOCK_ORACLE_CONTRACT, MOCK_OVERSEER_CONTRACT,
 };
 use andromeda_protocol::{
-    anchor::{BLunaHubExecuteMsg, ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
+    anchor::{
+        BLunaHubExecuteMsg, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg,
+    },
     communication::{ADORecipient, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     withdraw::{Withdrawal, WithdrawalType},
@@ -19,7 +21,7 @@ use cosmwasm_std::{
     to_binary, Addr, BankMsg, Coin, ContractResult, CosmosMsg, Decimal, DepsMut, Reply, Response,
     SubMsg, SubMsgExecutionResponse, Uint128, WasmMsg,
 };
-use cw20::Cw20ExecuteMsg;
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use moneymarket::{
     custody::Cw20HookMsg as CustodyCw20HookMsg,
     market::{Cw20HookMsg as MarketCw20HookMsg, ExecuteMsg as MarketExecuteMsg},
@@ -128,10 +130,7 @@ fn test_deposit_and_withdraw_ust() {
         Uint128::zero(),
         PREV_AUST_BALANCE.load(deps.as_mut().storage).unwrap()
     );
-    assert_eq!(
-        "owner",
-        RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap()
-    );
+    assert_eq!("owner", RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap());
 
     // Suppose exchange rate is 1 uusd = 0.5 aUST.
     let aust_amount = amount / 2;
@@ -196,10 +195,7 @@ fn test_deposit_and_withdraw_ust() {
             attr("recipient_addr", "owner"),
         ]);
     assert_eq!(res, expected_res);
-    assert_eq!(
-        "owner",
-        RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap()
-    );
+    assert_eq!("owner", RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap());
     assert_eq!(
         Uint128::zero(),
         POSITION
@@ -267,10 +263,7 @@ fn test_deposit_and_withdraw_aust() {
         Uint128::zero(),
         PREV_AUST_BALANCE.load(deps.as_mut().storage).unwrap()
     );
-    assert_eq!(
-        "owner",
-        RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap()
-    );
+    assert_eq!("owner", RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap());
 
     // Suppose exchange rate is 1 uusd = 0.5 aUST.
     let aust_amount = amount / 2;
@@ -809,6 +802,86 @@ fn test_deposit_collateral_unauthorized() {
     let msg = ExecuteMsg::DepositCollateral {};
 
     let info = mock_info("anyone", &coins(100, "uluna"));
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_deposit_collateral_cw20() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        amount: 100u128.into(),
+        msg: to_binary(&Cw20HookMsg::DepositCollateral {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_BLUNA_TOKEN, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "deposit_collateral")
+            // Provide collateral
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_BLUNA_TOKEN.to_owned(),
+                funds: vec![],
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: MOCK_CUSTODY_CONTRACT.to_owned(),
+                    msg: to_binary(&CustodyCw20HookMsg::DepositCollateral {}).unwrap(),
+                    amount: Uint128::from(100u128),
+                })
+                .unwrap(),
+            }))
+            // Lock collateral
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_OVERSEER_CONTRACT.to_owned(),
+                msg: to_binary(&OverseerExecuteMsg::LockCollateral {
+                    collaterals: vec![(MOCK_BLUNA_TOKEN.to_owned(), Uint256::from(100u128))],
+                })
+                .unwrap(),
+                funds: vec![],
+            })),
+        res
+    );
+}
+
+#[test]
+fn test_deposit_collateral_cw20_invalid_collateral() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        amount: 100u128.into(),
+        msg: to_binary(&Cw20HookMsg::DepositCollateral {}).unwrap(),
+    });
+
+    let info = mock_info("invalid_collateral", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
+    assert_eq!(
+        ContractError::InvalidFunds {
+            msg: "Only bLuna collateral supported".to_string(),
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_deposit_collateral_cw20_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "anyone".to_string(),
+        amount: 100u128.into(),
+        msg: to_binary(&Cw20HookMsg::DepositCollateral {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_BLUNA_TOKEN, &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
