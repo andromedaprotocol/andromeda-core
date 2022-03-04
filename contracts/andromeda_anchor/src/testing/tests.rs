@@ -57,7 +57,7 @@ fn withdraw_aust_msg(amount: u128) -> SubMsg {
     SubMsg::new(WasmMsg::Execute {
         contract_addr: "aust_token".to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Transfer {
-            recipient: "addr0000".to_string(),
+            recipient: "owner".to_string(),
             amount: amount.into(),
         })
         .unwrap(),
@@ -67,7 +67,7 @@ fn withdraw_aust_msg(amount: u128) -> SubMsg {
 
 fn init(deps: DepsMut) {
     let env = mock_env();
-    let owner = "addr0000";
+    let owner = "owner";
     let info = mock_info(owner, &[]);
     let msg = InstantiateMsg {
         anchor_bluna_hub: MOCK_BLUNA_HUB_CONTRACT.to_owned(),
@@ -104,12 +104,11 @@ fn test_deposit_and_withdraw_ust() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
-    let info = mock_info("addr0000", &[]);
     let amount = 1000000u128;
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None));
     let info = mock_info(
-        "addr0000",
+        "owner",
         &[Coin {
             denom: "uusd".to_string(),
             amount: Uint128::from(amount),
@@ -124,13 +123,13 @@ fn test_deposit_and_withdraw_ust() {
             attr("deposit_amount", amount.to_string()),
         ]);
     assert_eq!(res, expected_res);
-    assert!(POSITION.has(deps.as_mut().storage, "addr0000"));
+    assert!(POSITION.has(deps.as_mut().storage, "owner"));
     assert_eq!(
         Uint128::zero(),
         PREV_AUST_BALANCE.load(deps.as_mut().storage).unwrap()
     );
     assert_eq!(
-        "addr0000",
+        "owner",
         RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap()
     );
 
@@ -150,7 +149,7 @@ fn test_deposit_and_withdraw_ust() {
     assert_eq!(
         Response::new().add_attributes(vec![
             attr("action", "reply_update_position"),
-            attr("recipient_addr", "addr0000"),
+            attr("recipient_addr", "owner"),
             attr("aust_amount", aust_amount.to_string()),
         ]),
         res
@@ -158,7 +157,7 @@ fn test_deposit_and_withdraw_ust() {
     assert_eq!(
         aust_amount,
         POSITION
-            .load(deps.as_mut().storage, "addr0000")
+            .load(deps.as_mut().storage, "owner")
             .unwrap()
             .aust_amount
             .u128()
@@ -168,7 +167,7 @@ fn test_deposit_and_withdraw_ust() {
         &query(
             deps.as_ref(),
             mock_env(),
-            QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(&"addr0000").unwrap()))),
+            QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(&"owner").unwrap()))),
         )
         .unwrap(),
     )
@@ -176,7 +175,7 @@ fn test_deposit_and_withdraw_ust() {
 
     assert_eq!(
         PositionResponse {
-            recipient: Recipient::Addr("addr0000".to_string()),
+            recipient: Recipient::Addr("owner".to_string()),
             aust_amount: Uint128::from(aust_amount),
         },
         query_res
@@ -194,17 +193,17 @@ fn test_deposit_and_withdraw_ust() {
         .add_submessage(redeem_stable_msg(aust_amount))
         .add_attributes(vec![
             attr("action", "withdraw_uusd"),
-            attr("recipient_addr", "addr0000"),
+            attr("recipient_addr", "owner"),
         ]);
     assert_eq!(res, expected_res);
     assert_eq!(
-        "addr0000",
+        "owner",
         RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap()
     );
     assert_eq!(
         Uint128::zero(),
         POSITION
-            .load(deps.as_mut().storage, "addr0000")
+            .load(deps.as_mut().storage, "owner")
             .unwrap()
             .aust_amount
     );
@@ -229,11 +228,11 @@ fn test_deposit_and_withdraw_ust() {
     assert_eq!(
         Response::new()
             .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: "addr0000".to_string(),
+                to_address: "owner".to_string(),
                 amount: coins(amount, "uusd"),
             })))
             .add_attribute("action", "reply_withdraw_ust")
-            .add_attribute("recipient", "addr0000")
+            .add_attribute("recipient", "owner")
             .add_attribute("amount", amount.to_string()),
         res
     );
@@ -248,7 +247,7 @@ fn test_deposit_and_withdraw_aust() {
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None));
     let info = mock_info(
-        "addr0000",
+        "owner",
         &[Coin {
             denom: "uusd".to_string(),
             amount: Uint128::from(amount),
@@ -263,13 +262,13 @@ fn test_deposit_and_withdraw_aust() {
             attr("deposit_amount", amount.to_string()),
         ]);
     assert_eq!(res, expected_res);
-    assert!(POSITION.has(deps.as_mut().storage, "addr0000"));
+    assert!(POSITION.has(deps.as_mut().storage, "owner"));
     assert_eq!(
         Uint128::zero(),
         PREV_AUST_BALANCE.load(deps.as_mut().storage).unwrap()
     );
     assert_eq!(
-        "addr0000",
+        "owner",
         RECIPIENT_ADDR.load(deps.as_mut().storage).unwrap()
     );
 
@@ -289,7 +288,7 @@ fn test_deposit_and_withdraw_aust() {
     assert_eq!(
         Response::new().add_attributes(vec![
             attr("action", "reply_update_position"),
-            attr("recipient_addr", "addr0000"),
+            attr("recipient_addr", "owner"),
             attr("aust_amount", aust_amount.to_string()),
         ]),
         res
@@ -297,7 +296,7 @@ fn test_deposit_and_withdraw_aust() {
     assert_eq!(
         aust_amount,
         POSITION
-            .load(deps.as_mut().storage, "addr0000")
+            .load(deps.as_mut().storage, "owner")
             .unwrap()
             .aust_amount
             .u128()
@@ -315,13 +314,13 @@ fn test_deposit_and_withdraw_aust() {
         .add_submessage(withdraw_aust_msg(aust_amount))
         .add_attributes(vec![
             attr("action", "withdraw_aust"),
-            attr("recipient_addr", "addr0000"),
+            attr("recipient_addr", "owner"),
         ]);
     assert_eq!(res, expected_res);
     assert_eq!(
         Uint128::zero(),
         POSITION
-            .load(deps.as_mut().storage, "addr0000")
+            .load(deps.as_mut().storage, "owner")
             .unwrap()
             .aust_amount
     );
@@ -336,7 +335,7 @@ fn test_deposit_existing_position() {
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None));
     let info = mock_info(
-        "addr0000",
+        "owner",
         &[Coin {
             denom: "uusd".to_string(),
             amount: Uint128::from(amount),
@@ -361,7 +360,7 @@ fn test_deposit_existing_position() {
     assert_eq!(
         aust_amount,
         POSITION
-            .load(deps.as_mut().storage, "addr0000")
+            .load(deps.as_mut().storage, "owner")
             .unwrap()
             .aust_amount
             .u128()
@@ -378,7 +377,7 @@ fn test_deposit_existing_position() {
     assert_eq!(
         2 * aust_amount,
         POSITION
-            .load(deps.as_mut().storage, "addr0000")
+            .load(deps.as_mut().storage, "owner")
             .unwrap()
             .aust_amount
             .u128()
@@ -391,13 +390,12 @@ fn test_deposit_other_recipient() {
     init(deps.as_mut());
 
     let amount = 1000000u128;
-    let info = mock_info("addr0000", &[]);
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
         to_binary(&Recipient::Addr("recipient".into())).unwrap(),
     )));
     let info = mock_info(
-        "addr0000",
+        "owner",
         &[Coin {
             denom: "uusd".to_string(),
             amount: Uint128::from(amount),
@@ -444,7 +442,7 @@ fn test_withdraw_percent() {
     init(deps.as_mut());
 
     let amount = 1000000u128;
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
 
     let recipient = "recipient";
 
@@ -488,7 +486,7 @@ fn test_withdraw_invalid_percent() {
     init(deps.as_mut());
 
     let amount = 1000000u128;
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
 
     let recipient = "recipient";
 
@@ -517,7 +515,7 @@ fn test_withdraw_amount() {
     init(deps.as_mut());
 
     let amount = 1000000u128;
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
 
     let recipient = "recipient";
 
@@ -561,7 +559,7 @@ fn test_withdraw_invalid_amount() {
     init(deps.as_mut());
 
     let amount = 1000000u128;
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
 
     let recipient = "recipient";
 
@@ -594,7 +592,7 @@ fn test_withdraw_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
 
     let recipient = "recipient";
 
@@ -621,7 +619,7 @@ fn test_withdraw_invalid_recipient() {
 fn test_withdraw_tokens_none() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
 
     let recipient = "recipient";
 
@@ -642,7 +640,7 @@ fn test_withdraw_tokens_none() {
 fn test_withdraw_tokens_empty() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
 
     let recipient = "recipient";
 
@@ -663,7 +661,7 @@ fn test_withdraw_tokens_empty() {
 fn test_withdraw_tokens_uusd_and_aust_specified() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
 
     let recipient = "recipient";
 
@@ -694,18 +692,18 @@ fn test_withdraw_aust_with_address() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
     let amount = 1000000u128;
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
 
     let position = Position {
-        recipient: Recipient::Addr("addr0000".to_string()),
+        recipient: Recipient::Addr("owner".to_string()),
         aust_amount: Uint128::from(amount),
     };
     POSITION
-        .save(deps.as_mut().storage, "addr0000", &position)
+        .save(deps.as_mut().storage, "owner", &position)
         .unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr("addr0000".to_string())),
+        recipient: Some(Recipient::Addr("owner".to_string())),
         tokens_to_withdraw: Some(vec![Withdrawal {
             withdrawal_type: None,
             // Specifying the contract address of aust is also valid.
@@ -718,7 +716,7 @@ fn test_withdraw_aust_with_address() {
         .add_submessage(withdraw_aust_msg(amount))
         .add_attributes(vec![
             attr("action", "withdraw_aust"),
-            attr("recipient_addr", "addr0000"),
+            attr("recipient_addr", "owner"),
         ]);
     assert_eq!(res, expected_res)
 }
@@ -729,7 +727,6 @@ fn test_withdraw_recipient_sender() {
     init(deps.as_mut());
 
     let amount = 1000000u128;
-    let info = mock_info("addr0000", &[]);
 
     let recipient = "recipient";
 
@@ -768,7 +765,7 @@ fn test_deposit_collateral() {
 
     let msg = ExecuteMsg::DepositCollateral {};
 
-    let info = mock_info("addr0000", &coins(100, "uluna"));
+    let info = mock_info("owner", &coins(100, "uluna"));
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     assert_eq!(
@@ -805,6 +802,19 @@ fn test_deposit_collateral() {
 }
 
 #[test]
+fn test_deposit_collateral_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::DepositCollateral {};
+
+    let info = mock_info("anyone", &coins(100, "uluna"));
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
 fn test_borrow_new_loan() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
@@ -814,7 +824,7 @@ fn test_borrow_new_loan() {
         recipient: None,
     };
 
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     assert_eq!(
@@ -832,7 +842,7 @@ fn test_borrow_new_loan() {
                 funds: vec![],
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: "addr0000".to_string(),
+                to_address: "owner".to_string(),
                 amount: coins(50, "uusd")
             })),
         res
@@ -851,7 +861,7 @@ fn test_borrow_existing_loan() {
         recipient: None,
     };
 
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     assert_eq!(
@@ -870,7 +880,7 @@ fn test_borrow_existing_loan() {
                 funds: vec![],
             }))
             .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: "addr0000".to_string(),
+                to_address: "owner".to_string(),
                 amount: coins(25, "uusd")
             })),
         res
@@ -889,7 +899,7 @@ fn test_borrow_existing_loan_lower_ltv() {
         recipient: None,
     };
 
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
     assert_eq!(
@@ -910,7 +920,7 @@ fn test_borrow_ltv_too_high() {
         recipient: None,
     };
 
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info("owner", &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
     assert_eq!(
@@ -922,13 +932,29 @@ fn test_borrow_ltv_too_high() {
 }
 
 #[test]
+fn test_borrow_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Borrow {
+        desired_ltv_ratio: Decimal::percent(50),
+        recipient: None,
+    };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
 fn test_repay_loan() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
     let msg = ExecuteMsg::RepayLoan {};
 
-    let info = mock_info("addr0000", &coins(100, "uusd"));
+    let info = mock_info("owner", &coins(100, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     assert_eq!(
@@ -941,4 +967,17 @@ fn test_repay_loan() {
             })),
         res
     );
+}
+
+#[test]
+fn test_repay_loan_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::RepayLoan {};
+
+    let info = mock_info("anyone", &coins(100, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
