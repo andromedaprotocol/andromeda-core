@@ -620,8 +620,13 @@ mod tests {
     };
     use crate::state::AuctionInfo;
     use andromeda_protocol::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
+    use andromeda_protocol::communication::Recipient;
+    use andromeda_protocol::modules::Rate;
+    use andromeda_protocol::rates::{PaymentAttribute, RateInfo};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{attr, coin, coins, from_binary, BankMsg, CosmosMsg, Response, Timestamp};
+    use cosmwasm_std::{
+        attr, coin, coins, from_binary, BankMsg, CosmosMsg, Event, Response, Timestamp,
+    };
     use cw721::Expiration;
 
     fn query_latest_auction_state_helper(deps: Deps, env: Env) -> AuctionStateResponse {
@@ -1831,5 +1836,81 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::AuctionEnded {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn execute_claim_with_rates() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let mut env = mock_env();
+        let info = mock_info("owner", &[]);
+        let recipient_one = Recipient::Addr(String::from("recipientone"));
+        let rates = vec![RateInfo {
+            is_additive: true,
+            receivers: vec![recipient_one.clone()],
+            description: Some("Some tax".to_string()),
+            rate: Rate::Percent(Uint128::from(5u128)),
+        }];
+        let msg = InstantiateMsg { rates: Some(rates) };
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        start_auction(deps.as_mut(), None);
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+
+        let info = mock_info("sender", &coins(100, "uusd".to_string()));
+        let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        env.block.time = Timestamp::from_seconds(250);
+
+        let msg = ExecuteMsg::Claim {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+
+        let info = mock_info("any_user", &[]);
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        let transfer_nft_msg = Cw721ExecuteMsg::TransferNft {
+            recipient: "sender".to_string(),
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        };
+        let rates_event = Event::new("tax")
+            .add_attribute("description", String::from("Some tax"))
+            .add_attribute(
+                "payment",
+                PaymentAttribute {
+                    receiver: String::from("recipientone"),
+                    amount: coin(5, "uusd"),
+                }
+                .to_string(),
+            );
+        assert_eq!(
+            Response::new()
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: recipient_one.get_addr(),
+                    amount: coins(5, "uusd"),
+                }))
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: MOCK_TOKEN_OWNER.to_owned(),
+                    amount: coins(100, "uusd"),
+                }))
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                    msg: encode_binary(&transfer_nft_msg).unwrap(),
+                    funds: vec![],
+                }))
+                .add_attribute("action", "claim")
+                .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
+                .add_attribute("token_contract", MOCK_TOKEN_ADDR)
+                .add_attribute("recipient", "sender")
+                .add_attribute("winning_bid_amount", Uint128::from(100u128))
+                .add_attribute("auction_id", "1")
+                .add_event(rates_event),
+            res
+        );
     }
 }
