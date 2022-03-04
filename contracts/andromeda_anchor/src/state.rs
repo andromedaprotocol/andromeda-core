@@ -18,6 +18,7 @@ pub struct Config {
     pub anchor_bluna_custody: Addr,
     pub anchor_overseer: Addr,
     pub bluna_token: Addr,
+    pub anchor_oracle: Addr,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

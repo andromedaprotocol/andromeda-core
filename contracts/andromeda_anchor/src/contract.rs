@@ -1,10 +1,16 @@
-use crate::state::{
-    Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
+use crate::{
+    querier::{
+        query_borrower_info, query_collaterals, query_custody_config, query_hub_state,
+        query_market_config, query_overseer_config,
+    },
+    state::{
+        Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
+    },
 };
 use andromeda_protocol::{
     anchor::{
-        BLunaHubExecuteMsg, BLunaHubQueryMsg, BLunaHubStateResponse, ConfigResponse, ExecuteMsg,
-        InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg,
+        BLunaHubExecuteMsg, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
+        PositionResponse, QueryMsg,
     },
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
@@ -13,24 +19,20 @@ use andromeda_protocol::{
     require,
     withdraw::Withdrawal,
 };
+use cosmwasm_bignumber::{Decimal256, Uint256};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coins, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    QueryRequest, Reply, Response, SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, coins, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use moneymarket::{
-    custody::{
-        ConfigResponse as CustodyConfigResponse, Cw20HookMsg as CustodyCw20HookMsg,
-        QueryMsg as CustodyQueryMsg,
-    },
-    market::{
-        ConfigResponse as MarketConfigResponse, Cw20HookMsg as MarketCw20HookMsg,
-        ExecuteMsg as MarketExecuteMsg, QueryMsg as MarketQueryMsg,
-    },
+    custody::Cw20HookMsg as CustodyCw20HookMsg,
+    market::{Cw20HookMsg as MarketCw20HookMsg, ExecuteMsg as MarketExecuteMsg},
     overseer::ExecuteMsg as OverseerExecuteMsg,
+    querier::query_price,
 };
 use terraswap::querier::{query_balance, query_token_balance};
 
@@ -52,6 +54,8 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let market_config = query_market_config(&deps.querier, msg.anchor_market.clone())?;
     let custody_config = query_custody_config(&deps.querier, msg.anchor_bluna_custody.clone())?;
+    let overseer_config =
+        query_overseer_config(&deps.querier, market_config.overseer_contract.clone())?;
     let config = Config {
         aust_token: deps.api.addr_validate(&market_config.aterra_contract)?,
         bluna_token: deps.api.addr_validate(&custody_config.collateral_token)?,
@@ -59,32 +63,13 @@ pub fn instantiate(
         anchor_overseer: deps.api.addr_validate(&market_config.overseer_contract)?,
         anchor_bluna_hub: deps.api.addr_validate(&msg.anchor_bluna_hub)?,
         anchor_bluna_custody: deps.api.addr_validate(&msg.anchor_bluna_custody)?,
+        anchor_oracle: deps.api.addr_validate(&overseer_config.oracle_contract)?,
     };
     CONFIG.save(deps.storage, &config)?;
     PREV_AUST_BALANCE.save(deps.storage, &Uint128::zero())?;
     PREV_UUSD_BALANCE.save(deps.storage, &Uint128::zero())?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "anchor")]))
-}
-
-fn query_market_config(
-    querier: &QuerierWrapper,
-    anchor_market: String,
-) -> Result<MarketConfigResponse, ContractError> {
-    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: anchor_market,
-        msg: encode_binary(&MarketQueryMsg::Config {})?,
-    }))?)
-}
-
-fn query_custody_config(
-    querier: &QuerierWrapper,
-    anchor_custody: String,
-) -> Result<CustodyConfigResponse, ContractError> {
-    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: anchor_custody,
-        msg: encode_binary(&CustodyQueryMsg::Config {})?,
-    }))?)
 }
 
 #[entry_point]
@@ -96,7 +81,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
-        ExecuteMsg::DepositCollateral {} => execute_deposit_collateral(deps, env, info),
+        ExecuteMsg::DepositCollateral {} => execute_deposit_collateral(deps, info),
+        ExecuteMsg::Borrow {
+            desired_ltv_ratio,
+            recipient,
+        } => execute_borrow(deps, env, info, desired_ltv_ratio.into(), recipient),
         _ => panic!(),
     }
 }
@@ -134,6 +123,10 @@ pub fn handle_withdraw(
     tokens_to_withdraw: Option<Vec<Withdrawal>>,
 ) -> Result<Response, ContractError> {
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let authorized = recipient.get_addr() == info.sender
+        || is_operator(deps.storage, info.sender.as_str())?
+        || is_contract_owner(deps.storage, info.sender.as_str())?;
+    require(authorized, ContractError::Unauthorized {})?;
     require(
         matches!(recipient, Recipient::Addr(_)),
         ContractError::InvalidRecipientType {
@@ -175,11 +168,11 @@ pub fn handle_withdraw(
     }
 }
 
-fn execute_deposit_collateral(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
+fn execute_deposit_collateral(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    require(
+        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
     require(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
@@ -198,6 +191,7 @@ fn execute_deposit_collateral(
     let bluna_amount = bluna_hub_state.bluna_exchange_rate * collateral.amount;
 
     Ok(Response::new()
+        .add_attribute("action", "deposit_collateral")
         // Convert luna -> bluna
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: config.anchor_bluna_hub.to_string(),
@@ -224,14 +218,76 @@ fn execute_deposit_collateral(
         })))
 }
 
-fn query_hub_state(
-    querier: &QuerierWrapper,
-    bluna_hub: String,
-) -> Result<BLunaHubStateResponse, ContractError> {
-    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: bluna_hub,
-        msg: encode_binary(&BLunaHubQueryMsg::State {})?,
-    }))?)
+fn execute_borrow(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    desired_ltv_ratio: Decimal256,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
+    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    require(
+        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    require(
+        desired_ltv_ratio < Decimal256::one(),
+        ContractError::InvalidLtvRatio {
+            msg: "Desired LTV ratio must be less than 1".to_string(),
+        },
+    )?;
+    let config = CONFIG.load(deps.storage)?;
+    let collaterals = query_collaterals(
+        &deps.querier,
+        config.anchor_overseer.to_string(),
+        env.contract.address.to_string(),
+    )?
+    .collaterals;
+
+    let mut total_value = Uint256::zero();
+    for collateral in collaterals.iter() {
+        let price_res = query_price(
+            deps.as_ref(),
+            config.anchor_oracle.clone(),
+            collateral.0.clone(),
+            "uusd".to_string(),
+            None,
+        )?;
+        total_value += price_res.rate * collateral.1;
+    }
+
+    let loan_amount = query_borrower_info(
+        &deps.querier,
+        config.anchor_market.to_string(),
+        env.contract.address.to_string(),
+    )?
+    .loan_amount;
+
+    let current_ltv_ratio =
+        Decimal256::from_uint256(loan_amount) / Decimal256::from_uint256(total_value);
+    require(
+        desired_ltv_ratio > current_ltv_ratio,
+        ContractError::InvalidLtvRatio {
+            msg: "Desired LTV ratio lower than current".to_string(),
+        },
+    )?;
+
+    let borrow_amount = total_value * (desired_ltv_ratio - current_ltv_ratio);
+
+    Ok(Response::new()
+        .add_attribute("action", "borrow")
+        .add_attribute("desired_ltv_ratio", desired_ltv_ratio.to_string())
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: config.anchor_market.to_string(),
+            msg: encode_binary(&MarketExecuteMsg::BorrowStable {
+                borrow_amount,
+                to: Some(env.contract.address.to_string()),
+            })?,
+            funds: vec![],
+        }))
+        .add_submessage(
+            recipient.generate_msg_native(deps.api, coins(borrow_amount.into(), "uusd"))?,
+        ))
 }
 
 pub fn execute_deposit(
@@ -307,12 +363,6 @@ fn withdraw_uusd(
     let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
     let mut position = POSITION.load(deps.storage, &recipient_addr)?;
 
-    let authorized = recipient_addr == info.sender
-        || is_operator(deps.storage, info.sender.as_str())?
-        || is_contract_owner(deps.storage, info.sender.as_str())?;
-
-    require(authorized, ContractError::Unauthorized {})?;
-
     let contract_balance =
         query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
     PREV_UUSD_BALANCE.save(deps.storage, &contract_balance)?;
@@ -351,12 +401,6 @@ fn withdraw_aust(
     let config = CONFIG.load(deps.storage)?;
     let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
     let mut position = POSITION.load(deps.storage, &recipient_addr)?;
-
-    let authorized = recipient_addr == info.sender
-        || is_operator(deps.storage, info.sender.as_str())?
-        || is_contract_owner(deps.storage, info.sender.as_str())?;
-
-    require(authorized, ContractError::Unauthorized {})?;
 
     let amount = withdrawal.get_amount(position.aust_amount)?;
 

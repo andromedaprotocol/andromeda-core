@@ -30,8 +30,8 @@ pub enum ExecuteMsg {
     },
     /// Borrows given percent of collateral worth and sends borrowed funds to recipient.
     Borrow {
-        percent_of_collateral: Uint128,
-        recipient: Recipient,
+        desired_ltv_ratio: Decimal,
+        recipient: Option<Recipient>,
     },
     /// Repays any existing loan with sent stable coins.
     RepayLoan {},

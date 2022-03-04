@@ -4,22 +4,27 @@ use crate::state::{
 };
 use crate::testing::mock_querier::{
     mock_dependencies_custom, MOCK_AUST_TOKEN, MOCK_BLUNA_HUB_CONTRACT, MOCK_BLUNA_TOKEN,
-    MOCK_CUSTODY_CONTRACT, MOCK_MARKET_CONTRACT, MOCK_OVERSEER_CONTRACT,
+    MOCK_CUSTODY_CONTRACT, MOCK_MARKET_CONTRACT, MOCK_ORACLE_CONTRACT, MOCK_OVERSEER_CONTRACT,
 };
 use andromeda_protocol::{
-    anchor::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
+    anchor::{BLunaHubExecuteMsg, ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
     communication::{ADORecipient, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     withdraw::{Withdrawal, WithdrawalType},
 };
+use cosmwasm_bignumber::Uint256;
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
-    testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, Api, BankMsg, Coin, ContractResult, CosmosMsg, DepsMut, Reply, Response,
+    testing::{mock_env, mock_info},
+    to_binary, Addr, BankMsg, Coin, ContractResult, CosmosMsg, Decimal, DepsMut, Reply, Response,
     SubMsg, SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
-use moneymarket::market::{Cw20HookMsg as MarketCw20HookMsg, ExecuteMsg as MarketExecuteMsg};
+use moneymarket::{
+    custody::Cw20HookMsg as CustodyCw20HookMsg,
+    market::{Cw20HookMsg as MarketCw20HookMsg, ExecuteMsg as MarketExecuteMsg},
+    overseer::ExecuteMsg as OverseerExecuteMsg,
+};
 
 fn deposit_stable_msg(amount: u128) -> SubMsg {
     SubMsg::reply_on_success(
@@ -88,6 +93,7 @@ fn test_instantiate() {
             anchor_bluna_custody: Addr::unchecked(MOCK_CUSTODY_CONTRACT),
             anchor_overseer: Addr::unchecked(MOCK_OVERSEER_CONTRACT),
             bluna_token: Addr::unchecked(MOCK_BLUNA_TOKEN),
+            anchor_oracle: Addr::unchecked(MOCK_ORACLE_CONTRACT)
         },
         config
     );
@@ -753,4 +759,164 @@ fn test_withdraw_recipient_sender() {
             attr("recipient_addr", recipient),
         ]);
     assert_eq!(res, expected_res)
+}
+
+#[test]
+fn test_deposit_collateral() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::DepositCollateral {};
+
+    let info = mock_info("addr0000", &coins(100, "uluna"));
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "deposit_collateral")
+            // Convert luna -> bluna
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_BLUNA_HUB_CONTRACT.to_owned(),
+                funds: info.funds,
+                msg: to_binary(&BLunaHubExecuteMsg::Bond {}).unwrap(),
+            }))
+            // Provide collateral
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_BLUNA_TOKEN.to_owned(),
+                funds: vec![],
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: MOCK_CUSTODY_CONTRACT.to_owned(),
+                    msg: to_binary(&CustodyCw20HookMsg::DepositCollateral {}).unwrap(),
+                    amount: Uint128::from(100u128),
+                })
+                .unwrap(),
+            }))
+            // Lock collateral
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_OVERSEER_CONTRACT.to_owned(),
+                msg: to_binary(&OverseerExecuteMsg::LockCollateral {
+                    collaterals: vec![(MOCK_BLUNA_TOKEN.to_owned(), Uint256::from(100u128))],
+                })
+                .unwrap(),
+                funds: vec![],
+            })),
+        res
+    );
+}
+
+#[test]
+fn test_borrow_new_loan() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Borrow {
+        desired_ltv_ratio: Decimal::percent(50),
+        recipient: None,
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "borrow")
+            .add_attribute("desired_ltv_ratio", "0.5")
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_MARKET_CONTRACT.to_owned(),
+                msg: to_binary(&MarketExecuteMsg::BorrowStable {
+                    // The current collateral is worth 100
+                    borrow_amount: Uint256::from(50u128),
+                    to: Some(mock_env().contract.address.to_string()),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "addr0000".to_string(),
+                amount: coins(50, "uusd")
+            })),
+        res
+    );
+}
+
+#[test]
+fn test_borrow_existing_loan() {
+    let mut deps = mock_dependencies_custom(&[]);
+    deps.querier.loan_amount = Uint256::from(50u128);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Borrow {
+        desired_ltv_ratio: Decimal::percent(75),
+        recipient: None,
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "borrow")
+            .add_attribute("desired_ltv_ratio", "0.75")
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_MARKET_CONTRACT.to_owned(),
+                msg: to_binary(&MarketExecuteMsg::BorrowStable {
+                    // The current ltv ratio is 0.5, so need to borrow another 25 to get to 0.75
+                    // ltv ratio.
+                    borrow_amount: Uint256::from(25u128),
+                    to: Some(mock_env().contract.address.to_string()),
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "addr0000".to_string(),
+                amount: coins(25, "uusd")
+            })),
+        res
+    );
+}
+
+#[test]
+fn test_borrow_existing_loan_lower_ltv() {
+    let mut deps = mock_dependencies_custom(&[]);
+    deps.querier.loan_amount = Uint256::from(50u128);
+
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Borrow {
+        desired_ltv_ratio: Decimal::percent(20),
+        recipient: None,
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
+    assert_eq!(
+        ContractError::InvalidLtvRatio {
+            msg: "Desired LTV ratio lower than current".to_string(),
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_borrow_ltv_too_hight() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Borrow {
+        desired_ltv_ratio: Decimal::one(),
+        recipient: None,
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
+    assert_eq!(
+        ContractError::InvalidLtvRatio {
+            msg: "Desired LTV ratio must be less than 1".to_string(),
+        },
+        res.unwrap_err()
+    );
 }
