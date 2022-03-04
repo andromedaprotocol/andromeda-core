@@ -163,12 +163,16 @@ pub fn read_auction_infos(
     Ok(res)
 }
 
+type RequiredPayments = (Vec<Event>, Vec<SubMsg>, Vec<Coin>);
+
+/**
+ * Reused from rates contract and adjusted for auctions
+ */
 pub fn calculate_required_payments(
     deps: &DepsMut,
     coin: Coin,
     rates: Vec<RateInfo>,
-) -> Result<(Vec<Event>, Vec<SubMsg>, Vec<Coin>), ContractError> {
-    // let config = CONFIG.load(deps.storage)?;
+) -> Result<RequiredPayments, ContractError> {
     let mut msgs: Vec<SubMsg> = vec![];
     let mut events: Vec<Event> = vec![];
     let mut leftover_funds = vec![coin.clone()];
@@ -471,7 +475,6 @@ mod tests {
                     .to_string(),
                 )],
             vec![recipient_one
-                .clone()
                 .generate_msg_native(mock_dependencies(&[]).as_mut().api, vec![coin(1, "uluna")])
                 .unwrap()],
             vec![coin(99, "uluna")],
@@ -522,14 +525,12 @@ mod tests {
             ],
             vec![
                 recipient_one
-                    .clone()
                     .generate_msg_native(
                         mock_dependencies(&[]).as_mut().api,
                         vec![coin(1, "uluna")],
                     )
                     .unwrap(),
                 recipient_two
-                    .clone()
                     .generate_msg_native(
                         mock_dependencies(&[]).as_mut().api,
                         vec![coin(5, "uluna")],
@@ -539,8 +540,7 @@ mod tests {
             vec![coin(99, "uluna")],
         );
         let result =
-            calculate_required_payments(&deps.as_mut(), payment_amount.clone(), multi_rate)
-                .unwrap();
+            calculate_required_payments(&deps.as_mut(), payment_amount, multi_rate).unwrap();
 
         assert_eq!(result, expected)
     }

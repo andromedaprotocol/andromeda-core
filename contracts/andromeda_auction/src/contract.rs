@@ -409,7 +409,7 @@ fn execute_claim(
                 contract_addr: token_auction_state.token_address.clone(),
                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                     recipient: token_auction_state.owner,
-                    token_id: token_id.clone(),
+                    token_id,
                 })?,
                 funds: vec![],
             })));
@@ -444,7 +444,7 @@ fn execute_claim(
             contract_addr: token_auction_state.token_address.clone(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: token_auction_state.high_bidder_addr.to_string(),
-                token_id: token_id.clone(),
+                token_id,
             })?,
             funds: vec![],
         }));
