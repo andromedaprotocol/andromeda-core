@@ -39,6 +39,9 @@ pub enum ExecuteMsg {
         token_id: String,
         token_address: String,
     },
+    UpdateRates {
+        rates: Vec<RateInfo>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -85,6 +88,7 @@ pub enum QueryMsg {
         limit: Option<u64>,
         order_by: Option<OrderBy>,
     },
+    Rates {},
     Owner {},
 }
 

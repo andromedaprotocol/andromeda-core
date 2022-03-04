@@ -10,7 +10,8 @@ use andromeda_protocol::{
     common::OrderBy,
     communication::encode_binary,
     error::ContractError,
-    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
+    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
+    rates::RateInfo,
     require,
 };
 use cosmwasm_std::{
@@ -77,6 +78,7 @@ pub fn execute(
             token_id,
             token_address,
         } => execute_claim(deps, env, info, token_id, token_address),
+        ExecuteMsg::UpdateRates { rates } => execute_update_rates(deps, env, info, rates),
         ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
     }
 }
@@ -452,6 +454,22 @@ fn execute_claim(
     Ok(resp)
 }
 
+fn execute_update_rates(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    rates: Vec<RateInfo>,
+) -> Result<Response, ContractError> {
+    require(
+        is_contract_owner(deps.storage, &info.sender.to_string())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    AUCTION_RATES.save(deps.storage, &rates)?;
+
+    Ok(Response::new().add_attribute("action", "update_rates"))
+}
+
 fn get_existing_token_auction_state(
     storage: &dyn Storage,
     token_id: &str,
@@ -527,6 +545,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             start_after,
             limit,
         )?),
+        QueryMsg::Rates {} => encode_binary(&query_rates(deps)?),
         QueryMsg::Owner {} => encode_binary(&query_contract_owner(deps)?),
     }
 }
@@ -610,6 +629,16 @@ fn query_owner_of(
     }))?;
 
     Ok(res)
+}
+
+fn query_rates(deps: Deps) -> Result<Vec<RateInfo>, ContractError> {
+    let rates_opt = AUCTION_RATES.may_load(deps.storage)?;
+
+    if let Some(rates) = rates_opt {
+        Ok(rates)
+    } else {
+        Ok(vec![])
+    }
 }
 
 #[cfg(test)]
