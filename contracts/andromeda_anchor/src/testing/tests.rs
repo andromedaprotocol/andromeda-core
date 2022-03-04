@@ -901,7 +901,7 @@ fn test_borrow_existing_loan_lower_ltv() {
 }
 
 #[test]
-fn test_borrow_ltv_too_hight() {
+fn test_borrow_ltv_too_high() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
@@ -918,5 +918,27 @@ fn test_borrow_ltv_too_hight() {
             msg: "Desired LTV ratio must be less than 1".to_string(),
         },
         res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_repay_loan() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::RepayLoan {};
+
+    let info = mock_info("addr0000", &coins(100, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "repay_loan")
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_MARKET_CONTRACT.to_owned(),
+                msg: to_binary(&MarketExecuteMsg::RepayStable {}).unwrap(),
+                funds: info.funds,
+            })),
+        res
     );
 }

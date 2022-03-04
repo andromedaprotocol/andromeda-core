@@ -86,6 +86,7 @@ pub fn execute(
             desired_ltv_ratio,
             recipient,
         } => execute_borrow(deps, env, info, desired_ltv_ratio.into(), recipient),
+        ExecuteMsg::RepayLoan {} => execute_repay_loan(deps, info),
         _ => panic!(),
     }
 }
@@ -288,6 +289,21 @@ fn execute_borrow(
         .add_submessage(
             recipient.generate_msg_native(deps.api, coins(borrow_amount.into(), "uusd"))?,
         ))
+}
+
+fn execute_repay_loan(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    require(
+        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let config = CONFIG.load(deps.storage)?;
+    Ok(Response::new()
+        .add_attribute("action", "repay_loan")
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: config.anchor_market.to_string(),
+            msg: encode_binary(&MarketExecuteMsg::RepayStable {})?,
+            funds: info.funds,
+        })))
 }
 
 pub fn execute_deposit(
