@@ -389,11 +389,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 fn reply_update_position(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     // stores aUST amount to position
     let config = CONFIG.load(deps.storage)?;
-    let aust_balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_humanize(&config.aust_token)?,
-        env.contract.address,
-    )?;
+    let aust_balance = query_token_balance(&deps.querier, config.aust_token, env.contract.address)?;
 
     let prev_aust_balance = PREV_AUST_BALANCE.load(deps.storage)?;
     let new_aust_balance = aust_balance.checked_sub(prev_aust_balance)?;
@@ -472,9 +468,10 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
 fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
+    //TODO: UPDATE WITH NEW CONTRACTS
     Ok(ConfigResponse {
-        anchor_market: deps.api.addr_humanize(&config.anchor_market)?.to_string(),
-        aust_token: deps.api.addr_humanize(&config.aust_token)?.to_string(),
+        anchor_market: config.anchor_market.to_string(),
+        aust_token: config.aust_token.to_string(),
     })
 }
 

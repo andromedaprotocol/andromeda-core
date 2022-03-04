@@ -1,8 +1,11 @@
 use crate::contract::{execute, instantiate, query, reply, DEPOSIT_ID, WITHDRAW_ID};
 use crate::state::{
-    Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
+    Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
 };
-use crate::testing::mock_querier::mock_dependencies_custom;
+use crate::testing::mock_querier::{
+    mock_dependencies_custom, MOCK_AUST_TOKEN, MOCK_BLUNA_HUB_CONTRACT, MOCK_BLUNA_TOKEN,
+    MOCK_CUSTODY_CONTRACT, MOCK_MARKET_CONTRACT, MOCK_OVERSEER_CONTRACT,
+};
 use andromeda_protocol::{
     anchor::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
     communication::{ADORecipient, AndromedaMsg, AndromedaQuery, Recipient},
@@ -12,8 +15,8 @@ use andromeda_protocol::{
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Api, BankMsg, Coin, ContractResult, CosmosMsg, Reply, Response, SubMsg,
-    SubMsgExecutionResponse, Uint128, WasmMsg,
+    to_binary, Addr, Api, BankMsg, Coin, ContractResult, CosmosMsg, DepsMut, Reply, Response,
+    SubMsg, SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use moneymarket::market::{Cw20HookMsg as MarketCw20HookMsg, ExecuteMsg as MarketExecuteMsg};
@@ -22,7 +25,7 @@ fn deposit_stable_msg(amount: u128) -> SubMsg {
     SubMsg::reply_on_success(
         CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "anchor_market".to_string(),
-            msg: to_binary(&AnchorMarketMsg::DepositStable {}).unwrap(),
+            msg: to_binary(&MarketExecuteMsg::DepositStable {}).unwrap(),
             funds: vec![coin(amount, "uusd")],
         }),
         DEPOSIT_ID,
@@ -57,49 +60,46 @@ fn withdraw_aust_msg(amount: u128) -> SubMsg {
     })
 }
 
-#[test]
-fn test_instantiate() {
-    let mut deps = mock_dependencies(&[]);
+fn init(deps: DepsMut) {
     let env = mock_env();
-    let owner = "owner";
+    let owner = "addr0000";
     let info = mock_info(owner, &[]);
     let msg = InstantiateMsg {
-        anchor_bluna_hub: "bluna_hub".to_string(),
-        anchor_bluna_custody: "bluna_custody".to_string(),
-        anchor_market: "anchor_market".to_string(),
+        anchor_bluna_hub: MOCK_BLUNA_HUB_CONTRACT.to_owned(),
+        anchor_bluna_custody: MOCK_CUSTODY_CONTRACT.to_owned(),
+        anchor_market: MOCK_MARKET_CONTRACT.to_owned(),
     };
-    let res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
+    let res = instantiate(deps, env, info, msg.clone()).unwrap();
 
     assert_eq!(0, res.messages.len());
+}
 
+#[test]
+fn test_instantiate() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
     let config = CONFIG.load(deps.as_ref().storage).unwrap();
 
     assert_eq!(
-        msg.aust_token,
-        deps.api
-            .addr_humanize(&config.aust_token)
-            .unwrap()
-            .to_string()
-    );
-    assert_eq!(
-        msg.anchor_market,
-        deps.api
-            .addr_humanize(&config.anchor_market)
-            .unwrap()
-            .to_string()
+        Config {
+            anchor_market: Addr::unchecked(MOCK_MARKET_CONTRACT),
+            aust_token: Addr::unchecked(MOCK_AUST_TOKEN),
+            anchor_bluna_hub: Addr::unchecked(MOCK_BLUNA_HUB_CONTRACT),
+            anchor_bluna_custody: Addr::unchecked(MOCK_CUSTODY_CONTRACT),
+            anchor_overseer: Addr::unchecked(MOCK_OVERSEER_CONTRACT),
+            bluna_token: Addr::unchecked(MOCK_BLUNA_TOKEN),
+        },
+        config
     );
 }
 
 #[test]
 fn test_deposit_and_withdraw_ust() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
-    let amount = 1000000u128;
+    init(deps.as_mut());
+
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let amount = 1000000u128;
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None));
     let info = mock_info(
@@ -236,13 +236,9 @@ fn test_deposit_and_withdraw_ust() {
 #[test]
 fn test_deposit_and_withdraw_aust() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
+
     let amount = 1000000u128;
-    let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None));
     let info = mock_info(
@@ -328,13 +324,9 @@ fn test_deposit_and_withdraw_aust() {
 #[test]
 fn test_deposit_existing_position() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
+
     let amount = 1000000u128;
-    let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None));
     let info = mock_info(
@@ -390,13 +382,10 @@ fn test_deposit_existing_position() {
 #[test]
 fn test_deposit_other_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
+
     let amount = 1000000u128;
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
         to_binary(&Recipient::Addr("recipient".into())).unwrap(),
@@ -446,13 +435,10 @@ fn test_deposit_other_recipient() {
 #[test]
 fn test_withdraw_percent() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
+
     let amount = 1000000u128;
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let recipient = "recipient";
 
@@ -493,13 +479,10 @@ fn test_withdraw_percent() {
 #[test]
 fn test_withdraw_invalid_percent() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
+
     let amount = 1000000u128;
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let recipient = "recipient";
 
@@ -525,13 +508,10 @@ fn test_withdraw_invalid_percent() {
 #[test]
 fn test_withdraw_amount() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
+
     let amount = 1000000u128;
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let recipient = "recipient";
 
@@ -572,13 +552,10 @@ fn test_withdraw_amount() {
 #[test]
 fn test_withdraw_invalid_amount() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
+
     let amount = 1000000u128;
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let recipient = "recipient";
 
@@ -609,12 +586,9 @@ fn test_withdraw_invalid_amount() {
 #[test]
 fn test_withdraw_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
+
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let recipient = "recipient";
 
@@ -640,12 +614,8 @@ fn test_withdraw_invalid_recipient() {
 #[test]
 fn test_withdraw_tokens_none() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let recipient = "recipient";
 
@@ -665,12 +635,8 @@ fn test_withdraw_tokens_none() {
 #[test]
 fn test_withdraw_tokens_empty() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let recipient = "recipient";
 
@@ -690,12 +656,8 @@ fn test_withdraw_tokens_empty() {
 #[test]
 fn test_withdraw_tokens_uusd_and_aust_specified() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let recipient = "recipient";
 
@@ -724,13 +686,9 @@ fn test_withdraw_tokens_uusd_and_aust_specified() {
 #[test]
 fn test_withdraw_aust_with_address() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
     let amount = 1000000u128;
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let position = Position {
         recipient: Recipient::Addr("addr0000".to_string()),
@@ -762,13 +720,10 @@ fn test_withdraw_aust_with_address() {
 #[test]
 fn test_withdraw_recipient_sender() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        aust_token: "aust_token".to_string(),
-        anchor_market: "anchor_market".to_string(),
-    };
+    init(deps.as_mut());
+
     let amount = 1000000u128;
     let info = mock_info("addr0000", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let recipient = "recipient";
 

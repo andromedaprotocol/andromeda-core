@@ -22,6 +22,7 @@ name = "andromeda-anchor"
 version = "0.1.0"
 dependencies = [
  "andromeda-protocol",
+ "cosmwasm-bignumber",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
