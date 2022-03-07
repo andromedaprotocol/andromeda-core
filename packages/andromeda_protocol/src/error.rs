@@ -142,9 +142,6 @@ pub enum ContractError {
     #[error("InvalidReplyId")]
     InvalidReplyId {},
 
-    #[error("InvalidJSON")]
-    InvalidJSON {},
-
     #[error("ParsingError: {err}")]
     ParsingError { err: String },
 
