@@ -9,8 +9,8 @@ use crate::{
 };
 use andromeda_protocol::{
     anchor::{
-        BLunaHubExecuteMsg, ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg,
-        PositionResponse, QueryMsg,
+        BLunaHubCw20HookMsg, BLunaHubExecuteMsg, ConfigResponse, Cw20HookMsg, ExecuteMsg,
+        InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg,
     },
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
@@ -30,7 +30,7 @@ use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use moneymarket::{
-    custody::Cw20HookMsg as CustodyCw20HookMsg,
+    custody::{Cw20HookMsg as CustodyCw20HookMsg, ExecuteMsg as CustodyExecuteMsg},
     market::{Cw20HookMsg as MarketCw20HookMsg, ExecuteMsg as MarketExecuteMsg},
     overseer::ExecuteMsg as OverseerExecuteMsg,
     querier::query_price,
@@ -87,9 +87,16 @@ pub fn execute(
         ExecuteMsg::Borrow {
             desired_ltv_ratio,
             recipient,
-        } => execute_borrow(deps, env, info, desired_ltv_ratio.into(), recipient),
+        } => execute_borrow(deps, env, info, desired_ltv_ratio, recipient),
         ExecuteMsg::RepayLoan {} => execute_repay_loan(deps, info),
-        _ => panic!(),
+        ExecuteMsg::WithdrawCollateral {
+            collateral_addr,
+            amount,
+            unbond,
+            recipient,
+        } => {
+            execute_withdraw_collateral(deps, env, info, collateral_addr, amount, unbond, recipient)
+        }
     }
 }
 
@@ -276,6 +283,84 @@ fn execute_deposit_collateral(deps: DepsMut, info: MessageInfo) -> Result<Respon
             })?,
             funds: vec![],
         })))
+}
+
+fn execute_withdraw_collateral(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collateral_addr: String,
+    amount: Option<Uint256>,
+    unbond: Option<bool>,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    require(
+        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    require(
+        collateral_addr == config.bluna_token.to_string(),
+        ContractError::InvalidFunds {
+            msg: "Only bluna collateral supported".to_string(),
+        },
+    )?;
+    let collaterals = query_collaterals(
+        &deps.querier,
+        config.anchor_overseer.to_string(),
+        env.contract.address.to_string(),
+    )?
+    .collaterals;
+
+    let collateral_info = collaterals.iter().find(|c| c.0 == collateral_addr);
+
+    require(collateral_info.is_some(), ContractError::InvalidAddress {})?;
+
+    let collateral_info = collateral_info.unwrap();
+
+    let amount = amount.unwrap_or(collateral_info.1);
+    let final_message = if unbond.unwrap_or(false) {
+        // do unbond message
+        SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: collateral_addr.clone(),
+            funds: vec![],
+            msg: encode_binary(&Cw20ExecuteMsg::Send {
+                contract: config.anchor_bluna_custody.to_string(),
+                amount: amount.into(),
+                msg: encode_binary(&BLunaHubCw20HookMsg::Unbond {})?,
+            })?,
+        }))
+    } else {
+        // do withdraw message
+        let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+        recipient.generate_msg_cw20(
+            deps.api,
+            Cw20Coin {
+                address: collateral_addr.clone(),
+                amount: amount.into(),
+            },
+        )?
+    };
+
+    Ok(Response::new()
+        .add_attribute("action", "withdraw_collateral")
+        // Unlock collateral
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: config.anchor_overseer.to_string(),
+            msg: encode_binary(&OverseerExecuteMsg::UnlockCollateral {
+                collaterals: vec![(collateral_addr, amount)],
+            })?,
+            funds: vec![],
+        }))
+        // Withdraw collateral
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: config.anchor_bluna_custody.to_string(),
+            funds: vec![],
+            msg: encode_binary(&CustodyExecuteMsg::WithdrawCollateral {
+                amount: Some(amount),
+            })?,
+        }))
+        .add_submessage(final_message))
 }
 
 fn execute_borrow(

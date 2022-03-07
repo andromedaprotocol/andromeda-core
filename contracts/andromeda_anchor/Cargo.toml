@@ -30,6 +30,7 @@ terraswap = "2.4.0"
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
 moneymarket = "0.3.0"
 cosmwasm-bignumber = "2.2.0"
+cw-asset = "1.0.2"
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }

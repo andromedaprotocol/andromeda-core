@@ -8,22 +8,23 @@ use crate::testing::mock_querier::{
 };
 use andromeda_protocol::{
     anchor::{
-        BLunaHubExecuteMsg, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg,
+        BLunaHubCw20HookMsg, BLunaHubExecuteMsg, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
+        PositionResponse, QueryMsg,
     },
     communication::{ADORecipient, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     withdraw::{Withdrawal, WithdrawalType},
 };
-use cosmwasm_bignumber::Uint256;
+use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, Coin, ContractResult, CosmosMsg, Decimal, DepsMut, Reply, Response,
-    SubMsg, SubMsgExecutionResponse, Uint128, WasmMsg,
+    to_binary, Addr, BankMsg, Coin, ContractResult, CosmosMsg, DepsMut, Reply, Response, SubMsg,
+    SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use moneymarket::{
-    custody::Cw20HookMsg as CustodyCw20HookMsg,
+    custody::{Cw20HookMsg as CustodyCw20HookMsg, ExecuteMsg as CustodyExecuteMsg},
     market::{Cw20HookMsg as MarketCw20HookMsg, ExecuteMsg as MarketExecuteMsg},
     overseer::ExecuteMsg as OverseerExecuteMsg,
 };
@@ -893,7 +894,7 @@ fn test_borrow_new_loan() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Borrow {
-        desired_ltv_ratio: Decimal::percent(50),
+        desired_ltv_ratio: Decimal256::percent(50),
         recipient: None,
     };
 
@@ -930,7 +931,7 @@ fn test_borrow_existing_loan() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Borrow {
-        desired_ltv_ratio: Decimal::percent(75),
+        desired_ltv_ratio: Decimal256::percent(75),
         recipient: None,
     };
 
@@ -968,7 +969,7 @@ fn test_borrow_existing_loan_lower_ltv() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Borrow {
-        desired_ltv_ratio: Decimal::percent(20),
+        desired_ltv_ratio: Decimal256::percent(20),
         recipient: None,
     };
 
@@ -989,7 +990,7 @@ fn test_borrow_ltv_too_high() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Borrow {
-        desired_ltv_ratio: Decimal::one(),
+        desired_ltv_ratio: Decimal256::one(),
         recipient: None,
     };
 
@@ -1010,7 +1011,7 @@ fn test_borrow_unauthorized() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Borrow {
-        desired_ltv_ratio: Decimal::percent(50),
+        desired_ltv_ratio: Decimal256::percent(50),
         recipient: None,
     };
 
@@ -1052,5 +1053,121 @@ fn test_repay_loan_unauthorized() {
     let info = mock_info("anyone", &coins(100, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_withdraw_collateral() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::WithdrawCollateral {
+        collateral_addr: MOCK_BLUNA_TOKEN.to_owned(),
+        amount: None,
+        unbond: None,
+        recipient: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "withdraw_collateral")
+            // Unlock collateral
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_OVERSEER_CONTRACT.to_owned(),
+                msg: to_binary(&OverseerExecuteMsg::UnlockCollateral {
+                    collaterals: vec![(MOCK_BLUNA_TOKEN.to_owned(), 100u128.into())],
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            // Withdraw collateral
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_CUSTODY_CONTRACT.to_owned(),
+                funds: vec![],
+                msg: to_binary(&CustodyExecuteMsg::WithdrawCollateral {
+                    amount: Some(100u128.into()),
+                })
+                .unwrap(),
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_BLUNA_TOKEN.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: "owner".to_string(),
+                    amount: 100u128.into(),
+                })
+                .unwrap(),
+                funds: vec![],
+            })),
+        res
+    );
+}
+
+#[test]
+fn test_withdraw_collateral_unbond() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::WithdrawCollateral {
+        collateral_addr: MOCK_BLUNA_TOKEN.to_owned(),
+        amount: None,
+        unbond: Some(true),
+        recipient: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "withdraw_collateral")
+            // Unlock collateral
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_OVERSEER_CONTRACT.to_owned(),
+                msg: to_binary(&OverseerExecuteMsg::UnlockCollateral {
+                    collaterals: vec![(MOCK_BLUNA_TOKEN.to_owned(), 100u128.into())],
+                })
+                .unwrap(),
+                funds: vec![],
+            }))
+            // Withdraw collateral
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_CUSTODY_CONTRACT.to_owned(),
+                funds: vec![],
+                msg: to_binary(&CustodyExecuteMsg::WithdrawCollateral {
+                    amount: Some(100u128.into()),
+                })
+                .unwrap(),
+            }))
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_BLUNA_TOKEN.to_owned(),
+                funds: vec![],
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: MOCK_CUSTODY_CONTRACT.to_owned(),
+                    amount: 100u128.into(),
+                    msg: to_binary(&BLunaHubCw20HookMsg::Unbond {}).unwrap(),
+                })
+                .unwrap(),
+            })),
+        res
+    );
+}
+
+#[test]
+fn test_withdraw_collateral_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::WithdrawCollateral {
+        collateral_addr: MOCK_BLUNA_TOKEN.to_owned(),
+        amount: None,
+        unbond: None,
+        recipient: None,
+    };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
