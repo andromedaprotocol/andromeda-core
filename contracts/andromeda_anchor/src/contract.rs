@@ -300,7 +300,7 @@ fn execute_withdraw_collateral(
         ContractError::Unauthorized {},
     )?;
     require(
-        collateral_addr == config.bluna_token.to_string(),
+        collateral_addr == config.bluna_token,
         ContractError::InvalidFunds {
             msg: "Only bluna collateral supported".to_string(),
         },

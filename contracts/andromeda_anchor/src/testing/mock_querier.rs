@@ -65,12 +65,12 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
-                    MOCK_MARKET_CONTRACT => self.handle_market_query(&msg),
-                    MOCK_CUSTODY_CONTRACT => self.handle_custody_query(&msg),
-                    MOCK_OVERSEER_CONTRACT => self.handle_overseer_query(&msg),
-                    MOCK_ORACLE_CONTRACT => self.handle_oracle_query(&msg),
-                    MOCK_BLUNA_HUB_CONTRACT => self.handle_hub_query(&msg),
-                    MOCK_AUST_TOKEN => self.handle_aust_query(&msg),
+                    MOCK_MARKET_CONTRACT => self.handle_market_query(msg),
+                    MOCK_CUSTODY_CONTRACT => self.handle_custody_query(msg),
+                    MOCK_OVERSEER_CONTRACT => self.handle_overseer_query(msg),
+                    MOCK_ORACLE_CONTRACT => self.handle_oracle_query(msg),
+                    MOCK_BLUNA_HUB_CONTRACT => self.handle_hub_query(msg),
+                    MOCK_AUST_TOKEN => self.handle_aust_query(msg),
                     _ => panic!("Unsupported Query for address {}", contract_addr),
                 }
             }

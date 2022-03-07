@@ -77,7 +77,7 @@ fn init(deps: DepsMut) {
         anchor_bluna_custody: MOCK_CUSTODY_CONTRACT.to_owned(),
         anchor_market: MOCK_MARKET_CONTRACT.to_owned(),
     };
-    let res = instantiate(deps, env, info, msg.clone()).unwrap();
+    let res = instantiate(deps, env, info, msg).unwrap();
 
     assert_eq!(0, res.messages.len());
 }
@@ -803,7 +803,7 @@ fn test_deposit_collateral_unauthorized() {
     let msg = ExecuteMsg::DepositCollateral {};
 
     let info = mock_info("anyone", &coins(100, "uluna"));
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
@@ -820,7 +820,7 @@ fn test_deposit_collateral_cw20() {
     });
 
     let info = mock_info(MOCK_BLUNA_TOKEN, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -861,7 +861,7 @@ fn test_deposit_collateral_cw20_invalid_collateral() {
     });
 
     let info = mock_info("invalid_collateral", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
         ContractError::InvalidFunds {
@@ -883,7 +883,7 @@ fn test_deposit_collateral_cw20_unauthorized() {
     });
 
     let info = mock_info(MOCK_BLUNA_TOKEN, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
@@ -899,7 +899,7 @@ fn test_borrow_new_loan() {
     };
 
     let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -936,7 +936,7 @@ fn test_borrow_existing_loan() {
     };
 
     let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -974,7 +974,7 @@ fn test_borrow_existing_loan_lower_ltv() {
     };
 
     let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
         ContractError::InvalidLtvRatio {
@@ -995,7 +995,7 @@ fn test_borrow_ltv_too_high() {
     };
 
     let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
         ContractError::InvalidLtvRatio {
@@ -1016,7 +1016,7 @@ fn test_borrow_unauthorized() {
     };
 
     let info = mock_info("anyone", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
@@ -1051,7 +1051,7 @@ fn test_repay_loan_unauthorized() {
     let msg = ExecuteMsg::RepayLoan {};
 
     let info = mock_info("anyone", &coins(100, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
@@ -1069,7 +1069,7 @@ fn test_withdraw_collateral() {
     };
 
     let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -1118,7 +1118,7 @@ fn test_withdraw_collateral_unbond() {
     };
 
     let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -1168,6 +1168,6 @@ fn test_withdraw_collateral_unauthorized() {
     };
 
     let info = mock_info("anyone", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
