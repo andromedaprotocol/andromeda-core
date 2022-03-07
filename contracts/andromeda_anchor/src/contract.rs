@@ -217,7 +217,7 @@ fn execute_deposit_collateral_cw20(
         .add_attribute("action", "deposit_collateral")
         // Provide collateral
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: config.bluna_token.to_string(),
+            contract_addr: token_address,
             funds: vec![],
             msg: encode_binary(&Cw20ExecuteMsg::Send {
                 contract: config.anchor_bluna_custody.to_string(),
@@ -305,20 +305,24 @@ fn execute_withdraw_collateral(
             msg: "Only bluna collateral supported".to_string(),
         },
     )?;
-    let collaterals = query_collaterals(
-        &deps.querier,
-        config.anchor_overseer.to_string(),
-        env.contract.address.to_string(),
-    )?
-    .collaterals;
 
-    let collateral_info = collaterals.iter().find(|c| c.0 == collateral_addr);
+    let amount = match amount {
+        Some(amount) => amount,
+        None => {
+            let collaterals = query_collaterals(
+                &deps.querier,
+                config.anchor_overseer.to_string(),
+                env.contract.address.to_string(),
+            )?
+            .collaterals;
 
-    require(collateral_info.is_some(), ContractError::InvalidAddress {})?;
+            let collateral_info = collaterals.iter().find(|c| c.0 == collateral_addr);
 
-    let collateral_info = collateral_info.unwrap();
+            require(collateral_info.is_some(), ContractError::InvalidAddress {})?;
+            collateral_info.unwrap().1
+        }
+    };
 
-    let amount = amount.unwrap_or(collateral_info.1);
     let final_message = if unbond.unwrap_or(false) {
         // do unbond message
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -672,10 +676,14 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
 fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    //TODO: UPDATE WITH NEW CONTRACTS
     Ok(ConfigResponse {
         anchor_market: config.anchor_market.to_string(),
         aust_token: config.aust_token.to_string(),
+        anchor_bluna_hub: config.anchor_bluna_hub.to_string(),
+        anchor_bluna_custody: config.anchor_bluna_custody.to_string(),
+        anchor_overseer: config.anchor_overseer.to_string(),
+        bluna_token: config.bluna_token.to_string(),
+        anchor_oracle: config.anchor_oracle.to_string(),
     })
 }
 

@@ -26,14 +26,16 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Deposit LUNA as collateral which will be converted to bLUNA.
     DepositCollateral {},
-    /// Deposit LUNA as collateral which will be converted to bLUNA.
+    /// Withdraw specified collateral. If unbond is true and collateral is bLuna, the unbonding
+    /// process will begin, otherwise the collateral will be sent to the given recipient.
     WithdrawCollateral {
         collateral_addr: String,
         amount: Option<Uint256>,
         unbond: Option<bool>,
         recipient: Option<Recipient>,
     },
-    /// Borrows given percent of collateral worth and sends borrowed funds to recipient.
+    /// Borrows funds to reach the desired loan-to-value ratio and sends the borrowed funds to the
+    /// given recipient.
     Borrow {
         desired_ltv_ratio: Decimal256,
         recipient: Option<Recipient>,
@@ -64,6 +66,11 @@ pub enum QueryMsg {
 pub struct ConfigResponse {
     pub anchor_market: String,
     pub aust_token: String,
+    pub anchor_bluna_hub: String,
+    pub anchor_bluna_custody: String,
+    pub anchor_overseer: String,
+    pub bluna_token: String,
+    pub anchor_oracle: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
