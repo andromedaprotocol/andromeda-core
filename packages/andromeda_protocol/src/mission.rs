@@ -62,6 +62,7 @@ pub enum ExecuteMsg {
     AddMissionComponent { component: MissionComponent },
     ClaimOwnership { name: Option<String> },
     ProxyMessage { name: String, msg: Binary },
+    UpdateAddress { name: String, addr: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

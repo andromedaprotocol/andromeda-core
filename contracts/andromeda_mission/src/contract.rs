@@ -103,6 +103,7 @@ pub fn execute(
             execute_claim_ownership(deps.storage, info.sender.as_str(), name)
         }
         ExecuteMsg::ProxyMessage { msg, name } => execute_message(deps, info, name, msg),
+        ExecuteMsg::UpdateAddress { name, addr } => execute_update_address(deps, info, name, addr),
     }
 }
 
@@ -200,6 +201,35 @@ fn execute_message(
         .add_submessage(proxy_msg)
         .add_attribute("method", "mission_message")
         .add_attribute("reciient", name))
+}
+
+fn has_update_address_privilege(
+    storage: &dyn Storage,
+    sender: &str,
+    current_addr: &str,
+) -> Result<bool, ContractError> {
+    Ok(is_contract_owner(storage, sender)? || sender == current_addr)
+}
+
+fn execute_update_address(
+    deps: DepsMut,
+    info: MessageInfo,
+    name: String,
+    addr: String,
+) -> Result<Response, ContractError> {
+    let ado_addr = ADO_ADDRESSES.load(deps.storage, &name)?;
+    require(
+        has_update_address_privilege(deps.storage, info.sender.as_str(), ado_addr.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    let new_addr = deps.api.addr_validate(&addr)?;
+    ADO_ADDRESSES.save(deps.storage, &name, &new_addr)?;
+
+    Ok(Response::default()
+        .add_attribute("method", "update_address")
+        .add_attribute("name", name)
+        .add_attribute("address", addr))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
