@@ -27,7 +27,7 @@ impl fmt::Display for AndromedaContract {
 
 pub fn get_address(
     storage: &dyn Storage,
-    querier: QuerierWrapper,
+    querier: &QuerierWrapper,
     contract: AndromedaContract,
 ) -> Result<String, ContractError> {
     let address = PRIMITVE_CONTRACT.load(storage)?;

@@ -46,7 +46,7 @@ pub fn instantiate(
                 primitive_contract: msg.primitive_contract,
             };
             let factory_address =
-                get_address(deps.storage, deps.querier, AndromedaContract::Factory)?;
+                get_address(deps.storage, &deps.querier, AndromedaContract::Factory)?;
             let code_id: u64 = query_get::<CodeIdResponse>(
                 Some(encode_binary(&"cw721")?),
                 factory_address,

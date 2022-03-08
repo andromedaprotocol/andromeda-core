@@ -235,6 +235,9 @@ pub enum ContractError {
 
     #[error("ModuleImmutable")]
     ModuleImmutable {},
+
+    #[error("TooManyMissionComponents")]
+    TooManyMissionComponents {},
 }
 
 impl From<Cw20ContractError> for ContractError {

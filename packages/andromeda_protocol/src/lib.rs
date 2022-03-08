@@ -12,6 +12,7 @@ pub mod cw721_offers;
 pub mod error;
 pub mod factory;
 pub mod mirror_wrapped_cdp;
+pub mod mission;
 pub mod modules;
 pub mod operators;
 pub mod ownership;

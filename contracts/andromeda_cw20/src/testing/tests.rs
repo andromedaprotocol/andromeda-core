@@ -35,14 +35,17 @@ fn test_instantiate_modules() {
         Module {
             module_type: ModuleType::Receipt,
             instantiate: InstantiateType::New(receipt_msg.clone()),
+            is_mutable: false,
         },
         Module {
             module_type: ModuleType::Rates,
             instantiate: InstantiateType::New(rates_msg.clone()),
+            is_mutable: false,
         },
         Module {
             module_type: ModuleType::AddressList,
             instantiate: InstantiateType::New(addresslist_msg.clone()),
+            is_mutable: false,
         },
     ];
     let mut deps = mock_dependencies_custom(&[]);

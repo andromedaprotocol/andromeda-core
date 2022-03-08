@@ -92,7 +92,7 @@ impl Module {
     pub fn get_code_id(
         &self,
         storage: &dyn Storage,
-        querier: QuerierWrapper,
+        querier: &QuerierWrapper,
     ) -> Result<Option<u64>, ContractError> {
         let factory_address = get_address(storage, querier, AndromedaContract::Factory)?;
         match self.module_type {
@@ -116,7 +116,7 @@ impl Module {
         module_id: u64,
     ) -> Result<Option<SubMsg>, ContractError> {
         if let InstantiateType::New(msg) = &self.instantiate {
-            match self.get_code_id(storage, querier)? {
+            match self.get_code_id(storage, &querier)? {
                 None => Err(ContractError::InvalidModule {
                     msg: Some(String::from(
                         "Module type provided does not have a valid Code Id",

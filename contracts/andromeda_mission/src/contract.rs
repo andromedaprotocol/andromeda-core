@@ -1,18 +1,25 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, Storage};
+use cosmwasm_std::{
+    Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, Response, StdError, Storage,
+};
 use cw2::{get_contract_version, set_contract_version};
+
+use crate::state::{
+    add_mission_component, generate_ownership_message, load_component_addresses, ADO_ADDRESSES,
+    ADO_DESCRIPTORS,
+};
 
 use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    mission::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ADO_ADDRESSES},
+    mission::{ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent, QueryMsg},
     operators::{
-        execute_update_operators, initialize_operators, is_operator, query_is_operator,
-        query_operators,
+        execute_update_operators, initialize_operators, query_is_operator, query_operators,
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
+    response::get_reply_address,
 };
 
 // version info for migration info
@@ -29,9 +36,49 @@ pub fn instantiate(
     initialize_operators(deps.storage, msg.operators)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    Ok(Response::new()
+
+    require(
+        msg.mission.len() <= 50,
+        ContractError::TooManyMissionComponents {},
+    )?;
+    let sender = info.sender.as_str();
+
+    let mut resp = Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender))
+        .add_attribute("owner", sender);
+
+    for component in msg.mission {
+        let comp_resp =
+            execute_add_mission_component(&deps.querier, deps.storage, sender, component)?;
+        resp = resp.add_submessages(comp_resp.messages);
+    }
+
+    if msg.xfer_ado_ownership {
+        let own_resp = execute_claim_ownership(deps.storage, sender, None)?;
+        resp = resp.add_submessages(own_resp.messages)
+    }
+
+    Ok(resp)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    let id = msg.id.to_string();
+    require(
+        ADO_DESCRIPTORS.load(deps.storage, &id).is_ok(),
+        ContractError::InvalidReplyId {},
+    )?;
+
+    let addr = get_reply_address(&msg)?;
+    ADO_ADDRESSES.save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
+
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -43,6 +90,15 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AndrReceive(msg) => execute_receive(deps, env, info, msg),
+        ExecuteMsg::AddMissionComponent { component } => execute_add_mission_component(
+            &deps.querier,
+            deps.storage,
+            info.sender.as_str(),
+            component,
+        ),
+        ExecuteMsg::ClaimOwnership { name } => {
+            execute_claim_ownership(deps.storage, info.sender.as_str(), name)
+        }
     }
 }
 
@@ -68,6 +124,50 @@ fn execute_receive(
     }
 }
 
+fn execute_add_mission_component(
+    querier: &QuerierWrapper,
+    storage: &mut dyn Storage,
+    sender: &str,
+    component: MissionComponent,
+) -> Result<Response, ContractError> {
+    require(
+        is_contract_owner(storage, sender)?,
+        ContractError::Unauthorized {},
+    )?;
+    let mut resp = Response::new();
+
+    let idx = add_mission_component(storage, &component)?;
+    let inst_msg = component.generate_instantiate_msg(storage, querier, idx)?;
+    resp = resp.add_submessage(inst_msg);
+
+    Ok(resp)
+}
+
+fn execute_claim_ownership(
+    storage: &mut dyn Storage,
+    sender: &str,
+    name_opt: Option<String>,
+) -> Result<Response, ContractError> {
+    require(
+        is_contract_owner(storage, sender)?,
+        ContractError::Unauthorized {},
+    )?;
+
+    let mut resp = Response::new();
+
+    if let Some(name) = name_opt {
+        let address = ADO_ADDRESSES.load(storage, &name)?;
+        resp = resp.add_submessage(generate_ownership_message(address, sender)?);
+    } else {
+        let addresses = load_component_addresses(storage)?;
+        for addr in addresses {
+            resp = resp.add_submessage(generate_ownership_message(addr, sender)?);
+        }
+    }
+
+    Ok(resp)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version = get_contract_version(deps.storage)?;
@@ -89,11 +189,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => match data {
-            // Treat no binary as request to get value with default key.
             None => Err(ContractError::ParsingError {
                 err: String::from("No data passed with AndrGet query"),
             }),
             Some(_) => {
+                //Default to get address for given ADO name
                 let name: String = parse_message(data)?;
                 encode_binary(&query_ado_address(deps, name)?)
             }
@@ -107,7 +207,7 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
 }
 
 fn query_ado_address(deps: Deps, name: String) -> Result<String, ContractError> {
-    let value = ADO_ADDRESSES.load(deps.storage, name)?;
+    let value = ADO_ADDRESSES.load(deps.storage, &name)?;
     Ok(value.to_string())
 }
 
@@ -124,6 +224,7 @@ mod tests {
             operators: vec![],
             mission: vec![],
             xfer_ado_ownership: false,
+            name: String::from("Some Mission"),
         };
         let info = mock_info("creator", &[]);
 
