@@ -1,6 +1,6 @@
 use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
 use cosmwasm_bignumber::{Decimal256, Uint256};
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -42,6 +42,11 @@ pub enum ExecuteMsg {
     },
     /// Repays any existing loan with sent stable coins.
     RepayLoan {},
+
+    /// INTERNAL
+    DepositCollateralToAnchor {
+        collateral_addr: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -91,22 +96,4 @@ pub enum BLunaHubExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum BLunaHubCw20HookMsg {
     Unbond {},
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum BLunaHubQueryMsg {
-    State {},
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct BLunaHubStateResponse {
-    pub bluna_exchange_rate: Decimal,
-    pub stluna_exchange_rate: Decimal,
-    pub total_bond_bluna_amount: Uint128,
-    pub total_bond_stluna_amount: Uint128,
-    pub last_index_modification: u64,
-    pub prev_hub_balance: Uint128,
-    pub last_unbonded_time: u64,
-    pub last_processed_batch: u64,
 }

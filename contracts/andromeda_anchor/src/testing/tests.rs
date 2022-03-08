@@ -771,22 +771,10 @@ fn test_deposit_collateral() {
                 funds: info.funds,
                 msg: to_binary(&BLunaHubExecuteMsg::Bond {}).unwrap(),
             }))
-            // Provide collateral
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_BLUNA_TOKEN.to_owned(),
-                funds: vec![],
-                msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: MOCK_CUSTODY_CONTRACT.to_owned(),
-                    msg: to_binary(&CustodyCw20HookMsg::DepositCollateral {}).unwrap(),
-                    amount: Uint128::from(100u128),
-                })
-                .unwrap(),
-            }))
-            // Lock collateral
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_OVERSEER_CONTRACT.to_owned(),
-                msg: to_binary(&OverseerExecuteMsg::LockCollateral {
-                    collaterals: vec![(MOCK_BLUNA_TOKEN.to_owned(), Uint256::from(100u128))],
+                contract_addr: mock_env().contract.address.to_string(),
+                msg: to_binary(&ExecuteMsg::DepositCollateralToAnchor {
+                    collateral_addr: MOCK_BLUNA_TOKEN.to_owned()
                 })
                 .unwrap(),
                 funds: vec![],
@@ -809,6 +797,58 @@ fn test_deposit_collateral_unauthorized() {
 }
 
 #[test]
+fn test_deposit_collateral_to_anchor() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::DepositCollateralToAnchor {
+        collateral_addr: MOCK_BLUNA_TOKEN.to_owned(),
+    };
+
+    let info = mock_info(&mock_env().contract.address.to_string(), &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "deposit_collateral_to_anchor")
+            // Provide collateral
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_BLUNA_TOKEN.to_owned(),
+                funds: vec![],
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: MOCK_CUSTODY_CONTRACT.to_owned(),
+                    msg: to_binary(&CustodyCw20HookMsg::DepositCollateral {}).unwrap(),
+                    amount: Uint128::from(100u128),
+                })
+                .unwrap(),
+            }))
+            // Lock collateral
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_OVERSEER_CONTRACT.to_owned(),
+                msg: to_binary(&OverseerExecuteMsg::LockCollateral {
+                    collaterals: vec![(MOCK_BLUNA_TOKEN.to_owned(), Uint128::from(100u128).into())],
+                })
+                .unwrap(),
+                funds: vec![],
+            })),
+        res
+    );
+}
+
+#[test]
+fn test_deposit_collateral_to_anchor_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::DepositCollateralToAnchor {
+        collateral_addr: MOCK_BLUNA_TOKEN.to_owned(),
+    };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
 fn test_deposit_collateral_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
@@ -824,7 +864,7 @@ fn test_deposit_collateral_cw20() {
 
     assert_eq!(
         Response::new()
-            .add_attribute("action", "deposit_collateral")
+            .add_attribute("action", "deposit_collateral_to_anchor")
             // Provide collateral
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_BLUNA_TOKEN.to_owned(),
@@ -1145,7 +1185,7 @@ fn test_withdraw_collateral_unbond() {
                 contract_addr: MOCK_BLUNA_TOKEN.to_owned(),
                 funds: vec![],
                 msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: MOCK_CUSTODY_CONTRACT.to_owned(),
+                    contract: MOCK_BLUNA_HUB_CONTRACT.to_owned(),
                     amount: 100u128.into(),
                     msg: to_binary(&BLunaHubCw20HookMsg::Unbond {}).unwrap(),
                 })

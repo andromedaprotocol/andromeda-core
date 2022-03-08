@@ -1,8 +1,4 @@
-use andromeda_protocol::{
-    anchor::{BLunaHubQueryMsg, BLunaHubStateResponse},
-    communication::encode_binary,
-    error::ContractError,
-};
+use andromeda_protocol::{communication::encode_binary, error::ContractError};
 use cosmwasm_std::{QuerierWrapper, QueryRequest, WasmQuery};
 use moneymarket::{
     custody::{ConfigResponse as CustodyConfigResponse, QueryMsg as CustodyQueryMsg},
@@ -66,15 +62,5 @@ pub fn query_collaterals(
     Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: anchor_overseer,
         msg: encode_binary(&OverseerQueryMsg::Collaterals { borrower })?,
-    }))?)
-}
-
-pub fn query_hub_state(
-    querier: &QuerierWrapper,
-    bluna_hub: String,
-) -> Result<BLunaHubStateResponse, ContractError> {
-    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: bluna_hub,
-        msg: encode_binary(&BLunaHubQueryMsg::State {})?,
     }))?)
 }

@@ -1,8 +1,7 @@
-use andromeda_protocol::anchor::{BLunaHubQueryMsg, BLunaHubStateResponse};
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    from_binary, from_slice, to_binary, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier,
+    from_binary, from_slice, to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier,
     QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 use cw20::{BalanceResponse, Cw20QueryMsg};
@@ -69,8 +68,8 @@ impl WasmMockQuerier {
                     MOCK_CUSTODY_CONTRACT => self.handle_custody_query(msg),
                     MOCK_OVERSEER_CONTRACT => self.handle_overseer_query(msg),
                     MOCK_ORACLE_CONTRACT => self.handle_oracle_query(msg),
-                    MOCK_BLUNA_HUB_CONTRACT => self.handle_hub_query(msg),
                     MOCK_AUST_TOKEN => self.handle_aust_query(msg),
+                    MOCK_BLUNA_TOKEN => self.handle_bluna_query(msg),
                     _ => panic!("Unsupported Query for address {}", contract_addr),
                 }
             }
@@ -162,24 +161,6 @@ impl WasmMockQuerier {
         }
     }
 
-    fn handle_hub_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            BLunaHubQueryMsg::State {} => {
-                let res = BLunaHubStateResponse {
-                    bluna_exchange_rate: Decimal::one(),
-                    stluna_exchange_rate: Decimal::one(),
-                    total_bond_bluna_amount: Uint128::zero(),
-                    total_bond_stluna_amount: Uint128::zero(),
-                    last_index_modification: 0,
-                    prev_hub_balance: Uint128::zero(),
-                    last_unbonded_time: 0,
-                    last_processed_batch: 0,
-                };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-            }
-        }
-    }
-
     fn handle_oracle_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             OracleQueryMsg::Price { .. } => {
@@ -187,6 +168,18 @@ impl WasmMockQuerier {
                     rate: Decimal256::one(),
                     last_updated_base: 0,
                     last_updated_quote: 0,
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_bluna_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            Cw20QueryMsg::Balance { .. } => {
+                let res = BalanceResponse {
+                    balance: 100u128.into(),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }
