@@ -3,6 +3,21 @@
 version = 3
 
 [[package]]
+name = "ado-base"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.8.1",
+ "cw2 0.8.1",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-addresslist"
 version = "0.1.0"
 dependencies = [
@@ -237,6 +252,7 @@ dependencies = [
 name = "andromeda-timelock"
 version = "0.1.0"
 dependencies = [
+ "ado-base",
  "andromeda-protocol",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",

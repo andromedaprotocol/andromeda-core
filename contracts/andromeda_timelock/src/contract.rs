@@ -3,6 +3,7 @@ use cosmwasm_std::{
 };
 
 use crate::state::{escrows, get_key, get_keys_for_recipient, State, STATE};
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
@@ -79,7 +80,7 @@ pub fn execute(
         let addr_list = address_list;
         addr_list.on_execute(&deps, info.clone(), env.clone())?;
     }
-
+    let test = ADOContract::default();
     match msg {
         ExecuteMsg::HoldFunds {
             condition,
@@ -97,7 +98,9 @@ pub fn execute(
         ExecuteMsg::UpdateAddressList { address_list } => {
             execute_update_address_list(deps, info, env, address_list)
         }
-        ExecuteMsg::AndrReceive(msg) => execute_receive(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
     }
 }
 
@@ -263,6 +266,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    let contract = ADOContract::default();
     match msg {
         QueryMsg::GetLockedFunds { owner, recipient } => {
             encode_binary(&query_held_funds(deps, owner, recipient)?)
@@ -278,7 +282,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             limit,
         )?),
         QueryMsg::GetTimelockConfig {} => encode_binary(&query_config(deps)?),
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::AndrQuery(msg) => contract.query(deps, env, msg, query),
     }
 }
 

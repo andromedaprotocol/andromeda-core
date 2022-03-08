@@ -22,7 +22,7 @@ pub fn generate_instantiate_msgs(
     Ok(resp)
 }
 
-pub fn unwrap_or_err<T>(val_opt: Option<T>, err: ContractError) -> Result<T, ContractError> {
+pub fn unwrap_or_err<T>(val_opt: &Option<T>, err: ContractError) -> Result<&T, ContractError> {
     match val_opt {
         Some(val) => Ok(val),
         None => Err(err),
