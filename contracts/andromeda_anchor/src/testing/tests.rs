@@ -806,7 +806,7 @@ fn test_deposit_collateral_to_anchor() {
     };
 
     let info = mock_info(&mock_env().contract.address.to_string(), &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         Response::new()
             .add_attribute("action", "deposit_collateral_to_anchor")
@@ -844,7 +844,7 @@ fn test_deposit_collateral_to_anchor_unauthorized() {
     };
 
     let info = mock_info("anyone", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
 

@@ -222,7 +222,7 @@ fn execute_deposit_collateral_to_anchor(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     require(
-        is_contract_owner(deps.storage, &sender)? || sender == env.contract.address.to_string(),
+        is_contract_owner(deps.storage, &sender)? || sender == env.contract.address,
         ContractError::Unauthorized {},
     )?;
     require(
