@@ -39,6 +39,20 @@ pub fn load_component_addresses(storage: &dyn Storage) -> Result<Vec<Addr>, Cont
     Ok(addresses)
 }
 
+pub fn load_component_descriptors(
+    storage: &dyn Storage,
+) -> Result<Vec<MissionComponent>, ContractError> {
+    let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
+    // let max = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
+    let descriptors: Vec<MissionComponent> = ADO_DESCRIPTORS
+        .range(storage, min, None, Order::Ascending)
+        .flatten()
+        .map(|(_vec, component)| component)
+        .collect();
+
+    Ok(descriptors)
+}
+
 pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, ContractError> {
     let msg = to_binary(&AndromedaMsg::UpdateOwner {
         address: owner.to_string(),

@@ -3,7 +3,7 @@ use crate::{
     error::ContractError,
     factory::get_ado_codeid,
 };
-use cosmwasm_std::{Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Storage, SubMsg, WasmMsg};
+use cosmwasm_std::{Binary, CosmosMsg, QuerierWrapper, ReplyOn, Storage, SubMsg, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -73,11 +73,16 @@ pub struct MigrateMsg {}
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
+    GetAddress { name: String },
+    GetComponents {},
+    GetAddresses {},
+    Config {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
-    pub owner: Addr,
+    pub owner: String,
+    pub name: String,
 }
 
 #[cfg(test)]

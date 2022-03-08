@@ -1,20 +1,20 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, ReplyOn, Response,
-    StdError, Storage, SubMsg, WasmMsg,
+    Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, ReplyOn,
+    Response, StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{
-    add_mission_component, generate_ownership_message, load_component_addresses, ADO_ADDRESSES,
-    ADO_DESCRIPTORS, MISSION_NAME,
+    add_mission_component, generate_ownership_message, load_component_addresses,
+    load_component_descriptors, ADO_ADDRESSES, ADO_DESCRIPTORS, MISSION_NAME,
 };
 
 use andromeda_protocol::{
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    mission::{ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent, QueryMsg},
+    mission::{ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent, QueryMsg},
     operators::{
         execute_update_operators, initialize_operators, query_is_operator, query_operators,
     },
@@ -24,7 +24,7 @@ use andromeda_protocol::{
 };
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_primitive";
+const CONTRACT_NAME: &str = "crates.io:andromeda_mission";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -247,6 +247,10 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+        QueryMsg::GetAddress { name } => encode_binary(&query_component_address(deps, name)?),
+        QueryMsg::GetAddresses {} => encode_binary(&query_component_addresses(deps)?),
+        QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
+        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
     }
 }
 
@@ -259,7 +263,7 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
             Some(_) => {
                 //Default to get address for given ADO name
                 let name: String = parse_message(data)?;
-                encode_binary(&query_ado_address(deps, name)?)
+                encode_binary(&query_component_address(deps, name)?)
             }
         },
         AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
@@ -270,9 +274,29 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
     }
 }
 
-fn query_ado_address(deps: Deps, name: String) -> Result<String, ContractError> {
+fn query_component_address(deps: Deps, name: String) -> Result<String, ContractError> {
     let value = ADO_ADDRESSES.load(deps.storage, &name)?;
     Ok(value.to_string())
+}
+
+fn query_component_descriptors(deps: Deps) -> Result<Vec<MissionComponent>, ContractError> {
+    let value = load_component_descriptors(deps.storage)?;
+    Ok(value)
+}
+
+fn query_component_addresses(deps: Deps) -> Result<Vec<Addr>, ContractError> {
+    let value = load_component_addresses(deps.storage)?;
+    Ok(value)
+}
+
+fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
+    let name = MISSION_NAME.load(deps.storage)?;
+    let owner_resp = query_contract_owner(deps)?;
+
+    Ok(ConfigResponse {
+        name,
+        owner: owner_resp.owner,
+    })
 }
 
 #[cfg(test)]
