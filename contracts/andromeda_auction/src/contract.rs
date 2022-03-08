@@ -632,13 +632,9 @@ fn query_owner_of(
 }
 
 fn query_rates(deps: Deps) -> Result<Vec<RateInfo>, ContractError> {
-    let rates_opt = AUCTION_RATES.may_load(deps.storage)?;
+    let rates = AUCTION_RATES.may_load(deps.storage)?.unwrap_or_default();
 
-    if let Some(rates) = rates_opt {
-        Ok(rates)
-    } else {
-        Ok(vec![])
-    }
+    Ok(rates)
 }
 
 #[cfg(test)]
