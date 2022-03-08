@@ -1,6 +1,7 @@
 use crate::state::{
-    auction_infos, calculate_required_payments, read_auction_infos, read_bids, AuctionInfo,
-    TokenAuctionState, AUCTION_RATES, BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
+    auction_infos, calculate_additional_fees, calculate_required_payments, read_auction_infos,
+    read_bids, AuctionInfo, TokenAuctionState, AUCTION_RATES, BIDS, NEXT_AUCTION_ID,
+    TOKEN_AUCTION_STATE,
 };
 use andromeda_protocol::{
     auction::{
@@ -15,9 +16,9 @@ use andromeda_protocol::{
     require,
 };
 use cosmwasm_std::{
-    attr, coin, coins, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg,
-    Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, Storage,
-    Uint128, WasmMsg, WasmQuery,
+    attr, coin, coins, entry_point, from_binary, has_coins, Addr, BankMsg, Binary, BlockInfo, Coin,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult,
+    Storage, Uint128, WasmMsg, WasmQuery,
 };
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
 use cw_storage_plus::U128Key;
@@ -372,7 +373,7 @@ fn execute_cancel(
 fn execute_claim(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     token_id: String,
     token_address: String,
 ) -> Result<Response, ContractError> {
@@ -424,14 +425,20 @@ fn execute_claim(
     );
 
     if let Some(rates) = rates_opt {
-        let (events, msgs, remaining_funds) = calculate_required_payments(
-            &deps,
-            coin(
-                token_auction_state.high_bidder_amount.clone().u128(),
-                token_auction_state.coin_denom.clone(),
-            ),
-            rates,
-        )?;
+        let sale_amount = coin(
+            token_auction_state.high_bidder_amount.clone().u128(),
+            token_auction_state.coin_denom.clone(),
+        );
+        let calculated_fees_opt =
+            calculate_additional_fees(&deps, sale_amount.clone(), rates.clone())?;
+        if let Some(calculated_fee) = calculated_fees_opt {
+            require(
+                has_coins(&info.funds, &calculated_fee),
+                ContractError::InsufficientFunds {},
+            )?;
+        }
+        let (events, msgs, remaining_funds) =
+            calculate_required_payments(&deps, sale_amount, rates)?;
         resp = resp.add_events(events).add_submessages(msgs);
         seller_receives = remaining_funds
     }
@@ -1897,7 +1904,7 @@ mod tests {
             token_address: MOCK_TOKEN_ADDR.to_string(),
         };
 
-        let info = mock_info("any_user", &[]);
+        let info = mock_info("any_user", &coins(5, "uusd"));
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         let transfer_nft_msg = Cw721ExecuteMsg::TransferNft {
             recipient: "sender".to_string(),
@@ -1937,5 +1944,44 @@ mod tests {
                 .add_event(rates_event),
             res
         );
+    }
+
+    #[test]
+    fn execute_claim_with_rates_insufficient_funds() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let mut env = mock_env();
+        let info = mock_info("owner", &[]);
+        let recipient_one = Recipient::Addr(String::from("recipientone"));
+        let rates = vec![RateInfo {
+            is_additive: true,
+            receivers: vec![recipient_one.clone()],
+            description: Some("Some tax".to_string()),
+            rate: Rate::Percent(Uint128::from(5u128)),
+        }];
+        let msg = InstantiateMsg { rates: Some(rates) };
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        start_auction(deps.as_mut(), None);
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+
+        let info = mock_info("sender", &coins(100, "uusd".to_string()));
+        let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        env.block.time = Timestamp::from_seconds(250);
+
+        let msg = ExecuteMsg::Claim {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+
+        let info = mock_info("any_user", &[]);
+        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+        assert_eq!(ContractError::InsufficientFunds {}, res)
     }
 }

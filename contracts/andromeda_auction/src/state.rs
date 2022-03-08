@@ -9,7 +9,7 @@ use andromeda_protocol::{
     rates::RateInfo,
 };
 use cosmwasm_std::{
-    Addr, Coin, DepsMut, Event, Order, StdError, StdResult, Storage, SubMsg, Uint128,
+    coin, Addr, Coin, DepsMut, Event, Order, StdError, StdResult, Storage, SubMsg, Uint128,
 };
 use cw721::Expiration;
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex, U128Key};
@@ -161,6 +161,31 @@ pub fn read_auction_infos(
         res.push(auction_infos().load(storage, key)?);
     }
     Ok(res)
+}
+
+pub fn calculate_additional_fees(
+    deps: &DepsMut,
+    payment_coin: Coin,
+    rates: Vec<RateInfo>,
+) -> Result<Option<Coin>, ContractError> {
+    let mut additional_fees = coin(0, payment_coin.denom.clone());
+    for rate_info in rates.iter() {
+        if !rate_info.is_additive {
+            continue;
+        }
+        let rate = rate_info.rate.validate(&deps.querier)?;
+        let fee = calculate_fee(rate, &payment_coin)?;
+        additional_fees.amount = additional_fees.amount.checked_add(
+            fee.amount
+                .checked_mul(Uint128::from(rate_info.receivers.len() as u128))?,
+        )?;
+    }
+
+    if additional_fees.amount.is_zero() {
+        Ok(None)
+    } else {
+        Ok(Some(additional_fees))
+    }
 }
 
 type RequiredPayments = (Vec<Event>, Vec<SubMsg>, Vec<Coin>);
@@ -543,5 +568,49 @@ mod tests {
             calculate_required_payments(&deps.as_mut(), payment_amount, multi_rate).unwrap();
 
         assert_eq!(result, expected)
+    }
+
+    #[test]
+    fn test_calculate_additional_fees() {
+        let mut deps = mock_dependencies(&[]);
+        let recipient_one = Recipient::Addr(String::from("recipientone"));
+        let recipient_two = Recipient::Addr(String::from("recipienttwo"));
+        let empty_rates = Vec::<RateInfo>::new();
+
+        let resp =
+            calculate_additional_fees(&deps.as_mut(), coin(100, "uluna"), empty_rates).unwrap();
+        assert!(resp.is_none());
+
+        let single_rate = vec![RateInfo {
+            is_additive: true,
+            receivers: vec![recipient_two.clone()],
+            description: Some("Some tax".to_string()),
+            rate: Rate::Percent(Uint128::from(5u128)),
+        }];
+
+        let resp =
+            calculate_additional_fees(&deps.as_mut(), coin(100, "uluna"), single_rate).unwrap();
+        assert!(resp.is_some());
+        assert_eq!(coin(5, "uluna"), resp.unwrap());
+
+        let multi_rate = vec![
+            RateInfo {
+                is_additive: false,
+                receivers: vec![recipient_one.clone()],
+                description: Some("Some royalty".to_string()),
+                rate: Rate::Percent(Uint128::from(1u128)),
+            },
+            RateInfo {
+                is_additive: true,
+                receivers: vec![recipient_two.clone(), recipient_one.clone()],
+                description: Some("Some tax".to_string()),
+                rate: Rate::Percent(Uint128::from(5u128)),
+            },
+        ];
+
+        let resp =
+            calculate_additional_fees(&deps.as_mut(), coin(100, "uluna"), multi_rate).unwrap();
+        assert!(resp.is_some());
+        assert_eq!(coin(10, "uluna"), resp.unwrap())
     }
 }
