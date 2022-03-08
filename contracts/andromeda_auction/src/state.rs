@@ -602,7 +602,7 @@ mod tests {
             },
             RateInfo {
                 is_additive: true,
-                receivers: vec![recipient_two.clone(), recipient_one.clone()],
+                receivers: vec![recipient_two, recipient_one],
                 description: Some("Some tax".to_string()),
                 rate: Rate::Percent(Uint128::from(5u128)),
             },
