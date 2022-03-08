@@ -32,7 +32,7 @@ pub fn get_address(
 ) -> Result<String, ContractError> {
     let address = PRIMITVE_CONTRACT.load(storage)?;
     let data = encode_binary(&contract.to_string())?;
-    let res: GetValueResponse = query_get(Some(data), address, &querier)?;
+    let res: GetValueResponse = query_get(Some(data), address, querier)?;
     Ok(res.value.try_get_string()?)
 }
 

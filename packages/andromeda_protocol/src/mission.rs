@@ -39,7 +39,7 @@ impl MissionComponent {
                     code_id,
                     msg: self.instantiate_msg.clone(),
                     funds: vec![],
-                    label: format!("Instantiate ADO: {}", String::from(self.ado_type.clone())),
+                    label: format!("Instantiate ADO: {}", self.ado_type.clone()),
                 }),
                 gas_limit: None,
             }),
@@ -61,6 +61,7 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     AddMissionComponent { component: MissionComponent },
     ClaimOwnership { name: Option<String> },
+    ProxyMessage { name: String, msg: Binary },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

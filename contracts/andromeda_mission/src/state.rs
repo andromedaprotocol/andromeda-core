@@ -9,6 +9,7 @@ pub const ADO_ADDRESSES: Map<&str, Addr> = Map::new("ado_addresses");
 /// Stores a record of the describing structs for each ADO
 pub const ADO_DESCRIPTORS: Map<&str, MissionComponent> = Map::new("ado_descriptors");
 pub const ADO_IDX: Item<u64> = Item::new("ado_idx");
+pub const MISSION_NAME: Item<String> = Item::new("mission_name");
 
 // DEV NOTE: Very similar to CW721 module instantiation, possibly merge both implementations?
 pub fn add_mission_component(
@@ -20,7 +21,7 @@ pub fn add_mission_component(
         Err(..) => 1u64,
     };
     let idx_str = idx.to_string();
-    ADO_DESCRIPTORS.save(storage, &idx_str, &component)?;
+    ADO_DESCRIPTORS.save(storage, &idx_str, component)?;
     ADO_IDX.save(storage, &(idx + 1))?;
 
     Ok(idx)
@@ -32,7 +33,7 @@ pub fn load_component_addresses(storage: &dyn Storage) -> Result<Vec<Addr>, Cont
     let addresses: Vec<Addr> = ADO_ADDRESSES
         .range(storage, min, None, Order::Ascending)
         .flatten()
-        .map(|(_vec, module)| module)
+        .map(|(_vec, addr)| addr)
         .collect();
 
     Ok(addresses)
@@ -46,7 +47,7 @@ pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, Con
         id: 101,
         reply_on: ReplyOn::Error,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
-            msg: msg.clone(),
+            msg,
             funds: Vec::<Coin>::new(),
             contract_addr: addr.to_string(),
         }),

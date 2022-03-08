@@ -1,13 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, Response, StdError, Storage,
+    Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, ReplyOn, Response,
+    StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{
     add_mission_component, generate_ownership_message, load_component_addresses, ADO_ADDRESSES,
-    ADO_DESCRIPTORS,
+    ADO_DESCRIPTORS, MISSION_NAME,
 };
 
 use andromeda_protocol::{
@@ -36,6 +37,7 @@ pub fn instantiate(
     initialize_operators(deps.storage, msg.operators)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONTRACT_OWNER.save(deps.storage, &info.sender)?;
+    MISSION_NAME.save(deps.storage, &msg.name)?;
 
     require(
         msg.mission.len() <= 50,
@@ -45,7 +47,8 @@ pub fn instantiate(
 
     let mut resp = Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", sender);
+        .add_attribute("owner", sender)
+        .add_attribute("andr_mission", msg.name);
 
     for component in msg.mission {
         let comp_resp =
@@ -99,6 +102,7 @@ pub fn execute(
         ExecuteMsg::ClaimOwnership { name } => {
             execute_claim_ownership(deps.storage, info.sender.as_str(), name)
         }
+        ExecuteMsg::ProxyMessage { msg, name } => execute_message(deps, info, name, msg),
     }
 }
 
@@ -166,6 +170,36 @@ fn execute_claim_ownership(
     }
 
     Ok(resp)
+}
+
+fn execute_message(
+    deps: DepsMut,
+    info: MessageInfo,
+    name: String,
+    msg: Binary,
+) -> Result<Response, ContractError> {
+    //Temporary until message sender attached to Andromeda Comms
+    require(
+        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    let addr = ADO_ADDRESSES.load(deps.storage, name.as_str())?;
+    let proxy_msg = SubMsg {
+        id: 102,
+        reply_on: ReplyOn::Error,
+        msg: CosmosMsg::Wasm(WasmMsg::Execute {
+            msg,
+            funds: info.funds,
+            contract_addr: addr.to_string(),
+        }),
+        gas_limit: None,
+    };
+
+    Ok(Response::default()
+        .add_submessage(proxy_msg)
+        .add_attribute("method", "mission_message")
+        .add_attribute("reciient", name))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

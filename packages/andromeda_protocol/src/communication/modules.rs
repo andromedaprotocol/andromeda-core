@@ -101,7 +101,7 @@ impl Module {
                 let code_id_resp: CodeIdResponse = query_get(
                     Some(to_binary(&String::from(self.module_type.clone()))?),
                     factory_address,
-                    &querier,
+                    querier,
                 )?;
                 Ok(Some(code_id_resp.code_id))
             }

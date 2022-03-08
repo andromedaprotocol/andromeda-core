@@ -67,7 +67,6 @@ pub fn get_ado_codeid(
 ) -> Result<Option<u64>, ContractError> {
     let factory_address = get_address(storage, querier, AndromedaContract::Factory)?;
 
-    let code_id_resp: CodeIdResponse =
-        query_get(Some(to_binary(name)?), factory_address, &querier)?;
+    let code_id_resp: CodeIdResponse = query_get(Some(to_binary(name)?), factory_address, querier)?;
     Ok(Some(code_id_resp.code_id))
 }
