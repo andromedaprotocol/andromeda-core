@@ -82,16 +82,19 @@ pub struct PositionResponse {
 /* Begin BLunaHub enums and structs */
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum BLunaHubExecuteMsg {
     Bond {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum BLunaHubCw20HookMsg {
     Unbond {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum BLunaHubQueryMsg {
     State {},
 }
