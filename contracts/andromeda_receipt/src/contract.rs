@@ -3,12 +3,11 @@ use crate::state::{
 };
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    communication::{
-        encode_binary,
+    ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        parse_message,
+        InstantiateMsg as BaseInstantiateMsg,
     },
+    communication::{encode_binary, parse_message},
     error::ContractError,
     receipt::{
         generate_receipt_message, Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg,
@@ -154,7 +153,10 @@ fn query_config(deps: Deps) -> Result<ContractInfoResponse, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::rates::Funds;
+    use andromeda_protocol::{
+        ado_base::{AndromedaMsg, AndromedaQuery},
+        rates::Funds,
+    };
     use cosmwasm_std::{
         coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
@@ -186,7 +188,8 @@ mod tests {
             minter: owner.to_string(),
         };
         store_config(deps.as_mut().storage, &config).unwrap();
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
@@ -219,7 +222,8 @@ mod tests {
             minter: owner.to_string(),
         };
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
@@ -278,7 +282,8 @@ mod tests {
             minter: owner.to_string(),
         };
         store_config(deps.as_mut().storage, &config).unwrap();
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 

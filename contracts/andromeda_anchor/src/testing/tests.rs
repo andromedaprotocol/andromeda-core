@@ -4,8 +4,9 @@ use crate::state::{
 };
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
+    ado_base::{AndromedaMsg, AndromedaQuery},
     anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
-    communication::{ADORecipient, AndromedaMsg, AndromedaQuery, Recipient},
+    communication::{ADORecipient, Recipient},
     error::ContractError,
     withdraw::{Withdrawal, WithdrawalType},
 };

@@ -6,7 +6,7 @@ use crate::state::{escrows, get_key, get_keys_for_recipient, State, STATE};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
-    communication::{encode_binary, parse_message, Recipient},
+    communication::{encode_binary, Recipient},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -213,7 +213,7 @@ fn execute_update_address_list(
 ) -> Result<Response, ContractError> {
     let mut state = STATE.load(deps.storage)?;
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -244,7 +244,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    let contract = ADOContract::default();
     match msg {
         QueryMsg::GetLockedFunds { owner, recipient } => {
             encode_binary(&query_held_funds(deps, owner, recipient)?)
@@ -260,7 +259,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             limit,
         )?),
         QueryMsg::GetTimelockConfig {} => encode_binary(&query_config(deps)?),
-        QueryMsg::AndrQuery(msg) => contract.query(deps, env, msg, query),
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
 }
 
@@ -306,6 +305,7 @@ fn query_config(deps: Deps) -> Result<GetTimelockConfigResponse, ContractError> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_protocol::ado_base::AndromedaMsg;
     use cosmwasm_std::{
         coin, coins, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
@@ -801,7 +801,8 @@ mod tests {
         let env = mock_env();
         let owner = "creator";
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 

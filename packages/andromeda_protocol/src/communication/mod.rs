@@ -7,16 +7,12 @@ use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
-    ado_base::{AndromedaMsg, AndromedaQuery, ExecuteMsg, QueryMsg},
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery, ExecuteMsg, QueryMsg},
     common::unwrap_or_err,
     error::ContractError,
 };
 
-use self::hooks::AndromedaHook;
-
-pub mod hooks;
 pub mod modules;
-pub mod msg;
 
 // ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -29,7 +29,7 @@ fn test_instantiate() {
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let expected_res = Response::new()
         .add_attributes(vec![
-            attr("action", "instantiate"),
+            attr("method", "instantiate"),
             attr("type", "splitter"),
         ])
         .add_submessages(vec![SubMsg {

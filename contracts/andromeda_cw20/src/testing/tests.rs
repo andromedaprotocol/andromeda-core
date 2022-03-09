@@ -1,7 +1,7 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
-    communication::modules::{InstantiateType, Module, ModuleType},
+    ado_base::modules::{InstantiateType, Module, ModuleType},
     cw20::{ExecuteMsg, InstantiateMsg},
     error::ContractError,
     rates::InstantiateMsg as RatesInstantiateMsg,

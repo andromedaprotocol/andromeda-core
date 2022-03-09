@@ -1,12 +1,11 @@
 use crate::state::{Config, CONFIG};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    communication::{
-        encode_binary,
+    ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        parse_message,
+        AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
     },
+    communication::{encode_binary, parse_message},
     error::ContractError,
     modules::common::{calculate_fee, deduct_funds},
     rates::{
@@ -210,7 +209,7 @@ mod tests {
     use super::*;
     use crate::contract::{execute, instantiate, query};
     use andromeda_protocol::{
-        communication::{encode_binary, AndromedaMsg, AndromedaQuery, Recipient},
+        communication::{encode_binary, Recipient},
         modules::{ADORate, Rate},
         rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
         testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT},

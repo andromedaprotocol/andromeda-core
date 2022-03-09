@@ -7,8 +7,7 @@ use cosmwasm_std::{
 
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::modules::ADOType,
-    communication::hooks::AndromedaHook,
+    ado_base::{hooks::AndromedaHook, modules::ADOType},
     cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     error::ContractError,
     primitive::PRIMITVE_CONTRACT,

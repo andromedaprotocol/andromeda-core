@@ -1,6 +1,5 @@
 use crate::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    communication::hooks::AndromedaHook,
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery},
     error::ContractError,
 };
 use cosmwasm_std::{to_binary, CosmosMsg, Event, SubMsg, Uint128, WasmMsg};

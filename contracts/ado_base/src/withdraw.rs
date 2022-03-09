@@ -2,7 +2,7 @@ use crate::state::ADOContract;
 use andromeda_protocol::{
     communication::Recipient, error::ContractError, require, withdraw::Withdrawal,
 };
-use cosmwasm_std::{coin, Deps, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg};
+use cosmwasm_std::{coin, DepsMut, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg};
 use cw20::Cw20Coin;
 use terraswap::{
     asset::AssetInfo,
@@ -34,7 +34,7 @@ impl<'a> ADOContract<'a> {
     /// Withdraw all tokens in self.withdrawable_tokens with non-zero balance to the given recipient.
     pub fn execute_withdraw(
         &self,
-        deps: Deps,
+        deps: DepsMut,
         env: Env,
         info: MessageInfo,
         recipient: Option<Recipient>,

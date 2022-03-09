@@ -1,8 +1,8 @@
 use crate::state::SWAPPER_IMPL_ADDR;
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    communication::{encode_binary, modules::InstantiateType, query_get, Recipient},
+    ado_base::{modules::InstantiateType, InstantiateMsg as BaseInstantiateMsg},
+    communication::{encode_binary, query_get, Recipient},
     error::ContractError,
     factory::CodeIdResponse,
     require,
@@ -33,14 +33,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let mut resp: Response = ADOContract::default().instantiate(
-        deps,
-        info,
-        BaseInstantiateMsg {
-            ado_type: "swapper".to_string(),
-            operators: None,
-        },
-    )?;
+    let mut msgs: Vec<SubMsg> = vec![];
     match msg.swapper_impl {
         InstantiateType::Address(addr) => SWAPPER_IMPL_ADDR.save(deps.storage, &addr)?,
         InstantiateType::New(instantiate_msg) => {
@@ -63,10 +56,19 @@ pub fn instantiate(
                 }),
                 gas_limit: None,
             };
-            resp = resp.add_submessage(msg);
+            msgs.push(msg);
         }
     }
-    Ok(resp)
+    Ok(ADOContract::default()
+        .instantiate(
+            deps,
+            info,
+            BaseInstantiateMsg {
+                ado_type: "swapper".to_string(),
+                operators: None,
+            },
+        )?
+        .add_submessages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

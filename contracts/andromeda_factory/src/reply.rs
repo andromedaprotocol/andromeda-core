@@ -1,4 +1,4 @@
-use andromeda_protocol::{error::ContractError, response::get_reply_address, token::QueryMsg};
+use andromeda_protocol::{error::ContractError, response::get_reply_address};
 use cosmwasm_std::{to_binary, DepsMut, QuerierWrapper, QueryRequest, Reply, Response, WasmQuery};
 use cw721::ContractInfoResponse;
 
@@ -21,7 +21,7 @@ fn query_token_config(
 ) -> Result<ContractInfoResponse, ContractError> {
     let res: ContractInfoResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: addr,
-        msg: to_binary(&QueryMsg::ContractInfo {})?,
+        msg: to_binary(&"")?,
     }))?;
 
     Ok(res)

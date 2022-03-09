@@ -49,6 +49,14 @@ impl<'a> ADOContract<'a> {
         Ok(addr == owner)
     }
 
+    pub fn is_owner_or_operator(
+        &self,
+        storage: &dyn Storage,
+        addr: &str,
+    ) -> Result<bool, ContractError> {
+        Ok(self.is_contract_owner(storage, addr)? || self.is_operator(storage, addr))
+    }
+
     pub(crate) fn initialize_operators(
         &self,
         storage: &mut dyn Storage,

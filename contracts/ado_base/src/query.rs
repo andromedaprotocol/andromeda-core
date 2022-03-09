@@ -1,14 +1,16 @@
 use crate::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::{ownership::ContractOwnerResponse, AndromedaQuery},
+    ado_base::{
+        operators::{IsOperatorResponse, OperatorsResponse},
+        ownership::ContractOwnerResponse,
+        AndromedaQuery,
+    },
     communication::{encode_binary, parse_message},
     error::ContractError,
     require,
 };
 use cosmwasm_std::{Binary, Deps, Env, Order};
-use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
 
 type QueryFunction<Q> = fn(Deps, Env, Q) -> Result<Binary, ContractError>;
 
@@ -67,16 +69,4 @@ impl<'a> ADOContract<'a> {
             operators: operators?,
         })
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct IsOperatorResponse {
-    pub is_operator: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct OperatorsResponse {
-    pub operators: Vec<String>,
 }

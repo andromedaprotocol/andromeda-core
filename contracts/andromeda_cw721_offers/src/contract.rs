@@ -1,11 +1,11 @@
 use crate::state::{offers, CW721_CONTRACT};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    communication::{
-        encode_binary,
+    ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
+        InstantiateMsg as BaseInstantiateMsg,
     },
+    communication::encode_binary,
     cw721::{QueryMsg as Cw721QueryMsg, TokenExtension},
     cw721_offers::{AllOffersResponse, ExecuteMsg, InstantiateMsg, Offer, OfferResponse, QueryMsg},
     error::ContractError,
@@ -37,7 +37,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     CW721_CONTRACT.save(deps.storage, &msg.andromeda_cw721_contract)?;
     ADOContract::default().instantiate(
         deps,

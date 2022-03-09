@@ -1,10 +1,12 @@
+pub mod hooks;
+pub mod modules;
+pub mod operators;
+pub mod ownership;
+
 use crate::{communication::Recipient, withdraw::Withdrawal};
 use cosmwasm_std::Binary;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-pub mod modules;
-pub mod ownership;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {

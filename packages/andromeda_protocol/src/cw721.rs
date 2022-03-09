@@ -8,8 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
-    communication::hooks::AndromedaHook,
+    ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     modules::common::calculate_fee,
     modules::Rate,

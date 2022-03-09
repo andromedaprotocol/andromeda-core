@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use crate::contract::*;
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
-    communication::{
+    ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::{InstantiateType, Module, ModuleType},
     },

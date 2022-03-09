@@ -6,8 +6,8 @@ use cw2::{get_contract_version, set_contract_version};
 use crate::state::{DATA, DEFAULT_KEY};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
+    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
+    communication::{encode_binary, parse_message},
     error::ContractError,
     primitive::{ExecuteMsg, GetValueResponse, InstantiateMsg, MigrateMsg, Primitive, QueryMsg},
     require,
@@ -154,6 +154,7 @@ fn get_name_or_default(name: &Option<String>) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_protocol::ado_base::AndromedaMsg;
     use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 

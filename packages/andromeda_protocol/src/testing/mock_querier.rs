@@ -1,7 +1,10 @@
 use crate::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
-    ado_base::{ownership::ContractOwnerResponse, AndromedaQuery},
-    communication::hooks::{AndromedaHook, OnFundsTransferResponse},
+    ado_base::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        ownership::ContractOwnerResponse,
+        AndromedaQuery,
+    },
     cw721::TransferAgreement,
     cw721::{
         MetadataAttribute, MetadataType, QueryMsg as Cw721QueryMsg, TokenExtension, TokenMetadata,

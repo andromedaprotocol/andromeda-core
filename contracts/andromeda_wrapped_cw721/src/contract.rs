@@ -2,7 +2,7 @@ use crate::state::{ANDROMEDA_CW721_ADDR, CAN_UNWRAP};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
-    communication::{encode_binary, parse_message, query_get, AndromedaMsg, AndromedaQuery},
+    communication::{encode_binary, query_get},
     cw721::{
         ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MetadataAttribute,
         MetadataType, TokenExtension, TokenMetadata,
@@ -33,14 +33,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     CAN_UNWRAP.save(deps.storage, &msg.can_unwrap)?;
     PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
-    let mut resp: Response = ADOContract::default().instantiate(
-        deps,
-        info,
-        BaseInstantiateMsg {
-            ado_type: "wrapped_cw721".to_string(),
-            operators: None,
-        },
-    )?;
+    let mut msgs: Vec<SubMsg> = vec![];
     match msg.cw721_instantiate_type {
         InstantiateType::Address(addr) => ANDROMEDA_CW721_ADDR.save(deps.storage, &addr)?,
         InstantiateType::New(specification) => {
@@ -71,11 +64,19 @@ pub fn instantiate(
                 }),
                 gas_limit: None,
             };
-            resp = resp.add_submessage(msg);
+            msgs.push(msg);
         }
     }
-
-    Ok(resp)
+    Ok(ADOContract::default()
+        .instantiate(
+            deps,
+            info,
+            BaseInstantiateMsg {
+                ado_type: "wrapped_cw721".to_string(),
+                operators: None,
+            },
+        )?
+        .add_submessages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -101,29 +102,9 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(deps, env, info, msg),
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
-    }
-}
-
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
         }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -155,7 +136,7 @@ fn execute_wrap(
     wrapped_token_id: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, &sender)? || is_operator(deps.storage, &sender)?,
+        ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -273,20 +254,9 @@ fn get_original_nft_data(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
-    }
-}
-
-fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(_) => Err(ContractError::UnsupportedOperation {}),
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
 }
 
@@ -294,7 +264,6 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
 mod tests {
     use super::*;
     use andromeda_protocol::{
-        operators::OPERATORS,
         testing::mock_querier::{
             mock_dependencies_custom, MOCK_CW721_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
         },
@@ -314,10 +283,18 @@ mod tests {
         };
 
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(Response::new(), res);
+        assert_eq!(
+            Response::new()
+                .add_attribute("method", "instantiate")
+                .add_attribute("type", "wrapped_cw721"),
+            res
+        );
         assert_eq!(
             "sender".to_string(),
-            CONTRACT_OWNER.load(deps.as_ref().storage).unwrap()
+            ADOContract::default()
+                .owner
+                .load(deps.as_ref().storage)
+                .unwrap()
         );
         assert_eq!(
             MOCK_CW721_CONTRACT.to_owned(),
@@ -361,10 +338,19 @@ mod tests {
             }),
             gas_limit: None,
         };
-        assert_eq!(Response::new().add_submessage(msg), res);
+        assert_eq!(
+            Response::new()
+                .add_submessage(msg)
+                .add_attribute("method", "instantiate")
+                .add_attribute("type", "wrapped_cw721"),
+            res
+        );
         assert_eq!(
             "sender".to_string(),
-            CONTRACT_OWNER.load(deps.as_ref().storage).unwrap()
+            ADOContract::default()
+                .owner
+                .load(deps.as_ref().storage)
+                .unwrap()
         );
         assert!(CAN_UNWRAP.load(deps.as_ref().storage).unwrap());
     }
@@ -377,7 +363,8 @@ mod tests {
         let owner = String::from("owner");
         let token_address = String::from("token_address");
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(&owner))
             .unwrap();
         ANDROMEDA_CW721_ADDR
@@ -467,7 +454,8 @@ mod tests {
         let owner = String::from("owner");
         let token_address = String::from("token_address");
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(&owner))
             .unwrap();
         ANDROMEDA_CW721_ADDR
@@ -545,13 +533,15 @@ mod tests {
         let operator = String::from("operator");
         let token_address = String::from("token_address");
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(&owner))
             .unwrap();
         ANDROMEDA_CW721_ADDR
             .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
             .unwrap();
-        OPERATORS
+        ADOContract::default()
+            .operators
             .save(deps.as_mut().storage, &operator, &true)
             .unwrap();
 
@@ -577,7 +567,8 @@ mod tests {
         let token_id = String::from("token_id");
         let owner = String::from("owner");
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(&owner))
             .unwrap();
         ANDROMEDA_CW721_ADDR
@@ -605,7 +596,8 @@ mod tests {
         let token_id = String::from("token_id");
         let owner = String::from("owner");
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(&owner))
             .unwrap();
         ANDROMEDA_CW721_ADDR
@@ -636,7 +628,8 @@ mod tests {
         let token_id = String::from("original_token_id");
         let owner = String::from("owner");
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(&owner))
             .unwrap();
         ANDROMEDA_CW721_ADDR

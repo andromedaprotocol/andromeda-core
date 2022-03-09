@@ -22,7 +22,7 @@ impl<'a> ADOContract<'a> {
             self.initialize_operators(deps.storage, operators)?;
         }
         Ok(Response::new()
-            .add_attribute("action", "instantiate")
+            .add_attribute("method", "instantiate")
             .add_attribute("type", msg.ado_type))
     }
 
@@ -44,7 +44,10 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::UpdateOperators { operators } => {
                 self.execute_update_operators(deps, info, operators)
             }
-            AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
+            AndromedaMsg::Withdraw {
+                recipient,
+                tokens_to_withdraw,
+            } => self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
         }
     }
 }

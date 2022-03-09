@@ -1,25 +1,17 @@
-use std::convert::TryInto;
-
 use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order, QuerierWrapper,
-    QueryRequest, ReplyOn, Response, StdError, Storage, SubMsg, Uint64, WasmMsg, WasmQuery,
+    to_binary, Binary, Event, QuerierWrapper, QueryRequest, StdError, Storage, SubMsg, WasmQuery,
 };
-use cw_storage_plus::{Bound, Item, Map};
-use schemars::JsonSchema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 
 use crate::modules::ADOContract;
 use andromeda_protocol::{
-    ado_base::modules::{ModuleInfoWithAddress, ModuleType},
-    communication::{
+    ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        query_get, HookMsg,
+        modules::{ModuleInfoWithAddress, ModuleType},
     },
+    communication::HookMsg,
     error::ContractError,
-    factory::CodeIdResponse,
-    primitive::{get_address, AndromedaContract},
     rates::Funds,
-    require,
 };
 
 impl<'a> ADOContract<'a> {

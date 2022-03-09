@@ -1,6 +1,7 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
-    communication::{modules::InstantiateType, Recipient},
+    ado_base::modules::InstantiateType,
+    communication::Recipient,
     error::ContractError,
     swapper::{
         AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, SwapperCw20HookMsg,

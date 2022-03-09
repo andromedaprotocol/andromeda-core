@@ -308,7 +308,7 @@ pub fn execute_update_config(
     astroport_staking_contract: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut config = CONFIG.load(deps.storage)?;

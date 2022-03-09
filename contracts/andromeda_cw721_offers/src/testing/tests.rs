@@ -3,7 +3,7 @@ use crate::{
     state::{offers, CW721_CONTRACT},
 };
 use andromeda_protocol::{
-    communication::hooks::AndromedaHook,
+    ado_base::hooks::AndromedaHook,
     cw721_offers::{ExecuteMsg, InstantiateMsg, Offer, QueryMsg},
     error::ContractError,
     testing::mock_querier::{

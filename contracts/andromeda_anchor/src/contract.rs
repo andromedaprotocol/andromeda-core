@@ -4,8 +4,9 @@ use crate::state::{
 use ado_base::state::ADOContract;
 use andromeda_protocol::anchor::{AnchorMarketMsg, ConfigResponse};
 use andromeda_protocol::{
+    ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     anchor::{ExecuteMsg, InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg},
-    communication::{encode_binary, parse_message, AndromedaMsg, Recipient},
+    communication::{encode_binary, parse_message, Recipient},
     error::ContractError,
     require,
     withdraw::Withdrawal,
@@ -75,7 +76,7 @@ fn execute_andr_receive(
         AndromedaMsg::Receive(data) => match data {
             None => execute_deposit(deps, env, info, None),
             Some(_) => {
-                let recipient: Recipient = parse_message(data)?;
+                let recipient: Recipient = parse_message(&data)?;
                 execute_deposit(deps, env, info, Some(recipient))
             }
         },
@@ -214,8 +215,7 @@ fn withdraw_uusd(
     let mut position = POSITION.load(deps.storage, &recipient_addr)?;
 
     let authorized = recipient_addr == info.sender
-        || is_operator(deps.storage, info.sender.as_str())?
-        || is_contract_owner(deps.storage, info.sender.as_str())?;
+        || ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?;
 
     require(authorized, ContractError::Unauthorized {})?;
 
@@ -259,8 +259,7 @@ fn withdraw_aust(
     let mut position = POSITION.load(deps.storage, &recipient_addr)?;
 
     let authorized = recipient_addr == info.sender
-        || is_operator(deps.storage, info.sender.as_str())?
-        || is_contract_owner(deps.storage, info.sender.as_str())?;
+        || ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?;
 
     require(authorized, ContractError::Unauthorized {})?;
 
@@ -343,7 +342,7 @@ fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
@@ -368,7 +367,7 @@ fn handle_andromeda_query(
 ) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let recipient: String = parse_message(data)?;
+            let recipient: String = parse_message(&data)?;
             encode_binary(&query_position(deps, recipient)?)
         }
         _ => ADOContract::default().query(deps, env, msg, query),

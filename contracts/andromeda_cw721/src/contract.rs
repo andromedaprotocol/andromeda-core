@@ -7,11 +7,11 @@ use cosmwasm_std::{
 
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::modules::ADOType,
-    communication::{
-        encode_binary,
+    ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
+        modules::ADOType,
     },
+    communication::encode_binary,
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
     error::ContractError,
     primitive::PRIMITVE_CONTRACT,

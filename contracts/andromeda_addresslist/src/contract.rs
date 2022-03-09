@@ -4,8 +4,8 @@ use andromeda_protocol::{
         add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
         InstantiateMsg, MigrateMsg, QueryMsg, IS_INCLUSIVE,
     },
-    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    communication::{encode_binary, hooks::AndromedaHook, parse_message},
+    ado_base::{hooks::AndromedaHook, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
+    communication::{encode_binary, parse_message},
     error::ContractError,
     require,
 };
@@ -60,7 +60,7 @@ fn execute_add_address(
     address: String,
 ) -> Result<Response, ContractError> {
     require(
-        is_operator(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     add_address(deps.storage, &address)?;
@@ -77,7 +77,7 @@ fn execute_remove_address(
     address: String,
 ) -> Result<Response, ContractError> {
     require(
-        is_operator(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -101,11 +101,11 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
         QueryMsg::AndrHook(msg) => encode_binary(&handle_andr_hook(deps, msg)?),
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
 }
 
@@ -124,7 +124,11 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Response, Contract
     }
 }
 
-fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
             let address: String = parse_message(&data)?;
@@ -144,7 +148,6 @@ fn query_address(deps: Deps, address: &str) -> Result<IncludesAddressResponse, C
 mod tests {
     use super::*;
     use andromeda_protocol::address_list::ADDRESS_LIST;
-    use andromeda_protocol::operators::OPERATORS;
     use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
@@ -173,10 +176,12 @@ mod tests {
 
         //input operator for test
 
-        OPERATORS
+        ADOContract::default()
+            .operators
             .save(deps.as_mut().storage, operator, &true)
             .unwrap();
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &info.sender)
             .unwrap();
 
@@ -226,10 +231,12 @@ mod tests {
         let address = "whitelistee";
 
         //save operator
-        OPERATORS
+        ADOContract::default()
+            .operators
             .save(deps.as_mut().storage, operator, &true)
             .unwrap();
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &info.sender)
             .unwrap();
 
@@ -268,10 +275,12 @@ mod tests {
 
         // Mark it as a whitelist.
         IS_INCLUSIVE.save(deps.as_mut().storage, &true).unwrap();
-        OPERATORS
+        ADOContract::default()
+            .operators
             .save(deps.as_mut().storage, operator, &true)
             .unwrap();
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &info.sender)
             .unwrap();
 
@@ -309,10 +318,12 @@ mod tests {
 
         // Mark it as a blacklist.
         IS_INCLUSIVE.save(deps.as_mut().storage, &false).unwrap();
-        OPERATORS
+        ADOContract::default()
+            .operators
             .save(deps.as_mut().storage, operator, &true)
             .unwrap();
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &info.sender)
             .unwrap();
 

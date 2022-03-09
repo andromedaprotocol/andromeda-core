@@ -3,7 +3,6 @@ use ado_base::state::ADOContract;
 use andromeda_protocol::{
     ado_base::{AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     communication::encode_binary,
-    communication::parse_message,
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -183,7 +182,7 @@ fn execute_update_recipients(
     recipients: Vec<AddressPercent>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -206,7 +205,7 @@ fn execute_update_lock(
     lock: bool,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut splitter = SPLITTER.load(deps.storage)?;
@@ -226,7 +225,7 @@ fn execute_update_address_list(
     address_list: Option<AddressListModule>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -314,7 +313,8 @@ mod tests {
         let lock = true;
         let msg = ExecuteMsg::UpdateLock { lock };
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
             .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
@@ -322,7 +322,8 @@ mod tests {
             panic!()
         }
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
@@ -354,7 +355,8 @@ mod tests {
         let env = mock_env();
         let owner = "creator";
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
@@ -419,7 +421,8 @@ mod tests {
         };
 
         //incorrect owner
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
             .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
@@ -427,7 +430,8 @@ mod tests {
             panic!();
         }
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
@@ -478,7 +482,8 @@ mod tests {
         let msg = ExecuteMsg::Send {};
 
         //incorrect owner
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
             .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
@@ -486,7 +491,8 @@ mod tests {
             panic!();
         }
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
@@ -590,7 +596,8 @@ mod tests {
         let msg = ExecuteMsg::Send {};
 
         //incorrect owner
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
             .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
@@ -598,7 +605,8 @@ mod tests {
             panic!()
         }
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
 
