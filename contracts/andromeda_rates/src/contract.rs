@@ -60,8 +60,8 @@ pub fn execute(
 
 fn execute_andr_receive(
     deps: DepsMut,
-    info: MessageInfo,
     env: Env,
+    info: MessageInfo,
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {

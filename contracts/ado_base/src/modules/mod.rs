@@ -244,7 +244,11 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Validates all modules.
-    fn validate_modules(&self, modules: &[Module], ado_type: ADOType) -> Result<(), ContractError> {
+    pub fn validate_modules(
+        &self,
+        modules: &[Module],
+        ado_type: ADOType,
+    ) -> Result<(), ContractError> {
         for module in modules {
             module.validate(modules, &ado_type)?;
         }

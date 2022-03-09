@@ -1,8 +1,9 @@
 use crate::state::{Config, CONFIG};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     astroport::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    communication::{encode_binary, parse_message},
+    communication::encode_binary,
     error::ContractError,
     require,
     swapper::{AssetInfo, SwapperCw20HookMsg, SwapperMsg},
