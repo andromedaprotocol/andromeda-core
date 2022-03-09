@@ -6,6 +6,7 @@ pub mod common;
 pub mod cw20;
 pub mod error;
 pub mod factory;
+pub mod gumball;
 pub mod mirror_wrapped_cdp;
 pub mod modules;
 pub mod operators;

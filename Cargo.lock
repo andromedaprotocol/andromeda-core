@@ -80,6 +80,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-gumball"
+version = "0.1.0"
+dependencies = [
+ "andromeda-protocol",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.9.1",
+ "cw2 0.9.1",
+ "cw721",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-mirror-wrapped-cdp"
 version = "0.1.0"
 dependencies = [
