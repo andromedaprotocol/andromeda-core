@@ -2,7 +2,9 @@ use crate::state::{
     auction_infos, read_auction_infos, read_bids, AuctionInfo, TokenAuctionState, BIDS,
     NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     auction::{
         AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
         InstantiateMsg, QueryMsg,
@@ -10,7 +12,6 @@ use andromeda_protocol::{
     common::OrderBy,
     communication::encode_binary,
     error::ContractError,
-    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
 use cosmwasm_std::{
@@ -28,9 +29,15 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> StdResult<Response> {
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     NEXT_AUCTION_ID.save(deps.storage, &Uint128::from(1u128))?;
-    Ok(Response::new().add_attribute("method", "instantiate"))
+    ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "auction".to_string(),
+            operators: None,
+        },
+    )
 }
 
 #[entry_point]

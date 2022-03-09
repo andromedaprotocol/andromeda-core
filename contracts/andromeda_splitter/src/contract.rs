@@ -1,15 +1,15 @@
 use crate::state::SPLITTER;
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
+    ado_base::{AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     communication::encode_binary,
-    communication::{parse_message, AndromedaMsg, AndromedaQuery},
+    communication::parse_message,
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         hooks::{HookResponse, MessageHooks},
         Module, Modules,
     },
-    operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     splitter::{
         validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse,
@@ -51,13 +51,15 @@ pub fn instantiate(
         modules.hook(|module| module.on_instantiate(&deps, info.clone(), env.clone()))?;
 
     SPLITTER.save(deps.storage, &splitter)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-
-    Ok(Response::new()
-        .add_attributes(vec![
-            attr("action", "instantiate"),
-            attr("type", "splitter"),
-        ])
+    let res = ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "splitter".to_string(),
+            operators: None,
+        },
+    )?;
+    Ok(res
         .add_submessages(inst_msgs.msgs)
         .add_events(inst_msgs.events))
 }
@@ -91,17 +93,13 @@ pub fn execute(
 
 pub fn execute_andromeda(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(..) => execute_send(deps, info),
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
+        _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
 }
 
@@ -266,28 +264,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
-        }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
 }
 

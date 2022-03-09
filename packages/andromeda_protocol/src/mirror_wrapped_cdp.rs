@@ -1,4 +1,4 @@
-use crate::communication::{AndromedaMsg, AndromedaQuery};
+use crate::ado_base::{AndromedaMsg, AndromedaQuery};
 use cw20::Cw20ReceiveMsg;
 pub use mirror_protocol::{
     gov::{Cw20HookMsg as MirrorGovCw20HookMsg, ExecuteMsg as MirrorGovExecuteMsg},

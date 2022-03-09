@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 
 pub mod address_list;
+pub mod ado_base;
 pub mod anchor;
 pub mod astroport;
 pub mod auction;
@@ -13,8 +14,6 @@ pub mod error;
 pub mod factory;
 pub mod mirror_wrapped_cdp;
 pub mod modules;
-pub mod operators;
-pub mod ownership;
 pub mod primitive;
 pub mod rates;
 pub mod receipt;
@@ -28,7 +27,6 @@ pub mod wrapped_cw721;
 pub mod testing;
 
 pub mod timelock;
-pub mod token;
 
 /// A simple implementation of Solidity's "require" function. Takes a precondition and an error to return if the precondition is not met.
 ///

@@ -1,8 +1,9 @@
 use crate::{
+    ado_base::{AndromedaMsg, AndromedaQuery},
     communication::{
         encode_binary,
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        AndromedaMsg, AndromedaQuery, Recipient,
+        Recipient,
     },
     error::ContractError,
     modules::Rate,

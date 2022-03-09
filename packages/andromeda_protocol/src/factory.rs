@@ -1,5 +1,5 @@
 use crate::{
-    communication::{AndromedaMsg, AndromedaQuery},
+    ado_base::{AndromedaMsg, AndromedaQuery},
     modules::ModuleDefinition,
 };
 use schemars::JsonSchema;

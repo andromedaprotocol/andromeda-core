@@ -1,5 +1,6 @@
-use crate::{msg::AndromedaQuery, state::ADOContract};
+use crate::state::ADOContract;
 use andromeda_protocol::{
+    ado_base::{ownership::ContractOwnerResponse, AndromedaQuery},
     communication::{encode_binary, parse_message},
     error::ContractError,
     require,
@@ -78,10 +79,4 @@ pub struct IsOperatorResponse {
 #[serde(rename_all = "snake_case")]
 pub struct OperatorsResponse {
     pub operators: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct ContractOwnerResponse {
-    pub owner: String,
 }

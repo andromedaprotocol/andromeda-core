@@ -1,7 +1,16 @@
-use andromeda_protocol::{communication::Recipient, withdraw::Withdrawal};
+use crate::{communication::Recipient, withdraw::Withdrawal};
 use cosmwasm_std::Binary;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+pub mod modules;
+pub mod ownership;
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct InstantiateMsg {
+    pub ado_type: String,
+    pub operators: Option<Vec<String>>,
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]

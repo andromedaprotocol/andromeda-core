@@ -5,6 +5,7 @@ use cosmwasm_std::{
     Response, StdError, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
     communication::{
         hooks::AndromedaHook,
@@ -15,7 +16,6 @@ use andromeda_protocol::{
     },
     cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     error::ContractError,
-    ownership::CONTRACT_OWNER,
     primitive::PRIMITVE_CONTRACT,
     rates::Funds,
     require,
@@ -45,7 +45,9 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
+    ADOContract::default()
+        .owner
+        .save(deps.storage, &info.sender)?;
     PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let mut resp = Response::default();

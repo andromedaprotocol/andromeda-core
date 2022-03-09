@@ -1,11 +1,31 @@
-use crate::{msg::AndromedaMsg, state::ADOContract};
-use andromeda_protocol::{communication::parse_message, error::ContractError, require};
+use crate::state::ADOContract;
+use andromeda_protocol::{
+    ado_base::{AndromedaMsg, InstantiateMsg},
+    communication::parse_message,
+    error::ContractError,
+    require,
+};
 use cosmwasm_std::{attr, DepsMut, Env, MessageInfo, Order, Response};
 use serde::de::DeserializeOwned;
 
 type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
 
 impl<'a> ADOContract<'a> {
+    pub fn instantiate(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        msg: InstantiateMsg,
+    ) -> Result<Response, ContractError> {
+        self.owner.save(deps.storage, &info.sender)?;
+        if let Some(operators) = msg.operators {
+            self.initialize_operators(deps.storage, operators)?;
+        }
+        Ok(Response::new()
+            .add_attribute("action", "instantiate")
+            .add_attribute("type", msg.ado_type))
+    }
+
     pub fn execute<E: DeserializeOwned>(
         &self,
         deps: DepsMut,

@@ -5,7 +5,8 @@ use cosmwasm_std::{
 use crate::state::{escrows, get_key, get_keys_for_recipient, State, STATE};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    communication::{encode_binary, parse_message, Recipient},
     error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -13,8 +14,6 @@ use andromeda_protocol::{
         hooks::HookResponse,
     },
     modules::{hooks::MessageHooks, Module},
-    operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     timelock::{
         Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
@@ -42,12 +41,15 @@ pub fn instantiate(
     let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
 
     STATE.save(deps.storage, &state)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    Ok(Response::new()
-        .add_attributes(vec![
-            attr("action", "instantiate"),
-            attr("type", "timelock"),
-        ])
+    let res = ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "timelock".to_string(),
+            operators: None,
+        },
+    )?;
+    Ok(res
         .add_submessages(inst_msgs.msgs)
         .add_events(inst_msgs.events))
 }
@@ -80,7 +82,6 @@ pub fn execute(
         let addr_list = address_list;
         addr_list.on_execute(&deps, info.clone(), env.clone())?;
     }
-    let test = ADOContract::default();
     match msg {
         ExecuteMsg::HoldFunds {
             condition,
@@ -101,29 +102,6 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
-    }
-}
-
-fn execute_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
-        }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -283,27 +261,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         )?),
         QueryMsg::GetTimelockConfig {} => encode_binary(&query_config(deps)?),
         QueryMsg::AndrQuery(msg) => contract.query(deps, env, msg, query),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
-        }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
     }
 }
 

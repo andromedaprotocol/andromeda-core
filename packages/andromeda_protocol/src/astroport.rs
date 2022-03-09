@@ -1,5 +1,5 @@
 use crate::{
-    communication::{AndromedaMsg, AndromedaQuery},
+    ado_base::{AndromedaMsg, AndromedaQuery},
     swapper::{SwapperCw20HookMsg, SwapperMsg},
 };
 use astroport::{

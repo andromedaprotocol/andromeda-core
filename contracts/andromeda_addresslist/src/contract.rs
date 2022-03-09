@@ -1,17 +1,12 @@
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
     address_list::{
         add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
         InstantiateMsg, MigrateMsg, QueryMsg, IS_INCLUSIVE,
     },
-    communication::{
-        encode_binary, hooks::AndromedaHook, parse_message, AndromedaMsg, AndromedaQuery,
-    },
+    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
+    communication::{encode_binary, hooks::AndromedaHook, parse_message},
     error::ContractError,
-    operators::{
-        execute_update_operators, initialize_operators, is_operator, query_is_operator,
-        query_operators,
-    },
-    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
 };
 #[cfg(not(feature = "library"))]
@@ -32,13 +27,15 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    initialize_operators(deps.storage, msg.operators)?;
     IS_INCLUSIVE.save(deps.storage, &msg.is_inclusive)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    Ok(Response::default().add_attributes(vec![
-        attr("action", "instantiate"),
-        attr("type", "address_list"),
-    ]))
+    ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "address_list".to_string(),
+            operators: Some(msg.operators),
+        },
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -49,31 +46,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
         ExecuteMsg::AddAddress { address } => execute_add_address(deps, info, address),
         ExecuteMsg::RemoveAddress { address } => execute_remove_address(deps, info, address),
-    }
-}
-
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
-        }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -150,14 +127,10 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Response, Contract
 fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let address: String = parse_message(data)?;
+            let address: String = parse_message(&data)?;
             encode_binary(&query_address(deps, &address)?)
         }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        _ => ADOContract::default().query(deps, env, msg, query),
     }
 }
 

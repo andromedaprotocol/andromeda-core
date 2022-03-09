@@ -140,41 +140,6 @@ mod tests {
     use cosmwasm_std::{coin, Coin, Uint128};
 
     #[test]
-    fn test_is_unique() {
-        let module = AddressListModule {
-            operators: Some(vec![]),
-            address: None,
-            code_id: None,
-            inclusive: true,
-        };
-        let duplicate_module = ModuleDefinition::Whitelist {
-            operators: Some(vec![]),
-            address: None,
-            code_id: None,
-        };
-        let similar_module = ModuleDefinition::Whitelist {
-            operators: Some(vec![String::default()]),
-            address: None,
-            code_id: None,
-        };
-        let other_module = ModuleDefinition::Taxable {
-            rate: Rate::Percent(2u128.into()),
-            receivers: vec![],
-            description: None,
-        };
-
-        let valid = vec![module.as_definition(), other_module.clone()];
-        assert!(is_unique(&module, &valid));
-
-        let duplicate = vec![module.as_definition(), other_module, duplicate_module];
-
-        assert!(!is_unique(&module, &duplicate));
-
-        let similar = vec![module.as_definition(), similar_module];
-        assert!(!is_unique(&module, &similar));
-    }
-
-    #[test]
     fn test_deduct_funds() {
         let mut funds: Vec<Coin> = vec![coin(100, "uluna")];
 

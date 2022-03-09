@@ -1,14 +1,13 @@
 use crate::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
+    ado_base::{ownership::ContractOwnerResponse, AndromedaQuery},
     communication::hooks::{AndromedaHook, OnFundsTransferResponse},
-    communication::AndromedaQuery,
     cw721::TransferAgreement,
     cw721::{
         MetadataAttribute, MetadataType, QueryMsg as Cw721QueryMsg, TokenExtension, TokenMetadata,
     },
     cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
     factory::{CodeIdResponse, QueryMsg as FactoryQueryMsg},
-    ownership::ContractOwnerResponse,
     primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
     rates::{Funds, QueryMsg as RatesQueryMsg},
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},

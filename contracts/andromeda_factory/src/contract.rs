@@ -4,14 +4,14 @@ use crate::{
         is_address_defined, is_creator, read_address, read_code_id, store_address, store_code_id,
     },
 };
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     communication::encode_binary,
     communication::{parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     modules::ModuleDefinition,
-    operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     token::InstantiateMsg as TokenInstantiateMsg,
 };
@@ -33,10 +33,14 @@ pub fn instantiate(
     _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-
-    Ok(Response::default()
-        .add_attributes(vec![attr("action", "instantiate"), attr("type", "factory")]))
+    ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "factory".to_string(),
+            operators: None,
+        },
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -74,29 +78,9 @@ pub fn execute(
             code_id_key,
             code_id,
         } => add_update_code_id(deps, env, info, code_id_key, code_id),
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
-    }
-}
-
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
         }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -237,25 +221,25 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetAddress { symbol } => encode_binary(&query_address(deps, symbol)?),
         QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
 }
 
-fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
             let code_id_key: String = parse_message(data)?;
             encode_binary(&query_code_id(deps, code_id_key)?)
         }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        _ => ADOContract::default().query(deps, env, msg, query),
     }
 }
 

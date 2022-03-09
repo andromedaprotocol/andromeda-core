@@ -1,14 +1,14 @@
 use crate::state::{Config, CONFIG};
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
+    ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     communication::{
         encode_binary,
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        parse_message, AndromedaMsg, AndromedaQuery,
+        parse_message,
     },
     error::ContractError,
     modules::common::{calculate_fee, deduct_funds},
-    operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     rates::{
         ExecuteMsg, Funds, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
         QueryMsg, RateInfo,
@@ -34,20 +34,26 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = Config { rates: msg.rates };
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "rates")]))
+    ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "rates".to_string(),
+            operators: None,
+        },
+    )
 }
 
 #[entry_point]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, info, msg),
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::UpdateRates { rates } => execute_update_rates(deps, info, rates),
     }
 }
@@ -55,18 +61,15 @@ pub fn execute(
 fn execute_andr_receive(
     deps: DepsMut,
     info: MessageInfo,
+    env: Env,
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(data) => {
-            let rates: Vec<RateInfo> = parse_message(data)?;
+            let rates: Vec<RateInfo> = parse_message(&data)?;
             execute_update_rates(deps, info, rates)
         }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
+        _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
 }
 
@@ -76,7 +79,7 @@ fn execute_update_rates(
     rates: Vec<RateInfo>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut config = CONFIG.load(deps.storage)?;
@@ -98,25 +101,25 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::AndrHook(msg) => handle_andromeda_hook(deps, msg),
         QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
     }
 }
 
-fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let funds: Funds = parse_message(data)?;
+            let funds: Funds = parse_message(&data)?;
             encode_binary(&query_deducted_funds(deps, funds)?)
         }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        _ => ADOContract::default().query(deps, env, msg, query),
     }
 }
 

@@ -1,5 +1,7 @@
 use crate::state::{ANDROMEDA_CW721_ADDR, CAN_UNWRAP};
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     communication::{encode_binary, parse_message, query_get, AndromedaMsg, AndromedaQuery},
     cw721::{
         ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MetadataAttribute,
@@ -7,8 +9,6 @@ use andromeda_protocol::{
     },
     error::ContractError,
     factory::CodeIdResponse,
-    operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     primitive::{get_address, AndromedaContract, PRIMITVE_CONTRACT},
     require,
     response::get_reply_address,
@@ -31,10 +31,16 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     CAN_UNWRAP.save(deps.storage, &msg.can_unwrap)?;
     PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
-    let mut resp: Response = Response::new();
+    let mut resp: Response = ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "wrapped_cw721".to_string(),
+            operators: None,
+        },
+    )?;
     match msg.cw721_instantiate_type {
         InstantiateType::Address(addr) => ANDROMEDA_CW721_ADDR.save(deps.storage, &addr)?,
         InstantiateType::New(specification) => {

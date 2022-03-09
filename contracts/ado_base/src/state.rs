@@ -1,13 +1,19 @@
 use andromeda_protocol::{
-    communication::{parse_message, QueryMsg},
+    ado_base::{modules::Module, QueryMsg},
+    communication::parse_message,
     error::ContractError,
 };
 use cosmwasm_std::{Addr, Binary, Storage};
 use cw_storage_plus::{Item, Map};
+use terraswap::asset::AssetInfo;
 
 pub struct ADOContract<'a> {
     pub owner: Item<'a, Addr>,
     pub operators: Map<'a, &'a str, bool>,
+    pub module_info: Map<'a, &'a str, Module>,
+    pub module_addr: Map<'a, &'a str, Addr>,
+    pub module_idx: Item<'a, u64>,
+    pub withdrawable_tokens: Map<'a, &'a str, AssetInfo>,
 }
 
 impl<'a> Default for ADOContract<'a> {
@@ -15,6 +21,10 @@ impl<'a> Default for ADOContract<'a> {
         ADOContract {
             owner: Item::new("owner"),
             operators: Map::new("operators"),
+            module_info: Map::new("andr_modules"),
+            module_addr: Map::new("andr_module_addresses"),
+            module_idx: Item::new("andr_module_idx"),
+            withdrawable_tokens: Map::new("withdrawable_tokens"),
         }
     }
 }
@@ -39,7 +49,7 @@ impl<'a> ADOContract<'a> {
         Ok(addr == owner)
     }
 
-    pub fn initialize_operators(
+    pub(crate) fn initialize_operators(
         &self,
         storage: &mut dyn Storage,
         operators: Vec<String>,

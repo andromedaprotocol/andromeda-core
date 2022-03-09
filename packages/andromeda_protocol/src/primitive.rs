@@ -1,5 +1,6 @@
 use crate::{
-    communication::{encode_binary, query_get, AndromedaMsg, AndromedaQuery},
+    ado_base::{AndromedaMsg, AndromedaQuery},
+    communication::{encode_binary, query_get},
     error::ContractError,
 };
 use cosmwasm_std::{Addr, Coin, QuerierWrapper, StdError, Storage, Uint128};

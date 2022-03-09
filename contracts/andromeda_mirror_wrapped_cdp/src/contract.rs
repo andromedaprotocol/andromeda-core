@@ -7,7 +7,9 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{Config, CONFIG};
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     common::get_tax_deducted_funds,
     communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
     error::ContractError,
@@ -15,11 +17,6 @@ use andromeda_protocol::{
         ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, MirrorLockExecuteMsg,
         MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
-    operators::{
-        execute_update_operators, initialize_operators, is_operator, query_is_operator,
-        query_operators,
-    },
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     withdraw::{add_withdrawable_token, execute_withdraw},
 };
@@ -38,9 +35,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    if let Some(operators) = msg.operators {
-        initialize_operators(deps.storage, operators)?;
-    }
     let config = Config {
         mirror_mint_contract: deps.api.addr_validate(&msg.mirror_mint_contract)?,
         mirror_staking_contract: deps.api.addr_validate(&msg.mirror_staking_contract)?,
@@ -61,10 +55,14 @@ pub fn instantiate(
     )?;
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    Ok(Response::new()
-        .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender))
+    ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "mirror".to_string(),
+            operators: msg.operators,
+        },
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -258,21 +256,11 @@ fn execute_andr_receive(
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
-        }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
         AndromedaMsg::Withdraw {
             recipient,
             tokens_to_withdraw,
         } => execute_withdraw(deps.as_ref(), env, info, recipient, tokens_to_withdraw),
+        _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
 }
 
@@ -436,29 +424,8 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
-        }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
     }
 }
 

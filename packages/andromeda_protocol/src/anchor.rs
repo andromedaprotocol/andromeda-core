@@ -1,4 +1,7 @@
-use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
+use crate::{
+    ado_base::{AndromedaMsg, AndromedaQuery},
+    communication::Recipient,
+};
 use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

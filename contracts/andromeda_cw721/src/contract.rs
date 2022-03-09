@@ -5,6 +5,7 @@ use cosmwasm_std::{
     Reply, Response, StdError, Storage, SubMsg, Uint128,
 };
 
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
     communication::{
         encode_binary,
@@ -17,8 +18,6 @@ use andromeda_protocol::{
     },
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
     error::ContractError,
-    operators::execute_update_operators,
-    ownership::{execute_update_owner, CONTRACT_OWNER},
     primitive::PRIMITVE_CONTRACT,
     rates::{get_tax_amount, Funds},
     require,
@@ -35,7 +34,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
+    ADOContract::default()
+        .owner
+        .save(deps.storage, &info.sender)?;
     PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
 
     let sender = info.sender.as_str();
@@ -153,7 +154,9 @@ pub fn execute(
         ExecuteMsg::AlterModule { module_idx, module } => {
             execute_alter_module(deps, info, module_idx, &module, ADOType::CW721)
         }
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
         _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
     }
 }
@@ -164,28 +167,6 @@ fn is_token_archived(storage: &dyn Storage, token_id: &str) -> Result<(), Contra
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     Ok(())
-}
-
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
-        }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
-    }
 }
 
 fn execute_transfer(
