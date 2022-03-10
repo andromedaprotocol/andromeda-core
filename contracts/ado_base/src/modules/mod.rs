@@ -1,21 +1,12 @@
 use std::convert::TryInto;
 
 use crate::state::ADOContract;
-use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, CosmosMsg, DepsMut, Event, MessageInfo, Order, QuerierWrapper,
-    QueryRequest, ReplyOn, Response, StdError, Storage, SubMsg, Uint64, WasmMsg, WasmQuery,
-};
-use cw_storage_plus::{Bound, Item, Map};
-use schemars::JsonSchema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use cosmwasm_std::{Api, DepsMut, MessageInfo, Order, QuerierWrapper, Response, Storage, Uint64};
+use cw_storage_plus::Bound;
 
 use andromeda_protocol::{
-    ado_base::modules::{ADOType, InstantiateType, Module, ModuleInfoWithAddress, ModuleType},
-    communication::{query_get, HookMsg},
+    ado_base::modules::{ADOType, InstantiateType, Module, ModuleInfoWithAddress},
     error::ContractError,
-    factory::CodeIdResponse,
-    primitive::{get_address, AndromedaContract},
-    rates::Funds,
     require,
 };
 
@@ -260,7 +251,11 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_info};
+    use andromeda_protocol::ado_base::modules::ModuleType;
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_info},
+        Addr,
+    };
 
     #[test]
     fn test_execute_register_module_unauthorized() {

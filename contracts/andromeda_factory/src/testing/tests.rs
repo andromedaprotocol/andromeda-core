@@ -1,21 +1,16 @@
-use crate::contract::{execute, instantiate};
-use crate::reply::REPLY_CREATE_TOKEN;
+use crate::contract::{ instantiate};
 
 use andromeda_protocol::{
-    factory::{ExecuteMsg, InstantiateMsg},
-    modules::ModuleDefinition,
-    modules::Rate,
+    factory::{ InstantiateMsg},
 };
 use cosmwasm_std::{
-    attr,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, ReplyOn, Response, SubMsg, WasmMsg,
 };
 
-static TOKEN_CODE_ID: u64 = 0;
-const TOKEN_NAME: &str = "test";
-const TOKEN_SYMBOL: &str = "TT";
-const ADDRESS_LIST_CODE_ID: u64 = 1;
+//static TOKEN_CODE_ID: u64 = 0;
+//const TOKEN_NAME: &str = "test";
+//const TOKEN_SYMBOL: &str = "TT";
+//const ADDRESS_LIST_CODE_ID: u64 = 1;
 // const RECEIPT_CODE_ID: u64 = 2;
 
 #[test]

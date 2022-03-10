@@ -135,7 +135,6 @@ pub fn deduct_payment(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modules::address_list::AddressListModule;
     use crate::modules::Rate;
     use cosmwasm_std::{coin, Coin, Uint128};
 

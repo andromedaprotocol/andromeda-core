@@ -6,7 +6,7 @@ use crate::{
 };
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     communication::{encode_binary, parse_message},
     error::ContractError,
     factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
@@ -14,8 +14,7 @@ use andromeda_protocol::{
     require,
 };
 use cosmwasm_std::{
-    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError,
-    SubMsg, WasmMsg,
+    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -85,10 +84,10 @@ pub fn execute(
 pub fn create(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
-    name: String,
+    _info: MessageInfo,
+    _name: String,
     symbol: String,
-    modules: Vec<ModuleDefinition>,
+    _modules: Vec<ModuleDefinition>,
 ) -> Result<Response, ContractError> {
     //let config = read_config(deps.storage)?;
 
@@ -96,9 +95,11 @@ pub fn create(
         !is_address_defined(deps.storage, symbol.to_string())?,
         ContractError::SymbolInUse {},
     )?;
+    //TODO: make this work with new cw721
+    Ok(Response::new())
 
     //Assign Code IDs to Modules
-    let updated_modules: Vec<ModuleDefinition> = modules
+    /*let updated_modules: Vec<ModuleDefinition> = modules
         .iter()
         .map(|m| match m {
             ModuleDefinition::Whitelist {
@@ -132,9 +133,7 @@ pub fn create(
         })
         .collect();
 
-    //TODO: make this work with new cw721
-    Ok(Response::new())
-    /*let token_inst_msg = TokenInstantiateMsg {
+    let token_inst_msg = TokenInstantiateMsg {
         name: name.to_string(),
         symbol: symbol.to_string(),
         minter: info.sender.to_string(),
@@ -265,8 +264,8 @@ mod tests {
         Addr,
     };
 
-    static TOKEN_CODE_ID: u64 = 0;
-    const TOKEN_NAME: &str = "test";
+    //static TOKEN_CODE_ID: u64 = 0;
+    //const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "TT";
 
     #[test]

@@ -174,7 +174,7 @@ pub fn on_address_list_reply(deps: DepsMut, msg: Reply) -> Result<Response, Cont
 mod tests {
     use cosmwasm_std::testing::{mock_env, mock_info};
 
-    use crate::{modules::Rate, testing::mock_querier::mock_dependencies_custom};
+    use crate::testing::mock_querier::mock_dependencies_custom;
 
     use super::*;
     // use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MockQuerier};

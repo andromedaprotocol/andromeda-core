@@ -1,4 +1,4 @@
-use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, Event, MessageInfo, SubMsg};
+use cosmwasm_std::{Coin, DepsMut, Env, Event, MessageInfo, SubMsg};
 use cw721::Expiration;
 
 use crate::error::ContractError;

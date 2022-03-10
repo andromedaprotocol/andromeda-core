@@ -17,7 +17,7 @@ use astroport::{
     },
 };
 use cosmwasm_std::{
-    attr, entry_point, from_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    entry_point, from_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     QuerierWrapper, Response, StdResult, Uint128, WasmMsg,
 };
 
