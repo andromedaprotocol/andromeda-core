@@ -159,3 +159,124 @@ impl Module {
 fn contains_module(modules: &[Module], module_type: ModuleType) -> bool {
     modules.iter().any(|m| m.module_type == module_type)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_addresslist() {
+        let addresslist_module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
+        };
+
+        let res = addresslist_module.validate(
+            &[addresslist_module.clone(), addresslist_module.clone()],
+            &ADOType::CW721,
+        );
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let auction_module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("".into()),
+            is_mutable: false,
+        };
+        addresslist_module
+            .validate(
+                &[addresslist_module.clone(), auction_module],
+                &ADOType::CW721,
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn test_validate_auction() {
+        let module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
+        };
+
+        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let res = module.validate(&[module.clone()], &ADOType::CW20);
+        assert_eq!(
+            ContractError::IncompatibleModules {
+                msg: "An Auction module cannot be used for a CW20 ADO".to_string()
+            },
+            res.unwrap_err()
+        );
+
+        let other_module = Module {
+            module_type: ModuleType::Rates,
+            instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
+        };
+        module
+            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_validate_rates() {
+        let module = Module {
+            module_type: ModuleType::Rates,
+            instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
+        };
+
+        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let other_module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
+        };
+        module
+            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_validate_receipt() {
+        let module = Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
+        };
+
+        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+
+        let other_module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("".to_string()),
+            is_mutable: false,
+        };
+        module
+            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_validate_uniqueness() {
+        let module1 = Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address("addr1".to_string()),
+            is_mutable: false,
+        };
+
+        let module2 = Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address("addr2".to_string()),
+            is_mutable: false,
+        };
+
+        let res = module1.validate(&[module1.clone(), module2], &ADOType::CW721);
+        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+    }
+}

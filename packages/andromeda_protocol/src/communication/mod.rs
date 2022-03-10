@@ -12,8 +12,6 @@ use crate::{
     error::ContractError,
 };
 
-pub mod modules;
-
 // ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ADORecipient {

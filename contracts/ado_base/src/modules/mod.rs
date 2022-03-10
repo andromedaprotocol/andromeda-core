@@ -256,3 +256,430 @@ impl<'a> ADOContract<'a> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_info};
+
+    #[test]
+    fn test_execute_register_module_unauthorized() {
+        let mut deps = mock_dependencies(&[]);
+
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: false,
+        };
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .owner
+            .save(deps_mut.storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = ADOContract::default().execute_register_module(
+            &deps_mut.querier,
+            deps_mut.storage,
+            deps_mut.api,
+            "sender",
+            &module,
+            ADOType::CW20,
+            true,
+        );
+
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_register_module_addr() {
+        let mut deps = mock_dependencies(&[]);
+
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: false,
+        };
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .owner
+            .save(deps_mut.storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = ADOContract::default()
+            .execute_register_module(
+                &deps_mut.querier,
+                deps_mut.storage,
+                deps_mut.api,
+                "owner",
+                &module,
+                ADOType::CW20,
+                true,
+            )
+            .unwrap();
+
+        assert_eq!(
+            Response::default().add_attribute("action", "register_module"),
+            res
+        );
+
+        assert_eq!(
+            module,
+            ADOContract::default()
+                .module_info
+                .load(deps.as_mut().storage, "1")
+                .unwrap()
+        );
+
+        assert_eq!(
+            "address".to_string(),
+            ADOContract::default()
+                .module_addr
+                .load(deps.as_mut().storage, "1")
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_execute_register_module_validate() {
+        let mut deps = mock_dependencies(&[]);
+
+        let module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: false,
+        };
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .owner
+            .save(deps_mut.storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = ADOContract::default().execute_register_module(
+            &deps_mut.querier,
+            deps_mut.storage,
+            deps_mut.api,
+            "owner",
+            &module,
+            ADOType::CW20,
+            true,
+        );
+
+        assert_eq!(
+            ContractError::IncompatibleModules {
+                msg: "An Auction module cannot be used for a CW20 ADO".to_string()
+            },
+            res.unwrap_err(),
+        );
+
+        let res = ADOContract::default()
+            .execute_register_module(
+                &deps_mut.querier,
+                deps_mut.storage,
+                deps_mut.api,
+                "owner",
+                &module,
+                ADOType::CW20,
+                false,
+            )
+            .unwrap();
+
+        assert_eq!(
+            Response::default().add_attribute("action", "register_module"),
+            res
+        );
+    }
+
+    #[test]
+    fn test_execute_alter_module_unauthorized() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("sender", &[]);
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: true,
+        };
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = ADOContract::default().execute_alter_module(
+            deps.as_mut(),
+            info,
+            1u64.into(),
+            &module,
+            ADOType::CW20,
+        );
+
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_alter_module_addr() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: true,
+        };
+
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        ADOContract::default()
+            .module_info
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+        ADOContract::default()
+            .module_addr
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let module = Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address("other_address".to_string()),
+            is_mutable: true,
+        };
+
+        let res = ADOContract::default()
+            .execute_alter_module(deps.as_mut(), info, 1u64.into(), &module, ADOType::CW20)
+            .unwrap();
+
+        assert_eq!(
+            Response::default()
+                .add_attribute("action", "alter_module")
+                .add_attribute("module_idx", "1"),
+            res
+        );
+
+        assert_eq!(
+            module,
+            ADOContract::default()
+                .module_info
+                .load(deps.as_mut().storage, "1")
+                .unwrap()
+        );
+
+        assert_eq!(
+            "other_address".to_string(),
+            ADOContract::default()
+                .module_addr
+                .load(deps.as_mut().storage, "1")
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_execute_alter_module_immutable() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: false,
+        };
+
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        ADOContract::default()
+            .module_info
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+        ADOContract::default()
+            .module_addr
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let module = Module {
+            module_type: ModuleType::Receipt,
+            instantiate: InstantiateType::Address("other_address".to_string()),
+            is_mutable: true,
+        };
+
+        let res = ADOContract::default().execute_alter_module(
+            deps.as_mut(),
+            info,
+            1u64.into(),
+            &module,
+            ADOType::CW20,
+        );
+
+        assert_eq!(ContractError::ModuleImmutable {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_alter_module_nonexisting_module() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: true,
+        };
+
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res = ADOContract::default().execute_alter_module(
+            deps.as_mut(),
+            info,
+            1u64.into(),
+            &module,
+            ADOType::CW20,
+        );
+
+        assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_alter_module_incompatible_module() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: ModuleType::Auction,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: true,
+        };
+
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        ADOContract::default()
+            .module_info
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+        ADOContract::default()
+            .module_addr
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let res = ADOContract::default().execute_alter_module(
+            deps.as_mut(),
+            info,
+            1u64.into(),
+            &module,
+            ADOType::CW20,
+        );
+
+        assert_eq!(
+            ContractError::IncompatibleModules {
+                msg: "An Auction module cannot be used for a CW20 ADO".to_string()
+            },
+            res.unwrap_err(),
+        );
+    }
+
+    #[test]
+    fn test_execute_deregister_module_unauthorized() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("sender", &[]);
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res =
+            ADOContract::default().execute_deregister_module(deps.as_mut(), info, 1u64.into());
+
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_deregister_module() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: true,
+        };
+
+        ADOContract::default()
+            .module_info
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+
+        ADOContract::default()
+            .module_addr
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let res = ADOContract::default()
+            .execute_deregister_module(deps.as_mut(), info, 1u64.into())
+            .unwrap();
+
+        assert_eq!(
+            Response::default()
+                .add_attribute("action", "deregister_module")
+                .add_attribute("module_idx", "1"),
+            res
+        );
+
+        assert!(!ADOContract::default()
+            .module_addr
+            .has(deps.as_mut().storage, "1"));
+        assert!(!ADOContract::default()
+            .module_info
+            .has(deps.as_mut().storage, "1"));
+    }
+
+    #[test]
+    fn test_execute_deregister_module_immutable() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let module = Module {
+            module_type: ModuleType::AddressList,
+            instantiate: InstantiateType::Address("address".to_string()),
+            is_mutable: false,
+        };
+
+        ADOContract::default()
+            .module_info
+            .save(deps.as_mut().storage, "1", &module)
+            .unwrap();
+
+        ADOContract::default()
+            .module_addr
+            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
+            .unwrap();
+
+        let res =
+            ADOContract::default().execute_deregister_module(deps.as_mut(), info, 1u64.into());
+        assert_eq!(ContractError::ModuleImmutable {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_deregister_module_nonexisting_module() {
+        let mut deps = mock_dependencies(&[]);
+        let info = mock_info("owner", &[]);
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        let res =
+            ADOContract::default().execute_deregister_module(deps.as_mut(), info, 1u64.into());
+
+        assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
+    }
+}

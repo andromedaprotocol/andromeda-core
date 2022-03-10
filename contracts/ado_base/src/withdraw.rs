@@ -119,3 +119,202 @@ impl<'a> ADOContract<'a> {
             .add_attribute("recipient", format!("{:?}", recipient)))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use andromeda_protocol::testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT};
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env, mock_info},
+        to_binary, Addr, BankMsg, CosmosMsg, WasmMsg,
+    };
+    use cw20::Cw20ExecuteMsg;
+
+    #[test]
+    fn test_execute_withdraw_not_authorized() {
+        let mut deps = mock_dependencies(&[]);
+        let owner = "owner";
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(owner))
+            .unwrap();
+        let info = mock_info("not_owner", &[]);
+        let res = ADOContract::default().execute_withdraw(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            Some(Recipient::Addr("address".to_string())),
+            None,
+        );
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_execute_withdraw_no_funds() {
+        let mut deps = mock_dependencies(&[]);
+        let owner = "owner";
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(owner))
+            .unwrap();
+        let info = mock_info(owner, &[]);
+        let res = ADOContract::default().execute_withdraw(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            Some(Recipient::Addr("address".to_string())),
+            None,
+        );
+        assert_eq!(
+            ContractError::InvalidFunds {
+                msg: "No funds to withdraw".to_string(),
+            },
+            res.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn test_execute_withdraw_native() {
+        let mut deps = mock_dependencies(&[coin(100, "uusd")]);
+        let owner = "owner";
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(owner))
+            .unwrap();
+        let info = mock_info(owner, &[]);
+        ADOContract::default()
+            .withdrawable_tokens
+            .save(
+                deps.as_mut().storage,
+                "uusd",
+                &AssetInfo::NativeToken {
+                    denom: "uusd".into(),
+                },
+            )
+            .unwrap();
+        let res = ADOContract::default()
+            .execute_withdraw(
+                deps.as_mut(),
+                mock_env(),
+                info,
+                Some(Recipient::Addr("address".to_string())),
+                None,
+            )
+            .unwrap();
+        let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "address".to_string(),
+            amount: vec![coin(100, "uusd")],
+        }));
+        assert_eq!(
+            Response::new()
+                .add_submessage(msg)
+                .add_attribute("action", "withdraw")
+                .add_attribute("recipient", "Addr(\"address\")"),
+            res
+        );
+    }
+
+    #[test]
+    fn test_execute_withdraw_cw20() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let operator = "operator";
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+        ADOContract::default()
+            .operators
+            .save(deps.as_mut().storage, operator, &true)
+            .unwrap();
+        let info = mock_info(operator, &[]);
+        ADOContract::default()
+            .withdrawable_tokens
+            .save(
+                deps.as_mut().storage,
+                MOCK_CW20_CONTRACT,
+                &AssetInfo::Token {
+                    contract_addr: MOCK_CW20_CONTRACT.into(),
+                },
+            )
+            .unwrap();
+        let res = ADOContract::default()
+            .execute_withdraw(
+                deps.as_mut(),
+                mock_env(),
+                info,
+                Some(Recipient::Addr("address".to_string())),
+                None,
+            )
+            .unwrap();
+        let msg = SubMsg::new(WasmMsg::Execute {
+            contract_addr: MOCK_CW20_CONTRACT.into(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "address".to_string(),
+                amount: 10u128.into(),
+            })
+            .unwrap(),
+            funds: vec![],
+        });
+        assert_eq!(
+            Response::new()
+                .add_submessage(msg)
+                .add_attribute("action", "withdraw")
+                .add_attribute("recipient", "Addr(\"address\")"),
+            res
+        );
+    }
+
+    #[test]
+    fn test_execute_withdraw_selective() {
+        let mut deps = mock_dependencies(&[coin(100, "uusd"), coin(100, "uluna")]);
+        let owner = "owner";
+        ADOContract::default()
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(owner))
+            .unwrap();
+        let info = mock_info(owner, &[]);
+        ADOContract::default()
+            .withdrawable_tokens
+            .save(
+                deps.as_mut().storage,
+                "uusd",
+                &AssetInfo::NativeToken {
+                    denom: "uusd".into(),
+                },
+            )
+            .unwrap();
+        ADOContract::default()
+            .withdrawable_tokens
+            .save(
+                deps.as_mut().storage,
+                "uluna",
+                &AssetInfo::NativeToken {
+                    denom: "uluna".into(),
+                },
+            )
+            .unwrap();
+        let res = ADOContract::default()
+            .execute_withdraw(
+                deps.as_mut(),
+                mock_env(),
+                info,
+                Some(Recipient::Addr("address".to_string())),
+                Some(vec![Withdrawal {
+                    token: "uusd".to_string(),
+                    withdrawal_type: None,
+                }]),
+            )
+            .unwrap();
+        let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "address".to_string(),
+            amount: vec![coin(100, "uusd")],
+        }));
+        assert_eq!(
+            Response::new()
+                .add_submessage(msg)
+                .add_attribute("action", "withdraw")
+                .add_attribute("recipient", "Addr(\"address\")"),
+            res
+        );
+    }
+}
