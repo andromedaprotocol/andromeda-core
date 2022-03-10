@@ -1,11 +1,7 @@
-use crate::contract::{ instantiate};
+use crate::contract::instantiate;
 
-use andromeda_protocol::{
-    factory::{ InstantiateMsg},
-};
-use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env, mock_info},
-};
+use andromeda_protocol::factory::InstantiateMsg;
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 //static TOKEN_CODE_ID: u64 = 0;
 //const TOKEN_NAME: &str = "test";

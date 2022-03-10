@@ -5,6 +5,7 @@ use andromeda_protocol::{
 };
 use cosmwasm_std::{Addr, Binary, Storage};
 use cw_storage_plus::{Item, Map};
+#[cfg(feature = "withdraw")]
 use terraswap::asset::AssetInfo;
 
 pub struct ADOContract<'a> {
@@ -13,6 +14,7 @@ pub struct ADOContract<'a> {
     pub module_info: Map<'a, &'a str, Module>,
     pub module_addr: Map<'a, &'a str, Addr>,
     pub module_idx: Item<'a, u64>,
+    #[cfg(feature = "withdraw")]
     pub withdrawable_tokens: Map<'a, &'a str, AssetInfo>,
 }
 
@@ -24,10 +26,13 @@ impl<'a> Default for ADOContract<'a> {
             module_info: Map::new("andr_modules"),
             module_addr: Map::new("andr_module_addresses"),
             module_idx: Item::new("andr_module_idx"),
+            #[cfg(feature = "withdraw")]
             withdrawable_tokens: Map::new("withdrawable_tokens"),
         }
     }
 }
+
+impl<'a> ADOContract<'a> {}
 
 impl<'a> ADOContract<'a> {
     /// Helper function to query if a given address is a operator.

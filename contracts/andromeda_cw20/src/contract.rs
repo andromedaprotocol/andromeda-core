@@ -18,12 +18,7 @@ use andromeda_protocol::{
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw20_base::{
-    contract::{
-        execute as execute_cw20, execute_burn as execute_cw20_burn,
-        execute_mint as execute_cw20_mint, execute_send as execute_cw20_send,
-        execute_transfer as execute_cw20_transfer, instantiate as cw20_instantiate,
-        query as query_cw20,
-    },
+    contract::{execute as execute_cw20, instantiate as cw20_instantiate, query as query_cw20},
     state::BALANCES,
 };
 
@@ -165,7 +160,15 @@ fn execute_transfer(
     let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
 
     // Continue with standard cw20 operation
-    let cw20_resp = execute_cw20_transfer(deps, env, info, recipient, remaining_amount)?;
+    let cw20_resp = execute_cw20(
+        deps,
+        env,
+        info,
+        Cw20ExecuteMsg::Transfer {
+            recipient,
+            amount: remaining_amount,
+        },
+    )?;
     resp = resp.add_attributes(cw20_resp.attributes).add_events(events);
     Ok(resp)
 }
@@ -197,7 +200,12 @@ fn execute_burn(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    Ok(execute_cw20_burn(deps, env, info, amount)?)
+    Ok(execute_cw20(
+        deps,
+        env,
+        info,
+        Cw20ExecuteMsg::Burn { amount },
+    )?)
 }
 
 fn execute_send(
@@ -230,7 +238,16 @@ fn execute_send(
 
     let mut resp = filter_out_cw20_messages(msgs, deps.storage, deps.api, &info.sender)?;
 
-    let cw20_resp = execute_cw20_send(deps, env, info, contract, remaining_amount, msg)?;
+    let cw20_resp = execute_cw20(
+        deps,
+        env,
+        info,
+        Cw20ExecuteMsg::Send {
+            contract,
+            amount: remaining_amount,
+            msg,
+        },
+    )?;
     resp = resp
         .add_attributes(cw20_resp.attributes)
         .add_events(events)
@@ -246,7 +263,12 @@ fn execute_mint(
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    Ok(execute_cw20_mint(deps, env, info, recipient, amount)?)
+    Ok(execute_cw20(
+        deps,
+        env,
+        info,
+        Cw20ExecuteMsg::Mint { recipient, amount },
+    )?)
 }
 
 fn filter_out_cw20_messages(

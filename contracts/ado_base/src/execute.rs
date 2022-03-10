@@ -47,7 +47,13 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::Withdraw {
                 recipient,
                 tokens_to_withdraw,
-            } => self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
+            } => {
+                #[cfg(feature = "withdraw")]
+                return self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw);
+
+                #[cfg(not(feature = "withdraw"))]
+                return Err(ContractError::UnsupportedOperation {});
+            }
         }
     }
 }
