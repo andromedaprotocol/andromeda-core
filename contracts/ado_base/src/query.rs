@@ -16,7 +16,7 @@ type QueryFunction<Q> = fn(Deps, Env, Q) -> Result<Binary, ContractError>;
 
 impl<'a> ADOContract<'a> {
     pub fn query<Q: DeserializeOwned>(
-        &mut self,
+        &self,
         deps: Deps,
         env: Env,
         msg: AndromedaQuery,
