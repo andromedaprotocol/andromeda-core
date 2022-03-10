@@ -15,6 +15,7 @@ pub mod hooks;
 impl<'a> ADOContract<'a> {
     /// A wrapper for `fn register_module`. The parameters are "extracted" from `DepsMut` to be able to
     /// execute this in a loop without cloning.
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_register_module(
         &self,
         querier: &QuerierWrapper,

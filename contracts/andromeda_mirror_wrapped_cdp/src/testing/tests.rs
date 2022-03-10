@@ -186,7 +186,7 @@ fn assert_intantiate(deps: DepsMut, info: MessageInfo) {
         mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
         operators: None,
     };
-    let res = instantiate(deps, mock_env(), info.clone(), msg).unwrap();
+    let res = instantiate(deps, mock_env(), info, msg).unwrap();
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")

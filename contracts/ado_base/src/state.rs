@@ -70,6 +70,6 @@ impl<'a> ADOContract<'a> {
 
     pub(crate) fn is_nested(&self, data: &Option<Binary>) -> bool {
         let res: Result<QueryMsg, ContractError> = parse_message(data);
-        return res.is_ok();
+        res.is_ok()
     }
 }

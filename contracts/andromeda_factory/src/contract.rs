@@ -92,7 +92,7 @@ pub fn create(
     //let config = read_config(deps.storage)?;
 
     require(
-        !is_address_defined(deps.storage, symbol.to_string())?,
+        !is_address_defined(deps.storage, symbol)?,
         ContractError::SymbolInUse {},
     )?;
     //TODO: make this work with new cw721
