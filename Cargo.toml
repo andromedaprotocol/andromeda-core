@@ -9,6 +9,10 @@ incremental = false
 codegen-units = 1
 incremental = false
 
+[profile.release.package.ado-base]
+codegen-units = 1
+incremental = false
+
 [profile.release]
 debug = false
 debug-assertions = false

@@ -27,7 +27,7 @@ cw-storage-plus = "0.9.1"
 cw20 = { version = "0.9.1" }
 cw2 = "0.9.1"
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
-ado-base = { path = "../ado_base", version = "0.1.0", features = ["library"]}
+ado-base = { path = "../../packages/ado_base", version = "0.1.0", default-features= false, features = ["library"]}
 common = { version = "0.1.0", path = "../../packages/common" }
 
 [dev-dependencies]
