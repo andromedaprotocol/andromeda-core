@@ -62,7 +62,7 @@ impl Module {
             OTHER => Ok(None),
             _ => {
                 let code_id: u64 = query_get(
-                    Some(encode_binary(&String::from(self.module_type.clone()))?),
+                    Some(encode_binary(&self.module_type.clone())?),
                     factory_address,
                     &querier,
                 )?;
@@ -93,7 +93,7 @@ impl Module {
                         code_id,
                         msg: msg.clone(),
                         funds: vec![],
-                        label: format!("Instantiate: {}", String::from(self.module_type.clone())),
+                        label: format!("Instantiate: {}", self.module_type.clone()),
                     }),
                     gas_limit: None,
                 })),

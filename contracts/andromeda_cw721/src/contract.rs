@@ -101,11 +101,8 @@ pub fn execute(
         },
     )?;
 
-    match &msg {
-        ExecuteMsg::Approve { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        _ => {}
+    if let ExecuteMsg::Approve { token_id, .. } = &msg {
+        is_token_archived(deps.storage, token_id)?;
     }
 
     match msg {
