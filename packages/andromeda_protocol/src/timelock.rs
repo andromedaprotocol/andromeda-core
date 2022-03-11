@@ -3,11 +3,10 @@ use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    communication::Recipient,
+use crate::modules::address_list::AddressListModule;
+use common::{
+    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    modules::address_list::AddressListModule,
     require,
 };
 

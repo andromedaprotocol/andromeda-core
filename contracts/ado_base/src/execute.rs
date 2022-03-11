@@ -1,9 +1,8 @@
 use crate::state::ADOContract;
-use andromeda_protocol::{
+use common::{
     ado_base::{AndromedaMsg, InstantiateMsg},
-    communication::parse_message,
     error::ContractError,
-    require,
+    parse_message, require,
 };
 use cosmwasm_std::{attr, DepsMut, Env, MessageInfo, Order, Response};
 use serde::de::DeserializeOwned;

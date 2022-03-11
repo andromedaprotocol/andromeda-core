@@ -1,7 +1,7 @@
-use andromeda_protocol::{
+use common::{
     ado_base::{modules::Module, QueryMsg},
-    communication::parse_message,
     error::ContractError,
+    parse_message,
 };
 use cosmwasm_std::{Addr, Binary, Storage};
 use cw_storage_plus::{Item, Map};

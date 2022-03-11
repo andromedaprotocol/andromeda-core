@@ -3,16 +3,15 @@ pub mod common;
 pub mod hooks;
 pub mod receipt;
 
+use ::common::{ado_base::query_get, encode_binary, error::ContractError, require};
+
 use crate::{
-    communication::{encode_binary, query_get},
-    error::ContractError,
     modules::{
         address_list::AddressListModule,
         hooks::{HookResponse, MessageHooks},
         receipt::ReceiptModule,
     },
     primitive::{GetValueResponse, Primitive},
-    require,
 };
 use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, QuerierWrapper, StdResult, Storage, Uint128};
 use cw_storage_plus::Item;

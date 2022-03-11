@@ -9,7 +9,7 @@ use andromeda_protocol::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     communication::{encode_binary, parse_message},
     error::ContractError,
-    factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    factory::{AddressResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     modules::ModuleDefinition,
     require,
 };
@@ -247,9 +247,9 @@ fn query_address(deps: Deps, symbol: String) -> Result<AddressResponse, Contract
     Ok(AddressResponse { address })
 }
 
-fn query_code_id(deps: Deps, key: String) -> Result<CodeIdResponse, ContractError> {
+fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
     let code_id = read_code_id(deps.storage, key)?;
-    Ok(CodeIdResponse { code_id })
+    Ok(code_id)
 }
 
 #[cfg(test)]

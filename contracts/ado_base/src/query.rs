@@ -1,13 +1,13 @@
 use crate::state::ADOContract;
-use andromeda_protocol::{
+use common::{
     ado_base::{
         operators::{IsOperatorResponse, OperatorsResponse},
         ownership::ContractOwnerResponse,
         AndromedaQuery,
     },
-    communication::{encode_binary, parse_message},
+    encode_binary,
     error::ContractError,
-    require,
+    parse_message, require,
 };
 use cosmwasm_std::{Binary, Deps, Env, Order};
 use serde::de::DeserializeOwned;

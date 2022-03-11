@@ -9,14 +9,13 @@ use serde::{Deserialize, Serialize};
 use crate::response::get_reply_address;
 use crate::{
     address_list::{query_includes_address, InstantiateMsg as AddressListInstantiateMsg},
-    error::ContractError,
     modules::{
         common::is_unique,
         hooks::{HookResponse, MessageHooks},
         {Module, ModuleDefinition},
     },
-    require,
 };
+use common::{error::ContractError, require};
 
 pub const ADDRESS_LIST_CONTRACT: Item<String> = Item::new("addresslistcontract");
 pub const REPLY_ADDRESS_LIST: u64 = 2;

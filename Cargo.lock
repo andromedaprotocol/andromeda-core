@@ -6,17 +6,16 @@ version = 3
 name = "ado-base"
 version = "0.1.0"
 dependencies = [
- "andromeda-protocol",
+ "common",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-storage-plus 0.8.1",
  "cw2 0.8.1",
  "cw20 0.9.1",
  "schemars",
  "serde",
+ "terra-cosmwasm",
  "terraswap",
- "thiserror",
 ]
 
 [[package]]
@@ -191,6 +190,7 @@ name = "andromeda-protocol"
 version = "0.1.0"
 dependencies = [
  "astroport",
+ "common",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
@@ -335,6 +335,22 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw20 0.9.1",
+ "cw20-base",
+ "cw721-base",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "terraswap",
+ "thiserror",
+]
 
 [[package]]
 name = "const-oid"

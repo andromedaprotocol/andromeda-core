@@ -1,7 +1,5 @@
 use crate::state::ADOContract;
-use andromeda_protocol::{
-    communication::Recipient, error::ContractError, require, withdraw::Withdrawal,
-};
+use common::{ado_base::recipient::Recipient, error::ContractError, require, withdraw::Withdrawal};
 use cosmwasm_std::{coin, DepsMut, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg};
 use cw20::Cw20Coin;
 
@@ -130,9 +128,7 @@ pub mod withdraw {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use andromeda_protocol::testing::mock_querier::{
-            mock_dependencies_custom, MOCK_CW20_CONTRACT,
-        };
+        use crate::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT};
         use cosmwasm_std::{
             testing::{mock_dependencies, mock_env, mock_info},
             to_binary, Addr, BankMsg, CosmosMsg, WasmMsg,

@@ -1,7 +1,6 @@
 [package]
-name = "andromeda-protocol"
+name = "common"
 version = "0.1.0"
-authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2018"
 
 [features]
@@ -15,15 +14,10 @@ crate-type = ["cdylib", "rlib"]
 cosmwasm-std = { version = "0.16.0" }
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 schemars = "0.8.3"
-cw721 = "0.9.1"
 cw-storage-plus = "0.9.1"
 terra-cosmwasm = { version = "2.2.0" }
 thiserror = { version = "1.0.21" }
-mirror-protocol = "2.1.1"
-astroport = "1.0.1"
 cw20 = { version = "0.9.1" }
-cw0 = "0.9.1"
+terraswap = {version = "2.4.0"}
 cw20-base = { version = "0.9.1", features=["library"]}
 cw721-base = { version = "0.9.1", features=["library"]}
-terraswap = {version = "2.4.0"}
-common = { path = "../common", version = "0.1.0" }

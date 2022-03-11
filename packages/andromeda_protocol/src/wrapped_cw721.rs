@@ -1,4 +1,4 @@
-use crate::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
+use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 use cw721::Cw721ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

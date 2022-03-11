@@ -1,4 +1,4 @@
-use crate::{
+use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery},
     error::ContractError,
 };

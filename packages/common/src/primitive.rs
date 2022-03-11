@@ -1,4 +1,4 @@
-use common::{
+use crate::{
     ado_base::{query_get, AndromedaMsg, AndromedaQuery},
     encode_binary,
     error::ContractError,

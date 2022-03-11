@@ -4,7 +4,7 @@ use crate::state::ADOContract;
 use cosmwasm_std::{Api, DepsMut, MessageInfo, Order, QuerierWrapper, Response, Storage, Uint64};
 use cw_storage_plus::Bound;
 
-use andromeda_protocol::{
+use common::{
     ado_base::modules::{ADOType, InstantiateType, Module, ModuleInfoWithAddress},
     error::ContractError,
     require,
@@ -252,7 +252,7 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::ado_base::modules::ModuleType;
+    use common::ado_base::modules::ModuleType;
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_info},
         Addr,

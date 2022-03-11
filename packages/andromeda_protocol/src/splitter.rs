@@ -1,8 +1,7 @@
-use crate::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    communication::Recipient,
+use crate::modules::address_list::AddressListModule;
+use common::{
+    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    modules::address_list::AddressListModule,
     require,
 };
 use cosmwasm_std::Uint128;

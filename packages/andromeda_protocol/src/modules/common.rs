@@ -1,8 +1,5 @@
-use crate::{
-    error::ContractError,
-    modules::{Module, ModuleDefinition, Rate},
-    require,
-};
+use crate::modules::{Module, ModuleDefinition, Rate};
+use common::{error::ContractError, require};
 
 use cosmwasm_std::{coin, BankMsg, Coin, Uint128};
 

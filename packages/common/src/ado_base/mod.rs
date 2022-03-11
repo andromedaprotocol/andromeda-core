@@ -2,11 +2,12 @@ pub mod hooks;
 pub mod modules;
 pub mod operators;
 pub mod ownership;
+pub mod recipient;
 
-use crate::{communication::Recipient, withdraw::Withdrawal};
-use cosmwasm_std::Binary;
+use crate::{ado_base::recipient::Recipient, error::ContractError, withdraw::Withdrawal};
+use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, WasmQuery};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
@@ -52,4 +53,22 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
+}
+
+/// Helper function for querying a contract using AndromedaQuery::Get
+pub fn query_get<T>(
+    data: Option<Binary>,
+    address: String,
+    querier: &QuerierWrapper,
+) -> Result<T, ContractError>
+where
+    T: DeserializeOwned,
+{
+    let query_msg = QueryMsg::AndrQuery(AndromedaQuery::Get(data));
+    let resp: T = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: address,
+        msg: to_binary(&query_msg)?,
+    }))?;
+
+    Ok(resp)
 }

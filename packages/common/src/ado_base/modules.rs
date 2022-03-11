@@ -1,7 +1,7 @@
 use crate::{
-    communication::{encode_binary, query_get},
+    ado_base::query_get,
+    encode_binary,
     error::ContractError,
-    factory::CodeIdResponse,
     primitive::{get_address, AndromedaContract},
     require,
 };
@@ -81,12 +81,12 @@ impl Module {
         match self.module_type {
             ModuleType::Other => Ok(None),
             _ => {
-                let code_id_resp: CodeIdResponse = query_get(
+                let code_id: u64 = query_get(
                     Some(encode_binary(&String::from(self.module_type.clone()))?),
                     factory_address,
                     &querier,
                 )?;
-                Ok(Some(code_id_resp.code_id))
+                Ok(Some(code_id))
             }
         }
     }

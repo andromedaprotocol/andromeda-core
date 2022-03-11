@@ -1,16 +1,12 @@
-use cosmwasm_std::{
-    from_binary, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, QueryRequest,
-    SubMsg, WasmMsg, WasmQuery,
-};
-use cw20::{Cw20Coin, Cw20ExecuteMsg};
-use schemars::JsonSchema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
 use crate::{
-    ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery, ExecuteMsg, QueryMsg},
-    common::unwrap_or_err,
+    ado_base::{AndromedaMsg, ExecuteMsg},
+    encode_binary,
     error::ContractError,
 };
+use cosmwasm_std::{Api, BankMsg, Binary, Coin, CosmosMsg, SubMsg, WasmMsg};
+use cw20::{Cw20Coin, Cw20ExecuteMsg};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 // ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -96,90 +92,11 @@ impl Recipient {
     }
 }
 
-/// Helper enum for serialization
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum HookMsg {
-    AndrHook(AndromedaHook),
-}
-
-pub fn parse_struct<T>(val: &Binary) -> Result<T, ContractError>
-where
-    T: DeserializeOwned,
-{
-    let data_res = from_binary(val);
-    match data_res {
-        Ok(data) => Ok(data),
-        Err(err) => Err(ContractError::ParsingError {
-            err: err.to_string(),
-        }),
-    }
-}
-
-pub fn parse_message<T: DeserializeOwned>(data: &Option<Binary>) -> Result<T, ContractError> {
-    let data = unwrap_or_err(data, ContractError::MissingRequiredMessageData {})?;
-    parse_struct::<T>(data)
-}
-
-pub fn encode_binary<T>(val: &T) -> Result<Binary, ContractError>
-where
-    T: Serialize,
-{
-    match to_binary(val) {
-        Ok(encoded_val) => Ok(encoded_val),
-        Err(err) => Err(ContractError::ParsingError {
-            err: err.to_string(),
-        }),
-    }
-}
-
-/// Helper function for querying a contract using AndromedaQuery::Get
-pub fn query_get<T>(
-    data: Option<Binary>,
-    address: String,
-    querier: &QuerierWrapper,
-) -> Result<T, ContractError>
-where
-    T: DeserializeOwned,
-{
-    let query_msg = QueryMsg::AndrQuery(AndromedaQuery::Get(data));
-    let resp: T = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: address,
-        msg: to_binary(&query_msg)?,
-    }))?;
-
-    Ok(resp)
-}
-
 #[cfg(test)]
 mod test {
-    use cosmwasm_std::testing::mock_dependencies;
-    use cosmwasm_std::{coins, to_binary};
-    use cw721::Expiration;
+    use cosmwasm_std::{coins, testing::mock_dependencies, BankMsg, CosmosMsg, SubMsg, WasmMsg};
 
     use super::*;
-    #[derive(Deserialize, Serialize)]
-    struct TestStruct {
-        name: String,
-        expiration: Expiration,
-    }
-
-    #[test]
-    fn test_parse_struct() {
-        let valid_json = to_binary(&TestStruct {
-            name: "John Doe".to_string(),
-            expiration: Expiration::AtHeight(123),
-        })
-        .unwrap();
-
-        let test_struct: TestStruct = parse_struct(&valid_json).unwrap();
-        assert_eq!(test_struct.name, "John Doe");
-        assert_eq!(test_struct.expiration, Expiration::AtHeight(123));
-
-        let invalid_json = to_binary("notavalidteststruct").unwrap();
-
-        assert!(parse_struct::<TestStruct>(&invalid_json).is_err())
-    }
 
     #[test]
     fn test_recipient_addr_generate_msg_native() {

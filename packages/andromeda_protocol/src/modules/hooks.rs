@@ -1,7 +1,7 @@
 use cosmwasm_std::{Coin, DepsMut, Env, Event, MessageInfo, SubMsg};
 use cw721::Expiration;
 
-use crate::error::ContractError;
+use common::error::ContractError;
 
 pub const ATTR_DESC: &str = "description";
 pub const ATTR_PAYMENT: &str = "payment";

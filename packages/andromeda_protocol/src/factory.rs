@@ -1,7 +1,5 @@
-use crate::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    modules::ModuleDefinition,
-};
+use crate::modules::ModuleDefinition;
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -50,9 +48,4 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AddressResponse {
     pub address: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CodeIdResponse {
-    pub code_id: u64,
 }

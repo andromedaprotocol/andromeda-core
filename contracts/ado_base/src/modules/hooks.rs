@@ -4,14 +4,13 @@ use cosmwasm_std::{
 use serde::de::DeserializeOwned;
 
 use crate::modules::ADOContract;
-use andromeda_protocol::{
+use common::{
     ado_base::{
-        hooks::{AndromedaHook, OnFundsTransferResponse},
+        hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
         modules::{ModuleInfoWithAddress, ModuleType},
     },
-    communication::HookMsg,
     error::ContractError,
-    rates::Funds,
+    Funds,
 };
 
 impl<'a> ADOContract<'a> {
@@ -129,7 +128,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::error::ContractError;
+    use common::error::ContractError;
     use cosmwasm_std::Response;
 
     #[test]
