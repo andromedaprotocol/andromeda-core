@@ -358,10 +358,7 @@ fn execute_burn(
 ) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract::default();
     let token = contract.tokens.load(deps.storage, &token_id)?;
-    require(
-        token.owner.eq(&info.sender.to_string()),
-        ContractError::Unauthorized {},
-    )?;
+    require(token.owner == info.sender, ContractError::Unauthorized {})?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     contract.tokens.remove(deps.storage, &token_id)?;
@@ -373,7 +370,7 @@ fn execute_burn(
     Ok(Response::default().add_attributes(vec![
         attr("action", "burn"),
         attr("token_id", token_id),
-        attr("sender", info.sender.to_string()),
+        attr("sender", info.sender),
     ]))
 }
 
