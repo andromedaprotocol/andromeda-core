@@ -1,15 +1,17 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
-    ado_base::modules::{InstantiateType, Module, ModuleType},
     cw20::{ExecuteMsg, InstantiateMsg},
-    error::ContractError,
     rates::InstantiateMsg as RatesInstantiateMsg,
     receipt::{ExecuteMsg as ReceiptExecuteMsg, InstantiateMsg as ReceiptInstantiateMsg, Receipt},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
         MOCK_RATES_CONTRACT, MOCK_RECEIPT_CONTRACT,
     },
+};
+use common::{
+    ado_base::modules::{InstantiateType, Module, ModuleType},
+    error::ContractError,
 };
 use cosmwasm_std::{
     testing::{mock_env, mock_info},

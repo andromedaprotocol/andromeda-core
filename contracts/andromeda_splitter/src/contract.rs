@@ -1,19 +1,21 @@
 use crate::state::SPLITTER;
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::{AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
-    communication::encode_binary,
-    error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         hooks::{HookResponse, MessageHooks},
         Module, Modules,
     },
-    require,
     splitter::{
         validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse,
         InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
     },
+};
+use common::{
+    ado_base::{AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    require,
 };
 use cosmwasm_std::{
     attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
@@ -282,7 +284,8 @@ fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::{communication::Recipient, modules::address_list::AddressListModule};
+    use andromeda_protocol::modules::address_list::AddressListModule;
+    use common::ado_base::recipient::Recipient;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{from_binary, Addr, Coin, Uint128};
 

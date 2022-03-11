@@ -2,9 +2,9 @@ use crate::contract::instantiate;
 use andromeda_protocol::splitter::{AddressPercent, InstantiateMsg};
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
-    communication::Recipient,
     modules::address_list::{AddressListModule, REPLY_ADDRESS_LIST},
 };
+use common::ado_base::recipient::Recipient;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{attr, to_binary, CosmosMsg, ReplyOn, Response, SubMsg, Uint128, WasmMsg};
 

@@ -1,9 +1,5 @@
-use crate::{
-    ado_base::{query_get, AndromedaMsg, AndromedaQuery},
-    encode_binary,
-    error::ContractError,
-};
-use cosmwasm_std::{Addr, Coin, QuerierWrapper, StdError, Storage, Uint128};
+use crate::{ado_base::query_get, encode_binary, error::ContractError};
+use cosmwasm_std::{Coin, QuerierWrapper, StdError, Storage, Uint128};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -104,44 +100,9 @@ impl Primitive {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {
-    pub operators: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
-    /// If name is not specified the default key will be used.
-    SetValue {
-        name: Option<String>,
-        value: Primitive,
-    },
-    /// If name is not specified the default key will be used.
-    DeleteValue {
-        name: Option<String>,
-    },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct MigrateMsg {}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
-    AndrQuery(AndromedaQuery),
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GetValueResponse {
     pub name: String,
     pub value: Primitive,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ConfigResponse {
-    pub owner: Addr,
 }
 
 #[cfg(test)]

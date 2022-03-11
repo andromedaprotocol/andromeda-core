@@ -9,15 +9,14 @@ use cw2::{get_contract_version, set_contract_version};
 use crate::state::{Config, CONFIG};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
     common::get_tax_deducted_funds,
-    communication::encode_binary,
-    error::ContractError,
     mirror_wrapped_cdp::{
         ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, MirrorLockExecuteMsg,
         MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
-    require,
+};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::AssetInfo;

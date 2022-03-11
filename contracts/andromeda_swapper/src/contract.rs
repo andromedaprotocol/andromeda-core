@@ -1,17 +1,21 @@
 use crate::state::SWAPPER_IMPL_ADDR;
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::{modules::InstantiateType, InstantiateMsg as BaseInstantiateMsg},
-    communication::{encode_binary, query_get, Recipient},
-    error::ContractError,
-    factory::CodeIdResponse,
-    require,
     response::get_reply_address,
     swapper::{
         query_balance, query_token_balance, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
         MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,
         SwapperMsg,
     },
+};
+use common::{
+    ado_base::{
+        modules::InstantiateType, query_get, recipient::Recipient,
+        InstantiateMsg as BaseInstantiateMsg,
+    },
+    encode_binary,
+    error::ContractError,
+    require,
 };
 use cosmwasm_std::{
     entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
@@ -37,13 +41,12 @@ pub fn instantiate(
     match msg.swapper_impl {
         InstantiateType::Address(addr) => SWAPPER_IMPL_ADDR.save(deps.storage, &addr)?,
         InstantiateType::New(instantiate_msg) => {
-            let code_id: u64 = query_get::<CodeIdResponse>(
+            let code_id: u64 = query_get(
                 Some(encode_binary(&"swapper")?),
                 // TODO: Replace when Primitive contract change merged.
                 "TEMP_FACTORY".to_string(),
                 &deps.querier,
-            )?
-            .code_id;
+            )?;
             let msg: SubMsg = SubMsg {
                 id: 1,
                 reply_on: ReplyOn::Always,

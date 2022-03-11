@@ -1,4 +1,4 @@
-use andromeda_protocol::primitive::Primitive;
+use common::primitive::Primitive;
 use cw_storage_plus::Map;
 
 pub const DEFAULT_KEY: &str = "default";

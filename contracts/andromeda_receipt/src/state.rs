@@ -1,8 +1,6 @@
 use ado_base::state::ADOContract;
-use andromeda_protocol::{
-    error::ContractError,
-    receipt::{Config, Receipt},
-};
+use andromeda_protocol::receipt::{Config, Receipt};
+use common::error::ContractError;
 use cosmwasm_std::{StdResult, Storage, Uint128};
 use cw_storage_plus::{Item, Map, U128Key};
 

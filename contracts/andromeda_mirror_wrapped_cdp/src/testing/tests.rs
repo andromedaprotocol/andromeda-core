@@ -2,14 +2,16 @@ use super::mock_querier::mock_dependencies_custom;
 use crate::contract::{execute, instantiate, query};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::{operators::OperatorsResponse, AndromedaMsg, AndromedaQuery},
     common::get_tax_deducted_funds,
-    error::ContractError,
     mirror_wrapped_cdp::{
         ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg,
         MirrorGovExecuteMsg, MirrorLockExecuteMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
         MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
+};
+use common::{
+    ado_base::{operators::OperatorsResponse, AndromedaMsg, AndromedaQuery},
+    error::ContractError,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{

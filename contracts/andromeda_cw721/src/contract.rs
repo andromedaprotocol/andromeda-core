@@ -7,17 +7,19 @@ use cosmwasm_std::{
 
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
+    cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
+    rates::get_tax_amount,
+    response::get_reply_address,
+};
+use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::ADOType,
     },
-    communication::encode_binary,
-    cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
+    encode_binary,
     error::ContractError,
     primitive::PRIMITVE_CONTRACT,
-    rates::{get_tax_amount, Funds},
-    require,
-    response::get_reply_address,
+    require, Funds,
 };
 use cw721_base::{state::TokenInfo, Cw721Contract};
 

@@ -4,6 +4,7 @@ use common::{
         ownership::ContractOwnerResponse,
         AndromedaQuery,
     },
+    primitive::{GetValueResponse, Primitive},
     Funds,
 };
 
@@ -15,7 +16,7 @@ use crate::{
     },
     cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
     factory::QueryMsg as FactoryQueryMsg,
-    primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
+    primitive::QueryMsg as PrimitiveQueryMsg,
     rates::QueryMsg as RatesQueryMsg,
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };

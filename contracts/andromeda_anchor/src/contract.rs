@@ -2,13 +2,17 @@ use crate::state::{
     Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
 };
 use ado_base::state::ADOContract;
-use andromeda_protocol::anchor::{AnchorMarketMsg, ConfigResponse};
-use andromeda_protocol::{
-    ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    anchor::{ExecuteMsg, InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg},
-    communication::{encode_binary, parse_message, Recipient},
+use andromeda_protocol::anchor::{
+    AnchorMarketMsg, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, PositionResponse,
+    QueryMsg,
+};
+use common::{
+    ado_base::{
+        recipient::Recipient, AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
+    },
+    encode_binary,
     error::ContractError,
-    require,
+    parse_message, require,
     withdraw::Withdrawal,
 };
 #[cfg(not(feature = "library"))]

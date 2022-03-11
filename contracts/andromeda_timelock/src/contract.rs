@@ -5,20 +5,22 @@ use cosmwasm_std::{
 use crate::state::{escrows, get_key, get_keys_for_recipient, State, STATE};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    communication::{encode_binary, Recipient},
-    error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         generate_instantiate_msgs,
         hooks::HookResponse,
     },
     modules::{hooks::MessageHooks, Module},
-    require,
     timelock::{
         Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
         GetLockedFundsResponse, GetTimelockConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg,
     },
+};
+use common::{
+    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    require,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -305,7 +307,7 @@ fn query_config(deps: Deps) -> Result<GetTimelockConfigResponse, ContractError> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::ado_base::AndromedaMsg;
+    use common::ado_base::AndromedaMsg;
     use cosmwasm_std::{
         coin, coins, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},

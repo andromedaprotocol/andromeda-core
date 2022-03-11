@@ -6,12 +6,14 @@ use crate::{
 };
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    communication::{encode_binary, parse_message},
-    error::ContractError,
     factory::{AddressResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     modules::ModuleDefinition,
-    require,
+};
+use common::{
+    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    parse_message, require,
 };
 use cosmwasm_std::{
     attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
@@ -442,9 +444,8 @@ mod tests {
             encode_binary(&"code_id").unwrap(),
         )));
 
-        let res: CodeIdResponse =
-            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        let res: u64 = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
-        assert_eq!(CodeIdResponse { code_id: 1u64 }, res);
+        assert_eq!(1u64, res);
     }
 }

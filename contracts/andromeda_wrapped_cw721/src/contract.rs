@@ -1,18 +1,19 @@
 use crate::state::{ANDROMEDA_CW721_ADDR, CAN_UNWRAP};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    communication::{encode_binary, query_get},
     cw721::{
         ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MetadataAttribute,
         MetadataType, TokenExtension, TokenMetadata,
     },
-    error::ContractError,
-    factory::CodeIdResponse,
-    primitive::{get_address, AndromedaContract, PRIMITVE_CONTRACT},
-    require,
     response::get_reply_address,
     wrapped_cw721::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, QueryMsg},
+};
+use common::{
+    ado_base::{query_get, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    primitive::{get_address, AndromedaContract, PRIMITVE_CONTRACT},
+    require,
 };
 use cosmwasm_std::{
     entry_point, from_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
@@ -46,12 +47,11 @@ pub fn instantiate(
             };
             let factory_address =
                 get_address(deps.storage, deps.querier, AndromedaContract::Factory)?;
-            let code_id: u64 = query_get::<CodeIdResponse>(
+            let code_id: u64 = query_get(
                 Some(encode_binary(&"cw721")?),
                 factory_address,
                 &deps.querier,
-            )?
-            .code_id;
+            )?;
             let msg: SubMsg = SubMsg {
                 id: 1,
                 reply_on: ReplyOn::Always,

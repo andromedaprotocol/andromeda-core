@@ -5,17 +5,21 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 
-use crate::contract::*;
-use andromeda_protocol::{
-    address_list::InstantiateMsg as AddressListInstantiateMsg,
+use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::{InstantiateType, Module, ModuleType},
     },
+    error::ContractError,
+    Funds,
+};
+
+use crate::contract::*;
+use andromeda_protocol::{
+    address_list::InstantiateMsg as AddressListInstantiateMsg,
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
     cw721_offers::ExecuteMsg as OffersExecuteMsg,
-    error::ContractError,
-    rates::{Funds, InstantiateMsg as RatesInstantiateMsg},
+    rates::InstantiateMsg as RatesInstantiateMsg,
     receipt::{ExecuteMsg as ReceiptExecuteMsg, InstantiateMsg as ReceiptInstantiateMsg, Receipt},
     testing::mock_querier::{
         bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,

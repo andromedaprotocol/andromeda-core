@@ -1,4 +1,5 @@
-use andromeda_protocol::{error::ContractError, response::get_reply_address};
+use andromeda_protocol::response::get_reply_address;
+use common::error::ContractError;
 use cosmwasm_std::{to_binary, DepsMut, QuerierWrapper, QueryRequest, Reply, Response, WasmQuery};
 use cw721::ContractInfoResponse;
 

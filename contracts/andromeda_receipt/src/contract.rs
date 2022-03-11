@@ -2,18 +2,18 @@ use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use ado_base::state::ADOContract;
-use andromeda_protocol::{
+use andromeda_protocol::receipt::{
+    generate_receipt_message, Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
+    QueryMsg, Receipt, ReceiptResponse,
+};
+use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         InstantiateMsg as BaseInstantiateMsg,
     },
-    communication::{encode_binary, parse_message},
+    encode_binary,
     error::ContractError,
-    receipt::{
-        generate_receipt_message, Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg,
-        MigrateMsg, QueryMsg, Receipt, ReceiptResponse,
-    },
-    require,
+    parse_message, require,
 };
 use cosmwasm_std::{
     attr, entry_point, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, Uint128,
@@ -153,9 +153,9 @@ fn query_config(deps: Deps) -> Result<ContractInfoResponse, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::{
+    use common::{
         ado_base::{AndromedaMsg, AndromedaQuery},
-        rates::Funds,
+        Funds,
     };
     use cosmwasm_std::{
         coin, from_binary,

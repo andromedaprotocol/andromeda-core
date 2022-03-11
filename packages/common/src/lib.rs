@@ -55,9 +55,9 @@ pub fn unwrap_or_err<T>(val_opt: &Option<T>, err: ContractError) -> Result<&T, C
 ///
 /// ## Example
 /// ```
-/// use andromeda_protocol::error::ContractError;
+/// use common::error::ContractError;
 /// use cosmwasm_std::StdError;
-/// use andromeda_protocol::require;
+/// use common::require;
 /// require(false, ContractError::Std(StdError::generic_err("Some boolean condition was not met")));
 /// ```
 pub fn require(precond: bool, err: ContractError) -> Result<bool, ContractError> {

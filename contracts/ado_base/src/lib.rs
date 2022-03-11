@@ -12,7 +12,7 @@ pub use crate::state::ADOContract;
 #[cfg(not(feature = "library"))]
 pub mod entry {
     use super::*;
-    use andromeda_protocol::{
+    use common::{
         ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg},
         error::ContractError,
     };

@@ -1,18 +1,20 @@
 use crate::state::{Config, CONFIG};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
+    modules::common::{calculate_fee, deduct_funds},
+    rates::{
+        ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse, QueryMsg,
+        RateInfo,
+    },
+};
+use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
     },
-    communication::{encode_binary, parse_message},
+    encode_binary,
     error::ContractError,
-    modules::common::{calculate_fee, deduct_funds},
-    rates::{
-        ExecuteMsg, Funds, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
-        QueryMsg, RateInfo,
-    },
-    require,
+    parse_message, require, Funds,
 };
 use cosmwasm_std::{
     attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
@@ -209,11 +211,11 @@ mod tests {
     use super::*;
     use crate::contract::{execute, instantiate, query};
     use andromeda_protocol::{
-        communication::{encode_binary, Recipient},
         modules::{ADORate, Rate},
         rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
         testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT},
     };
+    use common::{ado_base::recipient::Recipient, encode_binary};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coin, coins, from_binary, BankMsg, Coin, CosmosMsg, Uint128, WasmMsg};
     use cw20::Cw20ExecuteMsg;

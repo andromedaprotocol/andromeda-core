@@ -1,4 +1,4 @@
-use andromeda_protocol::{ado_base::ownership::ContractOwnerResponse, error::ContractError};
+use common::{ado_base::ownership::ContractOwnerResponse, error::ContractError};
 use cosmwasm_std::{
     to_binary, DepsMut, QuerierWrapper, QueryRequest, StdResult, Storage, WasmQuery,
 };

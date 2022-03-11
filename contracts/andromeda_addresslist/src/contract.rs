@@ -1,13 +1,13 @@
 use ado_base::state::ADOContract;
-use andromeda_protocol::{
-    address_list::{
-        add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
-        InstantiateMsg, MigrateMsg, QueryMsg, IS_INCLUSIVE,
-    },
+use andromeda_protocol::address_list::{
+    add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
+    InstantiateMsg, MigrateMsg, QueryMsg, IS_INCLUSIVE,
+};
+use common::{
     ado_base::{hooks::AndromedaHook, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    communication::{encode_binary, parse_message},
+    encode_binary,
     error::ContractError,
-    require,
+    parse_message, require,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
