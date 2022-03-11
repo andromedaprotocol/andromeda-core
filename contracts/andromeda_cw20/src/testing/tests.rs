@@ -10,7 +10,7 @@ use andromeda_protocol::{
     },
 };
 use common::{
-    ado_base::modules::{InstantiateType, Module, ModuleType},
+    ado_base::modules::{InstantiateType, Module, ADDRESS_LIST, RATES, RECEIPT},
     error::ContractError,
 };
 use cosmwasm_std::{
@@ -35,17 +35,17 @@ fn test_instantiate_modules() {
     .unwrap();
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::New(receipt_msg.clone()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::Rates,
+            module_type: RATES.to_owned(),
             instantiate: InstantiateType::New(rates_msg.clone()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::New(addresslist_msg.clone()),
             is_mutable: false,
         },
@@ -114,17 +114,17 @@ fn test_instantiate_modules() {
 fn test_transfer() {
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::Rates,
+            module_type: RATES.to_owned(),
             instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
             is_mutable: false,
         },
@@ -225,17 +225,17 @@ fn test_transfer() {
 fn test_send() {
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::Rates,
+            module_type: RATES.to_owned(),
             instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
             is_mutable: false,
         },

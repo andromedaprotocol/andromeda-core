@@ -9,32 +9,12 @@ use cosmwasm_std::{Binary, CosmosMsg, QuerierWrapper, ReplyOn, Storage, SubMsg, 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// An enum describing the different available modules for any Andromeda Token contract
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum ModuleType {
-    Rates,
-    Offers,
-    AddressList,
-    Auction,
-    Receipt,
-    /// Used for external contracts, undocumented
-    Other,
-}
-
-/// Conversion from a module type to string, primarily used to query code ids from our factory contract
-impl From<ModuleType> for String {
-    fn from(module_type: ModuleType) -> Self {
-        match module_type {
-            ModuleType::Receipt => String::from("receipt"),
-            ModuleType::AddressList => String::from("address_list"),
-            ModuleType::Rates => String::from("rates"),
-            ModuleType::Auction => String::from("auction"),
-            ModuleType::Offers => String::from("offers"),
-            ModuleType::Other => String::from("other"),
-        }
-    }
-}
+pub const RATES: &str = "rates";
+pub const OFFERS: &str = "offers";
+pub const ADDRESS_LIST: &str = "address_list";
+pub const AUCTION: &str = "auction";
+pub const RECEIPT: &str = "receipt";
+pub const OTHER: &str = "other";
 
 /// Modules can be instantiated in two different ways
 /// New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded
@@ -50,7 +30,7 @@ pub enum InstantiateType {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Module {
-    pub module_type: ModuleType,
+    pub module_type: String,
     pub instantiate: InstantiateType,
     pub is_mutable: bool,
 }
@@ -78,8 +58,8 @@ impl Module {
         querier: QuerierWrapper,
     ) -> Result<Option<u64>, ContractError> {
         let factory_address = get_address(storage, querier, AndromedaContract::Factory)?;
-        match self.module_type {
-            ModuleType::Other => Ok(None),
+        match self.module_type.as_str() {
+            OTHER => Ok(None),
             _ => {
                 let code_id: u64 = query_get(
                     Some(encode_binary(&String::from(self.module_type.clone()))?),
@@ -128,7 +108,7 @@ impl Module {
     pub fn validate(&self, modules: &[Module], ado_type: &ADOType) -> Result<(), ContractError> {
         require(self.is_unique(modules), ContractError::ModuleNotUnique {})?;
 
-        if ado_type == &ADOType::CW20 && contains_module(modules, ModuleType::Auction) {
+        if ado_type == &ADOType::CW20 && contains_module(modules, AUCTION) {
             return Err(ContractError::IncompatibleModules {
                 msg: "An Auction module cannot be used for a CW20 ADO".to_string(),
             });
@@ -156,7 +136,7 @@ impl Module {
 }
 
 /// Checks if any element of `modules` contains one of type `module_type`.
-fn contains_module(modules: &[Module], module_type: ModuleType) -> bool {
+fn contains_module(modules: &[Module], module_type: &str) -> bool {
     modules.iter().any(|m| m.module_type == module_type)
 }
 
@@ -167,7 +147,7 @@ mod tests {
     #[test]
     fn test_validate_addresslist() {
         let addresslist_module = Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address("".to_string()),
             is_mutable: false,
         };
@@ -179,7 +159,7 @@ mod tests {
         assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
 
         let auction_module = Module {
-            module_type: ModuleType::Auction,
+            module_type: AUCTION.to_owned(),
             instantiate: InstantiateType::Address("".into()),
             is_mutable: false,
         };
@@ -194,7 +174,7 @@ mod tests {
     #[test]
     fn test_validate_auction() {
         let module = Module {
-            module_type: ModuleType::Auction,
+            module_type: AUCTION.to_owned(),
             instantiate: InstantiateType::Address("".to_string()),
             is_mutable: false,
         };
@@ -211,7 +191,7 @@ mod tests {
         );
 
         let other_module = Module {
-            module_type: ModuleType::Rates,
+            module_type: RATES.to_owned(),
             instantiate: InstantiateType::Address("".to_string()),
             is_mutable: false,
         };
@@ -223,7 +203,7 @@ mod tests {
     #[test]
     fn test_validate_rates() {
         let module = Module {
-            module_type: ModuleType::Rates,
+            module_type: RATES.to_owned(),
             instantiate: InstantiateType::Address("".to_string()),
             is_mutable: false,
         };
@@ -232,7 +212,7 @@ mod tests {
         assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
 
         let other_module = Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address("".to_string()),
             is_mutable: false,
         };
@@ -244,7 +224,7 @@ mod tests {
     #[test]
     fn test_validate_receipt() {
         let module = Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::Address("".to_string()),
             is_mutable: false,
         };
@@ -253,7 +233,7 @@ mod tests {
         assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
 
         let other_module = Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address("".to_string()),
             is_mutable: false,
         };
@@ -265,13 +245,13 @@ mod tests {
     #[test]
     fn test_validate_uniqueness() {
         let module1 = Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::Address("addr1".to_string()),
             is_mutable: false,
         };
 
         let module2 = Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::Address("addr2".to_string()),
             is_mutable: false,
         };

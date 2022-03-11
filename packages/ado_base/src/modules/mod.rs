@@ -240,7 +240,7 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::ado_base::modules::ModuleType;
+    use common::ado_base::modules::{ADDRESS_LIST, AUCTION, RECEIPT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_info},
         Addr,
@@ -251,7 +251,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
 
         let module = Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address("address".to_string()),
             is_mutable: false,
         };
@@ -279,7 +279,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
 
         let module = Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address("address".to_string()),
             is_mutable: false,
         };
@@ -328,7 +328,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
 
         let module = Module {
-            module_type: ModuleType::Auction,
+            module_type: AUCTION.to_owned(),
             instantiate: InstantiateType::Address("address".to_string()),
             is_mutable: false,
         };
@@ -378,7 +378,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("sender", &[]);
         let module = Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address("address".to_string()),
             is_mutable: true,
         };
@@ -403,7 +403,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         let module = Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address("address".to_string()),
             is_mutable: true,
         };
@@ -423,7 +423,7 @@ mod tests {
             .unwrap();
 
         let module = Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::Address("other_address".to_string()),
             is_mutable: true,
         };
@@ -461,7 +461,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         let module = Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address("address".to_string()),
             is_mutable: false,
         };
@@ -481,7 +481,7 @@ mod tests {
             .unwrap();
 
         let module = Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::Address("other_address".to_string()),
             is_mutable: true,
         };
@@ -502,7 +502,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         let module = Module {
-            module_type: ModuleType::Auction,
+            module_type: AUCTION.to_owned(),
             instantiate: InstantiateType::Address("address".to_string()),
             is_mutable: true,
         };
@@ -528,7 +528,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         let module = Module {
-            module_type: ModuleType::Auction,
+            module_type: AUCTION.to_owned(),
             instantiate: InstantiateType::Address("address".to_string()),
             is_mutable: true,
         };
@@ -588,7 +588,7 @@ mod tests {
             .unwrap();
 
         let module = Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address("address".to_string()),
             is_mutable: true,
         };
@@ -632,7 +632,7 @@ mod tests {
             .unwrap();
 
         let module = Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address("address".to_string()),
             is_mutable: false,
         };

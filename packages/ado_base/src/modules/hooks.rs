@@ -7,7 +7,7 @@ use crate::modules::ADOContract;
 use common::{
     ado_base::{
         hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
-        modules::{ModuleInfoWithAddress, ModuleType},
+        modules::{ModuleInfoWithAddress, RECEIPT},
     },
     error::ContractError,
     Funds,
@@ -51,7 +51,7 @@ impl<'a> ADOContract<'a> {
         let mut events: Vec<Event> = Vec::new();
         let mut receipt_module_address: Option<String> = None;
         for module in modules {
-            if module.module.module_type == ModuleType::Receipt {
+            if module.module.module_type == RECEIPT {
                 // If receipt module exists we want to make sure we do it last.
                 receipt_module_address = Some(module.address.clone());
                 continue;

@@ -193,11 +193,6 @@ pub enum ExecuteMsg {
         token_id: String,
         agreement: Option<TransferAgreement>,
     },
-    /// Updates the pricing of a token
-    UpdatePricing {
-        token_id: String,
-        price: Option<Coin>,
-    },
     RegisterModule {
         module: Module,
     },

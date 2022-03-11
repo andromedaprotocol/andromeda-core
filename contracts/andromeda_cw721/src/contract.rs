@@ -101,27 +101,8 @@ pub fn execute(
         },
     )?;
 
-    // Check if the token is archived before any message that may mutate the token
     match &msg {
-        ExecuteMsg::TransferNft { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::SendNft { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
         ExecuteMsg::Approve { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::Burn { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::Archive { token_id } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::TransferAgreement { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::UpdatePricing { token_id, .. } => {
             is_token_archived(deps.storage, token_id)?;
         }
         _ => {}
@@ -136,9 +117,6 @@ pub fn execute(
             token_id,
             agreement,
         } => execute_update_transfer_agreement(deps, env, info, token_id, agreement),
-        ExecuteMsg::UpdatePricing { token_id, price } => {
-            execute_update_pricing(deps, env, info, token_id, price)
-        }
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, info, token_id),
         ExecuteMsg::RegisterModule { module } => contract.execute_register_module(
@@ -260,7 +238,7 @@ fn check_can_send(
             ),
             ContractError::InsufficientFunds {},
         )?;
-        if agreement.purchaser == info.sender {
+        if agreement.purchaser == info.sender || agreement.purchaser == "*" {
             return Ok(());
         }
     }
@@ -306,26 +284,6 @@ fn execute_update_transfer_agreement(
     }
 
     token.extension.transfer_agreement = agreement;
-    contract
-        .tokens
-        .save(deps.storage, token_id.as_str(), &token)?;
-
-    Ok(Response::default())
-}
-
-fn execute_update_pricing(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    token_id: String,
-    pricing: Option<Coin>,
-) -> Result<Response, ContractError> {
-    let contract = AndrCW721Contract::default();
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
-    require(token.owner == info.sender, ContractError::Unauthorized {})?;
-    require(!token.extension.archived, ContractError::TokenIsArchived {})?;
-
-    token.extension.pricing = pricing;
     contract
         .tokens
         .save(deps.storage, token_id.as_str(), &token)?;
