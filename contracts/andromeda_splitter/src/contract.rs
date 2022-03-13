@@ -348,7 +348,7 @@ mod tests {
             .unwrap();
 
         let info = mock_info("incorrect_owner", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
         let info = mock_info(owner, &[]);
@@ -447,7 +447,7 @@ mod tests {
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
         let info = mock_info("incorrect_owner", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
         let info = mock_info(owner, &[]);
