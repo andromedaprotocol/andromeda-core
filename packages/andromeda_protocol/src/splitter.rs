@@ -1,14 +1,14 @@
 use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
 use crate::error::ContractError;
 use crate::{modules::address_list::AddressListModule, require};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::Decimal;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AddressPercent {
     pub recipient: Recipient,
-    pub percent: Uint128,
+    pub percent: Decimal,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -86,13 +86,14 @@ pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> Result<bool, 
         ContractError::EmptyRecipientsList {},
     )?;
 
-    let mut percent_sum: Uint128 = Uint128::from(0_u128);
+    let mut percent_sum: Decimal = Decimal::zero();
     for rec in recipients {
-        percent_sum += rec.percent;
+        // += operation is not supported for decimal.
+        percent_sum = percent_sum + rec.percent;
     }
 
     require(
-        percent_sum <= Uint128::from(100u128),
+        percent_sum <= Decimal::one(),
         ContractError::AmountExceededHundredPrecent {},
     )?;
 
@@ -111,7 +112,7 @@ mod tests {
 
         let inadequate_recipients = vec![AddressPercent {
             recipient: Recipient::from_string(String::from("Some Address")),
-            percent: Uint128::from(150_u128),
+            percent: Decimal::percent(150),
         }];
         let res = validate_recipient_list(inadequate_recipients).unwrap_err();
         assert_eq!(res, ContractError::AmountExceededHundredPrecent {});
@@ -119,11 +120,11 @@ mod tests {
         let valid_recipients = vec![
             AddressPercent {
                 recipient: Recipient::from_string(String::from("Some Address")),
-                percent: Uint128::from(50_u128),
+                percent: Decimal::percent(50),
             },
             AddressPercent {
                 recipient: Recipient::from_string(String::from("Some Address")),
-                percent: Uint128::from(50_u128),
+                percent: Decimal::percent(50),
             },
         ];
 
