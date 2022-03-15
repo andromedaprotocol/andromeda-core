@@ -9,7 +9,6 @@ edition = "2018"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# use library feature to disable all instantiate/execute/query exports
 withdraw = ["terraswap", "cw20"]
 modules = []
 
