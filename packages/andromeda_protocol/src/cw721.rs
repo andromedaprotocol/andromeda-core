@@ -1,4 +1,4 @@
-use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event, Uint64};
+use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event};
 use cw721::Expiration;
 use cw721_base::{
     ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MintMsg,
@@ -192,16 +192,6 @@ pub enum ExecuteMsg {
     TransferAgreement {
         token_id: String,
         agreement: Option<TransferAgreement>,
-    },
-    RegisterModule {
-        module: Module,
-    },
-    DeregisterModule {
-        module_idx: Uint64,
-    },
-    AlterModule {
-        module_idx: Uint64,
-        module: Module,
     },
 }
 

@@ -1,8 +1,6 @@
-use common::{
-    ado_base::{modules::Module, QueryMsg},
-    error::ContractError,
-    parse_message,
-};
+#[cfg(feature = "modules")]
+use common::ado_base::modules::Module;
+use common::{ado_base::QueryMsg, error::ContractError, parse_message};
 use cosmwasm_std::{Addr, Binary, Storage};
 use cw_storage_plus::{Item, Map};
 #[cfg(feature = "withdraw")]
@@ -11,8 +9,12 @@ use terraswap::asset::AssetInfo;
 pub struct ADOContract<'a> {
     pub owner: Item<'a, Addr>,
     pub operators: Map<'a, &'a str, bool>,
+    pub ado_type: Item<'a, String>,
+    #[cfg(feature = "modules")]
     pub module_info: Map<'a, &'a str, Module>,
+    #[cfg(feature = "modules")]
     pub module_addr: Map<'a, &'a str, Addr>,
+    #[cfg(feature = "modules")]
     pub module_idx: Item<'a, u64>,
     #[cfg(feature = "withdraw")]
     pub withdrawable_tokens: Map<'a, &'a str, AssetInfo>,
@@ -23,16 +25,18 @@ impl<'a> Default for ADOContract<'a> {
         ADOContract {
             owner: Item::new("owner"),
             operators: Map::new("operators"),
+            ado_type: Item::new("ado_type"),
+            #[cfg(feature = "modules")]
             module_info: Map::new("andr_modules"),
+            #[cfg(feature = "modules")]
             module_addr: Map::new("andr_module_addresses"),
+            #[cfg(feature = "modules")]
             module_idx: Item::new("andr_module_idx"),
             #[cfg(feature = "withdraw")]
             withdrawable_tokens: Map::new("withdrawable_tokens"),
         }
     }
 }
-
-impl<'a> ADOContract<'a> {}
 
 impl<'a> ADOContract<'a> {
     /// Helper function to query if a given address is a operator.

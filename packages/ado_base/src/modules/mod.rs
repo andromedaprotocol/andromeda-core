@@ -1,11 +1,13 @@
 use std::convert::TryInto;
 
 use crate::state::ADOContract;
-use cosmwasm_std::{Api, DepsMut, MessageInfo, Order, QuerierWrapper, Response, Storage, Uint64};
+use cosmwasm_std::{
+    Api, DepsMut, MessageInfo, Order, QuerierWrapper, Response, Storage, SubMsg, Uint64,
+};
 use cw_storage_plus::Bound;
 
 use common::{
-    ado_base::modules::{ADOType, InstantiateType, Module, ModuleInfoWithAddress},
+    ado_base::modules::{InstantiateType, Module, ModuleInfoWithAddress},
     error::ContractError,
     require,
 };
@@ -13,21 +15,42 @@ use common::{
 pub mod hooks;
 
 impl<'a> ADOContract<'a> {
+    pub fn register_modules(
+        &self,
+        sender: &str,
+        querier: &QuerierWrapper,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        modules: Option<Vec<Module>>,
+    ) -> Result<Vec<SubMsg>, ContractError> {
+        if let Some(modules) = modules {
+            self.validate_modules(&modules, &self.ado_type.load(storage)?)?;
+            let mut msgs: Vec<SubMsg> = vec![];
+            for module in modules {
+                let response =
+                    self.execute_register_module(querier, storage, api, sender, &module, false)?;
+                msgs.extend(response.messages);
+            }
+            Ok(msgs)
+        } else {
+            Ok(vec![])
+        }
+    }
+
     /// A wrapper for `fn register_module`. The parameters are "extracted" from `DepsMut` to be able to
     /// execute this in a loop without cloning.
     #[allow(clippy::too_many_arguments)]
-    pub fn execute_register_module(
+    pub(crate) fn execute_register_module(
         &self,
         querier: &QuerierWrapper,
         storage: &mut dyn Storage,
         api: &dyn Api,
         sender: &str,
         module: &Module,
-        ado_type: ADOType,
         should_validate: bool,
     ) -> Result<Response, ContractError> {
         require(
-            self.is_contract_owner(storage, sender)? || self.is_operator(storage, sender),
+            self.is_owner_or_operator(storage, sender)?,
             ContractError::Unauthorized {},
         )?;
         let mut resp = Response::default();
@@ -36,23 +59,22 @@ impl<'a> ADOContract<'a> {
             resp = resp.add_submessage(inst_msg);
         }
         if should_validate {
-            self.validate_modules(&self.load_modules(storage)?, ado_type)?;
+            self.validate_modules(&self.load_modules(storage)?, &self.ado_type.load(storage)?)?;
         }
         Ok(resp.add_attribute("action", "register_module"))
     }
 
     /// A wrapper for `fn alter_module`.
-    pub fn execute_alter_module(
+    pub(crate) fn execute_alter_module(
         &self,
         deps: DepsMut,
         info: MessageInfo,
         module_idx: Uint64,
         module: &Module,
-        ado_type: ADOType,
     ) -> Result<Response, ContractError> {
         let addr = info.sender.as_str();
         require(
-            self.is_contract_owner(deps.storage, addr)? || self.is_operator(deps.storage, addr),
+            self.is_owner_or_operator(deps.storage, addr)?,
             ContractError::Unauthorized {},
         )?;
         let mut resp = Response::default();
@@ -62,14 +84,17 @@ impl<'a> ADOContract<'a> {
         {
             resp = resp.add_submessage(inst_msg);
         }
-        self.validate_modules(&self.load_modules(deps.storage)?, ado_type)?;
+        self.validate_modules(
+            &self.load_modules(deps.storage)?,
+            &self.ado_type.load(deps.storage)?,
+        )?;
         Ok(resp
             .add_attribute("action", "alter_module")
             .add_attribute("module_idx", module_idx))
     }
 
     /// A wrapper for `fn deregister_module`.
-    pub fn execute_deregister_module(
+    pub(crate) fn execute_deregister_module(
         &self,
         deps: DepsMut,
         info: MessageInfo,
@@ -77,7 +102,7 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         let addr = info.sender.as_str();
         require(
-            self.is_contract_owner(deps.storage, addr)? || self.is_operator(deps.storage, addr),
+            self.is_owner_or_operator(deps.storage, addr)?,
             ContractError::Unauthorized {},
         )?;
         self.deregister_module(deps.storage, module_idx)?;
@@ -227,10 +252,10 @@ impl<'a> ADOContract<'a> {
     pub fn validate_modules(
         &self,
         modules: &[Module],
-        ado_type: ADOType,
+        ado_type: &str,
     ) -> Result<(), ContractError> {
         for module in modules {
-            module.validate(modules, &ado_type)?;
+            module.validate(modules, ado_type)?;
         }
 
         Ok(())
@@ -260,6 +285,10 @@ mod tests {
             .owner
             .save(deps_mut.storage, &Addr::unchecked("owner"))
             .unwrap();
+        ADOContract::default()
+            .ado_type
+            .save(deps_mut.storage, &"cw20".to_string())
+            .unwrap();
 
         let res = ADOContract::default().execute_register_module(
             &deps_mut.querier,
@@ -267,7 +296,6 @@ mod tests {
             deps_mut.api,
             "sender",
             &module,
-            ADOType::CW20,
             true,
         );
 
@@ -289,6 +317,11 @@ mod tests {
             .save(deps_mut.storage, &Addr::unchecked("owner"))
             .unwrap();
 
+        ADOContract::default()
+            .ado_type
+            .save(deps_mut.storage, &"cw20".to_string())
+            .unwrap();
+
         let res = ADOContract::default()
             .execute_register_module(
                 &deps_mut.querier,
@@ -296,7 +329,6 @@ mod tests {
                 deps_mut.api,
                 "owner",
                 &module,
-                ADOType::CW20,
                 true,
             )
             .unwrap();
@@ -338,13 +370,17 @@ mod tests {
             .save(deps_mut.storage, &Addr::unchecked("owner"))
             .unwrap();
 
+        ADOContract::default()
+            .ado_type
+            .save(deps_mut.storage, &"cw20".to_string())
+            .unwrap();
+
         let res = ADOContract::default().execute_register_module(
             &deps_mut.querier,
             deps_mut.storage,
             deps_mut.api,
             "owner",
             &module,
-            ADOType::CW20,
             true,
         );
 
@@ -362,7 +398,6 @@ mod tests {
                 deps_mut.api,
                 "owner",
                 &module,
-                ADOType::CW20,
                 false,
             )
             .unwrap();
@@ -387,13 +422,13 @@ mod tests {
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
 
-        let res = ADOContract::default().execute_alter_module(
-            deps.as_mut(),
-            info,
-            1u64.into(),
-            &module,
-            ADOType::CW20,
-        );
+        ADOContract::default()
+            .ado_type
+            .save(deps.as_mut().storage, &"cw20".to_string())
+            .unwrap();
+
+        let res =
+            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), &module);
 
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
@@ -421,6 +456,10 @@ mod tests {
             .module_addr
             .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
             .unwrap();
+        ADOContract::default()
+            .ado_type
+            .save(deps.as_mut().storage, &"cw20".to_string())
+            .unwrap();
 
         let module = Module {
             module_type: RECEIPT.to_owned(),
@@ -429,7 +468,7 @@ mod tests {
         };
 
         let res = ADOContract::default()
-            .execute_alter_module(deps.as_mut(), info, 1u64.into(), &module, ADOType::CW20)
+            .execute_alter_module(deps.as_mut(), info, 1u64.into(), &module)
             .unwrap();
 
         assert_eq!(
@@ -479,6 +518,10 @@ mod tests {
             .module_addr
             .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
             .unwrap();
+        ADOContract::default()
+            .ado_type
+            .save(deps.as_mut().storage, &"cw20".to_string())
+            .unwrap();
 
         let module = Module {
             module_type: RECEIPT.to_owned(),
@@ -486,13 +529,8 @@ mod tests {
             is_mutable: true,
         };
 
-        let res = ADOContract::default().execute_alter_module(
-            deps.as_mut(),
-            info,
-            1u64.into(),
-            &module,
-            ADOType::CW20,
-        );
+        let res =
+            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), &module);
 
         assert_eq!(ContractError::ModuleImmutable {}, res.unwrap_err());
     }
@@ -511,14 +549,13 @@ mod tests {
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
+        ADOContract::default()
+            .ado_type
+            .save(deps.as_mut().storage, &"cw20".to_string())
+            .unwrap();
 
-        let res = ADOContract::default().execute_alter_module(
-            deps.as_mut(),
-            info,
-            1u64.into(),
-            &module,
-            ADOType::CW20,
-        );
+        let res =
+            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), &module);
 
         assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
     }
@@ -546,14 +583,13 @@ mod tests {
             .module_addr
             .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
             .unwrap();
+        ADOContract::default()
+            .ado_type
+            .save(deps.as_mut().storage, &"cw20".to_string())
+            .unwrap();
 
-        let res = ADOContract::default().execute_alter_module(
-            deps.as_mut(),
-            info,
-            1u64.into(),
-            &module,
-            ADOType::CW20,
-        );
+        let res =
+            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), &module);
 
         assert_eq!(
             ContractError::IncompatibleModules {
