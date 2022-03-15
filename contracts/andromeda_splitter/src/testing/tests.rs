@@ -6,7 +6,7 @@ use andromeda_protocol::{
 };
 use common::ado_base::recipient::Recipient;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{attr, to_binary, CosmosMsg, ReplyOn, Response, SubMsg, Uint128, WasmMsg};
+use cosmwasm_std::{attr, to_binary, CosmosMsg, Decimal, ReplyOn, Response, SubMsg, WasmMsg};
 
 #[test]
 fn test_instantiate() {
@@ -23,7 +23,7 @@ fn test_instantiate() {
         address_list,
         recipients: vec![AddressPercent {
             recipient: Recipient::from_string(String::from("Some Address")),
-            percent: Uint128::from(100_u128),
+            percent: Decimal::percent(100),
         }],
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
