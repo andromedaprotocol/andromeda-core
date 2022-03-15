@@ -1,7 +1,5 @@
-use crate::{
-    error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-};
+use andromeda_protocol::crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use common::error::ContractError;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
