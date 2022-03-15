@@ -250,6 +250,12 @@ pub enum ContractError {
 
     #[error("Purchase limit reached")]
     PurchaseLimitReached {},
+
+    #[error("Sale not ended")]
+    SaleNotEnded {},
+
+    #[error("Min sales exceeded")]
+    MinSalesExceeded {},
 }
 
 impl From<Cw20ContractError> for ContractError {

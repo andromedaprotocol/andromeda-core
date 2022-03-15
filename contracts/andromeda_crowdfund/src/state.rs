@@ -5,14 +5,11 @@ use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// The config.
 pub const CONFIG: Item<Config> = Item::new("config");
 
 /// Sale started if and only if STATE.may_load is Some and !duration.is_expired()
 pub const STATE: Item<State> = Item::new("state");
-
-/// The amount of funds to send to recipient if sale successful. This already
-/// takes into account the royalties and taxes.
-pub const AMOUNT_TO_SEND: Item<Uint128> = Item::new("amount_to_send");
 
 /// Relates buyer address to vector of purchases.
 pub const PURCHASES: Map<&str, Vec<Purchase>> = Map::new("buyers");
@@ -20,7 +17,6 @@ pub const PURCHASES: Map<&str, Vec<Purchase>> = Map::new("buyers");
 /// Maps token_id -> whether or not it has been purchased or not.
 pub const TOKEN_AVAILABILITY: Map<&str, bool> = Map::new("token_availability");
 
-///  on purchase, add remaining_amount to AMOUNT_TO_SEND
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Purchase {
     pub token_id: String,
@@ -28,6 +24,7 @@ pub struct Purchase {
     pub tax_amount: Uint128,
     // sub messages for rates sending
     pub msgs: Vec<SubMsg>,
+    pub purchaser: String,
 }
 
 /// Can be updated if sale NOT ongoing.
@@ -42,5 +39,9 @@ pub struct State {
     pub price: Coin,
     pub min_tokens_sold: Uint128,
     pub max_amount_per_wallet: Uint128,
+    pub amount_sold: Uint128,
+    /// The amount of funds to send to recipient if sale successful. This already
+    /// takes into account the royalties and taxes.
+    pub amount_to_send: Uint128,
     pub recipient: Recipient,
 }

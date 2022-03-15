@@ -1,9 +1,8 @@
-use crate::state::{
-    Config, Purchase, State, AMOUNT_TO_SEND, CONFIG, PURCHASES, STATE, TOKEN_AVAILABILITY,
-};
+use crate::state::{Config, Purchase, State, CONFIG, PURCHASES, STATE, TOKEN_AVAILABILITY};
 use ado_base::ADOContract;
 use andromeda_protocol::{
     crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    cw721::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg},
     rates::get_tax_amount,
 };
 use common::{
@@ -15,11 +14,13 @@ use common::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    has_coins, to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    QueryRequest, Response, StdResult, Uint128, WasmQuery,
+    has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
-use cw721::{Cw721QueryMsg, OwnerOfResponse};
+use cw721::{OwnerOfResponse, TokensResponse};
+
+const DEFAULT_LIMIT: u32 = 50;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -81,7 +82,7 @@ pub fn execute(
             recipient,
         ),
         ExecuteMsg::Purchase { token_id } => execute_purchase(deps, env, info, token_id),
-        ExecuteMsg::EndSale {} => panic!(),
+        ExecuteMsg::EndSale { limit } => execute_end_sale(deps, env, limit),
     }
 }
 
@@ -118,6 +119,8 @@ fn execute_start_sale(
             price,
             min_tokens_sold,
             max_amount_per_wallet,
+            amount_sold: Uint128::zero(),
+            amount_to_send: Uint128::zero(),
             recipient,
         },
     )?;
@@ -140,7 +143,7 @@ fn execute_purchase(
     let state = STATE.may_load(deps.storage)?;
     require(state.is_some(), ContractError::NoOngoingSale {})?;
 
-    let state = state.unwrap();
+    let mut state = state.unwrap();
     require(
         !state.expiration.is_expired(&env.block),
         ContractError::NoOngoingSale {},
@@ -191,8 +194,7 @@ fn execute_purchase(
     )?;
     let remaining_amount = remainder.try_get_coin()?;
 
-    let amount_to_send = AMOUNT_TO_SEND.load(deps.storage)?;
-    AMOUNT_TO_SEND.save(deps.storage, &(amount_to_send + remaining_amount.amount))?;
+    state.amount_to_send += remaining_amount.amount;
 
     let tax_amount = get_tax_amount(&msgs, state.price.amount - remaining_amount.amount);
     // require that the sender has sent enough for taxes
@@ -200,7 +202,7 @@ fn execute_purchase(
         has_coins(
             &info.funds,
             &Coin {
-                denom: state.price.denom,
+                denom: state.price.denom.clone(),
                 amount: state.price.amount + tax_amount,
             },
         ),
@@ -213,14 +215,112 @@ fn execute_purchase(
         token_id: token_id.clone(),
         tax_amount,
         msgs,
+        purchaser: sender.clone(),
     };
 
     purchases.push(purchase);
     PURCHASES.save(deps.storage, &sender, &purchases)?;
 
+    state.amount_sold += Uint128::from(1u128);
+    STATE.save(deps.storage, &state)?;
+
     Ok(Response::new()
         .add_attribute("action", "purchase")
         .add_attribute("token_id", token_id))
+}
+
+fn execute_end_sale(
+    deps: DepsMut,
+    env: Env,
+    limit: Option<u32>,
+) -> Result<Response, ContractError> {
+    let state = STATE.load(deps.storage)?;
+    require(
+        state.expiration.is_expired(&env.block),
+        ContractError::SaleNotEnded {},
+    )?;
+    if state.amount_sold < state.min_tokens_sold {
+        issue_refunds_and_burn_tokens(deps, env, limit)
+    } else {
+        // Transfer tokens and send funds to recipient.
+        Ok(Response::new())
+    }
+}
+
+fn issue_refunds_and_burn_tokens(
+    deps: DepsMut,
+    env: Env,
+    limit: Option<u32>,
+) -> Result<Response, ContractError> {
+    let state = STATE.load(deps.storage)?;
+    require(
+        state.expiration.is_expired(&env.block),
+        ContractError::SaleNotEnded {},
+    )?;
+    // Only allow issuing refunds if the sale minimum was not reached.
+    require(
+        state.amount_sold < state.min_tokens_sold,
+        ContractError::MinSalesExceeded {},
+    )?;
+    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+    let mut refund_msgs: Vec<CosmosMsg> = vec![];
+    // Issue refunds for `limit` number of users.
+    let purchases: Vec<Vec<Purchase>> = PURCHASES
+        .range(deps.storage, None, None, Order::Ascending)
+        .take(limit)
+        .flatten()
+        .map(|(_v, p)| p)
+        .collect();
+    for purchase_vec in purchases.iter() {
+        let purchaser = purchase_vec[0].purchaser.clone();
+        // Remove each entry as they get processed.
+        PURCHASES.remove(deps.storage, &purchaser);
+        // Reduce a user's purchases into one message. While the tax paid on each item should
+        // be the same, it is not guaranteed given that the rates module is mutable during the
+        // sale.
+        let amount = purchase_vec
+            .iter()
+            // This represents the total amount of funds they sent for each purchase.
+            .map(|p| p.tax_amount + state.price.amount)
+            // Adds up all of the purchases.
+            .reduce(|accum, item| accum + item)
+            .unwrap_or_else(Uint128::zero);
+
+        if amount > Uint128::zero() {
+            refund_msgs.push(CosmosMsg::Bank(BankMsg::Send {
+                to_address: purchaser,
+                amount: vec![Coin {
+                    denom: state.price.denom.clone(),
+                    amount,
+                }],
+            }));
+        }
+    }
+
+    // Burn `limit` number of tokens
+    let config = CONFIG.load(deps.storage)?;
+    let tokens_to_burn = query_tokens(
+        &deps.querier,
+        config.token_address.to_string(),
+        env.contract.address.to_string(),
+        limit,
+    )?;
+
+    let burn_msgs: Result<Vec<CosmosMsg>, ContractError> = tokens_to_burn
+        .into_iter()
+        .map(|token_id| {
+            Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: config.token_address.to_string(),
+                funds: vec![],
+                msg: encode_binary(&Cw721ExecuteMsg::Burn { token_id })?,
+            }))
+        })
+        .collect();
+
+    Ok(Response::new()
+        .add_attribute("action", "issue_refunds_and_burn_tokens")
+        .add_messages(refund_msgs)
+        .add_messages(burn_msgs?))
 }
 
 fn query_owner_of(
@@ -236,6 +336,23 @@ fn query_owner_of(
         })?,
     }))?;
     Ok(res.owner)
+}
+
+fn query_tokens(
+    querier: &QuerierWrapper,
+    token_address: String,
+    owner: String,
+    limit: usize,
+) -> Result<Vec<String>, ContractError> {
+    let res: TokensResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: token_address,
+        msg: encode_binary(&Cw721QueryMsg::Tokens {
+            owner,
+            start_after: None,
+            limit: Some(limit as u32),
+        })?,
+    }))?;
+    Ok(res.tokens)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

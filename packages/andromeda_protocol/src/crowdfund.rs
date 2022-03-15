@@ -26,15 +26,12 @@ pub enum ExecuteMsg {
         /// The recipient of the funds if the sale met the minimum sold.
         recipient: Recipient,
     },
-
     Purchase {
         token_id: String,
     },
-
-    // Open to anyone. If min nfts were sold, ownership will be transfered to buyers
-    // and funds will be sent to recipient. Otherwise nfts will be burned and funds
-    // returned.
-    EndSale {},
+    EndSale {
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
