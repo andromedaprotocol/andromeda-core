@@ -43,13 +43,6 @@ pub struct ModuleInfoWithAddress {
     pub address: String,
 }
 
-/// The type of ADO that is using these modules.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum ADOType {
-    CW721,
-    CW20,
-}
-
 impl Module {
     /// Queries the code id for a module from the factory contract
     pub fn get_code_id(
@@ -105,10 +98,10 @@ impl Module {
 
     /// Validates `self` by checking that it is unique, does not conflict with any other module,
     /// and does not conflict with the creating ADO.
-    pub fn validate(&self, modules: &[Module], ado_type: &ADOType) -> Result<(), ContractError> {
+    pub fn validate(&self, modules: &[Module], ado_type: &str) -> Result<(), ContractError> {
         require(self.is_unique(modules), ContractError::ModuleNotUnique {})?;
 
-        if ado_type == &ADOType::CW20 && contains_module(modules, AUCTION) {
+        if ado_type == "cw20" && contains_module(modules, AUCTION) {
             return Err(ContractError::IncompatibleModules {
                 msg: "An Auction module cannot be used for a CW20 ADO".to_string(),
             });
@@ -154,7 +147,7 @@ mod tests {
 
         let res = addresslist_module.validate(
             &[addresslist_module.clone(), addresslist_module.clone()],
-            &ADOType::CW721,
+            "cw721",
         );
         assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
 
@@ -164,10 +157,7 @@ mod tests {
             is_mutable: false,
         };
         addresslist_module
-            .validate(
-                &[addresslist_module.clone(), auction_module],
-                &ADOType::CW721,
-            )
+            .validate(&[addresslist_module.clone(), auction_module], "cw721")
             .unwrap();
     }
 
@@ -179,10 +169,10 @@ mod tests {
             is_mutable: false,
         };
 
-        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        let res = module.validate(&[module.clone(), module.clone()], "cw721");
         assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
 
-        let res = module.validate(&[module.clone()], &ADOType::CW20);
+        let res = module.validate(&[module.clone()], "cw20");
         assert_eq!(
             ContractError::IncompatibleModules {
                 msg: "An Auction module cannot be used for a CW20 ADO".to_string()
@@ -196,7 +186,7 @@ mod tests {
             is_mutable: false,
         };
         module
-            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .validate(&[module.clone(), other_module], "cw721")
             .unwrap();
     }
 
@@ -208,7 +198,7 @@ mod tests {
             is_mutable: false,
         };
 
-        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        let res = module.validate(&[module.clone(), module.clone()], "cw721");
         assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
 
         let other_module = Module {
@@ -217,7 +207,7 @@ mod tests {
             is_mutable: false,
         };
         module
-            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .validate(&[module.clone(), other_module], "cw721")
             .unwrap();
     }
 
@@ -229,7 +219,7 @@ mod tests {
             is_mutable: false,
         };
 
-        let res = module.validate(&[module.clone(), module.clone()], &ADOType::CW721);
+        let res = module.validate(&[module.clone(), module.clone()], "cw721");
         assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
 
         let other_module = Module {
@@ -238,7 +228,7 @@ mod tests {
             is_mutable: false,
         };
         module
-            .validate(&[module.clone(), other_module], &ADOType::CW721)
+            .validate(&[module.clone(), other_module], "cw721")
             .unwrap();
     }
 
@@ -256,7 +246,7 @@ mod tests {
             is_mutable: false,
         };
 
-        let res = module1.validate(&[module1.clone(), module2], &ADOType::CW721);
+        let res = module1.validate(&[module1.clone(), module2], "cw721");
         assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
     }
 }

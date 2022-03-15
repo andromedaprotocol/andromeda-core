@@ -4,8 +4,12 @@ pub mod operators;
 pub mod ownership;
 pub mod recipient;
 
-use crate::{ado_base::recipient::Recipient, error::ContractError, withdraw::Withdrawal};
-use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, WasmQuery};
+use crate::{
+    ado_base::{modules::Module, recipient::Recipient},
+    error::ContractError,
+    withdraw::Withdrawal,
+};
+use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, Uint64, WasmQuery};
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -29,6 +33,16 @@ pub enum AndromedaMsg {
     Withdraw {
         recipient: Option<Recipient>,
         tokens_to_withdraw: Option<Vec<Withdrawal>>,
+    },
+    RegisterModule {
+        module: Module,
+    },
+    DeregisterModule {
+        module_idx: Uint64,
+    },
+    AlterModule {
+        module_idx: Uint64,
+        module: Module,
     },
 }
 

@@ -1,4 +1,5 @@
 use crate::contract::{execute, instantiate};
+use ado_base::ADOContract;
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
     cw20::{ExecuteMsg, InstantiateMsg},
@@ -68,6 +69,20 @@ fn test_instantiate_modules() {
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
+    assert_eq!(
+        "sender",
+        ADOContract::default()
+            .owner
+            .load(deps.as_mut().storage)
+            .unwrap()
+    );
+    assert_eq!(
+        "cw20",
+        ADOContract::default()
+            .ado_type
+            .load(deps.as_mut().storage)
+            .unwrap()
+    );
 
     let msgs: Vec<SubMsg> = vec![
         SubMsg {

@@ -5,6 +5,7 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 
+use ado_base::ADOContract;
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
@@ -99,6 +100,21 @@ fn test_instantiate_modules() {
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
+
+    assert_eq!(
+        "sender",
+        ADOContract::default()
+            .owner
+            .load(deps.as_mut().storage)
+            .unwrap()
+    );
+    assert_eq!(
+        "cw721",
+        ADOContract::default()
+            .ado_type
+            .load(deps.as_mut().storage)
+            .unwrap()
+    );
 
     let msgs: Vec<SubMsg> = vec![
         SubMsg {

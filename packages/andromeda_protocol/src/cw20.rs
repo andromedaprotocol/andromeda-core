@@ -1,4 +1,4 @@
-use cosmwasm_std::{Binary, Uint128, Uint64};
+use cosmwasm_std::{Binary, Uint128};
 use cw0::Expiration;
 use cw20::{Cw20Coin, Logo, MinterResponse};
 use cw20_base::msg::{
@@ -8,7 +8,7 @@ use cw20_base::msg::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use common::ado_base::modules::Module;
+use common::ado_base::{modules::Module, AndromedaMsg};
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
@@ -109,17 +109,7 @@ pub enum ExecuteMsg {
     },
     /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
     UploadLogo(Logo),
-
-    RegisterModule {
-        module: Module,
-    },
-    DeregisterModule {
-        module_idx: Uint64,
-    },
-    AlterModule {
-        module_idx: Uint64,
-        module: Module,
-    },
+    AndrReceive(AndromedaMsg),
 }
 
 impl From<ExecuteMsg> for Cw20ExecuteMsg {
