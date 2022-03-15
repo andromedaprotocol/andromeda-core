@@ -1,5 +1,7 @@
-use crate::communication::{modules::InstantiateType, AndromedaMsg, AndromedaQuery, Recipient};
 use astroport::asset::AssetInfo as AstroportAssetInfo;
+use common::ado_base::{
+    modules::InstantiateType, recipient::Recipient, AndromedaMsg, AndromedaQuery,
+};
 // To be used in the swapper contract.
 pub use astroport::querier::{query_balance, query_token_balance};
 use cosmwasm_std::Addr;

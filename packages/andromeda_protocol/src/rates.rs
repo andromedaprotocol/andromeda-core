@@ -1,36 +1,19 @@
-use crate::{
-    communication::{
-        encode_binary,
+use crate::modules::Rate;
+use common::{
+    ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        AndromedaMsg, AndromedaQuery, Recipient,
+        recipient::Recipient,
+        AndromedaMsg, AndromedaQuery,
     },
+    encode_binary,
     error::ContractError,
-    modules::Rate,
+    Funds,
 };
 use cosmwasm_std::{
     BankMsg, Coin, CosmosMsg, QuerierWrapper, QueryRequest, SubMsg, Uint128, WasmQuery,
 };
-use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum Funds {
-    Native(Coin),
-    Cw20(Cw20Coin),
-}
-
-impl Funds {
-    // There is probably a more idiomatic way of doing this with From and Into...
-    pub fn try_get_coin(&self) -> Result<Coin, ContractError> {
-        match self {
-            Funds::Native(coin) => Ok(coin.clone()),
-            Funds::Cw20(_) => Err(ContractError::ParsingError {
-                err: "Funds is not of type Native".to_string(),
-            }),
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {

@@ -1,7 +1,5 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
-    communication::{modules::InstantiateType, Recipient},
-    error::ContractError,
     swapper::{
         AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, SwapperCw20HookMsg,
         SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
@@ -10,6 +8,10 @@ use andromeda_protocol::{
         mock_dependencies_custom, MOCK_ASTROPORT_WRAPPER_CONTRACT, MOCK_CW20_CONTRACT,
         MOCK_CW20_CONTRACT2,
     },
+};
+use common::{
+    ado_base::{modules::InstantiateType, recipient::Recipient},
+    error::ContractError,
 };
 use cosmwasm_std::{
     coins,

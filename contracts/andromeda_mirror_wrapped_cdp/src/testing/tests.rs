@@ -1,16 +1,17 @@
 use super::mock_querier::mock_dependencies_custom;
 use crate::contract::{execute, instantiate, query};
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
     common::get_tax_deducted_funds,
-    communication::{AndromedaMsg, AndromedaQuery},
-    error::ContractError,
     mirror_wrapped_cdp::{
         ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg,
         MirrorGovExecuteMsg, MirrorLockExecuteMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
         MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
-    operators::OperatorsResponse,
-    withdraw::WITHDRAWABLE_TOKENS,
+};
+use common::{
+    ado_base::{operators::OperatorsResponse, AndromedaMsg, AndromedaQuery},
+    error::ContractError,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
@@ -187,11 +188,11 @@ fn assert_intantiate(deps: DepsMut, info: MessageInfo) {
         mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
         operators: None,
     };
-    let res = instantiate(deps, mock_env(), info.clone(), msg).unwrap();
+    let res = instantiate(deps, mock_env(), info, msg).unwrap();
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
-            .add_attribute("owner", info.sender),
+            .add_attribute("type", "mirror"),
         res
     );
 }
@@ -214,9 +215,11 @@ fn test_instantiate() {
             mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
         },
     );
+    let contract = ADOContract::default();
     assert_eq!(
         1,
-        WITHDRAWABLE_TOKENS
+        contract
+            .withdrawable_tokens
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
             .count()
     );
@@ -225,7 +228,8 @@ fn test_instantiate() {
         AssetInfo::Token {
             contract_addr: MOCK_MIRROR_TOKEN_ADDR.to_string()
         },
-        WITHDRAWABLE_TOKENS
+        contract
+            .withdrawable_tokens
             .load(deps.as_mut().storage, MOCK_MIRROR_TOKEN_ADDR)
             .unwrap()
     );
@@ -280,7 +284,8 @@ fn test_mirror_mint_open_position_not_short() {
         AssetInfo::Token {
             contract_addr: "collateral_token".to_string()
         },
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .load(deps.as_mut().storage, "collateral_token")
             .unwrap()
     );
@@ -288,13 +293,15 @@ fn test_mirror_mint_open_position_not_short() {
         AssetInfo::Token {
             contract_addr: "token_address".to_string()
         },
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .load(deps.as_mut().storage, "token_address")
             .unwrap()
     );
     assert_eq!(
         3,
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
             .count()
     );
@@ -328,7 +335,8 @@ fn test_mirror_mint_open_position_short() {
         AssetInfo::Token {
             contract_addr: "collateral_token".to_string()
         },
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .load(deps.as_mut().storage, "collateral_token")
             .unwrap()
     );
@@ -336,13 +344,15 @@ fn test_mirror_mint_open_position_short() {
         AssetInfo::NativeToken {
             denom: "uusd".to_string()
         },
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .load(deps.as_mut().storage, "uusd")
             .unwrap()
     );
     assert_eq!(
         3,
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
             .count()
     );
@@ -436,7 +446,8 @@ fn test_mirror_mint_open_position_cw20_not_short() {
         AssetInfo::Token {
             contract_addr: "minted_asset_token".to_string()
         },
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .load(deps.as_mut().storage, "minted_asset_token")
             .unwrap()
     );
@@ -444,13 +455,15 @@ fn test_mirror_mint_open_position_cw20_not_short() {
         AssetInfo::Token {
             contract_addr: TEST_TOKEN.to_string()
         },
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .load(deps.as_mut().storage, TEST_TOKEN)
             .unwrap()
     );
     assert_eq!(
         3,
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
             .count()
     );
@@ -479,7 +492,8 @@ fn test_mirror_mint_open_position_cw20_short() {
         AssetInfo::NativeToken {
             denom: "uusd".to_string()
         },
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .load(deps.as_mut().storage, "uusd")
             .unwrap()
     );
@@ -487,13 +501,15 @@ fn test_mirror_mint_open_position_cw20_short() {
         AssetInfo::Token {
             contract_addr: TEST_TOKEN.to_string()
         },
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .load(deps.as_mut().storage, TEST_TOKEN)
             .unwrap()
     );
     assert_eq!(
         3,
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
             .count()
     );
@@ -566,13 +582,15 @@ fn test_mirror_staking_unbond() {
         AssetInfo::Token {
             contract_addr: "asset_token".to_string()
         },
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .load(deps.as_mut().storage, "asset_token")
             .unwrap()
     );
     assert_eq!(
         2,
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
             .count()
     );
@@ -752,13 +770,15 @@ fn test_lock_unlock_position_funds() {
         AssetInfo::NativeToken {
             denom: "uusd".to_string()
         },
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .load(deps.as_mut().storage, "uusd")
             .unwrap()
     );
     assert_eq!(
         2,
-        WITHDRAWABLE_TOKENS
+        ADOContract::default()
+            .withdrawable_tokens
             .keys(deps.as_mut().storage, None, None, Order::Ascending)
             .count()
     );

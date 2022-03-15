@@ -1,6 +1,9 @@
-use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
-use crate::error::ContractError;
-use crate::{modules::address_list::AddressListModule, require};
+use crate::modules::address_list::AddressListModule;
+use common::{
+    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    error::ContractError,
+    require,
+};
 use cosmwasm_std::Decimal;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

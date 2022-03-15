@@ -1,20 +1,21 @@
 use crate::state::SPLITTER;
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    communication::encode_binary,
-    communication::{parse_message, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         hooks::{HookResponse, MessageHooks},
         Module, Modules,
     },
-    operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require,
     splitter::{
         validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse,
         InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
     },
+};
+use common::{
+    ado_base::{AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    require,
 };
 use cosmwasm_std::{
     attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
@@ -51,13 +52,15 @@ pub fn instantiate(
         modules.hook(|module| module.on_instantiate(&deps, info.clone(), env.clone()))?;
 
     SPLITTER.save(deps.storage, &splitter)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-
-    Ok(Response::new()
-        .add_attributes(vec![
-            attr("action", "instantiate"),
-            attr("type", "splitter"),
-        ])
+    let res = ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "splitter".to_string(),
+            operators: None,
+        },
+    )?;
+    Ok(res
         .add_submessages(inst_msgs.msgs)
         .add_events(inst_msgs.events))
 }
@@ -91,17 +94,13 @@ pub fn execute(
 
 pub fn execute_andromeda(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(..) => execute_send(deps, info),
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
+        _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
 }
 
@@ -184,7 +183,7 @@ fn execute_update_recipients(
     recipients: Vec<AddressPercent>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -207,7 +206,7 @@ fn execute_update_lock(
     lock: bool,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut splitter = SPLITTER.load(deps.storage)?;
@@ -227,7 +226,7 @@ fn execute_update_address_list(
     address_list: Option<AddressListModule>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -265,28 +264,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
-        }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
 }
 
@@ -305,7 +283,8 @@ fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::{communication::Recipient, modules::address_list::AddressListModule};
+    use andromeda_protocol::modules::address_list::AddressListModule;
+    use common::ado_base::recipient::Recipient;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{from_binary, Addr, Coin, Decimal};
 
@@ -343,7 +322,8 @@ mod tests {
         let lock = true;
         let msg = ExecuteMsg::UpdateLock { lock };
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
@@ -372,7 +352,8 @@ mod tests {
         let env = mock_env();
         let owner = "creator";
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
@@ -443,7 +424,8 @@ mod tests {
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
         let info = mock_info("incorrect_owner", &[]);
@@ -490,7 +472,8 @@ mod tests {
         let msg = ExecuteMsg::Send {};
 
         //incorrect owner
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
             .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
@@ -498,7 +481,8 @@ mod tests {
             panic!();
         }
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
 
@@ -602,7 +586,8 @@ mod tests {
         let msg = ExecuteMsg::Send {};
 
         //incorrect owner
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
             .unwrap();
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
@@ -610,7 +595,8 @@ mod tests {
             panic!()
         }
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
 

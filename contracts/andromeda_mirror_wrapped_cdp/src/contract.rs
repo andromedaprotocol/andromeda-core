@@ -7,21 +7,16 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{Config, CONFIG};
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
     common::get_tax_deducted_funds,
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
     mirror_wrapped_cdp::{
         ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, MirrorLockExecuteMsg,
         MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
-    operators::{
-        execute_update_operators, initialize_operators, is_operator, query_is_operator,
-        query_operators,
-    },
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require,
-    withdraw::{add_withdrawable_token, execute_withdraw},
+};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::AssetInfo;
@@ -37,10 +32,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    if let Some(operators) = msg.operators {
-        initialize_operators(deps.storage, operators)?;
-    }
     let config = Config {
         mirror_mint_contract: deps.api.addr_validate(&msg.mirror_mint_contract)?,
         mirror_staking_contract: deps.api.addr_validate(&msg.mirror_staking_contract)?,
@@ -52,7 +45,7 @@ pub fn instantiate(
         .addr_validate(&msg.mirror_token_contract)?
         .to_string();
     // We will need to be able to withdraw the MIR token.
-    add_withdrawable_token(
+    contract.add_withdrawable_token(
         deps.storage,
         &mirror_token_contract.clone(),
         &AssetInfo::Token {
@@ -61,10 +54,14 @@ pub fn instantiate(
     )?;
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    Ok(Response::new()
-        .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender))
+    contract.instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "mirror".to_string(),
+            operators: msg.operators,
+        },
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -76,7 +73,9 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     match msg {
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
         ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
         ExecuteMsg::MirrorMintExecuteMsg(msg) => execute_mirror_mint_msg(deps, info, msg),
         ExecuteMsg::MirrorStakingExecuteMsg(msg) => execute_mirror_staking_msg(deps, info, msg),
@@ -155,7 +154,7 @@ fn execute_mirror_staking_msg(
             asset_token,
             amount: _,
         } => {
-            add_withdrawable_token(
+            ADOContract::default().add_withdrawable_token(
                 deps.storage,
                 &asset_token.clone(),
                 &AssetInfo::Token {
@@ -190,7 +189,7 @@ fn execute_mirror_lock_msg(
     let binary = encode_binary(&msg)?;
     match msg {
         MirrorLockExecuteMsg::UnlockPositionFunds { positions_idx: _ } => {
-            add_withdrawable_token(
+            ADOContract::default().add_withdrawable_token(
                 deps.storage,
                 "uusd",
                 &AssetInfo::NativeToken {
@@ -229,10 +228,15 @@ fn handle_open_position_withdrawable_tokens(
     is_short: bool,
 ) -> Result<(), ContractError> {
     // Barring liquidation we will want to withdraw the collateral at some point.
-    add_withdrawable_token(storage, &get_asset_name(&collateral_info), &collateral_info)?;
+
+    ADOContract::default().add_withdrawable_token(
+        storage,
+        &get_asset_name(&collateral_info),
+        &collateral_info,
+    )?;
     if is_short {
         // If we are shorting we will get UST back eventually.
-        add_withdrawable_token(
+        ADOContract::default().add_withdrawable_token(
             storage,
             "uusd",
             &AssetInfo::NativeToken {
@@ -242,38 +246,13 @@ fn handle_open_position_withdrawable_tokens(
     } else {
         // In this case the minted assets will be immediately sent back to this contract, so
         // we want to be able to withdraw it.
-        add_withdrawable_token(
+        ADOContract::default().add_withdrawable_token(
             storage,
             &get_asset_name(&minted_asset_info),
             &minted_asset_info,
         )?;
     }
     Ok(())
-}
-
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
-        }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw {
-            recipient,
-            tokens_to_withdraw,
-        } => execute_withdraw(deps.as_ref(), env, info, recipient, tokens_to_withdraw),
-    }
 }
 
 pub fn receive_cw20(
@@ -373,8 +352,7 @@ pub fn execute_mirror_msg(
     msg_binary: Binary,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, sender.as_str())?
-            || is_operator(deps.storage, sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -402,7 +380,7 @@ pub fn execute_update_config(
     mirror_lock_contract: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut config = CONFIG.load(deps.storage)?;
@@ -436,29 +414,8 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
-        }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
     }
 }
 

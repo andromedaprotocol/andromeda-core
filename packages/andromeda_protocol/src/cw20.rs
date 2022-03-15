@@ -8,7 +8,7 @@ use cw20_base::msg::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::communication::modules::Module;
+use common::ado_base::modules::Module;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {

@@ -2,9 +2,9 @@ use crate::contract::instantiate;
 use andromeda_protocol::splitter::{AddressPercent, InstantiateMsg};
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
-    communication::Recipient,
     modules::address_list::{AddressListModule, REPLY_ADDRESS_LIST},
 };
+use common::ado_base::recipient::Recipient;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{attr, to_binary, CosmosMsg, Decimal, ReplyOn, Response, SubMsg, WasmMsg};
 
@@ -29,7 +29,7 @@ fn test_instantiate() {
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let expected_res = Response::new()
         .add_attributes(vec![
-            attr("action", "instantiate"),
+            attr("method", "instantiate"),
             attr("type", "splitter"),
         ])
         .add_submessages(vec![SubMsg {

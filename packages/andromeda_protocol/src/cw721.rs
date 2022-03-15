@@ -7,11 +7,10 @@ use cw721_base::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    communication::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
+use crate::modules::{common::calculate_fee, Rate};
+use common::{
+    ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    modules::common::calculate_fee,
-    modules::Rate,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -193,11 +192,6 @@ pub enum ExecuteMsg {
     TransferAgreement {
         token_id: String,
         agreement: Option<TransferAgreement>,
-    },
-    /// Updates the pricing of a token
-    UpdatePricing {
-        token_id: String,
-        price: Option<Coin>,
     },
     RegisterModule {
         module: Module,
