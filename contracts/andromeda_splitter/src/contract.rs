@@ -145,7 +145,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in sent_funds.iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
-            recip_coin.amount = coin.amount.multiply_ratio(recipient_percent, 100u128);
+            recip_coin.amount = coin.amount * recipient_percent;
             remainder_funds[i].amount -= recip_coin.amount;
             vec_coin.push(recip_coin);
         }
@@ -158,7 +158,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
     }
     remainder_funds = remainder_funds
         .into_iter()
-        .filter(|x| x.amount > Uint128::from(0u128))
+        .filter(|x| x.amount > Uint128::zero())
         .collect();
     // Who is the sender of this function?
     // Why does the remaining funds go the the sender of the executor of the splitter?
@@ -173,10 +173,9 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         })));
     }
 
-    Ok(Response::new().add_submessages(submsg).add_attributes(vec![
-        attr("action", "send"),
-        attr("sender", info.sender.to_string()),
-    ]))
+    Ok(Response::new()
+        .add_submessages(submsg)
+        .add_attributes(vec![attr("action", "send"), attr("sender", info.sender)]))
 }
 
 fn execute_update_recipients(
@@ -308,7 +307,7 @@ mod tests {
     use super::*;
     use andromeda_protocol::{communication::Recipient, modules::address_list::AddressListModule};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, Addr, Coin, Uint128};
+    use cosmwasm_std::{from_binary, Addr, Coin, Decimal};
 
     #[test]
     fn test_instantiate() {
@@ -319,7 +318,7 @@ mod tests {
             address_list: None,
             recipients: vec![AddressPercent {
                 recipient: Recipient::from_string(String::from("Some Address")),
-                percent: Uint128::from(100_u128),
+                percent: Decimal::one(),
             }],
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -332,22 +331,6 @@ mod tests {
         let env = mock_env();
 
         let owner = "creator";
-        let info = mock_info(owner, &[]);
-
-        let lock = true;
-        let msg = ExecuteMsg::UpdateLock { lock };
-
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
-            .unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if let Ok(..) = res {
-            panic!()
-        }
-
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
 
         let splitter = Splitter {
             recipients: vec![],
@@ -357,6 +340,18 @@ mod tests {
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
+        let lock = true;
+        let msg = ExecuteMsg::UpdateLock { lock };
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+            .unwrap();
+
+        let info = mock_info("incorrect_owner", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+        let info = mock_info(owner, &[]);
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             Response::default().add_attributes(vec![
@@ -425,34 +420,20 @@ mod tests {
         let env = mock_env();
 
         let owner = "creator";
-        let info = mock_info(owner, &[]);
 
         let recipient = vec![
             AddressPercent {
                 recipient: Recipient::from_string(String::from("addr1")),
-                percent: Uint128::from(40_u128),
+                percent: Decimal::percent(40),
             },
             AddressPercent {
                 recipient: Recipient::from_string(String::from("addr1")),
-                percent: Uint128::from(60_u128),
+                percent: Decimal::percent(60),
             },
         ];
         let msg = ExecuteMsg::UpdateRecipients {
             recipients: recipient.clone(),
         };
-
-        //incorrect owner
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
-            .unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if let Ok(..) = res {
-            panic!();
-        }
-
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
 
         let splitter = Splitter {
             recipients: vec![],
@@ -462,6 +443,14 @@ mod tests {
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+            .unwrap();
+        let info = mock_info("incorrect_owner", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+        let info = mock_info(owner, &[]);
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             Response::default().add_attributes(vec![attr("action", "update_recipients")]),
@@ -483,19 +472,19 @@ mod tests {
         let info = mock_info(owner, &[Coin::new(sender_funds_amount, "uluna")]);
 
         let recip_address1 = "address1".to_string();
-        let recip_percent1 = 10u128; // 10%
+        let recip_percent1 = 10; // 10%
 
         let recip_address2 = "address2".to_string();
-        let recip_percent2 = 20u128; // 20%
+        let recip_percent2 = 20; // 20%
 
         let recipient = vec![
             AddressPercent {
                 recipient: Recipient::from_string(recip_address1.clone()),
-                percent: Uint128::from(recip_percent1),
+                percent: Decimal::percent(recip_percent1),
             },
             AddressPercent {
                 recipient: Recipient::from_string(recip_address2.clone()),
-                percent: Uint128::from(recip_percent2),
+                percent: Decimal::percent(recip_percent2),
             },
         ];
         let msg = ExecuteMsg::Send {};
@@ -595,19 +584,19 @@ mod tests {
         );
 
         let recip_address1 = "address1".to_string();
-        let recip_percent1 = 10u128; // 10%
+        let recip_percent1 = 10; // 10%
 
         let recip_address2 = "address2".to_string();
-        let recip_percent2 = 20u128; // 20%
+        let recip_percent2 = 20; // 20%
 
         let recipient = vec![
             AddressPercent {
                 recipient: Recipient::from_string(recip_address1),
-                percent: Uint128::from(recip_percent1),
+                percent: Decimal::percent(recip_percent1),
             },
             AddressPercent {
                 recipient: Recipient::from_string(recip_address2),
-                percent: Uint128::from(recip_percent2),
+                percent: Decimal::percent(recip_percent2),
             },
         ];
         let msg = ExecuteMsg::Send {};
