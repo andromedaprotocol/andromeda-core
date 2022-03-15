@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    token_address: String,
-    modules: Option<Vec<Module>>,
+    pub token_address: String,
+    pub modules: Option<Vec<Module>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -15,14 +15,14 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     StartSale {
-        /// The duration of the sale.
-        duration: Expiration,
+        /// When the sale ends.
+        expiration: Expiration,
         /// The price per token.
         price: Coin,
         /// The minimum amount of tokens sold to go through with the sale.
         min_tokens_sold: Uint128,
         /// The amount of tokens a wallet can purchase, default is 1.
-        amount_per_wallet: Option<Uint128>,
+        max_amount_per_wallet: Option<Uint128>,
         /// The recipient of the funds if the sale met the minimum sold.
         recipient: Recipient,
     },

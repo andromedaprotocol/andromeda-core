@@ -238,6 +238,18 @@ pub enum ContractError {
 
     #[error("ModuleImmutable")]
     ModuleImmutable {},
+
+    #[error("No Ongoing Sale")]
+    NoOngoingSale {},
+
+    #[error("Token not for sale")]
+    TokenNotForSale {},
+
+    #[error("Token already purchased")]
+    TokenAlreadyPurchased {},
+
+    #[error("Purchase limit reached")]
+    PurchaseLimitReached {},
 }
 
 impl From<Cw20ContractError> for ContractError {
