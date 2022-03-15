@@ -242,8 +242,7 @@ fn execute_end_sale(
     if state.amount_sold < state.min_tokens_sold {
         issue_refunds_and_burn_tokens(deps, env, limit)
     } else {
-        // Transfer tokens and send funds to recipient.
-        Ok(Response::new())
+        transfer_tokens_and_send_funds(deps, limit)
     }
 }
 
@@ -253,15 +252,6 @@ fn issue_refunds_and_burn_tokens(
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
-    require(
-        state.expiration.is_expired(&env.block),
-        ContractError::SaleNotEnded {},
-    )?;
-    // Only allow issuing refunds if the sale minimum was not reached.
-    require(
-        state.amount_sold < state.min_tokens_sold,
-        ContractError::MinSalesExceeded {},
-    )?;
     let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
     let mut refund_msgs: Vec<CosmosMsg> = vec![];
     // Issue refunds for `limit` number of users.
@@ -321,6 +311,57 @@ fn issue_refunds_and_burn_tokens(
         .add_attribute("action", "issue_refunds_and_burn_tokens")
         .add_messages(refund_msgs)
         .add_messages(burn_msgs?))
+}
+
+fn transfer_tokens_and_send_funds(
+    deps: DepsMut,
+    limit: Option<u32>,
+) -> Result<Response, ContractError> {
+    let mut state = STATE.load(deps.storage)?;
+    let mut resp = Response::new();
+    // Send the funds if they haven't been sent yet.
+    if state.amount_to_send > Uint128::zero() {
+        let msg = state.recipient.generate_msg_native(
+            deps.api,
+            vec![Coin {
+                denom: state.price.denom.clone(),
+                amount: state.amount_to_send,
+            }],
+        )?;
+        state.amount_to_send = Uint128::zero();
+        STATE.save(deps.storage, &state)?;
+
+        resp = resp.add_submessage(msg);
+    }
+    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+    let purchases: Vec<Purchase> = PURCHASES
+        .range(deps.storage, None, None, Order::Ascending)
+        .flatten()
+        .map(|(_v, p)| p)
+        .flatten()
+        .collect();
+
+    let config = CONFIG.load(deps.storage)?;
+    let mut transfer_msgs: Vec<CosmosMsg> = vec![];
+    let purchases_slice = &purchases[0..limit];
+    let remove_all = limit >= purchases_slice.len()
+        || purchases[limit].purchaser != purchases_slice[limit - 1].purchaser;
+    let last_purchaser = &purchases[limit].purchaser;
+    for purchase in purchases_slice.iter() {
+        let purchaser = &purchase.purchaser;
+        if purchaser != last_purchaser && !remove_all && PURCHASES.has(deps.storage, purchaser) {
+            PURCHASES.remove(deps.storage, &purchase.purchaser);
+        }
+        transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: config.token_address.to_string(),
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                recipient: purchase.purchaser.to_owned(),
+                token_id: purchase.token_id.to_owned(),
+            })?,
+            funds: vec![],
+        }));
+    }
+    Ok(resp.add_messages(transfer_msgs))
 }
 
 fn query_owner_of(
