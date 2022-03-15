@@ -17,6 +17,7 @@ impl<'a> ADOContract<'a> {
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
         self.owner.save(deps.storage, &info.sender)?;
+        self.ado_type.save(deps.storage, &msg.ado_type)?;
         if let Some(operators) = msg.operators {
             self.initialize_operators(deps.storage, operators)?;
         }
@@ -51,6 +52,34 @@ impl<'a> ADOContract<'a> {
                 return self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw);
 
                 #[cfg(not(feature = "withdraw"))]
+                return Err(ContractError::UnsupportedOperation {});
+            }
+            AndromedaMsg::RegisterModule { module } => {
+                #[cfg(feature = "modules")]
+                return self.execute_register_module(
+                    &deps.querier,
+                    deps.storage,
+                    deps.api,
+                    info.sender.as_str(),
+                    &module,
+                    true,
+                );
+                #[cfg(not(feature = "modules"))]
+                return Err(ContractError::UnsupportedOperation {});
+            }
+
+            AndromedaMsg::DeregisterModule { module_idx } => {
+                #[cfg(feature = "modules")]
+                return self.execute_deregister_module(deps, info, module_idx);
+
+                #[cfg(not(feature = "modules"))]
+                return Err(ContractError::UnsupportedOperation {});
+            }
+            AndromedaMsg::AlterModule { module_idx, module } => {
+                #[cfg(feature = "modules")]
+                return self.execute_alter_module(deps, info, module_idx, &module);
+
+                #[cfg(not(feature = "modules"))]
                 return Err(ContractError::UnsupportedOperation {});
             }
         }

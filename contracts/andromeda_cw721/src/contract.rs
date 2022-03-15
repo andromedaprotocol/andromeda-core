@@ -12,10 +12,7 @@ use andromeda_protocol::{
     response::get_reply_address,
 };
 use common::{
-    ado_base::{
-        hooks::{AndromedaHook, OnFundsTransferResponse},
-        modules::ADOType,
-    },
+    ado_base::hooks::{AndromedaHook, OnFundsTransferResponse},
     encode_binary,
     error::ContractError,
     primitive::PRIMITVE_CONTRACT,
@@ -34,30 +31,21 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     contract.owner.save(deps.storage, &info.sender)?;
+    contract.ado_type.save(deps.storage, &"cw721".to_string())?;
     PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
+    let module_msgs = contract.register_modules(
+        info.sender.as_str(),
+        &deps.querier,
+        deps.storage,
+        deps.api,
+        msg.modules.clone(),
+    )?;
 
-    let sender = info.sender.as_str();
-    let mut resp = Response::default();
-    if let Some(modules) = msg.modules.clone() {
-        contract.validate_modules(&modules, ADOType::CW721)?;
-        for module in modules {
-            let response = contract.execute_register_module(
-                &deps.querier,
-                deps.storage,
-                deps.api,
-                sender,
-                &module,
-                ADOType::CW721,
-                false,
-            )?;
-            resp = resp.add_submessages(response.messages);
-        }
-    }
     let cw721_resp = AndrCW721Contract::default().instantiate(deps, env, info, msg.into())?;
-    resp = resp
+    Ok(Response::new()
         .add_attributes(cw721_resp.attributes)
-        .add_submessages(cw721_resp.messages);
-    Ok(resp)
+        .add_submessages(module_msgs)
+        .add_submessages(cw721_resp.messages))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -116,21 +104,6 @@ pub fn execute(
         } => execute_update_transfer_agreement(deps, env, info, token_id, agreement),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, info, token_id),
-        ExecuteMsg::RegisterModule { module } => contract.execute_register_module(
-            &deps.querier,
-            deps.storage,
-            deps.api,
-            info.sender.as_str(),
-            &module,
-            ADOType::CW721,
-            true,
-        ),
-        ExecuteMsg::DeregisterModule { module_idx } => {
-            contract.execute_deregister_module(deps, info, module_idx)
-        }
-        ExecuteMsg::AlterModule { module_idx, module } => {
-            contract.execute_alter_module(deps, info, module_idx, &module, ADOType::CW721)
-        }
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
     }

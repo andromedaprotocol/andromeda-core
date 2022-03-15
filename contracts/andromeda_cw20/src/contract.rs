@@ -11,7 +11,7 @@ use andromeda_protocol::{
     response::get_reply_address,
 };
 use common::{
-    ado_base::{hooks::AndromedaHook, modules::ADOType},
+    ado_base::{hooks::AndromedaHook},
     error::ContractError,
     primitive::PRIMITVE_CONTRACT,
     require, Funds,
@@ -37,31 +37,23 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let contract = ADOContract::default();
     contract.owner.save(deps.storage, &info.sender)?;
+    contract.ado_type.save(deps.storage, &"cw20".to_string())?;
     PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let mut resp = Response::default();
     let sender = info.sender.as_str();
-    if let Some(modules) = msg.modules.clone() {
-        contract.validate_modules(&modules, ADOType::CW20)?;
-        for module in modules {
-            let response = contract.execute_register_module(
-                &deps.querier,
-                deps.storage,
-                deps.api,
-                sender,
-                &module,
-                ADOType::CW20,
-                false,
-            )?;
-            resp = resp.add_submessages(response.messages);
-        }
-    }
+    let module_msgs = contract.register_modules(
+        sender,
+        &deps.querier,
+        deps.storage,
+        deps.api,
+        msg.modules.clone(),
+    )?;
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
-    resp = resp
-        .add_submessages(cw20_resp.messages)
-        .add_attributes(cw20_resp.attributes);
 
-    Ok(resp)
+    Ok(Response::new()
+        .add_submessages(module_msgs)
+        .add_submessages(cw20_resp.messages)
+        .add_attributes(cw20_resp.attributes))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -114,21 +106,7 @@ pub fn execute(
             msg,
         } => execute_send(deps, env, info, contract, amount, msg),
         ExecuteMsg::Mint { recipient, amount } => execute_mint(deps, env, info, recipient, amount),
-        ExecuteMsg::RegisterModule { module } => contract.execute_register_module(
-            &deps.querier,
-            deps.storage,
-            deps.api,
-            info.sender.as_str(),
-            &module,
-            ADOType::CW20,
-            true,
-        ),
-        ExecuteMsg::DeregisterModule { module_idx } => {
-            contract.execute_deregister_module(deps, info, module_idx)
-        }
-        ExecuteMsg::AlterModule { module_idx, module } => {
-            contract.execute_alter_module(deps, info, module_idx, &module, ADOType::CW20)
-        }
+        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         _ => Ok(execute_cw20(deps, env, info, msg.into())?),
     }
 }
