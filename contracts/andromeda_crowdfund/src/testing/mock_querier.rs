@@ -8,7 +8,7 @@ use cosmwasm_std::{
     to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps, Querier, QuerierResult,
     QueryRequest, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
 };
-use cw721::{Cw721QueryMsg, OwnerOfResponse};
+use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
@@ -17,7 +17,7 @@ pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 pub const MOCK_NON_EXISTING_TOKEN: &str = "non_existing_token";
-pub const MOCK_TOKENS_FOR_SALE: &[&str] = &["token1", "token2", "token3"];
+pub const MOCK_TOKENS_FOR_SALE: &[&str] = &["token1", "token2", "token3", "token4", "token5"];
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -68,6 +68,16 @@ impl WasmMockQuerier {
 
     fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
+            Cw721QueryMsg::Tokens { .. } => {
+                let res = TokensResponse {
+                    tokens: MOCK_TOKENS_FOR_SALE
+                        .to_vec()
+                        .into_iter()
+                        .map(String::from)
+                        .collect(),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
             Cw721QueryMsg::OwnerOf { token_id, .. } => {
                 if token_id == MOCK_NON_EXISTING_TOKEN {
                     return SystemResult::Ok(ContractResult::Err("error".to_string()));

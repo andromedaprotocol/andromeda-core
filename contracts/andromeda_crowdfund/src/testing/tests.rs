@@ -6,20 +6,33 @@ use crate::{
         MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
     },
 };
-use andromeda_protocol::crowdfund::{ExecuteMsg, InstantiateMsg};
+use andromeda_protocol::{
+    crowdfund::{ExecuteMsg, InstantiateMsg},
+    cw721::ExecuteMsg as Cw721ExecuteMsg,
+};
 use common::{
     ado_base::{
         modules::{InstantiateType, Module, RATES},
         recipient::Recipient,
     },
+    encode_binary,
     error::ContractError,
 };
 use cosmwasm_std::{
     coin, coins,
     testing::{mock_env, mock_info},
-    Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, SubMsg, Uint128,
+    Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw0::Expiration;
+
+fn get_purchase(token_id: impl Into<String>, purchaser: impl Into<String>) -> Purchase {
+    Purchase {
+        token_id: token_id.into(),
+        purchaser: purchaser.into(),
+        tax_amount: Uint128::from(50u128),
+        msgs: get_rates_messages(),
+    }
+}
 
 fn get_rates_messages() -> Vec<SubMsg> {
     let coin = coin(100u128, "uusd");
@@ -41,6 +54,29 @@ fn get_rates_messages() -> Vec<SubMsg> {
             }],
         })),
     ]
+}
+
+fn get_burn_message(token_id: impl Into<String>) -> CosmosMsg {
+    CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
+        funds: vec![],
+        msg: encode_binary(&Cw721ExecuteMsg::Burn {
+            token_id: token_id.into(),
+        })
+        .unwrap(),
+    })
+}
+
+fn get_transfer_message(token_id: impl Into<String>, recipient: impl Into<String>) -> CosmosMsg {
+    CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
+        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+            recipient: recipient.into(),
+            token_id: token_id.into(),
+        })
+        .unwrap(),
+        funds: vec![],
+    })
 }
 
 fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
@@ -448,7 +484,7 @@ fn test_multiple_purchases() {
     STATE.save(deps.as_mut().storage, &state).unwrap();
 
     let info = mock_info("sender", &coins(150u128, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -463,15 +499,312 @@ fn test_multiple_purchases() {
 
     assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
 
-    let first_purchase = Purchase {
+    assert_eq!(
+        vec![get_purchase(MOCK_TOKENS_FOR_SALE[0], "sender")],
+        PURCHASES.load(deps.as_ref().storage, "sender").unwrap()
+    );
+
+    let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
-        purchaser: "sender".to_string(),
-        tax_amount: Uint128::from(50u128),
-        msgs: get_rates_messages(),
     };
 
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    assert_eq!(ContractError::TokenAlreadyPurchased {}, res.unwrap_err());
+
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[1].to_owned(),
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+
+    state.amount_to_send += Uint128::from(90u128);
+    state.amount_sold += Uint128::from(1u128);
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+
     assert_eq!(
-        vec![first_purchase],
+        vec![
+            get_purchase(MOCK_TOKENS_FOR_SALE[0], "sender"),
+            get_purchase(MOCK_TOKENS_FOR_SALE[1], "sender")
+        ],
         PURCHASES.load(deps.as_ref().storage, "sender").unwrap()
-    )
+    );
+
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[2].to_owned(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::PurchaseLimitReached {}, res.unwrap_err());
+}
+
+#[test]
+fn test_end_sale_not_expired() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    let state = State {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(1u128),
+        max_amount_per_wallet: Uint128::from(2u128),
+        amount_sold: Uint128::zero(),
+        amount_to_send: Uint128::zero(),
+        recipient: Recipient::Addr("recipient".to_string()),
+    };
+    STATE.save(deps.as_mut().storage, &state).unwrap();
+
+    let msg = ExecuteMsg::EndSale { limit: None };
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::SaleNotEnded {}, res.unwrap_err());
+}
+
+#[test]
+fn test_integration_conditions_not_met() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let modules = vec![Module {
+        module_type: RATES.to_owned(),
+        instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.to_owned()),
+        is_mutable: false,
+    }];
+    init(deps.as_mut(), Some(modules));
+
+    let msg = ExecuteMsg::StartSale {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(5u128),
+        max_amount_per_wallet: Some(Uint128::from(2u128)),
+        recipient: Recipient::Addr("recipient".to_string()),
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+    };
+    let info = mock_info("A", &coins(150, "uusd"));
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[1].to_owned(),
+    };
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[2].to_owned(),
+    };
+    let info = mock_info("B", &coins(150, "uusd"));
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let state = State {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(5u128),
+        max_amount_per_wallet: Uint128::from(2u128),
+        amount_sold: Uint128::from(3u128),
+        amount_to_send: Uint128::from(270u128),
+        recipient: Recipient::Addr("recipient".to_string()),
+    };
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+
+    assert_eq!(
+        vec![
+            get_purchase(MOCK_TOKENS_FOR_SALE[0], "A"),
+            get_purchase(MOCK_TOKENS_FOR_SALE[1], "A")
+        ],
+        PURCHASES.load(deps.as_ref().storage, "A").unwrap()
+    );
+
+    assert_eq!(
+        vec![get_purchase(MOCK_TOKENS_FOR_SALE[2], "B"),],
+        PURCHASES.load(deps.as_ref().storage, "B").unwrap()
+    );
+    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
+
+    let mut env = mock_env();
+    env.block.height += 1;
+
+    let msg = ExecuteMsg::EndSale { limit: None };
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let refund_msgs: Vec<CosmosMsg> = vec![
+        // All of A's payments grouped into one message.
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: "A".to_string(),
+            amount: coins(300, "uusd"),
+        }),
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: "B".to_string(),
+            amount: coins(150, "uusd"),
+        }),
+    ];
+    let burn_msgs: Vec<CosmosMsg> = vec![
+        get_burn_message(MOCK_TOKENS_FOR_SALE[0]),
+        get_burn_message(MOCK_TOKENS_FOR_SALE[1]),
+        get_burn_message(MOCK_TOKENS_FOR_SALE[2]),
+        // Tokens that were not sold.
+        get_burn_message(MOCK_TOKENS_FOR_SALE[3]),
+        get_burn_message(MOCK_TOKENS_FOR_SALE[4]),
+    ];
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "issue_refunds_and_burn_tokens")
+            .add_messages(refund_msgs)
+            .add_messages(burn_msgs),
+        res
+    );
+
+    assert!(!PURCHASES.has(deps.as_ref().storage, "A"));
+    assert!(!PURCHASES.has(deps.as_ref().storage, "B"));
+}
+
+#[test]
+fn test_integration_conditions_met() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let modules = vec![Module {
+        module_type: RATES.to_owned(),
+        instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.to_owned()),
+        is_mutable: false,
+    }];
+    init(deps.as_mut(), Some(modules));
+
+    let msg = ExecuteMsg::StartSale {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(3u128),
+        max_amount_per_wallet: Some(Uint128::from(2u128)),
+        recipient: Recipient::Addr("recipient".to_string()),
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+    };
+    let info = mock_info("A", &coins(150, "uusd"));
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[1].to_owned(),
+    };
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[2].to_owned(),
+    };
+    let info = mock_info("B", &coins(150, "uusd"));
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[3].to_owned(),
+    };
+    let info = mock_info("C", &coins(150, "uusd"));
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[4].to_owned(),
+    };
+    let info = mock_info("D", &coins(150, "uusd"));
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let state = State {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(3u128),
+        max_amount_per_wallet: Uint128::from(2u128),
+        amount_sold: Uint128::from(5u128),
+        amount_to_send: Uint128::from(450u128),
+        recipient: Recipient::Addr("recipient".to_string()),
+    };
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+
+    assert_eq!(
+        vec![
+            get_purchase(MOCK_TOKENS_FOR_SALE[0], "A"),
+            get_purchase(MOCK_TOKENS_FOR_SALE[1], "A")
+        ],
+        PURCHASES.load(deps.as_ref().storage, "A").unwrap()
+    );
+
+    assert_eq!(
+        vec![get_purchase(MOCK_TOKENS_FOR_SALE[2], "B"),],
+        PURCHASES.load(deps.as_ref().storage, "B").unwrap()
+    );
+    assert_eq!(
+        vec![get_purchase(MOCK_TOKENS_FOR_SALE[3], "C"),],
+        PURCHASES.load(deps.as_ref().storage, "C").unwrap()
+    );
+    assert_eq!(
+        vec![get_purchase(MOCK_TOKENS_FOR_SALE[4], "D"),],
+        PURCHASES.load(deps.as_ref().storage, "D").unwrap()
+    );
+    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
+    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
+    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
+
+    let mut env = mock_env();
+    env.block.height += 1;
+
+    let msg = ExecuteMsg::EndSale { limit: Some(1) };
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "transfer_tokens_and_send_funds")
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "recipient".to_string(),
+                amount: coins(450u128, "uusd")
+            }))
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A"))
+            .add_submessages(get_rates_messages()),
+        res
+    );
+
+    assert_eq!(
+        vec![get_purchase(MOCK_TOKENS_FOR_SALE[1], "A")],
+        PURCHASES.load(deps.as_ref().storage, "A").unwrap()
+    );
+
+    let msg = ExecuteMsg::EndSale { limit: Some(2) };
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "transfer_tokens_and_send_funds")
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[1], "A"))
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[2], "B"))
+            .add_submessages(get_rates_messages())
+            .add_submessages(get_rates_messages()),
+        res
+    );
+
+    assert!(!PURCHASES.has(deps.as_ref().storage, "A"),);
+    assert!(!PURCHASES.has(deps.as_ref().storage, "B"),);
+    assert!(PURCHASES.has(deps.as_ref().storage, "C"),);
+    assert!(PURCHASES.has(deps.as_ref().storage, "D"),);
+
+    let msg = ExecuteMsg::EndSale { limit: None };
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "transfer_tokens_and_send_funds")
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[3], "C"))
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[4], "D"))
+            .add_submessages(get_rates_messages())
+            .add_submessages(get_rates_messages()),
+        res
+    );
+
+    assert!(!PURCHASES.has(deps.as_ref().storage, "C"),);
+    assert!(!PURCHASES.has(deps.as_ref().storage, "D"),);
 }

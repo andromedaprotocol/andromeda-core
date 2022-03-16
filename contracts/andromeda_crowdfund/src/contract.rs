@@ -183,7 +183,6 @@ fn execute_purchase(
         has_coins(&info.funds, &state.price),
         ContractError::InsufficientFunds {},
     )?;
-    let payment: &Coin = &info.funds[0];
     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         deps.storage,
         deps.querier,
@@ -332,7 +331,6 @@ fn transfer_tokens_and_send_funds(
 
         resp = resp.add_submessage(msg);
     }
-    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
     let purchases: Vec<Purchase> = PURCHASES
         .range(deps.storage, None, None, Order::Ascending)
         .flatten()
@@ -340,17 +338,24 @@ fn transfer_tokens_and_send_funds(
         .flatten()
         .collect();
 
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(purchases.len() as u32) as usize;
+
     let config = CONFIG.load(deps.storage)?;
     let mut rate_messages: Vec<SubMsg> = vec![];
     let mut transfer_msgs: Vec<CosmosMsg> = vec![];
+
     let purchases_slice = &purchases[0..limit];
-    let remove_all = limit >= purchases_slice.len()
+    let remove_all = limit >= purchases.len()
         || purchases[limit].purchaser != purchases_slice[limit - 1].purchaser;
-    let last_purchaser = &purchases[limit].purchaser;
+
+    let last_purchaser = &purchases_slice[limit - 1].purchaser;
+    let mut number_of_last_purchases_removed = 0;
     for purchase in purchases_slice.iter() {
         let purchaser = &purchase.purchaser;
-        if purchaser != last_purchaser && !remove_all && PURCHASES.has(deps.storage, purchaser) {
-            PURCHASES.remove(deps.storage, &purchase.purchaser);
+        if purchaser != last_purchaser || remove_all {
+            PURCHASES.remove(deps.storage, &purchaser);
+        } else if purchaser == last_purchaser && !remove_all {
+            number_of_last_purchases_removed += 1;
         }
         rate_messages.extend(purchase.msgs.clone());
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -362,7 +367,16 @@ fn transfer_tokens_and_send_funds(
             funds: vec![],
         }));
     }
+    if number_of_last_purchases_removed > 0 {
+        let last_purchases = PURCHASES.load(deps.storage, &last_purchaser)?;
+        PURCHASES.save(
+            deps.storage,
+            &last_purchaser,
+            &last_purchases[number_of_last_purchases_removed..].to_vec(),
+        )?;
+    }
     Ok(resp
+        .add_attribute("action", "transfer_tokens_and_send_funds")
         .add_messages(transfer_msgs)
         .add_submessages(rate_messages))
 }
@@ -403,6 +417,3 @@ fn query_tokens(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     Ok(to_binary(&"")?)
 }
-
-#[cfg(test)]
-mod tests {}
