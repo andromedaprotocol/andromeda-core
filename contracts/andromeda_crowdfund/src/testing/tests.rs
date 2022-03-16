@@ -795,6 +795,10 @@ fn test_integration_conditions_met() {
 
     let msg = ExecuteMsg::EndSale { limit: None };
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    assert!(!PURCHASES.has(deps.as_ref().storage, "C"),);
+    assert!(!PURCHASES.has(deps.as_ref().storage, "D"),);
+
     assert_eq!(
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
@@ -804,7 +808,4 @@ fn test_integration_conditions_met() {
             .add_submessages(get_rates_messages()),
         res
     );
-
-    assert!(!PURCHASES.has(deps.as_ref().storage, "C"),);
-    assert!(!PURCHASES.has(deps.as_ref().storage, "D"),);
 }

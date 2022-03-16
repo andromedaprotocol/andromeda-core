@@ -331,43 +331,56 @@ fn transfer_tokens_and_send_funds(
 
         resp = resp.add_submessage(msg);
     }
-    let purchases: Vec<Purchase> = PURCHASES
+    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+    let mut purchases: Vec<Purchase> = PURCHASES
         .range(deps.storage, None, None, Order::Ascending)
         .flatten()
         .map(|(_v, p)| p)
         .flatten()
+        // Take one extra in order to compare what the next purchaser would be to check if some
+        // purchases will be left over.
+        .take(limit + 1)
         .collect();
-
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(purchases.len() as u32) as usize;
 
     let config = CONFIG.load(deps.storage)?;
     let mut rate_messages: Vec<SubMsg> = vec![];
     let mut transfer_msgs: Vec<CosmosMsg> = vec![];
 
-    let purchases_slice = &purchases[0..limit];
-    let remove_all = limit >= purchases.len()
-        || purchases[limit].purchaser != purchases_slice[limit - 1].purchaser;
+    let last_purchaser = purchases[purchases.len() - 2].purchaser.clone();
+    let subsequent_purchase = &purchases[purchases.len() - 1];
+    // If this is false, then there are some purchases that we will need to leave for the next
+    // round.
+    let remove_last_purchaser = last_purchaser != subsequent_purchase.purchaser;
 
-    let last_purchaser = &purchases_slice[limit - 1].purchaser;
     let mut number_of_last_purchases_removed = 0;
-    for purchase in purchases_slice.iter() {
+    // If we took an extra element, we remove it. Otherwise limit + 1 was more than was necessary
+    // so we need to remove all of the purchases.
+    if limit + 1 == purchases.len() {
+        purchases.pop();
+    }
+    for purchase in purchases.into_iter() {
         let purchaser = &purchase.purchaser;
-        if purchaser != last_purchaser || remove_all {
+        if (purchaser != &last_purchaser || remove_last_purchaser)
+            && PURCHASES.has(deps.storage, &purchaser)
+        {
             PURCHASES.remove(deps.storage, &purchaser);
-        } else if purchaser == last_purchaser && !remove_all {
+        } else if purchaser == &last_purchaser {
+            // Keep track of the number of purchases removed from the last purchaser to remove them
+            // at the end, if not all of them were removed.
             number_of_last_purchases_removed += 1;
         }
-        rate_messages.extend(purchase.msgs.clone());
+        rate_messages.extend(purchase.msgs);
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: config.token_address.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: purchase.purchaser.to_owned(),
-                token_id: purchase.token_id.to_owned(),
+                recipient: purchase.purchaser,
+                token_id: purchase.token_id,
             })?,
             funds: vec![],
         }));
     }
-    if number_of_last_purchases_removed > 0 {
+    // If the last purchaser wasn't removed, remove the subset of purchases that were processed.
+    if PURCHASES.has(deps.storage, &last_purchaser) {
         let last_purchases = PURCHASES.load(deps.storage, &last_purchaser)?;
         PURCHASES.save(
             deps.storage,
