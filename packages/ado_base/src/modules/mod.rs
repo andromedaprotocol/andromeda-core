@@ -22,6 +22,8 @@ impl<'a> ADOContract<'a> {
         storage: &mut dyn Storage,
         api: &dyn Api,
         modules: Option<Vec<Module>>,
+        // TODO: Return the full response instead of just the messages. This is to preserve any
+        // added attributes.
     ) -> Result<Vec<SubMsg>, ContractError> {
         if let Some(modules) = modules {
             self.validate_modules(&modules, &self.ado_type.load(storage)?)?;

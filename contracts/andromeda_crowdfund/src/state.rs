@@ -15,7 +15,7 @@ pub const STATE: Item<State> = Item::new("state");
 pub const PURCHASES: Map<&str, Vec<Purchase>> = Map::new("buyers");
 
 /// Maps token_id -> whether or not it has been purchased or not.
-pub const TOKEN_AVAILABILITY: Map<&str, bool> = Map::new("token_availability");
+pub const UNAVAILABLE_TOKENS: Map<&str, bool> = Map::new("unavailable_tokens");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Purchase {

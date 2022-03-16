@@ -1,4 +1,4 @@
-use crate::state::{Config, Purchase, State, CONFIG, PURCHASES, STATE, TOKEN_AVAILABILITY};
+use crate::state::{Config, Purchase, State, CONFIG, PURCHASES, STATE, UNAVAILABLE_TOKENS};
 use ado_base::ADOContract;
 use andromeda_protocol::{
     crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -9,13 +9,14 @@ use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
+    primitive::PRIMITVE_CONTRACT,
     require, Funds,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
+    QuerierWrapper, QueryRequest, Response, StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
@@ -30,6 +31,12 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+    // TODO: change instantiate of ADOContract to not take deps directly to allow instantiating
+    // first.
+    contract.owner.save(deps.storage, &info.sender)?;
+    contract
+        .ado_type
+        .save(deps.storage, &"crowdfund".to_string())?;
     let module_msgs = contract.register_modules(
         info.sender.as_str(),
         &deps.querier,
@@ -37,6 +44,7 @@ pub fn instantiate(
         deps.api,
         msg.modules,
     )?;
+    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_address)?;
     CONFIG.save(
         deps.storage,
         &Config {
@@ -149,16 +157,16 @@ fn execute_purchase(
         ContractError::NoOngoingSale {},
     )?;
     // If the token is in this map, it has been purchased and is therefore unavailable.
-    let token_available = !TOKEN_AVAILABILITY.has(deps.storage, &token_id);
+    let token_available = !UNAVAILABLE_TOKENS.has(deps.storage, &token_id);
 
     let config = CONFIG.load(deps.storage)?;
-    let token_owner = query_owner_of(
+    let token_owner_res = query_owner_of(
         &deps.querier,
         config.token_address.to_string(),
         token_id.clone(),
-    )?;
+    );
     require(
-        token_owner == env.contract.address,
+        token_owner_res.is_ok() && token_owner_res.unwrap() == env.contract.address,
         ContractError::TokenNotForSale {},
     )?;
     require(token_available, ContractError::TokenAlreadyPurchased {})?;
@@ -171,25 +179,16 @@ fn execute_purchase(
         purchases.len() < state.max_amount_per_wallet.u128() as usize,
         ContractError::PurchaseLimitReached {},
     )?;
-
     require(
-        info.funds.len() == 1,
-        ContractError::InvalidFunds {
-            msg: "Must send exactly one type of coin".to_string(),
-        },
+        has_coins(&info.funds, &state.price),
+        ContractError::InsufficientFunds {},
     )?;
     let payment: &Coin = &info.funds[0];
-    require(
-        payment.denom == state.price.denom,
-        ContractError::InvalidFunds {
-            msg: "Sent denom does not match required denom".to_string(),
-        },
-    )?;
     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         deps.storage,
         deps.querier,
         sender.clone(),
-        Funds::Native(payment.to_owned()),
+        Funds::Native(state.price.clone()),
         encode_binary(&"")?,
     )?;
     let remaining_amount = remainder.try_get_coin()?;
@@ -209,7 +208,7 @@ fn execute_purchase(
         ContractError::InsufficientFunds {},
     )?;
 
-    TOKEN_AVAILABILITY.save(deps.storage, &token_id, &false)?;
+    UNAVAILABLE_TOKENS.save(deps.storage, &token_id, &false)?;
 
     let purchase = Purchase {
         token_id: token_id.clone(),
@@ -342,6 +341,7 @@ fn transfer_tokens_and_send_funds(
         .collect();
 
     let config = CONFIG.load(deps.storage)?;
+    let mut rate_messages: Vec<SubMsg> = vec![];
     let mut transfer_msgs: Vec<CosmosMsg> = vec![];
     let purchases_slice = &purchases[0..limit];
     let remove_all = limit >= purchases_slice.len()
@@ -352,6 +352,7 @@ fn transfer_tokens_and_send_funds(
         if purchaser != last_purchaser && !remove_all && PURCHASES.has(deps.storage, purchaser) {
             PURCHASES.remove(deps.storage, &purchase.purchaser);
         }
+        rate_messages.extend(purchase.msgs.clone());
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: config.token_address.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -361,7 +362,9 @@ fn transfer_tokens_and_send_funds(
             funds: vec![],
         }));
     }
-    Ok(resp.add_messages(transfer_msgs))
+    Ok(resp
+        .add_messages(transfer_msgs)
+        .add_submessages(rate_messages))
 }
 
 fn query_owner_of(
