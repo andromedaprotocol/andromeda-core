@@ -16,9 +16,8 @@ use common::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
-    WasmQuery,
+    has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
@@ -439,7 +438,7 @@ fn transfer_tokens_and_send_funds(
 /// Returns an `Option<CosmosMsg>` which is `None` when the amount to refund is zero.
 fn process_refund(
     storage: &mut dyn Storage,
-    purchases: &Vec<Purchase>,
+    purchases: &[Purchase],
     price: &Coin,
 ) -> Option<CosmosMsg> {
     let purchaser = purchases[0].purchaser.clone();
@@ -523,6 +522,18 @@ fn query_tokens(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    to_binary(&"")
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
+        QueryMsg::State {} => encode_binary(&query_state(deps)?),
+        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+    }
+}
+
+fn query_state(deps: Deps) -> Result<State, ContractError> {
+    Ok(STATE.load(deps.storage)?)
+}
+
+fn query_config(deps: Deps) -> Result<Config, ContractError> {
+    Ok(CONFIG.load(deps.storage)?)
 }
