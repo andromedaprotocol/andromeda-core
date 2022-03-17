@@ -3,8 +3,8 @@ use crate::{
     state::{Config, Purchase, State, CONFIG, PURCHASES, STATE, UNAVAILABLE_TOKENS},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_NON_EXISTING_TOKEN,
-        MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_TOKENS_FOR_SALE,
-        MOCK_TOKEN_CONTRACT,
+        MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT,
+        MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
     },
 };
 use andromeda_protocol::{
@@ -39,7 +39,7 @@ fn get_rates_messages() -> Vec<SubMsg> {
     let coin = coin(100u128, "uusd");
     vec![
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: MOCK_RATES_RECIPIENT.to_owned(),
+            to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
             amount: vec![Coin {
                 // Royalty of 10%
                 amount: coin.amount.multiply_ratio(10u128, 100u128),
@@ -47,7 +47,7 @@ fn get_rates_messages() -> Vec<SubMsg> {
             }],
         })),
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: MOCK_RATES_RECIPIENT.to_owned(),
+            to_address: MOCK_TAX_RECIPIENT.to_owned(),
             amount: vec![Coin {
                 // Flat tax of 50
                 amount: Uint128::from(50u128),
@@ -318,7 +318,7 @@ macro_rules! purchase_not_for_sale_tests {
                         max_amount_per_wallet: Uint128::from(5u128),
                         amount_sold: Uint128::zero(),
                         amount_to_send: Uint128::zero(),
-            amount_transferred: Uint128::zero(),
+                        amount_transferred: Uint128::zero(),
                         recipient: Recipient::Addr("recipient".to_string()),
                     },
                 )
@@ -828,8 +828,22 @@ fn test_integration_conditions_met() {
             .add_attribute("action", "transfer_tokens_and_send_funds")
             .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[1], "A"))
             .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[2], "B"))
-            .add_submessages(get_rates_messages())
-            .add_submessages(get_rates_messages()),
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
+                amount: vec![Coin {
+                    // Royalty of 10% for A and B combined
+                    amount: Uint128::from(20u128),
+                    denom: "uusd".to_string(),
+                }],
+            }))
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_TAX_RECIPIENT.to_owned(),
+                amount: vec![Coin {
+                    // Combined tax for both A and B
+                    amount: Uint128::from(100u128),
+                    denom: "uusd".to_string(),
+                }],
+            })),
         res
     );
 
@@ -852,8 +866,22 @@ fn test_integration_conditions_met() {
             .add_attribute("action", "transfer_tokens_and_send_funds")
             .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[3], "C"))
             .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[4], "D"))
-            .add_submessages(get_rates_messages())
-            .add_submessages(get_rates_messages()),
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
+                amount: vec![Coin {
+                    // Royalty of 10% for C and D combined
+                    amount: Uint128::from(20u128),
+                    denom: "uusd".to_string(),
+                }],
+            }))
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_TAX_RECIPIENT.to_owned(),
+                amount: vec![Coin {
+                    // Combined tax for both C and D
+                    amount: Uint128::from(100u128),
+                    denom: "uusd".to_string(),
+                }],
+            })),
         res
     );
 

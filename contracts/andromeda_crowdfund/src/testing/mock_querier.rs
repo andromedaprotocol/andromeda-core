@@ -15,7 +15,8 @@ pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 
-pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
+pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
+pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 pub const MOCK_NON_EXISTING_TOKEN: &str = "non_existing_token";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
     "token1", "token2", "token3", "token4", "token5", "token6", "token7",
@@ -133,7 +134,7 @@ impl WasmMockQuerier {
                             }),
                             vec![
                                 SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                                    to_address: MOCK_RATES_RECIPIENT.to_owned(),
+                                    to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
                                     amount: vec![Coin {
                                         // Royalty of 10%
                                         amount: coin.amount.multiply_ratio(10u128, 100u128),
@@ -141,7 +142,7 @@ impl WasmMockQuerier {
                                     }],
                                 })),
                                 SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                                    to_address: MOCK_RATES_RECIPIENT.to_owned(),
+                                    to_address: MOCK_TAX_RECIPIENT.to_owned(),
                                     amount: vec![Coin {
                                         // Flat tax of 50
                                         amount: Uint128::from(50u128),

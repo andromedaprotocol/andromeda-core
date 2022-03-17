@@ -9,6 +9,7 @@ use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
+    merge_sub_msgs,
     primitive::PRIMITVE_CONTRACT,
     require, Funds,
 };
@@ -424,9 +425,18 @@ fn transfer_tokens_and_send_funds(
     Ok(resp
         .add_attribute("action", "transfer_tokens_and_send_funds")
         .add_messages(transfer_msgs)
-        .add_submessages(rate_messages))
+        .add_submessages(merge_sub_msgs(rate_messages)))
 }
 
+/// Processes a vector of purchases for the SAME user by merging all funds into a single BankMsg.
+/// The given purchaser is then removed from `PURCHASES`.
+///
+/// ## Arguments
+/// * `storage`  - Mutable reference to Storage
+/// * `purchase` - Vector of purchases for the same user to issue a refund message for.
+/// * `price`    - The price of a token
+///
+/// Returns an `Option<CosmosMsg>` which is `None` when the amount to refund is zero.
 fn process_refund(
     storage: &mut dyn Storage,
     purchases: &Vec<Purchase>,
