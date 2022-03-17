@@ -21,6 +21,7 @@ use cosmwasm_std::{
 };
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
+use std::cmp::min;
 
 const DEFAULT_LIMIT: u32 = 50;
 
@@ -309,6 +310,7 @@ fn transfer_tokens_and_send_funds(
     let mut state = STATE.load(deps.storage)?;
     let mut resp = Response::new();
     let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+    require(limit > 0, ContractError::LimitMustNotBeZero {})?;
     // Send the funds if they haven't been sent yet and if all of the tokens have been transferred.
     if state.amount_transferred == state.amount_sold {
         if state.amount_to_send > Uint128::zero() {
@@ -335,9 +337,10 @@ fn transfer_tokens_and_send_funds(
         resp = resp.add_messages(burn_msgs);
         STATE.save(deps.storage, &state)?;
 
-        // If we are here then there are no purchases to process.
+        // If we are here then there are no purchases to process so we can exit.
         return Ok(resp.add_attribute("action", "transfer_tokens_and_send_funds"));
     }
+    // Flatten Vec<Vec<Purchase>> into Vec<Purchase>.
     let mut purchases: Vec<Purchase> = PURCHASES
         .range(deps.storage, None, None, Order::Ascending)
         .flatten()
@@ -352,7 +355,11 @@ fn transfer_tokens_and_send_funds(
     let mut rate_messages: Vec<SubMsg> = vec![];
     let mut transfer_msgs: Vec<CosmosMsg> = vec![];
 
-    let last_purchaser = purchases[purchases.len() - 2].purchaser.clone();
+    // Need the min check here in case purchases.len() == 1.
+    let last_purchaser = purchases[purchases.len() - min(2, purchases.len())]
+        .purchaser
+        .clone();
+    // This subtraction is no problem as we will always have at least one purchase.
     let subsequent_purchase = &purchases[purchases.len() - 1];
     // If this is false, then there are some purchases that we will need to leave for the next
     // round. Otherwise, we are able to process all of the purchases for the last purchaser and we
@@ -368,9 +375,8 @@ fn transfer_tokens_and_send_funds(
     }
     for purchase in purchases.into_iter() {
         let purchaser = &purchase.purchaser;
-        if (purchaser != &last_purchaser || remove_last_purchaser)
-            && PURCHASES.has(deps.storage, &purchaser)
-        {
+        let should_remove = purchaser != &last_purchaser || remove_last_purchaser;
+        if should_remove && PURCHASES.has(deps.storage, &purchaser) {
             PURCHASES.remove(deps.storage, &purchaser);
         } else if purchaser == &last_purchaser {
             // Keep track of the number of purchases removed from the last purchaser to remove them

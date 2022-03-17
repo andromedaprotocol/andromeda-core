@@ -854,3 +854,83 @@ fn test_integration_conditions_met() {
     state.amount_to_send = Uint128::zero();
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 }
+
+#[test]
+fn test_end_sale_single_purchase() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                expiration: Expiration::AtHeight(mock_env().block.height - 1),
+                price: coin(100, "uusd"),
+                min_tokens_sold: Uint128::from(1u128),
+                max_amount_per_wallet: Uint128::from(5u128),
+                amount_sold: Uint128::from(1u128),
+                amount_to_send: Uint128::from(100u128),
+                amount_transferred: Uint128::zero(),
+                recipient: Recipient::Addr("recipient".to_string()),
+            },
+        )
+        .unwrap();
+
+    PURCHASES
+        .save(
+            deps.as_mut().storage,
+            "A",
+            &vec![Purchase {
+                token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+                purchaser: "A".to_string(),
+                tax_amount: Uint128::zero(),
+                msgs: vec![],
+            }],
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::EndSale { limit: None };
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+}
+
+#[test]
+fn test_end_sale_limit_zero() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                expiration: Expiration::AtHeight(mock_env().block.height - 1),
+                price: coin(100, "uusd"),
+                min_tokens_sold: Uint128::from(1u128),
+                max_amount_per_wallet: Uint128::from(5u128),
+                amount_sold: Uint128::from(1u128),
+                amount_to_send: Uint128::from(100u128),
+                amount_transferred: Uint128::zero(),
+                recipient: Recipient::Addr("recipient".to_string()),
+            },
+        )
+        .unwrap();
+
+    PURCHASES
+        .save(
+            deps.as_mut().storage,
+            "A",
+            &vec![Purchase {
+                token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+                purchaser: "A".to_string(),
+                tax_amount: Uint128::zero(),
+                msgs: vec![],
+            }],
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::EndSale { limit: Some(0) };
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::LimitMustNotBeZero {}, res.unwrap_err());
+}

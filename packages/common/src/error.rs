@@ -256,6 +256,9 @@ pub enum ContractError {
 
     #[error("Min sales exceeded")]
     MinSalesExceeded {},
+
+    #[error("Limit must not be zero")]
+    LimitMustNotBeZero {},
 }
 
 impl From<Cw20ContractError> for ContractError {
