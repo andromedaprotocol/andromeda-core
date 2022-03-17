@@ -610,13 +610,19 @@ fn test_integration_conditions_not_met() {
     let info = mock_info("B", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
+    let msg = ExecuteMsg::Purchase {
+        token_id: MOCK_TOKENS_FOR_SALE[3].to_owned(),
+    };
+    let info = mock_info("C", &coins(150, "uusd"));
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
     let state = State {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(5u128),
         max_amount_per_wallet: Uint128::from(2u128),
-        amount_sold: Uint128::from(3u128),
-        amount_to_send: Uint128::from(270u128),
+        amount_sold: Uint128::from(4u128),
+        amount_to_send: Uint128::from(360u128),
         amount_transferred: Uint128::zero(),
         recipient: Recipient::Addr("recipient".to_string()),
     };
@@ -634,12 +640,34 @@ fn test_integration_conditions_not_met() {
         vec![get_purchase(MOCK_TOKENS_FOR_SALE[2], "B"),],
         PURCHASES.load(deps.as_ref().storage, "B").unwrap()
     );
+
+    assert_eq!(
+        vec![get_purchase(MOCK_TOKENS_FOR_SALE[3], "C"),],
+        PURCHASES.load(deps.as_ref().storage, "C").unwrap()
+    );
     assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
     assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
     assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
+    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
 
     let mut env = mock_env();
     env.block.height += 1;
+
+    // User B claims their own refund.
+    let msg = ExecuteMsg::ClaimRefund {};
+    let info = mock_info("B", &[]);
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "claim_refund")
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "B".to_string(),
+                amount: coins(150, "uusd"),
+            })),
+        res
+    );
+
+    assert!(!PURCHASES.has(deps.as_ref().storage, "B"));
 
     let msg = ExecuteMsg::EndSale { limit: None };
     let info = mock_info("anyone", &[]);
@@ -651,7 +679,7 @@ fn test_integration_conditions_not_met() {
             amount: coins(300, "uusd"),
         }),
         CosmosMsg::Bank(BankMsg::Send {
-            to_address: "B".to_string(),
+            to_address: "C".to_string(),
             amount: coins(150, "uusd"),
         }),
     ];
@@ -675,7 +703,7 @@ fn test_integration_conditions_not_met() {
     );
 
     assert!(!PURCHASES.has(deps.as_ref().storage, "A"));
-    assert!(!PURCHASES.has(deps.as_ref().storage, "B"));
+    assert!(!PURCHASES.has(deps.as_ref().storage, "C"));
 }
 
 #[test]
@@ -892,6 +920,14 @@ fn test_end_sale_single_purchase() {
     let msg = ExecuteMsg::EndSale { limit: None };
     let info = mock_info("anyone", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "transfer_tokens_and_send_funds")
+            // Burn tokens that were not purchased
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A")),
+        res
+    );
 }
 
 #[test]

@@ -92,6 +92,7 @@ pub fn execute(
             recipient,
         ),
         ExecuteMsg::Purchase { token_id } => execute_purchase(deps, env, info, token_id),
+        ExecuteMsg::ClaimRefund {} => execute_claim_refund(deps, env, info),
         ExecuteMsg::EndSale { limit } => execute_end_sale(deps, env, limit),
     }
 }
@@ -119,6 +120,9 @@ fn execute_start_sale(
         !expiration.is_expired(&env.block),
         ContractError::ExpirationInPast {},
     )?;
+    let state = STATE.may_load(deps.storage)?;
+    // TODO: Remove this once it is possible to reuse this contract.
+    require(state.is_none(), ContractError::SaleStarted {})?;
     let max_amount_per_wallet = max_amount_per_wallet.unwrap_or_else(|| Uint128::from(1u128));
     // This is to prevent cloning price.
     let price_str = price.to_string();
@@ -230,12 +234,43 @@ fn execute_purchase(
         .add_attribute("token_id", token_id))
 }
 
+fn execute_claim_refund(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    let state = STATE.may_load(deps.storage)?;
+    require(state.is_some(), ContractError::NoOngoingSale {})?;
+    let state = state.unwrap();
+    require(
+        state.expiration.is_expired(&env.block),
+        ContractError::SaleNotEnded {},
+    )?;
+    require(
+        state.amount_sold < state.min_tokens_sold,
+        ContractError::MinSalesExceeded {},
+    )?;
+
+    let purchases = PURCHASES.may_load(deps.storage, info.sender.as_str())?;
+    require(purchases.is_some(), ContractError::NoPurchases {})?;
+    let purchases = purchases.unwrap();
+    let refund_msg = process_refund(deps.storage, &purchases, &state.price);
+    let mut resp = Response::new();
+    if let Some(refund_msg) = refund_msg {
+        resp = resp.add_message(refund_msg);
+    }
+
+    Ok(resp.add_attribute("action", "claim_refund"))
+}
+
 fn execute_end_sale(
     deps: DepsMut,
     env: Env,
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
-    let state = STATE.load(deps.storage)?;
+    let state = STATE.may_load(deps.storage)?;
+    require(state.is_some(), ContractError::NoOngoingSale {})?;
+    let state = state.unwrap();
     require(
         state.expiration.is_expired(&env.block),
         ContractError::SaleNotEnded {},
@@ -263,28 +298,9 @@ fn issue_refunds_and_burn_tokens(
         .map(|(_v, p)| p)
         .collect();
     for purchase_vec in purchases.iter() {
-        let purchaser = purchase_vec[0].purchaser.clone();
-        // Remove each entry as they get processed.
-        PURCHASES.remove(deps.storage, &purchaser);
-        // Reduce a user's purchases into one message. While the tax paid on each item should
-        // be the same, it is not guaranteed given that the rates module is mutable during the
-        // sale.
-        let amount = purchase_vec
-            .iter()
-            // This represents the total amount of funds they sent for each purchase.
-            .map(|p| p.tax_amount + state.price.amount)
-            // Adds up all of the purchases.
-            .reduce(|accum, item| accum + item)
-            .unwrap_or_else(Uint128::zero);
-
-        if amount > Uint128::zero() {
-            refund_msgs.push(CosmosMsg::Bank(BankMsg::Send {
-                to_address: purchaser,
-                amount: vec![Coin {
-                    denom: state.price.denom.clone(),
-                    amount,
-                }],
-            }));
+        let refund_msg = process_refund(deps.storage, purchase_vec, &state.price);
+        if let Some(refund_msg) = refund_msg {
+            refund_msgs.push(refund_msg);
         }
     }
 
@@ -409,6 +425,38 @@ fn transfer_tokens_and_send_funds(
         .add_attribute("action", "transfer_tokens_and_send_funds")
         .add_messages(transfer_msgs)
         .add_submessages(rate_messages))
+}
+
+fn process_refund(
+    storage: &mut dyn Storage,
+    purchases: &Vec<Purchase>,
+    price: &Coin,
+) -> Option<CosmosMsg> {
+    let purchaser = purchases[0].purchaser.clone();
+    // Remove each entry as they get processed.
+    PURCHASES.remove(storage, &purchaser);
+    // Reduce a user's purchases into one message. While the tax paid on each item should
+    // be the same, it is not guaranteed given that the rates module is mutable during the
+    // sale.
+    let amount = purchases
+        .iter()
+        // This represents the total amount of funds they sent for each purchase.
+        .map(|p| p.tax_amount + price.amount)
+        // Adds up all of the purchases.
+        .reduce(|accum, item| accum + item)
+        .unwrap_or_else(Uint128::zero);
+
+    if amount > Uint128::zero() {
+        Some(CosmosMsg::Bank(BankMsg::Send {
+            to_address: purchaser,
+            amount: vec![Coin {
+                denom: price.denom.clone(),
+                amount,
+            }],
+        }))
+    } else {
+        None
+    }
 }
 
 fn get_burn_messages(

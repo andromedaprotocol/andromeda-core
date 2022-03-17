@@ -30,6 +30,8 @@ pub enum ExecuteMsg {
     Purchase {
         token_id: String,
     },
+    /// Allow a user to claim their own refund if the minimum number of tokens are not sold.
+    ClaimRefund {},
     EndSale {
         limit: Option<u32>,
     },

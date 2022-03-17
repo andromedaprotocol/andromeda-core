@@ -259,6 +259,12 @@ pub enum ContractError {
 
     #[error("Limit must not be zero")]
     LimitMustNotBeZero {},
+
+    #[error("Sale has already started")]
+    SaleStarted {},
+
+    #[error("No purchases")]
+    NoPurchases {},
 }
 
 impl From<Cw20ContractError> for ContractError {
