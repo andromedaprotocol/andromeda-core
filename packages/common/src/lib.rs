@@ -86,14 +86,17 @@ impl Funds {
     }
 }
 
-/// Merges bank messages to the same recipient to a single bank message. Any sub messages that do not contain bank
-/// messages are left as is. Note: Original order is not necessarily maintained.
+/// Merges bank messages to the same recipient to a single bank message. Any sub messages
+/// that do not contain bank messages are left as is. Note: Original order is not necessarily maintained.
 ///
 /// ## Arguments
 /// * `msgs`  - The sub messages to merge.
 ///
 /// Returns a Vec<SubMsg> containing the merged bank messages.
 pub fn merge_sub_msgs(msgs: Vec<SubMsg>) -> Vec<SubMsg> {
+    // BTreeMap used instead of HashMap for determinant ordering in tests. Both should work
+    // on-chain as hashmap randomness is fixed in cosmwasm. We get O(logn) instead of O(1)
+    // performance this way which is not a huge difference.
     let mut map: BTreeMap<String, Vec<Coin>> = BTreeMap::new();
 
     let mut merged_msgs: Vec<SubMsg> = vec![];
@@ -132,6 +135,9 @@ pub fn merge_sub_msgs(msgs: Vec<SubMsg>) -> Vec<SubMsg> {
 ///
 /// Returns nothing as it is done in place.
 pub fn merge_coins(coins: &mut Vec<Coin>, coins_to_add: Vec<Coin>) {
+    // Not the most efficient algorithm (O(n * m)) but we don't expect to deal with very large arrays of Coin,
+    // typically at most 2 denoms. Even in the future there are not that many Terra native coins
+    // where this will be a problem.
     for coin in coins.iter_mut() {
         let same_denom_coin = coins_to_add.iter().find(|&c| c.denom == coin.denom);
         if let Some(same_denom_coin) = same_denom_coin {

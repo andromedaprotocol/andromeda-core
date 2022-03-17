@@ -22,7 +22,6 @@ use cosmwasm_std::{
 };
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
-use std::cmp::min;
 
 const DEFAULT_LIMIT: u32 = 50;
 
@@ -98,6 +97,7 @@ pub fn execute(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_start_sale(
     deps: DepsMut,
     env: Env,
@@ -108,9 +108,8 @@ fn execute_start_sale(
     max_amount_per_wallet: Option<Uint128>,
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
     require(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -165,7 +164,8 @@ fn execute_purchase(
         ContractError::NoOngoingSale {},
     )?;
     // If the token is in this map, it has been purchased and is therefore unavailable.
-    let token_available = !UNAVAILABLE_TOKENS.has(deps.storage, &token_id);
+    let token_is_available = !UNAVAILABLE_TOKENS.has(deps.storage, &token_id);
+    require(token_is_available, ContractError::TokenAlreadyPurchased {})?;
 
     let config = CONFIG.load(deps.storage)?;
     let token_owner_res = query_owner_of(
@@ -177,7 +177,6 @@ fn execute_purchase(
         token_owner_res.is_ok() && token_owner_res.unwrap() == env.contract.address,
         ContractError::TokenNotForSale {},
     )?;
-    require(token_available, ContractError::TokenAlreadyPurchased {})?;
 
     let mut purchases = PURCHASES
         .may_load(deps.storage, &sender)?
@@ -202,7 +201,7 @@ fn execute_purchase(
 
     state.amount_to_send += remaining_amount.amount;
 
-    let tax_amount = get_tax_amount(&msgs, state.price.amount - remaining_amount.amount);
+    let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
     // require that the sender has sent enough for taxes
     require(
         has_coins(
@@ -357,11 +356,11 @@ fn transfer_tokens_and_send_funds(
         // If we are here then there are no purchases to process so we can exit.
         return Ok(resp.add_attribute("action", "transfer_tokens_and_send_funds"));
     }
-    // Flatten Vec<Vec<Purchase>> into Vec<Purchase>.
     let mut purchases: Vec<Purchase> = PURCHASES
         .range(deps.storage, None, None, Order::Ascending)
         .flatten()
         .map(|(_v, p)| p)
+        // Flatten Vec<Vec<Purchase>> into Vec<Purchase>.
         .flatten()
         // Take one extra in order to compare what the next purchaser would be to check if some
         // purchases will be left over.
@@ -372,10 +371,11 @@ fn transfer_tokens_and_send_funds(
     let mut rate_messages: Vec<SubMsg> = vec![];
     let mut transfer_msgs: Vec<CosmosMsg> = vec![];
 
-    // Need the min check here in case purchases.len() == 1.
-    let last_purchaser = purchases[purchases.len() - min(2, purchases.len())]
-        .purchaser
-        .clone();
+    let last_purchaser = if purchases.len() == 1 {
+        purchases[0].purchaser.clone()
+    } else {
+        purchases[purchases.len() - 2].purchaser.clone()
+    };
     // This subtraction is no problem as we will always have at least one purchase.
     let subsequent_purchase = &purchases[purchases.len() - 1];
     // If this is false, then there are some purchases that we will need to leave for the next
@@ -391,11 +391,11 @@ fn transfer_tokens_and_send_funds(
         purchases.pop();
     }
     for purchase in purchases.into_iter() {
-        let purchaser = &purchase.purchaser;
-        let should_remove = purchaser != &last_purchaser || remove_last_purchaser;
+        let purchaser = purchase.purchaser;
+        let should_remove = purchaser != last_purchaser || remove_last_purchaser;
         if should_remove && PURCHASES.has(deps.storage, &purchaser) {
             PURCHASES.remove(deps.storage, &purchaser);
-        } else if purchaser == &last_purchaser {
+        } else if purchaser == last_purchaser {
             // Keep track of the number of purchases removed from the last purchaser to remove them
             // at the end, if not all of them were removed.
             number_of_last_purchases_removed += 1;
@@ -404,7 +404,7 @@ fn transfer_tokens_and_send_funds(
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: config.token_address.to_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: purchase.purchaser,
+                recipient: purchaser,
                 token_id: purchase.token_id,
             })?,
             funds: vec![],
@@ -476,7 +476,7 @@ fn get_burn_messages(
     limit: usize,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let config = CONFIG.load(storage)?;
-    let tokens_to_burn = query_tokens(&querier, config.token_address.to_string(), address, limit)?;
+    let tokens_to_burn = query_tokens(querier, config.token_address.to_string(), address, limit)?;
 
     tokens_to_burn
         .into_iter()
@@ -524,5 +524,5 @@ fn query_tokens(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    Ok(to_binary(&"")?)
+    to_binary(&"")
 }

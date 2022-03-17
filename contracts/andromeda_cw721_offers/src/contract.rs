@@ -141,7 +141,7 @@ fn execute_place_offer(
         },
     )?;
     let remaining_amount = res.leftover_funds.try_get_coin()?;
-    let tax_amount = get_tax_amount(&res.msgs, offer_amount - remaining_amount.amount);
+    let tax_amount = get_tax_amount(&res.msgs, offer_amount, remaining_amount.amount);
     let offer = Offer {
         purchaser: purchaser.to_owned(),
         denom: coin.denom.clone(),
