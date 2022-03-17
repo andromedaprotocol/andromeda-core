@@ -17,7 +17,11 @@ pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 pub const MOCK_NON_EXISTING_TOKEN: &str = "non_existing_token";
-pub const MOCK_TOKENS_FOR_SALE: &[&str] = &["token1", "token2", "token3", "token4", "token5"];
+pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
+    "token1", "token2", "token3", "token4", "token5", "token6", "token7",
+];
+
+pub const MOCK_CONDITIONS_MET_CONTRACT: &str = "conditions_met";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -34,6 +38,7 @@ pub fn mock_dependencies_custom(
 
 pub struct WasmMockQuerier {
     base: MockQuerier<TerraQueryWrapper>,
+    pub contract_address: String,
 }
 
 impl Querier for WasmMockQuerier {
@@ -68,14 +73,25 @@ impl WasmMockQuerier {
 
     fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            Cw721QueryMsg::Tokens { .. } => {
-                let res = TokensResponse {
-                    tokens: MOCK_TOKENS_FOR_SALE
-                        .to_vec()
-                        .into_iter()
-                        .map(String::from)
-                        .collect(),
+            Cw721QueryMsg::Tokens { owner, .. } => {
+                let res = if owner == MOCK_CONDITIONS_MET_CONTRACT {
+                    TokensResponse {
+                        tokens: MOCK_TOKENS_FOR_SALE[5..]
+                            .to_vec()
+                            .into_iter()
+                            .map(String::from)
+                            .collect(),
+                    }
+                } else {
+                    TokensResponse {
+                        tokens: MOCK_TOKENS_FOR_SALE
+                            .to_vec()
+                            .into_iter()
+                            .map(String::from)
+                            .collect(),
+                    }
                 };
+
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }
             Cw721QueryMsg::OwnerOf { token_id, .. } => {
@@ -83,7 +99,7 @@ impl WasmMockQuerier {
                     return SystemResult::Ok(ContractResult::Err("error".to_string()));
                 } else if MOCK_TOKENS_FOR_SALE.contains(&token_id.as_str()) {
                     let res = OwnerOfResponse {
-                        owner: mock_env().contract.address.to_string(),
+                        owner: self.contract_address.clone(),
                         approvals: vec![],
                     };
                     return SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()));
@@ -153,6 +169,9 @@ impl WasmMockQuerier {
     }
 
     pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
-        WasmMockQuerier { base }
+        WasmMockQuerier {
+            base,
+            contract_address: mock_env().contract.address.to_string(),
+        }
     }
 }

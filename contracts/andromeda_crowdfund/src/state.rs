@@ -39,9 +39,12 @@ pub struct State {
     pub price: Coin,
     pub min_tokens_sold: Uint128,
     pub max_amount_per_wallet: Uint128,
+    /// Number of tokens sold.
     pub amount_sold: Uint128,
     /// The amount of funds to send to recipient if sale successful. This already
     /// takes into account the royalties and taxes.
     pub amount_to_send: Uint128,
+    /// Number of tokens transferred to purchasers if sale was successful.
+    pub amount_transferred: Uint128,
     pub recipient: Recipient,
 }

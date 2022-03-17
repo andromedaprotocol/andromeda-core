@@ -16,7 +16,8 @@ use common::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     has_coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Response, StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
+    QuerierWrapper, QueryRequest, Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
@@ -129,6 +130,7 @@ fn execute_start_sale(
             max_amount_per_wallet,
             amount_sold: Uint128::zero(),
             amount_to_send: Uint128::zero(),
+            amount_transferred: Uint128::zero(),
             recipient,
         },
     )?;
@@ -240,7 +242,7 @@ fn execute_end_sale(
     if state.amount_sold < state.min_tokens_sold {
         issue_refunds_and_burn_tokens(deps, env, limit)
     } else {
-        transfer_tokens_and_send_funds(deps, limit)
+        transfer_tokens_and_send_funds(deps, env, limit)
     }
 }
 
@@ -286,52 +288,56 @@ fn issue_refunds_and_burn_tokens(
     }
 
     // Burn `limit` number of tokens
-    let config = CONFIG.load(deps.storage)?;
-    let tokens_to_burn = query_tokens(
+    let burn_msgs = get_burn_messages(
+        deps.storage,
         &deps.querier,
-        config.token_address.to_string(),
         env.contract.address.to_string(),
         limit,
     )?;
 
-    let burn_msgs: Result<Vec<CosmosMsg>, ContractError> = tokens_to_burn
-        .into_iter()
-        .map(|token_id| {
-            Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: config.token_address.to_string(),
-                funds: vec![],
-                msg: encode_binary(&Cw721ExecuteMsg::Burn { token_id })?,
-            }))
-        })
-        .collect();
-
     Ok(Response::new()
         .add_attribute("action", "issue_refunds_and_burn_tokens")
         .add_messages(refund_msgs)
-        .add_messages(burn_msgs?))
+        .add_messages(burn_msgs))
 }
 
 fn transfer_tokens_and_send_funds(
     deps: DepsMut,
+    env: Env,
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
     let mut state = STATE.load(deps.storage)?;
     let mut resp = Response::new();
-    // Send the funds if they haven't been sent yet.
-    if state.amount_to_send > Uint128::zero() {
-        let msg = state.recipient.generate_msg_native(
-            deps.api,
-            vec![Coin {
-                denom: state.price.denom.clone(),
-                amount: state.amount_to_send,
-            }],
+    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+    // Send the funds if they haven't been sent yet and if all of the tokens have been transferred.
+    if state.amount_transferred == state.amount_sold {
+        if state.amount_to_send > Uint128::zero() {
+            let msg = state.recipient.generate_msg_native(
+                deps.api,
+                vec![Coin {
+                    denom: state.price.denom.clone(),
+                    amount: state.amount_to_send,
+                }],
+            )?;
+            state.amount_to_send = Uint128::zero();
+
+            resp = resp.add_submessage(msg);
+        }
+        // Once all purchased tokens have been transferred, begin burning `limit` number of tokens
+        // that were not purchased.
+        let burn_msgs = get_burn_messages(
+            deps.storage,
+            &deps.querier,
+            env.contract.address.to_string(),
+            limit,
         )?;
-        state.amount_to_send = Uint128::zero();
+
+        resp = resp.add_messages(burn_msgs);
         STATE.save(deps.storage, &state)?;
 
-        resp = resp.add_submessage(msg);
+        // If we are here then there are no purchases to process.
+        return Ok(resp.add_attribute("action", "transfer_tokens_and_send_funds"));
     }
-    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
     let mut purchases: Vec<Purchase> = PURCHASES
         .range(deps.storage, None, None, Order::Ascending)
         .flatten()
@@ -349,13 +355,15 @@ fn transfer_tokens_and_send_funds(
     let last_purchaser = purchases[purchases.len() - 2].purchaser.clone();
     let subsequent_purchase = &purchases[purchases.len() - 1];
     // If this is false, then there are some purchases that we will need to leave for the next
-    // round.
+    // round. Otherwise, we are able to process all of the purchases for the last purchaser and we
+    // can remove their entry from the map entirely.
     let remove_last_purchaser = last_purchaser != subsequent_purchase.purchaser;
 
     let mut number_of_last_purchases_removed = 0;
     // If we took an extra element, we remove it. Otherwise limit + 1 was more than was necessary
-    // so we need to remove all of the purchases.
+    // so we need to remove all of the purchases from the map.
     if limit + 1 == purchases.len() {
+        // This is an O(1) operation from looking at the source code.
         purchases.pop();
     }
     for purchase in purchases.into_iter() {
@@ -378,6 +386,8 @@ fn transfer_tokens_and_send_funds(
             })?,
             funds: vec![],
         }));
+
+        state.amount_transferred += Uint128::from(1u128);
     }
     // If the last purchaser wasn't removed, remove the subset of purchases that were processed.
     if PURCHASES.has(deps.storage, &last_purchaser) {
@@ -388,10 +398,32 @@ fn transfer_tokens_and_send_funds(
             &last_purchases[number_of_last_purchases_removed..].to_vec(),
         )?;
     }
+    STATE.save(deps.storage, &state)?;
     Ok(resp
         .add_attribute("action", "transfer_tokens_and_send_funds")
         .add_messages(transfer_msgs)
         .add_submessages(rate_messages))
+}
+
+fn get_burn_messages(
+    storage: &dyn Storage,
+    querier: &QuerierWrapper,
+    address: String,
+    limit: usize,
+) -> Result<Vec<CosmosMsg>, ContractError> {
+    let config = CONFIG.load(storage)?;
+    let tokens_to_burn = query_tokens(&querier, config.token_address.to_string(), address, limit)?;
+
+    tokens_to_burn
+        .into_iter()
+        .map(|token_id| {
+            Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: config.token_address.to_string(),
+                funds: vec![],
+                msg: encode_binary(&Cw721ExecuteMsg::Burn { token_id })?,
+            }))
+        })
+        .collect()
 }
 
 fn query_owner_of(

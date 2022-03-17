@@ -2,8 +2,9 @@ use crate::{
     contract::{execute, instantiate},
     state::{Config, Purchase, State, CONFIG, PURCHASES, STATE, UNAVAILABLE_TOKENS},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_NON_EXISTING_TOKEN, MOCK_PRIMITIVE_CONTRACT,
-        MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
+        mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_NON_EXISTING_TOKEN,
+        MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_TOKENS_FOR_SALE,
+        MOCK_TOKEN_CONTRACT,
     },
 };
 use andromeda_protocol::{
@@ -204,6 +205,7 @@ fn test_start_sale_max_default() {
             max_amount_per_wallet: Uint128::from(1u128),
             amount_sold: Uint128::zero(),
             amount_to_send: Uint128::zero(),
+            amount_transferred: Uint128::zero(),
             recipient: Recipient::Addr("recipient".to_string()),
         },
         STATE.load(deps.as_ref().storage).unwrap()
@@ -243,6 +245,7 @@ fn test_start_sale_max_modified() {
             max_amount_per_wallet: Uint128::from(5u128),
             amount_sold: Uint128::zero(),
             amount_to_send: Uint128::zero(),
+            amount_transferred: Uint128::zero(),
             recipient: Recipient::Addr("recipient".to_string()),
         },
         STATE.load(deps.as_ref().storage).unwrap()
@@ -282,6 +285,7 @@ fn test_purchase_sale_not_ended() {
                 max_amount_per_wallet: Uint128::from(5u128),
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
+                amount_transferred: Uint128::zero(),
                 recipient: Recipient::Addr("recipient".to_string()),
             },
         )
@@ -314,6 +318,7 @@ macro_rules! purchase_not_for_sale_tests {
                         max_amount_per_wallet: Uint128::from(5u128),
                         amount_sold: Uint128::zero(),
                         amount_to_send: Uint128::zero(),
+            amount_transferred: Uint128::zero(),
                         recipient: Recipient::Addr("recipient".to_string()),
                     },
                 )
@@ -351,6 +356,7 @@ fn test_purchase_no_funds() {
                 max_amount_per_wallet: Uint128::from(5u128),
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
+                amount_transferred: Uint128::zero(),
                 recipient: Recipient::Addr("recipient".to_string()),
             },
         )
@@ -380,6 +386,7 @@ fn test_purchase_wrong_denom() {
                 max_amount_per_wallet: Uint128::from(5u128),
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
+                amount_transferred: Uint128::zero(),
                 recipient: Recipient::Addr("recipient".to_string()),
             },
         )
@@ -414,6 +421,7 @@ fn test_purchase_not_enough_for_price() {
                 max_amount_per_wallet: Uint128::from(5u128),
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
+                amount_transferred: Uint128::zero(),
                 recipient: Recipient::Addr("recipient".to_string()),
             },
         )
@@ -448,6 +456,7 @@ fn test_purchase_not_enough_for_tax() {
                 max_amount_per_wallet: Uint128::from(5u128),
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
+                amount_transferred: Uint128::zero(),
                 recipient: Recipient::Addr("recipient".to_string()),
             },
         )
@@ -479,6 +488,7 @@ fn test_multiple_purchases() {
         max_amount_per_wallet: Uint128::from(2u128),
         amount_sold: Uint128::zero(),
         amount_to_send: Uint128::zero(),
+        amount_transferred: Uint128::zero(),
         recipient: Recipient::Addr("recipient".to_string()),
     };
     STATE.save(deps.as_mut().storage, &state).unwrap();
@@ -551,6 +561,7 @@ fn test_end_sale_not_expired() {
         max_amount_per_wallet: Uint128::from(2u128),
         amount_sold: Uint128::zero(),
         amount_to_send: Uint128::zero(),
+        amount_transferred: Uint128::zero(),
         recipient: Recipient::Addr("recipient".to_string()),
     };
     STATE.save(deps.as_mut().storage, &state).unwrap();
@@ -606,6 +617,7 @@ fn test_integration_conditions_not_met() {
         max_amount_per_wallet: Uint128::from(2u128),
         amount_sold: Uint128::from(3u128),
         amount_to_send: Uint128::from(270u128),
+        amount_transferred: Uint128::zero(),
         recipient: Recipient::Addr("recipient".to_string()),
     };
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
@@ -650,6 +662,8 @@ fn test_integration_conditions_not_met() {
         // Tokens that were not sold.
         get_burn_message(MOCK_TOKENS_FOR_SALE[3]),
         get_burn_message(MOCK_TOKENS_FOR_SALE[4]),
+        get_burn_message(MOCK_TOKENS_FOR_SALE[5]),
+        get_burn_message(MOCK_TOKENS_FOR_SALE[6]),
     ];
 
     assert_eq!(
@@ -667,12 +681,15 @@ fn test_integration_conditions_not_met() {
 #[test]
 fn test_integration_conditions_met() {
     let mut deps = mock_dependencies_custom(&[]);
+    deps.querier.contract_address = MOCK_CONDITIONS_MET_CONTRACT.to_string();
     let modules = vec![Module {
         module_type: RATES.to_owned(),
         instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.to_owned()),
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
+    let mut env = mock_env();
+    env.contract.address = Addr::unchecked(MOCK_CONDITIONS_MET_CONTRACT);
 
     let msg = ExecuteMsg::StartSale {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
@@ -683,44 +700,45 @@ fn test_integration_conditions_met() {
     };
 
     let info = mock_info("owner", &[]);
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
     };
     let info = mock_info("A", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[1].to_owned(),
     };
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[2].to_owned(),
     };
     let info = mock_info("B", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[3].to_owned(),
     };
     let info = mock_info("C", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[4].to_owned(),
     };
     let info = mock_info("D", &coins(150, "uusd"));
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let state = State {
+    let mut state = State {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(3u128),
         max_amount_per_wallet: Uint128::from(2u128),
         amount_sold: Uint128::from(5u128),
         amount_to_send: Uint128::from(450u128),
+        amount_transferred: Uint128::zero(),
         recipient: Recipient::Addr("recipient".to_string()),
     };
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
@@ -751,8 +769,8 @@ fn test_integration_conditions_met() {
     assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
     assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
 
-    let mut env = mock_env();
     env.block.height += 1;
+    env.contract.address = Addr::unchecked(MOCK_CONDITIONS_MET_CONTRACT);
 
     let msg = ExecuteMsg::EndSale { limit: Some(1) };
     let info = mock_info("anyone", &[]);
@@ -761,10 +779,6 @@ fn test_integration_conditions_met() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "transfer_tokens_and_send_funds")
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: "recipient".to_string(),
-                amount: coins(450u128, "uusd")
-            }))
             .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A"))
             .add_submessages(get_rates_messages()),
         res
@@ -774,6 +788,9 @@ fn test_integration_conditions_met() {
         vec![get_purchase(MOCK_TOKENS_FOR_SALE[1], "A")],
         PURCHASES.load(deps.as_ref().storage, "A").unwrap()
     );
+
+    state.amount_transferred += Uint128::from(1u128);
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
     let msg = ExecuteMsg::EndSale { limit: Some(2) };
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -793,8 +810,11 @@ fn test_integration_conditions_met() {
     assert!(PURCHASES.has(deps.as_ref().storage, "C"),);
     assert!(PURCHASES.has(deps.as_ref().storage, "D"),);
 
+    state.amount_transferred += Uint128::from(2u128);
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+
     let msg = ExecuteMsg::EndSale { limit: None };
-    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     assert!(!PURCHASES.has(deps.as_ref().storage, "C"),);
     assert!(!PURCHASES.has(deps.as_ref().storage, "D"),);
@@ -808,4 +828,29 @@ fn test_integration_conditions_met() {
             .add_submessages(get_rates_messages()),
         res
     );
+
+    state.amount_transferred += Uint128::from(2u128);
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+
+    let msg = ExecuteMsg::EndSale { limit: None };
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    assert_eq!(3, res.messages.len());
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "transfer_tokens_and_send_funds")
+            // Now that all tokens have been transfered, can send the funds to recipient.
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "recipient".to_string(),
+                amount: coins(450u128, "uusd")
+            }))
+            // Burn tokens that were not purchased
+            .add_message(get_burn_message(MOCK_TOKENS_FOR_SALE[5]))
+            .add_message(get_burn_message(MOCK_TOKENS_FOR_SALE[6])),
+        res
+    );
+
+    state.amount_to_send = Uint128::zero();
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 }
