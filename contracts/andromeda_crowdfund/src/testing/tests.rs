@@ -51,7 +51,7 @@ fn get_rates_messages() -> Vec<SubMsg> {
             amount: vec![Coin {
                 // Flat tax of 50
                 amount: Uint128::from(50u128),
-                denom: coin.denom.clone(),
+                denom: coin.denom,
             }],
         })),
     ]
@@ -889,7 +889,7 @@ fn test_integration_conditions_met() {
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
     let msg = ExecuteMsg::EndSale { limit: None };
-    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(3, res.messages.len());
 

@@ -97,19 +97,19 @@ impl WasmMockQuerier {
             }
             Cw721QueryMsg::OwnerOf { token_id, .. } => {
                 if token_id == MOCK_NON_EXISTING_TOKEN {
-                    return SystemResult::Ok(ContractResult::Err("error".to_string()));
+                    SystemResult::Ok(ContractResult::Err("error".to_string()))
                 } else if MOCK_TOKENS_FOR_SALE.contains(&token_id.as_str()) {
                     let res = OwnerOfResponse {
                         owner: self.contract_address.clone(),
                         approvals: vec![],
                     };
-                    return SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()));
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
                 } else {
                     let res = OwnerOfResponse {
                         owner: "not_contract".to_string(),
                         approvals: vec![],
                     };
-                    return SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()));
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
                 }
             }
 
