@@ -5,14 +5,13 @@ use cosmwasm_std::{
     Response, StdError, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
-use ado_base::state::ADOContract;
-use andromeda_protocol::{
-    cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    response::get_reply_address,
-};
+use ado_base::ADOContract;
+use andromeda_protocol::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
-    ado_base::hooks::AndromedaHook, error::ContractError, primitive::PRIMITVE_CONTRACT, require,
-    Funds,
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    error::ContractError,
+    primitive::PRIMITVE_CONTRACT,
+    require, Funds,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
@@ -34,13 +33,18 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let contract = ADOContract::default();
-    contract.owner.save(deps.storage, &info.sender)?;
-    contract.ado_type.save(deps.storage, &"cw20".to_string())?;
+    let sender = info.sender.to_string();
+    let resp = contract.instantiate(
+        deps.storage,
+        info.clone(),
+        BaseInstantiateMsg {
+            ado_type: "cw721".to_string(),
+            operators: None,
+        },
+    )?;
     PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let sender = info.sender.as_str();
-    let module_msgs = contract.register_modules(
-        sender,
+    let module_resp = contract.register_modules(
+        &sender,
         &deps.querier,
         deps.storage,
         deps.api,
@@ -48,33 +52,16 @@ pub fn instantiate(
     )?;
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
 
-    Ok(Response::new()
-        .add_submessages(module_msgs)
+    Ok(resp
         .add_submessages(cw20_resp.messages)
-        .add_attributes(cw20_resp.attributes))
+        .add_submessages(module_resp.messages)
+        .add_attributes(cw20_resp.attributes)
+        .add_attributes(module_resp.attributes))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
-    }
-
-    let contract = ADOContract::default();
-    let id = msg.id.to_string();
-    require(
-        contract.module_info.has(deps.storage, &id),
-        ContractError::InvalidReplyId {},
-    )?;
-
-    let addr = get_reply_address(&msg)?;
-    contract
-        .module_addr
-        .save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
-
-    Ok(Response::default())
+    ADOContract::default().handle_module_reply(deps, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -1,4 +1,5 @@
 mod execute;
+mod instantiate;
 #[cfg(test)]
 pub mod mock_querier;
 #[cfg(feature = "modules")]

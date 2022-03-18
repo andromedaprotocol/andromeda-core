@@ -12,7 +12,10 @@ use andromeda_protocol::{
     response::get_reply_address,
 };
 use common::{
-    ado_base::hooks::{AndromedaHook, OnFundsTransferResponse},
+    ado_base::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        InstantiateMsg as BaseInstantiateMsg,
+    },
     encode_binary,
     error::ContractError,
     primitive::PRIMITVE_CONTRACT,
@@ -30,11 +33,18 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    contract.owner.save(deps.storage, &info.sender)?;
-    contract.ado_type.save(deps.storage, &"cw721".to_string())?;
     PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
-    let module_msgs = contract.register_modules(
-        info.sender.as_str(),
+    let sender = info.sender.to_string();
+    let resp = contract.instantiate(
+        deps.storage,
+        info.clone(),
+        BaseInstantiateMsg {
+            ado_type: "cw721".to_string(),
+            operators: None,
+        },
+    )?;
+    let module_resp = contract.register_modules(
+        &sender,
         &deps.querier,
         deps.storage,
         deps.api,
@@ -42,33 +52,16 @@ pub fn instantiate(
     )?;
 
     let cw721_resp = AndrCW721Contract::default().instantiate(deps, env, info, msg.into())?;
-    Ok(Response::new()
+    Ok(resp
+        .add_attributes(module_resp.attributes)
         .add_attributes(cw721_resp.attributes)
-        .add_submessages(module_msgs)
+        .add_submessages(module_resp.messages)
         .add_submessages(cw721_resp.messages))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
-    }
-
-    let contract = ADOContract::default();
-    let id = msg.id.to_string();
-    require(
-        contract.module_info.has(deps.storage, &id),
-        ContractError::InvalidReplyId {},
-    )?;
-
-    let addr = get_reply_address(&msg)?;
-    contract
-        .module_addr
-        .save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
-
-    Ok(Response::default())
+    ADOContract::default().handle_module_reply(deps, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

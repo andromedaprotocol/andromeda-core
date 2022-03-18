@@ -1,12 +1,9 @@
 use crate::state::SWAPPER_IMPL_ADDR;
 use ado_base::state::ADOContract;
-use andromeda_protocol::{
-    response::get_reply_address,
-    swapper::{
-        query_balance, query_token_balance, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-        MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,
-        SwapperMsg,
-    },
+use andromeda_protocol::swapper::{
+    query_balance, query_token_balance, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
+    MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,
+    SwapperMsg,
 };
 use common::{
     ado_base::{
@@ -16,6 +13,7 @@ use common::{
     encode_binary,
     error::ContractError,
     require,
+    response::get_reply_address,
 };
 use cosmwasm_std::{
     entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
@@ -36,12 +34,19 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
+    let contract = ADOContract::default();
     let mut msgs: Vec<SubMsg> = vec![];
-    match msg.swapper_impl {
+    match msg.swapper_impl.instantiate_type {
         InstantiateType::Address(addr) => SWAPPER_IMPL_ADDR.save(deps.storage, &addr)?,
         InstantiateType::New(instantiate_msg) => {
-            let code_id: u64 = query_get(
+            let msg = contract.generate_instantiate_msg(
+                deps.storage,
+                deps.querier,
+                1,
+                instantiate_msg,
+                msg.swapper_impl.name,
+            )?;
+            /*let code_id: u64 = query_get(
                 Some(encode_binary(&"swapper")?),
                 // TODO: Replace when Primitive contract change merged.
                 "TEMP_FACTORY".to_string(),
@@ -58,7 +63,7 @@ pub fn instantiate(
                     label: "Instantiate: swapper implementation".to_string(),
                 }),
                 gas_limit: None,
-            };
+            };*/
             msgs.push(msg);
         }
     }

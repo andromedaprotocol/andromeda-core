@@ -4,7 +4,7 @@ use common::{
     error::ContractError,
     parse_message, require,
 };
-use cosmwasm_std::{attr, DepsMut, Env, MessageInfo, Order, Response};
+use cosmwasm_std::{attr, DepsMut, Env, MessageInfo, Order, Response, Storage};
 use serde::de::DeserializeOwned;
 
 type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
@@ -12,14 +12,14 @@ type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, C
 impl<'a> ADOContract<'a> {
     pub fn instantiate(
         &self,
-        deps: DepsMut,
+        storage: &mut dyn Storage,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
-        self.owner.save(deps.storage, &info.sender)?;
-        self.ado_type.save(deps.storage, &msg.ado_type)?;
+        self.owner.save(storage, &info.sender)?;
+        self.ado_type.save(storage, &msg.ado_type)?;
         if let Some(operators) = msg.operators {
-            self.initialize_operators(deps.storage, operators)?;
+            self.initialize_operators(storage, operators)?;
         }
         Ok(Response::new()
             .add_attribute("method", "instantiate")

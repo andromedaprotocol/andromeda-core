@@ -34,58 +34,36 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    // TODO: change instantiate of ADOContract to not take deps directly to allow instantiating
-    // first.
-    contract.owner.save(deps.storage, &info.sender)?;
-    contract
-        .ado_type
-        .save(deps.storage, &"crowdfund".to_string())?;
-    let module_msgs = contract.register_modules(
+    let resp = contract.instantiate(
+        deps.storage,
+        info.clone(),
+        BaseInstantiateMsg {
+            ado_type: "crowdfund".to_string(),
+            operators: None,
+        },
+    )?;
+    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_address)?;
+    let module_resp = contract.register_modules(
         info.sender.as_str(),
         &deps.querier,
         deps.storage,
         deps.api,
         msg.modules,
     )?;
-    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_address)?;
     CONFIG.save(
         deps.storage,
         &Config {
             token_address: deps.api.addr_validate(&msg.token_address)?,
         },
     )?;
-    let resp = contract.instantiate(
-        deps,
-        info,
-        BaseInstantiateMsg {
-            ado_type: "crowdfund".to_string(),
-            operators: None,
-        },
-    )?;
-    Ok(resp.add_submessages(module_msgs))
+    Ok(resp
+        .add_submessages(module_resp.messages)
+        .add_attributes(module_resp.attributes))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
-    }
-
-    let contract = ADOContract::default();
-    let id = msg.id.to_string();
-    require(
-        contract.module_info.has(deps.storage, &id),
-        ContractError::InvalidReplyId {},
-    )?;
-
-    let addr = get_reply_address(&msg)?;
-    contract
-        .module_addr
-        .save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
-
-    Ok(Response::default())
+    ADOContract::default().handle_module_reply(deps, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

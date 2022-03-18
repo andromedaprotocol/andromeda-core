@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use crate::state::ADOContract;
 use cosmwasm_std::{
-    Api, DepsMut, MessageInfo, Order, QuerierWrapper, Response, Storage, SubMsg, Uint64,
+    Api, DepsMut, MessageInfo, Order, QuerierWrapper, Reply, Response, StdError, Storage, Uint64,
 };
 use cw_storage_plus::Bound;
 
@@ -10,6 +10,7 @@ use common::{
     ado_base::modules::{InstantiateType, Module, ModuleInfoWithAddress},
     error::ContractError,
     require,
+    response::get_reply_address,
 };
 
 pub mod hooks;
@@ -22,20 +23,20 @@ impl<'a> ADOContract<'a> {
         storage: &mut dyn Storage,
         api: &dyn Api,
         modules: Option<Vec<Module>>,
-        // TODO: Return the full response instead of just the messages. This is to preserve any
-        // added attributes.
-    ) -> Result<Vec<SubMsg>, ContractError> {
+    ) -> Result<Response, ContractError> {
         if let Some(modules) = modules {
             self.validate_modules(&modules, &self.ado_type.load(storage)?)?;
-            let mut msgs: Vec<SubMsg> = vec![];
+            let mut resp = Response::new();
             for module in modules {
-                let response =
+                let register_response =
                     self.execute_register_module(querier, storage, api, sender, &module, false)?;
-                msgs.extend(response.messages);
+                resp = resp
+                    .add_attributes(register_response.attributes)
+                    .add_submessages(register_response.messages)
             }
-            Ok(msgs)
+            Ok(resp)
         } else {
-            Ok(vec![])
+            Ok(Response::new())
         }
     }
 
@@ -261,6 +262,30 @@ impl<'a> ADOContract<'a> {
         }
 
         Ok(())
+    }
+
+    pub fn handle_module_reply(
+        &self,
+        deps: DepsMut,
+        msg: Reply,
+    ) -> Result<Response, ContractError> {
+        if msg.result.is_err() {
+            return Err(ContractError::Std(StdError::generic_err(
+                msg.result.unwrap_err(),
+            )));
+        }
+
+        let id = msg.id.to_string();
+        require(
+            self.module_info.has(deps.storage, &id),
+            ContractError::InvalidReplyId {},
+        )?;
+
+        let addr = get_reply_address(&msg)?;
+        self.module_addr
+            .save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
+
+        Ok(Response::default())
     }
 }
 
