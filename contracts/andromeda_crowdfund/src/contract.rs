@@ -358,9 +358,8 @@ fn transfer_tokens_and_send_funds(
     let mut purchases: Vec<Purchase> = PURCHASES
         .range(deps.storage, None, None, Order::Ascending)
         .flatten()
-        .map(|(_v, p)| p)
         // Flatten Vec<Vec<Purchase>> into Vec<Purchase>.
-        .flatten()
+        .flat_map(|(_v, p)| p)
         // Take one extra in order to compare what the next purchaser would be to check if some
         // purchases will be left over.
         .take(limit + 1)
