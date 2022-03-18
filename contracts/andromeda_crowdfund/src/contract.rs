@@ -4,6 +4,7 @@ use andromeda_protocol::{
     crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg},
     rates::get_tax_amount,
+    response::get_reply_address,
 };
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
@@ -17,7 +18,8 @@ use common::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
@@ -61,6 +63,29 @@ pub fn instantiate(
         },
     )?;
     Ok(resp.add_submessages(module_msgs))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    let contract = ADOContract::default();
+    let id = msg.id.to_string();
+    require(
+        contract.module_info.has(deps.storage, &id),
+        ContractError::InvalidReplyId {},
+    )?;
+
+    let addr = get_reply_address(&msg)?;
+    contract
+        .module_addr
+        .save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
+
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
