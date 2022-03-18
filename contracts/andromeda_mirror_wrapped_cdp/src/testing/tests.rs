@@ -268,14 +268,12 @@ fn test_mirror_mint_open_position_not_short() {
         collateral: Asset {
             info: AssetInfo::Token {
                 contract_addr: "collateral_token".to_string(),
-            }
-            .into(),
+            },
             amount: Uint128::from(10_u128),
         },
         asset_info: AssetInfo::Token {
             contract_addr: "token_address".to_string(),
-        }
-        .into(),
+        },
         collateral_ratio: Decimal::one(),
         short_params: None,
     };
@@ -314,14 +312,12 @@ fn test_mirror_mint_open_position_short() {
         collateral: Asset {
             info: AssetInfo::Token {
                 contract_addr: "collateral_token".to_string(),
-            }
-            .into(),
+            },
             amount: Uint128::from(10_u128),
         },
         asset_info: AssetInfo::Token {
             contract_addr: "token_address".to_string(),
-        }
-        .into(),
+        },
         collateral_ratio: Decimal::one(),
         short_params: Some(ShortParams {
             belief_price: None,
@@ -367,8 +363,7 @@ fn test_mirror_mint_deposit() {
         collateral: Asset {
             info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
-            }
-            .into(),
+            },
             amount: Uint128::from(10u128),
         },
         position_idx: Uint128::from(1u128),
@@ -412,8 +407,7 @@ fn test_mirror_mint_mint() {
         asset: Asset {
             info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
-            }
-            .into(),
+            },
             amount: Uint128::from(10_u128),
         },
         position_idx: Uint128::from(1_u128),
@@ -471,8 +465,7 @@ fn test_mirror_mint_open_position_cw20_short() {
     let mirror_msg = MirrorMintCw20HookMsg::OpenPosition {
         asset_info: AssetInfo::Token {
             contract_addr: "minted_asset_token".to_string(),
-        }
-        .into(),
+        },
         collateral_ratio: Decimal::one(),
         short_params: Some(ShortParams {
             belief_price: None,
@@ -606,15 +599,13 @@ fn test_mirror_staking_autostake() {
             Asset {
                 info: AssetInfo::NativeToken {
                     denom: "uusd".to_string(),
-                }
-                .into(),
+                },
                 amount: Uint128::from(10_u128),
             },
             Asset {
                 info: AssetInfo::NativeToken {
                     denom: "uusd".to_string(),
-                }
-                .into(),
+                },
                 amount: Uint128::from(10_u128),
             },
         ],
@@ -781,14 +772,12 @@ fn test_mirror_too_many_funds() {
         collateral: Asset {
             info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
-            }
-            .into(),
+            },
             amount: Uint128::from(10_u128),
         },
         asset_info: AssetInfo::Token {
             contract_addr: "token_address".to_string(),
-        }
-        .into(),
+        },
         collateral_ratio: Decimal::one(),
         short_params: None,
     };
@@ -818,14 +807,12 @@ fn test_mirror_non_authorized_user() {
         collateral: Asset {
             info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
-            }
-            .into(),
+            },
             amount: Uint128::from(10_u128),
         },
         asset_info: AssetInfo::Token {
             contract_addr: "token_address".to_string(),
-        }
-        .into(),
+        },
         collateral_ratio: Decimal::one(),
         short_params: None,
     };

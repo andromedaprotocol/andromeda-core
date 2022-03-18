@@ -156,7 +156,7 @@ fn execute_mirror_staking_msg(
             ADOContract::default().add_withdrawable_token(
                 deps.storage,
                 &asset_token,
-                &AssetInfo::Cw20(deps.api.addr_validate(&asset_token)?).into(),
+                &AssetInfo::Cw20(deps.api.addr_validate(&asset_token)?),
             )?;
 
             execute_mirror_msg(
@@ -227,7 +227,7 @@ fn handle_open_position_withdrawable_tokens(
     ADOContract::default().add_withdrawable_token(
         storage,
         &get_asset_name(&collateral_info),
-        &collateral_info.into(),
+        &collateral_info,
     )?;
     if is_short {
         // If we are shorting we will get UST back eventually.
@@ -242,7 +242,7 @@ fn handle_open_position_withdrawable_tokens(
         ADOContract::default().add_withdrawable_token(
             storage,
             &get_asset_name(&minted_asset_info),
-            &minted_asset_info.into(),
+            &minted_asset_info,
         )?;
     }
     Ok(())

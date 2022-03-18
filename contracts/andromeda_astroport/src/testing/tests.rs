@@ -247,7 +247,7 @@ fn test_provide_liquidity_unauthorized() {
     ];
 
     let msg = ExecuteMsg::ProvideLiquidity {
-        assets: assets.map(|a| a.into()),
+        assets: assets.map(|a| a),
         slippage_tolerance: None,
         auto_stake: None,
     };
