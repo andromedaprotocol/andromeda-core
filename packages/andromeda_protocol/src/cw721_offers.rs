@@ -1,4 +1,4 @@
-use crate::communication::hooks::AndromedaHook;
+use common::ado_base::hooks::AndromedaHook;
 use cosmwasm_std::{Coin, Event, SubMsg, Uint128};
 use cw721::Expiration;
 use schemars::JsonSchema;

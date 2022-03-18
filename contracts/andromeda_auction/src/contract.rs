@@ -2,21 +2,21 @@ use crate::state::{
     auction_infos, read_auction_infos, read_bids, AuctionInfo, TokenAuctionState, BIDS,
     NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
     auction::{
         AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
         InstantiateMsg, QueryMsg,
     },
     common::OrderBy,
-    communication::encode_binary,
-    error::ContractError,
-    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
-    require,
+};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 use cosmwasm_std::{
     attr, coins, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, Storage, Uint128,
-    WasmMsg, WasmQuery,
+    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
 use cw_storage_plus::U128Key;
@@ -27,10 +27,16 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     _msg: InstantiateMsg,
-) -> StdResult<Response> {
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
+) -> Result<Response, ContractError> {
     NEXT_AUCTION_ID.save(deps.storage, &Uint128::from(1u128))?;
-    Ok(Response::new().add_attribute("method", "instantiate"))
+    ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "auction".to_string(),
+            operators: None,
+        },
+    )
 }
 
 #[entry_point]
@@ -72,7 +78,9 @@ pub fn execute(
             token_id,
             token_address,
         } => execute_claim(deps, env, info, token_id, token_address),
-        ExecuteMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
+        ExecuteMsg::UpdateOwner { address } => {
+            ADOContract::default().execute_update_owner(deps, info, address)
+        }
     }
 }
 
@@ -508,7 +516,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             start_after,
             limit,
         )?),
-        QueryMsg::Owner {} => encode_binary(&query_contract_owner(deps)?),
+        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
     }
 }
 

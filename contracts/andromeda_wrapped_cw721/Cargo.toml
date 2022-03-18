@@ -23,9 +23,12 @@ overflow-checks = true
 cosmwasm-std = "0.16.0"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 schemars = "0.8.3"
-cosmwasm-storage = "0.16.0"
 cw-storage-plus = "0.9.1"
 cw721 = "0.9.1"
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
-terra-cosmwasm = { version = "2.2.0" }
+ado-base = { path = "../../packages/ado_base", version = "0.1.0" }
 cw721-base = { version = "0.9.1", features = ["library"] }
+common = { version = "0.1.0", path = "../../packages/common" }
+
+[dev-dependencies]
+terra-cosmwasm = { version = "2.2.0" }

@@ -1,12 +1,14 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
-    communication::{modules::InstantiateType, Recipient},
-    error::ContractError,
     swapper::{
-        AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, SwapperCw20HookMsg,
-        SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
+        Cw20HookMsg, ExecuteMsg, InstantiateMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg,
+        SwapperImplExecuteMsg, SwapperMsg,
     },
     testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2},
+};
+use common::{
+    ado_base::{modules::InstantiateType, recipient::Recipient},
+    error::ContractError,
 };
 use cosmwasm_std::{
     coins,
@@ -14,6 +16,7 @@ use cosmwasm_std::{
     to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Response, SubMsg, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_asset::AssetInfo;
 
 const MOCK_ASTROPORT_WRAPPER_CONTRACT: &str = "astroport_wrapper";
 
@@ -32,9 +35,7 @@ fn test_swap_native_same_asset() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Swap {
-        ask_asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
+        ask_asset_info: AssetInfo::native("uusd"),
         recipient: None,
     };
 
@@ -59,9 +60,7 @@ fn test_swap_native_to_native() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Swap {
-        ask_asset_info: AssetInfo::NativeToken {
-            denom: "uluna".to_string(),
-        },
+        ask_asset_info: AssetInfo::native("uluna"),
         recipient: None,
     };
 
@@ -72,20 +71,14 @@ fn test_swap_native_to_native() {
         contract_addr: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
         funds: info.funds.clone(),
         msg: to_binary(&SwapperImplExecuteMsg::Swapper(SwapperMsg::Swap {
-            offer_asset_info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
-            ask_asset_info: AssetInfo::NativeToken {
-                denom: "uluna".to_string(),
-            },
+            offer_asset_info: AssetInfo::native("uusd"),
+            ask_asset_info: AssetInfo::native("uluna"),
         }))
         .unwrap(),
     });
 
     let send_execute_msg = ExecuteMsg::Send {
-        ask_asset_info: AssetInfo::NativeToken {
-            denom: "uluna".to_string(),
-        },
+        ask_asset_info: AssetInfo::native("uluna"),
         recipient: Recipient::Addr("sender".to_string()),
     };
 
@@ -134,9 +127,7 @@ fn test_swap_native_to_cw20() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Swap {
-        ask_asset_info: AssetInfo::Token {
-            contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT),
-        },
+        ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT)),
         recipient: None,
     };
 
@@ -147,20 +138,14 @@ fn test_swap_native_to_cw20() {
         contract_addr: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
         funds: info.funds,
         msg: to_binary(&SwapperImplExecuteMsg::Swapper(SwapperMsg::Swap {
-            offer_asset_info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
-            ask_asset_info: AssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT),
-            },
+            offer_asset_info: AssetInfo::native("uusd"),
+            ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT)),
         }))
         .unwrap(),
     });
 
     let send_execute_msg = ExecuteMsg::Send {
-        ask_asset_info: AssetInfo::Token {
-            contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT),
-        },
+        ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT)),
         recipient: Recipient::Addr("sender".to_string()),
     };
 
@@ -208,9 +193,7 @@ fn test_swap_cw20_to_native() {
         sender: "sender".to_string(),
         amount: 10u128.into(),
         msg: to_binary(&Cw20HookMsg::Swap {
-            ask_asset_info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
+            ask_asset_info: AssetInfo::native("uusd"),
             recipient: None,
         })
         .unwrap(),
@@ -226,18 +209,14 @@ fn test_swap_cw20_to_native() {
             contract: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
             amount: 10u128.into(),
             msg: to_binary(&SwapperImplCw20HookMsg::Swapper(SwapperCw20HookMsg::Swap {
-                ask_asset_info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                },
+                ask_asset_info: AssetInfo::native("uusd"),
             }))
             .unwrap(),
         })
         .unwrap(),
     });
     let send_execute_msg = ExecuteMsg::Send {
-        ask_asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
+        ask_asset_info: AssetInfo::native("uusd"),
         recipient: Recipient::Addr("sender".to_string()),
     };
 
@@ -288,9 +267,7 @@ fn test_swap_cw20_same_asset() {
         sender: "sender".to_string(),
         amount: 10u128.into(),
         msg: to_binary(&Cw20HookMsg::Swap {
-            ask_asset_info: AssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT),
-            },
+            ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT)),
             recipient: None,
         })
         .unwrap(),
@@ -325,9 +302,7 @@ fn test_swap_cw20_to_cw20() {
         sender: "sender".to_string(),
         amount: 10u128.into(),
         msg: to_binary(&Cw20HookMsg::Swap {
-            ask_asset_info: AssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT2),
-            },
+            ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT2)),
             recipient: None,
         })
         .unwrap(),
@@ -343,18 +318,14 @@ fn test_swap_cw20_to_cw20() {
             contract: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
             amount: 10u128.into(),
             msg: to_binary(&SwapperImplCw20HookMsg::Swapper(SwapperCw20HookMsg::Swap {
-                ask_asset_info: AssetInfo::Token {
-                    contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT2),
-                },
+                ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT2)),
             }))
             .unwrap(),
         })
         .unwrap(),
     });
     let send_execute_msg = ExecuteMsg::Send {
-        ask_asset_info: AssetInfo::Token {
-            contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT2),
-        },
+        ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT2)),
         recipient: Recipient::Addr("sender".to_string()),
     };
 

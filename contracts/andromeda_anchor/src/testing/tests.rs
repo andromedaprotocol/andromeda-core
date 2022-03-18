@@ -3,9 +3,14 @@ use crate::state::{
     Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
 };
 use crate::testing::mock_querier::mock_dependencies_custom;
-use andromeda_protocol::{
-    anchor::{AnchorMarketMsg, ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg},
-    communication::{ADORecipient, AndromedaMsg, AndromedaQuery, Recipient},
+use andromeda_protocol::anchor::{
+    AnchorMarketMsg, ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg,
+};
+use common::{
+    ado_base::{
+        recipient::{ADORecipient, Recipient},
+        AndromedaMsg, AndromedaQuery,
+    },
     error::ContractError,
     withdraw::{Withdrawal, WithdrawalType},
 };

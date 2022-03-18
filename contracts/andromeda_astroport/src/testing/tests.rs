@@ -5,26 +5,26 @@ use crate::{
         MOCK_ASTROPORT_ROUTER_CONTRACT, MOCK_LP_ASSET1, MOCK_LP_ASSET2, MOCK_LP_TOKEN_CONTRACT,
     },
 };
+use ado_base::ADOContract;
 use andromeda_protocol::{
     astroport::{Cw20HookMsg, ExecuteMsg, InstantiateMsg},
-    error::ContractError,
-    swapper::{AssetInfo, SwapperCw20HookMsg, SwapperMsg},
-    withdraw::WITHDRAWABLE_TOKENS,
+    swapper::{SwapperCw20HookMsg, SwapperMsg},
 };
 use astroport::{
-    asset::{Asset, AssetInfo as AstroportAssetInfo},
     pair::{Cw20HookMsg as PairCw20HookMsg, ExecuteMsg as AstroportPairExecuteMsg},
     router::{
         Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg,
         SwapOperation,
     },
 };
+use common::error::ContractError;
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
     to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Response, SubMsg, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_asset::{Asset, AssetInfo};
 
 fn init(deps: DepsMut) {
     let msg = InstantiateMsg {
@@ -42,12 +42,8 @@ fn test_native_swap() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Swapper(SwapperMsg::Swap {
-        offer_asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
-        ask_asset_info: AssetInfo::NativeToken {
-            denom: "uluna".to_string(),
-        },
+        offer_asset_info: AssetInfo::native("uusd"),
+        ask_asset_info: AssetInfo::native("uluna"),
     });
 
     let info = mock_info("sender", &coins(100, "uusd"));
@@ -77,12 +73,8 @@ fn test_native_to_token() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Swapper(SwapperMsg::Swap {
-        offer_asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
-        ask_asset_info: AssetInfo::Token {
-            contract_addr: Addr::unchecked("token".to_string()),
-        },
+        offer_asset_info: AssetInfo::native("uusd"),
+        ask_asset_info: AssetInfo::Cw20(Addr::unchecked("token")),
     });
 
     let info = mock_info("sender", &coins(100, "uusd"));
@@ -90,14 +82,8 @@ fn test_native_to_token() {
 
     let swap_msg = AstroportRouterExecuteMsg::ExecuteSwapOperations {
         operations: vec![SwapOperation::AstroSwap {
-            offer_asset_info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            }
-            .into(),
-            ask_asset_info: AssetInfo::Token {
-                contract_addr: Addr::unchecked("token".to_string()),
-            }
-            .into(),
+            offer_asset_info: AssetInfo::native("uusd").into(),
+            ask_asset_info: AssetInfo::Cw20(Addr::unchecked("token")).into(),
         }],
         minimum_receive: None,
         to: Some(info.sender.clone()),
@@ -118,12 +104,8 @@ fn test_native_to_native_to_token() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Swapper(SwapperMsg::Swap {
-        offer_asset_info: AssetInfo::NativeToken {
-            denom: "uluna".to_string(),
-        },
-        ask_asset_info: AssetInfo::Token {
-            contract_addr: Addr::unchecked("token".to_string()),
-        },
+        offer_asset_info: AssetInfo::native("uluna"),
+        ask_asset_info: AssetInfo::Cw20(Addr::unchecked("token")),
     });
 
     let info = mock_info("sender", &coins(100, "uluna"));
@@ -136,14 +118,8 @@ fn test_native_to_native_to_token() {
                 ask_denom: "uusd".to_string(),
             },
             SwapOperation::AstroSwap {
-                offer_asset_info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                }
-                .into(),
-                ask_asset_info: AssetInfo::Token {
-                    contract_addr: Addr::unchecked("token".to_string()),
-                }
-                .into(),
+                offer_asset_info: AssetInfo::native("uusd").into(),
+                ask_asset_info: AssetInfo::Cw20(Addr::unchecked("token")).into(),
             },
         ],
         minimum_receive: None,
@@ -165,9 +141,7 @@ fn test_token_to_native() {
     init(deps.as_mut());
 
     let hook_msg = Cw20HookMsg::Swapper(SwapperCw20HookMsg::Swap {
-        ask_asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
+        ask_asset_info: AssetInfo::native("uusd"),
     });
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
@@ -182,14 +156,8 @@ fn test_token_to_native() {
 
     let swap_msg = AstroportRouterCw20HookMsg::ExecuteSwapOperations {
         operations: vec![SwapOperation::AstroSwap {
-            offer_asset_info: AssetInfo::Token {
-                contract_addr: Addr::unchecked("token_addr"),
-            }
-            .into(),
-            ask_asset_info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            }
-            .into(),
+            offer_asset_info: AssetInfo::Cw20(Addr::unchecked("token_addr")).into(),
+            ask_asset_info: AssetInfo::native("uusd").into(),
         }],
         minimum_receive: None,
         to: Some("sender".to_string()),
@@ -217,9 +185,7 @@ fn test_token_to_native_to_token() {
     let offer_token = "offer_token";
     let ask_token = "ask_token";
     let hook_msg = Cw20HookMsg::Swapper(SwapperCw20HookMsg::Swap {
-        ask_asset_info: AssetInfo::Token {
-            contract_addr: Addr::unchecked(ask_token),
-        },
+        ask_asset_info: AssetInfo::Cw20(Addr::unchecked(ask_token)),
     });
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
@@ -234,24 +200,12 @@ fn test_token_to_native_to_token() {
     let swap_msg = AstroportRouterCw20HookMsg::ExecuteSwapOperations {
         operations: vec![
             SwapOperation::AstroSwap {
-                offer_asset_info: AssetInfo::Token {
-                    contract_addr: Addr::unchecked(offer_token),
-                }
-                .into(),
-                ask_asset_info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                }
-                .into(),
+                offer_asset_info: AssetInfo::Cw20(Addr::unchecked(offer_token)).into(),
+                ask_asset_info: AssetInfo::native("uusd").into(),
             },
             SwapOperation::AstroSwap {
-                offer_asset_info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                }
-                .into(),
-                ask_asset_info: AssetInfo::Token {
-                    contract_addr: Addr::unchecked(ask_token),
-                }
-                .into(),
+                offer_asset_info: AssetInfo::native("uusd").into(),
+                ask_asset_info: AssetInfo::Cw20(Addr::unchecked(ask_token)).into(),
             },
         ],
         minimum_receive: None,
@@ -275,27 +229,25 @@ fn test_token_to_native_to_token() {
 #[test]
 fn test_provide_liquidity_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
-
+    let contract = ADOContract::default();
     init(deps.as_mut());
-    assert!(WITHDRAWABLE_TOKENS.has(deps.as_mut().storage, "astroport_token"));
+    assert!(contract
+        .withdrawable_tokens
+        .has(deps.as_mut().storage, "astroport_token"));
 
     let assets = [
         Asset {
-            info: AstroportAssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_LP_ASSET1),
-            },
+            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET1)),
             amount: 100u128.into(),
         },
         Asset {
-            info: AstroportAssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_LP_ASSET2),
-            },
+            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET2)),
             amount: 200u128.into(),
         },
     ];
 
     let msg = ExecuteMsg::ProvideLiquidity {
-        assets,
+        assets: assets.map(|a| a.into()),
         slippage_tolerance: None,
         auto_stake: None,
     };
@@ -311,19 +263,17 @@ fn test_provide_liquidity_cw20_cw20() {
     let info = mock_info("sender", &[]);
 
     init(deps.as_mut());
-    assert!(WITHDRAWABLE_TOKENS.has(deps.as_mut().storage, "astroport_token"));
+    assert!(ADOContract::default()
+        .withdrawable_tokens
+        .has(deps.as_mut().storage, "astroport_token"));
 
     let assets = [
         Asset {
-            info: AstroportAssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_LP_ASSET1),
-            },
+            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET1)),
             amount: 100u128.into(),
         },
         Asset {
-            info: AstroportAssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_LP_ASSET2),
-            },
+            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET2)),
             amount: 200u128.into(),
         },
     ];
@@ -336,7 +286,9 @@ fn test_provide_liquidity_cw20_cw20() {
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    assert!(WITHDRAWABLE_TOKENS.has(deps.as_ref().storage, MOCK_LP_TOKEN_CONTRACT));
+    assert!(ADOContract::default()
+        .withdrawable_tokens
+        .has(deps.as_ref().storage, MOCK_LP_TOKEN_CONTRACT));
 
     assert_eq!(
         Response::new()
@@ -386,18 +338,16 @@ fn test_provide_liquidity_cw20_cw20() {
                 msg: to_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
                     assets: [
                         Asset {
-                            info: AstroportAssetInfo::Token {
-                                contract_addr: Addr::unchecked(MOCK_LP_ASSET1),
-                            },
+                            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET1)),
                             // Reduced amount being sent.
                             amount: 50u128.into(),
-                        },
+                        }
+                        .into(),
                         Asset {
-                            info: AstroportAssetInfo::Token {
-                                contract_addr: Addr::unchecked(MOCK_LP_ASSET2),
-                            },
+                            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET2)),
                             amount: 200u128.into(),
                         }
+                        .into()
                     ],
                     slippage_tolerance: None,
                     auto_stake: None,
@@ -417,19 +367,17 @@ fn test_provide_liquidity_native_cw20() {
     let info = mock_info("sender", &coins(100, "uusd"));
 
     init(deps.as_mut());
-    assert!(WITHDRAWABLE_TOKENS.has(deps.as_mut().storage, "astroport_token"));
+    assert!(ADOContract::default()
+        .withdrawable_tokens
+        .has(deps.as_mut().storage, "astroport_token"));
 
     let assets = [
         Asset {
-            info: AstroportAssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
+            info: AssetInfo::native("uusd"),
             amount: 100u128.into(),
         },
         Asset {
-            info: AstroportAssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_LP_ASSET2),
-            },
+            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET2)),
             amount: 200u128.into(),
         },
     ];
@@ -442,7 +390,9 @@ fn test_provide_liquidity_native_cw20() {
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    assert!(WITHDRAWABLE_TOKENS.has(deps.as_ref().storage, MOCK_LP_TOKEN_CONTRACT));
+    assert!(ADOContract::default()
+        .withdrawable_tokens
+        .has(deps.as_ref().storage, MOCK_LP_TOKEN_CONTRACT));
 
     assert_eq!(
         Response::new()
@@ -475,17 +425,15 @@ fn test_provide_liquidity_native_cw20() {
                 msg: to_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
                     assets: [
                         Asset {
-                            info: AstroportAssetInfo::NativeToken {
-                                denom: "uusd".to_string()
-                            },
+                            info: AssetInfo::native("uusd"),
                             amount: 50u128.into(),
-                        },
+                        }
+                        .into(),
                         Asset {
-                            info: AstroportAssetInfo::Token {
-                                contract_addr: Addr::unchecked(MOCK_LP_ASSET2),
-                            },
+                            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET2)),
                             amount: 200u128.into(),
                         }
+                        .into()
                     ],
                     slippage_tolerance: None,
                     auto_stake: None,

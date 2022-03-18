@@ -1,16 +1,11 @@
 use crate::state::{Config, CONFIG};
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
     astroport::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
-    error::ContractError,
-    operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require,
-    swapper::{query_token_balance, AssetInfo, SwapperCw20HookMsg, SwapperMsg},
-    withdraw::{add_withdrawable_token, execute_withdraw},
+    swapper::{query_token_balance, SwapperCw20HookMsg, SwapperMsg},
 };
 use astroport::{
-    asset::{Asset, AssetInfo as AstroportAssetInfo, PairInfo},
+    asset::{Asset as AstroportAsset, AssetInfo as AstroportAssetInfo, PairInfo},
     pair::{
         Cw20HookMsg as PairCw20HookMsg, ExecuteMsg as AstroportPairExecuteMsg,
         QueryMsg as PairQueryMsg,
@@ -21,13 +16,20 @@ use astroport::{
         SwapOperation,
     },
 };
+use common::{
+    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    require,
+};
 use cosmwasm_std::{
-    attr, entry_point, from_binary, Addr, Api, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut,
-    Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, SubMsg, Uint128, WasmMsg,
+    entry_point, from_binary, Addr, Api, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, SubMsg, Uint128, WasmMsg,
     WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_asset::{Asset, AssetInfo};
 use std::cmp;
 
 // version info for migration info
@@ -47,20 +49,22 @@ pub fn instantiate(
         astroport_router_contract: deps.api.addr_validate(&msg.astroport_router_contract)?,
         astroport_staking_contract: deps.api.addr_validate(&msg.astroport_staking_contract)?,
     };
+    let contract = ADOContract::default();
     // Astro token is obtained from staking LP tokens.
-    add_withdrawable_token(
+    contract.add_withdrawable_token(
         deps.storage,
         &msg.astroport_token_contract,
-        &AssetInfo::Token {
-            contract_addr: deps.api.addr_validate(&msg.astroport_token_contract)?,
-        },
+        &AssetInfo::Cw20(deps.api.addr_validate(&msg.astroport_token_contract)?),
     )?;
     CONFIG.save(deps.storage, &config)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    Ok(Response::new().add_attributes(vec![
-        attr("action", "instantiate"),
-        attr("type", "astroport"),
-    ]))
+    contract.instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "astroport".to_string(),
+            operators: None,
+        },
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -72,6 +76,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     match msg {
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
+        ExecuteMsg::Swapper(msg) => handle_swapper_msg(deps, info, msg),
+        ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
         ExecuteMsg::ProvideLiquidity {
             assets,
             slippage_tolerance,
@@ -82,9 +91,6 @@ pub fn execute(
             amount,
             recipient,
         } => execute_withdraw_liquidity(deps, env, info, pair_address, amount, recipient),
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
-        ExecuteMsg::Swapper(msg) => handle_swapper_msg(deps, info, msg),
-        ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
         ExecuteMsg::AstroportFactoryExecuteMsg(msg) => execute_astroport_msg(
             info.funds,
             config.astroport_factory_contract.to_string(),
@@ -123,36 +129,35 @@ fn execute_provide_liquidity(
     auto_stake: Option<bool>,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
+    let contract = ADOContract::default();
     require(
-        is_contract_owner(deps.storage, sender)? || is_operator(deps.storage, sender)?,
+        contract.is_owner_or_operator(deps.storage, sender)?,
         ContractError::Unauthorized {},
     )?;
     let config = CONFIG.load(deps.storage)?;
     let pair = query_pair_info(
         &deps.querier,
         config.astroport_factory_contract,
-        &[assets[0].info.clone(), assets[1].info.clone()],
+        &[assets[0].info.clone().into(), assets[1].info.clone().into()],
     )?;
 
     let pooled_assets = pair.query_pools(&deps.querier, pair.contract_addr.clone())?;
     let (assets, overflow_messages) = verify_asset_ratio(
         deps.api,
-        pooled_assets,
+        pooled_assets.map(|a| a.into()),
         assets,
         Recipient::Addr(info.sender.to_string()),
     )?;
 
     // In the case where we want to witdraw the LP token.
-    add_withdrawable_token(
+    contract.add_withdrawable_token(
         deps.storage,
         &pair.liquidity_token.to_string(),
-        &AssetInfo::Token {
-            contract_addr: pair.liquidity_token,
-        },
+        &AssetInfo::Cw20(pair.liquidity_token),
     )?;
     let mut initial_transfer_messages: Vec<SubMsg> = vec![];
     for asset in assets.iter() {
-        if let AstroportAssetInfo::Token { contract_addr } = &asset.info {
+        if let AssetInfo::Cw20(contract_addr) = &asset.info {
             initial_transfer_messages.push(SubMsg::new(WasmMsg::Execute {
                 contract_addr: contract_addr.to_string(),
                 // User needs to allow this contract to transfer tokens.
@@ -185,7 +190,7 @@ fn execute_provide_liquidity(
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: pair.contract_addr.to_string(),
             msg: encode_binary(&AstroportPairExecuteMsg::ProvideLiquidity {
-                assets,
+                assets: assets.map(|a| a.into()),
                 slippage_tolerance,
                 auto_stake,
                 // Not strictly neccessary but to be explicit.
@@ -206,7 +211,7 @@ fn execute_withdraw_liquidity(
 ) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
     require(
-        is_contract_owner(deps.storage, sender)? || is_operator(deps.storage, sender)?,
+        ADOContract::default().is_owner_or_operator(deps.storage, sender)?,
         ContractError::Unauthorized {},
     )?;
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(sender.to_owned()));
@@ -258,7 +263,14 @@ fn query_pair_share(
     pair_address: String,
     amount: Uint128,
 ) -> Result<Vec<Asset>, ContractError> {
-    query_pair_contract(querier, pair_address, PairQueryMsg::Share { amount })
+    Ok(query_pair_contract::<Vec<AstroportAsset>>(
+        querier,
+        pair_address,
+        PairQueryMsg::Share { amount },
+    )?
+    .iter()
+    .map(|a| a.into())
+    .collect())
 }
 
 fn query_pair_contract<T: serde::de::DeserializeOwned>(
@@ -270,31 +282,6 @@ fn query_pair_contract<T: serde::de::DeserializeOwned>(
         contract_addr: pair_address,
         msg: encode_binary(&msg)?,
     }))?)
-}
-
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
-        }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw {
-            recipient,
-            tokens_to_withdraw,
-        } => execute_withdraw(deps.as_ref(), env, info, recipient, tokens_to_withdraw),
-    }
 }
 
 pub fn receive_cw20(
@@ -349,9 +336,7 @@ fn handle_swapper_msg_cw20(
             sender,
             token_addr.to_string(),
             amount,
-            AssetInfo::Token {
-                contract_addr: token_addr,
-            },
+            AssetInfo::Cw20(token_addr),
             ask_asset_info,
         ),
     }
@@ -433,7 +418,7 @@ fn get_swap_operations(
             offer_asset_info: offer_asset_info.into(),
             ask_asset_info: ask_asset_info.into(),
         }]
-    } else if let [AssetInfo::NativeToken { denom: offer_denom }, AssetInfo::NativeToken { denom: ask_denom }] =
+    } else if let [AssetInfo::Native(offer_denom), AssetInfo::Native(ask_denom)] =
         [offer_asset_info.clone(), ask_asset_info.clone()]
     {
         vec![SwapOperation::NativeSwap {
@@ -441,7 +426,7 @@ fn get_swap_operations(
             ask_denom,
         }]
     } else {
-        let first_swap = if let AssetInfo::NativeToken { denom } = offer_asset_info {
+        let first_swap = if let AssetInfo::Native(denom) = offer_asset_info {
             SwapOperation::NativeSwap {
                 offer_denom: denom,
                 ask_denom: "uusd".to_string(),
@@ -509,7 +494,7 @@ pub fn execute_update_config(
     astroport_staking_contract: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut config = CONFIG.load(deps.storage)?;
@@ -540,29 +525,8 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
-        }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
     }
 }
 
@@ -600,12 +564,12 @@ fn verify_asset_ratio(
     let pooled_amounts: [Uint128; 2] = [
         pooled_assets
             .iter()
-            .find(|a| a.info.equal(&sent_assets[0].info))
+            .find(|a| a.info == sent_assets[0].info)
             .map(|a| a.amount)
             .expect("Wrong asset info is given"),
         pooled_assets
             .iter()
-            .find(|a| a.info.equal(&sent_assets[1].info))
+            .find(|a| a.info == sent_assets[1].info)
             .map(|a| a.amount)
             .expect("Wrong asset info is given"),
     ];
@@ -626,8 +590,7 @@ fn verify_asset_ratio(
         // Messages for cw20 tokens not needed since the deducted amounts will be transfered in.
         // Alternatively we could have pulled in the original amount and sent back the excess, but
         // that requires an extra message to be sent for no reason.
-        if delta_asset.amount > Uint128::zero()
-            && matches!(delta_asset.info, AstroportAssetInfo::NativeToken { .. })
+        if delta_asset.amount > Uint128::zero() && matches!(delta_asset.info, AssetInfo::Native(_))
         {
             messages.push(overflow_recipient.generate_msg_from_asset(api, delta_asset)?);
         }
@@ -663,7 +626,7 @@ fn modify_ratio(
 fn get_native_funds_from_assets(assets: &[Asset; 2]) -> Vec<Coin> {
     let mut coins: Vec<Coin> = vec![];
     for asset in assets.iter() {
-        if let AstroportAssetInfo::NativeToken { denom } = &asset.info {
+        if let AssetInfo::Native(denom) = &asset.info {
             coins.push(Coin {
                 denom: denom.clone(),
                 amount: asset.amount,
@@ -681,17 +644,11 @@ mod tests {
     fn get_assets_second_native(asset1_amount: u128, asset2_amount: u128) -> [Asset; 2] {
         [
             Asset {
-                info: AssetInfo::Token {
-                    contract_addr: Addr::unchecked("token1".to_owned()),
-                }
-                .into(),
+                info: AssetInfo::Cw20(Addr::unchecked("token1".to_owned())),
                 amount: asset1_amount.into(),
             },
             Asset {
-                info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                }
-                .into(),
+                info: AssetInfo::native("uusd"),
                 amount: asset2_amount.into(),
             },
         ]
@@ -700,17 +657,11 @@ mod tests {
     fn get_assets(asset1_amount: u128, asset2_amount: u128) -> [Asset; 2] {
         [
             Asset {
-                info: AssetInfo::Token {
-                    contract_addr: Addr::unchecked("token1".to_owned()),
-                }
-                .into(),
+                info: AssetInfo::Cw20(Addr::unchecked("token1")),
                 amount: asset1_amount.into(),
             },
             Asset {
-                info: AssetInfo::Token {
-                    contract_addr: Addr::unchecked("token2".to_owned()),
-                }
-                .into(),
+                info: AssetInfo::Cw20(Addr::unchecked("token2")),
                 amount: asset2_amount.into(),
             },
         ]
@@ -757,17 +708,11 @@ mod tests {
         // Here token2 is first and token1 is second.
         let pooled_assets = [
             Asset {
-                info: AssetInfo::Token {
-                    contract_addr: Addr::unchecked("token2".to_owned()),
-                }
-                .into(),
+                info: AssetInfo::Cw20(Addr::unchecked("token2")),
                 amount: 200u128.into(),
             },
             Asset {
-                info: AssetInfo::Token {
-                    contract_addr: Addr::unchecked("token1".to_owned()),
-                }
-                .into(),
+                info: AssetInfo::Cw20(Addr::unchecked("token1")),
                 amount: 100u128.into(),
             },
         ];

@@ -1,15 +1,18 @@
 use crate::state::{offers, CW721_CONTRACT};
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    communication::{
-        encode_binary,
-        hooks::{AndromedaHook, OnFundsTransferResponse},
-    },
     cw721::{QueryMsg as Cw721QueryMsg, TokenExtension},
     cw721_offers::{AllOffersResponse, ExecuteMsg, InstantiateMsg, Offer, OfferResponse, QueryMsg},
+    rates::get_tax_amount,
+};
+use common::{
+    ado_base::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        InstantiateMsg as BaseInstantiateMsg,
+    },
+    encode_binary,
     error::ContractError,
-    ownership::CONTRACT_OWNER,
-    rates::{get_tax_amount, Funds},
-    require,
+    require, Funds,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -36,11 +39,15 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     CW721_CONTRACT.save(deps.storage, &msg.andromeda_cw721_contract)?;
-    Ok(Response::new()
-        .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender))
+    ADOContract::default().instantiate(
+        deps,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "cw721_offers".to_string(),
+            operators: None,
+        },
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

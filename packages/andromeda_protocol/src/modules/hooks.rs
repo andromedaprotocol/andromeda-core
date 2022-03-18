@@ -1,8 +1,7 @@
-use cosmwasm_std::{BankMsg, Coin, DepsMut, Env, Event, MessageInfo, SubMsg};
+use cosmwasm_std::{Coin, DepsMut, Env, Event, MessageInfo, SubMsg};
 use cw721::Expiration;
 
-use crate::error::ContractError;
-use crate::token::TransferAgreement;
+use common::error::ContractError;
 
 pub const ATTR_DESC: &str = "description";
 pub const ATTR_PAYMENT: &str = "payment";
@@ -193,19 +192,6 @@ pub trait MessageHooks {
         _info: MessageInfo,
         _env: Env,
         _token_id: String,
-    ) -> Result<HookResponse, ContractError> {
-        Ok(HookResponse::default())
-    }
-    /// Called whenever an agreed transfer is taking place
-    #[allow(clippy::ptr_arg)]
-    fn on_agreed_transfer(
-        &self,
-        _deps: &DepsMut,
-        _info: MessageInfo,
-        _env: Env,
-        _payments: &mut Vec<BankMsg>,
-        _owner: String,
-        _agreement: TransferAgreement,
     ) -> Result<HookResponse, ContractError> {
         Ok(HookResponse::default())
     }

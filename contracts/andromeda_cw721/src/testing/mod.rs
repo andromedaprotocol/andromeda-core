@@ -5,17 +5,22 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 
+use ado_base::ADOContract;
+use common::{
+    ado_base::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        modules::{InstantiateType, Module, ADDRESS_LIST, OFFERS, RATES, RECEIPT},
+    },
+    error::ContractError,
+    Funds,
+};
+
 use crate::contract::*;
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
-    communication::{
-        hooks::{AndromedaHook, OnFundsTransferResponse},
-        modules::{InstantiateType, Module, ModuleType},
-    },
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
     cw721_offers::ExecuteMsg as OffersExecuteMsg,
-    error::ContractError,
-    rates::{Funds, InstantiateMsg as RatesInstantiateMsg},
+    rates::InstantiateMsg as RatesInstantiateMsg,
     receipt::{ExecuteMsg as ReceiptExecuteMsg, InstantiateMsg as ReceiptInstantiateMsg, Receipt},
     testing::mock_querier::{
         bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
@@ -68,17 +73,17 @@ fn test_instantiate_modules() {
     .unwrap();
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::New(receipt_msg.clone()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::Rates,
+            module_type: RATES.to_owned(),
             instantiate: InstantiateType::New(rates_msg.clone()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::New(addresslist_msg.clone()),
             is_mutable: false,
         },
@@ -95,6 +100,21 @@ fn test_instantiate_modules() {
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
+
+    assert_eq!(
+        "sender",
+        ADOContract::default()
+            .owner
+            .load(deps.as_mut().storage)
+            .unwrap()
+    );
+    assert_eq!(
+        "cw721",
+        ADOContract::default()
+            .ado_type
+            .load(deps.as_mut().storage)
+            .unwrap()
+    );
 
     let msgs: Vec<SubMsg> = vec![
         SubMsg {
@@ -239,6 +259,54 @@ fn test_agreed_transfer_nft() {
 
     let info = mock_info(purchaser, &[agreed_amount]);
     assert!(execute(deps.as_mut(), env.clone(), info, transfer_msg).is_ok());
+
+    let query_msg = QueryMsg::OwnerOf {
+        token_id,
+        include_expired: None,
+    };
+    let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
+    let resp: OwnerOfResponse = from_binary(&query_resp).unwrap();
+    assert_eq!(resp.owner, String::from("recipient"))
+}
+
+#[test]
+fn test_agreed_transfer_nft_wildcard() {
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let mut deps = mock_dependencies(&[]);
+    let env = mock_env();
+    let agreed_amount = Coin {
+        denom: "uluna".to_string(),
+        amount: Uint128::from(100u64),
+    };
+    let purchaser = "*";
+    init_setup(deps.as_mut(), env.clone(), None);
+    mint_token(
+        deps.as_mut(),
+        env.clone(),
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator,
+            transfer_agreement: Some(TransferAgreement {
+                amount: agreed_amount.clone(),
+                purchaser: purchaser.to_string(),
+            }),
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let transfer_msg = ExecuteMsg::TransferNft {
+        recipient: Addr::unchecked("recipient").to_string(),
+        token_id: token_id.clone(),
+    };
+
+    let info = mock_info("anyone", &[agreed_amount]);
+    let _res = execute(deps.as_mut(), env.clone(), info, transfer_msg).unwrap();
 
     let query_msg = QueryMsg::OwnerOf {
         token_id,
@@ -431,67 +499,20 @@ fn test_transfer_agreement() {
 }
 
 #[test]
-fn test_update_pricing() {
-    let token_id = String::from("testtoken");
-    let creator = String::from("creator");
-    let mut deps = mock_dependencies(&[]);
-    let env = mock_env();
-    let price = Coin {
-        amount: Uint128::from(100u64),
-        denom: String::from("uluna"),
-    };
-    init_setup(deps.as_mut(), env.clone(), None);
-    mint_token(
-        deps.as_mut(),
-        env.clone(),
-        token_id.clone(),
-        creator.clone(),
-        TokenExtension {
-            description: None,
-            name: String::default(),
-            publisher: creator.clone(),
-            transfer_agreement: None,
-            metadata: None,
-            archived: false,
-            pricing: None,
-        },
-    );
-
-    let msg = ExecuteMsg::UpdatePricing {
-        token_id: token_id.clone(),
-        price: Some(price.clone()),
-    };
-
-    let unauth_info = mock_info("anyone", &[]);
-    assert_eq!(
-        execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err(),
-        ContractError::Unauthorized {}
-    );
-
-    let info = mock_info(creator.as_str(), &[]);
-    assert!(execute(deps.as_mut(), env.clone(), info, msg).is_ok());
-
-    let query_msg = QueryMsg::NftInfo { token_id };
-    let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: NftInfoResponse<TokenExtension> = from_binary(&query_resp).unwrap();
-    assert_eq!(resp.extension.pricing, Some(price))
-}
-
-#[test]
 fn test_modules() {
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::Rates,
+            module_type: RATES.to_owned(),
             instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
             is_mutable: false,
         },
@@ -613,7 +634,7 @@ fn test_modules() {
 #[test]
 fn test_transfer_with_offer() {
     let modules: Vec<Module> = vec![Module {
-        module_type: ModuleType::Offers,
+        module_type: OFFERS.to_owned(),
         instantiate: InstantiateType::Address(MOCK_OFFERS_CONTRACT.into()),
         is_mutable: false,
     }];
