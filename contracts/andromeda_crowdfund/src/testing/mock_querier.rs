@@ -78,16 +78,16 @@ impl WasmMockQuerier {
                 let res = if owner == MOCK_CONDITIONS_MET_CONTRACT {
                     TokensResponse {
                         tokens: MOCK_TOKENS_FOR_SALE[5..]
-                            .to_vec()
-                            .into_iter()
+                            .iter()
+                            .copied()
                             .map(String::from)
                             .collect(),
                     }
                 } else {
                     TokensResponse {
                         tokens: MOCK_TOKENS_FOR_SALE
-                            .to_vec()
-                            .into_iter()
+                            .iter()
+                            .copied()
                             .map(String::from)
                             .collect(),
                     }
