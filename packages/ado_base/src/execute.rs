@@ -25,6 +25,7 @@ impl<'a> ADOContract<'a> {
         if let Some(operators) = msg.operators {
             self.initialize_operators(storage, operators)?;
         }
+        let attributes = [attr("method", "instantiate"), attr("type", &msg.ado_type)];
         #[cfg(feature = "primitive")]
         if let Some(primitive_contract) = msg.primitive_contract {
             self.primitive_contract
@@ -34,12 +35,9 @@ impl<'a> ADOContract<'a> {
         if let Some(modules) = msg.modules {
             return Ok(self
                 .register_modules(info.sender.as_str(), querier, storage, api, modules)?
-                .add_attribute("method", "instantiate")
-                .add_attribute("type", msg.ado_type));
+                .add_attributes(attributes));
         }
-        Ok(Response::new()
-            .add_attribute("method", "instantiate")
-            .add_attribute("type", &msg.ado_type))
+        Ok(Response::new().add_attributes(attributes))
     }
 
     pub fn execute<E: DeserializeOwned>(
