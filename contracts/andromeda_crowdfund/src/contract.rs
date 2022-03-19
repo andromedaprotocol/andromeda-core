@@ -24,6 +24,7 @@ use cosmwasm_std::{
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
 
+const MAX_LIMIT: u32 = 100;
 const DEFAULT_LIMIT: u32 = 50;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -312,7 +313,7 @@ fn issue_refunds_and_burn_tokens(
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
-    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let mut refund_msgs: Vec<CosmosMsg> = vec![];
     // Issue refunds for `limit` number of users.
     let purchases: Vec<Vec<Purchase>> = PURCHASES
@@ -349,7 +350,7 @@ fn transfer_tokens_and_send_funds(
 ) -> Result<Response, ContractError> {
     let mut state = STATE.load(deps.storage)?;
     let mut resp = Response::new();
-    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     require(limit > 0, ContractError::LimitMustNotBeZero {})?;
     // Send the funds if they haven't been sent yet and if all of the tokens have been transferred.
     if state.amount_transferred == state.amount_sold {
