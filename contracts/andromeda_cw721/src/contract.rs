@@ -160,7 +160,7 @@ fn execute_transfer(
             })?,
         )?;
         let remaining_amount = remainder.try_get_coin()?;
-        let tax_amount = get_tax_amount(&msgs, agreement.amount.amount - remaining_amount.amount);
+        let tax_amount = get_tax_amount(&msgs, agreement.amount.amount, remaining_amount.amount);
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: token.owner.to_string(),
             amount: vec![remaining_amount],

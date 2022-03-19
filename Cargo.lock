@@ -86,6 +86,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-crowdfund"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-protocol",
+ "common",
+ "cosmwasm-std",
+ "cw-storage-plus 0.8.1",
+ "cw0 0.9.1",
+ "cw721",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-cw20"
 version = "0.1.0"
 dependencies = [

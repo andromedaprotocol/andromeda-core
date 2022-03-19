@@ -3,6 +3,7 @@ pub mod anchor;
 pub mod astroport;
 pub mod auction;
 pub mod common;
+pub mod crowdfund;
 pub mod cw20;
 pub mod cw721;
 pub mod cw721_offers;
