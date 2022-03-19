@@ -7,8 +7,7 @@ use andromeda_protocol::swapper::{
 };
 use common::{
     ado_base::{
-        modules::InstantiateType, query_get, recipient::Recipient,
-        InstantiateMsg as BaseInstantiateMsg,
+        modules::InstantiateType, recipient::Recipient, InstantiateMsg as BaseInstantiateMsg,
     },
     encode_binary,
     error::ContractError,
@@ -17,7 +16,7 @@ use common::{
 };
 use cosmwasm_std::{
     entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    ReplyOn, Response, StdError, SubMsg, Uint128, WasmMsg,
+    Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -35,48 +34,33 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let contract = ADOContract::default();
+    let resp = contract.instantiate(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "swapper".to_string(),
+            operators: None,
+            modules: None,
+            primitive_contract: Some(msg.primitive_contract),
+        },
+    )?;
     let mut msgs: Vec<SubMsg> = vec![];
     match msg.swapper_impl.instantiate_type {
         InstantiateType::Address(addr) => SWAPPER_IMPL_ADDR.save(deps.storage, &addr)?,
         InstantiateType::New(instantiate_msg) => {
             let msg = contract.generate_instantiate_msg(
                 deps.storage,
-                deps.querier,
+                &deps.querier,
                 1,
                 instantiate_msg,
                 msg.swapper_impl.name,
             )?;
-            /*let code_id: u64 = query_get(
-                Some(encode_binary(&"swapper")?),
-                // TODO: Replace when Primitive contract change merged.
-                "TEMP_FACTORY".to_string(),
-                &deps.querier,
-            )?;
-            let msg: SubMsg = SubMsg {
-                id: 1,
-                reply_on: ReplyOn::Always,
-                msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                    admin: None,
-                    code_id,
-                    msg: encode_binary(&instantiate_msg)?,
-                    funds: vec![],
-                    label: "Instantiate: swapper implementation".to_string(),
-                }),
-                gas_limit: None,
-            };*/
             msgs.push(msg);
         }
     }
-    Ok(ADOContract::default()
-        .instantiate(
-            deps,
-            info,
-            BaseInstantiateMsg {
-                ado_type: "swapper".to_string(),
-                operators: None,
-            },
-        )?
-        .add_submessages(msgs))
+    Ok(resp.add_submessages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

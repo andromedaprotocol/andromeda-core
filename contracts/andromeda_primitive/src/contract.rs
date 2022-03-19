@@ -28,11 +28,15 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     ADOContract::default().instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "primitive".to_string(),
             operators: Some(msg.operators),
+            modules: None,
+            primitive_contract: None,
         },
     )
 }

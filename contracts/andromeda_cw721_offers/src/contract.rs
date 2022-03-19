@@ -41,11 +41,15 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CW721_CONTRACT.save(deps.storage, &msg.andromeda_cw721_contract)?;
     ADOContract::default().instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "cw721_offers".to_string(),
             operators: None,
+            modules: None,
+            primitive_contract: None,
         },
     )
 }

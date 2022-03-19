@@ -2,14 +2,13 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Reply, Response, StdError, Storage, SubMsg, Uint128,
+    Reply, Response, Storage, SubMsg, Uint128,
 };
 
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
     rates::get_tax_amount,
-    response::get_reply_address,
 };
 use common::{
     ado_base::{
@@ -18,7 +17,6 @@ use common::{
     },
     encode_binary,
     error::ContractError,
-    primitive::PRIMITVE_CONTRACT,
     require, Funds,
 };
 use cw721_base::{state::TokenInfo, Cw721Contract};
@@ -33,29 +31,22 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
-    let sender = info.sender.to_string();
     let resp = contract.instantiate(
         deps.storage,
+        deps.api,
+        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
             ado_type: "cw721".to_string(),
             operators: None,
+            modules: msg.modules.clone(),
+            primitive_contract: Some(msg.primitive_contract.clone()),
         },
-    )?;
-    let module_resp = contract.register_modules(
-        &sender,
-        &deps.querier,
-        deps.storage,
-        deps.api,
-        msg.modules.clone(),
     )?;
 
     let cw721_resp = AndrCW721Contract::default().instantiate(deps, env, info, msg.into())?;
     Ok(resp
-        .add_attributes(module_resp.attributes)
         .add_attributes(cw721_resp.attributes)
-        .add_submessages(module_resp.messages)
         .add_submessages(cw721_resp.messages))
 }
 

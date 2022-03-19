@@ -49,11 +49,15 @@ pub fn instantiate(
     PREV_AUST_BALANCE.save(deps.storage, &Uint128::zero())?;
     PREV_UUSD_BALANCE.save(deps.storage, &Uint128::zero())?;
     ADOContract::default().instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "anchor".to_string(),
             operators: None,
+            modules: None,
+            primitive_contract: None,
         },
     )
 }

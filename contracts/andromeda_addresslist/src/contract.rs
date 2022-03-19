@@ -29,11 +29,15 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     IS_INCLUSIVE.save(deps.storage, &msg.is_inclusive)?;
     ADOContract::default().instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "address_list".to_string(),
             operators: Some(msg.operators),
+            modules: None,
+            primitive_contract: None,
         },
     )
 }

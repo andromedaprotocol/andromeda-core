@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, StdResult, Storage, SubMsg, Uint128, WasmMsg,
+    Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
 use ado_base::ADOContract;
@@ -10,8 +10,7 @@ use andromeda_protocol::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg}
 use common::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
     error::ContractError,
-    primitive::PRIMITVE_CONTRACT,
-    require, Funds,
+    Funds,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
@@ -33,30 +32,23 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let contract = ADOContract::default();
-    let sender = info.sender.to_string();
     let resp = contract.instantiate(
         deps.storage,
+        deps.api,
+        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "cw721".to_string(),
+            ado_type: "cw20".to_string(),
             operators: None,
+            modules: msg.modules.clone(),
+            primitive_contract: Some(msg.primitive_contract.clone()),
         },
-    )?;
-    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
-    let module_resp = contract.register_modules(
-        &sender,
-        &deps.querier,
-        deps.storage,
-        deps.api,
-        msg.modules.clone(),
     )?;
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
 
     Ok(resp
         .add_submessages(cw20_resp.messages)
-        .add_submessages(module_resp.messages)
-        .add_attributes(cw20_resp.attributes)
-        .add_attributes(module_resp.attributes))
+        .add_attributes(cw20_resp.attributes))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

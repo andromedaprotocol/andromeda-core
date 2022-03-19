@@ -1,12 +1,7 @@
-use crate::{ado_base::query_get, encode_binary, error::ContractError};
 use cosmwasm_std::{Coin, QuerierWrapper, StdError, Storage, Uint128};
-use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-
-/// Used to store the address of a primitive contract for a contract.
-pub const PRIMITVE_CONTRACT: Item<String> = Item::new("primitive_contract");
 
 /// Enum of possible contracts whose addresses we want to store in a primitive contract.
 pub enum AndromedaContract {
@@ -20,17 +15,6 @@ impl fmt::Display for AndromedaContract {
         };
         write!(f, "{}", string)
     }
-}
-
-pub fn get_address(
-    storage: &dyn Storage,
-    querier: QuerierWrapper,
-    contract: AndromedaContract,
-) -> Result<String, ContractError> {
-    let address = PRIMITVE_CONTRACT.load(storage)?;
-    let data = encode_binary(&contract.to_string())?;
-    let res: GetValueResponse = query_get(Some(data), address, &querier)?;
-    Ok(res.value.try_get_string()?)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

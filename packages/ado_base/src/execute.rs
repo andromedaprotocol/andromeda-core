@@ -4,7 +4,9 @@ use common::{
     error::ContractError,
     parse_message, require,
 };
-use cosmwasm_std::{attr, DepsMut, Env, MessageInfo, Order, Response, Storage};
+use cosmwasm_std::{
+    attr, Api, DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, Storage,
+};
 use serde::de::DeserializeOwned;
 
 type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
@@ -13,6 +15,8 @@ impl<'a> ADOContract<'a> {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
@@ -21,9 +25,24 @@ impl<'a> ADOContract<'a> {
         if let Some(operators) = msg.operators {
             self.initialize_operators(storage, operators)?;
         }
-        Ok(Response::new()
+        if let Some(primitive_contract) = msg.primitive_contract {
+            self.primitive_contract
+                .save(storage, &api.addr_validate(&primitive_contract)?)?;
+        }
+        let resp = Response::new()
             .add_attribute("method", "instantiate")
-            .add_attribute("type", msg.ado_type))
+            .add_attribute("type", &msg.ado_type);
+        // Modules must be registered after everything else has been set.
+        if let Some(modules) = msg.modules {
+            #[cfg(feature = "modules")]
+            return Ok(self
+                .register_modules(info.sender.as_str(), querier, storage, api, modules)?
+                .add_attribute("method", "instantiate")
+                .add_attribute("type", msg.ado_type));
+            #[cfg(not(feature = "modules"))]
+            return Ok(resp);
+        }
+        Ok(resp)
     }
 
     pub fn execute<E: DeserializeOwned>(
@@ -61,7 +80,7 @@ impl<'a> ADOContract<'a> {
                     deps.storage,
                     deps.api,
                     info.sender.as_str(),
-                    &module,
+                    module,
                     true,
                 );
                 #[cfg(not(feature = "modules"))]
@@ -77,7 +96,7 @@ impl<'a> ADOContract<'a> {
             }
             AndromedaMsg::AlterModule { module_idx, module } => {
                 #[cfg(feature = "modules")]
-                return self.execute_alter_module(deps, info, module_idx, &module);
+                return self.execute_alter_module(deps, info, module_idx, module);
 
                 #[cfg(not(feature = "modules"))]
                 return Err(ContractError::UnsupportedOperation {});

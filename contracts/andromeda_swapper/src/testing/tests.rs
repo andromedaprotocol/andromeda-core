@@ -1,7 +1,7 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
     swapper::{
-        AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, SwapperCw20HookMsg,
+        AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, SwapperCw20HookMsg, SwapperImpl,
         SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
     },
     testing::mock_querier::{
@@ -22,7 +22,11 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 fn init(deps: DepsMut) {
     let msg = InstantiateMsg {
-        swapper_impl: InstantiateType::Address(MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned()),
+        swapper_impl: SwapperImpl {
+            instantiate_type: InstantiateType::Address(MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned()),
+            name: "swapper_impl".to_string(),
+        },
+        primitive_contract: "primitive_contract".to_string(),
     };
 
     let _res = instantiate(deps, mock_env(), mock_info("sender", &[]), msg).unwrap();

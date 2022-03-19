@@ -4,22 +4,18 @@ use andromeda_protocol::{
     crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg},
     rates::get_tax_amount,
-    response::get_reply_address,
 };
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
-    merge_sub_msgs,
-    primitive::PRIMITVE_CONTRACT,
-    require, Funds,
+    merge_sub_msgs, require, Funds,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
-    WasmQuery,
+    QuerierWrapper, QueryRequest, Reply, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
@@ -33,32 +29,24 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    let resp = contract.instantiate(
-        deps.storage,
-        info.clone(),
-        BaseInstantiateMsg {
-            ado_type: "crowdfund".to_string(),
-            operators: None,
-        },
-    )?;
-    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_address)?;
-    let module_resp = contract.register_modules(
-        info.sender.as_str(),
-        &deps.querier,
-        deps.storage,
-        deps.api,
-        msg.modules,
-    )?;
     CONFIG.save(
         deps.storage,
         &Config {
             token_address: deps.api.addr_validate(&msg.token_address)?,
         },
     )?;
-    Ok(resp
-        .add_submessages(module_resp.messages)
-        .add_attributes(module_resp.attributes))
+    Ok(ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "crowdfund".to_string(),
+            operators: None,
+            modules: msg.modules,
+            primitive_contract: Some(msg.primitive_contract),
+        },
+    )?)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

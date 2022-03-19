@@ -44,11 +44,15 @@ pub fn instantiate(
 
     STATE.save(deps.storage, &state)?;
     let res = ADOContract::default().instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "timelock".to_string(),
             operators: None,
+            modules: None,
+            primitive_contract: None,
         },
     )?;
     Ok(res
