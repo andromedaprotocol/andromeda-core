@@ -7,7 +7,7 @@ use common::{
     },
     encode_binary,
     error::ContractError,
-    primitive::{AndromedaContract, GetValueResponse},
+    primitive::AndromedaContract,
 };
 use cosmwasm_std::{Binary, CosmosMsg, QuerierWrapper, ReplyOn, Storage, SubMsg, WasmMsg};
 
@@ -68,19 +68,7 @@ impl<'a> ADOContract<'a> {
         name: &str,
     ) -> Result<u64, ContractError> {
         let factory_address = self.get_address(storage, querier, AndromedaContract::Factory)?;
-        let code_id: u64 = query_get(Some(encode_binary(&name)?), factory_address, &querier)?;
+        let code_id: u64 = query_get(Some(encode_binary(&name)?), factory_address, querier)?;
         Ok(code_id)
-    }
-
-    fn get_address(
-        &self,
-        storage: &dyn Storage,
-        querier: &QuerierWrapper,
-        contract: AndromedaContract,
-    ) -> Result<String, ContractError> {
-        let address = self.primitive_contract.load(storage)?;
-        let data = encode_binary(&contract.to_string())?;
-        let res: GetValueResponse = query_get(Some(data), address.to_string(), &querier)?;
-        Ok(res.value.try_get_string()?)
     }
 }

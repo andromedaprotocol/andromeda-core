@@ -35,7 +35,7 @@ pub fn instantiate(
             token_address: deps.api.addr_validate(&msg.token_address)?,
         },
     )?;
-    Ok(ADOContract::default().instantiate(
+    ADOContract::default().instantiate(
         deps.storage,
         deps.api,
         &deps.querier,
@@ -46,7 +46,7 @@ pub fn instantiate(
             modules: msg.modules,
             primitive_contract: Some(msg.primitive_contract),
         },
-    )?)
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

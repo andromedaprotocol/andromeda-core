@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, QuerierWrapper, StdError, Storage, Uint128};
+use cosmwasm_std::{Coin, StdError, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
