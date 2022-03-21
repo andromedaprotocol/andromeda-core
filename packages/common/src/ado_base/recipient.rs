@@ -20,7 +20,7 @@ pub struct ADORecipient {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Recipient {
-    /// An address that is not another ADO. It is assumed that it is a valid address
+    /// An address that is not another ADO. It is assumed that it is a valid address.
     Addr(String),
     ADO(ADORecipient),
 }
@@ -36,7 +36,8 @@ impl Recipient {
         Recipient::ADO(ADORecipient { addr, msg: None })
     }
 
-    /// Gets the address of the recipient.
+    /// Gets the address of the recipient. If the is an ADORecipient it will query the mission
+    /// contract to get its address if it fails address validation.
     pub fn get_addr(
         &self,
         api: &dyn Api,
@@ -121,6 +122,7 @@ impl Recipient {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_MISSION_CONTRACT};
     use cosmwasm_std::{coins, testing::mock_dependencies, BankMsg, CosmosMsg, SubMsg, WasmMsg};
 
     #[test]
@@ -161,6 +163,30 @@ mod test {
             .unwrap();
         let expected_msg = SubMsg::new(WasmMsg::Execute {
             contract_addr: "address".to_string(),
+            msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None))).unwrap(),
+            funds,
+        });
+        assert_eq!(expected_msg, msg);
+    }
+
+    #[test]
+    fn test_recipient_ado_generate_msg_native_mission() {
+        let deps = mock_dependencies_custom(&[]);
+        let recipient = Recipient::ADO(ADORecipient {
+            addr: "ab".to_string(),
+            msg: None,
+        });
+        let funds = coins(100, "uusd");
+        let msg = recipient
+            .generate_msg_native(
+                deps.as_ref().api,
+                &deps.as_ref().querier,
+                Some(Addr::unchecked(MOCK_MISSION_CONTRACT)),
+                funds.clone(),
+            )
+            .unwrap();
+        let expected_msg = SubMsg::new(WasmMsg::Execute {
+            contract_addr: "actual_address".to_string(),
             msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None))).unwrap(),
             funds,
         });
@@ -225,5 +251,84 @@ mod test {
             funds: vec![],
         });
         assert_eq!(expected_msg, msg);
+    }
+
+    #[test]
+    fn test_recipient_ado_generate_msg_cw20_mission() {
+        let deps = mock_dependencies_custom(&[]);
+        let recipient = Recipient::ADO(ADORecipient {
+            addr: "ab".to_string(),
+            msg: None,
+        });
+        let cw20_coin = Cw20Coin {
+            amount: 100u128.into(),
+            address: "cw20_address".to_string(),
+        };
+        let msg = recipient
+            .generate_msg_cw20(
+                deps.as_ref().api,
+                &deps.as_ref().querier,
+                Some(Addr::unchecked(MOCK_MISSION_CONTRACT)),
+                cw20_coin.clone(),
+            )
+            .unwrap();
+        let expected_msg = SubMsg::new(WasmMsg::Execute {
+            contract_addr: "cw20_address".to_string(),
+            msg: encode_binary(&Cw20ExecuteMsg::Send {
+                contract: "actual_address".to_string(),
+                amount: cw20_coin.amount,
+                msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(None))).unwrap(),
+            })
+            .unwrap(),
+            funds: vec![],
+        });
+        assert_eq!(expected_msg, msg);
+    }
+
+    #[test]
+    fn test_recipient_get_addr_addr_recipient() {
+        let deps = mock_dependencies(&[]);
+        let recipient = Recipient::Addr("address".to_string());
+        assert_eq!(
+            "address",
+            recipient
+                .get_addr(deps.as_ref().api, &deps.as_ref().querier, None)
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_recipient_get_addr_ado_recipient_not_mission() {
+        let deps = mock_dependencies(&[]);
+        let recipient = Recipient::ADO(ADORecipient {
+            addr: "address".to_string(),
+            msg: None,
+        });
+        assert_eq!(
+            "address",
+            recipient
+                .get_addr(deps.as_ref().api, &deps.as_ref().querier, None)
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_recipient_get_addr_ado_recipient_mission() {
+        let deps = mock_dependencies_custom(&[]);
+        let recipient = Recipient::ADO(ADORecipient {
+            // Since MockApi treats strings under 3 length invalid we use this.
+            addr: "ab".to_string(),
+            msg: None,
+        });
+        assert_eq!(
+            "actual_address",
+            recipient
+                .get_addr(
+                    deps.as_ref().api,
+                    &deps.as_ref().querier,
+                    Some(Addr::unchecked(MOCK_MISSION_CONTRACT))
+                )
+                .unwrap()
+        );
     }
 }
