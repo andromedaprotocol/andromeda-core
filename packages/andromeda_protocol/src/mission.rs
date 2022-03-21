@@ -1,7 +1,7 @@
-use crate::{
-    communication::{AndromedaMsg, AndromedaQuery},
+use crate::factory::get_ado_codeid;
+use common::{
+    ado_base::{AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    factory::get_ado_codeid,
 };
 use cosmwasm_std::{Binary, CosmosMsg, QuerierWrapper, ReplyOn, Storage, SubMsg, WasmMsg};
 use schemars::JsonSchema;

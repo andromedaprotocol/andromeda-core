@@ -4,20 +4,19 @@ use crate::{
         is_address_defined, is_creator, read_address, read_code_id, store_address, store_code_id,
     },
 };
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    communication::encode_binary,
-    communication::{parse_message, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
-    factory::{AddressResponse, CodeIdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    factory::{AddressResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     modules::ModuleDefinition,
-    operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require,
-    token::InstantiateMsg as TokenInstantiateMsg,
+};
+use common::{
+    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    parse_message, require,
 };
 use cosmwasm_std::{
-    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError,
-    SubMsg, WasmMsg,
+    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -33,10 +32,18 @@ pub fn instantiate(
     _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-
-    Ok(Response::default()
-        .add_attributes(vec![attr("action", "instantiate"), attr("type", "factory")]))
+    ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "factory".to_string(),
+            operators: None,
+            modules: None,
+            primitive_contract: None,
+        },
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -74,49 +81,31 @@ pub fn execute(
             code_id_key,
             code_id,
         } => add_update_code_id(deps, env, info, code_id_key, code_id),
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
-    }
-}
-
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
         }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
 pub fn create(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
-    name: String,
+    _info: MessageInfo,
+    _name: String,
     symbol: String,
-    modules: Vec<ModuleDefinition>,
+    _modules: Vec<ModuleDefinition>,
 ) -> Result<Response, ContractError> {
     //let config = read_config(deps.storage)?;
 
     require(
-        !is_address_defined(deps.storage, symbol.to_string())?,
+        !is_address_defined(deps.storage, symbol)?,
         ContractError::SymbolInUse {},
     )?;
+    //TODO: make this work with new cw721
+    Ok(Response::new())
 
     //Assign Code IDs to Modules
-    let updated_modules: Vec<ModuleDefinition> = modules
+    /*let updated_modules: Vec<ModuleDefinition> = modules
         .iter()
         .map(|m| match m {
             ModuleDefinition::Whitelist {
@@ -145,15 +134,6 @@ pub fn create(
                 address: address.clone(),
                 operators: operators.clone(),
                 code_id: Some(read_code_id(deps.storage, "receipt".to_string()).unwrap()),
-            },
-            ModuleDefinition::Auction {
-                address,
-                operators,
-                code_id: _,
-            } => ModuleDefinition::Auction {
-                address: address.clone(),
-                operators: operators.clone(),
-                code_id: Some(read_code_id(deps.storage, "auction".to_string()).unwrap()),
             },
             _ => m.clone(),
         })
@@ -193,7 +173,7 @@ pub fn create(
         attr("name", name),
         attr("symbol", symbol),
         attr("owner", info.sender.to_string()),
-    ]))
+    ]))*/
 }
 
 pub fn update_address(
@@ -205,7 +185,7 @@ pub fn update_address(
 ) -> Result<Response, ContractError> {
     require(
         is_creator(&deps, symbol.clone(), info.sender.to_string())?
-            || is_contract_owner(deps.storage, info.sender.as_str())?,
+            || ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -222,7 +202,7 @@ pub fn add_update_code_id(
     code_id: u64,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     store_code_id(deps.storage, code_id_key.clone(), code_id)?;
@@ -246,25 +226,25 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetAddress { symbol } => encode_binary(&query_address(deps, symbol)?),
         QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
 }
 
-fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let code_id_key: String = parse_message(data)?;
+            let code_id_key: String = parse_message(&data)?;
             encode_binary(&query_code_id(deps, code_id_key)?)
         }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        _ => ADOContract::default().query(deps, env, msg, query),
     }
 }
 
@@ -273,9 +253,9 @@ fn query_address(deps: Deps, symbol: String) -> Result<AddressResponse, Contract
     Ok(AddressResponse { address })
 }
 
-fn query_code_id(deps: Deps, key: String) -> Result<CodeIdResponse, ContractError> {
+fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
     let code_id = read_code_id(deps.storage, key)?;
-    Ok(CodeIdResponse { code_id })
+    Ok(code_id)
 }
 
 #[cfg(test)]
@@ -290,8 +270,8 @@ mod tests {
         Addr,
     };
 
-    static TOKEN_CODE_ID: u64 = 0;
-    const TOKEN_NAME: &str = "test";
+    //static TOKEN_CODE_ID: u64 = 0;
+    //const TOKEN_NAME: &str = "test";
     const TOKEN_SYMBOL: &str = "TT";
 
     #[test]
@@ -305,7 +285,7 @@ mod tests {
         assert_eq!(0, res.messages.len());
     }
 
-    #[test]
+    /*#[test]
     fn test_create() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
@@ -379,7 +359,7 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(res, expected_res);
         assert_eq!(1, expected_res.messages.len())
-    }
+    }*/
 
     #[test]
     fn test_update_address() {
@@ -389,7 +369,8 @@ mod tests {
         let env = mock_env();
         let info = mock_info(creator.as_str(), &[]);
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
         SYM_ADDRESS
@@ -434,7 +415,8 @@ mod tests {
         let env = mock_env();
         let info = mock_info(owner.as_str(), &[]);
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
 
@@ -466,9 +448,8 @@ mod tests {
             encode_binary(&"code_id").unwrap(),
         )));
 
-        let res: CodeIdResponse =
-            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        let res: u64 = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
-        assert_eq!(CodeIdResponse { code_id: 1u64 }, res);
+        assert_eq!(1u64, res);
     }
 }

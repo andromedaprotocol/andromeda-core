@@ -1,5 +1,5 @@
-use crate::error::ContractError;
 use crate::modules::{hooks::HookResponse, Module};
+use common::error::ContractError;
 use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,13 +20,6 @@ pub fn generate_instantiate_msgs(
     }
 
     Ok(resp)
-}
-
-pub fn unwrap_or_err<T>(val_opt: Option<T>, err: ContractError) -> Result<T, ContractError> {
-    match val_opt {
-        Some(val) => Ok(val),
-        None => Err(err),
-    }
 }
 
 pub fn merge_responses(resp_a: Response, resp_b: Response) -> Response {

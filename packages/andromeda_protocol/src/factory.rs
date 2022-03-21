@@ -1,8 +1,7 @@
-use crate::{
-    communication::{query_get, AndromedaMsg, AndromedaQuery},
-    modules::ModuleDefinition,
-    primitive::{get_address, AndromedaContract},
-    ContractError,
+use crate::modules::ModuleDefinition;
+use common::{
+    ado_base::{query_get, AndromedaMsg, AndromedaQuery},
+    error::ContractError,
 };
 use cosmwasm_std::{to_binary, QuerierWrapper, Storage};
 use schemars::JsonSchema;
@@ -55,11 +54,6 @@ pub struct AddressResponse {
     pub address: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CodeIdResponse {
-    pub code_id: u64,
-}
-
 pub fn get_ado_codeid(
     storage: &dyn Storage,
     querier: &QuerierWrapper,
@@ -67,6 +61,6 @@ pub fn get_ado_codeid(
 ) -> Result<Option<u64>, ContractError> {
     let factory_address = get_address(storage, querier, AndromedaContract::Factory)?;
 
-    let code_id_resp: CodeIdResponse = query_get(Some(to_binary(name)?), factory_address, querier)?;
-    Ok(Some(code_id_resp.code_id))
+    let code_id: u64 = query_get(Some(to_binary(name)?), factory_address, querier)?;
+    Ok(Some(code_id))
 }

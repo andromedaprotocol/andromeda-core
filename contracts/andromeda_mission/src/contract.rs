@@ -10,16 +10,14 @@ use crate::state::{
     add_mission_component, generate_ownership_message, load_component_addresses,
     load_component_descriptors, ADO_ADDRESSES, ADO_DESCRIPTORS, MISSION_NAME,
 };
-
-use andromeda_protocol::{
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery},
+use andromeda_protocol::mission::{
+    ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent, QueryMsg,
+};
+use common::{
+    ado_base::{AndromedaMsg, AndromedaQuery},
+    encode_binary,
     error::ContractError,
-    mission::{ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent, QueryMsg},
-    operators::{
-        execute_update_operators, initialize_operators, query_is_operator, query_operators,
-    },
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require,
+    parse_message, require,
     response::get_reply_address,
 };
 

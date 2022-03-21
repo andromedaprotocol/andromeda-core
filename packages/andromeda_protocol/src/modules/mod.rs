@@ -1,24 +1,20 @@
 pub mod address_list;
-pub mod auction;
 pub mod common;
 pub mod hooks;
 pub mod receipt;
-pub mod royalties;
-pub mod taxable;
 
-use crate::{
-    communication::{encode_binary, query_get},
+use ::common::{
+    ado_base::query_get,
+    encode_binary,
     error::ContractError,
-    modules::{
-        address_list::AddressListModule,
-        auction::AuctionModule,
-        hooks::{HookResponse, MessageHooks},
-        receipt::ReceiptModule,
-        royalties::Royalty,
-        taxable::Taxable,
-    },
     primitive::{GetValueResponse, Primitive},
     require,
+};
+
+use crate::modules::{
+    address_list::AddressListModule,
+    hooks::{HookResponse, MessageHooks},
+    receipt::ReceiptModule,
 };
 use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, QuerierWrapper, StdResult, Storage, Uint128};
 use cw_storage_plus::Item;
@@ -120,35 +116,8 @@ pub enum ModuleDefinition {
         /// A vector of contract operators. Used in combination with a valid `code_id` parameter
         operators: Option<Vec<String>>,
     },
-    /// A tax module. Required payments are paid by the purchaser.
-    Taxable {
-        /// The tax rate
-        rate: Rate,
-        /// The receiving addresses of the fee
-        receivers: Vec<String>,
-        /// An optional description of the fee
-        description: Option<String>,
-    },
-    /// A royalty module. Required payments are paid by the seller.
-    Royalties {
-        /// The royalty rate
-        rate: Rate,
-        /// The receiving addresses of the fee
-        receivers: Vec<String>,
-        /// An optional description of the fee
-        description: Option<String>,
-    },
     /// A receipt module
     Receipt {
-        /// The address of the module contract
-        address: Option<String>,
-        /// A valid code ID for the module contract. Used upon contract instantiation to instantiate a new module contract.
-        code_id: Option<u64>,
-        /// A vector of contract operators. Used in combination with a valid `code_id` parameter
-        operators: Option<Vec<String>>,
-    },
-    /// An auction module
-    Auction {
         /// The address of the module contract
         address: Option<String>,
         /// A valid code ID for the module contract. Used upon contract instantiation to instantiate a new module contract.
@@ -174,11 +143,8 @@ impl ModuleDefinition {
     pub fn name(&self) -> String {
         String::from(match self {
             ModuleDefinition::Receipt { .. } => "receipt",
-            ModuleDefinition::Royalties { .. } => "royalty",
             ModuleDefinition::Whitelist { .. } => "whitelist",
             ModuleDefinition::Blacklist { .. } => "blacklist",
-            ModuleDefinition::Taxable { .. } => "tax",
-            ModuleDefinition::Auction { .. } => "auction",
         })
     }
     pub fn as_module(&self) -> Box<dyn Module> {
@@ -204,24 +170,6 @@ impl ModuleDefinition {
                 code_id: *code_id,
                 inclusive: false,
             }),
-            ModuleDefinition::Taxable {
-                rate,
-                receivers,
-                description,
-            } => Box::from(Taxable {
-                rate: rate.clone(),
-                receivers: receivers.clone(),
-                description: description.clone(),
-            }),
-            ModuleDefinition::Royalties {
-                rate,
-                receivers,
-                description,
-            } => Box::from(Royalty {
-                rate: rate.clone(),
-                receivers: receivers.to_vec(),
-                description: description.clone(),
-            }),
             ModuleDefinition::Receipt {
                 operators,
                 address,
@@ -229,15 +177,6 @@ impl ModuleDefinition {
             } => Box::from(ReceiptModule {
                 operators: operators.clone(),
                 address: address.clone(),
-                code_id: *code_id,
-            }),
-            ModuleDefinition::Auction {
-                address,
-                code_id,
-                operators,
-            } => Box::from(AuctionModule {
-                address: address.clone(),
-                operators: operators.clone(),
                 code_id: *code_id,
             }),
         }

@@ -2,27 +2,22 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Reply, Response, StdError, Storage, SubMsg, Uint128,
+    Reply, Response, Storage, SubMsg, Uint128,
 };
 
+use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    communication::{
-        encode_binary,
-        hooks::{AndromedaHook, OnFundsTransferResponse},
-        modules::{
-            execute_alter_module, execute_deregister_module, execute_register_module, module_hook,
-            on_funds_transfer, validate_modules, ADOType, MODULE_ADDR, MODULE_INFO,
-        },
-        parse_message, AndromedaMsg,
-    },
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
+    rates::get_tax_amount,
+};
+use common::{
+    ado_base::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        InstantiateMsg as BaseInstantiateMsg,
+    },
+    encode_binary,
     error::ContractError,
-    operators::execute_update_operators,
-    ownership::{execute_update_owner, CONTRACT_OWNER},
-    primitive::PRIMITVE_CONTRACT,
-    rates::{get_tax_amount, Funds},
-    require,
-    response::get_reply_address,
+    require, Funds,
 };
 use cw721_base::{state::TokenInfo, Cw721Contract};
 
@@ -35,51 +30,29 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
+    let contract = ADOContract::default();
+    let resp = contract.instantiate(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        info.clone(),
+        BaseInstantiateMsg {
+            ado_type: "cw721".to_string(),
+            operators: None,
+            modules: msg.modules.clone(),
+            primitive_contract: Some(msg.primitive_contract.clone()),
+        },
+    )?;
 
-    let sender = info.sender.as_str();
-    let mut resp = Response::default();
-    if let Some(modules) = msg.modules.clone() {
-        validate_modules(&modules, ADOType::CW721)?;
-        for module in modules {
-            let response = execute_register_module(
-                &deps.querier,
-                deps.storage,
-                deps.api,
-                sender,
-                &module,
-                ADOType::CW721,
-                false,
-            )?;
-            resp = resp.add_submessages(response.messages);
-        }
-    }
     let cw721_resp = AndrCW721Contract::default().instantiate(deps, env, info, msg.into())?;
-    resp = resp
+    Ok(resp
         .add_attributes(cw721_resp.attributes)
-        .add_submessages(cw721_resp.messages);
-    Ok(resp)
+        .add_submessages(cw721_resp.messages))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
-    }
-
-    let id = msg.id.to_string();
-    require(
-        MODULE_INFO.load(deps.storage, &id).is_ok(),
-        ContractError::InvalidReplyId {},
-    )?;
-
-    let addr = get_reply_address(&msg)?;
-    MODULE_ADDR.save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
-
-    Ok(Response::default())
+    ADOContract::default().handle_module_reply(deps, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -89,7 +62,9 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    module_hook::<Response>(
+    let contract = ADOContract::default();
+
+    contract.module_hook::<Response>(
         deps.storage,
         deps.querier,
         AndromedaHook::OnExecute {
@@ -98,30 +73,8 @@ pub fn execute(
         },
     )?;
 
-    // Check if the token is archived before any message that may mutate the token
-    match &msg {
-        ExecuteMsg::TransferNft { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::SendNft { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::Approve { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::Burn { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::Archive { token_id } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::TransferAgreement { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        ExecuteMsg::UpdatePricing { token_id, .. } => {
-            is_token_archived(deps.storage, token_id)?;
-        }
-        _ => {}
+    if let ExecuteMsg::Approve { token_id, .. } = &msg {
+        is_token_archived(deps.storage, token_id)?;
     }
 
     match msg {
@@ -133,27 +86,9 @@ pub fn execute(
             token_id,
             agreement,
         } => execute_update_transfer_agreement(deps, env, info, token_id, agreement),
-        ExecuteMsg::UpdatePricing { token_id, price } => {
-            execute_update_pricing(deps, env, info, token_id, price)
-        }
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, info, token_id),
-        ExecuteMsg::RegisterModule { module } => execute_register_module(
-            &deps.querier,
-            deps.storage,
-            deps.api,
-            info.sender.as_str(),
-            &module,
-            ADOType::CW721,
-            true,
-        ),
-        ExecuteMsg::DeregisterModule { module_idx } => {
-            execute_deregister_module(deps, info, module_idx)
-        }
-        ExecuteMsg::AlterModule { module_idx, module } => {
-            execute_alter_module(deps, info, module_idx, &module, ADOType::CW721)
-        }
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
     }
 }
@@ -166,28 +101,6 @@ fn is_token_archived(storage: &dyn Storage, token_id: &str) -> Result<(), Contra
     Ok(())
 }
 
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
-        }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
-    }
-}
-
 fn execute_transfer(
     deps: DepsMut,
     env: Env,
@@ -195,7 +108,8 @@ fn execute_transfer(
     recipient: String,
     token_id: String,
 ) -> Result<Response, ContractError> {
-    let responses = module_hook::<Response>(
+    let base_contract = ADOContract::default();
+    let responses = base_contract.module_hook::<Response>(
         deps.storage,
         deps.querier,
         AndromedaHook::OnTransfer {
@@ -219,7 +133,7 @@ fn execute_transfer(
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     let tax_amount = if let Some(agreement) = &token.extension.transfer_agreement {
-        let (mut msgs, events, remainder) = on_funds_transfer(
+        let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
             deps.storage,
             deps.querier,
             info.sender.to_string(),
@@ -230,7 +144,7 @@ fn execute_transfer(
             })?,
         )?;
         let remaining_amount = remainder.try_get_coin()?;
-        let tax_amount = get_tax_amount(&msgs, agreement.amount.amount - remaining_amount.amount);
+        let tax_amount = get_tax_amount(&msgs, agreement.amount.amount, remaining_amount.amount);
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: token.owner.to_string(),
             amount: vec![remaining_amount],
@@ -278,7 +192,7 @@ fn check_can_send(
             ),
             ContractError::InsufficientFunds {},
         )?;
-        if agreement.purchaser == info.sender {
+        if agreement.purchaser == info.sender || agreement.purchaser == "*" {
             return Ok(());
         }
     }
@@ -331,26 +245,6 @@ fn execute_update_transfer_agreement(
     Ok(Response::default())
 }
 
-fn execute_update_pricing(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    token_id: String,
-    pricing: Option<Coin>,
-) -> Result<Response, ContractError> {
-    let contract = AndrCW721Contract::default();
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
-    require(token.owner == info.sender, ContractError::Unauthorized {})?;
-    require(!token.extension.archived, ContractError::TokenIsArchived {})?;
-
-    token.extension.pricing = pricing;
-    contract
-        .tokens
-        .save(deps.storage, token_id.as_str(), &token)?;
-
-    Ok(Response::default())
-}
-
 fn execute_archive(
     deps: DepsMut,
     _env: Env,
@@ -376,10 +270,7 @@ fn execute_burn(
 ) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract::default();
     let token = contract.tokens.load(deps.storage, &token_id)?;
-    require(
-        token.owner.eq(&info.sender.to_string()),
-        ContractError::Unauthorized {},
-    )?;
+    require(token.owner == info.sender, ContractError::Unauthorized {})?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     contract.tokens.remove(deps.storage, &token_id)?;
@@ -391,7 +282,7 @@ fn execute_burn(
     Ok(Response::default().add_attributes(vec![
         attr("action", "burn"),
         attr("token_id", token_id),
-        attr("sender", info.sender.to_string()),
+        attr("sender", info.sender),
     ]))
 }
 
@@ -410,7 +301,7 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             payload: _,
             amount,
         } => {
-            let (msgs, events, remainder) = on_funds_transfer(
+            let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
                 deps.storage,
                 deps.querier,
                 sender,
