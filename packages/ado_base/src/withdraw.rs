@@ -1,4 +1,4 @@
-use crate::state::ADOContract;
+use crate::{recipient::MessageGenerator, ADOContract};
 use common::{ado_base::recipient::Recipient, error::ContractError, require, withdraw::Withdrawal};
 use cosmwasm_std::{coin, DepsMut, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg};
 use cw20::Cw20Coin;

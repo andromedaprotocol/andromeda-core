@@ -1,7 +1,7 @@
 use crate::state::{
     Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
 };
-use ado_base::state::ADOContract;
+use ado_base::{recipient::MessageGenerator, ADOContract};
 use andromeda_protocol::anchor::{
     AnchorMarketMsg, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, PositionResponse,
     QueryMsg,

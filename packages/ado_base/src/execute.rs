@@ -58,6 +58,9 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::UpdateOperators { operators } => {
                 self.execute_update_operators(deps, info, operators)
             }
+            AndromedaMsg::UpdateMissionContract { address } => {
+                self.execute_update_mission_contract(deps, info, address)
+            }
             AndromedaMsg::Withdraw {
                 recipient,
                 tokens_to_withdraw,
@@ -146,5 +149,22 @@ impl<'a> ADOContract<'a> {
         }
 
         Ok(Response::new().add_attributes(vec![attr("action", "update_operators")]))
+    }
+
+    pub fn execute_update_mission_contract(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        address: String,
+    ) -> Result<Response, ContractError> {
+        require(
+            self.is_contract_owner(deps.storage, info.sender.as_str())?,
+            ContractError::Unauthorized {},
+        )?;
+        self.mission_contract
+            .save(deps.storage, &deps.api.addr_validate(&address)?)?;
+        Ok(Response::new()
+            .add_attribute("action", "update_mission_contract")
+            .add_attribute("address", address))
     }
 }

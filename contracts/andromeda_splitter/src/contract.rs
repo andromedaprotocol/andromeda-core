@@ -1,5 +1,5 @@
 use crate::state::SPLITTER;
-use ado_base::state::ADOContract;
+use ado_base::{recipient::MessageGenerator, ADOContract};
 use andromeda_protocol::{
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},

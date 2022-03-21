@@ -32,6 +32,9 @@ pub enum AndromedaMsg {
     UpdateOperators {
         operators: Vec<String>,
     },
+    UpdateMissionContract {
+        address: String,
+    },
     Withdraw {
         recipient: Option<Recipient>,
         tokens_to_withdraw: Option<Vec<Withdrawal>>,

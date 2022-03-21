@@ -1,5 +1,5 @@
 use crate::state::SWAPPER_IMPL_ADDR;
-use ado_base::state::ADOContract;
+use ado_base::{recipient::MessageGenerator, ADOContract};
 use andromeda_protocol::swapper::{
     query_balance, query_token_balance, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
     MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,

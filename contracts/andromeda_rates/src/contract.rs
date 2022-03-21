@@ -1,5 +1,5 @@
 use crate::state::{Config, CONFIG};
-use ado_base::state::ADOContract;
+use ado_base::{recipient::MessageGenerator, ADOContract};
 use andromeda_protocol::{
     modules::common::{calculate_fee, deduct_funds},
     rates::{

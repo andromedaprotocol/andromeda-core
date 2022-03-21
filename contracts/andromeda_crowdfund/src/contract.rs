@@ -1,5 +1,5 @@
 use crate::state::{Config, Purchase, State, CONFIG, PURCHASES, STATE, UNAVAILABLE_TOKENS};
-use ado_base::ADOContract;
+use ado_base::{recipient::MessageGenerator, ADOContract};
 use andromeda_protocol::{
     crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg},
