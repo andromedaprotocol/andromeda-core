@@ -1,9 +1,5 @@
-use crate::factory::get_ado_codeid;
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    error::ContractError,
-};
-use cosmwasm_std::{Binary, CosmosMsg, QuerierWrapper, ReplyOn, Storage, SubMsg, WasmMsg};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use cosmwasm_std::Binary;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -14,45 +10,13 @@ pub struct MissionComponent {
     pub instantiate_msg: Binary,
 }
 
-// DEV NOTE: Redundant with CW721 modules, possibly merge the two implementations? Or maybe parts of it?
-/// A mission component is an ADO that is used in the flow of the mission
-impl MissionComponent {
-    /// Generates an instantiation message for the given Mission Component
-    /// Attaches the vector index of the Mission Component in order to map the Mission Component's name to its instantiated address
-    pub fn generate_instantiate_msg(
-        &self,
-        storage: &dyn Storage,
-        querier: &QuerierWrapper,
-        idx: u64,
-    ) -> Result<SubMsg, ContractError> {
-        match get_ado_codeid(storage, querier, &self.ado_type)? {
-            None => Err(ContractError::InvalidModule {
-                msg: Some(String::from(
-                    "ADO type provided does not have a valid Code Id",
-                )),
-            }),
-            Some(code_id) => Ok(SubMsg {
-                id: idx,
-                reply_on: ReplyOn::Always,
-                msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                    admin: None,
-                    code_id,
-                    msg: self.instantiate_msg.clone(),
-                    funds: vec![],
-                    label: format!("Instantiate ADO: {}", self.ado_type.clone()),
-                }),
-                gas_limit: None,
-            }),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub operators: Vec<String>,
     pub mission: Vec<MissionComponent>,
     pub xfer_ado_ownership: bool,
     pub name: String,
+    pub primitive_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -1,3 +1,18 @@
+use crate::state::{
+    add_mission_component, generate_ownership_message, load_component_addresses,
+    load_component_descriptors, ADO_ADDRESSES, ADO_DESCRIPTORS, MISSION_NAME,
+};
+use ado_base::ADOContract;
+use andromeda_protocol::mission::{
+    ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent, QueryMsg,
+};
+use common::{
+    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    parse_message, require,
+    response::get_reply_address,
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -5,21 +20,6 @@ use cosmwasm_std::{
     Response, StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
-
-use crate::state::{
-    add_mission_component, generate_ownership_message, load_component_addresses,
-    load_component_descriptors, ADO_ADDRESSES, ADO_DESCRIPTORS, MISSION_NAME,
-};
-use andromeda_protocol::mission::{
-    ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent, QueryMsg,
-};
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    encode_binary,
-    error::ContractError,
-    parse_message, require,
-    response::get_reply_address,
-};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_mission";
@@ -32,34 +32,43 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    initialize_operators(deps.storage, msg.operators)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     MISSION_NAME.save(deps.storage, &msg.name)?;
-
     require(
         msg.mission.len() <= 50,
         ContractError::TooManyMissionComponents {},
     )?;
-    let sender = info.sender.as_str();
 
-    let mut resp = Response::new()
-        .add_attribute("method", "instantiate")
-        .add_attribute("owner", sender)
+    let sender = info.sender.to_string();
+    let resp = ADOContract::default()
+        .instantiate(
+            deps.storage,
+            deps.api,
+            &deps.querier,
+            info,
+            BaseInstantiateMsg {
+                ado_type: "mission".to_string(),
+                operators: Some(msg.operators),
+                modules: None,
+                primitive_contract: Some(msg.primitive_contract),
+            },
+        )?
+        .add_attribute("owner", &sender)
         .add_attribute("andr_mission", msg.name);
 
+    let mut msgs: Vec<SubMsg> = vec![];
     for component in msg.mission {
         let comp_resp =
-            execute_add_mission_component(&deps.querier, deps.storage, sender, component)?;
-        resp = resp.add_submessages(comp_resp.messages);
+            execute_add_mission_component(&deps.querier, deps.storage, &sender, component)?;
+        msgs.extend(comp_resp.messages);
     }
 
     if msg.xfer_ado_ownership {
-        let own_resp = execute_claim_ownership(deps.storage, sender, None)?;
-        resp = resp.add_submessages(own_resp.messages)
+        let own_resp = execute_claim_ownership(deps.storage, &sender, None)?;
+        msgs.extend(own_resp.messages);
     }
 
-    Ok(resp)
+    Ok(resp.add_submessages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -90,7 +99,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AndrReceive(msg) => execute_receive(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
         ExecuteMsg::AddMissionComponent { component } => execute_add_mission_component(
             &deps.querier,
             deps.storage,
@@ -105,45 +116,28 @@ pub fn execute(
     }
 }
 
-fn execute_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
-        }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
-    }
-}
-
 fn execute_add_mission_component(
     querier: &QuerierWrapper,
     storage: &mut dyn Storage,
     sender: &str,
     component: MissionComponent,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
     require(
-        is_contract_owner(storage, sender)?,
+        contract.is_contract_owner(storage, sender)?,
         ContractError::Unauthorized {},
     )?;
-    let mut resp = Response::new();
 
     let idx = add_mission_component(storage, &component)?;
-    let inst_msg = component.generate_instantiate_msg(storage, querier, idx)?;
-    resp = resp.add_submessage(inst_msg);
+    let inst_msg = contract.generate_instantiate_msg(
+        storage,
+        querier,
+        idx,
+        component.instantiate_msg,
+        component.ado_type,
+    )?;
 
-    Ok(resp)
+    Ok(Response::new().add_submessage(inst_msg))
 }
 
 fn execute_claim_ownership(
@@ -152,23 +146,22 @@ fn execute_claim_ownership(
     name_opt: Option<String>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(storage, sender)?,
+        ADOContract::default().is_contract_owner(storage, sender)?,
         ContractError::Unauthorized {},
     )?;
 
-    let mut resp = Response::new();
-
+    let mut msgs: Vec<SubMsg> = vec![];
     if let Some(name) = name_opt {
         let address = ADO_ADDRESSES.load(storage, &name)?;
-        resp = resp.add_submessage(generate_ownership_message(address, sender)?);
+        msgs.push(generate_ownership_message(address, sender)?);
     } else {
         let addresses = load_component_addresses(storage)?;
-        for addr in addresses {
-            resp = resp.add_submessage(generate_ownership_message(addr, sender)?);
+        for address in addresses {
+            msgs.push(generate_ownership_message(address, sender)?);
         }
     }
 
-    Ok(resp)
+    Ok(Response::new().add_submessages(msgs))
 }
 
 fn execute_message(
@@ -179,7 +172,7 @@ fn execute_message(
 ) -> Result<Response, ContractError> {
     //Temporary until message sender attached to Andromeda Comms
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -206,7 +199,7 @@ fn has_update_address_privilege(
     sender: &str,
     current_addr: &str,
 ) -> Result<bool, ContractError> {
-    Ok(is_contract_owner(storage, sender)? || sender == current_addr)
+    Ok(ADOContract::default().is_contract_owner(storage, sender)? || sender == current_addr)
 }
 
 fn execute_update_address(
@@ -242,9 +235,9 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::GetAddress { name } => encode_binary(&query_component_address(deps, name)?),
         QueryMsg::GetAddresses {} => encode_binary(&query_component_addresses(deps)?),
         QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
@@ -252,7 +245,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     }
 }
 
-fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => match data {
             None => Err(ContractError::ParsingError {
@@ -260,15 +257,11 @@ fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, Con
             }),
             Some(_) => {
                 //Default to get address for given ADO name
-                let name: String = parse_message(data)?;
+                let name: String = parse_message(&data)?;
                 encode_binary(&query_component_address(deps, name)?)
             }
         },
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        _ => ADOContract::default().query(deps, env, msg, query),
     }
 }
 
@@ -289,12 +282,9 @@ fn query_component_addresses(deps: Deps) -> Result<Vec<Addr>, ContractError> {
 
 fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let name = MISSION_NAME.load(deps.storage)?;
-    let owner_resp = query_contract_owner(deps)?;
+    let owner = ADOContract::default().owner.load(deps.storage)?.to_string();
 
-    Ok(ConfigResponse {
-        name,
-        owner: owner_resp.owner,
-    })
+    Ok(ConfigResponse { name, owner })
 }
 
 #[cfg(test)]
@@ -311,6 +301,7 @@ mod tests {
             mission: vec![],
             xfer_ado_ownership: false,
             name: String::from("Some Mission"),
+            primitive_contract: String::from("primitive_contract"),
         };
         let info = mock_info("creator", &[]);
 

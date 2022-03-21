@@ -1,9 +1,5 @@
 use crate::modules::ModuleDefinition;
-use common::{
-    ado_base::{query_get, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
-};
-use cosmwasm_std::{to_binary, QuerierWrapper, Storage};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -52,15 +48,4 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AddressResponse {
     pub address: String,
-}
-
-pub fn get_ado_codeid(
-    storage: &dyn Storage,
-    querier: &QuerierWrapper,
-    name: &str,
-) -> Result<Option<u64>, ContractError> {
-    let factory_address = get_address(storage, querier, AndromedaContract::Factory)?;
-
-    let code_id: u64 = query_get(Some(to_binary(name)?), factory_address, querier)?;
-    Ok(Some(code_id))
 }
