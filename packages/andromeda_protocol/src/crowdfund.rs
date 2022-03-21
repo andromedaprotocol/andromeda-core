@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct InstantiateMsg {
     pub token_address: String,
     pub modules: Option<Vec<Module>>,
-    pub primitive_address: String,
+    pub primitive_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

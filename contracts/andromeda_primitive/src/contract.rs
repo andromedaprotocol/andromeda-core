@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, Storage};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{DATA, DEFAULT_KEY};
@@ -28,11 +28,15 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     ADOContract::default().instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "primitive".to_string(),
             operators: Some(msg.operators),
+            modules: None,
+            primitive_contract: None,
         },
     )
 }
@@ -59,8 +63,9 @@ pub fn execute_set_value(
     name: Option<String>,
     value: Primitive,
 ) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
     require(
-        is_authorized(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
     if value.is_invalid() {
@@ -74,7 +79,7 @@ pub fn execute_set_value(
 
     Ok(Response::new()
         .add_attribute("method", "set_value")
-        .add_attribute("sender", info.sender)
+        .add_attribute("sender", sender)
         .add_attribute("name", name)
         .add_attribute("value", format!("{:?}", value)))
 }
@@ -84,21 +89,17 @@ pub fn execute_delete_value(
     info: MessageInfo,
     name: Option<String>,
 ) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
     require(
-        is_authorized(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
     let name = get_name_or_default(&name);
     DATA.remove(deps.storage, name);
     Ok(Response::new()
         .add_attribute("method", "delete_value")
-        .add_attribute("sender", info.sender)
+        .add_attribute("sender", sender)
         .add_attribute("name", name))
-}
-
-fn is_authorized(storage: &dyn Storage, address: &str) -> Result<bool, ContractError> {
-    let contract = ADOContract::default();
-    Ok(contract.is_contract_owner(storage, address)? || contract.is_operator(storage, address))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

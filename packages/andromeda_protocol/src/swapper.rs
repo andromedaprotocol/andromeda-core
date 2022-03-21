@@ -57,7 +57,14 @@ impl From<AssetInfo> for AstroportAssetInfo {
 /// Instantiate Message for Swapper contract.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub swapper_impl: InstantiateType,
+    pub swapper_impl: SwapperImpl,
+    pub primitive_contract: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct SwapperImpl {
+    pub name: String,
+    pub instantiate_type: InstantiateType,
 }
 
 /// Execute Message for Swapper contract.

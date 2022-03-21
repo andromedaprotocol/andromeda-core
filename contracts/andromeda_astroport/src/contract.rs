@@ -43,11 +43,15 @@ pub fn instantiate(
 
     CONFIG.save(deps.storage, &config)?;
     ADOContract::default().instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "astroport".to_string(),
             operators: None,
+            modules: None,
+            primitive_contract: None,
         },
     )
 }

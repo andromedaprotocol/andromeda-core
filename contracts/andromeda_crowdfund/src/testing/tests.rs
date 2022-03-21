@@ -84,7 +84,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     let msg = InstantiateMsg {
         token_address: MOCK_TOKEN_CONTRACT.to_owned(),
         modules,
-        primitive_address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
 
     let info = mock_info("owner", &[]);
@@ -105,6 +105,7 @@ fn test_instantiate() {
 
     assert_eq!(
         Response::new()
+            .add_attribute("action", "register_module")
             .add_attribute("method", "instantiate")
             .add_attribute("type", "crowdfund"),
         res

@@ -13,7 +13,6 @@ pub mod modules;
 pub mod primitive;
 pub mod rates;
 pub mod receipt;
-pub mod response;
 pub mod splitter;
 pub mod swapper;
 pub mod wrapped_cw721;

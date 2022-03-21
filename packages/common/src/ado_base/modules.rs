@@ -1,11 +1,5 @@
-use crate::{
-    ado_base::query_get,
-    encode_binary,
-    error::ContractError,
-    primitive::{get_address, AndromedaContract},
-    require,
-};
-use cosmwasm_std::{Binary, CosmosMsg, QuerierWrapper, ReplyOn, Storage, SubMsg, WasmMsg};
+use crate::{error::ContractError, require};
+use cosmwasm_std::Binary;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -44,58 +38,6 @@ pub struct ModuleInfoWithAddress {
 }
 
 impl Module {
-    /// Queries the code id for a module from the factory contract
-    pub fn get_code_id(
-        &self,
-        storage: &dyn Storage,
-        querier: QuerierWrapper,
-    ) -> Result<Option<u64>, ContractError> {
-        let factory_address = get_address(storage, querier, AndromedaContract::Factory)?;
-        match self.module_type.as_str() {
-            OTHER => Ok(None),
-            _ => {
-                let code_id: u64 = query_get(
-                    Some(encode_binary(&self.module_type.clone())?),
-                    factory_address,
-                    &querier,
-                )?;
-                Ok(Some(code_id))
-            }
-        }
-    }
-
-    /// Generate an instantiation message for the module if its required
-    pub fn generate_instantiate_msg(
-        &self,
-        storage: &dyn Storage,
-        querier: QuerierWrapper,
-        module_id: u64,
-    ) -> Result<Option<SubMsg>, ContractError> {
-        if let InstantiateType::New(msg) = &self.instantiate {
-            match self.get_code_id(storage, querier)? {
-                None => Err(ContractError::InvalidModule {
-                    msg: Some(String::from(
-                        "Module type provided does not have a valid Code Id",
-                    )),
-                }),
-                Some(code_id) => Ok(Some(SubMsg {
-                    id: module_id,
-                    reply_on: ReplyOn::Always,
-                    msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                        admin: None,
-                        code_id,
-                        msg: msg.clone(),
-                        funds: vec![],
-                        label: format!("Instantiate: {}", self.module_type.clone()),
-                    }),
-                    gas_limit: None,
-                })),
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
     /// Validates `self` by checking that it is unique, does not conflict with any other module,
     /// and does not conflict with the creating ADO.
     pub fn validate(&self, modules: &[Module], ado_type: &str) -> Result<(), ContractError> {

@@ -30,11 +30,15 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     NEXT_AUCTION_ID.save(deps.storage, &Uint128::from(1u128))?;
     ADOContract::default().instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "auction".to_string(),
             operators: None,
+            modules: None,
+            primitive_contract: None,
         },
     )
 }

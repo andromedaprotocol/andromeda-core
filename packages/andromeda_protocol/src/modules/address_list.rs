@@ -6,7 +6,6 @@ use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::response::get_reply_address;
 use crate::{
     address_list::{query_includes_address, InstantiateMsg as AddressListInstantiateMsg},
     modules::{
@@ -15,6 +14,7 @@ use crate::{
         {Module, ModuleDefinition},
     },
 };
+use common::response::get_reply_address;
 use common::{error::ContractError, require};
 
 pub const ADDRESS_LIST_CONTRACT: Item<String> = Item::new("addresslistcontract");

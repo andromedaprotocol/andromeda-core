@@ -4,22 +4,18 @@ use andromeda_protocol::{
     crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg},
     rates::get_tax_amount,
-    response::get_reply_address,
 };
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
-    merge_sub_msgs,
-    primitive::PRIMITVE_CONTRACT,
-    require, Funds,
+    merge_sub_msgs, require, Funds,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
-    WasmQuery,
+    QuerierWrapper, QueryRequest, Reply, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
@@ -34,59 +30,29 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    // TODO: change instantiate of ADOContract to not take deps directly to allow instantiating
-    // first.
-    contract.owner.save(deps.storage, &info.sender)?;
-    contract
-        .ado_type
-        .save(deps.storage, &"crowdfund".to_string())?;
-    let module_msgs = contract.register_modules(
-        info.sender.as_str(),
-        &deps.querier,
-        deps.storage,
-        deps.api,
-        msg.modules,
-    )?;
-    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_address)?;
     CONFIG.save(
         deps.storage,
         &Config {
             token_address: deps.api.addr_validate(&msg.token_address)?,
         },
     )?;
-    let resp = contract.instantiate(
-        deps,
+    ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "crowdfund".to_string(),
             operators: None,
+            modules: msg.modules,
+            primitive_contract: Some(msg.primitive_contract),
         },
-    )?;
-    Ok(resp.add_submessages(module_msgs))
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
-    }
-
-    let contract = ADOContract::default();
-    let id = msg.id.to_string();
-    require(
-        contract.module_info.has(deps.storage, &id),
-        ContractError::InvalidReplyId {},
-    )?;
-
-    let addr = get_reply_address(&msg)?;
-    contract
-        .module_addr
-        .save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
-
-    Ok(Response::default())
+    ADOContract::default().handle_module_reply(deps, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
