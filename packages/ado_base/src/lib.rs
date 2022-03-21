@@ -8,8 +8,6 @@ pub mod modules;
 #[cfg(feature = "primitive")]
 pub mod primitive;
 mod query;
-#[cfg(feature = "recipient")]
-pub mod recipient;
 pub mod state;
 #[cfg(feature = "withdraw")]
 mod withdraw;

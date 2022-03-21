@@ -1,5 +1,5 @@
 use crate::state::SWAPPER_IMPL_ADDR;
-use ado_base::{recipient::MessageGenerator, ADOContract};
+use ado_base::ADOContract;
 use andromeda_protocol::swapper::{
     query_balance, query_token_balance, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
     MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,
@@ -125,7 +125,12 @@ fn execute_swap(
     if let AssetInfo::NativeToken { denom } = &ask_asset_info {
         if denom == &coin.denom {
             // Send coins as is as there is no need to swap.
-            let msg = recipient.generate_msg_native(deps.api, info.funds)?;
+            let msg = recipient.generate_msg_native(
+                deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
+                info.funds,
+            )?;
             return Ok(Response::new()
                 .add_submessage(msg)
                 .add_attribute("action", "swap"));
@@ -168,13 +173,20 @@ fn execute_send(
     let msg: SubMsg = match ask_asset_info {
         AssetInfo::NativeToken { denom } => {
             let amount = query_balance(&deps.querier, env.contract.address, denom.clone())?;
-            recipient.generate_msg_native(deps.api, vec![Coin { denom, amount }])?
+            recipient.generate_msg_native(
+                deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
+                vec![Coin { denom, amount }],
+            )?
         }
         AssetInfo::Token { contract_addr } => {
             let amount =
                 query_token_balance(&deps.querier, contract_addr.clone(), env.contract.address)?;
             recipient.generate_msg_cw20(
                 deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
                 Cw20Coin {
                     address: contract_addr.to_string(),
                     amount,
@@ -224,6 +236,8 @@ fn execute_swap_cw20(
             // Send as is.
             let msg = recipient.generate_msg_cw20(
                 deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
                 Cw20Coin {
                     address: offer_token,
                     amount: offer_amount,

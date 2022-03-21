@@ -13,7 +13,6 @@ withdraw = ["terraswap", "cw20"]
 modules = ["instantiate"]
 instantiate = ["primitive"]
 primitive = []
-recipient = ["cw20"]
 
 [profile.release]
 opt-level = 3

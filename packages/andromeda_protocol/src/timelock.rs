@@ -4,6 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::modules::address_list::AddressListModule;
+
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
@@ -29,6 +30,8 @@ pub struct Escrow {
     pub condition: Option<EscrowCondition>,
     /// The recipient of the funds once Condition is satisfied
     pub recipient: Recipient,
+    /// Used for indexing.
+    pub recipient_addr: String,
 }
 
 impl Escrow {
@@ -45,7 +48,7 @@ impl Escrow {
             },
         )?;
         require(
-            api.addr_validate(&self.recipient.get_addr()).is_ok(),
+            api.addr_validate(&self.recipient_addr).is_ok(),
             ContractError::InvalidAddress {},
         )?;
 
@@ -209,6 +212,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: coins.clone(),
             condition: Some(condition.clone()),
+            recipient_addr: "owner".to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -221,6 +225,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: coins.clone(),
             condition: None,
+            recipient_addr: "owner".to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -233,6 +238,7 @@ mod tests {
             recipient: Recipient::Addr(String::default()),
             coins: coins.clone(),
             condition: Some(condition.clone()),
+            recipient_addr: String::default(),
         };
 
         let resp = invalid_recipient_escrow
@@ -244,6 +250,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![],
             condition: Some(condition),
+            recipient_addr: "owner".to_string(),
         };
 
         let resp = invalid_coins_escrow
@@ -260,6 +267,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: coins.clone(),
             condition: Some(EscrowCondition::Expiration(Expiration::Never {})),
+            recipient_addr: "owner".to_string(),
         };
 
         let resp = invalid_condition_escrow
@@ -271,6 +279,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: coins.clone(),
             condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
+            recipient_addr: "owner".to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -290,6 +299,7 @@ mod tests {
             condition: Some(EscrowCondition::Expiration(Expiration::AtTime(
                 Timestamp::from_seconds(100),
             ))),
+            recipient_addr: "owner".to_string(),
         };
         assert_eq!(
             ContractError::ExpirationInPast {},
@@ -311,6 +321,7 @@ mod tests {
                 coin(100, "uusd"),
                 coin(100, "uluna"),
             ])),
+            recipient_addr: "owner".to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -324,6 +335,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(200, "uluna")],
             condition: Some(EscrowCondition::MinimumFunds(vec![coin(100, "uluna")])),
+            recipient_addr: "owner".to_string(),
         };
         valid_escrow.validate(deps.as_ref().api, &block).unwrap();
 
@@ -332,6 +344,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: Some(EscrowCondition::MinimumFunds(vec![])),
+            recipient_addr: "owner".to_string(),
         };
         assert_eq!(
             ContractError::InvalidFunds {
@@ -351,6 +364,7 @@ mod tests {
                 coin(100, "uluna"),
                 coin(200, "uusd"),
             ])),
+            recipient_addr: "owner".to_string(),
         };
         assert_eq!(
             ContractError::DuplicateCoinDenoms {},
@@ -367,6 +381,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
+            recipient_addr: "owner".to_string(),
         };
         assert!(!escrow.min_funds_deposited(vec![coin(100, "uusd")]));
 
@@ -374,6 +389,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
+            recipient_addr: "owner".to_string(),
         };
         assert!(!escrow.min_funds_deposited(vec![coin(100, "uusd"), coin(100, "uluna")]));
 
@@ -381,6 +397,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
+            recipient_addr: "owner".to_string(),
         };
         assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
 
@@ -388,6 +405,7 @@ mod tests {
             recipient,
             coins: vec![coin(200, "uluna")],
             condition: None,
+            recipient_addr: "owner".to_string(),
         };
         assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
     }
@@ -398,6 +416,7 @@ mod tests {
             coins: vec![coin(100, "uusd"), coin(100, "uluna")],
             condition: None,
             recipient: Recipient::Addr("".into()),
+            recipient_addr: "".to_string(),
         };
         let funds_to_add = vec![coin(25, "uluna"), coin(50, "uusd"), coin(100, "ucad")];
 

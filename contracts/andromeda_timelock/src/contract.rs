@@ -3,7 +3,7 @@ use cosmwasm_std::{
 };
 
 use crate::state::{escrows, get_key, get_keys_for_recipient, State, STATE};
-use ado_base::{recipient::MessageGenerator, ADOContract};
+use ado_base::ADOContract;
 use andromeda_protocol::{
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -121,14 +121,19 @@ fn execute_hold_funds(
     let rec = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
 
     //Validate recipient address
-    let recipient_addr = rec.get_addr();
+    let recipient_addr = rec.get_addr(
+        deps.api,
+        &deps.querier,
+        ADOContract::default().get_mission_contract(deps.storage)?,
+    )?;
     deps.api.addr_validate(&recipient_addr)?;
+    let key = get_key(info.sender.as_str(), &recipient_addr);
     let mut escrow = Escrow {
         coins: info.funds,
         condition,
         recipient: rec,
+        recipient_addr,
     };
-    let key = get_key(info.sender.as_str(), &recipient_addr);
     // Add funds to existing escrow if it exists.
     let existing_escrow = escrows().may_load(deps.storage, key.to_vec())?;
     if let Some(existing_escrow) = existing_escrow {
@@ -168,7 +173,12 @@ fn execute_release_funds(
     for key in keys.iter() {
         let funds: Escrow = escrows().load(deps.storage, key.clone())?;
         if !funds.is_locked(&env.block)? {
-            let msg = funds.recipient.generate_msg_native(deps.api, funds.coins)?;
+            let msg = funds.recipient.generate_msg_native(
+                deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
+                funds.coins,
+            )?;
             msgs.push(msg);
             escrows().remove(deps.storage, key.clone())?;
         }
@@ -200,9 +210,12 @@ fn execute_release_specific_funds(
                 ContractError::FundsAreLocked {},
             )?;
             escrows().remove(deps.storage, key)?;
-            let msg = escrow
-                .recipient
-                .generate_msg_native(deps.api, escrow.coins)?;
+            let msg = escrow.recipient.generate_msg_native(
+                deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
+                escrow.coins,
+            )?;
             Ok(Response::new().add_submessage(msg).add_attributes(vec![
                 attr("action", "release_funds"),
                 attr("recipient_addr", recipient),
@@ -378,6 +391,7 @@ mod tests {
             coins: funds,
             condition: Some(condition),
             recipient: Recipient::Addr(owner.to_string()),
+            recipient_addr: owner.to_string(),
         };
 
         assert_eq!(val.funds.unwrap(), expected);
@@ -424,6 +438,7 @@ mod tests {
             // Original expiration remains.
             condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
             recipient: Recipient::Addr("recipient".to_string()),
+            recipient_addr: "recipient".to_string(),
         };
 
         assert_eq!(val.funds.unwrap(), expected);
