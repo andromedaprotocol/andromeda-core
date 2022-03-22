@@ -265,6 +265,9 @@ pub enum ContractError {
 
     #[error("No purchases")]
     NoPurchases {},
+
+    #[error("Not implemented")]
+    NotImplemented { msg: Option<String> },
 }
 
 impl From<Cw20ContractError> for ContractError {

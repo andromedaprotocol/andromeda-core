@@ -7,36 +7,37 @@ use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-//Mapping between (Address, Funds Denom) and the amount
+/// Mapping between (Address, Funds Denom) and the amount
 pub const BALANCES: Map<(String, String), Uint128> = Map::new("balances");
+pub const STRATEGY_CONTRACT_ADDRESSES: Map<String, String> =
+    Map::new("strategy_contract_addresses");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum YieldStrategy {
-    Anchor { address: String },
-    None,
+pub enum StrategyType {
+    Anchor,
 }
 
-impl YieldStrategy {
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct YieldStrategy {
+    pub strategy_type: StrategyType,
+    pub address: String,
+}
+
+impl StrategyType {
     pub fn deposit(
         &self,
-        storage: &mut dyn Storage,
+        storage: &dyn Storage,
         funds: Coin,
         recipient: &str,
-    ) -> Result<Option<SubMsg>, ContractError> {
-        let denom = funds.clone().denom;
-        match self {
-            YieldStrategy::None => {
-                let mut balance = BALANCES
-                    .load(storage, (recipient.to_string(), denom.clone()))
-                    .unwrap_or(Uint128::zero());
-                balance = balance.checked_add(funds.amount)?;
-
-                BALANCES.save(storage, (recipient.to_string(), denom), &balance)?;
-                Ok(None)
-            }
-            YieldStrategy::Anchor { address } => {
+    ) -> Result<SubMsg, ContractError> {
+        let address = STRATEGY_CONTRACT_ADDRESSES.load(storage, self.to_string());
+        match address {
+            Err(_) => Err(ContractError::NotImplemented {
+                msg: Some(String::from("This strategy is not supported by this vault")),
+            }),
+            Ok(addr) => {
                 let msg = wasm_execute(
-                    address,
+                    addr,
                     &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(to_binary(recipient)?))),
                     vec![funds],
                 )?;
@@ -47,17 +48,16 @@ impl YieldStrategy {
                     reply_on: ReplyOn::Error,
                 };
 
-                Ok(Some(sub_msg))
+                Ok(sub_msg)
             }
         }
     }
 }
 
-impl ToString for YieldStrategy {
+impl ToString for StrategyType {
     fn to_string(&self) -> String {
         match self {
-            YieldStrategy::Anchor { .. } => String::from("anchor"),
-            YieldStrategy::None => String::from("none"),
+            StrategyType::Anchor => String::from("anchor"),
         }
     }
 }
@@ -69,7 +69,11 @@ pub struct InstantiateMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum ExecuteMsg {
-    Deposit { recipient: Option<Recipient> },
+    Deposit {
+        recipient: Option<Recipient>,
+        amount: Option<Coin>,
+        strategy: Option<StrategyType>,
+    },
     AndrReceive(AndromedaMsg),
 }
 
@@ -80,7 +84,7 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    pub default_yield_strategy: YieldStrategy,
+    pub default_yield_strategy: StrategyType,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
