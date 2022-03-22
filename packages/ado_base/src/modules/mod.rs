@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use crate::state::ADOContract;
 use cosmwasm_std::{
-    Api, DepsMut, MessageInfo, Order, QuerierWrapper, Response, Storage, SubMsg, Uint64,
+    Api, DepsMut, MessageInfo, Order, QuerierWrapper, Reply, Response, StdError, Storage, Uint64,
 };
 use cw_storage_plus::Bound;
 
@@ -10,6 +10,7 @@ use common::{
     ado_base::modules::{InstantiateType, Module, ModuleInfoWithAddress},
     error::ContractError,
     require,
+    response::get_reply_address,
 };
 
 pub mod hooks;
@@ -21,20 +22,18 @@ impl<'a> ADOContract<'a> {
         querier: &QuerierWrapper,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        modules: Option<Vec<Module>>,
-    ) -> Result<Vec<SubMsg>, ContractError> {
-        if let Some(modules) = modules {
-            self.validate_modules(&modules, &self.ado_type.load(storage)?)?;
-            let mut msgs: Vec<SubMsg> = vec![];
-            for module in modules {
-                let response =
-                    self.execute_register_module(querier, storage, api, sender, &module, false)?;
-                msgs.extend(response.messages);
-            }
-            Ok(msgs)
-        } else {
-            Ok(vec![])
+        modules: Vec<Module>,
+    ) -> Result<Response, ContractError> {
+        self.validate_modules(&modules, &self.ado_type.load(storage)?)?;
+        let mut resp = Response::new();
+        for module in modules {
+            let register_response =
+                self.execute_register_module(querier, storage, api, sender, module, false)?;
+            resp = resp
+                .add_attributes(register_response.attributes)
+                .add_submessages(register_response.messages)
         }
+        Ok(resp)
     }
 
     /// A wrapper for `fn register_module`. The parameters are "extracted" from `DepsMut` to be able to
@@ -46,7 +45,7 @@ impl<'a> ADOContract<'a> {
         storage: &mut dyn Storage,
         api: &dyn Api,
         sender: &str,
-        module: &Module,
+        module: Module,
         should_validate: bool,
     ) -> Result<Response, ContractError> {
         require(
@@ -54,8 +53,10 @@ impl<'a> ADOContract<'a> {
             ContractError::Unauthorized {},
         )?;
         let mut resp = Response::default();
-        let idx = self.register_module(storage, api, module)?;
-        if let Some(inst_msg) = module.generate_instantiate_msg(storage, *querier, idx)? {
+        let idx = self.register_module(storage, api, &module)?;
+        if let Some(inst_msg) =
+            self.generate_instantiate_msg_for_module(storage, querier, module, idx)?
+        {
             resp = resp.add_submessage(inst_msg);
         }
         if should_validate {
@@ -70,7 +71,7 @@ impl<'a> ADOContract<'a> {
         deps: DepsMut,
         info: MessageInfo,
         module_idx: Uint64,
-        module: &Module,
+        module: Module,
     ) -> Result<Response, ContractError> {
         let addr = info.sender.as_str();
         require(
@@ -78,10 +79,13 @@ impl<'a> ADOContract<'a> {
             ContractError::Unauthorized {},
         )?;
         let mut resp = Response::default();
-        self.alter_module(deps.storage, deps.api, module_idx, module)?;
-        if let Some(inst_msg) =
-            module.generate_instantiate_msg(deps.storage, deps.querier, module_idx.u64())?
-        {
+        self.alter_module(deps.storage, deps.api, module_idx, &module)?;
+        if let Some(inst_msg) = self.generate_instantiate_msg_for_module(
+            deps.storage,
+            &deps.querier,
+            module,
+            module_idx.u64(),
+        )? {
             resp = resp.add_submessage(inst_msg);
         }
         self.validate_modules(
@@ -260,6 +264,30 @@ impl<'a> ADOContract<'a> {
 
         Ok(())
     }
+
+    pub fn handle_module_reply(
+        &self,
+        deps: DepsMut,
+        msg: Reply,
+    ) -> Result<Response, ContractError> {
+        if msg.result.is_err() {
+            return Err(ContractError::Std(StdError::generic_err(
+                msg.result.unwrap_err(),
+            )));
+        }
+
+        let id = msg.id.to_string();
+        require(
+            self.module_info.has(deps.storage, &id),
+            ContractError::InvalidReplyId {},
+        )?;
+
+        let addr = get_reply_address(&msg)?;
+        self.module_addr
+            .save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
+
+        Ok(Response::default())
+    }
 }
 
 #[cfg(test)]
@@ -295,7 +323,7 @@ mod tests {
             deps_mut.storage,
             deps_mut.api,
             "sender",
-            &module,
+            module,
             true,
         );
 
@@ -328,7 +356,7 @@ mod tests {
                 deps_mut.storage,
                 deps_mut.api,
                 "owner",
-                &module,
+                module.clone(),
                 true,
             )
             .unwrap();
@@ -380,7 +408,7 @@ mod tests {
             deps_mut.storage,
             deps_mut.api,
             "owner",
-            &module,
+            module.clone(),
             true,
         );
 
@@ -397,7 +425,7 @@ mod tests {
                 deps_mut.storage,
                 deps_mut.api,
                 "owner",
-                &module,
+                module,
                 false,
             )
             .unwrap();
@@ -428,7 +456,7 @@ mod tests {
             .unwrap();
 
         let res =
-            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), &module);
+            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), module);
 
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
@@ -468,7 +496,7 @@ mod tests {
         };
 
         let res = ADOContract::default()
-            .execute_alter_module(deps.as_mut(), info, 1u64.into(), &module)
+            .execute_alter_module(deps.as_mut(), info, 1u64.into(), module.clone())
             .unwrap();
 
         assert_eq!(
@@ -530,7 +558,7 @@ mod tests {
         };
 
         let res =
-            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), &module);
+            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), module);
 
         assert_eq!(ContractError::ModuleImmutable {}, res.unwrap_err());
     }
@@ -555,7 +583,7 @@ mod tests {
             .unwrap();
 
         let res =
-            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), &module);
+            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), module);
 
         assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
     }
@@ -589,7 +617,7 @@ mod tests {
             .unwrap();
 
         let res =
-            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), &module);
+            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), module);
 
         assert_eq!(
             ContractError::IncompatibleModules {

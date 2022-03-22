@@ -17,6 +17,8 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 pub struct InstantiateMsg {
     pub ado_type: String,
     pub operators: Option<Vec<String>>,
+    pub modules: Option<Vec<Module>>,
+    pub primitive_contract: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

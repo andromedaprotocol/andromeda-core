@@ -34,11 +34,15 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     store_config(deps.storage, &Config { minter: msg.minter })?;
     ADOContract::default().instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "receipt".to_string(),
             operators: msg.operators,
+            modules: None,
+            primitive_contract: None,
         },
     )
 }

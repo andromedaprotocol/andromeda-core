@@ -122,7 +122,16 @@ fn test_instantiate_modules() {
             gas_limit: None,
         },
     ];
-    assert_eq!(Response::new().add_submessages(msgs), res);
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "register_module")
+            .add_attribute("action", "register_module")
+            .add_attribute("action", "register_module")
+            .add_attribute("method", "instantiate")
+            .add_attribute("type", "cw20")
+            .add_submessages(msgs),
+        res
+    );
 }
 
 #[test]
@@ -163,7 +172,15 @@ fn test_transfer() {
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
-    assert_eq!(Response::default(), res);
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "register_module")
+            .add_attribute("action", "register_module")
+            .add_attribute("action", "register_module")
+            .add_attribute("method", "instantiate")
+            .add_attribute("type", "cw20"),
+        res
+    );
 
     assert_eq!(
         Uint128::from(1000u128),
@@ -274,7 +291,15 @@ fn test_send() {
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
-    assert_eq!(Response::default(), res);
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "register_module")
+            .add_attribute("action", "register_module")
+            .add_attribute("action", "register_module")
+            .add_attribute("method", "instantiate")
+            .add_attribute("type", "cw20"),
+        res
+    );
 
     assert_eq!(
         Uint128::from(1000u128),
