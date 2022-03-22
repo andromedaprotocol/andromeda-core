@@ -26,4 +26,6 @@ cw0 = "0.9.1"
 cw20-base = { version = "0.9.1", features=["library"]}
 cw721-base = { version = "0.9.1", features=["library"]}
 terraswap = {version = "2.4.0"}
+cosmwasm-bignumber = "2.2.0"
+
 common = { path = "../common", version = "0.1.0" }
