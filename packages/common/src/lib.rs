@@ -1,0 +1,245 @@
+pub mod ado_base;
+pub mod error;
+pub mod primitive;
+pub mod response;
+pub mod withdraw;
+
+use crate::error::ContractError;
+use cosmwasm_std::{from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, SubMsg};
+use cw20::Cw20Coin;
+use schemars::JsonSchema;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use std::collections::BTreeMap;
+
+pub fn parse_struct<T>(val: &Binary) -> Result<T, ContractError>
+where
+    T: DeserializeOwned,
+{
+    let data_res = from_binary(val);
+    match data_res {
+        Ok(data) => Ok(data),
+        Err(err) => Err(ContractError::ParsingError {
+            err: err.to_string(),
+        }),
+    }
+}
+
+pub fn parse_message<T: DeserializeOwned>(data: &Option<Binary>) -> Result<T, ContractError> {
+    let data = unwrap_or_err(data, ContractError::MissingRequiredMessageData {})?;
+    parse_struct::<T>(data)
+}
+
+pub fn encode_binary<T>(val: &T) -> Result<Binary, ContractError>
+where
+    T: Serialize,
+{
+    match to_binary(val) {
+        Ok(encoded_val) => Ok(encoded_val),
+        Err(err) => Err(ContractError::ParsingError {
+            err: err.to_string(),
+        }),
+    }
+}
+
+pub fn unwrap_or_err<T>(val_opt: &Option<T>, err: ContractError) -> Result<&T, ContractError> {
+    match val_opt {
+        Some(val) => Ok(val),
+        None => Err(err),
+    }
+}
+
+/// A simple implementation of Solidity's "require" function. Takes a precondition and an error to return if the precondition is not met.
+///
+/// ## Arguments
+///
+/// * `precond` - The required precondition, will return provided "err" parameter if precondition is false
+/// * `err` - The error to return if the required precondition is false
+///
+/// ## Example
+/// ```
+/// use common::error::ContractError;
+/// use cosmwasm_std::StdError;
+/// use common::require;
+/// require(false, ContractError::Std(StdError::generic_err("Some boolean condition was not met")));
+/// ```
+pub fn require(precond: bool, err: ContractError) -> Result<bool, ContractError> {
+    match precond {
+        true => Ok(true),
+        false => Err(err),
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum Funds {
+    Native(Coin),
+    Cw20(Cw20Coin),
+}
+
+impl Funds {
+    // There is probably a more idiomatic way of doing this with From and Into...
+    pub fn try_get_coin(&self) -> Result<Coin, ContractError> {
+        match self {
+            Funds::Native(coin) => Ok(coin.clone()),
+            Funds::Cw20(_) => Err(ContractError::ParsingError {
+                err: "Funds is not of type Native".to_string(),
+            }),
+        }
+    }
+}
+
+/// Merges bank messages to the same recipient to a single bank message. Any sub messages
+/// that do not contain bank messages are left as is. Note: Original order is not necessarily maintained.
+///
+/// ## Arguments
+/// * `msgs`  - The sub messages to merge.
+///
+/// Returns a Vec<SubMsg> containing the merged bank messages.
+pub fn merge_sub_msgs(msgs: Vec<SubMsg>) -> Vec<SubMsg> {
+    // BTreeMap used instead of HashMap for determinant ordering in tests. Both should work
+    // on-chain as hashmap randomness is fixed in cosmwasm. We get O(logn) instead of O(1)
+    // performance this way which is not a huge difference.
+    let mut map: BTreeMap<String, Vec<Coin>> = BTreeMap::new();
+
+    let mut merged_msgs: Vec<SubMsg> = vec![];
+    for msg in msgs.into_iter() {
+        match msg.msg {
+            CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
+                let current_coins = map.get_mut(&to_address);
+                match current_coins {
+                    Some(current_coins) => merge_coins(current_coins, amount),
+                    None => {
+                        map.insert(to_address.to_owned(), amount);
+                    }
+                }
+            }
+            _ => merged_msgs.push(msg),
+        }
+    }
+
+    for (to_address, amount) in map.into_iter() {
+        merged_msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address,
+            amount,
+        })));
+    }
+
+    merged_msgs
+}
+
+/// Adds coins in `coins_to_add` to `coins` by merging those of the same denom and
+/// otherwise appending.
+///
+/// ## Arguments
+/// * `coins`        - Mutable reference to a vec of coins which will be modified in-place.
+/// * `coins_to_add` - The `Vec<Coin>` to add, it is assumed that it contains no coins of the
+///                    same denom
+///
+/// Returns nothing as it is done in place.
+pub fn merge_coins(coins: &mut Vec<Coin>, coins_to_add: Vec<Coin>) {
+    // Not the most efficient algorithm (O(n * m)) but we don't expect to deal with very large arrays of Coin,
+    // typically at most 2 denoms. Even in the future there are not that many Terra native coins
+    // where this will be a problem.
+    for coin in coins.iter_mut() {
+        let same_denom_coin = coins_to_add.iter().find(|&c| c.denom == coin.denom);
+        if let Some(same_denom_coin) = same_denom_coin {
+            coin.amount += same_denom_coin.amount;
+        }
+    }
+    for coin_to_add in coins_to_add.iter() {
+        if !coins.iter().any(|c| c.denom == coin_to_add.denom) {
+            coins.push(coin_to_add.clone());
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use cosmwasm_std::{coin, to_binary, WasmMsg};
+    use cw20::Expiration;
+
+    use super::*;
+
+    #[derive(Deserialize, Serialize)]
+    struct TestStruct {
+        name: String,
+        expiration: Expiration,
+    }
+
+    #[test]
+    fn test_parse_struct() {
+        let valid_json = to_binary(&TestStruct {
+            name: "John Doe".to_string(),
+            expiration: Expiration::AtHeight(123),
+        })
+        .unwrap();
+
+        let test_struct: TestStruct = parse_struct(&valid_json).unwrap();
+        assert_eq!(test_struct.name, "John Doe");
+        assert_eq!(test_struct.expiration, Expiration::AtHeight(123));
+
+        let invalid_json = to_binary("notavalidteststruct").unwrap();
+
+        assert!(parse_struct::<TestStruct>(&invalid_json).is_err())
+    }
+
+    #[test]
+    fn test_merge_coins() {
+        let mut coins = vec![coin(100, "uusd"), coin(100, "uluna")];
+        let funds_to_add = vec![coin(25, "uluna"), coin(50, "uusd"), coin(100, "ucad")];
+
+        merge_coins(&mut coins, funds_to_add);
+        assert_eq!(
+            vec![coin(150, "uusd"), coin(125, "uluna"), coin(100, "ucad")],
+            coins
+        );
+    }
+
+    #[test]
+    fn test_merge_sub_messages() {
+        let sub_msgs: Vec<SubMsg> = vec![
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "A".to_string(),
+                amount: vec![coin(100, "uusd"), coin(50, "uluna")],
+            })),
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "A".to_string(),
+                amount: vec![coin(100, "uusd"), coin(50, "ukrw")],
+            })),
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "B".to_string(),
+                amount: vec![coin(100, "uluna")],
+            })),
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: "B".to_string(),
+                amount: vec![coin(50, "uluna")],
+            })),
+            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "C".to_string(),
+                funds: vec![],
+                msg: encode_binary(&"").unwrap(),
+            })),
+        ];
+
+        let merged_msgs = merge_sub_msgs(sub_msgs);
+        assert_eq!(
+            vec![
+                SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "C".to_string(),
+                    funds: vec![],
+                    msg: encode_binary(&"").unwrap(),
+                })),
+                SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: "A".to_string(),
+                    amount: vec![coin(200, "uusd"), coin(50, "uluna"), coin(50, "ukrw")],
+                })),
+                SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: "B".to_string(),
+                    amount: vec![coin(150, "uluna")],
+                })),
+            ],
+            merged_msgs
+        );
+
+        assert_eq!(3, merged_msgs.len());
+    }
+}

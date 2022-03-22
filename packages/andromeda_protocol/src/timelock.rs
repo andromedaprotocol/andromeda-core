@@ -3,9 +3,12 @@ use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
-use crate::error::ContractError;
-use crate::{modules::address_list::AddressListModule, require};
+use crate::modules::address_list::AddressListModule;
+use common::{
+    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    error::ContractError,
+    merge_coins, require,
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -112,19 +115,7 @@ impl Escrow {
     ///
     /// Returns nothing as it is done in place.
     pub fn add_funds(&mut self, coins_to_add: Vec<Coin>) {
-        for deposited_coin in self.coins.iter_mut() {
-            let same_denom_coin = coins_to_add
-                .iter()
-                .find(|&c| c.denom == deposited_coin.denom);
-            if let Some(same_denom_coin) = same_denom_coin {
-                deposited_coin.amount += same_denom_coin.amount;
-            }
-        }
-        for coin_to_add in coins_to_add.iter() {
-            if !self.coins.iter().any(|c| c.denom == coin_to_add.denom) {
-                self.coins.push(coin_to_add.clone());
-            }
-        }
+        merge_coins(&mut self.coins, coins_to_add);
     }
 }
 

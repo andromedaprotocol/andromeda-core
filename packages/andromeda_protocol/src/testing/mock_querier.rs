@@ -1,16 +1,23 @@
+use common::{
+    ado_base::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        ownership::ContractOwnerResponse,
+        AndromedaQuery,
+    },
+    primitive::{GetValueResponse, Primitive},
+    Funds,
+};
+
 use crate::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
-    communication::hooks::{AndromedaHook, OnFundsTransferResponse},
-    communication::AndromedaQuery,
     cw721::TransferAgreement,
     cw721::{
         MetadataAttribute, MetadataType, QueryMsg as Cw721QueryMsg, TokenExtension, TokenMetadata,
     },
     cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
-    factory::{CodeIdResponse, QueryMsg as FactoryQueryMsg},
-    ownership::ContractOwnerResponse,
-    primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
-    rates::{Funds, QueryMsg as RatesQueryMsg},
+    factory::QueryMsg as FactoryQueryMsg,
+    primitive::QueryMsg as PrimitiveQueryMsg,
+    rates::QueryMsg as RatesQueryMsg,
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };
 use astroport::{
@@ -182,10 +189,10 @@ impl WasmMockQuerier {
                     "rates" => 2,
                     "address_list" => 3,
                     "cw721" => 4,
+                    "swapper_impl" => 5,
                     _ => 0,
                 };
-                let response = CodeIdResponse { code_id };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_binary(&code_id).unwrap()))
             }
             _ => panic!("Unsupported Query"),
         }

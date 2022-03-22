@@ -7,16 +7,18 @@ use crate::{
         Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
     },
 };
-use andromeda_protocol::{
-    anchor::{
-        BLunaHubCw20HookMsg, BLunaHubExecuteMsg, ConfigResponse, Cw20HookMsg, ExecuteMsg,
-        InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg,
+use ado_base::state::ADOContract;
+use andromeda_protocol::anchor::{
+    BLunaHubCw20HookMsg, BLunaHubExecuteMsg, ConfigResponse, Cw20HookMsg, ExecuteMsg,
+    InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg,
+};
+use common::{
+    ado_base::{
+        recipient::Recipient, AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
     },
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
+    encode_binary,
     error::ContractError,
-    operators::{execute_update_operators, is_operator, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require,
+    parse_message, require,
     withdraw::Withdrawal,
 };
 use cosmwasm_bignumber::{Decimal256, Uint256};
@@ -69,8 +71,18 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     PREV_AUST_BALANCE.save(deps.storage, &Uint128::zero())?;
     PREV_UUSD_BALANCE.save(deps.storage, &Uint128::zero())?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "anchor")]))
+    ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "anchor".to_string(),
+            operators: None,
+            modules: None,
+            primitive_contract: None,
+        },
+    )
 }
 
 #[entry_point]
@@ -145,18 +157,15 @@ fn execute_andr_receive(
         AndromedaMsg::Receive(data) => match data {
             None => execute_deposit(deps, env, info, None),
             Some(_) => {
-                let recipient: Recipient = parse_message(data)?;
+                let recipient: Recipient = parse_message(&data)?;
                 execute_deposit(deps, env, info, Some(recipient))
             }
         },
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
         AndromedaMsg::Withdraw {
             recipient,
             tokens_to_withdraw,
         } => handle_withdraw(deps, env, info, recipient, tokens_to_withdraw),
+        _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
 }
 
@@ -169,8 +178,7 @@ pub fn handle_withdraw(
 ) -> Result<Response, ContractError> {
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
     let authorized = recipient.get_addr() == info.sender
-        || is_operator(deps.storage, info.sender.as_str())?
-        || is_contract_owner(deps.storage, info.sender.as_str())?;
+        || ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?;
     require(authorized, ContractError::Unauthorized {})?;
     require(
         matches!(recipient, Recipient::Addr(_)),
@@ -222,7 +230,8 @@ fn execute_deposit_collateral_to_anchor(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     require(
-        is_contract_owner(deps.storage, &sender)? || sender == env.contract.address,
+        ADOContract::default().is_owner_or_operator(deps.storage, &sender)?
+            || sender == env.contract.address,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -260,7 +269,7 @@ fn execute_deposit_collateral(
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -307,7 +316,7 @@ fn execute_withdraw_collateral(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -387,7 +396,7 @@ fn execute_borrow(
 ) -> Result<Response, ContractError> {
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -452,7 +461,7 @@ fn execute_borrow(
 
 fn execute_repay_loan(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let config = CONFIG.load(deps.storage)?;
@@ -538,6 +547,11 @@ fn withdraw_uusd(
     let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
     let mut position = POSITION.load(deps.storage, &recipient_addr)?;
 
+    let authorized = recipient_addr == info.sender
+        || ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?;
+
+    require(authorized, ContractError::Unauthorized {})?;
+
     let contract_balance =
         query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
     PREV_UUSD_BALANCE.save(deps.storage, &contract_balance)?;
@@ -576,6 +590,11 @@ fn withdraw_aust(
     let config = CONFIG.load(deps.storage)?;
     let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
     let mut position = POSITION.load(deps.storage, &recipient_addr)?;
+
+    let authorized = recipient_addr == info.sender
+        || ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?;
+
+    require(authorized, ContractError::Unauthorized {})?;
 
     let amount = withdrawal.get_amount(position.aust_amount)?;
 
@@ -652,9 +671,9 @@ fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
     }
 }
@@ -670,17 +689,17 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
-fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let recipient: String = parse_message(data)?;
+            let recipient: String = parse_message(&data)?;
             encode_binary(&query_position(deps, recipient)?)
         }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        _ => ADOContract::default().query(deps, env, msg, query),
     }
 }
 

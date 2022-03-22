@@ -1,4 +1,4 @@
-use andromeda_protocol::{communication::encode_binary, error::ContractError};
+use common::{encode_binary, error::ContractError};
 use cosmwasm_std::{QuerierWrapper, QueryRequest, WasmQuery};
 use moneymarket::{
     custody::{ConfigResponse as CustodyConfigResponse, QueryMsg as CustodyQueryMsg},

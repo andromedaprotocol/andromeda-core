@@ -6,12 +6,15 @@ use crate::testing::mock_querier::{
     mock_dependencies_custom, MOCK_AUST_TOKEN, MOCK_BLUNA_HUB_CONTRACT, MOCK_BLUNA_TOKEN,
     MOCK_CUSTODY_CONTRACT, MOCK_MARKET_CONTRACT, MOCK_ORACLE_CONTRACT, MOCK_OVERSEER_CONTRACT,
 };
-use andromeda_protocol::{
-    anchor::{
-        BLunaHubCw20HookMsg, BLunaHubExecuteMsg, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-        PositionResponse, QueryMsg,
+use andromeda_protocol::anchor::{
+    BLunaHubCw20HookMsg, BLunaHubExecuteMsg, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
+    PositionResponse, QueryMsg,
+};
+use common::{
+    ado_base::{
+        recipient::{ADORecipient, Recipient},
+        AndromedaMsg, AndromedaQuery,
     },
-    communication::{ADORecipient, AndromedaMsg, AndromedaQuery, Recipient},
     error::ContractError,
     withdraw::{Withdrawal, WithdrawalType},
 };

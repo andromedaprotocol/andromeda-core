@@ -1,8 +1,8 @@
 use andromeda_protocol::{
     auction::{AuctionStateResponse, Bid},
     common::OrderBy,
-    error::ContractError,
 };
+use common::error::ContractError;
 use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage, Uint128};
 use cw721::Expiration;
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex, U128Key};

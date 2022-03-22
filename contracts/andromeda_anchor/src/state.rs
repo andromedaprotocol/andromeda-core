@@ -1,4 +1,4 @@
-use andromeda_protocol::communication::Recipient;
+use common::ado_base::recipient::Recipient;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;

@@ -1,7 +1,4 @@
-use crate::{
-    communication::{AndromedaMsg, AndromedaQuery},
-    swapper::{SwapperCw20HookMsg, SwapperMsg},
-};
+use crate::swapper::{SwapperCw20HookMsg, SwapperMsg};
 use astroport::{
     factory::ExecuteMsg as AstroportFactoryExecuteMsg,
     router::{Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg},
@@ -9,6 +6,7 @@ use astroport::{
         Cw20HookMsg as AstroportStakingCw20HookMsg, ExecuteMsg as AstroportStakingExecuteMsg,
     },
 };
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

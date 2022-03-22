@@ -27,9 +27,12 @@ cw-storage-plus = "0.9.1"
 cw20 = { version = "0.9.1" }
 cw2 = "0.9.1"
 terraswap = "2.4.0"
-andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
 moneymarket = "0.3.0"
 cosmwasm-bignumber = "2.2.0"
+
+andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
+common = { version = "0.1.0", path = "../../packages/common" }
+ado-base = { path = "../../packages/ado_base", version = "0.1.0"}
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }

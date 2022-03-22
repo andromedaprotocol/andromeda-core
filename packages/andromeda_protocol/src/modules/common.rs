@@ -1,8 +1,5 @@
-use crate::{
-    error::ContractError,
-    modules::{Module, ModuleDefinition, Rate},
-    require,
-};
+use crate::modules::{Module, ModuleDefinition, Rate};
+use common::{error::ContractError, require};
 
 use cosmwasm_std::{coin, BankMsg, Coin, Uint128};
 
@@ -135,44 +132,8 @@ pub fn deduct_payment(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modules::address_list::AddressListModule;
     use crate::modules::Rate;
     use cosmwasm_std::{coin, Coin, Uint128};
-
-    #[test]
-    fn test_is_unique() {
-        let module = AddressListModule {
-            operators: Some(vec![]),
-            address: None,
-            code_id: None,
-            inclusive: true,
-        };
-        let duplicate_module = ModuleDefinition::Whitelist {
-            operators: Some(vec![]),
-            address: None,
-            code_id: None,
-        };
-        let similar_module = ModuleDefinition::Whitelist {
-            operators: Some(vec![String::default()]),
-            address: None,
-            code_id: None,
-        };
-        let other_module = ModuleDefinition::Taxable {
-            rate: Rate::Percent(2u128.into()),
-            receivers: vec![],
-            description: None,
-        };
-
-        let valid = vec![module.as_definition(), other_module.clone()];
-        assert!(is_unique(&module, &valid));
-
-        let duplicate = vec![module.as_definition(), other_module, duplicate_module];
-
-        assert!(!is_unique(&module, &duplicate));
-
-        let similar = vec![module.as_definition(), similar_module];
-        assert!(!is_unique(&module, &similar));
-    }
 
     #[test]
     fn test_deduct_funds() {

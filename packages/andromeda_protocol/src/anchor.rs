@@ -1,4 +1,4 @@
-use crate::communication::{AndromedaMsg, AndromedaQuery, Recipient};
+use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;

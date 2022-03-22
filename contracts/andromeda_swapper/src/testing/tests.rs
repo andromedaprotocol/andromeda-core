@@ -1,9 +1,7 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
-    communication::{modules::InstantiateType, Recipient},
-    error::ContractError,
     swapper::{
-        AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, SwapperCw20HookMsg,
+        AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, SwapperCw20HookMsg, SwapperImpl,
         SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
     },
     testing::mock_querier::{
@@ -11,19 +9,73 @@ use andromeda_protocol::{
         MOCK_CW20_CONTRACT2,
     },
 };
+use common::{
+    ado_base::{modules::InstantiateType, recipient::Recipient},
+    error::ContractError,
+};
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Response, SubMsg, WasmMsg,
+    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, ReplyOn, Response, SubMsg, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
-fn init(deps: DepsMut) {
+fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
-        swapper_impl: InstantiateType::Address(MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned()),
+        swapper_impl: SwapperImpl {
+            instantiate_type: InstantiateType::Address(MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned()),
+            name: "swapper_impl".to_string(),
+        },
+        primitive_contract: "primitive_contract".to_string(),
     };
 
-    let _res = instantiate(deps, mock_env(), mock_info("sender", &[]), msg).unwrap();
+    instantiate(deps, mock_env(), mock_info("sender", &[]), msg).unwrap()
+}
+
+#[test]
+fn test_instantiate_swapper_impl_address() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let res = init(deps.as_mut());
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("method", "instantiate")
+            .add_attribute("type", "swapper"),
+        res
+    );
+}
+
+#[test]
+fn test_instantiate_swapper_impl_new() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        swapper_impl: SwapperImpl {
+            instantiate_type: InstantiateType::New(to_binary(&"mock_instantiate_msg").unwrap()),
+            name: "swapper_impl".to_string(),
+        },
+        primitive_contract: "primitive_contract".to_string(),
+    };
+
+    let res = instantiate(deps.as_mut(), mock_env(), mock_info("sender", &[]), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("method", "instantiate")
+            .add_attribute("type", "swapper")
+            .add_submessage(SubMsg {
+                id: 1,
+                reply_on: ReplyOn::Always,
+                msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+                    admin: None,
+                    code_id: 5,
+                    msg: to_binary(&"mock_instantiate_msg").unwrap(),
+                    funds: vec![],
+                    label: "Instantiate: swapper_impl".to_string(),
+                }),
+                gas_limit: None,
+            }),
+        res
+    );
 }
 
 #[test]

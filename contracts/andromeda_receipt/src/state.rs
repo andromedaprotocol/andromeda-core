@@ -1,8 +1,6 @@
-use andromeda_protocol::{
-    operators::is_operator,
-    ownership::is_contract_owner,
-    receipt::{Config, Receipt},
-};
+use ado_base::state::ADOContract;
+use andromeda_protocol::receipt::{Config, Receipt};
+use common::error::ContractError;
 use cosmwasm_std::{StdResult, Storage, Uint128};
 use cw_storage_plus::{Item, Map, U128Key};
 
@@ -14,9 +12,9 @@ pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()>
     CONFIG.save(storage, config)
 }
 
-pub fn can_mint_receipt(storage: &dyn Storage, addr: &str) -> StdResult<bool> {
+pub fn can_mint_receipt(storage: &dyn Storage, addr: &str) -> Result<bool, ContractError> {
     let config = CONFIG.load(storage)?;
-    Ok(is_contract_owner(storage, addr)? || addr.eq(&config.minter) || is_operator(storage, addr)?)
+    Ok(ADOContract::default().is_owner_or_operator(storage, addr)? || addr.eq(&config.minter))
 }
 
 // increase receipt ID
@@ -46,8 +44,6 @@ pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Rec
 
 #[cfg(test)]
 mod tests {
-    use andromeda_protocol::operators::OPERATORS;
-    use andromeda_protocol::ownership::CONTRACT_OWNER;
     use cosmwasm_std::{testing::mock_dependencies, Addr};
 
     use super::*;
@@ -63,11 +59,13 @@ mod tests {
             minter: minter.clone(),
         };
         let mut deps = mock_dependencies(&[]);
-        OPERATORS
+        ADOContract::default()
+            .operators
             .save(deps.as_mut().storage, &operator, &true)
             .unwrap();
 
-        CONTRACT_OWNER
+        ADOContract::default()
+            .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
             .unwrap();
         CONFIG.save(deps.as_mut().storage, &config).unwrap();
