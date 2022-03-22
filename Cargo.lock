@@ -386,6 +386,7 @@ dependencies = [
  "cw721-base",
  "schemars",
  "serde",
+ "terra-cosmwasm",
  "thiserror",
 ]
 

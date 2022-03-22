@@ -323,6 +323,8 @@ fn transfer_tokens_and_send_funds(
         if state.amount_to_send > Uint128::zero() {
             let msg = state.recipient.generate_msg_native(
                 deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
                 vec![Coin {
                     denom: state.price.denom.clone(),
                     amount: state.amount_to_send,

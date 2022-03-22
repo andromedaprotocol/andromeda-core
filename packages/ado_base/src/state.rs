@@ -6,10 +6,12 @@ use cw_storage_plus::{Item, Map};
 #[cfg(feature = "withdraw")]
 use terraswap::asset::AssetInfo;
 
+//TODO: Make as many of these as possible pub(crate)
 pub struct ADOContract<'a> {
     pub owner: Item<'a, Addr>,
     pub operators: Map<'a, &'a str, bool>,
     pub ado_type: Item<'a, String>,
+    pub(crate) mission_contract: Item<'a, Addr>,
     #[cfg(feature = "primitive")]
     pub primitive_contract: Item<'a, Addr>,
     #[cfg(feature = "modules")]
@@ -28,6 +30,7 @@ impl<'a> Default for ADOContract<'a> {
             owner: Item::new("owner"),
             operators: Map::new("operators"),
             ado_type: Item::new("ado_type"),
+            mission_contract: Item::new("mission_contract"),
             #[cfg(feature = "primitive")]
             primitive_contract: Item::new("primitive_contract"),
             #[cfg(feature = "modules")]
@@ -68,6 +71,13 @@ impl<'a> ADOContract<'a> {
         addr: &str,
     ) -> Result<bool, ContractError> {
         Ok(self.is_contract_owner(storage, addr)? || self.is_operator(storage, addr))
+    }
+
+    pub fn get_mission_contract(
+        &self,
+        storage: &dyn Storage,
+    ) -> Result<Option<Addr>, ContractError> {
+        Ok(self.mission_contract.may_load(storage)?)
     }
 
     pub(crate) fn initialize_operators(

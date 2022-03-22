@@ -1,5 +1,5 @@
 use crate::state::SPLITTER;
-use ado_base::state::ADOContract;
+use ado_base::ADOContract;
 use andromeda_protocol::{
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
@@ -154,9 +154,12 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         }
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
-        let msg = recipient_addr
-            .recipient
-            .generate_msg_native(deps.api, vec_coin)?;
+        let msg = recipient_addr.recipient.generate_msg_native(
+            deps.api,
+            &deps.querier,
+            ADOContract::default().get_mission_contract(deps.storage)?,
+            vec_coin,
+        )?;
         submsg.push(msg);
     }
     remainder_funds = remainder_funds
