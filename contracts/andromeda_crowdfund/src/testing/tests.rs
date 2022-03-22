@@ -18,6 +18,7 @@ use common::{
     },
     encode_binary,
     error::ContractError,
+    mission::AndrAddress,
 };
 use cosmwasm_std::{
     coin, coins,
@@ -82,7 +83,9 @@ fn get_transfer_message(token_id: impl Into<String>, recipient: impl Into<String
 
 fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     let msg = InstantiateMsg {
-        token_address: MOCK_TOKEN_CONTRACT.to_owned(),
+        token_address: AndrAddress {
+            identifier: MOCK_TOKEN_CONTRACT.to_owned(),
+        },
         modules,
         primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
@@ -113,7 +116,9 @@ fn test_instantiate() {
 
     assert_eq!(
         Config {
-            token_address: Addr::unchecked(MOCK_TOKEN_CONTRACT),
+            token_address: AndrAddress {
+                identifier: MOCK_TOKEN_CONTRACT.to_owned()
+            }
         },
         CONFIG.load(deps.as_mut().storage).unwrap()
     );
