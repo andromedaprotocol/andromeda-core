@@ -9,7 +9,8 @@ use cw_asset::{Asset, AssetInfo};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-// ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message
+/// ADOs use a default Receive message for handling funds,
+/// this struct states that the recipient is an ADO and may attach the data field to the Receive message
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ADORecipient {
     pub addr: String,

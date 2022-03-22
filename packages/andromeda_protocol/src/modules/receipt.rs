@@ -7,7 +7,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::receipt::Receipt;
-use crate::response::get_reply_address;
 use crate::{
     modules::{
         common::is_unique,
@@ -16,6 +15,7 @@ use crate::{
     },
     receipt::{ExecuteMsg, InstantiateMsg},
 };
+use common::response::get_reply_address;
 use common::{error::ContractError, require};
 pub const RECEIPT_CONTRACT: Item<String> = Item::new("receiptcontract");
 pub const REPLY_RECEIPT: u64 = 1;

@@ -5,19 +5,15 @@ use andromeda_protocol::{
         ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MetadataAttribute,
         MetadataType, TokenExtension, TokenMetadata,
     },
-    response::get_reply_address,
     wrapped_cw721::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, QueryMsg},
 };
 use common::{
-    ado_base::{query_get, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
-    error::ContractError,
-    primitive::{get_address, AndromedaContract, PRIMITVE_CONTRACT},
-    require,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
+    response::get_reply_address,
 };
 use cosmwasm_std::{
-    entry_point, from_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, QueryRequest, Reply, ReplyOn, Response, StdError, SubMsg, WasmMsg, WasmQuery,
+    entry_point, from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
+    QueryRequest, Reply, Response, StdError, SubMsg, WasmMsg, WasmQuery,
 };
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NftInfoResponse};
 use cw721_base::MintMsg;
@@ -32,9 +28,21 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
     CAN_UNWRAP.save(deps.storage, &msg.can_unwrap)?;
-    PRIMITVE_CONTRACT.save(deps.storage, &msg.primitive_contract)?;
     let mut msgs: Vec<SubMsg> = vec![];
+    let resp = contract.instantiate(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "wrapped_cw721".to_string(),
+            operators: None,
+            modules: None,
+            primitive_contract: Some(msg.primitive_contract.clone()),
+        },
+    )?;
     match msg.cw721_instantiate_type {
         InstantiateType::Address(addr) => ANDROMEDA_CW721_ADDR.save(deps.storage, &addr)?,
         InstantiateType::New(specification) => {
@@ -45,38 +53,17 @@ pub fn instantiate(
                 minter: env.contract.address.to_string(),
                 primitive_contract: msg.primitive_contract,
             };
-            let factory_address =
-                get_address(deps.storage, deps.querier, AndromedaContract::Factory)?;
-            let code_id: u64 = query_get(
-                Some(encode_binary(&"cw721")?),
-                factory_address,
+            let msg = contract.generate_instantiate_msg(
+                deps.storage,
                 &deps.querier,
+                1,
+                encode_binary(&instantiate_msg)?,
+                "cw721".to_string(),
             )?;
-            let msg: SubMsg = SubMsg {
-                id: 1,
-                reply_on: ReplyOn::Always,
-                msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                    admin: None,
-                    code_id,
-                    msg: encode_binary(&instantiate_msg)?,
-                    funds: vec![],
-                    label: "Instantiate: andromeda_cw721".to_string(),
-                }),
-                gas_limit: None,
-            };
             msgs.push(msg);
         }
     }
-    Ok(ADOContract::default()
-        .instantiate(
-            deps,
-            info,
-            BaseInstantiateMsg {
-                ado_type: "wrapped_cw721".to_string(),
-                operators: None,
-            },
-        )?
-        .add_submessages(msgs))
+    Ok(resp.add_submessages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -269,7 +256,10 @@ mod tests {
         },
         wrapped_cw721::Cw721Specification,
     };
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env, mock_info},
+        CosmosMsg, ReplyOn,
+    };
 
     #[test]
     fn test_instantiate_address() {
@@ -334,7 +324,7 @@ mod tests {
                 code_id: 4,
                 msg: encode_binary(&cw721_insantiate_msg).unwrap(),
                 funds: vec![],
-                label: "Instantiate: andromeda_cw721".to_string(),
+                label: "Instantiate: cw721".to_string(),
             }),
             gas_limit: None,
         };

@@ -180,6 +180,7 @@ impl WasmMockQuerier {
                     "rates" => 2,
                     "address_list" => 3,
                     "cw721" => 4,
+                    "swapper_impl" => 5,
                     _ => 0,
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&code_id).unwrap()))

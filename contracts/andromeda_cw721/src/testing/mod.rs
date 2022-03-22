@@ -154,7 +154,16 @@ fn test_instantiate_modules() {
             gas_limit: None,
         },
     ];
-    assert_eq!(Response::new().add_submessages(msgs), res);
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "register_module")
+            .add_attribute("action", "register_module")
+            .add_attribute("action", "register_module")
+            .add_attribute("method", "instantiate")
+            .add_attribute("type", "cw721")
+            .add_submessages(msgs),
+        res
+    );
 }
 
 #[test]

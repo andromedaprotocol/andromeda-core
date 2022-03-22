@@ -54,11 +54,15 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     contract.instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "mirror".to_string(),
             operators: msg.operators,
+            modules: None,
+            primitive_contract: None,
         },
     )
 }

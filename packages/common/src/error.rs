@@ -61,7 +61,7 @@ pub enum ContractError {
     #[error("NoReceivingAddress")]
     NoReceivingAddress {},
 
-    #[error("ModuleDiscriptionTooLong")]
+    #[error("ModuleDiscriptionTooLong: {msg}")]
     ModuleDiscriptionTooLong { msg: String },
 
     #[error("SymbolInUse")]
@@ -76,7 +76,7 @@ pub enum ContractError {
     #[error("FundsAreLocked")]
     FundsAreLocked {},
 
-    #[error("InvalidTokenNameLength")]
+    #[error("InvalidTokenNameLength: {msg}")]
     InvalidTokenNameLength { msg: String },
 
     #[error("TokenIsArchived")]
@@ -118,7 +118,7 @@ pub enum ContractError {
     #[error("HighestBidderCannotOutBid")]
     HighestBidderCannotOutBid {},
 
-    #[error("InvalidFunds")]
+    #[error("InvalidFunds: {msg}")]
     InvalidFunds { msg: String },
 
     #[error("AuctionRewardAlreadyClaimed")]
@@ -142,14 +142,8 @@ pub enum ContractError {
     #[error("InvalidReplyId")]
     InvalidReplyId {},
 
-    #[error("InvalidJSON")]
-    InvalidJSON {},
-
-    #[error("ParsingError")]
+    #[error("ParsingError: {err}")]
     ParsingError { err: String },
-
-    #[error("InvalidJSONField")]
-    InvalidJSONField { key: String, expected: String },
 
     #[error("MissingRequiredMessageData")]
     MissingRequiredMessageData {},
@@ -197,7 +191,7 @@ pub enum ContractError {
     #[error("UnsupportedOperation")]
     UnsupportedOperation {},
 
-    #[error("IncompatibleModules")]
+    #[error("IncompatibleModules: {msg}")]
     IncompatibleModules { msg: String },
 
     #[error("ModuleDoesNotExist")]
@@ -230,14 +224,44 @@ pub enum ContractError {
     #[error("InvalidMetadata")]
     InvalidMetadata {},
 
-    #[error("InvalidRecipientType")]
+    #[error("InvalidRecipientType: {msg}")]
     InvalidRecipientType { msg: String },
 
-    #[error("InvalidTokensToWithdraw")]
+    #[error("InvalidTokensToWithdraw: {msg}")]
     InvalidTokensToWithdraw { msg: String },
 
     #[error("ModuleImmutable")]
     ModuleImmutable {},
+
+    #[error("InvalidLtvRatio: {msg}")]
+    InvalidLtvRatio { msg: String },
+
+    #[error("No Ongoing Sale")]
+    NoOngoingSale {},
+
+    #[error("Token not for sale")]
+    TokenNotForSale {},
+
+    #[error("Token already purchased")]
+    TokenAlreadyPurchased {},
+
+    #[error("Purchase limit reached")]
+    PurchaseLimitReached {},
+
+    #[error("Sale not ended")]
+    SaleNotEnded {},
+
+    #[error("Min sales exceeded")]
+    MinSalesExceeded {},
+
+    #[error("Limit must not be zero")]
+    LimitMustNotBeZero {},
+
+    #[error("Sale has already started")]
+    SaleStarted {},
+
+    #[error("No purchases")]
+    NoPurchases {},
 }
 
 impl From<Cw20ContractError> for ContractError {

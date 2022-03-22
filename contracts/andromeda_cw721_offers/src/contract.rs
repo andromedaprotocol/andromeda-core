@@ -41,11 +41,15 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CW721_CONTRACT.save(deps.storage, &msg.andromeda_cw721_contract)?;
     ADOContract::default().instantiate(
-        deps,
+        deps.storage,
+        deps.api,
+        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "cw721_offers".to_string(),
             operators: None,
+            modules: None,
+            primitive_contract: None,
         },
     )
 }
@@ -141,7 +145,7 @@ fn execute_place_offer(
         },
     )?;
     let remaining_amount = res.leftover_funds.try_get_coin()?;
-    let tax_amount = get_tax_amount(&res.msgs, offer_amount - remaining_amount.amount);
+    let tax_amount = get_tax_amount(&res.msgs, offer_amount, remaining_amount.amount);
     let offer = Offer {
         purchaser: purchaser.to_owned(),
         denom: coin.denom.clone(),

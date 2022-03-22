@@ -10,7 +10,9 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 withdraw = ["cw-asset", "cw20", "terraswap"]
-modules = []
+modules = ["instantiate"]
+instantiate = ["primitive"]
+primitive = []
 
 [profile.release]
 opt-level = 3
