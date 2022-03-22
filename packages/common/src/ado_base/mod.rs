@@ -55,6 +55,8 @@ pub enum AndromedaQuery {
     Owner {},
     Operators {},
     IsOperator { address: String },
+    Module { id: Uint64 },
+    ModuleIds {},
 }
 
 /// Helper enum for serialization
