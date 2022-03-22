@@ -1,6 +1,5 @@
-use andromeda_protocol::{
-    communication::AndromedaMsg, error::ContractError, mission::MissionComponent,
-};
+use andromeda_protocol::mission::MissionComponent;
+use common::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Order, ReplyOn, Storage, SubMsg, WasmMsg};
 use cw_storage_plus::{Bound, Item, Map};
 
