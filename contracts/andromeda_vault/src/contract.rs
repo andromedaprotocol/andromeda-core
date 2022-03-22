@@ -11,7 +11,9 @@ use common::{
     error::ContractError,
     parse_message, require,
 };
-use cosmwasm_std::{entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{
+    entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128,
+};
 use cw2::{get_contract_version, set_contract_version};
 
 // version info for migration info
@@ -143,10 +145,13 @@ fn execute_deposit(
             }
         }
         Some(strategy) => {
+            let mut deposit_msgs: Vec<SubMsg> = Vec::new();
             for funds in deposited_funds {
-                let sub_msg = strategy.deposit(deps.storage, funds, &recipient.get_addr())?;
-                resp = resp.add_submessage(sub_msg)
+                let deposit_msg = strategy.deposit(deps.storage, funds, &recipient.get_addr())?;
+                // resp = resp.add_submessage(sub_msg)
+                deposit_msgs.push(deposit_msg);
             }
+            resp = resp.add_submessages(deposit_msgs)
         }
     }
 
