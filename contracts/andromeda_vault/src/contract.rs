@@ -99,7 +99,7 @@ fn execute_deposit(
     recipient: Option<Recipient>,
     strategy: Option<StrategyType>,
 ) -> Result<Response, ContractError> {
-    require(info.funds.len() > 0, ContractError::InsufficientFunds {})?;
+    require(!info.funds.is_empty(), ContractError::InsufficientFunds {})?;
     let mut resp = Response::default();
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
     // If no amount is provided then the sent funds are used as a deposit
@@ -112,7 +112,7 @@ fn execute_deposit(
                     deps.storage,
                     (recipient.get_addr(), deposit_amount.denom.clone()),
                 )?
-                .unwrap_or(Uint128::zero());
+                .unwrap_or_else(Uint128::zero);
             for funds in info.funds {
                 // Find funds in sent funds and add to current balance
                 if funds.denom == deposit_amount.denom {
@@ -181,9 +181,7 @@ fn handle_andromeda_query(
     env: Env,
     msg: AndromedaQuery,
 ) -> Result<Binary, ContractError> {
-    match msg {
-        _ => ADOContract::default().query(deps, env, msg, query),
-    }
+    ADOContract::default().query(deps, env, msg, query)
 }
 
 #[cfg(test)]
@@ -223,10 +221,7 @@ mod tests {
         let depositor = "depositor".to_string();
         let mut deps = mock_dependencies(&[]);
 
-        let info = mock_info(
-            &depositor,
-            &vec![sent_funds.clone(), extra_sent_funds.clone()],
-        );
+        let info = mock_info(&depositor, &[sent_funds.clone(), extra_sent_funds.clone()]);
         let msg = ExecuteMsg::Deposit {
             recipient: None,
             amount: None,
