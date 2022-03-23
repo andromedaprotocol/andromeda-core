@@ -1,17 +1,19 @@
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use cosmwasm_std::Uint128;
+use cw0::Expiration;
+use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Uint128;
-use cw0::Expiration;
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub cw20_token_address: String,
+    pub asset_info: AssetInfoUnchecked,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     RegisterMerkleRoot {
         /// MerkleRoot is hex-encoded merkle root.
         merkle_root: String,
@@ -26,12 +28,15 @@ pub enum ExecuteMsg {
         proof: Vec<String>,
     },
     /// Burn the remaining tokens after expire time (only owner)
-    Burn { stage: u8 },
+    Burn {
+        stage: u8,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     Config {},
     MerkleRoot { stage: u8 },
     LatestStage {},
@@ -42,7 +47,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct ConfigResponse {
-    pub cw20_token_address: String,
+    pub asset_info: AssetInfo,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

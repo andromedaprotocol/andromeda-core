@@ -180,6 +180,7 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
  "cw2 0.9.1",
@@ -235,6 +236,7 @@ dependencies = [
  "common",
  "cosmwasm-bignumber",
  "cosmwasm-std",
+ "cw-asset",
  "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
  "cw20 0.9.1",
@@ -537,6 +539,18 @@ dependencies = [
  "rand_core 0.5.1",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "cw-asset"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dda12c2ab733255cc606d638b3d893429c6da17ec96a330337fb236e7b0ca48"
+dependencies = [
+ "cosmwasm-std",
+ "cw20 0.9.1",
+ "schemars",
+ "serde",
 ]
 
 [[package]]

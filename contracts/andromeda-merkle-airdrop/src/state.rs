@@ -3,11 +3,12 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Uint128};
 use cw0::Expiration;
+use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map, U8Key};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    pub cw20_token_address: Addr,
+    pub asset_info: AssetInfo,
 }
 
 pub const CONFIG_KEY: &str = "config";
