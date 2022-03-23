@@ -397,9 +397,11 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
  "cw20 0.9.1",
  "cw20-base",
  "cw721-base",
+ "hex",
  "schemars",
  "serde",
  "thiserror",

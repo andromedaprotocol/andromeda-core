@@ -59,7 +59,6 @@ pub struct MerkleRootResponse {
     /// MerkleRoot is hex-encoded merkle root.
     pub merkle_root: String,
     pub expiration: Expiration,
-    pub start: Option<Scheduled>,
     pub total_amount: Uint128,
 }
 

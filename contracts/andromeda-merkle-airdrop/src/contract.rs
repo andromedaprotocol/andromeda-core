@@ -7,10 +7,10 @@ use cosmwasm_std::{
 use cw0::Expiration;
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
+use cw_storage_plus::U8Key;
 use sha2::Digest;
 use std::convert::TryInto;
 
-use crate::error::ContractError;
 use crate::state::{
     Config, CLAIM, CONFIG, LATEST_STAGE, MERKLE_ROOT, STAGE_AMOUNT, STAGE_AMOUNT_CLAIMED,
     STAGE_EXPIRATION,
@@ -19,6 +19,7 @@ use andromeda_protocol::airdrop::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, IsClaimedResponse, LatestStageResponse,
     MerkleRootResponse, MigrateMsg, QueryMsg, TotalClaimedResponse,
 };
+use common::error::ContractError;
 
 // Version info, for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-merkle-airdrop";
@@ -61,17 +62,8 @@ pub fn execute(
         ExecuteMsg::RegisterMerkleRoot {
             merkle_root,
             expiration,
-            start,
             total_amount,
-        } => execute_register_merkle_root(
-            deps,
-            env,
-            info,
-            merkle_root,
-            expiration,
-            start,
-            total_amount,
-        ),
+        } => execute_register_merkle_root(deps, env, info, merkle_root, expiration, total_amount),
         ExecuteMsg::Claim {
             stage,
             amount,
@@ -114,7 +106,6 @@ pub fn execute_register_merkle_root(
     info: MessageInfo,
     merkle_root: String,
     expiration: Option<Expiration>,
-    start: Option<Scheduled>,
     total_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
@@ -131,22 +122,17 @@ pub fn execute_register_merkle_root(
 
     let stage = LATEST_STAGE.update(deps.storage, |stage| -> StdResult<_> { Ok(stage + 1) })?;
 
-    MERKLE_ROOT.save(deps.storage, stage, &merkle_root)?;
+    MERKLE_ROOT.save(deps.storage, stage.into(), &merkle_root)?;
     LATEST_STAGE.save(deps.storage, &stage)?;
 
     // save expiration
     let exp = expiration.unwrap_or(Expiration::Never {});
-    STAGE_EXPIRATION.save(deps.storage, stage, &exp)?;
-
-    // save start
-    if let Some(start) = start {
-        STAGE_START.save(deps.storage, stage, &start)?;
-    }
+    STAGE_EXPIRATION.save(deps.storage, stage.into(), &exp)?;
 
     // save total airdropped amount
     let amount = total_amount.unwrap_or_else(Uint128::zero);
-    STAGE_AMOUNT.save(deps.storage, stage, &amount)?;
-    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &Uint128::zero())?;
+    STAGE_AMOUNT.save(deps.storage, stage.into(), &amount)?;
+    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage.into(), &Uint128::zero())?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "register_merkle_root"),
@@ -164,27 +150,20 @@ pub fn execute_claim(
     amount: Uint128,
     proof: Vec<String>,
 ) -> Result<Response, ContractError> {
-    // airdrop begun
-    let start = STAGE_START.may_load(deps.storage, stage)?;
-    if let Some(start) = start {
-        if !start.is_triggered(&env.block) {
-            return Err(ContractError::StageNotBegun { stage, start });
-        }
-    }
     // not expired
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
     if expiration.is_expired(&env.block) {
         return Err(ContractError::StageExpired { stage, expiration });
     }
 
     // verify not claimed
-    let claimed = CLAIM.may_load(deps.storage, (&info.sender, stage))?;
+    let claimed = CLAIM.may_load(deps.storage, (&info.sender, stage.into()))?;
     if claimed.is_some() {
         return Err(ContractError::Claimed {});
     }
 
     let config = CONFIG.load(deps.storage)?;
-    let merkle_root = MERKLE_ROOT.load(deps.storage, stage)?;
+    let merkle_root = MERKLE_ROOT.load(deps.storage, stage.into())?;
 
     let user_input = format!("{}{}", info.sender, amount);
     let hash = sha2::Sha256::digest(user_input.as_bytes())
@@ -210,12 +189,12 @@ pub fn execute_claim(
     }
 
     // Update claim index to the current stage
-    CLAIM.save(deps.storage, (&info.sender, stage), &true)?;
+    CLAIM.save(deps.storage, (&info.sender, stage.into()), &true)?;
 
     // Update total claimed to reflect
-    let mut claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
+    let mut claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage.into())?;
     claimed_amount += amount;
-    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &claimed_amount)?;
+    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage.into(), &claimed_amount)?;
 
     let res = Response::new()
         .add_message(WasmMsg::Execute {
@@ -249,14 +228,14 @@ pub fn execute_burn(
     }
 
     // make sure is expired
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
     if !expiration.is_expired(&env.block) {
         return Err(ContractError::StageNotExpired { stage, expiration });
     }
 
     // Get total amount per stage and total claimed
-    let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
-    let claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
+    let total_amount = STAGE_AMOUNT.load(deps.storage, stage.into())?;
+    let claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage.into())?;
 
     // impossible but who knows
     if claimed_amount > total_amount {
@@ -306,16 +285,14 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 }
 
 pub fn query_merkle_root(deps: Deps, stage: u8) -> StdResult<MerkleRootResponse> {
-    let merkle_root = MERKLE_ROOT.load(deps.storage, stage)?;
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    let start = STAGE_START.may_load(deps.storage, stage)?;
-    let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
+    let merkle_root = MERKLE_ROOT.load(deps.storage, stage.into())?;
+    let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
+    let total_amount = STAGE_AMOUNT.load(deps.storage, stage.into())?;
 
     let resp = MerkleRootResponse {
         stage,
         merkle_root,
         expiration,
-        start,
         total_amount,
     };
 
@@ -330,7 +307,7 @@ pub fn query_latest_stage(deps: Deps) -> StdResult<LatestStageResponse> {
 }
 
 pub fn query_is_claimed(deps: Deps, stage: u8, address: String) -> StdResult<IsClaimedResponse> {
-    let key: (&Addr, u8) = (&deps.api.addr_validate(&address)?, stage);
+    let key: (&Addr, U8Key) = (&deps.api.addr_validate(&address)?, U8Key::from(stage));
     let is_claimed = CLAIM.may_load(deps.storage, key)?.unwrap_or(false);
     let resp = IsClaimedResponse { is_claimed };
 
@@ -338,7 +315,7 @@ pub fn query_is_claimed(deps: Deps, stage: u8, address: String) -> StdResult<IsC
 }
 
 pub fn query_total_claimed(deps: Deps, stage: u8) -> StdResult<TotalClaimedResponse> {
-    let total_claimed = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
+    let total_claimed = STAGE_AMOUNT_CLAIMED.load(deps.storage, U8Key::from(stage))?;
     let resp = TotalClaimedResponse { total_claimed };
 
     Ok(resp)
@@ -364,7 +341,7 @@ mod tests {
 
     #[test]
     fn proper_instantiation() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
             owner: Some("owner0000".to_string()),
@@ -390,7 +367,7 @@ mod tests {
 
     #[test]
     fn update_config() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
             owner: None,
@@ -427,7 +404,7 @@ mod tests {
 
     #[test]
     fn register_merkle_root() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
             owner: Some("owner0000".to_string()),
@@ -445,7 +422,7 @@ mod tests {
             merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37"
                 .to_string(),
             expiration: None,
-            start: None,
+
             total_amount: None,
         };
 
@@ -496,7 +473,7 @@ mod tests {
     #[test]
     fn claim() {
         // Run test 1
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
@@ -513,7 +490,7 @@ mod tests {
         let msg = ExecuteMsg::RegisterMerkleRoot {
             merkle_root: test_data.root,
             expiration: None,
-            start: None,
+
             total_amount: None,
         };
         let _res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -593,7 +570,7 @@ mod tests {
         let msg = ExecuteMsg::RegisterMerkleRoot {
             merkle_root: test_data.root,
             expiration: None,
-            start: None,
+
             total_amount: None,
         };
         let _res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -660,7 +637,7 @@ mod tests {
     #[test]
     fn multiple_claim() {
         // Run test 1
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let test_data: MultipleData = from_slice(TEST_DATA_1_MULTI).unwrap();
 
         let msg = InstantiateMsg {
@@ -677,7 +654,7 @@ mod tests {
         let msg = ExecuteMsg::RegisterMerkleRoot {
             merkle_root: test_data.root,
             expiration: None,
-            start: None,
+
             total_amount: None,
         };
         let _res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -730,7 +707,7 @@ mod tests {
     // Check expiration. Chain height in tests is 12345
     #[test]
     fn stage_expires() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
             owner: Some("owner0000".to_string()),
@@ -748,7 +725,7 @@ mod tests {
             merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc"
                 .to_string(),
             expiration: Some(Expiration::AtHeight(100)),
-            start: None,
+
             total_amount: None,
         };
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -772,7 +749,7 @@ mod tests {
 
     #[test]
     fn cant_burn() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
             owner: Some("owner0000".to_string()),
@@ -790,7 +767,7 @@ mod tests {
             merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc"
                 .to_string(),
             expiration: Some(Expiration::AtHeight(12346)),
-            start: None,
+
             total_amount: Some(Uint128::new(100000)),
         };
         execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -810,7 +787,7 @@ mod tests {
 
     #[test]
     fn can_burn() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
@@ -826,7 +803,7 @@ mod tests {
         let msg = ExecuteMsg::RegisterMerkleRoot {
             merkle_root: test_data.root,
             expiration: Some(Expiration::AtHeight(12500)),
-            start: None,
+
             total_amount: Some(Uint128::new(10000)),
         };
         execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -892,50 +869,8 @@ mod tests {
     }
 
     #[test]
-    fn stage_starts() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            owner: Some("owner0000".to_string()),
-            cw20_token_address: "token0000".to_string(),
-        };
-
-        let env = mock_env();
-        let info = mock_info("addr0000", &[]);
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        // can register merkle root
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc"
-                .to_string(),
-            expiration: None,
-            start: Some(Scheduled::AtHeight(200_000)),
-            total_amount: None,
-        };
-        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        // can't claim expired
-        let msg = ExecuteMsg::Claim {
-            amount: Uint128::new(5),
-            stage: 1u8,
-            proof: vec![],
-        };
-
-        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(
-            res,
-            ContractError::StageNotBegun {
-                stage: 1,
-                start: Scheduled::AtHeight(200_000)
-            }
-        )
-    }
-
-    #[test]
     fn owner_freeze() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
             owner: Some("owner0000".to_string()),
@@ -953,7 +888,7 @@ mod tests {
             merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc"
                 .to_string(),
             expiration: None,
-            start: None,
+
             total_amount: None,
         };
         let _res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -983,7 +918,6 @@ mod tests {
             merkle_root: "ebaa83c7eaf7467c378d2f37b5e46752d904d2d17acd380b24b02e3b398b3e5a"
                 .to_string(),
             expiration: None,
-            start: None,
             total_amount: None,
         };
         let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
@@ -996,7 +930,7 @@ mod tests {
             merkle_root: "ebaa83c7eaf7467c378d2f37b5e46752d904d2d17acd380b24b02e3b398b3e5a"
                 .to_string(),
             expiration: None,
-            start: None,
+
             total_amount: None,
         };
         let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
