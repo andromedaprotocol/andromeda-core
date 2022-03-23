@@ -134,15 +134,16 @@ pub fn execute_claim(
 ) -> Result<Response, ContractError> {
     // not expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
-    if expiration.is_expired(&env.block) {
-        return Err(ContractError::StageExpired { stage, expiration });
-    }
+    require(
+        !expiration.is_expired(&env.block),
+        ContractError::StageExpired { stage, expiration },
+    )?;
 
     // verify not claimed
-    let claimed = CLAIM.may_load(deps.storage, (&info.sender, stage.into()))?;
-    if claimed.is_some() {
-        return Err(ContractError::Claimed {});
-    }
+    require(
+        !CLAIM.has(deps.storage, (&info.sender, stage.into())),
+        ContractError::Claimed {},
+    )?;
 
     let config = CONFIG.load(deps.storage)?;
     let merkle_root = MERKLE_ROOT.load(deps.storage, stage.into())?;
@@ -166,9 +167,7 @@ pub fn execute_claim(
 
     let mut root_buf: [u8; 32] = [0; 32];
     hex::decode_to_slice(merkle_root, &mut root_buf)?;
-    if root_buf != hash {
-        return Err(ContractError::VerificationFailed {});
-    }
+    require(root_buf == hash, ContractError::VerificationFailed {})?;
 
     // Update claim index to the current stage
     CLAIM.save(deps.storage, (&info.sender, stage.into()), &true)?;
