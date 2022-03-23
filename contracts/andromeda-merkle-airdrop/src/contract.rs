@@ -15,11 +15,14 @@ use crate::state::{
     Config, CLAIM, CONFIG, LATEST_STAGE, MERKLE_ROOT, STAGE_AMOUNT, STAGE_AMOUNT_CLAIMED,
     STAGE_EXPIRATION,
 };
+use ado_base::ADOContract;
 use andromeda_protocol::airdrop::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, IsClaimedResponse, LatestStageResponse,
     MerkleRootResponse, MigrateMsg, QueryMsg, TotalClaimedResponse,
 };
-use common::error::ContractError;
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
+};
 
 // Version info, for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-merkle-airdrop";
@@ -31,15 +34,10 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = msg
-        .owner
-        .map_or(Ok(info.sender), |o| deps.api.addr_validate(&o))?;
-
     let config = Config {
-        owner: Some(owner),
         cw20_token_address: deps.api.addr_validate(&msg.cw20_token_address)?,
     };
     CONFIG.save(deps.storage, &config)?;
@@ -47,7 +45,18 @@ pub fn instantiate(
     let stage = 0;
     LATEST_STAGE.save(deps.storage, &stage)?;
 
-    Ok(Response::default())
+    ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "merkle_airdrop".to_string(),
+            operators: None,
+            modules: None,
+            primitive_contract: None,
+        },
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -58,7 +67,6 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::UpdateConfig { new_owner } => execute_update_config(deps, env, info, new_owner),
         ExecuteMsg::RegisterMerkleRoot {
             merkle_root,
             expiration,
@@ -73,33 +81,6 @@ pub fn execute(
     }
 }
 
-pub fn execute_update_config(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    new_owner: Option<String>,
-) -> Result<Response, ContractError> {
-    // authorize owner
-    let cfg = CONFIG.load(deps.storage)?;
-    let owner = cfg.owner.ok_or(ContractError::Unauthorized {})?;
-    if info.sender != owner {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    // if owner some validated to addr, otherwise set to none
-    let mut tmp_owner = None;
-    if let Some(addr) = new_owner {
-        tmp_owner = Some(deps.api.addr_validate(&addr)?)
-    }
-
-    CONFIG.update(deps.storage, |mut exists| -> StdResult<_> {
-        exists.owner = tmp_owner;
-        Ok(exists)
-    })?;
-
-    Ok(Response::new().add_attribute("action", "update_config"))
-}
-
 pub fn execute_register_merkle_root(
     deps: DepsMut,
     _env: Env,
@@ -108,13 +89,10 @@ pub fn execute_register_merkle_root(
     expiration: Option<Expiration>,
     total_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let cfg = CONFIG.load(deps.storage)?;
-
-    // if owner set validate, otherwise unauthorized
-    let owner = cfg.owner.ok_or(ContractError::Unauthorized {})?;
-    if info.sender != owner {
-        return Err(ContractError::Unauthorized {});
-    }
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
 
     // check merkle root length
     let mut root_buf: [u8; 32] = [0; 32];
@@ -220,27 +198,28 @@ pub fn execute_burn(
     info: MessageInfo,
     stage: u8,
 ) -> Result<Response, ContractError> {
-    // authorize owner
     let cfg = CONFIG.load(deps.storage)?;
-    let owner = cfg.owner.ok_or(ContractError::Unauthorized {})?;
-    if info.sender != owner {
-        return Err(ContractError::Unauthorized {});
-    }
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
 
     // make sure is expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
-    if !expiration.is_expired(&env.block) {
-        return Err(ContractError::StageNotExpired { stage, expiration });
-    }
+    require(
+        expiration.is_expired(&env.block),
+        ContractError::StageNotExpired { stage, expiration },
+    )?;
 
     // Get total amount per stage and total claimed
     let total_amount = STAGE_AMOUNT.load(deps.storage, stage.into())?;
     let claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage.into())?;
 
     // impossible but who knows
-    if claimed_amount > total_amount {
-        return Err(ContractError::Unauthorized {});
-    }
+    require(
+        claimed_amount <= total_amount,
+        ContractError::Unauthorized {},
+    )?;
 
     // Get balance
     let balance_to_burn = total_amount - claimed_amount;
@@ -264,27 +243,26 @@ pub fn execute_burn(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::MerkleRoot { stage } => to_binary(&query_merkle_root(deps, stage)?),
-        QueryMsg::LatestStage {} => to_binary(&query_latest_stage(deps)?),
+        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+        QueryMsg::MerkleRoot { stage } => encode_binary(&query_merkle_root(deps, stage)?),
+        QueryMsg::LatestStage {} => encode_binary(&query_latest_stage(deps)?),
         QueryMsg::IsClaimed { stage, address } => {
-            to_binary(&query_is_claimed(deps, stage, address)?)
+            encode_binary(&query_is_claimed(deps, stage, address)?)
         }
-        QueryMsg::TotalClaimed { stage } => to_binary(&query_total_claimed(deps, stage)?),
+        QueryMsg::TotalClaimed { stage } => encode_binary(&query_total_claimed(deps, stage)?),
     }
 }
 
-pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse {
-        owner: cfg.owner.map(|o| o.to_string()),
         cw20_token_address: cfg.cw20_token_address.to_string(),
     })
 }
 
-pub fn query_merkle_root(deps: Deps, stage: u8) -> StdResult<MerkleRootResponse> {
+pub fn query_merkle_root(deps: Deps, stage: u8) -> Result<MerkleRootResponse, ContractError> {
     let merkle_root = MERKLE_ROOT.load(deps.storage, stage.into())?;
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
     let total_amount = STAGE_AMOUNT.load(deps.storage, stage.into())?;
@@ -299,14 +277,18 @@ pub fn query_merkle_root(deps: Deps, stage: u8) -> StdResult<MerkleRootResponse>
     Ok(resp)
 }
 
-pub fn query_latest_stage(deps: Deps) -> StdResult<LatestStageResponse> {
+pub fn query_latest_stage(deps: Deps) -> Result<LatestStageResponse, ContractError> {
     let latest_stage = LATEST_STAGE.load(deps.storage)?;
     let resp = LatestStageResponse { latest_stage };
 
     Ok(resp)
 }
 
-pub fn query_is_claimed(deps: Deps, stage: u8, address: String) -> StdResult<IsClaimedResponse> {
+pub fn query_is_claimed(
+    deps: Deps,
+    stage: u8,
+    address: String,
+) -> Result<IsClaimedResponse, ContractError> {
     let key: (&Addr, U8Key) = (&deps.api.addr_validate(&address)?, U8Key::from(stage));
     let is_claimed = CLAIM.may_load(deps.storage, key)?.unwrap_or(false);
     let resp = IsClaimedResponse { is_claimed };
@@ -314,7 +296,7 @@ pub fn query_is_claimed(deps: Deps, stage: u8, address: String) -> StdResult<IsC
     Ok(resp)
 }
 
-pub fn query_total_claimed(deps: Deps, stage: u8) -> StdResult<TotalClaimedResponse> {
+pub fn query_total_claimed(deps: Deps, stage: u8) -> Result<TotalClaimedResponse, ContractError> {
     let total_claimed = STAGE_AMOUNT_CLAIMED.load(deps.storage, U8Key::from(stage))?;
     let resp = TotalClaimedResponse { total_claimed };
 
@@ -344,12 +326,11 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
-            owner: Some("owner0000".to_string()),
             cw20_token_address: "anchor0000".to_string(),
         };
 
         let env = mock_env();
-        let info = mock_info("addr0000", &[]);
+        let info = mock_info("owner0000", &[]);
 
         // we can just call .unwrap() to assert this was a success
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -357,7 +338,14 @@ mod tests {
         // it worked, let's query the state
         let res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
         let config: ConfigResponse = from_binary(&res).unwrap();
-        assert_eq!("owner0000", config.owner.unwrap().as_str());
+        assert_eq!(
+            "owner0000",
+            ADOContract::default()
+                .owner
+                .load(deps.as_ref().storage)
+                .unwrap()
+                .to_string()
+        );
         assert_eq!("anchor0000", config.cw20_token_address.as_str());
 
         let res = query(deps.as_ref(), env, QueryMsg::LatestStage {}).unwrap();
@@ -366,53 +354,15 @@ mod tests {
     }
 
     #[test]
-    fn update_config() {
-        let mut deps = mock_dependencies(&[]);
-
-        let msg = InstantiateMsg {
-            owner: None,
-            cw20_token_address: "anchor0000".to_string(),
-        };
-
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        // update owner
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::UpdateConfig {
-            new_owner: Some("owner0001".to_string()),
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // it worked, let's query the state
-        let res = query(deps.as_ref(), env, QueryMsg::Config {}).unwrap();
-        let config: ConfigResponse = from_binary(&res).unwrap();
-        assert_eq!("owner0001", config.owner.unwrap().as_str());
-
-        // Unauthorized err
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::UpdateConfig { new_owner: None };
-
-        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(res, ContractError::Unauthorized {});
-    }
-
-    #[test]
     fn register_merkle_root() {
         let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
-            owner: Some("owner0000".to_string()),
             cw20_token_address: "anchor0000".to_string(),
         };
 
         let env = mock_env();
-        let info = mock_info("addr0000", &[]);
+        let info = mock_info("owner0000", &[]);
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         // register new merkle root
@@ -477,12 +427,11 @@ mod tests {
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
-            owner: Some("owner0000".to_string()),
             cw20_token_address: "token0000".to_string(),
         };
 
         let env = mock_env();
-        let info = mock_info("addr0000", &[]);
+        let info = mock_info("owner0000", &[]);
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let env = mock_env();
@@ -641,12 +590,11 @@ mod tests {
         let test_data: MultipleData = from_slice(TEST_DATA_1_MULTI).unwrap();
 
         let msg = InstantiateMsg {
-            owner: Some("owner0000".to_string()),
             cw20_token_address: "token0000".to_string(),
         };
 
         let env = mock_env();
-        let info = mock_info("addr0000", &[]);
+        let info = mock_info("owner0000", &[]);
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let env = mock_env();
@@ -710,12 +658,11 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
-            owner: Some("owner0000".to_string()),
             cw20_token_address: "token0000".to_string(),
         };
 
         let env = mock_env();
-        let info = mock_info("addr0000", &[]);
+        let info = mock_info("owner0000", &[]);
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         // can register merkle root
@@ -752,12 +699,11 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
-            owner: Some("owner0000".to_string()),
             cw20_token_address: "token0000".to_string(),
         };
 
         let env = mock_env();
-        let info = mock_info("addr0000", &[]);
+        let info = mock_info("owner0000", &[]);
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         // can register merkle root
@@ -791,12 +737,11 @@ mod tests {
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
-            owner: Some("owner0000".to_string()),
             cw20_token_address: "token0000".to_string(),
         };
 
         let mut env = mock_env();
-        let info = mock_info("addr0000", &[]);
+        let info = mock_info("owner0000", &[]);
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let info = mock_info("owner0000", &[]);
@@ -866,74 +811,5 @@ mod tests {
                 attr("amount", Uint128::new(9900)),
             ]
         );
-    }
-
-    #[test]
-    fn owner_freeze() {
-        let mut deps = mock_dependencies(&[]);
-
-        let msg = InstantiateMsg {
-            owner: Some("owner0000".to_string()),
-            cw20_token_address: "token0000".to_string(),
-        };
-
-        let env = mock_env();
-        let info = mock_info("addr0000", &[]);
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        // can register merkle root
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc"
-                .to_string(),
-            expiration: None,
-
-            total_amount: None,
-        };
-        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-        // can update owner
-        let env = mock_env();
-        let info = mock_info("owner0000", &[]);
-        let msg = ExecuteMsg::UpdateConfig {
-            new_owner: Some("owner0001".to_string()),
-        };
-
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // freeze contract
-        let env = mock_env();
-        let info = mock_info("owner0001", &[]);
-        let msg = ExecuteMsg::UpdateConfig { new_owner: None };
-
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // cannot register new drop
-        let env = mock_env();
-        let info = mock_info("owner0001", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: "ebaa83c7eaf7467c378d2f37b5e46752d904d2d17acd380b24b02e3b398b3e5a"
-                .to_string(),
-            expiration: None,
-            total_amount: None,
-        };
-        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(res, ContractError::Unauthorized {});
-
-        // cannot update config
-        let env = mock_env();
-        let info = mock_info("owner0001", &[]);
-        let msg = ExecuteMsg::RegisterMerkleRoot {
-            merkle_root: "ebaa83c7eaf7467c378d2f37b5e46752d904d2d17acd380b24b02e3b398b3e5a"
-                .to_string(),
-            expiration: None,
-
-            total_amount: None,
-        };
-        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(res, ContractError::Unauthorized {});
     }
 }
