@@ -638,7 +638,7 @@ mod tests {
 
         let env = mock_env();
         let info = mock_info(test_data.account.as_str(), &[]);
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         let expected = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: test_data.account.clone(),
             amount: vec![Coin {
@@ -678,7 +678,7 @@ mod tests {
             from_binary::<IsClaimedResponse>(
                 &query(
                     deps.as_ref(),
-                    env.clone(),
+                    env,
                     QueryMsg::IsClaimed {
                         stage: 1,
                         address: test_data.account
