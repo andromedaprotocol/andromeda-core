@@ -95,7 +95,7 @@ dependencies = [
  "andromeda-protocol",
  "common",
  "cosmwasm-std",
- "cw-storage-plus 0.8.1",
+ "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
  "cw721",
  "schemars",
@@ -169,6 +169,26 @@ dependencies = [
  "schemars",
  "serde",
  "terra-cosmwasm",
+]
+
+[[package]]
+name = "andromeda-merkle-airdrop"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-protocol",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "cw2 0.9.1",
+ "cw20 0.9.1",
+ "hex",
+ "schemars",
+ "serde",
+ "sha2",
+ "thiserror",
 ]
 
 [[package]]
