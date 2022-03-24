@@ -169,9 +169,10 @@ fn test_mint_owner_not_crowdfund() {
         },
     }));
     let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(ContractError::OwnerMustBeCrowdFund {}, res.unwrap_err());
+    // Since token was minted to owner that is not the contract, it is not available for sale.
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, "token_id"));
 }
 
 #[test]

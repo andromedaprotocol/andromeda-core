@@ -105,12 +105,13 @@ fn execute_mint(
         STATE.may_load(deps.storage)?.is_none(),
         ContractError::SaleStarted {},
     )?;
-    require(
-        mint_msg.owner == env.contract.address,
-        ContractError::OwnerMustBeCrowdFund {},
-    )?;
-    // Mark token as available to purchase in next sale.
-    AVAILABLE_TOKENS.save(deps.storage, &mint_msg.token_id, &true)?;
+    // We allow for owners other than the contract, incase the creator wants to set aside a few
+    // tokens for some other use, say airdrop, team allocation, etc.  Only those which have the
+    // contract as the owner will be available to sell.
+    if mint_msg.owner == env.contract.address {
+        // Mark token as available to purchase in next sale.
+        AVAILABLE_TOKENS.save(deps.storage, &mint_msg.token_id, &true)?;
+    }
     let config = CONFIG.load(deps.storage)?;
     let mission_contract = contract.get_mission_contract(deps.storage)?;
     let contract_addr =
@@ -331,7 +332,6 @@ fn issue_refunds_and_burn_tokens(
         .map(|(_v, p)| p)
         .collect();
     for purchase_vec in purchases.iter() {
-        // Remove from UNAVAILABLE_TOKENS.
         let refund_msg = process_refund(deps.storage, purchase_vec, &state.price);
         if let Some(refund_msg) = refund_msg {
             refund_msgs.push(refund_msg);
@@ -539,7 +539,7 @@ fn get_burn_messages(
     tokens_to_burn
         .into_iter()
         .map(|token_id| {
-            // Any token that is burnable has been added to this map.
+            // Any token that is burnable has been added to this map, and so must be removed.
             AVAILABLE_TOKENS.remove(storage, &token_id);
             Ok(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: token_address.clone(),

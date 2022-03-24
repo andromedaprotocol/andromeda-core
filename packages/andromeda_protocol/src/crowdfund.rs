@@ -34,7 +34,7 @@ pub enum ExecuteMsg {
         /// The recipient of the funds if the sale met the minimum sold.
         recipient: Recipient,
     },
-    /// Puchases an token in an ongoing sale.
+    /// Puchases a token in an ongoing sale.
     Purchase {
         token_id: String,
     },

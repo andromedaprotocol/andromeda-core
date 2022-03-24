@@ -265,9 +265,6 @@ pub enum ContractError {
 
     #[error("No purchases")]
     NoPurchases {},
-
-    #[error("Owner must be crowdfund")]
-    OwnerMustBeCrowdFund {},
 }
 
 impl From<Cw20ContractError> for ContractError {
