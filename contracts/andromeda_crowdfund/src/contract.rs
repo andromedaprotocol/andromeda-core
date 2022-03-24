@@ -294,9 +294,6 @@ fn issue_refunds_and_burn_tokens(
         .collect();
     for purchase_vec in purchases.iter() {
         // Remove from UNAVAILABLE_TOKENS.
-        for purchase in purchase_vec.iter() {
-            UNAVAILABLE_TOKENS.remove(deps.storage, &purchase.token_id);
-        }
         let refund_msg = process_refund(deps.storage, purchase_vec, &state.price);
         if let Some(refund_msg) = refund_msg {
             refund_msgs.push(refund_msg);
@@ -458,7 +455,10 @@ fn process_refund(
     let amount = purchases
         .iter()
         // This represents the total amount of funds they sent for each purchase.
-        .map(|p| p.tax_amount + price.amount)
+        .map(|p| {
+            UNAVAILABLE_TOKENS.remove(storage, &p.token_id);
+            p.tax_amount + price.amount
+        })
         // Adds up all of the purchases.
         .reduce(|accum, item| accum + item)
         .unwrap_or_else(Uint128::zero);

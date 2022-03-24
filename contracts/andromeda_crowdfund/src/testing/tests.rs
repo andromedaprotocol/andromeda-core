@@ -693,8 +693,8 @@ fn test_integration_conditions_not_met() {
         get_burn_message(MOCK_TOKENS_FOR_SALE[0]),
         get_burn_message(MOCK_TOKENS_FOR_SALE[1]),
         get_burn_message(MOCK_TOKENS_FOR_SALE[2]),
-        // Tokens that were not sold.
         get_burn_message(MOCK_TOKENS_FOR_SALE[3]),
+        // Tokens that were not sold.
         get_burn_message(MOCK_TOKENS_FOR_SALE[4]),
         get_burn_message(MOCK_TOKENS_FOR_SALE[5]),
         get_burn_message(MOCK_TOKENS_FOR_SALE[6]),
@@ -710,6 +710,11 @@ fn test_integration_conditions_not_met() {
 
     assert!(!PURCHASES.has(deps.as_ref().storage, "A"));
     assert!(!PURCHASES.has(deps.as_ref().storage, "C"));
+
+    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
+    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
 }
 
 #[test]
@@ -915,6 +920,13 @@ fn test_integration_conditions_met() {
 
     state.amount_to_send = Uint128::zero();
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+
+    // The map has been emptied by the end.
+    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
+    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
+    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
 }
 
 #[test]
