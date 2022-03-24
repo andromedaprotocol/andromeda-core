@@ -1,27 +1,25 @@
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, Coin, CosmosMsg, DepsMut, Env, Event, ReplyOn, Response, StdError, SubMsg,
-    Uint128, WasmMsg,
+    to_binary, Addr, Coin, CosmosMsg, DepsMut, Env, Event, Response, StdError, SubMsg, Uint128,
+    WasmMsg,
 };
 
-use ado_base::ADOContract;
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        modules::{InstantiateType, Module, ADDRESS_LIST, OFFERS, RATES, RECEIPT},
+        modules::{Module, ADDRESS_LIST, OFFERS, RATES, RECEIPT},
     },
     error::ContractError,
+    mission::AndrAddress,
     Funds,
 };
 
 use crate::contract::*;
 use andromeda_protocol::{
-    address_list::InstantiateMsg as AddressListInstantiateMsg,
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
     cw721_offers::ExecuteMsg as OffersExecuteMsg,
-    rates::InstantiateMsg as RatesInstantiateMsg,
-    receipt::{ExecuteMsg as ReceiptExecuteMsg, InstantiateMsg as ReceiptInstantiateMsg, Receipt},
+    receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
         bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
         MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
@@ -58,7 +56,9 @@ fn mint_token(deps: DepsMut, env: Env, token_id: String, owner: String, extensio
     execute(deps, env, info, ExecuteMsg::Mint(Box::new(mint_msg))).unwrap();
 }
 
-#[test]
+/*
+ * TODO: Remove when we are happy with IstantiateType replacement.
+ * #[test]
 fn test_instantiate_modules() {
     let receipt_msg = to_binary(&ReceiptInstantiateMsg {
         minter: "minter".to_string(),
@@ -164,7 +164,7 @@ fn test_instantiate_modules() {
             .add_submessages(msgs),
         res
     );
-}
+}*/
 
 #[test]
 fn test_transfer_nft() {
@@ -512,17 +512,23 @@ fn test_modules() {
     let modules: Vec<Module> = vec![
         Module {
             module_type: RECEIPT.to_owned(),
-            instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
+            address: AndrAddress {
+                identifier: MOCK_RECEIPT_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
         Module {
             module_type: RATES.to_owned(),
-            instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
+            address: AndrAddress {
+                identifier: MOCK_RATES_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
         Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
+            address: AndrAddress {
+                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
     ];
@@ -644,7 +650,9 @@ fn test_modules() {
 fn test_transfer_with_offer() {
     let modules: Vec<Module> = vec![Module {
         module_type: OFFERS.to_owned(),
-        instantiate: InstantiateType::Address(MOCK_OFFERS_CONTRACT.into()),
+        address: AndrAddress {
+            identifier: MOCK_OFFERS_CONTRACT.to_owned(),
+        },
         is_mutable: false,
     }];
 

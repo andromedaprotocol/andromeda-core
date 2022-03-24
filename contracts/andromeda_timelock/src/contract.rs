@@ -46,7 +46,6 @@ pub fn instantiate(
     let res = ADOContract::default().instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "timelock".to_string(),

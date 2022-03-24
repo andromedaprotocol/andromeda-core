@@ -44,7 +44,6 @@ pub fn instantiate(
         .instantiate(
             deps.storage,
             deps.api,
-            &deps.querier,
             info,
             BaseInstantiateMsg {
                 ado_type: "mission".to_string(),

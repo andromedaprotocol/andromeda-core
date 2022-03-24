@@ -15,7 +15,7 @@ use common::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Reply, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
@@ -39,7 +39,6 @@ pub fn instantiate(
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "crowdfund".to_string(),
@@ -48,11 +47,6 @@ pub fn instantiate(
             primitive_contract: Some(msg.primitive_contract),
         },
     )
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    ADOContract::default().handle_module_reply(deps, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -187,6 +181,7 @@ fn execute_purchase(
     )?;
     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         deps.storage,
+        deps.api,
         deps.querier,
         sender.clone(),
         Funds::Native(state.price.clone()),
