@@ -1,6 +1,6 @@
 use crate::{
     contract::{execute, instantiate},
-    state::{Config, Purchase, State, CONFIG, PURCHASES, STATE, UNAVAILABLE_TOKENS},
+    state::{Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, STATE},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_CONDITIONS_NOT_MET_CONTRACT,
         MOCK_NON_EXISTING_TOKEN, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT,
@@ -9,7 +9,7 @@ use crate::{
 };
 use andromeda_protocol::{
     crowdfund::{ExecuteMsg, InstantiateMsg},
-    cw721::ExecuteMsg as Cw721ExecuteMsg,
+    cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
 };
 use common::{
     ado_base::{
@@ -122,6 +122,113 @@ fn test_instantiate() {
         },
         CONFIG.load(deps.as_mut().storage).unwrap()
     );
+}
+
+#[test]
+fn test_mint_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+        token_id: "token_id".to_string(),
+        owner: mock_env().contract.address.to_string(),
+        token_uri: None,
+        extension: TokenExtension {
+            name: "name".to_string(),
+            publisher: "publisher".to_string(),
+            description: None,
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    }));
+    let info = mock_info("not_owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_mint_owner_not_crowdfund() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+        token_id: "token_id".to_string(),
+        owner: "not_crowdfund".to_string(),
+        token_uri: None,
+        extension: TokenExtension {
+            name: "name".to_string(),
+            publisher: "publisher".to_string(),
+            description: None,
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    }));
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::OwnerMustBeCrowdFund {}, res.unwrap_err());
+}
+
+#[test]
+fn test_mint_sale_started() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    let msg = ExecuteMsg::StartSale {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(1u128),
+        max_amount_per_wallet: Some(Uint128::from(5u128)),
+        recipient: Recipient::Addr("recipient".to_string()),
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let res = mint(deps.as_mut(), "token_id");
+
+    assert_eq!(ContractError::SaleStarted {}, res.unwrap_err());
+}
+
+#[test]
+fn test_mint_successful() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    let res = mint(deps.as_mut(), "token_id").unwrap();
+
+    let mint_msg = Box::new(MintMsg {
+        token_id: "token_id".to_string(),
+        owner: mock_env().contract.address.to_string(),
+        token_uri: None,
+        extension: TokenExtension {
+            name: "name".to_string(),
+            publisher: "publisher".to_string(),
+            description: None,
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    });
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "mint")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
+                msg: encode_binary(&Cw721ExecuteMsg::Mint(mint_msg)).unwrap(),
+                funds: vec![],
+            }),
+        res
+    );
+
+    assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, "token_id"));
 }
 
 #[test]
@@ -351,6 +458,8 @@ fn test_purchase_no_funds() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
 
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
+
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
     };
@@ -380,6 +489,8 @@ fn test_purchase_no_funds() {
 fn test_purchase_wrong_denom() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
+
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
@@ -416,6 +527,8 @@ fn test_purchase_not_enough_for_price() {
     }];
     init(deps.as_mut(), Some(modules));
 
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
+
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
     };
@@ -450,6 +563,8 @@ fn test_purchase_not_enough_for_tax() {
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
+
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
@@ -486,6 +601,10 @@ fn test_multiple_purchases() {
     }];
     init(deps.as_mut(), Some(modules));
 
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[1]).unwrap();
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[2]).unwrap();
+
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
     };
@@ -516,7 +635,7 @@ fn test_multiple_purchases() {
     state.amount_sold += Uint128::from(1u128);
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
 
     assert_eq!(
         vec![get_purchase(MOCK_TOKENS_FOR_SALE[0], "sender")],
@@ -535,7 +654,7 @@ fn test_multiple_purchases() {
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
 
     state.amount_to_send += Uint128::from(90u128);
     state.amount_sold += Uint128::from(1u128);
@@ -581,6 +700,24 @@ fn test_end_sale_not_expired() {
     assert_eq!(ContractError::SaleNotEnded {}, res.unwrap_err());
 }
 
+fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, ContractError> {
+    let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+        token_id: token_id.into(),
+        owner: mock_env().contract.address.to_string(),
+        token_uri: None,
+        extension: TokenExtension {
+            name: "name".to_string(),
+            publisher: "publisher".to_string(),
+            description: None,
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    }));
+    execute(deps, mock_env(), mock_info("owner", &[]), msg)
+}
+
 #[test]
 fn test_integration_conditions_not_met() {
     let mut deps = mock_dependencies_custom(&[]);
@@ -590,6 +727,12 @@ fn test_integration_conditions_not_met() {
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
+
+    // Mint all tokens.
+    for &token_id in MOCK_TOKENS_FOR_SALE {
+        let _res = mint(deps.as_mut(), token_id).unwrap();
+        assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, token_id));
+    }
 
     let msg = ExecuteMsg::StartSale {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
@@ -601,6 +744,10 @@ fn test_integration_conditions_not_met() {
 
     let info = mock_info("owner", &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // Can't mint once sale started.
+    let res = mint(deps.as_mut(), "token_id");
+    assert_eq!(ContractError::SaleStarted {}, res.unwrap_err());
 
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
@@ -654,10 +801,10 @@ fn test_integration_conditions_not_met() {
         vec![get_purchase(MOCK_TOKENS_FOR_SALE[3], "C"),],
         PURCHASES.load(deps.as_ref().storage, "C").unwrap()
     );
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
 
     let mut env = mock_env();
     env.block.height += 1;
@@ -716,10 +863,10 @@ fn test_integration_conditions_not_met() {
     assert!(!PURCHASES.has(deps.as_ref().storage, "A"));
     assert!(!PURCHASES.has(deps.as_ref().storage, "C"));
 
-    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
-    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
-    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
-    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
+    // Burned tokens have been removed.
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[5]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[6]));
 
     deps.querier.tokens_left_to_burn = 0;
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -738,6 +885,12 @@ fn test_integration_conditions_met() {
     init(deps.as_mut(), Some(modules));
     let mut env = mock_env();
     env.contract.address = Addr::unchecked(MOCK_CONDITIONS_MET_CONTRACT);
+
+    // Mint all tokens.
+    for &token_id in MOCK_TOKENS_FOR_SALE {
+        let _res = mint(deps.as_mut(), token_id).unwrap();
+        assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, token_id));
+    }
 
     let msg = ExecuteMsg::StartSale {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
@@ -811,11 +964,11 @@ fn test_integration_conditions_met() {
         vec![get_purchase(MOCK_TOKENS_FOR_SALE[4], "D"),],
         PURCHASES.load(deps.as_ref().storage, "D").unwrap()
     );
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
-    assert!(UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
 
     env.block.height += 1;
     env.contract.address = Addr::unchecked(MOCK_CONDITIONS_MET_CONTRACT);
@@ -930,12 +1083,9 @@ fn test_integration_conditions_met() {
     state.amount_to_send = Uint128::zero();
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
-    // The map has been emptied by the end.
-    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
-    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
-    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
-    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
-    assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
+    // Burned tokens removed.
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[5]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[6]));
 
     deps.querier.tokens_left_to_burn = 0;
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();

@@ -14,8 +14,8 @@ pub const STATE: Item<State> = Item::new("state");
 /// Relates buyer address to vector of purchases.
 pub const PURCHASES: Map<&str, Vec<Purchase>> = Map::new("buyers");
 
-/// Contains token ids that have already been purchased.
-pub const UNAVAILABLE_TOKENS: Map<&str, bool> = Map::new("unavailable_tokens");
+/// Contains token ids that have already not been purchased.
+pub const AVAILABLE_TOKENS: Map<&str, bool> = Map::new("available_tokens");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Purchase {
