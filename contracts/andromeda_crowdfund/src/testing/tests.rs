@@ -111,6 +111,7 @@ fn test_instantiate() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "1")
             .add_attribute("method", "instantiate")
             .add_attribute("type", "crowdfund"),
         res

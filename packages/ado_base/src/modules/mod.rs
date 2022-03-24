@@ -28,7 +28,6 @@ impl<'a> ADOContract<'a> {
 
     /// A wrapper for `fn register_module`. The parameters are "extracted" from `DepsMut` to be able to
     /// execute this in a loop without cloning.
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn execute_register_module(
         &self,
         storage: &mut dyn Storage,
@@ -41,11 +40,13 @@ impl<'a> ADOContract<'a> {
             ContractError::Unauthorized {},
         )?;
         let resp = Response::default();
-        self.register_module(storage, &module)?;
+        let idx = self.register_module(storage, &module)?;
         if should_validate {
             self.validate_modules(&self.load_modules(storage)?, &self.ado_type.load(storage)?)?;
         }
-        Ok(resp.add_attribute("action", "register_module"))
+        Ok(resp
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", idx.to_string()))
     }
 
     /// A wrapper for `fn alter_module`.
@@ -331,7 +332,9 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            Response::default().add_attribute("action", "register_module"),
+            Response::default()
+                .add_attribute("action", "register_module")
+                .add_attribute("module_idx", "1"),
             res
         );
 
@@ -380,14 +383,9 @@ mod tests {
             res.unwrap_err(),
         );
 
-        let res = ADOContract::default()
+        let _res = ADOContract::default()
             .execute_register_module(deps_mut.storage, "owner", module, false)
             .unwrap();
-
-        assert_eq!(
-            Response::default().add_attribute("action", "register_module"),
-            res
-        );
     }
 
     #[test]

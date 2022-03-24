@@ -182,8 +182,11 @@ fn test_transfer() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "1")
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "2")
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "3")
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20"),
         res
@@ -307,8 +310,11 @@ fn test_send() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "1")
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "2")
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "3")
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20"),
         res
