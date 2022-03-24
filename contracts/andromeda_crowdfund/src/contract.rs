@@ -112,7 +112,6 @@ fn execute_start_sale(
         ContractError::ExpirationInPast {},
     )?;
     let state = STATE.may_load(deps.storage)?;
-    // TODO: Remove this once it is possible to reuse this contract.
     require(state.is_none(), ContractError::SaleStarted {})?;
     let max_amount_per_wallet = max_amount_per_wallet.unwrap_or_else(|| Uint128::from(1u128));
     // This is to prevent cloning price.
@@ -284,6 +283,7 @@ fn issue_refunds_and_burn_tokens(
 ) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    require(limit > 0, ContractError::LimitMustNotBeZero {})?;
     let mut refund_msgs: Vec<CosmosMsg> = vec![];
     // Issue refunds for `limit` number of users.
     let purchases: Vec<Vec<Purchase>> = PURCHASES
@@ -308,6 +308,11 @@ fn issue_refunds_and_burn_tokens(
         env.contract.address.to_string(),
         limit,
     )?;
+
+    if burn_msgs.is_empty() && purchases.is_empty() {
+        // When all tokens have been burned and all purchases have been refunded, the sale is over.
+        STATE.remove(deps.storage);
+    }
 
     Ok(Response::new()
         .add_attribute("action", "issue_refunds_and_burn_tokens")
@@ -337,6 +342,7 @@ fn transfer_tokens_and_send_funds(
                 }],
             )?;
             state.amount_to_send = Uint128::zero();
+            STATE.save(deps.storage, &state)?;
 
             resp = resp.add_submessage(msg);
         }
@@ -350,8 +356,13 @@ fn transfer_tokens_and_send_funds(
             limit,
         )?;
 
-        resp = resp.add_messages(burn_msgs);
-        STATE.save(deps.storage, &state)?;
+        if burn_msgs.is_empty() {
+            // When burn messages are empty, we have finished the sale, which is represented by
+            // having no State.
+            STATE.remove(deps.storage);
+        } else {
+            resp = resp.add_messages(burn_msgs);
+        }
 
         // If we are here then there are no purchases to process so we can exit.
         return Ok(resp.add_attribute("action", "transfer_tokens_and_send_funds"));

@@ -2,9 +2,9 @@ use crate::{
     contract::{execute, instantiate},
     state::{Config, Purchase, State, CONFIG, PURCHASES, STATE, UNAVAILABLE_TOKENS},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_NON_EXISTING_TOKEN,
-        MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT,
-        MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
+        mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_CONDITIONS_NOT_MET_CONTRACT,
+        MOCK_NON_EXISTING_TOKEN, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT,
+        MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
     },
 };
 use andromeda_protocol::{
@@ -192,7 +192,7 @@ fn test_start_sale_max_default() {
     };
 
     let info = mock_info("owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
     assert_eq!(
         Response::new()
             .add_attribute("action", "start_sale")
@@ -216,6 +216,9 @@ fn test_start_sale_max_default() {
         },
         STATE.load(deps.as_ref().storage).unwrap()
     );
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::SaleStarted {}, res.unwrap_err());
 }
 
 #[test]
@@ -675,9 +678,11 @@ fn test_integration_conditions_not_met() {
 
     assert!(!PURCHASES.has(deps.as_ref().storage, "B"));
 
+    env.contract.address = Addr::unchecked(MOCK_CONDITIONS_NOT_MET_CONTRACT);
+    deps.querier.tokens_left_to_burn = 7;
     let msg = ExecuteMsg::EndSale { limit: None };
     let info = mock_info("anyone", &[]);
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
     let refund_msgs: Vec<CosmosMsg> = vec![
         // All of A's payments grouped into one message.
         CosmosMsg::Bank(BankMsg::Send {
@@ -715,6 +720,10 @@ fn test_integration_conditions_not_met() {
     assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
     assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
     assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
+
+    deps.querier.tokens_left_to_burn = 0;
+    let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert!(STATE.may_load(deps.as_mut().storage).unwrap().is_none());
 }
 
 #[test]
@@ -900,7 +909,7 @@ fn test_integration_conditions_met() {
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
     let msg = ExecuteMsg::EndSale { limit: None };
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
     assert_eq!(3, res.messages.len());
 
@@ -927,6 +936,10 @@ fn test_integration_conditions_met() {
     assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
     assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
     assert!(!UNAVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[4]));
+
+    deps.querier.tokens_left_to_burn = 0;
+    let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert!(STATE.may_load(deps.as_mut().storage).unwrap().is_none());
 }
 
 #[test]

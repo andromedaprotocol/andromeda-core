@@ -23,6 +23,7 @@ pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
 ];
 
 pub const MOCK_CONDITIONS_MET_CONTRACT: &str = "conditions_met";
+pub const MOCK_CONDITIONS_NOT_MET_CONTRACT: &str = "conditions_not_met";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -40,6 +41,7 @@ pub fn mock_dependencies_custom(
 pub struct WasmMockQuerier {
     base: MockQuerier<TerraQueryWrapper>,
     pub contract_address: String,
+    pub tokens_left_to_burn: usize,
 }
 
 impl Querier for WasmMockQuerier {
@@ -77,7 +79,17 @@ impl WasmMockQuerier {
             Cw721QueryMsg::Tokens { owner, .. } => {
                 let res = if owner == MOCK_CONDITIONS_MET_CONTRACT {
                     TokensResponse {
-                        tokens: MOCK_TOKENS_FOR_SALE[5..]
+                        tokens: MOCK_TOKENS_FOR_SALE
+                            [MOCK_TOKENS_FOR_SALE.len() - self.tokens_left_to_burn..]
+                            .iter()
+                            .copied()
+                            .map(String::from)
+                            .collect(),
+                    }
+                } else if owner == MOCK_CONDITIONS_NOT_MET_CONTRACT {
+                    TokensResponse {
+                        tokens: MOCK_TOKENS_FOR_SALE
+                            [MOCK_TOKENS_FOR_SALE.len() - self.tokens_left_to_burn..]
                             .iter()
                             .copied()
                             .map(String::from)
@@ -173,6 +185,7 @@ impl WasmMockQuerier {
         WasmMockQuerier {
             base,
             contract_address: mock_env().contract.address.to_string(),
+            tokens_left_to_burn: 2,
         }
     }
 }
