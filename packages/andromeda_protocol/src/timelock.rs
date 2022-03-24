@@ -4,7 +4,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::modules::address_list::AddressListModule;
-
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,

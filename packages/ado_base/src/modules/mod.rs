@@ -7,6 +7,7 @@ use cw_storage_plus::Bound;
 use common::{ado_base::modules::Module, error::ContractError, require};
 
 pub mod hooks;
+pub mod query;
 
 impl<'a> ADOContract<'a> {
     pub fn register_modules(

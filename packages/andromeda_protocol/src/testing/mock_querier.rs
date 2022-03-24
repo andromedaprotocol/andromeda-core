@@ -477,7 +477,7 @@ impl WasmMockQuerier {
                 let msg_response = match name.as_str() {
                     "percent" => GetValueResponse {
                         name,
-                        value: Primitive::Uint128(1u128.into()),
+                        value: Primitive::Decimal(Decimal::percent(1)),
                     },
                     "flat" => GetValueResponse {
                         name,

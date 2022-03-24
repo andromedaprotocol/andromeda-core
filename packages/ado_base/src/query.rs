@@ -33,6 +33,20 @@ impl<'a> ADOContract<'a> {
             AndromedaQuery::IsOperator { address } => {
                 encode_binary(&self.query_is_operator(deps, &address)?)
             }
+            AndromedaQuery::Module { id } => {
+                #[cfg(feature = "modules")]
+                return encode_binary(&self.query_module(deps, id)?);
+
+                #[cfg(not(feature = "modules"))]
+                return Err(ContractError::UnsupportedOperation {});
+            }
+            AndromedaQuery::ModuleIds {} => {
+                #[cfg(feature = "modules")]
+                return encode_binary(&self.query_module_ids(deps)?);
+
+                #[cfg(not(feature = "modules"))]
+                return Err(ContractError::UnsupportedOperation {});
+            }
         }
     }
 }
