@@ -14,7 +14,7 @@ use common::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
     QuerierWrapper, QueryRequest, Reply, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
