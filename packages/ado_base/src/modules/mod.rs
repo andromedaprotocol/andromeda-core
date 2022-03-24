@@ -14,6 +14,7 @@ use common::{
 };
 
 pub mod hooks;
+pub mod query;
 
 impl<'a> ADOContract<'a> {
     pub fn register_modules(
