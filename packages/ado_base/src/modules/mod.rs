@@ -265,6 +265,7 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mock_querier::{mock_dependencies_custom, MOCK_MISSION_CONTRACT};
     use common::{
         ado_base::modules::{ADDRESS_LIST, AUCTION, RECEIPT},
         mission::AndrAddress,
@@ -666,5 +667,57 @@ mod tests {
             ADOContract::default().execute_deregister_module(deps.as_mut(), info, 1u64.into());
 
         assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_load_module_addresses() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let contract = ADOContract::default();
+        contract
+            .mission_contract
+            .save(
+                deps.as_mut().storage,
+                &Addr::unchecked(MOCK_MISSION_CONTRACT),
+            )
+            .unwrap();
+        contract.module_idx.save(deps.as_mut().storage, &2).unwrap();
+        contract
+            .module_info
+            .save(
+                deps.as_mut().storage,
+                "1",
+                &Module {
+                    module_type: "address_list".to_string(),
+                    address: AndrAddress {
+                        identifier: "address".to_string(),
+                    },
+                    is_mutable: true,
+                },
+            )
+            .unwrap();
+
+        contract
+            .module_info
+            .save(
+                deps.as_mut().storage,
+                "2",
+                &Module {
+                    module_type: "address_list".to_string(),
+                    address: AndrAddress {
+                        identifier: "a".to_string(),
+                    },
+                    is_mutable: true,
+                },
+            )
+            .unwrap();
+        let deps_mut = deps.as_mut();
+        let module_addresses = contract
+            .load_module_addresses(deps_mut.storage, deps_mut.api, &deps_mut.querier)
+            .unwrap();
+
+        assert_eq!(
+            vec![String::from("address"), String::from("actual_address")],
+            module_addresses
+        );
     }
 }
