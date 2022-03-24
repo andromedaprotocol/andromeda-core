@@ -1,16 +1,17 @@
-use crate::modules::Rate;
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
+        query_get,
         recipient::Recipient,
         AndromedaMsg, AndromedaQuery,
     },
     encode_binary,
     error::ContractError,
-    Funds,
+    primitive::{GetValueResponse, Primitive},
+    require, Funds,
 };
 use cosmwasm_std::{
-    BankMsg, Coin, CosmosMsg, QuerierWrapper, QueryRequest, SubMsg, Uint128, WasmQuery,
+    BankMsg, Coin, CosmosMsg, Decimal, QuerierWrapper, QueryRequest, SubMsg, Uint128, WasmQuery,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -50,6 +51,87 @@ pub struct RateInfo {
     pub is_additive: bool,
     pub description: Option<String>,
     pub receivers: Vec<Recipient>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct ADORate {
+    /// The address of the primitive contract.
+    pub address: String,
+    /// The key of the primitive in the primitive contract.
+    pub key: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+/// An enum used to define various types of fees
+pub enum Rate {
+    /// A flat rate fee
+    Flat(Coin),
+    /// A percentage fee
+    Percent(PercentRate),
+    External(ADORate),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+// This is added such that both Rate::Flat and Rate::Percent have the same level of nesting which
+// makes it easier to work with on the frontend.
+pub struct PercentRate {
+    pub percent: Decimal,
+}
+
+impl From<Decimal> for Rate {
+    fn from(decimal: Decimal) -> Self {
+        Rate::Percent(PercentRate { percent: decimal })
+    }
+}
+
+impl Rate {
+    /// Validates that a given rate is non-zero. It is expected that the Rate is not an
+    /// External Rate.
+    pub fn is_non_zero(&self) -> Result<bool, ContractError> {
+        match self {
+            Rate::Flat(coin) => Ok(!coin.amount.is_zero()),
+            Rate::Percent(PercentRate { percent }) => Ok(!percent.is_zero()),
+            Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
+        }
+    }
+
+    /// Validates `self` and returns an "unwrapped" version of itself wherein if it is an External
+    /// Rate, the actual rate value is retrieved from the Primitive Contract.
+    pub fn validate(&self, querier: &QuerierWrapper) -> Result<Rate, ContractError> {
+        let rate = self.clone().get_rate(querier)?;
+        require(rate.is_non_zero()?, ContractError::InvalidRate {})?;
+
+        if let Rate::Percent(PercentRate { percent }) = rate {
+            require(percent <= Decimal::one(), ContractError::InvalidRate {})?;
+        }
+
+        Ok(rate)
+    }
+
+    /// If `self` is Flat or Percent it returns itself. Otherwise it queries the primitive contract
+    /// and retrieves the actual Flat or Percent rate.
+    fn get_rate(self, querier: &QuerierWrapper) -> Result<Rate, ContractError> {
+        match self {
+            Rate::Flat(_) => Ok(self),
+            Rate::Percent(_) => Ok(self),
+            Rate::External(ado_rate) => {
+                let response: GetValueResponse = query_get(
+                    Some(encode_binary(&ado_rate.key)?),
+                    ado_rate.address,
+                    querier,
+                )?;
+                match response.value {
+                    Primitive::Coin(coin) => Ok(Rate::Flat(coin)),
+                    Primitive::Decimal(value) => Ok(Rate::from(value)),
+                    _ => Err(ContractError::ParsingError {
+                        err: "Stored rate is not a coin or Decimal".to_string(),
+                    }),
+                }
+            }
+        }
+    }
 }
 
 /// An attribute struct used for any events that involve a payment
@@ -111,4 +193,33 @@ pub fn on_required_payments(
     }))?;
 
     Ok(res)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT};
+    use cosmwasm_std::coin;
+
+    use super::*;
+
+    #[test]
+    fn test_validate_external_rate() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let rate = Rate::External(ADORate {
+            address: MOCK_PRIMITIVE_CONTRACT.to_string(),
+            key: Some("percent".to_string()),
+        });
+        let validated_rate = rate.validate(&deps.as_mut().querier).unwrap();
+        let expected_rate = Rate::from(Decimal::percent(1));
+        assert_eq!(expected_rate, validated_rate);
+
+        let rate = Rate::External(ADORate {
+            address: MOCK_PRIMITIVE_CONTRACT.to_string(),
+            key: Some("flat".to_string()),
+        });
+        let validated_rate = rate.validate(&deps.as_mut().querier).unwrap();
+        let expected_rate = Rate::Flat(coin(1u128, "uusd"));
+        assert_eq!(expected_rate, validated_rate);
+    }
 }
