@@ -293,6 +293,10 @@ fn issue_refunds_and_burn_tokens(
         .map(|(_v, p)| p)
         .collect();
     for purchase_vec in purchases.iter() {
+        // Remove from UNAVAILABLE_TOKENS.
+        for purchase in purchase_vec.iter() {
+            UNAVAILABLE_TOKENS.remove(deps.storage, &purchase.token_id);
+        }
         let refund_msg = process_refund(deps.storage, purchase_vec, &state.price);
         if let Some(refund_msg) = refund_msg {
             refund_msgs.push(refund_msg);
@@ -389,6 +393,7 @@ fn transfer_tokens_and_send_funds(
         purchases.pop();
     }
     for purchase in purchases.into_iter() {
+        UNAVAILABLE_TOKENS.remove(deps.storage, &purchase.token_id);
         let purchaser = purchase.purchaser;
         let should_remove = purchaser != last_purchaser || remove_last_purchaser;
         if should_remove && PURCHASES.has(deps.storage, &purchaser) {
