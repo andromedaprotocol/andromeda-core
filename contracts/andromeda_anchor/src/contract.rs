@@ -177,7 +177,12 @@ pub fn handle_withdraw(
     tokens_to_withdraw: Option<Vec<Withdrawal>>,
 ) -> Result<Response, ContractError> {
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
-    let authorized = recipient.get_addr() == info.sender
+    let recipient_addr = recipient.get_addr(
+        deps.api,
+        &deps.querier,
+        ADOContract::default().get_mission_contract(deps.storage)?,
+    )?;
+    let authorized = recipient_addr == info.sender
         || ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?;
     require(authorized, ContractError::Unauthorized {})?;
     require(
@@ -185,11 +190,6 @@ pub fn handle_withdraw(
         ContractError::InvalidRecipientType {
             msg: "Only recipients of type Addr are allowed as it only specifies the owner of the position to withdraw from".to_string()
         },
-    )?;
-    let recipient_addr = recipient.get_addr(
-        deps.api,
-        &deps.querier,
-        ADOContract::default().get_mission_contract(deps.storage)?,
     )?;
     require(
         tokens_to_withdraw.is_some(),
@@ -320,8 +320,9 @@ fn execute_withdraw_collateral(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
     require(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -364,6 +365,8 @@ fn execute_withdraw_collateral(
         let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
         recipient.generate_msg_cw20(
             deps.api,
+            &deps.querier,
+            contract.get_mission_contract(deps.storage)?,
             Cw20Coin {
                 address: collateral_addr.clone(),
                 amount: amount.into(),
@@ -400,8 +403,9 @@ fn execute_borrow(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let contract = ADOContract::default();
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     require(
@@ -459,9 +463,12 @@ fn execute_borrow(
             })?,
             funds: vec![],
         }))
-        .add_submessage(
-            recipient.generate_msg_native(deps.api, coins(borrow_amount.into(), "uusd"))?,
-        ))
+        .add_submessage(recipient.generate_msg_native(
+            deps.api,
+            &deps.querier,
+            contract.get_mission_contract(deps.storage)?,
+            coins(borrow_amount.into(), "uusd"),
+        )?))
 }
 
 fn execute_repay_loan(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
@@ -506,11 +513,7 @@ pub fn execute_deposit(
         },
     )?;
 
-    let aust_balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_humanize(&config.aust_token)?,
-        env.contract.address,
-    )?;
+    let aust_balance = query_token_balance(&deps.querier, config.aust_token, env.contract.address)?;
     let recipient_addr = recipient.get_addr(
         deps.api,
         &deps.querier,
