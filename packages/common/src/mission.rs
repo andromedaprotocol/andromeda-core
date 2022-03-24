@@ -12,7 +12,7 @@ pub struct AndrAddress {
 impl AndrAddress {
     /// Gets the address from the given identifier by attempting to validate it into an [`Addr`] and
     /// then querying the mission contract if it fails.
-    pub fn get_address_from_mission(
+    pub fn get_address(
         &self,
         api: &dyn Api,
         querier: &QuerierWrapper,
@@ -41,7 +41,7 @@ mod tests {
     use cosmwasm_std::testing::mock_dependencies;
 
     #[test]
-    fn test_get_address_from_mission_not_mission() {
+    fn test_get_address_not_mission() {
         let deps = mock_dependencies(&[]);
         let andr_address = AndrAddress {
             identifier: "address".to_string(),
@@ -49,13 +49,13 @@ mod tests {
         assert_eq!(
             "address",
             andr_address
-                .get_address_from_mission(deps.as_ref().api, &deps.as_ref().querier, None)
+                .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
                 .unwrap()
         );
     }
 
     #[test]
-    fn test_get_address_from_mission_mission() {
+    fn test_get_address_mission() {
         let deps = mock_dependencies_custom(&[]);
         let andr_address = AndrAddress {
             identifier: "ab".to_string(),
@@ -63,7 +63,7 @@ mod tests {
         assert_eq!(
             "actual_address",
             andr_address
-                .get_address_from_mission(
+                .get_address(
                     deps.as_ref().api,
                     &deps.as_ref().querier,
                     Some(Addr::unchecked(MOCK_MISSION_CONTRACT)),

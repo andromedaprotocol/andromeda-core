@@ -161,7 +161,7 @@ fn execute_purchase(
     let config = CONFIG.load(deps.storage)?;
     let token_owner_res = query_owner_of(
         &deps.querier,
-        config.token_address.get_address_from_mission(
+        config.token_address.get_address(
             deps.api,
             &deps.querier,
             ADOContract::default().get_mission_contract(deps.storage)?,
@@ -400,7 +400,7 @@ fn transfer_tokens_and_send_funds(
         }
         rate_messages.extend(purchase.msgs);
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: config.token_address.get_address_from_mission(
+            contract_addr: config.token_address.get_address(
                 deps.api,
                 &deps.querier,
                 ADOContract::default().get_mission_contract(deps.storage)?,
@@ -479,7 +479,7 @@ fn get_burn_messages(
     limit: usize,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let config = CONFIG.load(storage)?;
-    let token_address = config.token_address.get_address_from_mission(
+    let token_address = config.token_address.get_address(
         api,
         querier,
         ADOContract::default().get_mission_contract(storage)?,

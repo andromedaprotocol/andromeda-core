@@ -42,11 +42,7 @@ impl Recipient {
     ) -> Result<String, ContractError> {
         match &self {
             Recipient::Addr(string) => Ok(string.to_owned()),
-            Recipient::ADO(recip) => {
-                recip
-                    .address
-                    .get_address_from_mission(api, querier, mission_contract)
-            }
+            Recipient::ADO(recip) => recip.address.get_address(api, querier, mission_contract),
         }
     }
 
