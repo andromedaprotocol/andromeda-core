@@ -15,8 +15,10 @@ impl<'a> ADOContract<'a> {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
+        #[cfg(any(feature = "modules", feature = "primitive"))] api: &dyn Api,
+        #[cfg(not(any(feature = "modules", feature = "primitive")))] _api: &dyn Api,
+        #[cfg(feature = "modules")] querier: &QuerierWrapper,
+        #[cfg(not(feature = "modules"))] _querier: &QuerierWrapper,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {

@@ -15,6 +15,7 @@ use serde::de::DeserializeOwned;
 type QueryFunction<Q> = fn(Deps, Env, Q) -> Result<Binary, ContractError>;
 
 impl<'a> ADOContract<'a> {
+    #[allow(unreachable_patterns)]
     pub fn query<Q: DeserializeOwned>(
         &self,
         deps: Deps,
@@ -33,20 +34,11 @@ impl<'a> ADOContract<'a> {
             AndromedaQuery::IsOperator { address } => {
                 encode_binary(&self.query_is_operator(deps, &address)?)
             }
-            AndromedaQuery::Module { id } => {
-                #[cfg(feature = "modules")]
-                return encode_binary(&self.query_module(deps, id)?);
-
-                #[cfg(not(feature = "modules"))]
-                return Err(ContractError::UnsupportedOperation {});
-            }
-            AndromedaQuery::ModuleIds {} => {
-                #[cfg(feature = "modules")]
-                return encode_binary(&self.query_module_ids(deps)?);
-
-                #[cfg(not(feature = "modules"))]
-                return Err(ContractError::UnsupportedOperation {});
-            }
+            #[cfg(feature = "modules")]
+            AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
+            #[cfg(feature = "modules")]
+            AndromedaQuery::ModuleIds {} => encode_binary(&self.query_module_ids(deps)?),
+            _ => Err(ContractError::UnsupportedOperation {}),
         }
     }
 }
