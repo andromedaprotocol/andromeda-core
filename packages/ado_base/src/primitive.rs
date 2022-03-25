@@ -82,3 +82,136 @@ impl<'a> ADOContract<'a> {
             .add_attribute("last_key", keys.last().unwrap_or(&String::from("None"))))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT};
+    use cosmwasm_std::Addr;
+
+    #[test]
+    fn test_cache_address() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let contract = ADOContract::default();
+        contract
+            .primitive_contract
+            .save(
+                deps.as_mut().storage,
+                &Addr::unchecked(MOCK_PRIMITIVE_CONTRACT),
+            )
+            .unwrap();
+
+        let deps_mut = deps.as_mut();
+        contract
+            .cache_address(deps_mut.storage, &deps_mut.querier, "key1")
+            .unwrap();
+
+        assert_eq!(
+            "address1",
+            contract
+                .get_cached_address(deps.as_ref().storage, "key1")
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_execute_refresh_address() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let contract = ADOContract::default();
+        contract
+            .primitive_contract
+            .save(
+                deps.as_mut().storage,
+                &Addr::unchecked(MOCK_PRIMITIVE_CONTRACT),
+            )
+            .unwrap();
+
+        let res = contract
+            .execute_refresh_address(deps.as_mut(), "key1".to_string())
+            .unwrap();
+
+        assert_eq!(
+            Response::new()
+                .add_attribute("action", "refresh_address")
+                .add_attribute("contract", "key1"),
+            res
+        );
+
+        assert_eq!(
+            "address1",
+            contract
+                .get_cached_address(deps.as_ref().storage, "key1")
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_execute_refresh_addresses() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let contract = ADOContract::default();
+        contract
+            .primitive_contract
+            .save(
+                deps.as_mut().storage,
+                &Addr::unchecked(MOCK_PRIMITIVE_CONTRACT),
+            )
+            .unwrap();
+
+        contract
+            .cached_addresses
+            .save(deps.as_mut().storage, "key1", &"stale_address1".to_string())
+            .unwrap();
+        contract
+            .cached_addresses
+            .save(deps.as_mut().storage, "key2", &"stale_address2".to_string())
+            .unwrap();
+
+        let res = contract
+            .execute_refresh_addresses(deps.as_mut(), None, None)
+            .unwrap();
+
+        assert_eq!(
+            Response::new()
+                .add_attribute("action", "refresh_addresses")
+                .add_attribute("last_key", "key2"),
+            res
+        );
+
+        assert_eq!(
+            "address1",
+            contract
+                .get_cached_address(deps.as_ref().storage, "key1")
+                .unwrap()
+        );
+        assert_eq!(
+            "address2",
+            contract
+                .get_cached_address(deps.as_ref().storage, "key2")
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_get_address_from_primitive() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let contract = ADOContract::default();
+        contract
+            .primitive_contract
+            .save(
+                deps.as_mut().storage,
+                &Addr::unchecked(MOCK_PRIMITIVE_CONTRACT),
+            )
+            .unwrap();
+
+        assert_eq!(
+            "address1",
+            contract
+                .get_address_from_primitive(deps.as_ref().storage, &deps.as_ref().querier, "key1")
+                .unwrap()
+        )
+    }
+}
