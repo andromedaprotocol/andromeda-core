@@ -40,6 +40,7 @@ impl<'a> ADOContract<'a> {
         Ok(Response::new().add_attributes(attributes))
     }
 
+    #[allow(clippy::unreachable)]
     pub fn execute<E: DeserializeOwned>(
         &self,
         deps: DepsMut,
@@ -58,44 +59,37 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::UpdateOperators { operators } => {
                 self.execute_update_operators(deps, info, operators)
             }
+            #[cfg(feature = "withdraw")]
             AndromedaMsg::Withdraw {
                 recipient,
                 tokens_to_withdraw,
-            } => {
-                #[cfg(feature = "withdraw")]
-                return self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw);
-
-                #[cfg(not(feature = "withdraw"))]
-                return Err(ContractError::UnsupportedOperation {});
-            }
-            AndromedaMsg::RegisterModule { module } => {
-                #[cfg(feature = "modules")]
-                return self.execute_register_module(
-                    &deps.querier,
-                    deps.storage,
-                    deps.api,
-                    info.sender.as_str(),
-                    module,
-                    true,
-                );
-                #[cfg(not(feature = "modules"))]
-                return Err(ContractError::UnsupportedOperation {});
-            }
-
+            } => self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
+            #[cfg(feature = "modules")]
+            AndromedaMsg::RegisterModule { module } => self.execute_register_module(
+                &deps.querier,
+                deps.storage,
+                deps.api,
+                info.sender.as_str(),
+                module,
+                true,
+            ),
+            #[cfg(feature = "modules")]
             AndromedaMsg::DeregisterModule { module_idx } => {
-                #[cfg(feature = "modules")]
-                return self.execute_deregister_module(deps, info, module_idx);
-
-                #[cfg(not(feature = "modules"))]
-                return Err(ContractError::UnsupportedOperation {});
+                self.execute_deregister_module(deps, info, module_idx)
             }
+            #[cfg(feature = "modules")]
             AndromedaMsg::AlterModule { module_idx, module } => {
-                #[cfg(feature = "modules")]
-                return self.execute_alter_module(deps, info, module_idx, module);
-
-                #[cfg(not(feature = "modules"))]
-                return Err(ContractError::UnsupportedOperation {});
+                self.execute_alter_module(deps, info, module_idx, module)
             }
+            #[cfg(feature = "primitive")]
+            AndromedaMsg::RefreshAddress { contract } => {
+                self.execute_refresh_address(deps, contract)
+            }
+            #[cfg(feature = "primitive")]
+            AndromedaMsg::RefreshAddresses { start_after, limit } => {
+                self.execute_refresh_addresses(deps, start_after, limit)
+            }
+            _ => Err(ContractError::UnsupportedOperation {}),
         }
     }
 }
