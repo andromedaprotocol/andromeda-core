@@ -40,7 +40,7 @@ impl<'a> ADOContract<'a> {
         Ok(Response::new().add_attributes(attributes))
     }
 
-    #[allow(clippy::unreachable)]
+    #[allow(unreachable_patterns)]
     pub fn execute<E: DeserializeOwned>(
         &self,
         deps: DepsMut,

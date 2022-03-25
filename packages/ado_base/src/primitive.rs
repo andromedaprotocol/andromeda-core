@@ -74,7 +74,7 @@ impl<'a> ADOContract<'a> {
             .collect::<Result<Vec<String>, _>>()?;
 
         for key in keys.iter() {
-            self.cache_address(deps.storage, &deps.querier, &key)?;
+            self.cache_address(deps.storage, &deps.querier, key)?;
         }
 
         Ok(Response::new()
