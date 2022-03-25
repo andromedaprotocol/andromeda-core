@@ -64,7 +64,7 @@ impl ToString for StrategyType {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub default_yield_strategy: YieldStrategy,
+    pub operators: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
