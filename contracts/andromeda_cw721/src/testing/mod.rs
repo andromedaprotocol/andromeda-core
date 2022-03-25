@@ -12,10 +12,11 @@ use common::{
         modules::{InstantiateType, Module, ADDRESS_LIST, OFFERS, RATES, RECEIPT},
     },
     error::ContractError,
+    mission::AndrAddress,
     Funds,
 };
 
-use crate::contract::*;
+use crate::{contract::*, state::ANDR_MINTER};
 use andromeda_protocol::{
     address_list::InstantiateMsg as AddressListInstantiateMsg,
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
@@ -39,7 +40,9 @@ fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
-        minter: MINTER.to_string(),
+        minter: AndrAddress {
+            identifier: MINTER.to_string(),
+        },
         modules,
         primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
@@ -94,7 +97,9 @@ fn test_instantiate_modules() {
     let instantiate_msg = InstantiateMsg {
         name: "Name".into(),
         symbol: "Symbol".into(),
-        minter: "minter".into(),
+        minter: AndrAddress {
+            identifier: "minter".to_string(),
+        },
         modules: Some(modules),
         primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
@@ -173,6 +178,12 @@ fn test_transfer_nft() {
     let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
+    assert_eq!(
+        AndrAddress {
+            identifier: MINTER.to_owned()
+        },
+        ANDR_MINTER.load(deps.as_ref().storage).unwrap()
+    );
     mint_token(
         deps.as_mut(),
         env.clone(),
@@ -187,6 +198,14 @@ fn test_transfer_nft() {
             archived: false,
             pricing: None,
         },
+    );
+
+    assert_eq!(
+        MINTER,
+        AndrCW721Contract::default()
+            .minter
+            .load(deps.as_ref().storage)
+            .unwrap()
     );
 
     let transfer_msg = ExecuteMsg::TransferNft {

@@ -2,6 +2,7 @@ use crate::{modules::common::calculate_fee, rates::Rate};
 use common::{
     ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
     error::ContractError,
+    mission::AndrAddress,
 };
 use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event};
 use cw721::Expiration;
@@ -22,21 +23,11 @@ pub struct InstantiateMsg {
     /// The minter is the only one who can create new NFTs.
     /// This is designed for a base NFT that is controlled by an external program
     /// or contract. You will likely replace this with custom logic in custom NFTs
-    pub minter: String,
+    pub minter: AndrAddress,
     ///The attached Andromeda modules
     pub modules: Option<Vec<Module>>,
     /// The primitive contract address used to retrieve contract addresses.
     pub primitive_contract: String,
-}
-
-impl From<InstantiateMsg> for Cw721InstantiateMsg {
-    fn from(msg: InstantiateMsg) -> Self {
-        Self {
-            name: msg.name,
-            symbol: msg.symbol,
-            minter: msg.minter,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

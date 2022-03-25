@@ -130,6 +130,7 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
  "cw721",
  "cw721-base",
  "schemars",

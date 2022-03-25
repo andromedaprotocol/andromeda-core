@@ -5,6 +5,7 @@ use cosmwasm_std::{
     Reply, Response, Storage, SubMsg, Uint128,
 };
 
+use crate::state::ANDR_MINTER;
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
@@ -19,6 +20,7 @@ use common::{
     error::ContractError,
     require, Funds,
 };
+use cw721::ContractInfoResponse;
 use cw721_base::{state::TokenInfo, Cw721Contract};
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
@@ -26,12 +28,23 @@ pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    let resp = contract.instantiate(
+    let contract_info = ContractInfoResponse {
+        name: msg.name,
+        symbol: msg.symbol,
+    };
+    // Do this directly instead of with cw721_contract.instantiate because we want to have minter
+    // be an AndrAddress, which cannot be validated right away.
+    AndrCW721Contract::default()
+        .contract_info
+        .save(deps.storage, &contract_info)?;
+
+    ANDR_MINTER.save(deps.storage, &msg.minter)?;
+
+    ADOContract::default().instantiate(
         deps.storage,
         deps.api,
         &deps.querier,
@@ -42,12 +55,7 @@ pub fn instantiate(
             modules: msg.modules.clone(),
             primitive_contract: Some(msg.primitive_contract.clone()),
         },
-    )?;
-
-    let cw721_resp = AndrCW721Contract::default().instantiate(deps, env, info, msg.into())?;
-    Ok(resp
-        .add_attributes(cw721_resp.attributes)
-        .add_submessages(cw721_resp.messages))
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -78,6 +86,7 @@ pub fn execute(
     }
 
     match msg {
+        ExecuteMsg::Mint(_) => execute_mint(deps, env, info, msg),
         ExecuteMsg::TransferNft {
             recipient,
             token_id,
@@ -99,6 +108,29 @@ fn is_token_archived(storage: &dyn Storage, token_id: &str) -> Result<(), Contra
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     Ok(())
+}
+
+fn execute_mint(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
+    let cw721_contract = AndrCW721Contract::default();
+    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
+    let andr_minter = ANDR_MINTER.load(deps.storage)?;
+    // Only allow minter to be set once to maintain immutability.
+    if cw721_contract.minter.may_load(deps.storage)?.is_none() {
+        cw721_contract.minter.save(
+            deps.storage,
+            &deps.api.addr_validate(&andr_minter.get_address(
+                deps.api,
+                &deps.querier,
+                mission_contract,
+            )?)?,
+        )?;
+    }
+    Ok(cw721_contract.execute(deps, env, info, msg.into())?)
 }
 
 fn execute_transfer(
