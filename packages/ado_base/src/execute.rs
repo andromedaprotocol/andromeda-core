@@ -4,9 +4,7 @@ use common::{
     error::ContractError,
     parse_message, require,
 };
-use cosmwasm_std::{
-    attr, Api, DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, Storage,
-};
+use cosmwasm_std::{attr, Api, DepsMut, Env, MessageInfo, Order, Response, Storage};
 use serde::de::DeserializeOwned;
 
 type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
@@ -16,7 +14,6 @@ impl<'a> ADOContract<'a> {
         &self,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &QuerierWrapper,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
@@ -34,7 +31,7 @@ impl<'a> ADOContract<'a> {
         #[cfg(feature = "modules")]
         if let Some(modules) = msg.modules {
             return Ok(self
-                .register_modules(info.sender.as_str(), querier, storage, api, modules)?
+                .register_modules(info.sender.as_str(), storage, modules)?
                 .add_attributes(attributes));
         }
         Ok(Response::new().add_attributes(attributes))
@@ -74,9 +71,7 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::RegisterModule { module } => {
                 #[cfg(feature = "modules")]
                 return self.execute_register_module(
-                    &deps.querier,
                     deps.storage,
-                    deps.api,
                     info.sender.as_str(),
                     module,
                     true,

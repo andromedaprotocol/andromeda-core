@@ -2,13 +2,11 @@ use crate::state::SWAPPER_IMPL_ADDR;
 use ado_base::ADOContract;
 use andromeda_protocol::swapper::{
     query_balance, query_token_balance, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-    MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,
-    SwapperMsg,
+    InstantiateType, MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg,
+    SwapperImplExecuteMsg, SwapperMsg,
 };
 use common::{
-    ado_base::{
-        modules::InstantiateType, recipient::Recipient, InstantiateMsg as BaseInstantiateMsg,
-    },
+    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
     require,
@@ -37,7 +35,6 @@ pub fn instantiate(
     let resp = contract.instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "swapper".to_string(),

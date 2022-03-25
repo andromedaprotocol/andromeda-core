@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Reply, Response, Storage, SubMsg, Uint128,
+    Response, Storage, SubMsg, Uint128,
 };
 
 use ado_base::state::ADOContract;
@@ -34,7 +34,6 @@ pub fn instantiate(
     let resp = contract.instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
             ado_type: "cw721".to_string(),
@@ -51,11 +50,6 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    ADOContract::default().handle_module_reply(deps, msg)
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -66,6 +60,7 @@ pub fn execute(
 
     contract.module_hook::<Response>(
         deps.storage,
+        deps.api,
         deps.querier,
         AndromedaHook::OnExecute {
             sender: info.sender.to_string(),
@@ -111,6 +106,7 @@ fn execute_transfer(
     let base_contract = ADOContract::default();
     let responses = base_contract.module_hook::<Response>(
         deps.storage,
+        deps.api,
         deps.querier,
         AndromedaHook::OnTransfer {
             token_id: token_id.clone(),
@@ -135,6 +131,7 @@ fn execute_transfer(
     let tax_amount = if let Some(agreement) = &token.extension.transfer_agreement {
         let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
             deps.storage,
+            deps.api,
             deps.querier,
             info.sender.to_string(),
             Funds::Native(agreement.amount.clone()),
@@ -303,6 +300,7 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
         } => {
             let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
                 deps.storage,
+                deps.api,
                 deps.querier,
                 sender,
                 amount,

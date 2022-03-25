@@ -1,17 +1,10 @@
 use std::convert::TryInto;
 
 use crate::state::ADOContract;
-use cosmwasm_std::{
-    Api, DepsMut, MessageInfo, Order, QuerierWrapper, Reply, Response, StdError, Storage, Uint64,
-};
+use cosmwasm_std::{Api, DepsMut, MessageInfo, Order, QuerierWrapper, Response, Storage, Uint64};
 use cw_storage_plus::Bound;
 
-use common::{
-    ado_base::modules::{InstantiateType, Module, ModuleInfoWithAddress},
-    error::ContractError,
-    require,
-    response::get_reply_address,
-};
+use common::{ado_base::modules::Module, error::ContractError, require};
 
 pub mod hooks;
 pub mod query;
@@ -20,16 +13,13 @@ impl<'a> ADOContract<'a> {
     pub fn register_modules(
         &self,
         sender: &str,
-        querier: &QuerierWrapper,
         storage: &mut dyn Storage,
-        api: &dyn Api,
         modules: Vec<Module>,
     ) -> Result<Response, ContractError> {
         self.validate_modules(&modules, &self.ado_type.load(storage)?)?;
         let mut resp = Response::new();
         for module in modules {
-            let register_response =
-                self.execute_register_module(querier, storage, api, sender, module, false)?;
+            let register_response = self.execute_register_module(storage, sender, module, false)?;
             resp = resp
                 .add_attributes(register_response.attributes)
                 .add_submessages(register_response.messages)
@@ -39,12 +29,9 @@ impl<'a> ADOContract<'a> {
 
     /// A wrapper for `fn register_module`. The parameters are "extracted" from `DepsMut` to be able to
     /// execute this in a loop without cloning.
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn execute_register_module(
         &self,
-        querier: &QuerierWrapper,
         storage: &mut dyn Storage,
-        api: &dyn Api,
         sender: &str,
         module: Module,
         should_validate: bool,
@@ -53,17 +40,14 @@ impl<'a> ADOContract<'a> {
             self.is_owner_or_operator(storage, sender)?,
             ContractError::Unauthorized {},
         )?;
-        let mut resp = Response::default();
-        let idx = self.register_module(storage, api, &module)?;
-        if let Some(inst_msg) =
-            self.generate_instantiate_msg_for_module(storage, querier, module, idx)?
-        {
-            resp = resp.add_submessage(inst_msg);
-        }
+        let resp = Response::default();
+        let idx = self.register_module(storage, &module)?;
         if should_validate {
             self.validate_modules(&self.load_modules(storage)?, &self.ado_type.load(storage)?)?;
         }
-        Ok(resp.add_attribute("action", "register_module"))
+        Ok(resp
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", idx.to_string()))
     }
 
     /// A wrapper for `fn alter_module`.
@@ -79,21 +63,12 @@ impl<'a> ADOContract<'a> {
             self.is_owner_or_operator(deps.storage, addr)?,
             ContractError::Unauthorized {},
         )?;
-        let mut resp = Response::default();
-        self.alter_module(deps.storage, deps.api, module_idx, &module)?;
-        if let Some(inst_msg) = self.generate_instantiate_msg_for_module(
-            deps.storage,
-            &deps.querier,
-            module,
-            module_idx.u64(),
-        )? {
-            resp = resp.add_submessage(inst_msg);
-        }
+        self.alter_module(deps.storage, module_idx, &module)?;
         self.validate_modules(
             &self.load_modules(deps.storage)?,
             &self.ado_type.load(deps.storage)?,
         )?;
-        Ok(resp
+        Ok(Response::default()
             .add_attribute("action", "alter_module")
             .add_attribute("module_idx", module_idx))
     }
@@ -123,17 +98,12 @@ impl<'a> ADOContract<'a> {
     fn register_module(
         &self,
         storage: &mut dyn Storage,
-        api: &dyn Api,
         module: &Module,
     ) -> Result<u64, ContractError> {
         let idx = self.module_idx.may_load(storage)?.unwrap_or(1);
         let idx_str = idx.to_string();
         self.module_info.save(storage, &idx_str, module)?;
         self.module_idx.save(storage, &(idx + 1))?;
-        if let InstantiateType::Address(addr) = &module.instantiate {
-            self.module_addr
-                .save(storage, &idx_str, &api.addr_validate(addr)?)?;
-        }
 
         Ok(idx)
     }
@@ -147,7 +117,6 @@ impl<'a> ADOContract<'a> {
         let idx_str = idx.to_string();
         self.check_module_mutability(storage, &idx_str)?;
         self.module_info.remove(storage, &idx_str);
-        self.module_addr.remove(storage, &idx_str);
 
         Ok(())
     }
@@ -159,17 +128,12 @@ impl<'a> ADOContract<'a> {
     fn alter_module(
         &self,
         storage: &mut dyn Storage,
-        api: &dyn Api,
         idx: Uint64,
         module: &Module,
     ) -> Result<(), ContractError> {
         let idx_str = idx.to_string();
         self.check_module_mutability(storage, &idx_str)?;
         self.module_info.save(storage, &idx_str, module)?;
-        if let InstantiateType::Address(addr) = &module.instantiate {
-            self.module_addr
-                .save(storage, &idx_str, &api.addr_validate(addr)?)?;
-        }
         Ok(())
     }
 
@@ -207,22 +171,28 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Loads all registered module addresses in Vector form
-    fn load_module_addresses(&self, storage: &dyn Storage) -> Result<Vec<String>, ContractError> {
-        let module_idx = self.module_idx.may_load(storage)?.unwrap_or(1);
-        let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
-        // let max = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
-        let module_addresses: Vec<String> = self
-            .module_addr
-            .range(storage, min, None, Order::Ascending)
-            .take(module_idx.try_into().unwrap())
-            .flatten()
-            .map(|(_vec, addr)| addr.to_string())
+    fn load_module_addresses(
+        &self,
+        storage: &dyn Storage,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+    ) -> Result<Vec<String>, ContractError> {
+        let mission_contract = self.get_mission_contract(storage)?;
+        let module_addresses: Result<Vec<String>, _> = self
+            .load_modules(storage)?
+            .iter()
+            .map(|m| {
+                m.address
+                    .get_address(api, querier, mission_contract.clone())
+            })
             .collect();
 
-        Ok(module_addresses)
+        module_addresses
     }
 
-    /// Loads all modules with their registered addresses in Vector form
+    /*
+     * TODO: Remove when happy with InstantiateType removal.
+     * /// Loads all modules with their registered addresses in Vector form
     fn load_modules_with_address(
         &self,
         storage: &dyn Storage,
@@ -251,7 +221,7 @@ impl<'a> ADOContract<'a> {
         }
 
         Ok(modules_with_addresses)
-    }
+    }*/
 
     /// Validates all modules.
     pub fn validate_modules(
@@ -266,7 +236,9 @@ impl<'a> ADOContract<'a> {
         Ok(())
     }
 
-    pub fn handle_module_reply(
+    /*
+     * TODO: Remove when happyw with InstantiateType removal
+     * pub fn handle_module_reply(
         &self,
         deps: DepsMut,
         msg: Reply,
@@ -288,13 +260,17 @@ impl<'a> ADOContract<'a> {
             .save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
 
         Ok(Response::default())
-    }
+    }*/
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::ado_base::modules::{ADDRESS_LIST, AUCTION, RECEIPT};
+    use crate::mock_querier::{mock_dependencies_custom, MOCK_MISSION_CONTRACT};
+    use common::{
+        ado_base::modules::{ADDRESS_LIST, AUCTION, RECEIPT},
+        mission::AndrAddress,
+    };
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_info},
         Addr,
@@ -306,7 +282,9 @@ mod tests {
 
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address("address".to_string()),
+            address: AndrAddress {
+                identifier: "address".to_string(),
+            },
             is_mutable: false,
         };
         let deps_mut = deps.as_mut();
@@ -320,9 +298,7 @@ mod tests {
             .unwrap();
 
         let res = ADOContract::default().execute_register_module(
-            &deps_mut.querier,
             deps_mut.storage,
-            deps_mut.api,
             "sender",
             module,
             true,
@@ -337,7 +313,9 @@ mod tests {
 
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address("address".to_string()),
+            address: AndrAddress {
+                identifier: "address".to_string(),
+            },
             is_mutable: false,
         };
         let deps_mut = deps.as_mut();
@@ -352,18 +330,13 @@ mod tests {
             .unwrap();
 
         let res = ADOContract::default()
-            .execute_register_module(
-                &deps_mut.querier,
-                deps_mut.storage,
-                deps_mut.api,
-                "owner",
-                module.clone(),
-                true,
-            )
+            .execute_register_module(deps_mut.storage, "owner", module.clone(), true)
             .unwrap();
 
         assert_eq!(
-            Response::default().add_attribute("action", "register_module"),
+            Response::default()
+                .add_attribute("action", "register_module")
+                .add_attribute("module_idx", "1"),
             res
         );
 
@@ -371,14 +344,6 @@ mod tests {
             module,
             ADOContract::default()
                 .module_info
-                .load(deps.as_mut().storage, "1")
-                .unwrap()
-        );
-
-        assert_eq!(
-            "address".to_string(),
-            ADOContract::default()
-                .module_addr
                 .load(deps.as_mut().storage, "1")
                 .unwrap()
         );
@@ -390,7 +355,9 @@ mod tests {
 
         let module = Module {
             module_type: AUCTION.to_owned(),
-            instantiate: InstantiateType::Address("address".to_string()),
+            address: AndrAddress {
+                identifier: "address".to_string(),
+            },
             is_mutable: false,
         };
         let deps_mut = deps.as_mut();
@@ -405,9 +372,7 @@ mod tests {
             .unwrap();
 
         let res = ADOContract::default().execute_register_module(
-            &deps_mut.querier,
             deps_mut.storage,
-            deps_mut.api,
             "owner",
             module.clone(),
             true,
@@ -420,21 +385,9 @@ mod tests {
             res.unwrap_err(),
         );
 
-        let res = ADOContract::default()
-            .execute_register_module(
-                &deps_mut.querier,
-                deps_mut.storage,
-                deps_mut.api,
-                "owner",
-                module,
-                false,
-            )
+        let _res = ADOContract::default()
+            .execute_register_module(deps_mut.storage, "owner", module, false)
             .unwrap();
-
-        assert_eq!(
-            Response::default().add_attribute("action", "register_module"),
-            res
-        );
     }
 
     #[test]
@@ -443,7 +396,9 @@ mod tests {
         let info = mock_info("sender", &[]);
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address("address".to_string()),
+            address: AndrAddress {
+                identifier: "address".to_string(),
+            },
             is_mutable: true,
         };
         ADOContract::default()
@@ -468,7 +423,9 @@ mod tests {
         let info = mock_info("owner", &[]);
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address("address".to_string()),
+            address: AndrAddress {
+                identifier: "address".to_string(),
+            },
             is_mutable: true,
         };
 
@@ -482,17 +439,15 @@ mod tests {
             .save(deps.as_mut().storage, "1", &module)
             .unwrap();
         ADOContract::default()
-            .module_addr
-            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
-            .unwrap();
-        ADOContract::default()
             .ado_type
             .save(deps.as_mut().storage, &"cw20".to_string())
             .unwrap();
 
         let module = Module {
             module_type: RECEIPT.to_owned(),
-            instantiate: InstantiateType::Address("other_address".to_string()),
+            address: AndrAddress {
+                identifier: "other_address".to_string(),
+            },
             is_mutable: true,
         };
 
@@ -514,14 +469,6 @@ mod tests {
                 .load(deps.as_mut().storage, "1")
                 .unwrap()
         );
-
-        assert_eq!(
-            "other_address".to_string(),
-            ADOContract::default()
-                .module_addr
-                .load(deps.as_mut().storage, "1")
-                .unwrap()
-        );
     }
 
     #[test]
@@ -530,7 +477,9 @@ mod tests {
         let info = mock_info("owner", &[]);
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address("address".to_string()),
+            address: AndrAddress {
+                identifier: "address".to_string(),
+            },
             is_mutable: false,
         };
 
@@ -544,17 +493,15 @@ mod tests {
             .save(deps.as_mut().storage, "1", &module)
             .unwrap();
         ADOContract::default()
-            .module_addr
-            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
-            .unwrap();
-        ADOContract::default()
             .ado_type
             .save(deps.as_mut().storage, &"cw20".to_string())
             .unwrap();
 
         let module = Module {
             module_type: RECEIPT.to_owned(),
-            instantiate: InstantiateType::Address("other_address".to_string()),
+            address: AndrAddress {
+                identifier: "other_address".to_string(),
+            },
             is_mutable: true,
         };
 
@@ -570,7 +517,9 @@ mod tests {
         let info = mock_info("owner", &[]);
         let module = Module {
             module_type: AUCTION.to_owned(),
-            instantiate: InstantiateType::Address("address".to_string()),
+            address: AndrAddress {
+                identifier: "address".to_string(),
+            },
             is_mutable: true,
         };
 
@@ -595,7 +544,9 @@ mod tests {
         let info = mock_info("owner", &[]);
         let module = Module {
             module_type: AUCTION.to_owned(),
-            instantiate: InstantiateType::Address("address".to_string()),
+            address: AndrAddress {
+                identifier: "address".to_string(),
+            },
             is_mutable: true,
         };
 
@@ -607,10 +558,6 @@ mod tests {
         ADOContract::default()
             .module_info
             .save(deps.as_mut().storage, "1", &module)
-            .unwrap();
-        ADOContract::default()
-            .module_addr
-            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
             .unwrap();
         ADOContract::default()
             .ado_type
@@ -654,18 +601,15 @@ mod tests {
 
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address("address".to_string()),
+            address: AndrAddress {
+                identifier: "address".to_string(),
+            },
             is_mutable: true,
         };
 
         ADOContract::default()
             .module_info
             .save(deps.as_mut().storage, "1", &module)
-            .unwrap();
-
-        ADOContract::default()
-            .module_addr
-            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
             .unwrap();
 
         let res = ADOContract::default()
@@ -679,9 +623,6 @@ mod tests {
             res
         );
 
-        assert!(!ADOContract::default()
-            .module_addr
-            .has(deps.as_mut().storage, "1"));
         assert!(!ADOContract::default()
             .module_info
             .has(deps.as_mut().storage, "1"));
@@ -698,18 +639,15 @@ mod tests {
 
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address("address".to_string()),
+            address: AndrAddress {
+                identifier: "address".to_string(),
+            },
             is_mutable: false,
         };
 
         ADOContract::default()
             .module_info
             .save(deps.as_mut().storage, "1", &module)
-            .unwrap();
-
-        ADOContract::default()
-            .module_addr
-            .save(deps.as_mut().storage, "1", &Addr::unchecked("address"))
             .unwrap();
 
         let res =
@@ -730,5 +668,57 @@ mod tests {
             ADOContract::default().execute_deregister_module(deps.as_mut(), info, 1u64.into());
 
         assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn test_load_module_addresses() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let contract = ADOContract::default();
+        contract
+            .mission_contract
+            .save(
+                deps.as_mut().storage,
+                &Addr::unchecked(MOCK_MISSION_CONTRACT),
+            )
+            .unwrap();
+        contract.module_idx.save(deps.as_mut().storage, &2).unwrap();
+        contract
+            .module_info
+            .save(
+                deps.as_mut().storage,
+                "1",
+                &Module {
+                    module_type: "address_list".to_string(),
+                    address: AndrAddress {
+                        identifier: "address".to_string(),
+                    },
+                    is_mutable: true,
+                },
+            )
+            .unwrap();
+
+        contract
+            .module_info
+            .save(
+                deps.as_mut().storage,
+                "2",
+                &Module {
+                    module_type: "address_list".to_string(),
+                    address: AndrAddress {
+                        identifier: "a".to_string(),
+                    },
+                    is_mutable: true,
+                },
+            )
+            .unwrap();
+        let deps_mut = deps.as_mut();
+        let module_addresses = contract
+            .load_module_addresses(deps_mut.storage, deps_mut.api, &deps_mut.querier)
+            .unwrap();
+
+        assert_eq!(
+            vec![String::from("address"), String::from("actual_address")],
+            module_addresses
+        );
     }
 }

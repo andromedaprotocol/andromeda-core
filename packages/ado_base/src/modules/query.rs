@@ -1,19 +1,14 @@
-use crate::{modules::ModuleInfoWithAddress, ADOContract};
+use crate::{modules::Module, ADOContract};
 use common::error::ContractError;
 use cosmwasm_std::{Deps, Order, Uint64};
 use cw_storage_plus::Bound;
 
 impl<'a> ADOContract<'a> {
     /// Queries a module by its id.
-    pub fn query_module(
-        &self,
-        deps: Deps,
-        id: Uint64,
-    ) -> Result<ModuleInfoWithAddress, ContractError> {
+    pub fn query_module(&self, deps: Deps, id: Uint64) -> Result<Module, ContractError> {
         let id = id.to_string();
         let module = self.module_info.load(deps.storage, &id)?;
-        let address = self.module_addr.load(deps.storage, &id)?.to_string();
-        Ok(ModuleInfoWithAddress { module, address })
+        Ok(module)
     }
 
     /// Queries all of the module ids.
@@ -34,7 +29,7 @@ impl<'a> ADOContract<'a> {
 mod tests {
     use super::*;
     use crate::modules::Module;
-    use common::ado_base::modules::InstantiateType;
+    use common::mission::AndrAddress;
     use cosmwasm_std::{testing::mock_dependencies, Addr};
 
     #[test]
@@ -49,13 +44,17 @@ mod tests {
 
         let module1 = Module {
             module_type: "module_type1".to_string(),
-            instantiate: InstantiateType::Address("address1".to_string()),
+            address: AndrAddress {
+                identifier: "address1".to_string(),
+            },
             is_mutable: true,
         };
 
         let module2 = Module {
             module_type: "module_type2".to_string(),
-            instantiate: InstantiateType::Address("address2".to_string()),
+            address: AndrAddress {
+                identifier: "address2".to_string(),
+            },
             is_mutable: true,
         };
 
@@ -65,18 +64,8 @@ mod tests {
             .unwrap();
 
         contract
-            .module_addr
-            .save(deps.as_mut().storage, "1", &Addr::unchecked("address1"))
-            .unwrap();
-
-        contract
             .module_info
             .save(deps.as_mut().storage, "2", &module2)
-            .unwrap();
-
-        contract
-            .module_addr
-            .save(deps.as_mut().storage, "2", &Addr::unchecked("address2"))
             .unwrap();
 
         contract.module_idx.save(deps.as_mut().storage, &2).unwrap();
@@ -85,25 +74,13 @@ mod tests {
             .query_module(deps.as_ref(), Uint64::from(1u64))
             .unwrap();
 
-        assert_eq!(
-            ModuleInfoWithAddress {
-                module: module1,
-                address: "address1".to_string()
-            },
-            res
-        );
+        assert_eq!(module1, res);
 
         let res = contract
             .query_module(deps.as_ref(), Uint64::from(2u64))
             .unwrap();
 
-        assert_eq!(
-            ModuleInfoWithAddress {
-                module: module2,
-                address: "address2".to_string()
-            },
-            res
-        );
+        assert_eq!(module2, res);
 
         let res = contract.query_module_ids(deps.as_ref()).unwrap();
         assert_eq!(vec![String::from("1"), String::from("2")], res);
