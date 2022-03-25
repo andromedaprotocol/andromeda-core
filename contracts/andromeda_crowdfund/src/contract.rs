@@ -1,4 +1,6 @@
-use crate::state::{Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, STATE};
+use crate::state::{
+    Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, SALE_CONDUCTED, STATE,
+};
 use ado_base::ADOContract;
 use andromeda_protocol::{
     crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -34,8 +36,10 @@ pub fn instantiate(
         deps.storage,
         &Config {
             token_address: msg.token_address,
+            can_mint_after_sale: msg.can_mint_after_sale,
         },
     )?;
+    SALE_CONDUCTED.save(deps.storage, &false)?;
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -105,6 +109,12 @@ fn execute_mint(
         STATE.may_load(deps.storage)?.is_none(),
         ContractError::SaleStarted {},
     )?;
+    let sale_conducted = SALE_CONDUCTED.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
+    require(
+        config.can_mint_after_sale || !sale_conducted,
+        ContractError::CannotMintAfterSaleConducted {},
+    )?;
     // We allow for owners other than the contract, incase the creator wants to set aside a few
     // tokens for some other use, say airdrop, team allocation, etc.  Only those which have the
     // contract as the owner will be available to sell.
@@ -112,7 +122,6 @@ fn execute_mint(
         // Mark token as available to purchase in next sale.
         AVAILABLE_TOKENS.save(deps.storage, &mint_msg.token_id, &true)?;
     }
-    let config = CONFIG.load(deps.storage)?;
     let mission_contract = contract.get_mission_contract(deps.storage)?;
     let contract_addr =
         config
@@ -150,6 +159,7 @@ fn execute_start_sale(
         !expiration.is_expired(&env.block),
         ContractError::ExpirationInPast {},
     )?;
+    SALE_CONDUCTED.save(deps.storage, &true)?;
     let state = STATE.may_load(deps.storage)?;
     require(state.is_none(), ContractError::SaleStarted {})?;
     let max_amount_per_wallet = max_amount_per_wallet.unwrap_or_else(|| Uint128::from(1u128));
@@ -168,6 +178,8 @@ fn execute_start_sale(
             recipient,
         },
     )?;
+
+    SALE_CONDUCTED.save(deps.storage, &true)?;
 
     Ok(Response::new()
         .add_attribute("action", "start_sale")

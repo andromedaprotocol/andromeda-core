@@ -1,6 +1,6 @@
 use crate::{
     contract::{execute, instantiate},
-    state::{Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, STATE},
+    state::{Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, SALE_CONDUCTED, STATE},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_CONDITIONS_NOT_MET_CONTRACT,
         MOCK_NON_EXISTING_TOKEN, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT,
@@ -88,6 +88,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
         },
         modules,
         primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+        can_mint_after_sale: true,
     };
 
     let info = mock_info("owner", &[]);
@@ -118,10 +119,13 @@ fn test_instantiate() {
         Config {
             token_address: AndrAddress {
                 identifier: MOCK_TOKEN_CONTRACT.to_owned()
-            }
+            },
+            can_mint_after_sale: true
         },
         CONFIG.load(deps.as_mut().storage).unwrap()
     );
+
+    assert!(!SALE_CONDUCTED.load(deps.as_mut().storage).unwrap());
 }
 
 #[test]
@@ -194,6 +198,43 @@ fn test_mint_sale_started() {
     let res = mint(deps.as_mut(), "token_id");
 
     assert_eq!(ContractError::SaleStarted {}, res.unwrap_err());
+}
+
+#[test]
+fn test_mint_sale_conducted_cant_mint_after_sale() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        token_address: AndrAddress {
+            identifier: MOCK_TOKEN_CONTRACT.to_owned(),
+        },
+        modules: None,
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+        can_mint_after_sale: false,
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    SALE_CONDUCTED.save(deps.as_mut().storage, &true).unwrap();
+
+    let res = mint(deps.as_mut(), "token_id");
+
+    assert_eq!(
+        ContractError::CannotMintAfterSaleConducted {},
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_mint_sale_conducted_can_mint_after_sale() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    SALE_CONDUCTED.save(deps.as_mut().storage, &true).unwrap();
+
+    let _res = mint(deps.as_mut(), "token_id").unwrap();
+
+    assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, "token_id"));
 }
 
 #[test]
@@ -324,6 +365,8 @@ fn test_start_sale_max_default() {
         },
         STATE.load(deps.as_ref().storage).unwrap()
     );
+
+    assert!(SALE_CONDUCTED.load(deps.as_ref().storage).unwrap());
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::SaleStarted {}, res.unwrap_err());

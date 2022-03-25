@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub token_address: AndrAddress,
+    pub can_mint_after_sale: bool,
     pub modules: Option<Vec<Module>>,
     pub primitive_contract: String,
 }
