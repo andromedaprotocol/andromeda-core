@@ -48,12 +48,12 @@ pub fn instantiate(
         deps.storage,
         deps.api,
         &deps.querier,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "cw721".to_string(),
             operators: None,
-            modules: msg.modules.clone(),
-            primitive_contract: Some(msg.primitive_contract.clone()),
+            modules: msg.modules,
+            primitive_contract: Some(msg.primitive_contract),
         },
     )
 }
