@@ -127,6 +127,9 @@ fn execute_add_mission_component(
         ContractError::Unauthorized {},
     )?;
 
+    let current_addr = ADO_ADDRESSES.may_load(storage, &component.name)?;
+    require(current_addr.is_none(), ContractError::NameAlreadyTaken {})?;
+
     let idx = add_mission_component(storage, &component)?;
     let inst_msg = contract.generate_instantiate_msg(
         storage,
