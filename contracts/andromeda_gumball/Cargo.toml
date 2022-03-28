@@ -27,4 +27,5 @@ cosmwasm-storage = "0.16.0"
 cw-storage-plus = "0.9.1"
 cw2 = "0.9.1"
 cw721 = "0.9.1"
+hex = "0.4.3"
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }

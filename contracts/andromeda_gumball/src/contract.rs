@@ -11,6 +11,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::CONFIG;
+use andromeda_protocol::gumball::{LatestRandomResponse, TerrandQueryMsg};
 use andromeda_protocol::ownership::{
     execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER,
 };
@@ -34,6 +35,7 @@ pub fn instantiate(
         token_addr: deps.api.addr_canonicalize(&msg.token_addr)?,
         stable_denom: msg.stable_denom.clone(),
         price: msg.price.clone(),
+        terrand: deps.api.addr_canonicalize(&msg.terrand_contract_address)?,
     };
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new().add_attributes(vec![
@@ -58,7 +60,7 @@ pub fn execute(
     }
 }
 
-fn execute_claim(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+fn execute_claim(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let coin_denom = config.stable_denom.clone();
 
@@ -105,8 +107,12 @@ fn execute_claim(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response,
 
     let all_token_len = all_token_ids.len() as u64;
     require(all_token_len > 0, ContractError::InsufficientTokens {})?;
-    let selected_id = env.block.time.seconds() % all_token_len;
-
+    // let selected_id = env.block.time.seconds() % all_token_len;
+    let selected_id = get_random_number(
+        deps.querier,
+        deps.api.addr_humanize(&config.terrand)?.to_string(),
+        all_token_len,
+    )?;
     let token_id = all_token_ids[selected_id as usize].clone();
 
     //transfer NFT
@@ -153,6 +159,20 @@ fn execute_withdraw_funds(
         attr("receiver", info.sender.to_string()),
         attr("amount", amount),
     ]))
+}
+
+pub fn get_random_number(
+    querier: QuerierWrapper,
+    terrand_addr: String,
+    max_count: u64,
+) -> StdResult<u64> {
+    let res: LatestRandomResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: terrand_addr,
+        msg: to_binary(&TerrandQueryMsg::LatestDrand {})?,
+    }))?;
+    let randomness_hash = hex::encode(res.randomness.as_slice()); //"Z9rskGBpLK2usuNPOEMPeTHxmTkGrZTrzgi8fXRSerg="
+    let k: String = randomness_hash.chars().skip(2).take(10).collect();
+    Ok(u64::from_str_radix(k.as_str(), 16).unwrap() % max_count)
 }
 
 fn query_tokens(
@@ -213,5 +233,6 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         token_addr: deps.api.addr_humanize(&config.token_addr)?.to_string(),
         stable_denom: config.stable_denom,
         price: config.price,
+        terrand_addr: deps.api.addr_humanize(&config.terrand)?.into(),
     })
 }

@@ -89,6 +89,7 @@ dependencies = [
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
  "cw721",
+ "hex",
  "schemars",
  "serde",
 ]
