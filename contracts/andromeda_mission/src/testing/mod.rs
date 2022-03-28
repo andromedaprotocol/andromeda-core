@@ -1,4 +1,7 @@
-use crate::{contract::*, state::ADO_ADDRESSES};
+use crate::{
+    contract::*,
+    state::{ADO_ADDRESSES, ADO_DESCRIPTORS},
+};
 use andromeda_protocol::{
     mission::{ExecuteMsg, InstantiateMsg, MissionComponent},
     testing::mock_querier::mock_dependencies_custom,
@@ -6,7 +9,8 @@ use andromeda_protocol::{
 use common::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, CosmosMsg, StdError, WasmMsg,
+    to_binary, Addr, ContractResult, CosmosMsg, Event, Reply, StdError, SubMsgExecutionResponse,
+    WasmMsg,
 };
 
 #[test]
@@ -582,4 +586,53 @@ fn test_update_address() {
 
     let addr = ADO_ADDRESSES.load(deps.as_ref().storage, "token").unwrap();
     assert_eq!(Addr::unchecked("newtokenaddress"), addr)
+}
+
+#[test]
+fn test_reply_assign_mission() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let mock_mission_component = MissionComponent {
+        ado_type: "cw721".to_string(),
+        name: "token".to_string(),
+        instantiate_msg: to_binary(&true).unwrap(),
+    };
+    let component_idx = 1;
+    ADO_DESCRIPTORS
+        .save(
+            deps.as_mut().storage,
+            &component_idx.to_string(),
+            &mock_mission_component,
+        )
+        .unwrap();
+
+    let mock_reply_event = Event::new("instantiate")
+        .add_attribute("contract_address".to_string(), "tokenaddress".to_string());
+
+    let mock_reply = Reply {
+        id: component_idx,
+        result: ContractResult::Ok(SubMsgExecutionResponse {
+            data: None,
+            events: vec![mock_reply_event],
+        }),
+    };
+
+    let res = reply(deps.as_mut(), env.clone(), mock_reply).unwrap();
+    assert_eq!(1, res.messages.len());
+
+    match res.messages[0].msg.clone() {
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr, msg, ..
+        }) => {
+            assert_eq!("tokenaddress".to_string(), contract_addr);
+            assert_eq!(
+                to_binary(&AndromedaMsg::UpdateMissionContract {
+                    address: env.contract.address.to_string()
+                })
+                .unwrap(),
+                msg
+            );
+        }
+        _ => panic!("Invalid msg type"),
+    }
 }

@@ -1,6 +1,7 @@
 use crate::state::{
-    add_mission_component, generate_ownership_message, load_component_addresses,
-    load_component_descriptors, ADO_ADDRESSES, ADO_DESCRIPTORS, MISSION_NAME,
+    add_mission_component, generate_assign_mission_message, generate_ownership_message,
+    load_component_addresses, load_component_descriptors, ADO_ADDRESSES, ADO_DESCRIPTORS,
+    MISSION_NAME,
 };
 use ado_base::ADOContract;
 use andromeda_protocol::mission::{
@@ -71,7 +72,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
         return Err(ContractError::Std(StdError::generic_err(
             msg.result.unwrap_err(),
@@ -84,10 +85,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         ContractError::InvalidReplyId {},
     )?;
 
-    let addr = get_reply_address(&msg)?;
-    ADO_ADDRESSES.save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
-
-    Ok(Response::default())
+    let addr_str = get_reply_address(&msg)?;
+    let addr = &deps.api.addr_validate(&addr_str)?;
+    ADO_ADDRESSES.save(deps.storage, &id, addr)?;
+    let assign_mission = generate_assign_mission_message(addr, &env.contract.address.to_string())?;
+    Ok(Response::default().add_submessage(assign_mission))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

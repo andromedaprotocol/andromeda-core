@@ -67,3 +67,22 @@ pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, Con
         gas_limit: None,
     })
 }
+
+pub fn generate_assign_mission_message(
+    addr: &Addr,
+    mission_addr: &str,
+) -> Result<SubMsg, ContractError> {
+    let msg = to_binary(&AndromedaMsg::UpdateMissionContract {
+        address: mission_addr.to_string(),
+    })?;
+    Ok(SubMsg {
+        id: 102,
+        reply_on: ReplyOn::Error,
+        msg: CosmosMsg::Wasm(WasmMsg::Execute {
+            msg,
+            funds: Vec::<Coin>::new(),
+            contract_addr: addr.to_string(),
+        }),
+        gas_limit: None,
+    })
+}
