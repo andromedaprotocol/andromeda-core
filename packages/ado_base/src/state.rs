@@ -8,7 +8,7 @@ use terraswap::asset::AssetInfo;
 
 //TODO: Make as many of these as possible pub(crate)
 pub struct ADOContract<'a> {
-    pub owner: Item<'a, Addr>,
+    pub(crate) owner: Item<'a, Addr>,
     pub operators: Map<'a, &'a str, bool>,
     pub ado_type: Item<'a, String>,
     pub(crate) mission_contract: Item<'a, Addr>,

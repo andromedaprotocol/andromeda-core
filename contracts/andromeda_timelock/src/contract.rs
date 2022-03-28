@@ -327,7 +327,7 @@ mod tests {
     use cosmwasm_std::{
         coin, coins, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
-        Addr, BankMsg, Coin, Timestamp,
+        BankMsg, Coin, Timestamp,
     };
     use cw721::Expiration;
 
@@ -821,9 +821,19 @@ mod tests {
         let env = mock_env();
         let owner = "creator";
 
+        let deps_mut = deps.as_mut();
         ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "timelock".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
             .unwrap();
 
         let state = State { address_list: None };

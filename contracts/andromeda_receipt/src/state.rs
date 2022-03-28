@@ -44,9 +44,13 @@ pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Rec
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{testing::mock_dependencies, Addr};
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_info},
+        Addr,
+    };
 
     use super::*;
+    use common::ado_base::InstantiateMsg as BaseInstantiateMsg;
 
     #[test]
     fn test_can_mint() {
@@ -59,15 +63,25 @@ mod tests {
             minter: minter.clone(),
         };
         let mut deps = mock_dependencies(&[]);
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(&owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "receipt".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
         ADOContract::default()
             .operators
             .save(deps.as_mut().storage, &operator, &true)
             .unwrap();
 
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
         CONFIG.save(deps.as_mut().storage, &config).unwrap();
 
         let anyone_resp = can_mint_receipt(deps.as_ref().storage, &anyone).unwrap();

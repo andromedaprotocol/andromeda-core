@@ -327,10 +327,19 @@ mod tests {
 
         let lock = true;
         let msg = ExecuteMsg::UpdateLock { lock };
-
+        let deps_mut = deps.as_mut();
         ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
             .unwrap();
 
         let info = mock_info("incorrect_owner", &[]);
@@ -358,9 +367,19 @@ mod tests {
         let env = mock_env();
         let owner = "creator";
 
+        let deps_mut = deps.as_mut();
         ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
             .unwrap();
 
         let splitter = Splitter {
@@ -430,10 +449,21 @@ mod tests {
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
+        let deps_mut = deps.as_mut();
         ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
             .unwrap();
+
         let info = mock_info("incorrect_owner", &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
@@ -477,21 +507,6 @@ mod tests {
         ];
         let msg = ExecuteMsg::Send {};
 
-        //incorrect owner
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
-            .unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if let Ok(..) = res {
-            panic!();
-        }
-
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
-
         let splitter = Splitter {
             recipients: recipient,
             locked: false,
@@ -499,6 +514,21 @@ mod tests {
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -591,21 +621,6 @@ mod tests {
         ];
         let msg = ExecuteMsg::Send {};
 
-        //incorrect owner
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
-            .unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if let Ok(..) = res {
-            panic!()
-        }
-
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner))
-            .unwrap();
-
         let splitter = Splitter {
             recipients: recipient,
             locked: false,
@@ -613,6 +628,21 @@ mod tests {
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
