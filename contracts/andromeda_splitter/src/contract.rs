@@ -292,7 +292,7 @@ mod tests {
     use andromeda_protocol::modules::address_list::AddressListModule;
     use common::ado_base::recipient::Recipient;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, Addr, Coin, Decimal};
+    use cosmwasm_std::{from_binary, Coin, Decimal};
 
     #[test]
     fn test_instantiate() {

@@ -3,7 +3,7 @@ use common::{
     ado_base::{
         operators::{IsOperatorResponse, OperatorsResponse},
         ownership::ContractOwnerResponse,
-        AndromedaQuery,
+        AndromedaQuery, QueryMsg,
     },
     encode_binary,
     error::ContractError,
@@ -24,7 +24,10 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Binary, ContractError> {
         match msg {
             AndromedaQuery::Get(data) => {
-                require(!self.is_nested(&data), ContractError::NestedAndromedaMsg {})?;
+                require(
+                    !self.is_nested::<QueryMsg>(&data),
+                    ContractError::NestedAndromedaMsg {},
+                )?;
                 let received: Q = parse_message(&data)?;
                 (query_function)(deps, env, received)
             }

@@ -1,6 +1,6 @@
 use crate::state::ADOContract;
 use common::{
-    ado_base::{AndromedaMsg, InstantiateMsg},
+    ado_base::{AndromedaMsg, ExecuteMsg, InstantiateMsg},
     error::ContractError,
     parse_message, require,
 };
@@ -47,7 +47,10 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         match msg {
             AndromedaMsg::Receive(data) => {
-                require(!self.is_nested(&data), ContractError::NestedAndromedaMsg {})?;
+                require(
+                    !self.is_nested::<ExecuteMsg>(&data),
+                    ContractError::NestedAndromedaMsg {},
+                )?;
                 let received: E = parse_message(&data)?;
                 (execute_function)(deps, env, info, received)
             }
