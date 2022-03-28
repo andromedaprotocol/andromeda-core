@@ -126,7 +126,7 @@ fn test_add_mission_component_unauthorized() {
         primitive_contract: String::from("primitive_contract"),
     };
 
-    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
     let unauth_info = mock_info("anyone", &[]);
     let msg = ExecuteMsg::AddMissionComponent {
@@ -225,7 +225,7 @@ fn test_claim_ownership_unauth() {
         primitive_contract: String::from("primitive_contract"),
     };
 
-    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
     let unauth_info = mock_info("anyone", &[]);
     let msg = ExecuteMsg::ClaimOwnership { name: None };
@@ -415,7 +415,7 @@ fn test_proxy_message_unauth() {
         primitive_contract: String::from("primitive_contract"),
     };
 
-    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
     let unauth_info = mock_info("anyone", &[]);
     let msg = ExecuteMsg::ProxyMessage {
@@ -514,7 +514,7 @@ fn test_update_address_unauth() {
             &Addr::unchecked("tokenaddress".to_string()),
         )
         .unwrap();
-    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
     let unauth_info = mock_info("anyone", &[]);
     let msg = ExecuteMsg::UpdateAddress {
