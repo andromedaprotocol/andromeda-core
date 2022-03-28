@@ -517,8 +517,11 @@ mod tests {
 
         init(deps.as_mut());
         ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, &operator, &true)
+            .execute_update_operators(
+                deps.as_mut(),
+                mock_info("owner", &[]),
+                vec![operator.to_owned()],
+            )
             .unwrap();
 
         let info = mock_info(&token_address, &[]);

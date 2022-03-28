@@ -193,8 +193,7 @@ mod tests {
         init(deps.as_mut(), info.clone());
 
         ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
+            .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
             .unwrap();
 
         let msg = ExecuteMsg::AddAddress {
@@ -246,8 +245,7 @@ mod tests {
 
         //save operator
         ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
+            .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
             .unwrap();
 
         let msg = ExecuteMsg::RemoveAddress {
@@ -323,8 +321,7 @@ mod tests {
         // Mark it as a blacklist.
         IS_INCLUSIVE.save(deps.as_mut().storage, &false).unwrap();
         ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
+            .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
             .unwrap();
 
         let msg = ExecuteMsg::AddAddress {

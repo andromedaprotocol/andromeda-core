@@ -44,10 +44,7 @@ pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Rec
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{
-        testing::{mock_dependencies, mock_info},
-        Addr,
-    };
+    use cosmwasm_std::testing::{mock_dependencies, mock_info};
 
     use super::*;
     use common::ado_base::InstantiateMsg as BaseInstantiateMsg;
@@ -71,15 +68,11 @@ mod tests {
                 mock_info(&owner, &[]),
                 BaseInstantiateMsg {
                     ado_type: "receipt".to_string(),
-                    operators: None,
+                    operators: Some(vec![operator.clone()]),
                     modules: None,
                     primitive_contract: None,
                 },
             )
-            .unwrap();
-        ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, &operator, &true)
             .unwrap();
 
         CONFIG.save(deps.as_mut().storage, &config).unwrap();
