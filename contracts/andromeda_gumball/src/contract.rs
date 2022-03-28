@@ -34,7 +34,7 @@ pub fn instantiate(
     let config = Config {
         token_addr: deps.api.addr_canonicalize(&msg.token_addr)?,
         stable_denom: msg.stable_denom.clone(),
-        price: msg.price.clone(),
+        price: msg.price,
         terrand: deps.api.addr_canonicalize(&msg.terrand_contract_address)?,
     };
     CONFIG.save(deps.storage, &config)?;

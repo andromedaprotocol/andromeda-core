@@ -170,7 +170,7 @@ pub fn query_channel(deps: Deps, id: String) -> StdResult<ChannelResponse> {
 pub fn query_nft_info(
     deps: Deps,
     contract_addr: String,
-    token_id: &String,
+    token_id: &str,
 ) -> StdResult<NftInfoResponse<NftInfoResponseExtension>> {
     let token_info: NftInfoResponse<NftInfoResponseExtension> =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
