@@ -133,6 +133,7 @@ fn test_instantiate_modules() {
             .add_submessages(msgs),
         res
     );
+<<<<<<< HEAD
 }*/
 
 #[test]

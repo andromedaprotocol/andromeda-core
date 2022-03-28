@@ -297,8 +297,8 @@ fn issue_refunds_and_burn_tokens(
     // Burn `limit` number of tokens
     let burn_msgs = get_burn_messages(
         deps.storage,
-        &deps.querier,
         deps.api,
+        &deps.querier,
         env.contract.address.to_string(),
         limit,
     )?;
@@ -338,8 +338,8 @@ fn transfer_tokens_and_send_funds(
         // that were not purchased.
         let burn_msgs = get_burn_messages(
             deps.storage,
-            &deps.querier,
             deps.api,
+            &deps.querier,
             env.contract.address.to_string(),
             limit,
         )?;
@@ -468,8 +468,8 @@ fn process_refund(
 
 fn get_burn_messages(
     storage: &dyn Storage,
-    querier: &QuerierWrapper,
     api: &dyn Api,
+    querier: &QuerierWrapper,
     address: String,
     limit: usize,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
