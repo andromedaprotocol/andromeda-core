@@ -1,16 +1,12 @@
-use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
+use common::{
+    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    withdraw::Withdrawal,
+};
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum WithdrawalType {
-    Amount(Uint128),
-    Percentage(Uint128),
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -22,6 +18,10 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     AndrReceive(AndromedaMsg),
+    WithdrawFromPosition {
+        token_to_withdraw: Withdrawal,
+        position_recipient: Option<String>,
+    },
     /// Deposit LUNA as collateral which will be converted to bLUNA.
     DepositCollateral {},
     /// Withdraw specified collateral. If unbond is true and collateral is bLuna, the unbonding
@@ -40,6 +40,19 @@ pub enum ExecuteMsg {
     },
     /// Repays any existing loan with sent stable coins.
     RepayLoan {},
+    /// Withdraws any unbonded bLuna from the hub contract.
+    WithdrawUnbonded {
+        recipient: Option<Recipient>,
+    },
+    ClaimAncRewards {
+        auto_stake: Option<bool>,
+    },
+    StakeAnc {
+        amount: Option<Uint128>,
+    },
+    UnstakeAnc {
+        amount: Option<Uint128>,
+    },
 
     /// INTERNAL
     DepositCollateralToAnchor {
@@ -76,6 +89,18 @@ pub struct PositionResponse {
 #[serde(rename_all = "snake_case")]
 pub enum BLunaHubExecuteMsg {
     Bond {},
+    WithdrawUnbonded {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum BLunaHubQueryMsg {
+    WithdrawableUnbonded { address: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct WithdrawableUnbondedResponse {
+    pub withdrawable: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
