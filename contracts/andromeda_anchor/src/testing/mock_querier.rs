@@ -9,6 +9,7 @@ use crate::primitive_keys::{
     ANCHOR_ANC, ANCHOR_AUST, ANCHOR_BLUNA, ANCHOR_BLUNA_CUSTODY, ANCHOR_BLUNA_HUB, ANCHOR_GOV,
     ANCHOR_MARKET, ANCHOR_ORACLE, ANCHOR_OVERSEER,
 };
+use anchor_token::gov::{QueryMsg as GovQueryMsg, StakerResponse};
 use andromeda_protocol::primitive::QueryMsg as PrimitiveQueryMsg;
 use common::{
     ado_base::AndromedaQuery,
@@ -76,8 +77,10 @@ impl WasmMockQuerier {
                     MOCK_MARKET_CONTRACT => self.handle_market_query(msg),
                     MOCK_OVERSEER_CONTRACT => self.handle_overseer_query(msg),
                     MOCK_ORACLE_CONTRACT => self.handle_oracle_query(msg),
+                    MOCK_GOV_CONTRACT => self.handle_gov_query(msg),
                     MOCK_AUST_TOKEN => self.handle_aust_query(msg),
                     MOCK_BLUNA_TOKEN => self.handle_bluna_query(msg),
+                    MOCK_ANC_TOKEN => self.handle_anc_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     _ => panic!("Unsupported Query for address {}", contract_addr),
                 }
@@ -94,7 +97,7 @@ impl WasmMockQuerier {
                     interest_index: Decimal256::zero(),
                     reward_index: Decimal256::zero(),
                     loan_amount: self.loan_amount,
-                    pending_rewards: Decimal256::zero(),
+                    pending_rewards: Decimal256::one(),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }
@@ -141,11 +144,37 @@ impl WasmMockQuerier {
         }
     }
 
+    fn handle_anc_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            Cw20QueryMsg::Balance { .. } => {
+                let res = BalanceResponse {
+                    balance: 100u128.into(),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
     fn handle_aust_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             Cw20QueryMsg::Balance { .. } => {
                 let res = BalanceResponse {
                     balance: self.token_balance,
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_gov_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            GovQueryMsg::Staker { .. } => {
+                let res = StakerResponse {
+                    balance: Uint128::new(100),
+                    share: Uint128::zero(),
+                    locked_balance: vec![],
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }

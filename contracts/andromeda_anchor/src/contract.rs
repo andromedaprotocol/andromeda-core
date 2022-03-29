@@ -563,11 +563,13 @@ fn execute_claim_anc(
         ContractError::Unauthorized {},
     )?;
     let anchor_market = contract.get_cached_address(deps.storage, ANCHOR_MARKET)?;
-    let res = Response::new().add_message(WasmMsg::Execute {
-        contract_addr: anchor_market.clone(),
-        msg: encode_binary(&MarketExecuteMsg::ClaimRewards { to: None })?,
-        funds: vec![],
-    });
+    let res = Response::new()
+        .add_attribute("action", "claim_anc_rewards")
+        .add_message(WasmMsg::Execute {
+            contract_addr: anchor_market.clone(),
+            msg: encode_binary(&MarketExecuteMsg::ClaimRewards { to: None })?,
+            funds: vec![],
+        });
     if auto_stake.unwrap_or(false) {
         let borrower_info = query_borrower_info(
             &deps.querier,
@@ -601,16 +603,19 @@ fn execute_stake_anc(
     let anc = AssetInfo::cw20(deps.api.addr_validate(&anchor_anc)?);
     let total_amount = anc.query_balance(&deps.querier, env.contract.address)?;
 
-    let amount = cmp::max(total_amount, amount.unwrap_or(total_amount));
-    Ok(Response::new().add_message(WasmMsg::Execute {
-        contract_addr: anchor_anc,
-        msg: encode_binary(&Cw20ExecuteMsg::Send {
-            contract: anchor_gov,
-            msg: encode_binary(&GovCw20HookMsg::StakeVotingTokens {})?,
-            amount,
-        })?,
-        funds: vec![],
-    }))
+    let amount = cmp::min(total_amount, amount.unwrap_or(total_amount));
+    Ok(Response::new()
+        .add_attribute("action", "stake_anc")
+        .add_attribute("amount", amount)
+        .add_message(WasmMsg::Execute {
+            contract_addr: anchor_anc,
+            msg: encode_binary(&Cw20ExecuteMsg::Send {
+                contract: anchor_gov,
+                msg: encode_binary(&GovCw20HookMsg::StakeVotingTokens {})?,
+                amount,
+            })?,
+            funds: vec![],
+        }))
 }
 
 fn execute_unstake_anc(
@@ -633,19 +638,22 @@ fn execute_unstake_anc(
     )?;
 
     // If we ever support voting in polls, need to take into account
-    // staker_response.locked_balance.
-    let amount = cmp::max(
+    // staker_response.locked_balance (if balance has deducted made to it).
+    let amount = cmp::min(
         staker_response.balance,
         amount.unwrap_or(staker_response.balance),
     );
 
-    Ok(Response::new().add_message(WasmMsg::Execute {
-        contract_addr: anchor_gov,
-        msg: encode_binary(&GovExecuteMsg::WithdrawVotingTokens {
-            amount: Some(amount),
-        })?,
-        funds: vec![],
-    }))
+    Ok(Response::new()
+        .add_attribute("action", "unstake_anc")
+        .add_attribute("amount", amount)
+        .add_message(WasmMsg::Execute {
+            contract_addr: anchor_gov,
+            msg: encode_binary(&GovExecuteMsg::WithdrawVotingTokens {
+                amount: Some(amount),
+            })?,
+            funds: vec![],
+        }))
 }
 
 pub fn execute_deposit(

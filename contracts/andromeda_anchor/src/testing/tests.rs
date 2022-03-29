@@ -13,11 +13,12 @@ use crate::primitive_keys::{
 };
 use crate::state::{Position, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR};
 use crate::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_AUST_TOKEN, MOCK_BLUNA_HUB_CONTRACT, MOCK_BLUNA_TOKEN,
-    MOCK_CUSTODY_CONTRACT, MOCK_MARKET_CONTRACT, MOCK_ORACLE_CONTRACT, MOCK_OVERSEER_CONTRACT,
-    MOCK_PRIMITIVE_CONTRACT,
+    mock_dependencies_custom, MOCK_ANC_TOKEN, MOCK_AUST_TOKEN, MOCK_BLUNA_HUB_CONTRACT,
+    MOCK_BLUNA_TOKEN, MOCK_CUSTODY_CONTRACT, MOCK_GOV_CONTRACT, MOCK_MARKET_CONTRACT,
+    MOCK_ORACLE_CONTRACT, MOCK_OVERSEER_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
 };
 use ado_base::ADOContract;
+use anchor_token::gov::{Cw20HookMsg as GovCw20HookMsg, ExecuteMsg as GovExecuteMsg};
 use andromeda_protocol::anchor::{
     BLunaHubCw20HookMsg, BLunaHubExecuteMsg, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
     PositionResponse, QueryMsg,
@@ -1217,5 +1218,214 @@ fn test_withdraw_collateral_unauthorized() {
 
     let info = mock_info("anyone", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_claim_anc() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::ClaimAncRewards { auto_stake: None };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "claim_anc_rewards")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_MARKET_CONTRACT.to_owned(),
+                msg: to_binary(&MarketExecuteMsg::ClaimRewards { to: None }).unwrap(),
+                funds: vec![],
+            }),
+        res
+    );
+}
+
+#[test]
+fn test_claim_anc_auto_stake() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::ClaimAncRewards {
+        auto_stake: Some(true),
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "claim_anc_rewards")
+            .add_attribute("action", "stake_anc")
+            .add_attribute("amount", "1")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_MARKET_CONTRACT.to_owned(),
+                msg: to_binary(&MarketExecuteMsg::ClaimRewards { to: None }).unwrap(),
+                funds: vec![],
+            })
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_ANC_TOKEN.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: MOCK_GOV_CONTRACT.to_owned(),
+                    msg: to_binary(&GovCw20HookMsg::StakeVotingTokens {}).unwrap(),
+                    amount: Uint128::new(1),
+                })
+                .unwrap(),
+                funds: vec![],
+            }),
+        res
+    );
+}
+
+#[test]
+fn test_claim_anc_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::ClaimAncRewards { auto_stake: None };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_stake_anc() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::StakeAnc { amount: None };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "stake_anc")
+            .add_attribute("amount", "100")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_ANC_TOKEN.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: MOCK_GOV_CONTRACT.to_owned(),
+                    msg: to_binary(&GovCw20HookMsg::StakeVotingTokens {}).unwrap(),
+                    amount: Uint128::new(100),
+                })
+                .unwrap(),
+                funds: vec![],
+            }),
+        res
+    );
+}
+
+#[test]
+fn test_stake_anc_amount_specified() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::StakeAnc {
+        amount: Some(Uint128::new(10)),
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "stake_anc")
+            .add_attribute("amount", "10")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_ANC_TOKEN.to_owned(),
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: MOCK_GOV_CONTRACT.to_owned(),
+                    msg: to_binary(&GovCw20HookMsg::StakeVotingTokens {}).unwrap(),
+                    amount: Uint128::new(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }),
+        res
+    );
+}
+
+#[test]
+fn test_stake_anc_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::StakeAnc { amount: None };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_unstake_anc() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::UnstakeAnc { amount: None };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "unstake_anc")
+            .add_attribute("amount", "100")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_GOV_CONTRACT.to_owned(),
+                msg: to_binary(&GovExecuteMsg::WithdrawVotingTokens {
+                    amount: Some(Uint128::new(100)),
+                })
+                .unwrap(),
+                funds: vec![],
+            }),
+        res
+    );
+}
+
+#[test]
+fn test_unstake_anc_amount_specified() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::UnstakeAnc {
+        amount: Some(Uint128::new(10)),
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "unstake_anc")
+            .add_attribute("amount", "10")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_GOV_CONTRACT.to_owned(),
+                msg: to_binary(&GovExecuteMsg::WithdrawVotingTokens {
+                    amount: Some(Uint128::new(10)),
+                })
+                .unwrap(),
+                funds: vec![],
+            }),
+        res
+    );
+}
+
+#[test]
+fn test_unstake_anc_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::UnstakeAnc { amount: None };
+
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
