@@ -138,10 +138,14 @@ fn execute_add_mission_component(
         querier,
         idx,
         component.instantiate_msg,
-        component.ado_type,
+        component.ado_type.clone(),
     )?;
 
-    Ok(Response::new().add_submessage(inst_msg))
+    Ok(Response::new()
+        .add_submessage(inst_msg)
+        .add_attribute("method", "add_mission_component")
+        .add_attribute("name", component.name)
+        .add_attribute("type", component.ado_type))
 }
 
 fn execute_claim_ownership(

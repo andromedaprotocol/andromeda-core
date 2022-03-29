@@ -219,13 +219,28 @@ fn test_add_mission_component() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    match res.messages[0].msg.clone() {
-        CosmosMsg::Wasm(WasmMsg::Instantiate { code_id, msg, .. }) => {
-            assert_eq!(4, code_id);
-            assert_eq!(to_binary(&true).unwrap(), msg)
-        }
-        _ => panic!("Invalid msg type"),
-    }
+    assert_eq!(1, res.messages.len());
+    let inst_submsg: SubMsg<Empty> = SubMsg {
+        id: 1,
+        msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+            code_id: 4,
+            msg: to_binary(&true).unwrap(),
+            funds: vec![],
+            label: "Instantiate: cw721".to_string(),
+            admin: None,
+        }),
+        reply_on: ReplyOn::Always,
+        gas_limit: None,
+    };
+    let expected = Response::new()
+        .add_submessage(inst_submsg)
+        .add_attributes(vec![
+            attr("method", "add_mission_component"),
+            attr("name", "token"),
+            attr("type", "cw721"),
+        ]);
+
+    assert_eq!(expected, res)
 }
 
 #[test]
