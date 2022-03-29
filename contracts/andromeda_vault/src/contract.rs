@@ -1,6 +1,6 @@
 use ado_base::state::ADOContract;
 use andromeda_protocol::vault::{
-    self, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyType, BALANCES,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyType, BALANCES,
     STRATEGY_CONTRACT_ADDRESSES,
 };
 use common::{
@@ -11,7 +11,7 @@ use common::{
     parse_message, require,
 };
 use cosmwasm_std::{
-    coin, entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128,
+    entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -106,11 +106,12 @@ fn execute_deposit(
     )?;
     let mut resp = Response::default();
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+
     // If no amount is provided then the sent funds are used as a deposit
     let deposited_funds = if let Some(deposit_amount) = amount {
         let mut deposit_balance = Uint128::zero();
         for funds in info.funds {
-            // Find funds in sent funds and add to current balance
+            // Find funds in sent funds and add to deposit amount
             if funds.denom == deposit_amount.denom {
                 deposit_balance = deposit_balance.checked_add(funds.amount)?;
             }
@@ -124,11 +125,14 @@ fn execute_deposit(
                     (recipient.get_addr(), deposit_amount.denom.clone()),
                 )?
                 .unwrap_or_else(Uint128::zero);
+
+            // Amount that must be removed from the vault to add to the deposit
             let difference = deposit_amount.amount.checked_sub(deposit_balance)?;
             require(
                 vault_balance >= difference,
                 ContractError::InsufficientFunds {},
             )?;
+
             deposit_balance = deposit_balance.checked_add(vault_balance)?;
             //Subtract the removed funds from balance
             BALANCES.save(
@@ -150,6 +154,7 @@ fn execute_deposit(
     };
 
     match strategy {
+        // Depositing to vault
         None => {
             for funds in deposited_funds {
                 let curr_balance = BALANCES
@@ -387,7 +392,7 @@ mod tests {
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         let msg = wasm_execute(
-            yield_strategy.address.clone(),
+            yield_strategy.address,
             &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
                 to_binary(&"depositor".to_string()).unwrap(),
             ))),
@@ -407,7 +412,7 @@ mod tests {
         let post_balance = BALANCES
             .load(
                 deps.as_ref().storage,
-                ("depositor".to_string(), sent_funds.denom.clone()),
+                ("depositor".to_string(), sent_funds.denom),
             )
             .unwrap();
 
@@ -472,7 +477,7 @@ mod tests {
         let post_balance = BALANCES
             .load(
                 deps.as_ref().storage,
-                ("depositor".to_string(), sent_funds.denom.clone()),
+                ("depositor".to_string(), sent_funds.denom),
             )
             .unwrap();
 
