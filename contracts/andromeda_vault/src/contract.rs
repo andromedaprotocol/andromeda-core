@@ -1,7 +1,6 @@
-use crate::state::CONFIG;
 use ado_base::state::ADOContract;
 use andromeda_protocol::vault::{
-    Config, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyType, BALANCES,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyType, BALANCES,
     STRATEGY_CONTRACT_ADDRESSES,
 };
 use common::{
@@ -28,15 +27,11 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let config = Config {
-        default_yield_strategy: msg.default_yield_strategy.strategy_type.clone(),
-    };
-    CONFIG.save(deps.storage, &config)?;
-    STRATEGY_CONTRACT_ADDRESSES.save(
-        deps.storage,
-        msg.default_yield_strategy.strategy_type.to_string(),
-        &msg.default_yield_strategy.address,
-    )?;
+    // STRATEGY_CONTRACT_ADDRESSES.save(
+    //     deps.storage,
+    //     msg.default_yield_strategy.strategy_type.to_string(),
+    //     &msg.default_yield_strategy.address,
+    // )?;
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -44,7 +39,7 @@ pub fn instantiate(
         info,
         BaseInstantiateMsg {
             ado_type: "vault".to_string(),
-            operators: None,
+            operators: msg.operators,
             modules: None,
             primitive_contract: None,
         },
@@ -199,18 +194,12 @@ mod tests {
             strategy_type: StrategyType::Anchor,
             address: "terra1anchoraddress".to_string(),
         };
-        let inst_msg = InstantiateMsg {
-            default_yield_strategy: yield_strategy.clone(),
-        };
+        let inst_msg = InstantiateMsg { operators: None };
         let env = mock_env();
         let info = mock_info("minter", &[]);
         let mut deps = mock_dependencies(&[]);
 
         instantiate(deps.as_mut(), env, info, inst_msg).unwrap();
-
-        let config = CONFIG.load(deps.as_ref().storage).unwrap();
-
-        assert_eq!(config.default_yield_strategy, yield_strategy.strategy_type)
     }
 
     #[test]
