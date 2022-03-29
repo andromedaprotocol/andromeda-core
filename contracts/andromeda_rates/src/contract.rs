@@ -1,5 +1,5 @@
 use crate::state::{Config, CONFIG};
-use ado_base::state::ADOContract;
+use ado_base::ADOContract;
 use andromeda_protocol::{
     modules::common::{calculate_fee, deduct_funds},
     rates::{
@@ -39,7 +39,6 @@ pub fn instantiate(
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "rates".to_string(),
@@ -176,16 +175,27 @@ fn query_deducted_funds(
             event = event.add_attribute(
                 "payment",
                 PaymentAttribute {
-                    receiver: reciever.get_addr(),
+                    receiver: reciever.get_addr(
+                        deps.api,
+                        &deps.querier,
+                        ADOContract::default().get_mission_contract(deps.storage)?,
+                    )?,
                     amount: fee.clone(),
                 }
                 .to_string(),
             );
             let msg = if is_native {
-                reciever.generate_msg_native(deps.api, vec![fee.clone()])?
+                reciever.generate_msg_native(
+                    deps.api,
+                    &deps.querier,
+                    ADOContract::default().get_mission_contract(deps.storage)?,
+                    vec![fee.clone()],
+                )?
             } else {
                 reciever.generate_msg_cw20(
                     deps.api,
+                    &deps.querier,
+                    ADOContract::default().get_mission_contract(deps.storage)?,
                     Cw20Coin {
                         amount: fee.amount,
                         address: fee.denom.to_string(),
@@ -215,13 +225,14 @@ mod tests {
     use super::*;
     use crate::contract::{execute, instantiate, query};
     use andromeda_protocol::{
-        modules::{ADORate, Rate},
-        rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
+        rates::{ADORate, InstantiateMsg, PaymentsResponse, QueryMsg, Rate, RateInfo},
         testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT},
     };
     use common::{ado_base::recipient::Recipient, encode_binary};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coin, coins, from_binary, BankMsg, Coin, CosmosMsg, Uint128, WasmMsg};
+    use cosmwasm_std::{
+        coin, coins, from_binary, BankMsg, Coin, CosmosMsg, Decimal, Uint128, WasmMsg,
+    };
     use cw20::Cw20ExecuteMsg;
 
     #[test]
@@ -232,7 +243,7 @@ mod tests {
         let info = mock_info(owner, &[]);
         let rates = vec![
             RateInfo {
-                rate: Rate::Percent(10u128.into()),
+                rate: Rate::from(Decimal::percent(10)),
                 is_additive: true,
                 description: Some("desc1".to_string()),
                 receivers: vec![Recipient::Addr("".into())],
@@ -274,7 +285,7 @@ mod tests {
         let info = mock_info(owner, &[]);
         let rates = vec![
             RateInfo {
-                rate: Rate::Percent(10u128.into()),
+                rate: Rate::from(Decimal::percent(10)),
                 is_additive: true,
                 description: Some("desc1".to_string()),
                 receivers: vec![Recipient::Addr("".into())],
@@ -319,7 +330,7 @@ mod tests {
                 receivers: vec![Recipient::Addr("1".into())],
             },
             RateInfo {
-                rate: Rate::Percent(10u128.into()),
+                rate: Rate::from(Decimal::percent(10)),
                 is_additive: false,
                 description: Some("desc1".to_string()),
                 receivers: vec![Recipient::Addr("2".into())],
@@ -405,7 +416,7 @@ mod tests {
                 receivers: vec![Recipient::Addr("1".into())],
             },
             RateInfo {
-                rate: Rate::Percent(10u128.into()),
+                rate: Rate::from(Decimal::percent(10)),
                 is_additive: false,
                 description: Some("desc1".to_string()),
                 receivers: vec![Recipient::Addr("2".into())],

@@ -1,12 +1,18 @@
-use common::ado_base::{
-    modules::InstantiateType, recipient::Recipient, AndromedaMsg, AndromedaQuery,
-};
+use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
 // To be used in the swapper contract.
 pub use astroport::querier::{query_balance, query_token_balance};
+use cosmwasm_std::Binary;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum InstantiateType {
+    New(Binary),
+    Address(String),
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

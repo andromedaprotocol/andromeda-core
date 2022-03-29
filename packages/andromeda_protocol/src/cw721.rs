@@ -7,7 +7,7 @@ use cw721_base::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::modules::{common::calculate_fee, Rate};
+use crate::{modules::common::calculate_fee, rates::Rate};
 use common::{
     ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
     error::ContractError,

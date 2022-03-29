@@ -1,4 +1,4 @@
-use crate::state::ADOContract;
+use crate::ADOContract;
 use common::{ado_base::recipient::Recipient, error::ContractError, require, withdraw::Withdrawal};
 use cosmwasm_std::{coin, DepsMut, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg};
 use cw20::Cw20Coin;
@@ -80,7 +80,12 @@ impl<'a> ADOContract<'a> {
                         None
                     } else {
                         let coin = coin(withdrawal.get_amount(balance)?.u128(), denom);
-                        Some(recipient.generate_msg_native(deps.api, vec![coin])?)
+                        Some(recipient.generate_msg_native(
+                            deps.api,
+                            &deps.querier,
+                            self.mission_contract.may_load(deps.storage)?,
+                            vec![coin],
+                        )?)
                     }
                 }
                 AssetInfo::Cw20(contract_addr) => {
@@ -97,7 +102,12 @@ impl<'a> ADOContract<'a> {
                             address: contract_addr_str,
                             amount: withdrawal.get_amount(balance)?,
                         };
-                        Some(recipient.generate_msg_cw20(deps.api, cw20_coin)?)
+                        Some(recipient.generate_msg_cw20(
+                            deps.api,
+                            &deps.querier,
+                            self.mission_contract.may_load(deps.storage)?,
+                            cw20_coin,
+                        )?)
                     }
                 }
             };

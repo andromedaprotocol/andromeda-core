@@ -16,6 +16,7 @@ use common::{
         AndromedaMsg, AndromedaQuery,
     },
     error::ContractError,
+    mission::AndrAddress,
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_bignumber::{Decimal256, Uint256};
@@ -595,7 +596,9 @@ fn test_withdraw_invalid_recipient() {
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
         recipient: Some(Recipient::ADO(ADORecipient {
-            addr: recipient.to_owned(),
+            address: AndrAddress {
+                identifier: recipient.to_owned(),
+            },
             msg: None,
         })),
         tokens_to_withdraw: Some(vec![Withdrawal {

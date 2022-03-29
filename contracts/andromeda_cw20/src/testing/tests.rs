@@ -1,27 +1,28 @@
 use crate::contract::{execute, instantiate};
-use ado_base::ADOContract;
 use andromeda_protocol::{
-    address_list::InstantiateMsg as AddressListInstantiateMsg,
     cw20::{ExecuteMsg, InstantiateMsg},
-    rates::InstantiateMsg as RatesInstantiateMsg,
-    receipt::{ExecuteMsg as ReceiptExecuteMsg, InstantiateMsg as ReceiptInstantiateMsg, Receipt},
+    receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
         MOCK_RATES_CONTRACT, MOCK_RECEIPT_CONTRACT,
     },
 };
 use common::{
-    ado_base::modules::{InstantiateType, Module, ADDRESS_LIST, RATES, RECEIPT},
+    ado_base::modules::{Module, ADDRESS_LIST, RATES, RECEIPT},
     error::ContractError,
+    mission::AndrAddress,
 };
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    to_binary, Addr, CosmosMsg, Event, ReplyOn, Response, StdError, SubMsg, Uint128, WasmMsg,
+    to_binary, Addr, CosmosMsg, Event, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;
 
-#[test]
+/*#
+ *
+ * TODO: Remove when we are happy with InstantiateType replacement.
+ * [test]
 fn test_instantiate_modules() {
     let receipt_msg = to_binary(&ReceiptInstantiateMsg {
         minter: "minter".to_string(),
@@ -132,24 +133,31 @@ fn test_instantiate_modules() {
             .add_submessages(msgs),
         res
     );
-}
+<<<<<<< HEAD
+}*/
 
 #[test]
 fn test_transfer() {
     let modules: Vec<Module> = vec![
         Module {
             module_type: RECEIPT.to_owned(),
-            instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
+            address: AndrAddress {
+                identifier: MOCK_RECEIPT_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
         Module {
             module_type: RATES.to_owned(),
-            instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
+            address: AndrAddress {
+                identifier: MOCK_RATES_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
         Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
+            address: AndrAddress {
+                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
     ];
@@ -175,8 +183,11 @@ fn test_transfer() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "1")
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "2")
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "3")
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20"),
         res
@@ -258,17 +269,23 @@ fn test_send() {
     let modules: Vec<Module> = vec![
         Module {
             module_type: RECEIPT.to_owned(),
-            instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
+            address: AndrAddress {
+                identifier: MOCK_RECEIPT_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
         Module {
             module_type: RATES.to_owned(),
-            instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
+            address: AndrAddress {
+                identifier: MOCK_RATES_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
         Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
+            address: AndrAddress {
+                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
     ];
@@ -294,8 +311,11 @@ fn test_send() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "1")
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "2")
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "3")
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20"),
         res

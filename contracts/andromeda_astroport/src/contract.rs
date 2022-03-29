@@ -60,7 +60,6 @@ pub fn instantiate(
     contract.instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "astroport".to_string(),
@@ -146,8 +145,11 @@ fn execute_provide_liquidity(
     )?;
 
     let pooled_assets = pair.query_pools(&deps.querier, pair.contract_addr.clone())?;
+    let mission_contract = contract.get_mission_contract(deps.storage)?;
     let (assets, overflow_messages) = verify_asset_ratio(
         deps.api,
+        &deps.querier,
+        mission_contract,
         pooled_assets.map(|a| a.into()),
         assets,
         Recipient::Addr(info.sender.to_string()),
@@ -214,8 +216,9 @@ fn execute_withdraw_liquidity(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
+    let contract = ADOContract::default();
     require(
-        ADOContract::default().is_owner_or_operator(deps.storage, sender)?,
+        contract.is_owner_or_operator(deps.storage, sender)?,
         ContractError::Unauthorized {},
     )?;
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(sender.to_owned()));
@@ -237,8 +240,14 @@ fn execute_withdraw_liquidity(
         withdraw_amount,
     )?;
     let mut withdraw_messages: Vec<SubMsg> = vec![];
+    let mission_contract = contract.get_mission_contract(deps.storage)?;
     for asset in share.into_iter() {
-        withdraw_messages.push(recipient.generate_msg_from_asset(deps.api, asset)?);
+        withdraw_messages.push(recipient.generate_msg_from_asset(
+            deps.api,
+            &deps.querier,
+            mission_contract.clone(),
+            asset,
+        )?);
     }
 
     Ok(Response::new()
@@ -556,6 +565,8 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 /// ContractError.
 fn verify_asset_ratio(
     api: &dyn Api,
+    querier: &QuerierWrapper,
+    mission_contract: Option<Addr>,
     pooled_assets: [Asset; 2],
     sent_assets: [Asset; 2],
     overflow_recipient: Recipient,
@@ -596,7 +607,12 @@ fn verify_asset_ratio(
         // that requires an extra message to be sent for no reason.
         if delta_asset.amount > Uint128::zero() && matches!(delta_asset.info, AssetInfo::Native(_))
         {
-            messages.push(overflow_recipient.generate_msg_from_asset(api, delta_asset)?);
+            messages.push(overflow_recipient.generate_msg_from_asset(
+                api,
+                querier,
+                mission_contract.clone(),
+                delta_asset,
+            )?);
         }
     }
 
@@ -679,6 +695,8 @@ mod tests {
 
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
+            &deps.as_ref().querier,
+            None,
             pooled_assets,
             deposited_assets.clone(),
             Recipient::Addr("sender".to_string()),
@@ -697,6 +715,8 @@ mod tests {
 
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
+            &deps.as_ref().querier,
+            None,
             pooled_assets,
             deposited_assets,
             Recipient::Addr("sender".to_string()),
@@ -726,6 +746,8 @@ mod tests {
 
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
+            &deps.as_ref().querier,
+            None,
             pooled_assets,
             deposited_assets,
             Recipient::Addr("sender".to_string()),
@@ -744,6 +766,8 @@ mod tests {
 
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
+            &deps.as_ref().querier,
+            None,
             pooled_assets,
             deposited_assets,
             Recipient::Addr("sender".to_string()),
@@ -762,6 +786,8 @@ mod tests {
 
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
+            &deps.as_ref().querier,
+            None,
             pooled_assets,
             deposited_assets,
             Recipient::Addr("sender".to_string()),
@@ -780,6 +806,8 @@ mod tests {
 
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
+            &deps.as_ref().querier,
+            None,
             pooled_assets,
             deposited_assets,
             Recipient::Addr("sender".to_string()),
@@ -798,6 +826,8 @@ mod tests {
 
         let (assets, msgs) = verify_asset_ratio(
             deps.as_ref().api,
+            &deps.as_ref().querier,
+            None,
             pooled_assets,
             deposited_assets,
             Recipient::Addr("sender".to_string()),

@@ -1,4 +1,7 @@
-use common::ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery};
+use common::{
+    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    mission::AndrAddress,
+};
 use cosmwasm_std::{Coin, Uint128};
 use cw0::Expiration;
 use schemars::JsonSchema;
@@ -6,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub token_address: String,
+    pub token_address: AndrAddress,
     pub modules: Option<Vec<Module>>,
     pub primitive_contract: String,
 }

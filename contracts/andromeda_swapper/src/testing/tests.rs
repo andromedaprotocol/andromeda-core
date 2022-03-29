@@ -1,15 +1,12 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
     swapper::{
-        Cw20HookMsg, ExecuteMsg, InstantiateMsg, SwapperCw20HookMsg, SwapperImpl,
+        Cw20HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, SwapperCw20HookMsg, SwapperImpl,
         SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
     },
     testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2},
 };
-use common::{
-    ado_base::{modules::InstantiateType, recipient::Recipient},
-    error::ContractError,
-};
+use common::{ado_base::recipient::Recipient, error::ContractError};
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},

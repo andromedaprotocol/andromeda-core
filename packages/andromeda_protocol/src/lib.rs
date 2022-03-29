@@ -1,4 +1,5 @@
 pub mod address_list;
+pub mod airdrop;
 pub mod anchor;
 pub mod astroport;
 pub mod auction;
@@ -9,6 +10,7 @@ pub mod cw721;
 pub mod cw721_offers;
 pub mod factory;
 pub mod mirror_wrapped_cdp;
+pub mod mission;
 pub mod modules;
 pub mod primitive;
 pub mod rates;
