@@ -63,11 +63,6 @@ pub fn instantiate(
         msgs.extend(comp_resp.messages);
     }
 
-    if msg.xfer_ado_ownership {
-        let own_resp = execute_claim_ownership(deps.storage, &sender, None)?;
-        msgs.extend(own_resp.messages);
-    }
-
     Ok(resp.add_submessages(msgs))
 }
 
@@ -138,10 +133,14 @@ fn execute_add_mission_component(
         querier,
         idx,
         component.instantiate_msg,
-        component.ado_type,
+        component.ado_type.clone(),
     )?;
 
-    Ok(Response::new().add_submessage(inst_msg))
+    Ok(Response::new()
+        .add_submessage(inst_msg)
+        .add_attribute("method", "add_mission_component")
+        .add_attribute("name", component.name)
+        .add_attribute("type", component.ado_type))
 }
 
 fn execute_claim_ownership(
@@ -165,7 +164,9 @@ fn execute_claim_ownership(
         }
     }
 
-    Ok(Response::new().add_submessages(msgs))
+    Ok(Response::new()
+        .add_submessages(msgs)
+        .add_attribute("method", "claim_ownership"))
 }
 
 fn execute_message(
@@ -195,7 +196,7 @@ fn execute_message(
     Ok(Response::default()
         .add_submessage(proxy_msg)
         .add_attribute("method", "mission_message")
-        .add_attribute("reciient", name))
+        .add_attribute("recipient", name))
 }
 
 fn has_update_address_privilege(
@@ -289,28 +290,4 @@ fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let owner = ADOContract::default().owner.load(deps.storage)?.to_string();
 
     Ok(ConfigResponse { name, owner })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-
-    #[test]
-    fn proper_initialization() {
-        let mut deps = mock_dependencies(&[]);
-
-        let msg = InstantiateMsg {
-            operators: vec![],
-            mission: vec![],
-            xfer_ado_ownership: false,
-            name: String::from("Some Mission"),
-            primitive_contract: String::from("primitive_contract"),
-        };
-        let info = mock_info("creator", &[]);
-
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-    }
 }

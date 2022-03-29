@@ -14,7 +14,6 @@ pub struct MissionComponent {
 pub struct InstantiateMsg {
     pub operators: Vec<String>,
     pub mission: Vec<MissionComponent>,
-    pub xfer_ado_ownership: bool,
     pub name: String,
     pub primitive_contract: String,
 }
