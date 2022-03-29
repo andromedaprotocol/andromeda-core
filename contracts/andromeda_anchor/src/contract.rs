@@ -1,3 +1,11 @@
+use cosmwasm_bignumber::{Decimal256, Uint256};
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{
+    attr, coins, from_binary, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, SubMsg, Uint128, WasmMsg,
+};
+
 use crate::{
     primitive_keys::{
         ADDRESSES_TO_CACHE, ANCHOR_ANC, ANCHOR_AUST, ANCHOR_BLUNA, ANCHOR_BLUNA_CUSTODY,
@@ -23,13 +31,6 @@ use common::{
     error::ContractError,
     parse_message, require,
     withdraw::Withdrawal,
-};
-use cosmwasm_bignumber::{Decimal256, Uint256};
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    attr, coins, from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -122,7 +123,7 @@ pub fn execute(
         }
         ExecuteMsg::StakeAnc { amount } => execute_stake_anc(deps, env, info, amount),
         ExecuteMsg::UnstakeAnc { amount } => execute_unstake_anc(deps, env, info, amount),
-        ExecuteMsg::RepayLoan {} => execute_repay_loan(deps, info),
+        ExecuteMsg::RepayLoan {} => execute_repay_loan(deps, env, info),
         ExecuteMsg::WithdrawCollateral {
             collateral_addr,
             amount,
@@ -499,7 +500,11 @@ fn execute_borrow(
         )?))
 }
 
-fn execute_repay_loan(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+fn execute_repay_loan(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let anchor_market = contract.get_cached_address(deps.storage, ANCHOR_MARKET)?;
 
@@ -507,13 +512,35 @@ fn execute_repay_loan(deps: DepsMut, info: MessageInfo) -> Result<Response, Cont
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
+    let borrower_info = query_borrower_info(
+        &deps.querier,
+        anchor_market.clone(),
+        env.contract.address.to_string(),
+    )?;
+    let coin = info.funds.iter().find(|c| c.denom == "uusd");
+    require(
+        coin.is_some(),
+        ContractError::InvalidFunds {
+            msg: "Must send uusd".to_string(),
+        },
+    )?;
+    let coin = coin.unwrap();
+    let mut msgs: Vec<CosmosMsg> = vec![];
+    let loan_amount = Uint128::from(borrower_info.loan_amount);
+    if coin.amount > loan_amount {
+        msgs.push(CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: coins(coin.amount.u128() - loan_amount.u128(), coin.denom.clone()),
+        }))
+    }
     Ok(Response::new()
         .add_attribute("action", "repay_loan")
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+        .add_message(WasmMsg::Execute {
             contract_addr: anchor_market,
             msg: encode_binary(&MarketExecuteMsg::RepayStable {})?,
             funds: info.funds,
-        })))
+        })
+        .add_messages(msgs))
 }
 
 fn execute_withdraw_unbonded(

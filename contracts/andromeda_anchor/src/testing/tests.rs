@@ -1075,6 +1075,8 @@ fn test_repay_loan() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
+    deps.querier.loan_amount = Uint256::from(100u128);
+
     let msg = ExecuteMsg::RepayLoan {};
 
     let info = mock_info("owner", &coins(100, "uusd"));
@@ -1088,6 +1090,34 @@ fn test_repay_loan() {
                 msg: to_binary(&MarketExecuteMsg::RepayStable {}).unwrap(),
                 funds: info.funds,
             })),
+        res
+    );
+}
+
+#[test]
+fn test_repay_loan_overpay() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    deps.querier.loan_amount = Uint256::from(100u128);
+
+    let msg = ExecuteMsg::RepayLoan {};
+
+    let info = mock_info("owner", &coins(150, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "repay_loan")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_MARKET_CONTRACT.to_owned(),
+                msg: to_binary(&MarketExecuteMsg::RepayStable {}).unwrap(),
+                funds: info.funds,
+            })
+            .add_message(BankMsg::Send {
+                to_address: "owner".to_string(),
+                amount: coins(50, "uusd")
+            }),
         res
     );
 }
