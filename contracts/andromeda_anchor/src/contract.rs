@@ -22,7 +22,7 @@ use common::{
     encode_binary,
     error::ContractError,
     parse_message, require,
-    withdraw::{Withdrawal, WithdrawalType},
+    withdraw::Withdrawal,
 };
 use cosmwasm_bignumber::{Decimal256, Uint256};
 #[cfg(not(feature = "library"))]
@@ -94,10 +94,6 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
-        ExecuteMsg::WithdrawFromPosition {
-            token_to_withdraw,
-            position_recipient,
-        } => execute_withdraw_from_position(deps, env, info, position_recipient, token_to_withdraw),
         ExecuteMsg::DepositCollateral {} => execute_deposit_collateral(deps, env, info),
         ExecuteMsg::DepositCollateralToAnchor { collateral_addr } => {
             require(
@@ -172,30 +168,71 @@ fn execute_andr_receive(
                 execute_deposit(deps, env, info, Some(recipient))
             }
         },
+        AndromedaMsg::Withdraw {
+            recipient,
+            tokens_to_withdraw,
+        } => execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
         _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
 }
 
-pub fn execute_withdraw_from_position(
+pub fn execute_withdraw(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    position_recipient: Option<String>,
-    token_to_withdraw: Withdrawal,
+    recipient: Option<Recipient>,
+    tokens_to_withdraw: Option<Vec<Withdrawal>>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    let position_recipient = position_recipient.unwrap_or_else(|| info.sender.to_string());
-    let authorized = position_recipient == info.sender
+
+    let aust_address = contract.get_cached_address(deps.storage, ANCHOR_AUST)?;
+    match tokens_to_withdraw {
+        None => return contract.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
+        Some(ref tokens) => {
+            if tokens.len() != 1 {
+                return contract.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw);
+            } else {
+                let token = tokens[0].token.to_lowercase();
+                if token != "aust" && token != aust_address && token != UUSD_DENOM {
+                    return contract.execute_withdraw(
+                        deps,
+                        env,
+                        info,
+                        recipient,
+                        tokens_to_withdraw,
+                    );
+                }
+            }
+        }
+    }
+
+    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+
+    let recipient_addr = recipient.get_addr(
+        deps.api,
+        &deps.querier,
+        ADOContract::default().get_mission_contract(deps.storage)?,
+    )?;
+
+    let authorized = recipient_addr == info.sender
         || ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?;
     require(authorized, ContractError::Unauthorized {})?;
 
-    let aust_address = contract.get_cached_address(deps.storage, ANCHOR_AUST)?;
+    require(
+        matches!(recipient, Recipient::Addr(_)),
+        ContractError::InvalidRecipientType {
+            msg: "Only recipients of type Addr are allowed as it only specifies the owner of the position to withdraw from".to_string()
+        },
+    )?;
+
+    // If we are here then there is always exactly a single token to withdraw.
+    let token_to_withdraw = &tokens_to_withdraw.unwrap()[0];
 
     let token = token_to_withdraw.token.to_lowercase();
     if token == UUSD_DENOM {
-        withdraw_uusd(deps, env, info, token_to_withdraw, position_recipient)
+        withdraw_uusd(deps, env, info, token_to_withdraw, recipient_addr)
     } else if token == "aust" || token == aust_address {
-        withdraw_aust(deps, info, token_to_withdraw, position_recipient)
+        withdraw_aust(deps, info, token_to_withdraw, recipient_addr)
     } else {
         Err(ContractError::InvalidTokensToWithdraw {
             msg: "Can only withdraw uusd or aUST".to_string(),
@@ -688,7 +725,7 @@ fn withdraw_uusd(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    withdrawal: Withdrawal,
+    withdrawal: &Withdrawal,
     recipient_addr: String,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
@@ -734,7 +771,7 @@ fn withdraw_uusd(
 fn withdraw_aust(
     deps: DepsMut,
     info: MessageInfo,
-    withdrawal: Withdrawal,
+    withdrawal: &Withdrawal,
     recipient_addr: String,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();

@@ -6,8 +6,8 @@ use cosmwasm_std::{
 };
 
 use crate::primitive_keys::{
-    ANCHOR_AUST, ANCHOR_BLUNA, ANCHOR_BLUNA_CUSTODY, ANCHOR_BLUNA_HUB, ANCHOR_MARKET,
-    ANCHOR_ORACLE, ANCHOR_OVERSEER,
+    ANCHOR_ANC, ANCHOR_AUST, ANCHOR_BLUNA, ANCHOR_BLUNA_CUSTODY, ANCHOR_BLUNA_HUB, ANCHOR_GOV,
+    ANCHOR_MARKET, ANCHOR_ORACLE, ANCHOR_OVERSEER,
 };
 use andromeda_protocol::primitive::QueryMsg as PrimitiveQueryMsg;
 use common::{
@@ -27,6 +27,8 @@ pub const MOCK_CUSTODY_CONTRACT: &str = "anchor_custody";
 pub const MOCK_OVERSEER_CONTRACT: &str = "anchor_overseer";
 pub const MOCK_AUST_TOKEN: &str = "aust_token";
 pub const MOCK_BLUNA_TOKEN: &str = "bluna_token";
+pub const MOCK_ANC_TOKEN: &str = "anc_token";
+pub const MOCK_GOV_CONTRACT: &str = "anchor_gov";
 pub const MOCK_BLUNA_HUB_CONTRACT: &str = "bluna_hub_contract";
 pub const MOCK_ORACLE_CONTRACT: &str = "anchor_oracle";
 
@@ -176,6 +178,10 @@ impl WasmMockQuerier {
                         name,
                         value: Primitive::String(MOCK_ORACLE_CONTRACT.to_owned()),
                     },
+                    ANCHOR_GOV => GetValueResponse {
+                        name,
+                        value: Primitive::String(MOCK_GOV_CONTRACT.to_owned()),
+                    },
                     ANCHOR_AUST => GetValueResponse {
                         name,
                         value: Primitive::String(MOCK_AUST_TOKEN.to_owned()),
@@ -183,6 +189,10 @@ impl WasmMockQuerier {
                     ANCHOR_BLUNA => GetValueResponse {
                         name,
                         value: Primitive::String(MOCK_BLUNA_TOKEN.to_owned()),
+                    },
+                    ANCHOR_ANC => GetValueResponse {
+                        name,
+                        value: Primitive::String(MOCK_ANC_TOKEN.to_owned()),
                     },
                     _ => panic!("Unsupported primitive name"),
                 };

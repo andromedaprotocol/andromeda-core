@@ -18,10 +18,6 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     AndrReceive(AndromedaMsg),
-    WithdrawFromPosition {
-        token_to_withdraw: Withdrawal,
-        position_recipient: Option<String>,
-    },
     /// Deposit LUNA as collateral which will be converted to bLUNA.
     DepositCollateral {},
     /// Withdraw specified collateral. If unbond is true and collateral is bLuna, the unbonding
