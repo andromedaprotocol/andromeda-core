@@ -57,15 +57,10 @@ pub fn instantiate(
         .add_attribute("andr_mission", msg.name);
 
     let mut msgs: Vec<SubMsg> = vec![];
-    for component in msg.mission {
+    for component in msg.mission.clone() {
         let comp_resp =
             execute_add_mission_component(&deps.querier, deps.storage, &sender, component)?;
         msgs.extend(comp_resp.messages);
-    }
-
-    if msg.xfer_ado_ownership {
-        let own_resp = execute_claim_ownership(deps.storage, &sender, None)?;
-        msgs.extend(own_resp.messages);
     }
 
     Ok(resp.add_submessages(msgs))
@@ -295,28 +290,4 @@ fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let owner = ADOContract::default().owner.load(deps.storage)?.to_string();
 
     Ok(ConfigResponse { name, owner })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-
-    #[test]
-    fn proper_initialization() {
-        let mut deps = mock_dependencies(&[]);
-
-        let msg = InstantiateMsg {
-            operators: vec![],
-            mission: vec![],
-            xfer_ado_ownership: false,
-            name: String::from("Some Mission"),
-            primitive_contract: String::from("primitive_contract"),
-        };
-        let info = mock_info("creator", &[]);
-
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-    }
 }

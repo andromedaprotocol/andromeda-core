@@ -21,7 +21,6 @@ fn test_empty_instantiation() {
     let msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -43,7 +42,7 @@ fn test_instantiation() {
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
         }],
-        xfer_ado_ownership: false,
+
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -75,60 +74,6 @@ fn test_instantiation() {
     assert_eq!(expected, res)
 }
 
-// TODO: Figure out how to test this
-// #[test]
-// fn test_instantiation_xfer_ownership() {
-//     let mut deps = mock_dependencies_custom(&[]);
-
-//     let msg = InstantiateMsg {
-//         operators: vec![],
-//         mission: vec![MissionComponent {
-//             name: "token".to_string(),
-//             ado_type: "cw721".to_string(),
-//             instantiate_msg: to_binary(&true).unwrap(),
-//         }],
-//         xfer_ado_ownership: true,
-//         name: String::from("Some Mission"),
-//         primitive_contract: String::from("primitive_contract"),
-//     };
-//     let info = mock_info("creator", &[]);
-
-//     ADO_ADDRESSES
-//         .save(
-//             deps.as_mut().storage,
-//             "token",
-//             &Addr::unchecked("tokenaddress"),
-//         )
-//         .unwrap();
-
-//     let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-//     assert_eq!(2, res.messages.len());
-
-//     match res.messages[0].msg.clone() {
-//         CosmosMsg::Wasm(WasmMsg::Instantiate { code_id, msg, .. }) => {
-//             assert_eq!(4, code_id);
-//             assert_eq!(to_binary(&true).unwrap(), msg)
-//         }
-//         _ => panic!("Invalid msg type"),
-//     }
-
-//     match res.messages[1].msg.clone() {
-//         CosmosMsg::Wasm(WasmMsg::Execute {
-//             contract_addr, msg, ..
-//         }) => {
-//             assert_eq!("tokenaddress".to_string(), contract_addr);
-//             assert_eq!(
-//                 to_binary(&AndromedaMsg::UpdateOwner {
-//                     address: "creator".to_string()
-//                 })
-//                 .unwrap(),
-//                 msg
-//             );
-//         }
-//         _ => panic!("Invalid msg type"),
-//     }
-// }
-
 #[test]
 fn test_add_mission_component_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
@@ -137,7 +82,6 @@ fn test_add_mission_component_unauthorized() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -169,7 +113,6 @@ fn test_add_mission_component_duplicate_name() {
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
         }],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -203,7 +146,6 @@ fn test_add_mission_component() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -251,7 +193,6 @@ fn test_claim_ownership_unauth() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -273,7 +214,6 @@ fn test_claim_ownership_not_found() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -301,7 +241,6 @@ fn test_claim_ownership_empty() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -322,7 +261,6 @@ fn test_claim_ownership_all() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -389,7 +327,6 @@ fn test_claim_ownership() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -445,7 +382,6 @@ fn test_proxy_message_unauth() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -470,7 +406,6 @@ fn test_proxy_message_not_found() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -499,7 +434,6 @@ fn test_proxy_message() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -547,7 +481,6 @@ fn test_update_address_unauth() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -579,7 +512,6 @@ fn test_update_address_not_found() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -608,7 +540,6 @@ fn test_update_address() {
     let inst_msg = InstantiateMsg {
         operators: vec![],
         mission: vec![],
-        xfer_ado_ownership: false,
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
