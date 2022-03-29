@@ -15,10 +15,7 @@ pub fn add_mission_component(
     storage: &mut dyn Storage,
     component: &MissionComponent,
 ) -> Result<u64, ContractError> {
-    let idx = match ADO_IDX.load(storage) {
-        Ok(index) => index,
-        Err(..) => 1u64,
-    };
+    let idx = ADO_IDX.may_load(storage)?.unwrap_or(1u64);
     let idx_str = idx.to_string();
     ADO_DESCRIPTORS.save(storage, &idx_str, component)?;
     ADO_IDX.save(storage, &(idx + 1))?;
@@ -28,7 +25,6 @@ pub fn add_mission_component(
 
 pub fn load_component_addresses(storage: &dyn Storage) -> Result<Vec<Addr>, ContractError> {
     let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
-    // let max = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
     let addresses: Vec<Addr> = ADO_ADDRESSES
         .range(storage, min, None, Order::Ascending)
         .flatten()
@@ -42,7 +38,6 @@ pub fn load_component_descriptors(
     storage: &dyn Storage,
 ) -> Result<Vec<MissionComponent>, ContractError> {
     let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
-    // let max = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
     let descriptors: Vec<MissionComponent> = ADO_DESCRIPTORS
         .range(storage, min, None, Order::Ascending)
         .flatten()
@@ -76,7 +71,7 @@ pub fn generate_assign_mission_message(
         address: mission_addr.to_string(),
     })?;
     Ok(SubMsg {
-        id: 102,
+        id: 103,
         reply_on: ReplyOn::Error,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             msg,

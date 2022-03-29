@@ -1,7 +1,16 @@
 [package]
-name = "andromeda-crowdfund"
+name = "andromeda-merkle-airdrop"
 version = "0.1.0"
+authors = ["AndrewPochapsky <andrew.pochapsky@gmail.com>"]
 edition = "2018"
+
+exclude = [
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  "contract.wasm",
+  "hash.txt",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -15,15 +24,20 @@ library = []
 [dependencies]
 cosmwasm-std = { version = "0.16.2" }
 cw-storage-plus = "0.9.1"
+cw0 = "0.9.1"
+cw2 = "0.9.1"
+cw20 = "0.9.1"
+
 schemars = "0.8.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.26" }
-cw0 = "0.9.1"
-cw721 = "0.9.1"
+hex = "0.4"
+sha2 = { version = "0.9.5", default-features = false }
+cw-asset = { version = "1.0.2" }
 
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
 common = { version = "0.1.0", path = "../../packages/common" }
-ado-base = { path = "../../packages/ado_base", version = "0.1.0", features = ["modules"] }
+ado-base = { path = "../../packages/ado_base", version = "0.1.0" }
 
 [dev-dependencies]
-terra-cosmwasm = { version = "2.2.0" }
+cosmwasm-schema = { version = "0.16.0" }

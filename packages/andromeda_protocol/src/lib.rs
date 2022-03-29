@@ -1,4 +1,5 @@
 pub mod address_list;
+pub mod airdrop;
 pub mod anchor;
 pub mod astroport;
 pub mod auction;

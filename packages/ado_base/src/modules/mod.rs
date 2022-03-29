@@ -95,7 +95,6 @@ impl<'a> ADOContract<'a> {
     fn load_modules(&self, storage: &dyn Storage) -> Result<Vec<Module>, ContractError> {
         let module_idx = self.module_idx.may_load(storage)?.unwrap_or(1);
         let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
-        // let max = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
         let modules: Vec<Module> = self
             .module_info
             .range(storage, min, None, Order::Ascending)
