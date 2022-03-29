@@ -661,8 +661,8 @@ fn test_withdraw_tokens_none() {
     });
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
-        ContractError::InvalidTokensToWithdraw {
-            msg: "Must specify tokens to withdraw".to_string(),
+        ContractError::InvalidFunds {
+            msg: "No funds to withdraw".to_string(),
         },
         res.unwrap_err()
     );
@@ -682,38 +682,8 @@ fn test_withdraw_tokens_empty() {
     });
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
-        ContractError::InvalidTokensToWithdraw {
-            msg: "Must specify exactly one of uusd or aust to withdraw".to_string(),
-        },
-        res.unwrap_err()
-    );
-}
-
-#[test]
-fn test_withdraw_tokens_uusd_and_aust_specified() {
-    let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut());
-    let info = mock_info("owner", &[]);
-
-    let recipient = "recipient";
-
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr(recipient.to_owned())),
-        tokens_to_withdraw: Some(vec![
-            Withdrawal {
-                withdrawal_type: None,
-                token: "uusd".to_string(),
-            },
-            Withdrawal {
-                withdrawal_type: None,
-                token: "aust".to_string(),
-            },
-        ]),
-    });
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
-    assert_eq!(
-        ContractError::InvalidTokensToWithdraw {
-            msg: "Must specify exactly one of uusd or aust to withdraw".to_string(),
+        ContractError::InvalidFunds {
+            msg: "No funds to withdraw".to_string(),
         },
         res.unwrap_err()
     );

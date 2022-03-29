@@ -42,7 +42,7 @@ impl<'a> ADOContract<'a> {
         let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
         let sender = info.sender.as_str();
         require(
-            self.is_contract_owner(deps.storage, sender)? || self.is_operator(deps.storage, sender),
+            self.is_owner_or_operator(deps.storage, sender)?,
             ContractError::Unauthorized {},
         )?;
 
