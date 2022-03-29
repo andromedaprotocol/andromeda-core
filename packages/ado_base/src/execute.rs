@@ -57,6 +57,9 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::UpdateOperators { operators } => {
                 self.execute_update_operators(deps, info, operators)
             }
+            AndromedaMsg::UpdateMissionContract { address } => {
+                self.execute_update_mission_contract(deps, info, address)
+            }
             #[cfg(feature = "withdraw")]
             AndromedaMsg::Withdraw {
                 recipient,
@@ -73,9 +76,6 @@ impl<'a> ADOContract<'a> {
             #[cfg(feature = "modules")]
             AndromedaMsg::AlterModule { module_idx, module } => {
                 self.execute_alter_module(deps, info, module_idx, module)
-            }
-            AndromedaMsg::UpdateMissionContract { address } => {
-                self.execute_update_mission_contract(deps, info, address)
             }
             #[cfg(feature = "primitive")]
             AndromedaMsg::RefreshAddress { contract } => {
