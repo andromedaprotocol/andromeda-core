@@ -1,5 +1,5 @@
-use common::ado_base::recipient::Recipient;
-use cosmwasm_std::{Addr, Coin, SubMsg, Uint128};
+use common::{ado_base::recipient::Recipient, mission::AndrAddress};
+use cosmwasm_std::{Coin, SubMsg, Uint128};
 use cw0::Expiration;
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
@@ -32,7 +32,7 @@ pub struct Purchase {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     /// The address of the token contract whose tokens are being sold.
-    pub token_address: Addr,
+    pub token_address: AndrAddress,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

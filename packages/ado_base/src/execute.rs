@@ -4,9 +4,7 @@ use common::{
     error::ContractError,
     parse_message, require,
 };
-use cosmwasm_std::{
-    attr, Api, DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, Storage,
-};
+use cosmwasm_std::{attr, Api, DepsMut, Env, MessageInfo, Order, Response, Storage};
 use serde::de::DeserializeOwned;
 
 type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
@@ -17,8 +15,6 @@ impl<'a> ADOContract<'a> {
         storage: &mut dyn Storage,
         #[cfg(any(feature = "modules", feature = "primitive"))] api: &dyn Api,
         #[cfg(not(any(feature = "modules", feature = "primitive")))] _api: &dyn Api,
-        #[cfg(feature = "modules")] querier: &QuerierWrapper,
-        #[cfg(not(feature = "modules"))] _querier: &QuerierWrapper,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
@@ -36,7 +32,7 @@ impl<'a> ADOContract<'a> {
         #[cfg(feature = "modules")]
         if let Some(modules) = msg.modules {
             return Ok(self
-                .register_modules(info.sender.as_str(), querier, storage, api, modules)?
+                .register_modules(info.sender.as_str(), storage, modules)?
                 .add_attributes(attributes));
         }
         Ok(Response::new().add_attributes(attributes))
@@ -67,14 +63,9 @@ impl<'a> ADOContract<'a> {
                 tokens_to_withdraw,
             } => self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
             #[cfg(feature = "modules")]
-            AndromedaMsg::RegisterModule { module } => self.execute_register_module(
-                &deps.querier,
-                deps.storage,
-                deps.api,
-                info.sender.as_str(),
-                module,
-                true,
-            ),
+            AndromedaMsg::RegisterModule { module } => {
+                self.execute_register_module(deps.storage, info.sender.as_str(), module, true)
+            }
             #[cfg(feature = "modules")]
             AndromedaMsg::DeregisterModule { module_idx } => {
                 self.execute_deregister_module(deps, info, module_idx)
@@ -82,6 +73,9 @@ impl<'a> ADOContract<'a> {
             #[cfg(feature = "modules")]
             AndromedaMsg::AlterModule { module_idx, module } => {
                 self.execute_alter_module(deps, info, module_idx, module)
+            }
+            AndromedaMsg::UpdateMissionContract { address } => {
+                self.execute_update_mission_contract(deps, info, address)
             }
             #[cfg(feature = "primitive")]
             AndromedaMsg::RefreshAddress { contract } => {
@@ -142,5 +136,22 @@ impl<'a> ADOContract<'a> {
         }
 
         Ok(Response::new().add_attributes(vec![attr("action", "update_operators")]))
+    }
+
+    pub fn execute_update_mission_contract(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        address: String,
+    ) -> Result<Response, ContractError> {
+        require(
+            self.is_contract_owner(deps.storage, info.sender.as_str())?,
+            ContractError::Unauthorized {},
+        )?;
+        self.mission_contract
+            .save(deps.storage, &deps.api.addr_validate(&address)?)?;
+        Ok(Response::new()
+            .add_attribute("action", "update_mission_contract")
+            .add_attribute("address", address))
     }
 }

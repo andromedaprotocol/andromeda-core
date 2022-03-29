@@ -6,7 +6,7 @@ use crate::{
     querier::{query_borrower_info, query_collaterals},
     state::{Position, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR},
 };
-use ado_base::state::ADOContract;
+use ado_base::ADOContract;
 use andromeda_protocol::anchor::{
     BLunaHubCw20HookMsg, BLunaHubExecuteMsg, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg,
     PositionResponse, QueryMsg,
@@ -62,7 +62,6 @@ pub fn instantiate(
     let resp = contract.instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "anchor".to_string(),
@@ -172,8 +171,13 @@ pub fn handle_withdraw(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
-    let authorized = recipient.get_addr() == info.sender
-        || contract.is_owner_or_operator(deps.storage, info.sender.as_str())?;
+    let recipient_addr = recipient.get_addr(
+        deps.api,
+        &deps.querier,
+        ADOContract::default().get_mission_contract(deps.storage)?,
+    )?;
+    let authorized = recipient_addr == info.sender
+        || ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?;
     require(authorized, ContractError::Unauthorized {})?;
     require(
         matches!(recipient, Recipient::Addr(_)),
@@ -207,9 +211,9 @@ pub fn handle_withdraw(
     )?;
 
     if let Some(uusd_withdrawal) = uusd_withdrawal {
-        withdraw_uusd(deps, env, info, uusd_withdrawal, Some(recipient.get_addr()))
+        withdraw_uusd(deps, env, info, uusd_withdrawal, Some(recipient_addr))
     } else if let Some(aust_withdrawal) = aust_withdrawal {
-        withdraw_aust(deps, info, aust_withdrawal, Some(recipient.get_addr()))
+        withdraw_aust(deps, info, aust_withdrawal, Some(recipient_addr))
     } else {
         Ok(Response::default())
     }
@@ -364,6 +368,8 @@ fn execute_withdraw_collateral(
         let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
         recipient.generate_msg_cw20(
             deps.api,
+            &deps.querier,
+            contract.get_mission_contract(deps.storage)?,
             Cw20Coin {
                 address: collateral_addr.clone(),
                 amount: amount.into(),
@@ -464,9 +470,12 @@ fn execute_borrow(
             })?,
             funds: vec![],
         }))
-        .add_submessage(
-            recipient.generate_msg_native(deps.api, coins(borrow_amount.into(), "uusd"))?,
-        ))
+        .add_submessage(recipient.generate_msg_native(
+            deps.api,
+            &deps.querier,
+            contract.get_mission_contract(deps.storage)?,
+            coins(borrow_amount.into(), "uusd"),
+        )?))
 }
 
 fn execute_repay_loan(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
@@ -521,7 +530,11 @@ pub fn execute_deposit(
         deps.api.addr_validate(&anchor_aust_token)?,
         env.contract.address,
     )?;
-    let recipient_addr = recipient.get_addr();
+    let recipient_addr = recipient.get_addr(
+        deps.api,
+        &deps.querier,
+        ADOContract::default().get_mission_contract(deps.storage)?,
+    )?;
     PREV_AUST_BALANCE.save(deps.storage, &aust_balance)?;
     RECIPIENT_ADDR.save(deps.storage, &recipient_addr)?;
     let payment_amount = payment.amount;
@@ -627,6 +640,8 @@ fn withdraw_aust(
 
     let msg = position.recipient.generate_msg_cw20(
         deps.api,
+        &deps.querier,
+        ADOContract::default().get_mission_contract(deps.storage)?,
         Cw20Coin {
             address: anchor_aust_token,
             amount,
@@ -689,9 +704,12 @@ fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError
     let recipient = POSITION.load(deps.storage, &recipient_addr)?.recipient;
     let mut msgs = vec![];
     if transfer_amount > Uint128::zero() {
-        msgs.push(
-            recipient.generate_msg_native(deps.api, coins(transfer_amount.u128(), UUSD_DENOM))?,
-        );
+        msgs.push(recipient.generate_msg_native(
+            deps.api,
+            &deps.querier,
+            ADOContract::default().get_mission_contract(deps.storage)?,
+            coins(transfer_amount.u128(), UUSD_DENOM),
+        )?);
     }
     Ok(Response::new()
         .add_submessages(msgs)

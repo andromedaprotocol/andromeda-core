@@ -14,8 +14,8 @@ use common::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Reply, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
 use cw721::{OwnerOfResponse, TokensResponse};
@@ -33,13 +33,12 @@ pub fn instantiate(
     CONFIG.save(
         deps.storage,
         &Config {
-            token_address: deps.api.addr_validate(&msg.token_address)?,
+            token_address: msg.token_address,
         },
     )?;
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "crowdfund".to_string(),
@@ -48,11 +47,6 @@ pub fn instantiate(
             primitive_contract: Some(msg.primitive_contract),
         },
     )
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    ADOContract::default().handle_module_reply(deps, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -161,7 +155,11 @@ fn execute_purchase(
     let config = CONFIG.load(deps.storage)?;
     let token_owner_res = query_owner_of(
         &deps.querier,
-        config.token_address.to_string(),
+        config.token_address.get_address(
+            deps.api,
+            &deps.querier,
+            ADOContract::default().get_mission_contract(deps.storage)?,
+        )?,
         token_id.clone(),
     );
     require(
@@ -183,6 +181,7 @@ fn execute_purchase(
     )?;
     let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         deps.storage,
+        deps.api,
         deps.querier,
         sender.clone(),
         Funds::Native(state.price.clone()),
@@ -299,6 +298,7 @@ fn issue_refunds_and_burn_tokens(
     let burn_msgs = get_burn_messages(
         deps.storage,
         &deps.querier,
+        deps.api,
         env.contract.address.to_string(),
         limit,
     )?;
@@ -323,6 +323,8 @@ fn transfer_tokens_and_send_funds(
         if state.amount_to_send > Uint128::zero() {
             let msg = state.recipient.generate_msg_native(
                 deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
                 vec![Coin {
                     denom: state.price.denom.clone(),
                     amount: state.amount_to_send,
@@ -337,6 +339,7 @@ fn transfer_tokens_and_send_funds(
         let burn_msgs = get_burn_messages(
             deps.storage,
             &deps.querier,
+            deps.api,
             env.contract.address.to_string(),
             limit,
         )?;
@@ -392,7 +395,11 @@ fn transfer_tokens_and_send_funds(
         }
         rate_messages.extend(purchase.msgs);
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: config.token_address.to_string(),
+            contract_addr: config.token_address.get_address(
+                deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
+            )?,
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: purchaser,
                 token_id: purchase.token_id,
@@ -462,17 +469,23 @@ fn process_refund(
 fn get_burn_messages(
     storage: &dyn Storage,
     querier: &QuerierWrapper,
+    api: &dyn Api,
     address: String,
     limit: usize,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let config = CONFIG.load(storage)?;
-    let tokens_to_burn = query_tokens(querier, config.token_address.to_string(), address, limit)?;
+    let token_address = config.token_address.get_address(
+        api,
+        querier,
+        ADOContract::default().get_mission_contract(storage)?,
+    )?;
+    let tokens_to_burn = query_tokens(querier, token_address.clone(), address, limit)?;
 
     tokens_to_burn
         .into_iter()
         .map(|token_id| {
             Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: config.token_address.to_string(),
+                contract_addr: token_address.clone(),
                 funds: vec![],
                 msg: encode_binary(&Cw721ExecuteMsg::Burn { token_id })?,
             }))

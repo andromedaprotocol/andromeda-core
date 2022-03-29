@@ -13,11 +13,12 @@ use andromeda_protocol::{
 };
 use common::{
     ado_base::{
-        modules::{InstantiateType, Module, RATES},
+        modules::{Module, RATES},
         recipient::Recipient,
     },
     encode_binary,
     error::ContractError,
+    mission::AndrAddress,
 };
 use cosmwasm_std::{
     coin, coins,
@@ -82,7 +83,9 @@ fn get_transfer_message(token_id: impl Into<String>, recipient: impl Into<String
 
 fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     let msg = InstantiateMsg {
-        token_address: MOCK_TOKEN_CONTRACT.to_owned(),
+        token_address: AndrAddress {
+            identifier: MOCK_TOKEN_CONTRACT.to_owned(),
+        },
         modules,
         primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
@@ -97,7 +100,9 @@ fn test_instantiate() {
 
     let modules = vec![Module {
         module_type: RATES.to_owned(),
-        instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.to_owned()),
+        address: AndrAddress {
+            identifier: MOCK_RATES_CONTRACT.to_owned(),
+        },
         is_mutable: false,
     }];
 
@@ -106,6 +111,7 @@ fn test_instantiate() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "1")
             .add_attribute("method", "instantiate")
             .add_attribute("type", "crowdfund"),
         res
@@ -113,7 +119,9 @@ fn test_instantiate() {
 
     assert_eq!(
         Config {
-            token_address: Addr::unchecked(MOCK_TOKEN_CONTRACT),
+            token_address: AndrAddress {
+                identifier: MOCK_TOKEN_CONTRACT.to_owned()
+            }
         },
         CONFIG.load(deps.as_mut().storage).unwrap()
     );
@@ -403,7 +411,9 @@ fn test_purchase_not_enough_for_price() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
         module_type: RATES.to_owned(),
-        instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.to_owned()),
+        address: AndrAddress {
+            identifier: MOCK_RATES_CONTRACT.to_owned(),
+        },
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -438,7 +448,9 @@ fn test_purchase_not_enough_for_tax() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
         module_type: RATES.to_owned(),
-        instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.to_owned()),
+        address: AndrAddress {
+            identifier: MOCK_RATES_CONTRACT.to_owned(),
+        },
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -473,7 +485,9 @@ fn test_multiple_purchases() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
         module_type: RATES.to_owned(),
-        instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.to_owned()),
+        address: AndrAddress {
+            identifier: MOCK_RATES_CONTRACT.to_owned(),
+        },
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -578,7 +592,9 @@ fn test_integration_conditions_not_met() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
         module_type: RATES.to_owned(),
-        instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.to_owned()),
+        address: AndrAddress {
+            identifier: MOCK_RATES_CONTRACT.to_owned(),
+        },
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -713,7 +729,9 @@ fn test_integration_conditions_met() {
     deps.querier.contract_address = MOCK_CONDITIONS_MET_CONTRACT.to_string();
     let modules = vec![Module {
         module_type: RATES.to_owned(),
-        instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.to_owned()),
+        address: AndrAddress {
+            identifier: MOCK_RATES_CONTRACT.to_owned(),
+        },
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
