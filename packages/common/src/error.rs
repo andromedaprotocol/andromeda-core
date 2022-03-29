@@ -1,14 +1,20 @@
 use cosmwasm_std::{OverflowError, StdError};
+use cw0::Expiration;
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use std::convert::From;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 
+use hex::FromHexError;
+
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    Hex(#[from] FromHexError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -262,6 +268,18 @@ pub enum ContractError {
 
     #[error("No purchases")]
     NoPurchases {},
+
+    #[error("Airdrop stage {stage} expired at {expiration}")]
+    StageExpired { stage: u8, expiration: Expiration },
+
+    #[error("Airdrop stage {stage} not expired yet")]
+    StageNotExpired { stage: u8, expiration: Expiration },
+
+    #[error("Wrong Length")]
+    WrongLength {},
+
+    #[error("Verification Failed")]
+    VerificationFailed {},
 }
 
 impl From<Cw20ContractError> for ContractError {

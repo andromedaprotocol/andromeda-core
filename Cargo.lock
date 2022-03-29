@@ -95,7 +95,7 @@ dependencies = [
  "andromeda-protocol",
  "common",
  "cosmwasm-std",
- "cw-storage-plus 0.8.1",
+ "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
  "cw721",
  "schemars",
@@ -172,6 +172,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-merkle-airdrop"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-protocol",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "cw2 0.9.1",
+ "cw20 0.9.1",
+ "hex",
+ "schemars",
+ "serde",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-mirror-wrapped-cdp"
 version = "0.1.0"
 dependencies = [
@@ -215,6 +236,7 @@ dependencies = [
  "common",
  "cosmwasm-bignumber",
  "cosmwasm-std",
+ "cw-asset",
  "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
  "cw20 0.9.1",
@@ -377,9 +399,11 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
  "cw20 0.9.1",
  "cw20-base",
  "cw721-base",
+ "hex",
  "schemars",
  "serde",
  "thiserror",
@@ -515,6 +539,18 @@ dependencies = [
  "rand_core 0.5.1",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "cw-asset"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dda12c2ab733255cc606d638b3d893429c6da17ec96a330337fb236e7b0ca48"
+dependencies = [
+ "cosmwasm-std",
+ "cw20 0.9.1",
+ "schemars",
+ "serde",
 ]
 
 [[package]]
