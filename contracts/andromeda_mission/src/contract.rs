@@ -291,26 +291,3 @@ fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
 
     Ok(ConfigResponse { name, owner })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-
-    #[test]
-    fn proper_initialization() {
-        let mut deps = mock_dependencies(&[]);
-
-        let msg = InstantiateMsg {
-            operators: vec![],
-            mission: vec![],
-            name: String::from("Some Mission"),
-            primitive_contract: String::from("primitive_contract"),
-        };
-        let info = mock_info("creator", &[]);
-
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-    }
-}

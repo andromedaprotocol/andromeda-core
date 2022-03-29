@@ -42,6 +42,7 @@ fn test_instantiation() {
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
         }],
+
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -451,6 +452,7 @@ fn test_proxy_message() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
     let exec_submsg: SubMsg<Empty> = SubMsg {
         id: 102,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
