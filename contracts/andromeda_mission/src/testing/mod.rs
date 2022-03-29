@@ -8,9 +8,10 @@ use andromeda_protocol::{
 };
 use common::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{
+    attr,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, ContractResult, CosmosMsg, Event, Reply, StdError, SubMsgExecutionResponse,
-    WasmMsg,
+    to_binary, Addr, ContractResult, CosmosMsg, Empty, Event, Reply, ReplyOn, Response, StdError,
+    SubMsg, SubMsgExecutionResponse, WasmMsg,
 };
 
 #[test]
@@ -50,13 +51,28 @@ fn test_instantiation() {
 
     let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(1, res.messages.len());
-    match res.messages[0].msg.clone() {
-        CosmosMsg::Wasm(WasmMsg::Instantiate { code_id, msg, .. }) => {
-            assert_eq!(4, code_id);
-            assert_eq!(to_binary(&true).unwrap(), msg)
-        }
-        _ => panic!("Invalid msg type"),
-    }
+    let inst_submsg: SubMsg<Empty> = SubMsg {
+        id: 1,
+        msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+            code_id: 4,
+            msg: to_binary(&true).unwrap(),
+            funds: vec![],
+            label: "Instantiate: cw721".to_string(),
+            admin: None,
+        }),
+        reply_on: ReplyOn::Always,
+        gas_limit: None,
+    };
+    let expected = Response::new()
+        .add_submessage(inst_submsg)
+        .add_attributes(vec![
+            attr("method", "instantiate"),
+            attr("type", "mission"),
+            attr("owner", "creator"),
+            attr("andr_mission", "Some Mission"),
+        ]);
+
+    assert_eq!(expected, res)
 }
 
 // TODO: Figure out how to test this
@@ -317,36 +333,37 @@ fn test_claim_ownership_all() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(2, res.messages.len());
 
-    match res.messages[0].msg.clone() {
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr, msg, ..
-        }) => {
-            assert_eq!("anchoraddress".to_string(), contract_addr);
-            assert_eq!(
-                to_binary(&AndromedaMsg::UpdateOwner {
-                    address: "creator".to_string()
-                })
-                .unwrap(),
-                msg
-            );
-        }
-        _ => panic!("Invalid msg type"),
-    }
-    match res.messages[1].msg.clone() {
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr, msg, ..
-        }) => {
-            assert_eq!("tokenaddress".to_string(), contract_addr);
-            assert_eq!(
-                to_binary(&AndromedaMsg::UpdateOwner {
-                    address: "creator".to_string()
-                })
-                .unwrap(),
-                msg
-            );
-        }
-        _ => panic!("Invalid msg type"),
-    }
+    let exec_submsg: SubMsg<Empty> = SubMsg {
+        id: 101,
+        msg: CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "anchoraddress".to_string(),
+            msg: to_binary(&AndromedaMsg::UpdateOwner {
+                address: "creator".to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        reply_on: ReplyOn::Error,
+        gas_limit: None,
+    };
+    let exec_submsg2: SubMsg<Empty> = SubMsg {
+        id: 101,
+        msg: CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "tokenaddress".to_string(),
+            msg: to_binary(&AndromedaMsg::UpdateOwner {
+                address: "creator".to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        reply_on: ReplyOn::Error,
+        gas_limit: None,
+    };
+    let expected = Response::new()
+        .add_submessages(vec![exec_submsg, exec_submsg2])
+        .add_attributes(vec![attr("method", "claim_ownership")]);
+
+    assert_eq!(expected, res)
 }
 
 #[test]
@@ -385,21 +402,24 @@ fn test_claim_ownership() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(1, res.messages.len());
 
-    match res.messages[0].msg.clone() {
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr, msg, ..
-        }) => {
-            assert_eq!("tokenaddress".to_string(), contract_addr);
-            assert_eq!(
-                to_binary(&AndromedaMsg::UpdateOwner {
-                    address: "creator".to_string()
-                })
-                .unwrap(),
-                msg
-            );
-        }
-        _ => panic!("Invalid msg type"),
-    }
+    let exec_submsg: SubMsg<Empty> = SubMsg {
+        id: 101,
+        msg: CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "tokenaddress".to_string(),
+            msg: to_binary(&AndromedaMsg::UpdateOwner {
+                address: "creator".to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        reply_on: ReplyOn::Error,
+        gas_limit: None,
+    };
+    let expected = Response::new()
+        .add_submessage(exec_submsg)
+        .add_attributes(vec![attr("method", "claim_ownership")]);
+
+    assert_eq!(expected, res)
 }
 
 #[test]
@@ -483,15 +503,25 @@ fn test_proxy_message() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    match res.messages[0].msg.clone() {
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr, msg, ..
-        }) => {
-            assert_eq!("tokenaddress".to_string(), contract_addr);
-            assert_eq!(to_binary(&true).unwrap(), msg);
-        }
-        _ => panic!("Invalid msg type"),
-    }
+
+    let exec_submsg: SubMsg<Empty> = SubMsg {
+        id: 102,
+        msg: CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "tokenaddress".to_string(),
+            msg: to_binary(&true).unwrap(),
+            funds: vec![],
+        }),
+        reply_on: ReplyOn::Error,
+        gas_limit: None,
+    };
+    let expected = Response::new()
+        .add_submessage(exec_submsg)
+        .add_attributes(vec![
+            attr("method", "mission_message"),
+            attr("recipient", "token"),
+        ]);
+
+    assert_eq!(expected, res)
 }
 
 #[test]
@@ -620,19 +650,20 @@ fn test_reply_assign_mission() {
     let res = reply(deps.as_mut(), env.clone(), mock_reply).unwrap();
     assert_eq!(1, res.messages.len());
 
-    match res.messages[0].msg.clone() {
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr, msg, ..
-        }) => {
-            assert_eq!("tokenaddress".to_string(), contract_addr);
-            assert_eq!(
-                to_binary(&AndromedaMsg::UpdateMissionContract {
-                    address: env.contract.address.to_string()
-                })
-                .unwrap(),
-                msg
-            );
-        }
-        _ => panic!("Invalid msg type"),
-    }
+    let exec_submsg: SubMsg<Empty> = SubMsg {
+        id: 103,
+        msg: CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "tokenaddress".to_string(),
+            msg: to_binary(&AndromedaMsg::UpdateMissionContract {
+                address: env.contract.address.to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        reply_on: ReplyOn::Error,
+        gas_limit: None,
+    };
+    let expected = Response::new().add_submessage(exec_submsg);
+
+    assert_eq!(expected, res)
 }

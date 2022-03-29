@@ -76,7 +76,7 @@ pub fn generate_assign_mission_message(
         address: mission_addr.to_string(),
     })?;
     Ok(SubMsg {
-        id: 102,
+        id: 103,
         reply_on: ReplyOn::Error,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             msg,

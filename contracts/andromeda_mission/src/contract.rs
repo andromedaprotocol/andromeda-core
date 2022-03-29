@@ -165,7 +165,9 @@ fn execute_claim_ownership(
         }
     }
 
-    Ok(Response::new().add_submessages(msgs))
+    Ok(Response::new()
+        .add_submessages(msgs)
+        .add_attribute("method", "claim_ownership"))
 }
 
 fn execute_message(
@@ -195,7 +197,7 @@ fn execute_message(
     Ok(Response::default()
         .add_submessage(proxy_msg)
         .add_attribute("method", "mission_message")
-        .add_attribute("reciient", name))
+        .add_attribute("recipient", name))
 }
 
 fn has_update_address_privilege(
