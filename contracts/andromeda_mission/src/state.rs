@@ -15,7 +15,7 @@ pub fn add_mission_component(
     storage: &mut dyn Storage,
     component: &MissionComponent,
 ) -> Result<u64, ContractError> {
-    let idx = ADO_IDX.may_load(storage)?.unwrap_or(1u64)
+    let idx = ADO_IDX.may_load(storage)?.unwrap_or(1u64);
     let idx_str = idx.to_string();
     ADO_DESCRIPTORS.save(storage, &idx_str, component)?;
     ADO_IDX.save(storage, &(idx + 1))?;
