@@ -17,8 +17,6 @@ pub struct ADOContract<'a> {
     #[cfg(feature = "modules")]
     pub module_info: Map<'a, &'a str, Module>,
     #[cfg(feature = "modules")]
-    pub module_addr: Map<'a, &'a str, Addr>,
-    #[cfg(feature = "modules")]
     pub module_idx: Item<'a, u64>,
     #[cfg(feature = "withdraw")]
     pub withdrawable_tokens: Map<'a, &'a str, AssetInfo>,
@@ -35,8 +33,6 @@ impl<'a> Default for ADOContract<'a> {
             primitive_contract: Item::new("primitive_contract"),
             #[cfg(feature = "modules")]
             module_info: Map::new("andr_modules"),
-            #[cfg(feature = "modules")]
-            module_addr: Map::new("andr_module_addresses"),
             #[cfg(feature = "modules")]
             module_idx: Item::new("andr_module_idx"),
             #[cfg(feature = "withdraw")]

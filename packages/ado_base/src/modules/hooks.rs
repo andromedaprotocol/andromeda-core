@@ -1,5 +1,6 @@
 use cosmwasm_std::{
-    to_binary, Binary, Event, QuerierWrapper, QueryRequest, StdError, Storage, SubMsg, WasmQuery,
+    to_binary, Api, Binary, Event, QuerierWrapper, QueryRequest, StdError, Storage, SubMsg,
+    WasmQuery,
 };
 use serde::de::DeserializeOwned;
 
@@ -7,7 +8,7 @@ use crate::modules::ADOContract;
 use common::{
     ado_base::{
         hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
-        modules::{ModuleInfoWithAddress, RECEIPT},
+        modules::{Module, RECEIPT},
     },
     error::ContractError,
     Funds,
@@ -18,13 +19,14 @@ impl<'a> ADOContract<'a> {
     pub fn module_hook<T>(
         &self,
         storage: &dyn Storage,
+        api: &dyn Api,
         querier: QuerierWrapper,
         hook_msg: AndromedaHook,
     ) -> Result<Vec<T>, ContractError>
     where
         T: DeserializeOwned,
     {
-        let addresses: Vec<String> = self.load_module_addresses(storage)?;
+        let addresses: Vec<String> = self.load_module_addresses(storage, api, &querier)?;
         let mut resp: Vec<T> = Vec::new();
         for addr in addresses {
             let mod_resp: Option<T> = hook_query(querier, hook_msg.clone(), addr)?;
@@ -40,20 +42,25 @@ impl<'a> ADOContract<'a> {
     pub fn on_funds_transfer(
         &self,
         storage: &dyn Storage,
+        api: &dyn Api,
         querier: QuerierWrapper,
         sender: String,
         amount: Funds,
         msg: Binary,
     ) -> Result<(Vec<SubMsg>, Vec<Event>, Funds), ContractError> {
-        let modules: Vec<ModuleInfoWithAddress> = self.load_modules_with_address(storage)?;
+        let modules: Vec<Module> = self.load_modules(storage)?;
         let mut remainder = amount;
         let mut msgs: Vec<SubMsg> = Vec::new();
         let mut events: Vec<Event> = Vec::new();
         let mut receipt_module_address: Option<String> = None;
         for module in modules {
-            if module.module.module_type == RECEIPT {
+            let mission_contract = self.get_mission_contract(storage)?;
+            let module_address = module
+                .address
+                .get_address(api, &querier, mission_contract)?;
+            if module.module_type == RECEIPT {
                 // If receipt module exists we want to make sure we do it last.
-                receipt_module_address = Some(module.address.clone());
+                receipt_module_address = Some(module_address);
                 continue;
             }
             let mod_resp: Option<OnFundsTransferResponse> = hook_query(
@@ -63,7 +70,7 @@ impl<'a> ADOContract<'a> {
                     sender: sender.clone(),
                     amount: remainder.clone(),
                 },
-                module.address.clone(),
+                module_address,
             )?;
             if let Some(mod_resp) = mod_resp {
                 remainder = mod_resp.leftover_funds;

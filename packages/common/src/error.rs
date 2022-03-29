@@ -239,6 +239,9 @@ pub enum ContractError {
     #[error("InvalidLtvRatio: {msg}")]
     InvalidLtvRatio { msg: String },
 
+    #[error("Name already taken")]
+    NameAlreadyTaken {},
+
     #[error("No Ongoing Sale")]
     NoOngoingSale {},
 

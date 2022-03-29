@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 
@@ -35,7 +35,6 @@ pub fn instantiate(
     let resp = contract.instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info.clone(),
         BaseInstantiateMsg {
             ado_type: "cw20".to_string(),
@@ -52,11 +51,6 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    ADOContract::default().handle_module_reply(deps, msg)
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -66,6 +60,7 @@ pub fn execute(
     let contract = ADOContract::default();
     contract.module_hook::<Response>(
         deps.storage,
+        deps.api,
         deps.querier,
         AndromedaHook::OnExecute {
             sender: info.sender.to_string(),
@@ -97,6 +92,7 @@ fn execute_transfer(
 ) -> Result<Response, ContractError> {
     let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
         deps.storage,
+        deps.api,
         deps.querier,
         info.sender.to_string(),
         Funds::Cw20(Cw20Coin {
@@ -174,6 +170,7 @@ fn execute_send(
 ) -> Result<Response, ContractError> {
     let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
         deps.storage,
+        deps.api,
         deps.querier,
         info.sender.to_string(),
         Funds::Cw20(Cw20Coin {

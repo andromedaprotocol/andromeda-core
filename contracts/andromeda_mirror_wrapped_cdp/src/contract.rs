@@ -57,7 +57,6 @@ pub fn instantiate(
     contract.instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "mirror".to_string(),
