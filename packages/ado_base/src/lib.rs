@@ -2,7 +2,7 @@ mod execute;
 #[cfg(feature = "instantiate")]
 mod instantiate;
 #[cfg(test)]
-pub mod mock_querier;
+mod mock_querier;
 #[cfg(feature = "modules")]
 pub mod modules;
 #[cfg(feature = "primitive")]

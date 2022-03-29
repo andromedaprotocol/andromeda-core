@@ -213,6 +213,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-mission"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-protocol",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.8.1",
+ "cw2 0.8.1",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-primitive"
 version = "0.1.0"
 dependencies = [
@@ -406,6 +423,7 @@ dependencies = [
  "hex",
  "schemars",
  "serde",
+ "terra-cosmwasm",
  "thiserror",
 ]
 

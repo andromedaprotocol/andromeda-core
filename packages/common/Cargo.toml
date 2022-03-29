@@ -22,3 +22,6 @@ hex = "0.4"
 cw20 = { version = "0.9.1" }
 cw20-base = { version = "0.9.1", features=["library"]}
 cw721-base = { version = "0.9.1", features=["library"]}
+
+[dev-dependencies]
+terra-cosmwasm = { version = "2.2.0" }

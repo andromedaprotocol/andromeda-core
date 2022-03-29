@@ -1,14 +1,12 @@
-use common::ado_base::{AndromedaQuery, QueryMsg};
+use crate::ado_base::{AndromedaQuery, QueryMsg};
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, WasmQuery,
 };
-use cw20::{BalanceResponse, Cw20QueryMsg};
 use terra_cosmwasm::TerraQueryWrapper;
 
-pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 pub const MOCK_MISSION_CONTRACT: &str = "mission_contract";
 
 pub struct WasmMockQuerier {
@@ -49,24 +47,11 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
-                    MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
                     MOCK_MISSION_CONTRACT => self.handle_mission_query(msg),
                     _ => panic!("Unsupported query for contract: {}", contract_addr),
                 }
             }
             _ => self.base.handle_query(request),
-        }
-    }
-
-    fn handle_cw20_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            Cw20QueryMsg::Balance { .. } => {
-                let balance_response = BalanceResponse {
-                    balance: 10u128.into(),
-                };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&balance_response).unwrap()))
-            }
-            _ => panic!("Unsupported Query"),
         }
     }
 

@@ -239,8 +239,14 @@ pub enum ContractError {
     #[error("ModuleImmutable")]
     ModuleImmutable {},
 
+    #[error("TooManyMissionComponents")]
+    TooManyMissionComponents {},
+
     #[error("InvalidLtvRatio: {msg}")]
     InvalidLtvRatio { msg: String },
+
+    #[error("Name already taken")]
+    NameAlreadyTaken {},
 
     #[error("No Ongoing Sale")]
     NoOngoingSale {},
