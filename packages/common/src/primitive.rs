@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, StdError, Uint128};
+use cosmwasm_std::{Coin, Decimal, StdError, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -21,6 +21,7 @@ impl fmt::Display for AndromedaContract {
 #[serde(rename_all = "snake_case")]
 pub enum Primitive {
     Uint128(Uint128),
+    Decimal(Decimal),
     Coin(Coin),
     String(String),
     Bool(bool),
