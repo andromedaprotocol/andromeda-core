@@ -26,7 +26,6 @@ schemars = "0.8.3"
 cw-storage-plus = "0.9.1"
 cw20 = { version = "0.9.1" }
 cw2 = "0.9.1"
-terraswap = "2.4.0"
 moneymarket = "0.3.0"
 anchor-token = "0.3.0"
 cosmwasm-bignumber = "2.2.0"

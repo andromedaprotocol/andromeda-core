@@ -10,7 +10,10 @@ use crate::primitive_keys::{
     ANCHOR_MARKET, ANCHOR_ORACLE, ANCHOR_OVERSEER,
 };
 use anchor_token::gov::{QueryMsg as GovQueryMsg, StakerResponse};
-use andromeda_protocol::primitive::QueryMsg as PrimitiveQueryMsg;
+use andromeda_protocol::{
+    anchor::{BLunaHubQueryMsg, WithdrawableUnbondedResponse},
+    primitive::QueryMsg as PrimitiveQueryMsg,
+};
 use common::{
     ado_base::AndromedaQuery,
     primitive::{GetValueResponse, Primitive},
@@ -77,6 +80,7 @@ impl WasmMockQuerier {
                     MOCK_MARKET_CONTRACT => self.handle_market_query(msg),
                     MOCK_OVERSEER_CONTRACT => self.handle_overseer_query(msg),
                     MOCK_ORACLE_CONTRACT => self.handle_oracle_query(msg),
+                    MOCK_BLUNA_HUB_CONTRACT => self.handle_bluna_hub_query(msg),
                     MOCK_GOV_CONTRACT => self.handle_gov_query(msg),
                     MOCK_AUST_TOKEN => self.handle_aust_query(msg),
                     MOCK_BLUNA_TOKEN => self.handle_bluna_query(msg),
@@ -86,6 +90,17 @@ impl WasmMockQuerier {
                 }
             }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_bluna_hub_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            BLunaHubQueryMsg::WithdrawableUnbonded { .. } => {
+                let res = WithdrawableUnbondedResponse {
+                    withdrawable: Uint128::new(100),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
         }
     }
 

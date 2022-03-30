@@ -43,7 +43,6 @@ use moneymarket::{
     querier::query_price,
 };
 use std::cmp;
-use terraswap::querier::{query_balance, query_token_balance};
 
 const UUSD_DENOM: &str = "uusd";
 pub const DEPOSIT_ID: u64 = 1;
@@ -101,11 +100,8 @@ pub fn execute(
                 info.sender == env.contract.address,
                 ContractError::Unauthorized {},
             )?;
-            let amount = query_token_balance(
-                &deps.querier,
-                deps.api.addr_validate(&collateral_addr)?,
-                env.contract.address.clone(),
-            )?;
+            let collateral = AssetInfo::cw20(deps.api.addr_validate(&collateral_addr)?);
+            let amount = collateral.query_balance(&deps.querier, env.contract.address.clone())?;
             execute_deposit_collateral_to_anchor(
                 deps,
                 env,
@@ -665,7 +661,7 @@ fn execute_unstake_anc(
     )?;
 
     // If we ever support voting in polls, need to take into account
-    // staker_response.locked_balance (if balance has deducted made to it).
+    // staker_response.locked_balance (if balance has deductions made to it).
     let amount = cmp::min(
         staker_response.balance,
         amount.unwrap_or(staker_response.balance),
@@ -712,12 +708,8 @@ pub fn execute_deposit(
             msg: "Must deposit a non-zero quantity of uusd".to_string(),
         },
     )?;
-
-    let aust_balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_validate(&anchor_aust_token)?,
-        env.contract.address,
-    )?;
+    let aust = AssetInfo::cw20(deps.api.addr_validate(&anchor_aust_token)?);
+    let aust_balance = aust.query_balance(&deps.querier, env.contract.address)?;
     let recipient_addr = recipient.get_addr(
         deps.api,
         &deps.querier,
@@ -774,8 +766,9 @@ fn withdraw_uusd(
 
     require(authorized, ContractError::Unauthorized {})?;
 
-    let contract_balance =
-        query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
+    let uusd = AssetInfo::native(UUSD_DENOM);
+    let contract_balance = uusd.query_balance(&deps.querier, env.contract.address)?;
+
     PREV_UUSD_BALANCE.save(deps.storage, &contract_balance)?;
     RECIPIENT_ADDR.save(deps.storage, &recipient_addr)?;
 
@@ -854,11 +847,8 @@ fn reply_update_position(deps: DepsMut, env: Env) -> Result<Response, ContractEr
     let contract = ADOContract::default();
     let anchor_aust_token = contract.get_cached_address(deps.storage, ANCHOR_AUST)?;
 
-    let aust_balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_validate(&anchor_aust_token)?,
-        env.contract.address,
-    )?;
+    let aust = AssetInfo::cw20(deps.api.addr_validate(&anchor_aust_token)?);
+    let aust_balance = aust.query_balance(&deps.querier, env.contract.address)?;
 
     let prev_aust_balance = PREV_AUST_BALANCE.load(deps.storage)?;
     let new_aust_balance = aust_balance.checked_sub(prev_aust_balance)?;
@@ -881,8 +871,9 @@ fn reply_update_position(deps: DepsMut, env: Env) -> Result<Response, ContractEr
 }
 
 fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
-    let current_balance =
-        query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
+    let uusd = AssetInfo::native(UUSD_DENOM);
+    let current_balance = uusd.query_balance(&deps.querier, env.contract.address)?;
+
     let prev_balance = PREV_UUSD_BALANCE.load(deps.storage)?;
     let transfer_amount = current_balance - prev_balance;
 
