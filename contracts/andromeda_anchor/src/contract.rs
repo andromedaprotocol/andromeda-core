@@ -123,7 +123,16 @@ pub fn execute(
         ExecuteMsg::ClaimAncRewards { auto_stake } => {
             execute_claim_anc(deps, env, info, auto_stake)
         }
-        ExecuteMsg::StakeAnc { amount } => execute_stake_anc(deps, env, info, amount),
+        ExecuteMsg::StakeAnc { amount } => {
+            // All of this is done here and not within the function because it would otherwise
+            // break the `auto_stake` feature for ClaimAncRewards.
+            let anchor_anc = ADOContract::default().get_cached_address(deps.storage, ANCHOR_ANC)?;
+            let anc = AssetInfo::cw20(deps.api.addr_validate(&anchor_anc)?);
+            let total_amount = anc.query_balance(&deps.querier, env.contract.address)?;
+            let amount = cmp::min(total_amount, amount.unwrap_or(total_amount));
+
+            execute_stake_anc(deps, info, amount)
+        }
         ExecuteMsg::UnstakeAnc { amount } => execute_unstake_anc(deps, env, info, amount),
         ExecuteMsg::RepayLoan {} => execute_repay_loan(deps, env, info),
         ExecuteMsg::WithdrawCollateral {
@@ -606,7 +615,7 @@ fn execute_claim_anc(
             env.contract.address.to_string(),
         )?;
         let amount = borrower_info.pending_rewards * Uint256::one();
-        let stake_resp = execute_stake_anc(deps, env, info, Some(amount.into()))?;
+        let stake_resp = execute_stake_anc(deps, info, amount.into())?;
         Ok(res
             .add_attributes(stake_resp.attributes)
             .add_submessages(stake_resp.messages))
@@ -617,9 +626,8 @@ fn execute_claim_anc(
 
 fn execute_stake_anc(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
-    amount: Option<Uint128>,
+    amount: Uint128,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     require(
@@ -629,10 +637,6 @@ fn execute_stake_anc(
     let anchor_gov = contract.get_cached_address(deps.storage, ANCHOR_GOV)?;
     let anchor_anc = contract.get_cached_address(deps.storage, ANCHOR_ANC)?;
 
-    let anc = AssetInfo::cw20(deps.api.addr_validate(&anchor_anc)?);
-    let total_amount = anc.query_balance(&deps.querier, env.contract.address)?;
-
-    let amount = cmp::min(total_amount, amount.unwrap_or(total_amount));
     Ok(Response::new()
         .add_attribute("action", "stake_anc")
         .add_attribute("amount", amount)

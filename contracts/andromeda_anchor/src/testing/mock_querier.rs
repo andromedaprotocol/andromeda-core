@@ -112,7 +112,7 @@ impl WasmMockQuerier {
                     interest_index: Decimal256::zero(),
                     reward_index: Decimal256::zero(),
                     loan_amount: self.loan_amount,
-                    pending_rewards: Decimal256::one(),
+                    pending_rewards: Decimal256::from_uint256(Uint256::from(200u128)),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }

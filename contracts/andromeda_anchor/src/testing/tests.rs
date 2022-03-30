@@ -1309,7 +1309,7 @@ fn test_claim_anc_auto_stake() {
         Response::new()
             .add_attribute("action", "claim_anc_rewards")
             .add_attribute("action", "stake_anc")
-            .add_attribute("amount", "1")
+            .add_attribute("amount", "200")
             .add_message(WasmMsg::Execute {
                 contract_addr: MOCK_MARKET_CONTRACT.to_owned(),
                 msg: to_binary(&MarketExecuteMsg::ClaimRewards { to: None }).unwrap(),
@@ -1320,7 +1320,7 @@ fn test_claim_anc_auto_stake() {
                 msg: to_binary(&Cw20ExecuteMsg::Send {
                     contract: MOCK_GOV_CONTRACT.to_owned(),
                     msg: to_binary(&GovCw20HookMsg::StakeVotingTokens {}).unwrap(),
-                    amount: Uint128::new(1),
+                    amount: Uint128::new(200),
                 })
                 .unwrap(),
                 funds: vec![],
