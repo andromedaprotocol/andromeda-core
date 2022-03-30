@@ -2,9 +2,9 @@
 use common::ado_base::modules::Module;
 use common::{ado_base::QueryMsg, error::ContractError, parse_message};
 use cosmwasm_std::{Addr, Binary, Storage};
-use cw_storage_plus::{Item, Map};
 #[cfg(feature = "withdraw")]
-use terraswap::asset::AssetInfo;
+use cw_asset::AssetInfo;
+use cw_storage_plus::{Item, Map};
 
 //TODO: Make as many of these as possible pub(crate)
 pub struct ADOContract<'a> {

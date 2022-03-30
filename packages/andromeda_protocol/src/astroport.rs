@@ -6,8 +6,10 @@ use astroport::{
         Cw20HookMsg as AstroportStakingCw20HookMsg, ExecuteMsg as AstroportStakingExecuteMsg,
     },
 };
-use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
+use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
+use cw_asset::Asset;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +18,7 @@ pub struct InstantiateMsg {
     pub astroport_factory_contract: String,
     pub astroport_router_contract: String,
     pub astroport_staking_contract: String,
+    pub astroport_token_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -31,6 +34,16 @@ pub enum ExecuteMsg {
         astroport_factory_contract: Option<String>,
         astroport_router_contract: Option<String>,
         astroport_staking_contract: Option<String>,
+    },
+    ProvideLiquidity {
+        assets: [Asset; 2],
+        slippage_tolerance: Option<Decimal>,
+        auto_stake: Option<bool>,
+    },
+    WithdrawLiquidity {
+        pair_address: String,
+        amount: Option<Uint128>,
+        recipient: Option<Recipient>,
     },
 }
 

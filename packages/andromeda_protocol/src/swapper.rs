@@ -1,9 +1,9 @@
-use astroport::asset::AssetInfo as AstroportAssetInfo;
 use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
 // To be used in the swapper contract.
 pub use astroport::querier::{query_balance, query_token_balance};
-use cosmwasm_std::{Addr, Binary};
+use cosmwasm_std::Binary;
 use cw20::Cw20ReceiveMsg;
+use cw_asset::AssetInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -41,22 +41,6 @@ pub enum SwapperImplCw20HookMsg {
 #[serde(rename_all = "snake_case")]
 pub enum SwapperCw20HookMsg {
     Swap { ask_asset_info: AssetInfo },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum AssetInfo {
-    Token { contract_addr: Addr },
-    NativeToken { denom: String },
-}
-
-impl From<AssetInfo> for AstroportAssetInfo {
-    fn from(asset_info: AssetInfo) -> AstroportAssetInfo {
-        match asset_info {
-            AssetInfo::Token { contract_addr } => AstroportAssetInfo::Token { contract_addr },
-            AssetInfo::NativeToken { denom } => AstroportAssetInfo::NativeToken { denom },
-        }
-    }
 }
 
 /// Instantiate Message for Swapper contract.

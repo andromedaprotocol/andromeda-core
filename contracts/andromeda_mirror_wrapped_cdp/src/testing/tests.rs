@@ -15,10 +15,11 @@ use common::{
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
-    coin, coins, from_binary, to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo,
-    Order, Response, Uint128, WasmMsg,
+    coin, coins, from_binary, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut,
+    MessageInfo, Order, Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_asset::AssetInfo as CwAssetInfo;
 use mirror_protocol::{gov::VoteOption, mint::ShortParams};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
@@ -225,9 +226,7 @@ fn test_instantiate() {
     );
 
     assert_eq!(
-        AssetInfo::Token {
-            contract_addr: MOCK_MIRROR_TOKEN_ADDR.to_string()
-        },
+        CwAssetInfo::Cw20(Addr::unchecked(MOCK_MIRROR_TOKEN_ADDR)),
         contract
             .withdrawable_tokens
             .load(deps.as_mut().storage, MOCK_MIRROR_TOKEN_ADDR)
@@ -281,18 +280,14 @@ fn test_mirror_mint_open_position_not_short() {
     assert_mint_execute_msg(deps.as_mut(), info, mirror_msg);
 
     assert_eq!(
-        AssetInfo::Token {
-            contract_addr: "collateral_token".to_string()
-        },
+        CwAssetInfo::Cw20(Addr::unchecked("collateral_token")),
         ADOContract::default()
             .withdrawable_tokens
             .load(deps.as_mut().storage, "collateral_token")
             .unwrap()
     );
     assert_eq!(
-        AssetInfo::Token {
-            contract_addr: "token_address".to_string()
-        },
+        CwAssetInfo::Cw20(Addr::unchecked("token_address")),
         ADOContract::default()
             .withdrawable_tokens
             .load(deps.as_mut().storage, "token_address")
@@ -332,18 +327,14 @@ fn test_mirror_mint_open_position_short() {
     assert_mint_execute_msg(deps.as_mut(), info, mirror_msg);
 
     assert_eq!(
-        AssetInfo::Token {
-            contract_addr: "collateral_token".to_string()
-        },
+        CwAssetInfo::Cw20(Addr::unchecked("collateral_token")),
         ADOContract::default()
             .withdrawable_tokens
             .load(deps.as_mut().storage, "collateral_token")
             .unwrap()
     );
     assert_eq!(
-        AssetInfo::NativeToken {
-            denom: "uusd".to_string()
-        },
+        CwAssetInfo::native("uusd"),
         ADOContract::default()
             .withdrawable_tokens
             .load(deps.as_mut().storage, "uusd")
@@ -443,18 +434,14 @@ fn test_mirror_mint_open_position_cw20_not_short() {
     assert_mint_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
 
     assert_eq!(
-        AssetInfo::Token {
-            contract_addr: "minted_asset_token".to_string()
-        },
+        CwAssetInfo::Cw20(Addr::unchecked("minted_asset_token")),
         ADOContract::default()
             .withdrawable_tokens
             .load(deps.as_mut().storage, "minted_asset_token")
             .unwrap()
     );
     assert_eq!(
-        AssetInfo::Token {
-            contract_addr: TEST_TOKEN.to_string()
-        },
+        CwAssetInfo::Cw20(Addr::unchecked(TEST_TOKEN)),
         ADOContract::default()
             .withdrawable_tokens
             .load(deps.as_mut().storage, TEST_TOKEN)
@@ -489,18 +476,14 @@ fn test_mirror_mint_open_position_cw20_short() {
     assert_mint_execute_cw20_msg(deps.as_mut(), info, mirror_msg);
 
     assert_eq!(
-        AssetInfo::NativeToken {
-            denom: "uusd".to_string()
-        },
+        CwAssetInfo::native("uusd"),
         ADOContract::default()
             .withdrawable_tokens
             .load(deps.as_mut().storage, "uusd")
             .unwrap()
     );
     assert_eq!(
-        AssetInfo::Token {
-            contract_addr: TEST_TOKEN.to_string()
-        },
+        CwAssetInfo::Cw20(Addr::unchecked(TEST_TOKEN)),
         ADOContract::default()
             .withdrawable_tokens
             .load(deps.as_mut().storage, TEST_TOKEN)
@@ -579,9 +562,7 @@ fn test_mirror_staking_unbond() {
     assert_staking_execute_msg(deps.as_mut(), info, mirror_msg);
 
     assert_eq!(
-        AssetInfo::Token {
-            contract_addr: "asset_token".to_string()
-        },
+        CwAssetInfo::Cw20(Addr::unchecked("asset_token")),
         ADOContract::default()
             .withdrawable_tokens
             .load(deps.as_mut().storage, "asset_token")
@@ -767,9 +748,7 @@ fn test_lock_unlock_position_funds() {
     assert_lock_execute_msg(deps.as_mut(), info, mirror_msg);
 
     assert_eq!(
-        AssetInfo::NativeToken {
-            denom: "uusd".to_string()
-        },
+        CwAssetInfo::native("uusd"),
         ADOContract::default()
             .withdrawable_tokens
             .load(deps.as_mut().storage, "uusd")
