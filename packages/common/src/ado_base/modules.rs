@@ -1,5 +1,4 @@
-use crate::{error::ContractError, require};
-use cosmwasm_std::Binary;
+use crate::{error::ContractError, mission::AndrAddress, require};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -10,32 +9,49 @@ pub const AUCTION: &str = "auction";
 pub const RECEIPT: &str = "receipt";
 pub const OTHER: &str = "other";
 
+// TODO: Remove InstantiateType when we are confident with the AndrAddress replacement.
+/// Modules can be instantiated in two different ways
+/// New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded
+/// Address - Provide an address for an already instantiated module contract
+/*#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+=======
 /// Modules can be instantiated in two different ways
 /// New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded
 /// Address - Provide an address for an already instantiated module contract
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+>>>>>>> e7a02a492c55a32cee8e5c85ab8b1d4b1e2fe673
 #[serde(rename_all = "snake_case")]
 pub enum InstantiateType {
     New(Binary),
     Address(String),
-}
+<<<<<<< HEAD
+}*/
 
 /// A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Module {
     pub module_type: String,
+    pub address: AndrAddress,
+    pub is_mutable: bool,
+}
+
+// TODO: Remove ModuleInfoWithAddress when we are confident with the AndrAddress replacement.
+/*#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+=======
     pub instantiate: InstantiateType,
     pub is_mutable: bool,
 }
 
 /// Struct used to represent a module and its currently recorded address
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+>>>>>>> e7a02a492c55a32cee8e5c85ab8b1d4b1e2fe673
 #[serde(rename_all = "snake_case")]
 pub struct ModuleInfoWithAddress {
     pub module: Module,
     pub address: String,
-}
+<<<<<<< HEAD
+}*/
 
 impl Module {
     /// Validates `self` by checking that it is unique, does not conflict with any other module,
@@ -83,7 +99,9 @@ mod tests {
     fn test_validate_addresslist() {
         let addresslist_module = Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address("".to_string()),
+            address: AndrAddress {
+                identifier: "".to_string(),
+            },
             is_mutable: false,
         };
 
@@ -95,7 +113,9 @@ mod tests {
 
         let auction_module = Module {
             module_type: AUCTION.to_owned(),
-            instantiate: InstantiateType::Address("".into()),
+            address: AndrAddress {
+                identifier: "".to_string(),
+            },
             is_mutable: false,
         };
         addresslist_module
@@ -107,7 +127,9 @@ mod tests {
     fn test_validate_auction() {
         let module = Module {
             module_type: AUCTION.to_owned(),
-            instantiate: InstantiateType::Address("".to_string()),
+            address: AndrAddress {
+                identifier: "".to_string(),
+            },
             is_mutable: false,
         };
 
@@ -124,7 +146,9 @@ mod tests {
 
         let other_module = Module {
             module_type: RATES.to_owned(),
-            instantiate: InstantiateType::Address("".to_string()),
+            address: AndrAddress {
+                identifier: "".to_string(),
+            },
             is_mutable: false,
         };
         module
@@ -136,7 +160,9 @@ mod tests {
     fn test_validate_rates() {
         let module = Module {
             module_type: RATES.to_owned(),
-            instantiate: InstantiateType::Address("".to_string()),
+            address: AndrAddress {
+                identifier: "".to_string(),
+            },
             is_mutable: false,
         };
 
@@ -145,7 +171,9 @@ mod tests {
 
         let other_module = Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address("".to_string()),
+            address: AndrAddress {
+                identifier: "".to_string(),
+            },
             is_mutable: false,
         };
         module
@@ -157,7 +185,9 @@ mod tests {
     fn test_validate_receipt() {
         let module = Module {
             module_type: RECEIPT.to_owned(),
-            instantiate: InstantiateType::Address("".to_string()),
+            address: AndrAddress {
+                identifier: "".to_string(),
+            },
             is_mutable: false,
         };
 
@@ -166,7 +196,9 @@ mod tests {
 
         let other_module = Module {
             module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::Address("".to_string()),
+            address: AndrAddress {
+                identifier: "".to_string(),
+            },
             is_mutable: false,
         };
         module
@@ -178,13 +210,17 @@ mod tests {
     fn test_validate_uniqueness() {
         let module1 = Module {
             module_type: RECEIPT.to_owned(),
-            instantiate: InstantiateType::Address("addr1".to_string()),
+            address: AndrAddress {
+                identifier: "addr1".to_string(),
+            },
             is_mutable: false,
         };
 
         let module2 = Module {
             module_type: RECEIPT.to_owned(),
-            instantiate: InstantiateType::Address("addr2".to_string()),
+            address: AndrAddress {
+                identifier: "addr2".to_string(),
+            },
             is_mutable: false,
         };
 

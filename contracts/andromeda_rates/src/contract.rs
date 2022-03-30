@@ -1,5 +1,5 @@
 use crate::state::{Config, CONFIG};
-use ado_base::state::ADOContract;
+use ado_base::ADOContract;
 use andromeda_protocol::{
     modules::common::{calculate_fee, deduct_funds},
     rates::{
@@ -39,7 +39,6 @@ pub fn instantiate(
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "rates".to_string(),
@@ -176,16 +175,27 @@ fn query_deducted_funds(
             event = event.add_attribute(
                 "payment",
                 PaymentAttribute {
-                    receiver: reciever.get_addr(),
+                    receiver: reciever.get_addr(
+                        deps.api,
+                        &deps.querier,
+                        ADOContract::default().get_mission_contract(deps.storage)?,
+                    )?,
                     amount: fee.clone(),
                 }
                 .to_string(),
             );
             let msg = if is_native {
-                reciever.generate_msg_native(deps.api, vec![fee.clone()])?
+                reciever.generate_msg_native(
+                    deps.api,
+                    &deps.querier,
+                    ADOContract::default().get_mission_contract(deps.storage)?,
+                    vec![fee.clone()],
+                )?
             } else {
                 reciever.generate_msg_cw20(
                     deps.api,
+                    &deps.querier,
+                    ADOContract::default().get_mission_contract(deps.storage)?,
                     Cw20Coin {
                         amount: fee.amount,
                         address: fee.denom.to_string(),

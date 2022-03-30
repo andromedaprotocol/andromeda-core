@@ -35,7 +35,6 @@ pub fn instantiate(
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "factory".to_string(),

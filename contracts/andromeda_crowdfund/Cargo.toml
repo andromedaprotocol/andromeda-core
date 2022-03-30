@@ -14,7 +14,7 @@ library = []
 
 [dependencies]
 cosmwasm-std = { version = "0.16.2" }
-cw-storage-plus = "0.8.0"
+cw-storage-plus = "0.9.1"
 schemars = "0.8.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.26" }
@@ -23,7 +23,7 @@ cw721 = "0.9.1"
 
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
 common = { version = "0.1.0", path = "../../packages/common" }
-ado-base = { path = "../../packages/ado_base", version = "0.1.0", features = ["modules"]}
+ado-base = { path = "../../packages/ado_base", version = "0.1.0", features = ["modules"] }
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }

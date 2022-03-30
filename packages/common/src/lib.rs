@@ -1,7 +1,10 @@
 pub mod ado_base;
 pub mod error;
+pub mod mission;
 pub mod primitive;
 pub mod response;
+#[cfg(test)]
+pub mod testing;
 pub mod withdraw;
 
 use crate::error::ContractError;
