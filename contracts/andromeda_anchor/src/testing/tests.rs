@@ -660,12 +660,21 @@ fn test_withdraw_tokens_none() {
         recipient: Some(Recipient::Addr(recipient.to_owned())),
         tokens_to_withdraw: None,
     });
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
-        ContractError::InvalidFunds {
-            msg: "No funds to withdraw".to_string(),
-        },
-        res.unwrap_err()
+        Response::new()
+            .add_attribute("action", "withdraw")
+            .add_attribute("recipient", "Addr(\"recipient\")")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_ANC_TOKEN.to_owned(),
+                funds: vec![],
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    amount: Uint128::new(100),
+                    recipient: recipient.to_owned()
+                })
+                .unwrap()
+            }),
+        res
     );
 }
 

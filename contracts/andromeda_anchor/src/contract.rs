@@ -80,6 +80,12 @@ pub fn instantiate(
     for address in ADDRESSES_TO_CACHE {
         contract.cache_address(deps.storage, &deps.querier, address)?;
     }
+    let anchor_anc = contract.get_cached_address(deps.storage, ANCHOR_ANC)?;
+    contract.add_withdrawable_token(
+        deps.storage,
+        &anchor_anc,
+        &AssetInfo::Cw20(deps.api.addr_validate(&anchor_anc)?),
+    )?;
 
     Ok(resp)
 }
