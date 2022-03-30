@@ -2,7 +2,7 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_env, mock_info},
-    to_binary, BankMsg, Coin, ContractResult, CosmosMsg, DepsMut, Reply, Response, SubMsg,
+    to_binary, Addr, BankMsg, Coin, ContractResult, CosmosMsg, DepsMut, Reply, Response, SubMsg,
     SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 
@@ -33,6 +33,7 @@ use common::{
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_asset::AssetInfo;
 use moneymarket::{
     custody::{Cw20HookMsg as CustodyCw20HookMsg, ExecuteMsg as CustodyExecuteMsg},
     market::{Cw20HookMsg as MarketCw20HookMsg, ExecuteMsg as MarketExecuteMsg},
@@ -94,7 +95,17 @@ fn init(deps: DepsMut) {
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
+
     let contract = ADOContract::default();
+
+    assert_eq!(
+        contract
+            .withdrawable_tokens
+            .load(deps.as_ref().storage, MOCK_ANC_TOKEN)
+            .unwrap(),
+        AssetInfo::Cw20(Addr::unchecked(MOCK_ANC_TOKEN))
+    );
+
     assert_eq!(
         MOCK_MARKET_CONTRACT,
         contract
