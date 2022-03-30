@@ -1,6 +1,7 @@
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
+    withdraw::Withdrawal,
 };
 use cosmwasm_std::{to_binary, wasm_execute, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, Uint128};
 use cw_storage_plus::Map;
@@ -100,17 +101,31 @@ pub enum ExecuteMsg {
         amount: Option<Coin>,
         strategy: Option<StrategyType>,
     },
+    Withdraw {
+        recipient: Option<Recipient>,
+        withdrawals: Vec<Withdrawal>,
+        strategy: Option<StrategyType>,
+    },
     AndrReceive(AndromedaMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
+    Balance {
+        address: String,
+        strategy: Option<StrategyType>,
+        denom: Option<String>,
+    },
+    StrategyAddress {
+        strategy: StrategyType,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Config {
-    pub operators: Vec<String>,
+pub struct StrategyAddressResponse {
+    pub strategy: StrategyType,
+    pub address: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

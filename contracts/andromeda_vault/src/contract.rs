@@ -1,17 +1,21 @@
 use ado_base::state::ADOContract;
 use andromeda_protocol::vault::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyType, BALANCES,
-    STRATEGY_CONTRACT_ADDRESSES,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
+    BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
 use common::{
     ado_base::{
         recipient::Recipient, AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
+        QueryMsg as AndrQueryMsg,
     },
     error::ContractError,
     parse_message, require,
+    withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{
-    entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128,
+    coin, entry_point, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps, DepsMut,
+    Empty, Env, MessageInfo, Order, QueryRequest, ReplyOn, Response, SubMsg, SystemResult, Uint128,
+    WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -64,6 +68,11 @@ pub fn execute(
             amount,
             strategy,
         } => execute_deposit(deps, env, info, amount, recipient, strategy),
+        ExecuteMsg::Withdraw {
+            recipient,
+            withdrawals,
+            strategy,
+        } => execute_withdraw(deps, env, info, recipient, withdrawals, strategy),
     }
 }
 
@@ -181,6 +190,130 @@ fn execute_deposit(
     Ok(resp)
 }
 
+pub fn execute_withdraw(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    recipient: Option<Recipient>,
+    withdrawals: Vec<Withdrawal>,
+    strategy: Option<StrategyType>,
+) -> Result<Response, ContractError> {
+    require(
+        !withdrawals.is_empty(),
+        ContractError::InvalidTokensToWithdraw {
+            msg: "No tokens provided for withdrawal".to_string(),
+        },
+    )?;
+    match strategy {
+        None => withdraw_vault(deps, info, recipient, withdrawals),
+        Some(strategy) => withdraw_strategy(deps, info, strategy, recipient, withdrawals),
+    }
+}
+
+pub fn withdraw_vault(
+    deps: DepsMut,
+    info: MessageInfo,
+    recipient: Option<Recipient>,
+    withdrawals: Vec<Withdrawal>,
+) -> Result<Response, ContractError> {
+    let res = Response::default();
+    let mut withdrawal_amount: Vec<Coin> = Vec::new();
+
+    let recipient = recipient
+        .unwrap_or_else(|| Recipient::Addr(info.sender.to_string()))
+        .get_addr();
+    for withdrawal in withdrawals {
+        let denom = withdrawal.token;
+        let balance = BALANCES
+            .load(deps.storage, (info.sender.to_string(), denom.clone()))
+            .unwrap_or_else(|_| Uint128::zero());
+        require(!balance.is_zero(), ContractError::InsufficientFunds {})?;
+
+        match withdrawal.withdrawal_type {
+            Some(withdrawal_type) => match withdrawal_type {
+                WithdrawalType::Amount(amount) => {
+                    require(
+                        !amount.is_zero(),
+                        ContractError::InvalidWithdrawal {
+                            msg: Some("Amount must be non-zero".to_string()),
+                        },
+                    )?;
+                    require(balance >= amount, ContractError::InsufficientFunds {})?;
+                    withdrawal_amount.push(coin(amount.u128(), denom.clone()));
+                    BALANCES.save(
+                        deps.storage,
+                        (info.sender.to_string(), denom),
+                        &balance.checked_sub(amount)?,
+                    )?;
+                }
+                WithdrawalType::Percentage(percent) => {
+                    require(
+                        !percent.is_zero(),
+                        ContractError::InvalidWithdrawal {
+                            msg: Some("Percent must be non-zero".to_string()),
+                        },
+                    )?;
+                    let amount = balance.multiply_ratio(percent, 100u128);
+                    withdrawal_amount.push(coin(amount.u128(), denom.clone()));
+                    BALANCES.save(
+                        deps.storage,
+                        (info.sender.to_string(), denom),
+                        &balance.checked_sub(amount)?,
+                    )?;
+                }
+            },
+            None => {
+                withdrawal_amount.push(coin(balance.u128(), denom.clone()));
+                BALANCES.save(
+                    deps.storage,
+                    (info.sender.to_string(), denom),
+                    &Uint128::zero(),
+                )?;
+            }
+        }
+    }
+    let withdrawal_msg = CosmosMsg::Bank(BankMsg::Send {
+        to_address: recipient,
+        amount: withdrawal_amount,
+    });
+    Ok(res.add_message(withdrawal_msg))
+}
+
+pub fn withdraw_strategy(
+    deps: DepsMut,
+    info: MessageInfo,
+    strategy: StrategyType,
+    recipient: Option<Recipient>,
+    withdrawals: Vec<Withdrawal>,
+) -> Result<Response, ContractError> {
+    let res = Response::default();
+    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let addr_opt = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
+    if addr_opt.is_none() {
+        return Err(ContractError::InvalidStrategy {
+            strategy: strategy.to_string(),
+        });
+    }
+
+    let addr = addr_opt.unwrap();
+    let withdraw_exec = to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
+        recipient: Some(recipient),
+        tokens_to_withdraw: Some(withdrawals),
+    }))?;
+    let withdraw_submsg = SubMsg {
+        id: 104,
+        msg: CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: addr,
+            msg: withdraw_exec,
+            funds: vec![],
+        }),
+        gas_limit: None,
+        reply_on: ReplyOn::Error,
+    };
+
+    Ok(res.add_submessage(withdraw_submsg))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version = get_contract_version(deps.storage)?;
@@ -196,6 +329,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::Balance {
+            address,
+            strategy,
+            denom,
+        } => query_balance(deps, env, address, strategy, denom),
+        QueryMsg::StrategyAddress { strategy } => query_strategy_address(deps, env, strategy),
     }
 }
 
@@ -207,280 +346,62 @@ fn handle_andromeda_query(
     ADOContract::default().query(deps, env, msg, query)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use andromeda_protocol::vault::{InstantiateMsg, YieldStrategy, BALANCES};
-    use cosmwasm_std::{
-        coin,
-        testing::{mock_dependencies, mock_env, mock_info},
-        to_binary, wasm_execute, CosmosMsg, ReplyOn,
-    };
-
-    #[test]
-    fn test_instantiate() {
-        let yield_strategy = YieldStrategy {
-            strategy_type: StrategyType::Anchor,
-            address: "terra1anchoraddress".to_string(),
-        };
-        let inst_msg = InstantiateMsg {
-            operators: None,
-            strategies: vec![yield_strategy],
-        };
-        let env = mock_env();
-        let info = mock_info("minter", &[]);
-        let mut deps = mock_dependencies(&[]);
-
-        instantiate(deps.as_mut(), env, info, inst_msg).unwrap();
+fn query_balance(
+    deps: Deps,
+    _env: Env,
+    address: String,
+    strategy: Option<StrategyType>,
+    denom: Option<String>,
+) -> Result<Binary, ContractError> {
+    if let Some(strategy) = strategy {
+        let strategy_addr = STRATEGY_CONTRACT_ADDRESSES.load(deps.storage, strategy.to_string())?;
+        // DEV NOTE: Why does this require a generic type when not using custom query?
+        let query: QueryRequest<Empty> = QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: strategy_addr,
+            msg: to_binary(&AndrQueryMsg::AndrQuery(AndromedaQuery::Get(Some(
+                to_binary(&address)?,
+            ))))?,
+        });
+        match deps.querier.raw_query(&to_binary(&query)?.to_vec()) {
+            SystemResult::Ok(ContractResult::Ok(value)) => Ok(value),
+            _ => Err(ContractError::InvalidQuery {}),
+        }
+    } else if let Some(denom) = denom {
+        let balance = BALANCES.load(deps.storage, (address, denom.clone()))?;
+        Ok(to_binary(&[Coin {
+            denom,
+            amount: balance,
+        }])?)
+    } else {
+        let balances: Vec<Coin> = BALANCES
+            .prefix(address)
+            .range(deps.storage, None, None, Order::Ascending)
+            .map(|v| {
+                let (denom_vec, balance) = v.unwrap();
+                let denom = String::from_utf8(denom_vec).unwrap();
+                Coin {
+                    denom,
+                    amount: balance,
+                }
+            })
+            .collect();
+        Ok(to_binary(&balances)?)
     }
+}
 
-    #[test]
-    fn test_deposit() {
-        let env = mock_env();
-        let sent_funds = coin(100, "uusd");
-        let extra_sent_funds = coin(100, "uluna");
-        let depositor = "depositor".to_string();
-        let mut deps = mock_dependencies(&[]);
-
-        let info = mock_info(&depositor, &[sent_funds.clone(), extra_sent_funds.clone()]);
-        let msg = ExecuteMsg::Deposit {
-            recipient: None,
-            amount: None,
-            strategy: None,
-        };
-
-        execute(deps.as_mut(), env, info, msg).unwrap();
-
-        let uusd_balance = BALANCES
-            .load(
-                deps.as_ref().storage,
-                (depositor.clone(), "uusd".to_string()),
-            )
-            .unwrap();
-        assert_eq!(uusd_balance, sent_funds.amount);
-        let uluna_balance = BALANCES
-            .load(deps.as_ref().storage, (depositor, "uluna".to_string()))
-            .unwrap();
-        assert_eq!(uluna_balance, extra_sent_funds.amount)
-    }
-
-    #[test]
-    fn test_deposit_insufficient_funds() {
-        let env = mock_env();
-        let depositor = "depositor".to_string();
-        let mut deps = mock_dependencies(&[]);
-
-        let info = mock_info(&depositor, &[]);
-        let msg = ExecuteMsg::Deposit {
-            recipient: None,
-            amount: None,
-            strategy: None,
-        };
-
-        let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
-        assert_eq!(ContractError::InsufficientFunds {}, err);
-
-        let info_with_funds = mock_info(&depositor, &[coin(100, "uusd")]);
-        let msg = ExecuteMsg::Deposit {
-            recipient: None,
-            amount: Some(coin(0u128, "uusd")),
-            strategy: None,
-        };
-
-        let err = execute(deps.as_mut(), env, info_with_funds, msg).unwrap_err();
-        assert_eq!(ContractError::InsufficientFunds {}, err)
-    }
-
-    #[test]
-    fn test_deposit_strategy() {
-        let yield_strategy = YieldStrategy {
-            strategy_type: StrategyType::Anchor,
-            address: "terra1anchoraddress".to_string(),
-        };
-        let inst_msg = InstantiateMsg {
-            operators: None,
-            strategies: vec![yield_strategy.clone()],
-        };
-        let env = mock_env();
-        let info = mock_info("minter", &[]);
-        let mut deps = mock_dependencies(&[]);
-
-        instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
-
-        let sent_funds = coin(100, "uusd");
-        let extra_sent_funds = coin(100, "uluna");
-        let funds = vec![sent_funds.clone(), extra_sent_funds.clone()];
-        let depositor = "depositor".to_string();
-        let info = mock_info(&depositor, &funds);
-        let msg = ExecuteMsg::Deposit {
-            recipient: None,
-            amount: None,
-            strategy: Some(yield_strategy.strategy_type),
-        };
-
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-        let msg = wasm_execute(
-            yield_strategy.address.clone(),
-            &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-                to_binary(&"depositor".to_string()).unwrap(),
-            ))),
-            vec![sent_funds],
-        )
-        .unwrap();
-        let msg_two = wasm_execute(
-            yield_strategy.address,
-            &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-                to_binary(&"depositor".to_string()).unwrap(),
-            ))),
-            vec![extra_sent_funds],
-        )
-        .unwrap();
-        let deposit_submsg = SubMsg {
-            id: 1,
-            msg: CosmosMsg::Wasm(msg),
-            gas_limit: None,
-            reply_on: ReplyOn::Error,
-        };
-        let deposit_submsg_two = SubMsg {
-            id: 1,
-            msg: CosmosMsg::Wasm(msg_two),
-            gas_limit: None,
-            reply_on: ReplyOn::Error,
-        };
-        let expected = Response::default()
-            .add_submessage(deposit_submsg)
-            .add_submessage(deposit_submsg_two);
-
-        assert_eq!(expected, res)
-    }
-
-    #[test]
-    fn test_deposit_strategy_partial_amount() {
-        let yield_strategy = YieldStrategy {
-            strategy_type: StrategyType::Anchor,
-            address: "terra1anchoraddress".to_string(),
-        };
-        let inst_msg = InstantiateMsg {
-            operators: None,
-            strategies: vec![yield_strategy.clone()],
-        };
-        let env = mock_env();
-        let info = mock_info("minter", &[]);
-        let mut deps = mock_dependencies(&[]);
-
-        instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
-
-        let sent_funds = coin(90, "uusd");
-        let funds = vec![sent_funds.clone()];
-        BALANCES
-            .save(
-                deps.as_mut().storage,
-                ("depositor".to_string(), sent_funds.denom.clone()),
-                &Uint128::from(20u128),
-            )
-            .unwrap();
-
-        let depositor = "depositor".to_string();
-        let info = mock_info(&depositor, &funds);
-        let msg = ExecuteMsg::Deposit {
-            recipient: None,
-            amount: Some(coin(100, sent_funds.denom.clone())),
-            strategy: Some(yield_strategy.strategy_type),
-        };
-
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-        let msg = wasm_execute(
-            yield_strategy.address,
-            &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-                to_binary(&"depositor".to_string()).unwrap(),
-            ))),
-            vec![coin(100, sent_funds.denom.clone())],
-        )
-        .unwrap();
-        let deposit_submsg = SubMsg {
-            id: 1,
-            msg: CosmosMsg::Wasm(msg),
-            gas_limit: None,
-            reply_on: ReplyOn::Error,
-        };
-        let expected = Response::default().add_submessage(deposit_submsg);
-
-        assert_eq!(expected, res);
-
-        let post_balance = BALANCES
-            .load(
-                deps.as_ref().storage,
-                ("depositor".to_string(), sent_funds.denom),
-            )
-            .unwrap();
-
-        assert_eq!(Uint128::from(10u128), post_balance);
-    }
-
-    #[test]
-    fn test_deposit_strategy_empty_funds_non_empty_amount() {
-        let env = mock_env();
-        let mut deps = mock_dependencies(&[]);
-
-        let depositor = "depositor".to_string();
-        let info = mock_info(&depositor, &[]);
-        let msg = ExecuteMsg::Deposit {
-            recipient: None,
-            amount: Some(coin(100, "uusd")),
-            strategy: None,
-        };
-
-        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-
-        assert_eq!(ContractError::InsufficientFunds {}, err);
-    }
-
-    #[test]
-    fn test_deposit_strategy_insufficient_partial_amount() {
-        let yield_strategy = YieldStrategy {
-            strategy_type: StrategyType::Anchor,
-            address: "terra1anchoraddress".to_string(),
-        };
-        let inst_msg = InstantiateMsg {
-            operators: None,
-            strategies: vec![yield_strategy.clone()],
-        };
-        let env = mock_env();
-        let info = mock_info("minter", &[]);
-        let mut deps = mock_dependencies(&[]);
-
-        instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
-
-        let sent_funds = coin(90, "uusd");
-        let funds = vec![sent_funds.clone()];
-        BALANCES
-            .save(
-                deps.as_mut().storage,
-                ("depositor".to_string(), sent_funds.denom.clone()),
-                &Uint128::from(5u128),
-            )
-            .unwrap();
-
-        let depositor = "depositor".to_string();
-        let info = mock_info(&depositor, &funds);
-        let msg = ExecuteMsg::Deposit {
-            recipient: None,
-            amount: Some(coin(100, sent_funds.denom.clone())),
-            strategy: Some(yield_strategy.strategy_type),
-        };
-
-        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(ContractError::InsufficientFunds {}, err);
-
-        let post_balance = BALANCES
-            .load(
-                deps.as_ref().storage,
-                ("depositor".to_string(), sent_funds.denom),
-            )
-            .unwrap();
-
-        assert_eq!(Uint128::from(5u128), post_balance);
+fn query_strategy_address(
+    deps: Deps,
+    _env: Env,
+    strategy: StrategyType,
+) -> Result<Binary, ContractError> {
+    let addr = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
+    match addr {
+        Some(addr) => Ok(to_binary(&StrategyAddressResponse {
+            address: addr,
+            strategy,
+        })?),
+        None => Err(ContractError::InvalidStrategy {
+            strategy: strategy.to_string(),
+        }),
     }
 }

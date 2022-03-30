@@ -271,6 +271,12 @@ pub enum ContractError {
 
     #[error("Invalid Strategy")]
     InvalidStrategy { strategy: String },
+
+    #[error("Invalid Query")]
+    InvalidQuery {},
+
+    #[error("Invalid Withdrawal")]
+    InvalidWithdrawal { msg: Option<String> },
 }
 
 impl From<Cw20ContractError> for ContractError {
