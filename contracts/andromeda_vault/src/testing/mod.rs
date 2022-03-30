@@ -770,7 +770,13 @@ fn test_query_strategy_balance() {
     let resp = query(deps.as_ref(), env, single_query).unwrap();
     let balance: PositionResponse = from_binary(&resp).unwrap();
     assert_eq!(Uint128::from(10u128), balance.aust_amount);
-    assert_eq!("depositor".to_string(), balance.recipient.get_addr());
+    assert_eq!(
+        "depositor".to_string(),
+        balance
+            .recipient
+            .get_addr(deps.as_ref().api, &deps.as_ref().querier, None)
+            .unwrap()
+    );
 }
 
 #[test]

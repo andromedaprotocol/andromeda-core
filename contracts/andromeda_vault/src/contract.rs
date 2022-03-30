@@ -43,7 +43,6 @@ pub fn instantiate(
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
-        &deps.querier,
         info,
         BaseInstantiateMsg {
             ado_type: "vault".to_string(),
@@ -131,7 +130,10 @@ fn execute_deposit(
             let vault_balance = BALANCES
                 .may_load(
                     deps.storage,
-                    (recipient.get_addr(), deposit_amount.denom.clone()),
+                    (
+                        recipient.get_addr(deps.api, &deps.querier, None).unwrap(),
+                        deposit_amount.denom.clone(),
+                    ),
                 )?
                 .unwrap_or_else(Uint128::zero);
 
@@ -146,7 +148,10 @@ fn execute_deposit(
             //Subtract the removed funds from balance
             BALANCES.save(
                 deps.storage,
-                (recipient.get_addr(), deposit_amount.denom.clone()),
+                (
+                    recipient.get_addr(deps.api, &deps.querier, None).unwrap(),
+                    deposit_amount.denom.clone(),
+                ),
                 &vault_balance.checked_sub(difference)?,
             )?;
         }
@@ -167,11 +172,20 @@ fn execute_deposit(
         None => {
             for funds in deposited_funds {
                 let curr_balance = BALANCES
-                    .may_load(deps.storage, (recipient.get_addr(), funds.denom.clone()))?
+                    .may_load(
+                        deps.storage,
+                        (
+                            recipient.get_addr(deps.api, &deps.querier, None).unwrap(),
+                            funds.denom.clone(),
+                        ),
+                    )?
                     .unwrap_or_default();
                 BALANCES.save(
                     deps.storage,
-                    (recipient.get_addr(), funds.denom),
+                    (
+                        recipient.get_addr(deps.api, &deps.querier, None).unwrap(),
+                        funds.denom,
+                    ),
                     &curr_balance.checked_add(funds.amount)?,
                 )?;
             }
@@ -179,7 +193,11 @@ fn execute_deposit(
         Some(strategy) => {
             let mut deposit_msgs: Vec<SubMsg> = Vec::new();
             for funds in deposited_funds {
-                let deposit_msg = strategy.deposit(deps.storage, funds, &recipient.get_addr())?;
+                let deposit_msg = strategy.deposit(
+                    deps.storage,
+                    funds,
+                    &recipient.get_addr(deps.api, &deps.querier, None).unwrap(),
+                )?;
                 // resp = resp.add_submessage(sub_msg)
                 deposit_msgs.push(deposit_msg);
             }
@@ -221,7 +239,8 @@ pub fn withdraw_vault(
 
     let recipient = recipient
         .unwrap_or_else(|| Recipient::Addr(info.sender.to_string()))
-        .get_addr();
+        .get_addr(deps.api, &deps.querier, None)
+        .unwrap();
     for withdrawal in withdrawals {
         let denom = withdrawal.token;
         let balance = BALANCES
