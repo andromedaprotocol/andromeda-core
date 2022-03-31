@@ -154,6 +154,19 @@ mod tests {
     use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
+    fn init(deps: DepsMut, info: MessageInfo) {
+        instantiate(
+            deps,
+            mock_env(),
+            info,
+            InstantiateMsg {
+                operators: vec![],
+                is_inclusive: true,
+            },
+        )
+        .unwrap();
+    }
+
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies(&[]);
@@ -177,15 +190,10 @@ mod tests {
 
         let address = "whitelistee";
 
-        //input operator for test
+        init(deps.as_mut(), info.clone());
 
         ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
-            .unwrap();
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &info.sender)
+            .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
             .unwrap();
 
         let msg = ExecuteMsg::AddAddress {
@@ -233,14 +241,11 @@ mod tests {
 
         let address = "whitelistee";
 
+        init(deps.as_mut(), info.clone());
+
         //save operator
         ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
-            .unwrap();
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &info.sender)
+            .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
             .unwrap();
 
         let msg = ExecuteMsg::RemoveAddress {
@@ -278,14 +283,7 @@ mod tests {
 
         // Mark it as a whitelist.
         IS_INCLUSIVE.save(deps.as_mut().storage, &true).unwrap();
-        ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
-            .unwrap();
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &info.sender)
-            .unwrap();
+        init(deps.as_mut(), info.clone());
 
         let msg = ExecuteMsg::AddAddress {
             address: address.to_string(),
@@ -318,16 +316,12 @@ mod tests {
         let info = mock_info(operator, &[]);
 
         let address = "blacklistee";
+        init(deps.as_mut(), info.clone());
 
         // Mark it as a blacklist.
         IS_INCLUSIVE.save(deps.as_mut().storage, &false).unwrap();
         ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
-            .unwrap();
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &info.sender)
+            .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
             .unwrap();
 
         let msg = ExecuteMsg::AddAddress {
