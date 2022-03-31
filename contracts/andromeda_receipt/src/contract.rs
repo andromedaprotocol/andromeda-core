@@ -163,7 +163,7 @@ mod tests {
     use cosmwasm_std::{
         coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
-        Addr, CosmosMsg, Event, SubMsg, WasmMsg,
+        CosmosMsg, Event, SubMsg, WasmMsg,
     };
 
     #[test]
@@ -187,14 +187,17 @@ mod tests {
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let unauth_info = mock_info("anyone", &[]);
-        let config = Config {
-            minter: owner.to_string(),
-        };
-        store_config(deps.as_mut().storage, &config).unwrap();
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                minter: owner.to_string(),
+                operators: None,
+            },
+        )
+        .unwrap();
 
         let msg = ExecuteMsg::StoreReceipt {
             receipt: Receipt { events: vec![] },
@@ -221,16 +224,17 @@ mod tests {
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let unauth_info = mock_info("anyone", &[]);
-        let config = Config {
-            minter: owner.to_string(),
-        };
 
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
-
-        store_config(deps.as_mut().storage, &config).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                minter: owner.to_string(),
+                operators: None,
+            },
+        )
+        .unwrap();
 
         let store_msg = ExecuteMsg::StoreReceipt {
             receipt: Receipt {
@@ -281,14 +285,16 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let config = Config {
-            minter: owner.to_string(),
-        };
-        store_config(deps.as_mut().storage, &config).unwrap();
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                minter: owner.to_string(),
+                operators: None,
+            },
+        )
+        .unwrap();
 
         let msg = ExecuteMsg::StoreReceipt {
             receipt: Receipt { events: vec![] },

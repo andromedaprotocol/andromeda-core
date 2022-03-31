@@ -1,3 +1,4 @@
+mod auth;
 mod execute;
 #[cfg(feature = "instantiate")]
 mod instantiate;
