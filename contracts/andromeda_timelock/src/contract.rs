@@ -264,7 +264,7 @@ mod tests {
         let owner = "owner";
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg { modules: None };
-        let res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         assert_eq!(0, res.messages.len());
     }

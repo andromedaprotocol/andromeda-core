@@ -53,7 +53,7 @@ fn test_address_list() {
     );
 
     let info = mock_info("sender", &coins(100, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()

@@ -26,7 +26,7 @@ fn test_modules() {
             },
         }]),
     };
-    let res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
+    let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -51,7 +51,7 @@ fn test_modules() {
     );
 
     let info = mock_info("sender", &coins(100, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         Response::new()
             .add_attribute("action", "hold_funds")
