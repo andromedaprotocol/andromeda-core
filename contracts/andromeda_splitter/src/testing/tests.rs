@@ -15,7 +15,7 @@ use common::{
 };
 
 #[test]
-fn test_address_list() {
+fn test_modules() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let info = mock_info("creator", &[]);
