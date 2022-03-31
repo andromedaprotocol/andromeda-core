@@ -1,22 +1,25 @@
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
+    require,
     withdraw::Withdrawal,
 };
 use cosmwasm_std::{to_binary, wasm_execute, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, Uint128};
 use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::fmt;
 
 /// Mapping between (Address, Funds Denom) and the amount
-pub const BALANCES: Map<(String, String), Uint128> = Map::new("balances");
+pub const BALANCES: Map<(&str, &str), Uint128> = Map::new("balances");
 pub const STRATEGY_CONTRACT_ADDRESSES: Map<String, String> =
     Map::new("strategy_contract_addresses");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum StrategyType {
     Anchor,
-    NoStrategy,
+    // NoStrategy, //Can be used if we wish to add a default strategy
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -56,11 +59,10 @@ impl StrategyType {
     }
 }
 
-impl ToString for StrategyType {
-    fn to_string(&self) -> String {
+impl fmt::Display for StrategyType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            StrategyType::Anchor => String::from("anchor"),
-            StrategyType::NoStrategy => String::from("none"),
+            StrategyType::Anchor => write!(f, "anchor"),
         }
     }
 }
@@ -73,22 +75,15 @@ pub struct InstantiateMsg {
 
 impl InstantiateMsg {
     pub fn validate(&self) -> Result<(), ContractError> {
-        for (idx, yield_strategy) in self.strategies.to_vec().iter().enumerate() {
-            if self.strategies.iter().enumerate().any(|(index, strategy)| {
-                index != idx
-                    && (strategy.strategy_type == yield_strategy.strategy_type
-                        || strategy.address == yield_strategy.address)
-            }) {
-                return Err(ContractError::StrategyNotUnique {
+        let mut strategies = HashSet::new();
+        for yield_strategy in self.strategies.to_vec() {
+            require(
+                !strategies.contains(&yield_strategy.strategy_type.to_string()),
+                ContractError::InvalidStrategy {
                     strategy: yield_strategy.strategy_type.to_string(),
-                });
-            }
-
-            if yield_strategy.strategy_type == StrategyType::NoStrategy {
-                return Err(ContractError::InvalidStrategy {
-                    strategy: StrategyType::NoStrategy.to_string(),
-                });
-            }
+                },
+            )?;
+            strategies.insert(yield_strategy.strategy_type.to_string());
         }
         Ok(())
     }
@@ -153,7 +148,7 @@ mod testing {
 
         let err = duplicate_type_instantiate.validate().unwrap_err();
         assert_eq!(
-            ContractError::StrategyNotUnique {
+            ContractError::InvalidStrategy {
                 strategy: StrategyType::Anchor.to_string()
             },
             err
@@ -167,7 +162,7 @@ mod testing {
                     address: "terra1abc".to_string(),
                 },
                 YieldStrategy {
-                    strategy_type: StrategyType::NoStrategy,
+                    strategy_type: StrategyType::Anchor,
                     address: "terra1abc".to_string(),
                 },
             ],
@@ -175,24 +170,8 @@ mod testing {
 
         let err = duplicate_addr_instantiate.validate().unwrap_err();
         assert_eq!(
-            ContractError::StrategyNotUnique {
-                strategy: StrategyType::Anchor.to_string()
-            },
-            err
-        );
-
-        let invalid_strategy_instantiate = InstantiateMsg {
-            operators: None,
-            strategies: vec![YieldStrategy {
-                strategy_type: StrategyType::NoStrategy,
-                address: "terra1abc".to_string(),
-            }],
-        };
-
-        let err = invalid_strategy_instantiate.validate().unwrap_err();
-        assert_eq!(
             ContractError::InvalidStrategy {
-                strategy: StrategyType::NoStrategy.to_string()
+                strategy: StrategyType::Anchor.to_string()
             },
             err
         );

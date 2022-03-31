@@ -278,9 +278,6 @@ pub enum ContractError {
     #[error("Not implemented")]
     NotImplemented { msg: Option<String> },
 
-    #[error("Strategy Not Unique")]
-    StrategyNotUnique { strategy: String },
-
     #[error("Invalid Strategy")]
     InvalidStrategy { strategy: String },
 

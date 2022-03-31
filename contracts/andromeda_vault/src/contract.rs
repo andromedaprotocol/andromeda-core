@@ -8,6 +8,7 @@ use common::{
         recipient::Recipient, AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
         QueryMsg as AndrQueryMsg,
     },
+    encode_binary,
     error::ContractError,
     parse_message, require,
     withdraw::{Withdrawal, WithdrawalType},
@@ -20,10 +21,10 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-rates";
+const CONTRACT_NAME: &str = "crates.io:andromeda-vault";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -53,7 +54,7 @@ pub fn instantiate(
     )
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -106,35 +107,36 @@ fn execute_deposit(
     recipient: Option<Recipient>,
     strategy: Option<StrategyType>,
 ) -> Result<Response, ContractError> {
-    require(
-        !info.funds.is_empty()
-            && (amount.is_none()
-                || (amount.is_some() && amount.clone().unwrap().amount.gt(&Uint128::zero()))),
-        ContractError::InsufficientFunds {},
-    )?;
     let mut resp = Response::default();
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
 
     // If no amount is provided then the sent funds are used as a deposit
     let deposited_funds = if let Some(deposit_amount) = amount {
-        let mut deposit_balance = Uint128::zero();
-        for funds in info.funds {
-            // Find funds in sent funds and add to deposit amount
-            if funds.denom == deposit_amount.denom {
-                deposit_balance = deposit_balance.checked_add(funds.amount)?;
-            }
-        }
+        require(
+            !deposit_amount.amount.is_zero(),
+            ContractError::InsufficientFunds {},
+        )?;
+        let mut deposit_balance = info
+            .funds
+            .iter()
+            .find(|f| f.denom == deposit_amount.denom.clone())
+            .unwrap_or(&Coin {
+                denom: deposit_amount.denom.clone(),
+                amount: Uint128::zero(),
+            })
+            .amount;
 
-        // If depositing to a yield strategy we must first check that the sender has either provided the amount to deposit or has a combination of the amount within the vault and within the sent funds
+        // If depositing to a yield strategy we must first check that the sender has either provided the amount to deposit
+        // or has a combination of the amount within the vault and within the sent funds
         if strategy.is_some() && deposit_balance <= deposit_amount.amount {
+            let recipient_addr = recipient.get_addr(
+                deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
+            )?;
+            let balance_key = (recipient_addr.as_str(), deposit_amount.denom.as_str());
             let vault_balance = BALANCES
-                .may_load(
-                    deps.storage,
-                    (
-                        recipient.get_addr(deps.api, &deps.querier, None).unwrap(),
-                        deposit_amount.denom.clone(),
-                    ),
-                )?
+                .may_load(deps.storage, balance_key)?
                 .unwrap_or_else(Uint128::zero);
 
             // Amount that must be removed from the vault to add to the deposit
@@ -148,10 +150,7 @@ fn execute_deposit(
             //Subtract the removed funds from balance
             BALANCES.save(
                 deps.storage,
-                (
-                    recipient.get_addr(deps.api, &deps.querier, None).unwrap(),
-                    deposit_amount.denom.clone(),
-                ),
+                balance_key,
                 &vault_balance.checked_sub(difference)?,
             )?;
         }
@@ -167,25 +166,26 @@ fn execute_deposit(
         info.funds
     };
 
+    require(
+        !deposited_funds.is_empty(),
+        ContractError::InsufficientFunds {},
+    )?;
     match strategy {
         // Depositing to vault
         None => {
             for funds in deposited_funds {
+                let recipient_addr = recipient.get_addr(
+                    deps.api,
+                    &deps.querier,
+                    ADOContract::default().get_mission_contract(deps.storage)?,
+                )?;
+                let balance_key = (recipient_addr.as_str(), funds.denom.as_str());
                 let curr_balance = BALANCES
-                    .may_load(
-                        deps.storage,
-                        (
-                            recipient.get_addr(deps.api, &deps.querier, None).unwrap(),
-                            funds.denom.clone(),
-                        ),
-                    )?
+                    .may_load(deps.storage, balance_key)?
                     .unwrap_or_default();
                 BALANCES.save(
                     deps.storage,
-                    (
-                        recipient.get_addr(deps.api, &deps.querier, None).unwrap(),
-                        funds.denom,
-                    ),
+                    balance_key,
                     &curr_balance.checked_add(funds.amount)?,
                 )?;
             }
@@ -193,12 +193,12 @@ fn execute_deposit(
         Some(strategy) => {
             let mut deposit_msgs: Vec<SubMsg> = Vec::new();
             for funds in deposited_funds {
-                let deposit_msg = strategy.deposit(
-                    deps.storage,
-                    funds,
-                    &recipient.get_addr(deps.api, &deps.querier, None).unwrap(),
+                let recipient_addr = recipient.get_addr(
+                    deps.api,
+                    &deps.querier,
+                    ADOContract::default().get_mission_contract(deps.storage)?,
                 )?;
-                // resp = resp.add_submessage(sub_msg)
+                let deposit_msg = strategy.deposit(deps.storage, funds, &recipient_addr)?;
                 deposit_msgs.push(deposit_msg);
             }
             resp = resp.add_submessages(deposit_msgs)
@@ -239,12 +239,15 @@ pub fn withdraw_vault(
 
     let recipient = recipient
         .unwrap_or_else(|| Recipient::Addr(info.sender.to_string()))
-        .get_addr(deps.api, &deps.querier, None)
-        .unwrap();
+        .get_addr(
+            deps.api,
+            &deps.querier,
+            ADOContract::default().get_mission_contract(deps.storage)?,
+        )?;
     for withdrawal in withdrawals {
         let denom = withdrawal.token;
         let balance = BALANCES
-            .load(deps.storage, (info.sender.to_string(), denom.clone()))
+            .load(deps.storage, (info.sender.as_str(), &denom))
             .unwrap_or_else(|_| Uint128::zero());
         require(!balance.is_zero(), ContractError::InsufficientFunds {})?;
 
@@ -261,7 +264,7 @@ pub fn withdraw_vault(
                     withdrawal_amount.push(coin(amount.u128(), denom.clone()));
                     BALANCES.save(
                         deps.storage,
-                        (info.sender.to_string(), denom),
+                        (info.sender.as_str(), &denom),
                         &balance.checked_sub(amount)?,
                     )?;
                 }
@@ -276,7 +279,7 @@ pub fn withdraw_vault(
                     withdrawal_amount.push(coin(amount.u128(), denom.clone()));
                     BALANCES.save(
                         deps.storage,
-                        (info.sender.to_string(), denom),
+                        (info.sender.as_str(), &denom),
                         &balance.checked_sub(amount)?,
                     )?;
                 }
@@ -285,7 +288,7 @@ pub fn withdraw_vault(
                 withdrawal_amount.push(coin(balance.u128(), denom.clone()));
                 BALANCES.save(
                     deps.storage,
-                    (info.sender.to_string(), denom),
+                    (info.sender.as_str(), &denom),
                     &Uint128::zero(),
                 )?;
             }
@@ -344,7 +347,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
@@ -362,7 +365,13 @@ fn handle_andromeda_query(
     env: Env,
     msg: AndromedaQuery,
 ) -> Result<Binary, ContractError> {
-    ADOContract::default().query(deps, env, msg, query)
+    match msg {
+        AndromedaQuery::Get(data) => {
+            let address: String = parse_message(&data)?;
+            encode_binary(&query_balance(deps, env, address, None, None)?)
+        }
+        _ => ADOContract::default().query(deps, env, msg, query),
+    }
 }
 
 fn query_balance(
@@ -386,25 +395,25 @@ fn query_balance(
             _ => Err(ContractError::InvalidQuery {}),
         }
     } else if let Some(denom) = denom {
-        let balance = BALANCES.load(deps.storage, (address, denom.clone()))?;
+        let balance = BALANCES.load(deps.storage, (&address, denom.as_str()))?;
         Ok(to_binary(&[Coin {
             denom,
             amount: balance,
         }])?)
     } else {
-        let balances: Vec<Coin> = BALANCES
-            .prefix(address)
+        let balances: Result<Vec<Coin>, ContractError> = BALANCES
+            .prefix(&address)
             .range(deps.storage, None, None, Order::Ascending)
             .map(|v| {
-                let (denom_vec, balance) = v.unwrap();
-                let denom = String::from_utf8(denom_vec).unwrap();
-                Coin {
+                let (denom_vec, balance) = v?;
+                let denom = String::from_utf8(denom_vec)?;
+                Ok(Coin {
                     denom,
                     amount: balance,
-                }
+                })
             })
             .collect();
-        Ok(to_binary(&balances)?)
+        Ok(to_binary(&balances?)?)
     }
 }
 

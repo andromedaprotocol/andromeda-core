@@ -57,14 +57,11 @@ fn test_deposit() {
     execute(deps.as_mut(), env, info, msg).unwrap();
 
     let uusd_balance = BALANCES
-        .load(
-            deps.as_ref().storage,
-            (depositor.clone(), "uusd".to_string()),
-        )
+        .load(deps.as_ref().storage, (&depositor, "uusd"))
         .unwrap();
     assert_eq!(uusd_balance, sent_funds.amount);
     let uluna_balance = BALANCES
-        .load(deps.as_ref().storage, (depositor, "uluna".to_string()))
+        .load(deps.as_ref().storage, (&depositor, "uluna"))
         .unwrap();
     assert_eq!(uluna_balance, extra_sent_funds.amount)
 }
@@ -89,6 +86,15 @@ fn test_deposit_insufficient_funds() {
     let msg = ExecuteMsg::Deposit {
         recipient: None,
         amount: Some(coin(0u128, "uusd")),
+        strategy: None,
+    };
+
+    let err = execute(deps.as_mut(), env.clone(), info_with_funds.clone(), msg).unwrap_err();
+    assert_eq!(ContractError::InsufficientFunds {}, err);
+
+    let msg = ExecuteMsg::Deposit {
+        recipient: None,
+        amount: Some(coin(150u128, "uusd")),
         strategy: None,
     };
 
@@ -181,7 +187,7 @@ fn test_deposit_strategy_partial_amount() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            ("depositor".to_string(), sent_funds.denom.clone()),
+            ("depositor", &sent_funds.denom),
             &Uint128::from(20u128),
         )
         .unwrap();
@@ -215,10 +221,7 @@ fn test_deposit_strategy_partial_amount() {
     assert_eq!(expected, res);
 
     let post_balance = BALANCES
-        .load(
-            deps.as_ref().storage,
-            ("depositor".to_string(), sent_funds.denom),
-        )
+        .load(deps.as_ref().storage, ("depositor", &sent_funds.denom))
         .unwrap();
 
     assert_eq!(Uint128::from(10u128), post_balance);
@@ -263,7 +266,7 @@ fn test_deposit_strategy_insufficient_partial_amount() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            ("depositor".to_string(), sent_funds.denom.clone()),
+            ("depositor", &sent_funds.denom),
             &Uint128::from(5u128),
         )
         .unwrap();
@@ -280,10 +283,7 @@ fn test_deposit_strategy_insufficient_partial_amount() {
     assert_eq!(ContractError::InsufficientFunds {}, err);
 
     let post_balance = BALANCES
-        .load(
-            deps.as_ref().storage,
-            ("depositor".to_string(), sent_funds.denom),
-        )
+        .load(deps.as_ref().storage, ("depositor", &sent_funds.denom))
         .unwrap();
 
     assert_eq!(Uint128::from(5u128), post_balance);
@@ -320,7 +320,7 @@ fn test_withdraw_invalid_withdrawals() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor.clone(), "uusd".to_string()),
+            (&depositor, "uusd"),
             &Uint128::from(100u128),
         )
         .unwrap();
@@ -382,7 +382,7 @@ fn test_withdraw_single_no_strategy_insufficientfunds() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor, "uusd".to_string()),
+            (&depositor, "uusd"),
             &Uint128::from(75u128),
         )
         .unwrap();
@@ -408,7 +408,7 @@ fn test_withdraw_single_no_strategy_amount() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor.clone(), "uusd".to_string()),
+            (&depositor, "uusd"),
             &Uint128::from(150u128),
         )
         .unwrap();
@@ -432,7 +432,7 @@ fn test_withdraw_single_no_strategy_amount() {
     assert_eq!(expected, res);
 
     let uusd_balance = BALANCES
-        .load(deps.as_mut().storage, (depositor, "uusd".to_string()))
+        .load(deps.as_mut().storage, (&depositor, "uusd"))
         .unwrap_or_else(|_| Uint128::zero());
     assert_eq!(Uint128::from(50u128), uusd_balance);
 }
@@ -445,7 +445,7 @@ fn test_withdraw_single_no_strategy_percentage() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor.clone(), "uusd".to_string()),
+            (&depositor, "uusd"),
             &Uint128::from(150u128),
         )
         .unwrap();
@@ -469,7 +469,7 @@ fn test_withdraw_single_no_strategy_percentage() {
     assert_eq!(expected, res);
 
     let uusd_balance = BALANCES
-        .load(deps.as_mut().storage, (depositor, "uusd".to_string()))
+        .load(deps.as_mut().storage, (&depositor, "uusd"))
         .unwrap_or_else(|_| Uint128::zero());
     assert_eq!(Uint128::from(75u128), uusd_balance);
 }
@@ -482,7 +482,7 @@ fn test_withdraw_multi_no_strategy_insufficientfunds() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor, "uusd".to_string()),
+            (&depositor, "uusd"),
             &Uint128::from(75u128),
         )
         .unwrap();
@@ -516,14 +516,14 @@ fn test_withdraw_multi_no_strategy_mixed() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor.clone(), "uusd".to_string()),
+            (&depositor, "uusd"),
             &Uint128::from(150u128),
         )
         .unwrap();
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor.clone(), "uluna".to_string()),
+            (&depositor, "uluna"),
             &Uint128::from(150u128),
         )
         .unwrap();
@@ -557,14 +557,11 @@ fn test_withdraw_multi_no_strategy_mixed() {
     assert_eq!(expected, res);
 
     let uusd_balance = BALANCES
-        .load(
-            deps.as_mut().storage,
-            (depositor.clone(), "uusd".to_string()),
-        )
+        .load(deps.as_mut().storage, (&depositor, "uusd"))
         .unwrap_or_else(|_| Uint128::zero());
     assert!(uusd_balance.is_zero());
     let uluna_balance = BALANCES
-        .load(deps.as_mut().storage, (depositor, "uluna".to_string()))
+        .load(deps.as_mut().storage, (&depositor, "uluna"))
         .unwrap_or_else(|_| Uint128::zero());
     assert!(uluna_balance.is_zero());
 }
@@ -577,14 +574,14 @@ fn test_withdraw_multi_no_strategy_recipient() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor.clone(), "uusd".to_string()),
+            (&depositor, "uusd"),
             &Uint128::from(150u128),
         )
         .unwrap();
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor.clone(), "uluna".to_string()),
+            (&depositor, "uluna"),
             &Uint128::from(150u128),
         )
         .unwrap();
@@ -618,14 +615,11 @@ fn test_withdraw_multi_no_strategy_recipient() {
     assert_eq!(expected, res);
 
     let uusd_balance = BALANCES
-        .load(
-            deps.as_mut().storage,
-            (depositor.clone(), "uusd".to_string()),
-        )
+        .load(deps.as_mut().storage, (&depositor, "uusd"))
         .unwrap_or_else(|_| Uint128::zero());
     assert!(uusd_balance.is_zero());
     let uluna_balance = BALANCES
-        .load(deps.as_mut().storage, (depositor, "uluna".to_string()))
+        .load(deps.as_mut().storage, (&depositor, "uluna"))
         .unwrap_or_else(|_| Uint128::zero());
     assert!(uluna_balance.is_zero());
 }
@@ -711,14 +705,14 @@ fn test_query_local_balance() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor.to_string(), balance_one.denom.clone()),
+            (depositor, &balance_one.denom),
             &balance_one.amount.clone(),
         )
         .unwrap();
     BALANCES
         .save(
             deps.as_mut().storage,
-            (depositor.to_string(), balance_two.denom.clone()),
+            (depositor, &balance_two.denom),
             &balance_two.amount.clone(),
         )
         .unwrap();
