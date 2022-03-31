@@ -1,11 +1,23 @@
-use crate::contract::{execute, instantiate, query, reply, DEPOSIT_ID, WITHDRAW_ID};
-use crate::state::{
-    Config, Position, CONFIG, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR,
+use cosmwasm_bignumber::{Decimal256, Uint256};
+use cosmwasm_std::{
+    attr, coin, coins, from_binary,
+    testing::{mock_env, mock_info},
+    to_binary, BankMsg, Coin, ContractResult, CosmosMsg, DepsMut, Reply, Response, SubMsg,
+    SubMsgExecutionResponse, Uint128, WasmMsg,
 };
+
+use crate::contract::{execute, instantiate, query, reply, DEPOSIT_ID, WITHDRAW_ID};
+use crate::primitive_keys::{
+    ANCHOR_AUST, ANCHOR_BLUNA, ANCHOR_BLUNA_CUSTODY, ANCHOR_BLUNA_HUB, ANCHOR_MARKET,
+    ANCHOR_ORACLE, ANCHOR_OVERSEER,
+};
+use crate::state::{Position, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR};
 use crate::testing::mock_querier::{
     mock_dependencies_custom, MOCK_AUST_TOKEN, MOCK_BLUNA_HUB_CONTRACT, MOCK_BLUNA_TOKEN,
     MOCK_CUSTODY_CONTRACT, MOCK_MARKET_CONTRACT, MOCK_ORACLE_CONTRACT, MOCK_OVERSEER_CONTRACT,
+    MOCK_PRIMITIVE_CONTRACT,
 };
+use ado_base::ADOContract;
 use andromeda_protocol::anchor::{
     BLunaHubCw20HookMsg, BLunaHubExecuteMsg, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
     PositionResponse, QueryMsg,
@@ -18,13 +30,6 @@ use common::{
     error::ContractError,
     mission::AndrAddress,
     withdraw::{Withdrawal, WithdrawalType},
-};
-use cosmwasm_bignumber::{Decimal256, Uint256};
-use cosmwasm_std::{
-    attr, coin, coins, from_binary,
-    testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, Coin, ContractResult, CosmosMsg, DepsMut, Reply, Response, SubMsg,
-    SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use moneymarket::{
@@ -77,9 +82,7 @@ fn init(deps: DepsMut) {
     let owner = "owner";
     let info = mock_info(owner, &[]);
     let msg = InstantiateMsg {
-        anchor_bluna_hub: MOCK_BLUNA_HUB_CONTRACT.to_owned(),
-        anchor_bluna_custody: MOCK_CUSTODY_CONTRACT.to_owned(),
-        anchor_market: MOCK_MARKET_CONTRACT.to_owned(),
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
     let res = instantiate(deps, env, info, msg).unwrap();
 
@@ -90,19 +93,48 @@ fn init(deps: DepsMut) {
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
-    let config = CONFIG.load(deps.as_ref().storage).unwrap();
-
+    let contract = ADOContract::default();
     assert_eq!(
-        Config {
-            anchor_market: Addr::unchecked(MOCK_MARKET_CONTRACT),
-            aust_token: Addr::unchecked(MOCK_AUST_TOKEN),
-            anchor_bluna_hub: Addr::unchecked(MOCK_BLUNA_HUB_CONTRACT),
-            anchor_bluna_custody: Addr::unchecked(MOCK_CUSTODY_CONTRACT),
-            anchor_overseer: Addr::unchecked(MOCK_OVERSEER_CONTRACT),
-            bluna_token: Addr::unchecked(MOCK_BLUNA_TOKEN),
-            anchor_oracle: Addr::unchecked(MOCK_ORACLE_CONTRACT)
-        },
-        config
+        MOCK_MARKET_CONTRACT,
+        contract
+            .get_cached_address(deps.as_ref().storage, ANCHOR_MARKET)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_OVERSEER_CONTRACT,
+        contract
+            .get_cached_address(deps.as_ref().storage, ANCHOR_OVERSEER)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_BLUNA_HUB_CONTRACT,
+        contract
+            .get_cached_address(deps.as_ref().storage, ANCHOR_BLUNA_HUB)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_CUSTODY_CONTRACT,
+        contract
+            .get_cached_address(deps.as_ref().storage, ANCHOR_BLUNA_CUSTODY)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_ORACLE_CONTRACT,
+        contract
+            .get_cached_address(deps.as_ref().storage, ANCHOR_ORACLE)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_AUST_TOKEN,
+        contract
+            .get_cached_address(deps.as_ref().storage, ANCHOR_AUST)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_BLUNA_TOKEN,
+        contract
+            .get_cached_address(deps.as_ref().storage, ANCHOR_BLUNA)
+            .unwrap()
     );
 }
 

@@ -49,6 +49,13 @@ pub enum AndromedaMsg {
         module_idx: Uint64,
         module: Module,
     },
+    RefreshAddress {
+        contract: String,
+    },
+    RefreshAddresses {
+        limit: Option<u32>,
+        start_after: Option<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
