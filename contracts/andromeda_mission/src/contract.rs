@@ -57,7 +57,7 @@ pub fn instantiate(
         .add_attribute("andr_mission", msg.name);
 
     let mut msgs: Vec<SubMsg> = vec![];
-    for component in msg.mission.clone() {
+    for component in msg.mission {
         let comp_resp =
             execute_add_mission_component(&deps.querier, deps.storage, &sender, component)?;
         msgs.extend(comp_resp.messages);
@@ -287,7 +287,7 @@ fn query_component_addresses(deps: Deps) -> Result<Vec<Addr>, ContractError> {
 
 fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let name = MISSION_NAME.load(deps.storage)?;
-    let owner = ADOContract::default().owner.load(deps.storage)?.to_string();
+    let owner = ADOContract::default().query_contract_owner(deps)?.owner;
 
     Ok(ConfigResponse { name, owner })
 }
