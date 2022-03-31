@@ -76,7 +76,7 @@ pub struct InstantiateMsg {
 impl InstantiateMsg {
     pub fn validate(&self) -> Result<(), ContractError> {
         let mut strategies = HashSet::new();
-        for yield_strategy in self.strategies.iter().cloned() {
+        for yield_strategy in self.strategies.iter() {
             require(
                 !strategies.contains(&yield_strategy.strategy_type.to_string()),
                 ContractError::InvalidStrategy {
