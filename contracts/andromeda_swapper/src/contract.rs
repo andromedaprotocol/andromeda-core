@@ -1,27 +1,24 @@
 use crate::state::SWAPPER_IMPL_ADDR;
-use andromeda_protocol::{
-    communication::{
-        encode_binary, modules::InstantiateType, parse_message, query_get, AndromedaMsg,
-        AndromedaQuery, Recipient,
-    },
+use ado_base::ADOContract;
+use andromeda_protocol::swapper::{
+    query_balance, query_token_balance, Cw20HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType,
+    MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,
+    SwapperMsg,
+};
+use common::{
+    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
     error::ContractError,
-    factory::CodeIdResponse,
-    operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
     require,
     response::get_reply_address,
-    swapper::{
-        query_balance, query_token_balance, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-        MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,
-        SwapperMsg,
-    },
 };
 use cosmwasm_std::{
     entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    ReplyOn, Response, StdError, SubMsg, Uint128, WasmMsg,
+    Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_asset::AssetInfo;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_swapper";
@@ -35,36 +32,33 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-
-    let mut resp: Response = Response::new();
-    match msg.swapper_impl {
+    let contract = ADOContract::default();
+    let resp = contract.instantiate(
+        deps.storage,
+        deps.api,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "swapper".to_string(),
+            operators: None,
+            modules: None,
+            primitive_contract: Some(msg.primitive_contract),
+        },
+    )?;
+    let mut msgs: Vec<SubMsg> = vec![];
+    match msg.swapper_impl.instantiate_type {
         InstantiateType::Address(addr) => SWAPPER_IMPL_ADDR.save(deps.storage, &addr)?,
         InstantiateType::New(instantiate_msg) => {
-            let code_id: u64 = query_get::<CodeIdResponse>(
-                Some(encode_binary(&"swapper")?),
-                // TODO: Replace when Primitive contract change merged.
-                "TEMP_FACTORY".to_string(),
+            let msg = contract.generate_instantiate_msg(
+                deps.storage,
                 &deps.querier,
-            )?
-            .code_id;
-            let msg: SubMsg = SubMsg {
-                id: 1,
-                reply_on: ReplyOn::Always,
-                msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                    admin: None,
-                    code_id,
-                    msg: encode_binary(&instantiate_msg)?,
-                    funds: vec![],
-                    label: "Instantiate: swapper implementation".to_string(),
-                }),
-                gas_limit: None,
-            };
-            resp = resp.add_submessage(msg);
+                1,
+                instantiate_msg,
+                msg.swapper_impl.name,
+            )?;
+            msgs.push(msg);
         }
     }
-
-    Ok(resp.add_attribute("action", "instantiate"))
+    Ok(resp.add_submessages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -89,7 +83,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::Swap {
             ask_asset_info,
@@ -99,28 +95,6 @@ pub fn execute(
             ask_asset_info,
             recipient,
         } => execute_send(deps, env, info, ask_asset_info, recipient),
-    }
-}
-
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
-        }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -146,10 +120,15 @@ fn execute_swap(
     )?;
 
     let coin = &info.funds[0];
-    if let AssetInfo::NativeToken { denom } = &ask_asset_info {
+    if let AssetInfo::Native(denom) = &ask_asset_info {
         if denom == &coin.denom {
             // Send coins as is as there is no need to swap.
-            let msg = recipient.generate_msg_native(deps.api, info.funds)?;
+            let msg = recipient.generate_msg_native(
+                deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
+                info.funds,
+            )?;
             return Ok(Response::new()
                 .add_submessage(msg)
                 .add_attribute("action", "swap"));
@@ -164,7 +143,7 @@ fn execute_swap(
             contract_addr,
             funds: info.funds,
             msg: encode_binary(&SwapperImplExecuteMsg::Swapper(SwapperMsg::Swap {
-                offer_asset_info: AssetInfo::NativeToken { denom },
+                offer_asset_info: AssetInfo::Native(denom),
                 ask_asset_info: ask_asset_info.clone(),
             }))?,
         }))
@@ -190,15 +169,22 @@ fn execute_send(
         ContractError::Unauthorized {},
     )?;
     let msg: SubMsg = match ask_asset_info {
-        AssetInfo::NativeToken { denom } => {
+        AssetInfo::Native(denom) => {
             let amount = query_balance(&deps.querier, env.contract.address, denom.clone())?;
-            recipient.generate_msg_native(deps.api, vec![Coin { denom, amount }])?
+            recipient.generate_msg_native(
+                deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
+                vec![Coin { denom, amount }],
+            )?
         }
-        AssetInfo::Token { contract_addr } => {
+        AssetInfo::Cw20(contract_addr) => {
             let amount =
                 query_token_balance(&deps.querier, contract_addr.clone(), env.contract.address)?;
             recipient.generate_msg_cw20(
                 deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
                 Cw20Coin {
                     address: contract_addr.to_string(),
                     amount,
@@ -243,11 +229,13 @@ fn execute_swap_cw20(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let recipient = recipient.unwrap_or(Recipient::Addr(sender));
-    if let AssetInfo::Token { contract_addr } = &ask_asset_info {
+    if let AssetInfo::Cw20(contract_addr) = &ask_asset_info {
         if *contract_addr == offer_token {
             // Send as is.
             let msg = recipient.generate_msg_cw20(
                 deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
                 Cw20Coin {
                     address: offer_token,
                     amount: offer_amount,
@@ -283,20 +271,9 @@ fn execute_swap_cw20(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
-    }
-}
-
-fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(_) => Err(ContractError::UnsupportedOperation {}),
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
 }
 

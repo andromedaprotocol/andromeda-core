@@ -1,22 +1,19 @@
 use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
-use andromeda_protocol::{
-    communication::{
-        encode_binary,
+use ado_base::state::ADOContract;
+use andromeda_protocol::receipt::{
+    generate_receipt_message, Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
+    QueryMsg, Receipt, ReceiptResponse,
+};
+use common::{
+    ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        parse_message, AndromedaMsg, AndromedaQuery,
+        InstantiateMsg as BaseInstantiateMsg,
     },
+    encode_binary,
     error::ContractError,
-    operators::{
-        execute_update_operators, initialize_operators, query_is_operator, query_operators,
-    },
-    ownership::{execute_update_owner, query_contract_owner, CONTRACT_OWNER},
-    receipt::{
-        generate_receipt_message, Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg,
-        MigrateMsg, QueryMsg, Receipt, ReceiptResponse,
-    },
-    require,
+    parse_message, require,
 };
 use cosmwasm_std::{
     attr, entry_point, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, Uint128,
@@ -36,12 +33,17 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     store_config(deps.storage, &Config { minter: msg.minter })?;
-    if let Some(operators) = msg.operators {
-        initialize_operators(deps.storage, operators)?;
-    }
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    Ok(Response::default()
-        .add_attributes(vec![attr("action", "instantiate"), attr("type", "receipt")]))
+    ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "receipt".to_string(),
+            operators: msg.operators,
+            modules: None,
+            primitive_contract: None,
+        },
+    )
 }
 
 #[entry_point]
@@ -52,34 +54,14 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
         ExecuteMsg::StoreReceipt { receipt } => execute_store_receipt(deps, info, receipt),
         ExecuteMsg::EditReceipt {
             receipt,
             receipt_id,
         } => execute_edit_receipt(deps, info, receipt_id, receipt),
-    }
-}
-
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
-        }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -134,7 +116,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Receipt { receipt_id } => encode_binary(&query_receipt(deps, receipt_id)?),
         QueryMsg::ContractInfo {} => encode_binary(&query_config(deps)?),
         QueryMsg::AndrHook(msg) => handle_andr_hook(env, msg),
@@ -148,7 +130,7 @@ fn handle_andr_hook(env: Env, msg: AndromedaHook) -> Result<Binary, ContractErro
             payload,
             amount,
         } => {
-            let events: Vec<Event> = parse_message(Some(payload))?;
+            let events: Vec<Event> = parse_message(&Some(payload))?;
             let msg = generate_receipt_message(env.contract.address.to_string(), events)?;
             encode_binary(&OnFundsTransferResponse {
                 msgs: vec![msg],
@@ -157,27 +139,6 @@ fn handle_andr_hook(env: Env, msg: AndromedaHook) -> Result<Binary, ContractErro
             })
         }
         _ => Err(ContractError::UnsupportedOperation {}),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
-        }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
     }
 }
 
@@ -195,11 +156,14 @@ fn query_config(deps: Deps) -> Result<ContractInfoResponse, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::rates::Funds;
+    use common::{
+        ado_base::{AndromedaMsg, AndromedaQuery},
+        Funds,
+    };
     use cosmwasm_std::{
         coin, from_binary,
         testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
-        Addr, CosmosMsg, Event, SubMsg, WasmMsg,
+        CosmosMsg, Event, SubMsg, WasmMsg,
     };
 
     #[test]
@@ -223,13 +187,17 @@ mod tests {
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let unauth_info = mock_info("anyone", &[]);
-        let config = Config {
-            minter: owner.to_string(),
-        };
-        store_config(deps.as_mut().storage, &config).unwrap();
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                minter: owner.to_string(),
+                operators: None,
+            },
+        )
+        .unwrap();
 
         let msg = ExecuteMsg::StoreReceipt {
             receipt: Receipt { events: vec![] },
@@ -256,15 +224,17 @@ mod tests {
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let unauth_info = mock_info("anyone", &[]);
-        let config = Config {
-            minter: owner.to_string(),
-        };
 
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
-
-        store_config(deps.as_mut().storage, &config).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                minter: owner.to_string(),
+                operators: None,
+            },
+        )
+        .unwrap();
 
         let store_msg = ExecuteMsg::StoreReceipt {
             receipt: Receipt {
@@ -315,13 +285,16 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let config = Config {
-            minter: owner.to_string(),
-        };
-        store_config(deps.as_mut().storage, &config).unwrap();
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                minter: owner.to_string(),
+                operators: None,
+            },
+        )
+        .unwrap();
 
         let msg = ExecuteMsg::StoreReceipt {
             receipt: Receipt { events: vec![] },

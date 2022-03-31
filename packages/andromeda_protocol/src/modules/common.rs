@@ -1,10 +1,9 @@
 use crate::{
-    error::ContractError,
-    modules::{Module, ModuleDefinition, Rate},
-    require,
+    modules::{Module, ModuleDefinition},
+    rates::{PercentRate, Rate},
 };
-
-use cosmwasm_std::{coin, BankMsg, Coin, Uint128};
+use common::{error::ContractError, require};
+use cosmwasm_std::{coin, BankMsg, Coin, Decimal, Fraction};
 
 /// Calculates a fee amount given a `Rate` and payment amount.
 ///
@@ -16,27 +15,24 @@ use cosmwasm_std::{coin, BankMsg, Coin, Uint128};
 pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractError> {
     match fee_rate {
         Rate::Flat(rate) => Ok(coin(rate.amount.u128(), rate.denom)),
-        Rate::Percent(rate) => {
+        Rate::Percent(PercentRate { percent }) => {
             // [COM-03] Make sure that fee_rate between 0 and 100.
             require(
                 // No need for rate >=0 due to type limits (Question: Should add or remove?)
-                rate <= Uint128::from(100u128),
+                percent <= Decimal::one() && !percent.is_zero(),
                 ContractError::InvalidRate {},
             )
             .unwrap();
-            let mut fee_amount = payment.amount.multiply_ratio(rate, 100_u128).u128();
+            let mut fee_amount = payment.amount * percent;
 
-            //Always round any remainder up and prioritise the fee receiver
-            let reversed_fee = (fee_amount * 100) / rate.u128();
-            if payment.amount.u128() > reversed_fee {
+            // Always round any remainder up and prioritise the fee receiver.
+            // Inverse of percent will always exist.
+            let reversed_fee = fee_amount * percent.inv().unwrap();
+            if payment.amount > reversed_fee {
                 // [COM-1] Added checked add to fee_amount rather than direct increment
-                let res = fee_amount.checked_add(1);
-                let _res = match res {
-                    None => panic!("Problem adding: Overflow in addition"),
-                    _ => fee_amount = res.unwrap(),
-                };
+                fee_amount = fee_amount.checked_add(1u128.into())?;
             }
-            Ok(coin(fee_amount, payment.denom.clone()))
+            Ok(coin(fee_amount.u128(), payment.denom.clone()))
         }
         Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
     }
@@ -135,44 +131,8 @@ pub fn deduct_payment(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modules::address_list::AddressListModule;
-    use crate::modules::Rate;
+    use crate::rates::Rate;
     use cosmwasm_std::{coin, Coin, Uint128};
-
-    #[test]
-    fn test_is_unique() {
-        let module = AddressListModule {
-            operators: Some(vec![]),
-            address: None,
-            code_id: None,
-            inclusive: true,
-        };
-        let duplicate_module = ModuleDefinition::Whitelist {
-            operators: Some(vec![]),
-            address: None,
-            code_id: None,
-        };
-        let similar_module = ModuleDefinition::Whitelist {
-            operators: Some(vec![String::default()]),
-            address: None,
-            code_id: None,
-        };
-        let other_module = ModuleDefinition::Taxable {
-            rate: Rate::Percent(2u128.into()),
-            receivers: vec![],
-            description: None,
-        };
-
-        let valid = vec![module.as_definition(), other_module.clone()];
-        assert!(is_unique(&module, &valid));
-
-        let duplicate = vec![module.as_definition(), other_module, duplicate_module];
-
-        assert!(!is_unique(&module, &duplicate));
-
-        let similar = vec![module.as_definition(), similar_module];
-        assert!(!is_unique(&module, &similar));
-    }
 
     #[test]
     fn test_deduct_funds() {
@@ -241,7 +201,7 @@ mod tests {
     fn test_calculate_fee() {
         let payment = coin(101, "uluna");
         let expected = Ok(coin(5, "uluna"));
-        let fee = Rate::Percent(4u128.into());
+        let fee = Rate::from(Decimal::percent(4));
 
         let received = calculate_fee(fee, &payment);
 

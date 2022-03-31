@@ -1,20 +1,21 @@
 use crate::state::SPLITTER;
+use ado_base::ADOContract;
 use andromeda_protocol::{
-    communication::encode_binary,
-    communication::{parse_message, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         hooks::{HookResponse, MessageHooks},
         Module, Modules,
     },
-    operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require,
     splitter::{
         validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse,
         InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
     },
+};
+use common::{
+    ado_base::{AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    require,
 };
 use cosmwasm_std::{
     attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
@@ -51,13 +52,18 @@ pub fn instantiate(
         modules.hook(|module| module.on_instantiate(&deps, info.clone(), env.clone()))?;
 
     SPLITTER.save(deps.storage, &splitter)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-
-    Ok(Response::new()
-        .add_attributes(vec![
-            attr("action", "instantiate"),
-            attr("type", "splitter"),
-        ])
+    let res = ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "splitter".to_string(),
+            operators: None,
+            modules: None,
+            primitive_contract: None,
+        },
+    )?;
+    Ok(res
         .add_submessages(inst_msgs.msgs)
         .add_events(inst_msgs.events))
 }
@@ -91,17 +97,13 @@ pub fn execute(
 
 pub fn execute_andromeda(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(..) => execute_send(deps, info),
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
+        _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
 }
 
@@ -145,20 +147,23 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in sent_funds.iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
-            recip_coin.amount = coin.amount.multiply_ratio(recipient_percent, 100u128);
+            recip_coin.amount = coin.amount * recipient_percent;
             remainder_funds[i].amount -= recip_coin.amount;
             vec_coin.push(recip_coin);
         }
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
-        let msg = recipient_addr
-            .recipient
-            .generate_msg_native(deps.api, vec_coin)?;
+        let msg = recipient_addr.recipient.generate_msg_native(
+            deps.api,
+            &deps.querier,
+            ADOContract::default().get_mission_contract(deps.storage)?,
+            vec_coin,
+        )?;
         submsg.push(msg);
     }
     remainder_funds = remainder_funds
         .into_iter()
-        .filter(|x| x.amount > Uint128::from(0u128))
+        .filter(|x| x.amount > Uint128::zero())
         .collect();
     // Who is the sender of this function?
     // Why does the remaining funds go the the sender of the executor of the splitter?
@@ -173,10 +178,9 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         })));
     }
 
-    Ok(Response::new().add_submessages(submsg).add_attributes(vec![
-        attr("action", "send"),
-        attr("sender", info.sender.to_string()),
-    ]))
+    Ok(Response::new()
+        .add_submessages(submsg)
+        .add_attributes(vec![attr("action", "send"), attr("sender", info.sender)]))
 }
 
 fn execute_update_recipients(
@@ -185,7 +189,7 @@ fn execute_update_recipients(
     recipients: Vec<AddressPercent>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -208,7 +212,7 @@ fn execute_update_lock(
     lock: bool,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut splitter = SPLITTER.load(deps.storage)?;
@@ -228,7 +232,7 @@ fn execute_update_address_list(
     address_list: Option<AddressListModule>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -266,28 +270,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
-        }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
 }
 
@@ -306,9 +289,10 @@ fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::{communication::Recipient, modules::address_list::AddressListModule};
+    use andromeda_protocol::modules::address_list::AddressListModule;
+    use common::ado_base::recipient::Recipient;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, Addr, Coin, Uint128};
+    use cosmwasm_std::{from_binary, Coin, Decimal};
 
     #[test]
     fn test_instantiate() {
@@ -319,7 +303,7 @@ mod tests {
             address_list: None,
             recipients: vec![AddressPercent {
                 recipient: Recipient::from_string(String::from("Some Address")),
-                percent: Uint128::from(100_u128),
+                percent: Decimal::one(),
             }],
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -332,22 +316,6 @@ mod tests {
         let env = mock_env();
 
         let owner = "creator";
-        let info = mock_info(owner, &[]);
-
-        let lock = true;
-        let msg = ExecuteMsg::UpdateLock { lock };
-
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
-            .unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if let Ok(..) = res {
-            panic!()
-        }
-
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
 
         let splitter = Splitter {
             recipients: vec![],
@@ -357,6 +325,28 @@ mod tests {
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
+        let lock = true;
+        let msg = ExecuteMsg::UpdateLock { lock };
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
+
+        let info = mock_info("incorrect_owner", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+        let info = mock_info(owner, &[]);
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             Response::default().add_attributes(vec![
@@ -377,8 +367,19 @@ mod tests {
         let env = mock_env();
         let owner = "creator";
 
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
             .unwrap();
 
         let splitter = Splitter {
@@ -425,34 +426,20 @@ mod tests {
         let env = mock_env();
 
         let owner = "creator";
-        let info = mock_info(owner, &[]);
 
         let recipient = vec![
             AddressPercent {
                 recipient: Recipient::from_string(String::from("addr1")),
-                percent: Uint128::from(40_u128),
+                percent: Decimal::percent(40),
             },
             AddressPercent {
                 recipient: Recipient::from_string(String::from("addr1")),
-                percent: Uint128::from(60_u128),
+                percent: Decimal::percent(60),
             },
         ];
         let msg = ExecuteMsg::UpdateRecipients {
             recipients: recipient.clone(),
         };
-
-        //incorrect owner
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
-            .unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if let Ok(..) = res {
-            panic!();
-        }
-
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
 
         let splitter = Splitter {
             recipients: vec![],
@@ -462,6 +449,26 @@ mod tests {
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
+
+        let info = mock_info("incorrect_owner", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+        let info = mock_info(owner, &[]);
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             Response::default().add_attributes(vec![attr("action", "update_recipients")]),
@@ -483,35 +490,22 @@ mod tests {
         let info = mock_info(owner, &[Coin::new(sender_funds_amount, "uluna")]);
 
         let recip_address1 = "address1".to_string();
-        let recip_percent1 = 10u128; // 10%
+        let recip_percent1 = 10; // 10%
 
         let recip_address2 = "address2".to_string();
-        let recip_percent2 = 20u128; // 20%
+        let recip_percent2 = 20; // 20%
 
         let recipient = vec![
             AddressPercent {
                 recipient: Recipient::from_string(recip_address1.clone()),
-                percent: Uint128::from(recip_percent1),
+                percent: Decimal::percent(recip_percent1),
             },
             AddressPercent {
                 recipient: Recipient::from_string(recip_address2.clone()),
-                percent: Uint128::from(recip_percent2),
+                percent: Decimal::percent(recip_percent2),
             },
         ];
         let msg = ExecuteMsg::Send {};
-
-        //incorrect owner
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
-            .unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if let Ok(..) = res {
-            panic!();
-        }
-
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
 
         let splitter = Splitter {
             recipients: recipient,
@@ -520,6 +514,21 @@ mod tests {
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -595,35 +604,22 @@ mod tests {
         );
 
         let recip_address1 = "address1".to_string();
-        let recip_percent1 = 10u128; // 10%
+        let recip_percent1 = 10; // 10%
 
         let recip_address2 = "address2".to_string();
-        let recip_percent2 = 20u128; // 20%
+        let recip_percent2 = 20; // 20%
 
         let recipient = vec![
             AddressPercent {
                 recipient: Recipient::from_string(recip_address1),
-                percent: Uint128::from(recip_percent1),
+                percent: Decimal::percent(recip_percent1),
             },
             AddressPercent {
                 recipient: Recipient::from_string(recip_address2),
-                percent: Uint128::from(recip_percent2),
+                percent: Decimal::percent(recip_percent2),
             },
         ];
         let msg = ExecuteMsg::Send {};
-
-        //incorrect owner
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
-            .unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if let Ok(..) = res {
-            panic!()
-        }
-
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner))
-            .unwrap();
 
         let splitter = Splitter {
             recipients: recipient,
@@ -632,6 +628,21 @@ mod tests {
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 

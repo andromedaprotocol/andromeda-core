@@ -1,24 +1,28 @@
 use crate::contract::{execute, instantiate};
 use andromeda_protocol::{
-    address_list::InstantiateMsg as AddressListInstantiateMsg,
-    communication::modules::{InstantiateType, Module, ModuleType},
     cw20::{ExecuteMsg, InstantiateMsg},
-    error::ContractError,
-    rates::InstantiateMsg as RatesInstantiateMsg,
-    receipt::{ExecuteMsg as ReceiptExecuteMsg, InstantiateMsg as ReceiptInstantiateMsg, Receipt},
+    receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
         MOCK_RATES_CONTRACT, MOCK_RECEIPT_CONTRACT,
     },
 };
+use common::{
+    ado_base::modules::{Module, ADDRESS_LIST, RATES, RECEIPT},
+    error::ContractError,
+    mission::AndrAddress,
+};
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    to_binary, Addr, CosmosMsg, Event, ReplyOn, Response, StdError, SubMsg, Uint128, WasmMsg,
+    to_binary, Addr, CosmosMsg, Event, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;
 
-#[test]
+/*#
+ *
+ * TODO: Remove when we are happy with InstantiateType replacement.
+ * [test]
 fn test_instantiate_modules() {
     let receipt_msg = to_binary(&ReceiptInstantiateMsg {
         minter: "minter".to_string(),
@@ -33,17 +37,17 @@ fn test_instantiate_modules() {
     .unwrap();
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ModuleType::Receipt,
+            module_type: RECEIPT.to_owned(),
             instantiate: InstantiateType::New(receipt_msg.clone()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::Rates,
+            module_type: RATES.to_owned(),
             instantiate: InstantiateType::New(rates_msg.clone()),
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::AddressList,
+            module_type: ADDRESS_LIST.to_owned(),
             instantiate: InstantiateType::New(addresslist_msg.clone()),
             is_mutable: false,
         },
@@ -66,6 +70,20 @@ fn test_instantiate_modules() {
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
+    assert_eq!(
+        "sender",
+        ADOContract::default()
+            .owner
+            .load(deps.as_mut().storage)
+            .unwrap()
+    );
+    assert_eq!(
+        "cw20",
+        ADOContract::default()
+            .ado_type
+            .load(deps.as_mut().storage)
+            .unwrap()
+    );
 
     let msgs: Vec<SubMsg> = vec![
         SubMsg {
@@ -105,25 +123,41 @@ fn test_instantiate_modules() {
             gas_limit: None,
         },
     ];
-    assert_eq!(Response::new().add_submessages(msgs), res);
-}
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "register_module")
+            .add_attribute("action", "register_module")
+            .add_attribute("action", "register_module")
+            .add_attribute("method", "instantiate")
+            .add_attribute("type", "cw20")
+            .add_submessages(msgs),
+        res
+    );
+<<<<<<< HEAD
+}*/
 
 #[test]
 fn test_transfer() {
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ModuleType::Receipt,
-            instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
+            module_type: RECEIPT.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_RECEIPT_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::Rates,
-            instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
+            module_type: RATES.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_RATES_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::AddressList,
-            instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
+            module_type: ADDRESS_LIST.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
     ];
@@ -146,7 +180,18 @@ fn test_transfer() {
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
-    assert_eq!(Response::default(), res);
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "1")
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "2")
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "3")
+            .add_attribute("method", "instantiate")
+            .add_attribute("type", "cw20"),
+        res
+    );
 
     assert_eq!(
         Uint128::from(1000u128),
@@ -223,18 +268,24 @@ fn test_transfer() {
 fn test_send() {
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ModuleType::Receipt,
-            instantiate: InstantiateType::Address(MOCK_RECEIPT_CONTRACT.into()),
+            module_type: RECEIPT.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_RECEIPT_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::Rates,
-            instantiate: InstantiateType::Address(MOCK_RATES_CONTRACT.into()),
+            module_type: RATES.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_RATES_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
         Module {
-            module_type: ModuleType::AddressList,
-            instantiate: InstantiateType::Address(MOCK_ADDRESSLIST_CONTRACT.into()),
+            module_type: ADDRESS_LIST.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+            },
             is_mutable: false,
         },
     ];
@@ -257,7 +308,18 @@ fn test_send() {
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
-    assert_eq!(Response::default(), res);
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "1")
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "2")
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "3")
+            .add_attribute("method", "instantiate")
+            .add_attribute("type", "cw20"),
+        res
+    );
 
     assert_eq!(
         Uint128::from(1000u128),

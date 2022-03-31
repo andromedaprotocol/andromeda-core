@@ -1,25 +1,31 @@
+use common::{
+    ado_base::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        ownership::ContractOwnerResponse,
+        AndromedaQuery,
+    },
+    primitive::{GetValueResponse, Primitive},
+    Funds,
+};
+
 use crate::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
-    auction::{AuctionStateResponse, QueryMsg as AuctionQueryMsg},
-    communication::hooks::{AndromedaHook, OnFundsTransferResponse},
-    communication::AndromedaQuery,
     cw721::TransferAgreement,
     cw721::{
         MetadataAttribute, MetadataType, QueryMsg as Cw721QueryMsg, TokenExtension, TokenMetadata,
     },
     cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
-    factory::{CodeIdResponse, QueryMsg as FactoryQueryMsg},
-    ownership::ContractOwnerResponse,
-    primitive::{GetValueResponse, Primitive, QueryMsg as PrimitiveQueryMsg},
-    rates::{Funds, QueryMsg as RatesQueryMsg},
+    factory::QueryMsg as FactoryQueryMsg,
+    primitive::QueryMsg as PrimitiveQueryMsg,
+    rates::QueryMsg as RatesQueryMsg,
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };
 use cosmwasm_std::{
     coin, coins, from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Decimal, Event, OwnedDeps,
-    Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Timestamp,
-    Uint128, WasmMsg, WasmQuery,
+    Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128,
+    WasmMsg, WasmQuery,
 };
 use cw20::{BalanceResponse, Cw20Coin, Cw20ExecuteMsg, Cw20QueryMsg};
 
@@ -40,7 +46,6 @@ pub const MOCK_OFFERS_CONTRACT: &str = "offers_contract";
 
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 pub const MOCK_TOKEN_TRANSFER_AGREEMENT: &str = "token_transfer_agreement";
-pub const MOCK_TOKEN_IN_AUCTION: &str = "token1";
 
 pub fn bank_sub_msg(amount: u128, recipient: &str) -> SubMsg {
     SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -155,7 +160,6 @@ impl WasmMockQuerier {
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
                     MOCK_OFFERS_CONTRACT => self.handle_offers_query(msg),
                     MOCK_RECEIPT_CONTRACT => self.handle_receipt_query(msg),
-                    MOCK_AUCTION_CONTRACT => self.handle_auction_query(msg),
                     MOCK_FACTORY_CONTRACT => self.handle_factory_query(msg),
                     _ => {
                         let msg_response = IncludesAddressResponse { included: false };
@@ -176,10 +180,10 @@ impl WasmMockQuerier {
                     "rates" => 2,
                     "address_list" => 3,
                     "cw721" => 4,
+                    "swapper_impl" => 5,
                     _ => 0,
                 };
-                let response = CodeIdResponse { code_id };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                SystemResult::Ok(ContractResult::Ok(to_binary(&code_id).unwrap()))
             }
             _ => panic!("Unsupported Query"),
         }
@@ -412,7 +416,7 @@ impl WasmMockQuerier {
                 let msg_response = match name.as_str() {
                     "percent" => GetValueResponse {
                         name,
-                        value: Primitive::Uint128(1u128.into()),
+                        value: Primitive::Decimal(Decimal::percent(1)),
                     },
                     "flat" => GetValueResponse {
                         name,
@@ -429,28 +433,6 @@ impl WasmMockQuerier {
                     _ => panic!("Unsupported primitive name"),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
-            }
-            _ => panic!("Unsupported Query"),
-        }
-    }
-
-    fn handle_auction_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            AuctionQueryMsg::LatestAuctionState { token_id } => {
-                let mut res = AuctionStateResponse {
-                    start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
-                    end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
-                    high_bidder_addr: "address".to_string(),
-                    high_bidder_amount: Uint128::from(100u128),
-                    auction_id: Uint128::zero(),
-                    coin_denom: "uusd".to_string(),
-                    claimed: true,
-                    whitelist: None,
-                };
-                if token_id == MOCK_TOKEN_IN_AUCTION {
-                    res.claimed = false;
-                }
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }
             _ => panic!("Unsupported Query"),
         }

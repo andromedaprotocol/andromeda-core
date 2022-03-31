@@ -1,10 +1,9 @@
-use crate::{
-    communication::{AndromedaMsg, AndromedaQuery, Recipient},
-    swapper::{SwapperCw20HookMsg, SwapperMsg},
-};
-use astroport::{asset::Asset, factory::ExecuteMsg as AstroportFactoryExecuteMsg};
+use crate::swapper::{SwapperCw20HookMsg, SwapperMsg};
+use astroport::factory::ExecuteMsg as AstroportFactoryExecuteMsg;
+use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
+use cw_asset::Asset;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

@@ -1,19 +1,20 @@
 use crate::state::{Config, CONFIG};
+use ado_base::ADOContract;
 use andromeda_protocol::{
-    communication::{
-        encode_binary,
-        hooks::{AndromedaHook, OnFundsTransferResponse},
-        parse_message, AndromedaMsg, AndromedaQuery,
-    },
-    error::ContractError,
     modules::common::{calculate_fee, deduct_funds},
-    operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     rates::{
-        ExecuteMsg, Funds, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
-        QueryMsg, RateInfo,
+        ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse, QueryMsg,
+        RateInfo,
     },
-    require,
+};
+use common::{
+    ado_base::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
+    },
+    encode_binary,
+    error::ContractError,
+    parse_message, require, Funds,
 };
 use cosmwasm_std::{
     attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
@@ -34,39 +35,45 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = Config { rates: msg.rates };
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attributes(vec![attr("action", "instantiate"), attr("type", "rates")]))
+    ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "rates".to_string(),
+            operators: None,
+            modules: None,
+            primitive_contract: None,
+        },
+    )
 }
 
 #[entry_point]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, info, msg),
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::UpdateRates { rates } => execute_update_rates(deps, info, rates),
     }
 }
 
 fn execute_andr_receive(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         AndromedaMsg::Receive(data) => {
-            let rates: Vec<RateInfo> = parse_message(data)?;
+            let rates: Vec<RateInfo> = parse_message(&data)?;
             execute_update_rates(deps, info, rates)
         }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
+        _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
 }
 
@@ -76,7 +83,7 @@ fn execute_update_rates(
     rates: Vec<RateInfo>,
 ) -> Result<Response, ContractError> {
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut config = CONFIG.load(deps.storage)?;
@@ -98,25 +105,25 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::AndrHook(msg) => handle_andromeda_hook(deps, msg),
         QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
     }
 }
 
-fn handle_andromeda_query(deps: Deps, msg: AndromedaQuery) -> Result<Binary, ContractError> {
+fn handle_andromeda_query(
+    deps: Deps,
+    env: Env,
+    msg: AndromedaQuery,
+) -> Result<Binary, ContractError> {
     match msg {
         AndromedaQuery::Get(data) => {
-            let funds: Funds = parse_message(data)?;
+            let funds: Funds = parse_message(&data)?;
             encode_binary(&query_deducted_funds(deps, funds)?)
         }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        _ => ADOContract::default().query(deps, env, msg, query),
     }
 }
 
@@ -168,16 +175,27 @@ fn query_deducted_funds(
             event = event.add_attribute(
                 "payment",
                 PaymentAttribute {
-                    receiver: reciever.get_addr(),
+                    receiver: reciever.get_addr(
+                        deps.api,
+                        &deps.querier,
+                        ADOContract::default().get_mission_contract(deps.storage)?,
+                    )?,
                     amount: fee.clone(),
                 }
                 .to_string(),
             );
             let msg = if is_native {
-                reciever.generate_msg_native(deps.api, vec![fee.clone()])?
+                reciever.generate_msg_native(
+                    deps.api,
+                    &deps.querier,
+                    ADOContract::default().get_mission_contract(deps.storage)?,
+                    vec![fee.clone()],
+                )?
             } else {
                 reciever.generate_msg_cw20(
                     deps.api,
+                    &deps.querier,
+                    ADOContract::default().get_mission_contract(deps.storage)?,
                     Cw20Coin {
                         amount: fee.amount,
                         address: fee.denom.to_string(),
@@ -207,13 +225,14 @@ mod tests {
     use super::*;
     use crate::contract::{execute, instantiate, query};
     use andromeda_protocol::{
-        communication::{encode_binary, AndromedaMsg, AndromedaQuery, Recipient},
-        modules::{ADORate, Rate},
-        rates::{InstantiateMsg, PaymentsResponse, QueryMsg, RateInfo},
+        rates::{ADORate, InstantiateMsg, PaymentsResponse, QueryMsg, Rate, RateInfo},
         testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT},
     };
+    use common::{ado_base::recipient::Recipient, encode_binary};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coin, coins, from_binary, BankMsg, Coin, CosmosMsg, Uint128, WasmMsg};
+    use cosmwasm_std::{
+        coin, coins, from_binary, BankMsg, Coin, CosmosMsg, Decimal, Uint128, WasmMsg,
+    };
     use cw20::Cw20ExecuteMsg;
 
     #[test]
@@ -224,7 +243,7 @@ mod tests {
         let info = mock_info(owner, &[]);
         let rates = vec![
             RateInfo {
-                rate: Rate::Percent(10u128.into()),
+                rate: Rate::from(Decimal::percent(10)),
                 is_additive: true,
                 description: Some("desc1".to_string()),
                 receivers: vec![Recipient::Addr("".into())],
@@ -266,7 +285,7 @@ mod tests {
         let info = mock_info(owner, &[]);
         let rates = vec![
             RateInfo {
-                rate: Rate::Percent(10u128.into()),
+                rate: Rate::from(Decimal::percent(10)),
                 is_additive: true,
                 description: Some("desc1".to_string()),
                 receivers: vec![Recipient::Addr("".into())],
@@ -311,7 +330,7 @@ mod tests {
                 receivers: vec![Recipient::Addr("1".into())],
             },
             RateInfo {
-                rate: Rate::Percent(10u128.into()),
+                rate: Rate::from(Decimal::percent(10)),
                 is_additive: false,
                 description: Some("desc1".to_string()),
                 receivers: vec![Recipient::Addr("2".into())],
@@ -397,7 +416,7 @@ mod tests {
                 receivers: vec![Recipient::Addr("1".into())],
             },
             RateInfo {
-                rate: Rate::Percent(10u128.into()),
+                rate: Rate::from(Decimal::percent(10)),
                 is_additive: false,
                 description: Some("desc1".to_string()),
                 receivers: vec![Recipient::Addr("2".into())],

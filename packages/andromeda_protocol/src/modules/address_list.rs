@@ -6,17 +6,16 @@ use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::response::get_reply_address;
 use crate::{
     address_list::{query_includes_address, InstantiateMsg as AddressListInstantiateMsg},
-    error::ContractError,
     modules::{
         common::is_unique,
         hooks::{HookResponse, MessageHooks},
         {Module, ModuleDefinition},
     },
-    require,
 };
+use common::response::get_reply_address;
+use common::{error::ContractError, require};
 
 pub const ADDRESS_LIST_CONTRACT: Item<String> = Item::new("addresslistcontract");
 pub const REPLY_ADDRESS_LIST: u64 = 2;
@@ -174,64 +173,10 @@ pub fn on_address_list_reply(deps: DepsMut, msg: Reply) -> Result<Response, Cont
 mod tests {
     use cosmwasm_std::testing::{mock_env, mock_info};
 
-    use crate::{modules::Rate, testing::mock_querier::mock_dependencies_custom};
+    use crate::testing::mock_querier::mock_dependencies_custom;
 
     use super::*;
     // use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MockQuerier};
-
-    #[test]
-    fn test_validate() {
-        let mut deps = mock_dependencies_custom(&[]);
-        let al = AddressListModule {
-            operators: Some(vec![]),
-            address: None,
-            code_id: Some(1),
-            inclusive: true,
-        };
-        let mut modules = vec![
-            al.as_definition(),
-            ModuleDefinition::Taxable {
-                rate: Rate::Percent(2u128.into()),
-                receivers: vec![],
-                description: None,
-            },
-        ];
-
-        assert_eq!(
-            al.validate(modules.to_vec(), &deps.as_mut().querier),
-            Ok(true)
-        );
-
-        modules.push(ModuleDefinition::Whitelist {
-            operators: Some(vec![]),
-            address: None,
-            code_id: None,
-        });
-
-        assert_eq!(
-            al.validate(modules.to_vec(), &deps.as_mut().querier),
-            Err(ContractError::ModuleNotUnique {})
-        );
-
-        let modules = vec![
-            al.as_definition(),
-            ModuleDefinition::Taxable {
-                rate: Rate::Percent(2u128.into()),
-                receivers: vec![],
-                description: None,
-            },
-            ModuleDefinition::Blacklist {
-                operators: Some(vec![]),
-                address: None,
-                code_id: None,
-            },
-        ];
-
-        assert_eq!(
-            al.validate(modules.to_vec(), &deps.as_mut().querier),
-            Err(ContractError::Std(StdError::generic_err("An address list module cannot be included alongside an address list module of the opposing type"))
-        ));
-    }
 
     //TODO
     #[test]

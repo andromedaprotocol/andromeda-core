@@ -1,7 +1,6 @@
-use crate::{auth::require_is_authorized, state::CONFIG};
-use andromeda_protocol::{
-    communication::encode_binary, error::ContractError, swapper::query_token_balance,
-};
+use crate::state::CONFIG;
+use ado_base::ADOContract;
+use andromeda_protocol::swapper::query_token_balance;
 use astroport::{
     generator::{
         Cw20HookMsg as GeneratorCw20HookMsg, ExecuteMsg as GeneratorExecuteMsg,
@@ -10,6 +9,7 @@ use astroport::{
     querier::query_factory_config,
     staking::Cw20HookMsg as StakingCw20HookMsg,
 };
+use common::{encode_binary, error::ContractError, require};
 use cosmwasm_std::{
     Addr, CosmosMsg, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
     Uint128, WasmMsg, WasmQuery,
@@ -24,7 +24,10 @@ pub fn execute_stake_lp(
     lp_token_contract: String,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    require_is_authorized(deps.storage, info.sender.as_str())?;
+    require(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
     let balance = query_token_balance(
         &deps.querier,
         deps.api.addr_validate(&lp_token_contract)?,
@@ -55,7 +58,10 @@ pub fn execute_unstake_lp(
     lp_token_contract: String,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    require_is_authorized(deps.storage, info.sender.as_str())?;
+    require(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
     let generator_contract = query_generator_address(&deps.querier, deps.storage)?;
     let lp_token = deps.api.addr_validate(&lp_token_contract)?;
     let amount_staked = query_amount_staked(
@@ -84,7 +90,10 @@ pub fn execute_claim_lp_staking_rewards(
     lp_token_contract: String,
     auto_stake: Option<bool>,
 ) -> Result<Response, ContractError> {
-    require_is_authorized(deps.storage, info.sender.as_str())?;
+    require(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
     let generator_contract = query_generator_address(&deps.querier, deps.storage)?;
     let lp_token = deps.api.addr_validate(&lp_token_contract)?;
     let lp_unstake_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -142,7 +151,10 @@ fn stake_or_unstake_astro(
     amount: Option<Uint128>,
     stake: bool,
 ) -> Result<Response, ContractError> {
-    require_is_authorized(deps.storage, info.sender.as_str())?;
+    require(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
 
     let config = CONFIG.load(deps.storage)?;
     let (token_addr, msg, action) = if stake {

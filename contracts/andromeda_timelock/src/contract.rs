@@ -3,22 +3,24 @@ use cosmwasm_std::{
 };
 
 use crate::state::{escrows, get_key, get_keys_for_recipient, State, STATE};
+use ado_base::ADOContract;
 use andromeda_protocol::{
-    communication::{encode_binary, parse_message, AndromedaMsg, AndromedaQuery, Recipient},
-    error::ContractError,
     modules::{
         address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
         generate_instantiate_msgs,
         hooks::HookResponse,
     },
     modules::{hooks::MessageHooks, Module},
-    operators::{execute_update_operators, query_is_operator, query_operators},
-    ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require,
     timelock::{
         Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
         GetLockedFundsResponse, GetTimelockConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg,
     },
+};
+use common::{
+    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    require,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -41,12 +43,18 @@ pub fn instantiate(
     let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
 
     STATE.save(deps.storage, &state)?;
-    CONTRACT_OWNER.save(deps.storage, &info.sender)?;
-    Ok(Response::new()
-        .add_attributes(vec![
-            attr("action", "instantiate"),
-            attr("type", "timelock"),
-        ])
+    let res = ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "timelock".to_string(),
+            operators: None,
+            modules: None,
+            primitive_contract: None,
+        },
+    )?;
+    Ok(res
         .add_submessages(inst_msgs.msgs)
         .add_events(inst_msgs.events))
 }
@@ -79,7 +87,6 @@ pub fn execute(
         let addr_list = address_list;
         addr_list.on_execute(&deps, info.clone(), env.clone())?;
     }
-
     match msg {
         ExecuteMsg::HoldFunds {
             condition,
@@ -97,30 +104,9 @@ pub fn execute(
         ExecuteMsg::UpdateAddressList { address_list } => {
             execute_update_address_list(deps, info, env, address_list)
         }
-        ExecuteMsg::AndrReceive(msg) => execute_receive(deps, env, info, msg),
-    }
-}
-
-fn execute_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        AndromedaMsg::Receive(data) => {
-            let received: ExecuteMsg = parse_message(data)?;
-
-            match received {
-                ExecuteMsg::AndrReceive(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => execute(deps, env, info, received),
-            }
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
         }
-        AndromedaMsg::UpdateOwner { address } => execute_update_owner(deps, info, address),
-        AndromedaMsg::UpdateOperators { operators } => {
-            execute_update_operators(deps, info, operators)
-        }
-        AndromedaMsg::Withdraw { .. } => Err(ContractError::UnsupportedOperation {}),
     }
 }
 
@@ -134,14 +120,19 @@ fn execute_hold_funds(
     let rec = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
 
     //Validate recipient address
-    let recipient_addr = rec.get_addr();
+    let recipient_addr = rec.get_addr(
+        deps.api,
+        &deps.querier,
+        ADOContract::default().get_mission_contract(deps.storage)?,
+    )?;
     deps.api.addr_validate(&recipient_addr)?;
+    let key = get_key(info.sender.as_str(), &recipient_addr);
     let mut escrow = Escrow {
         coins: info.funds,
         condition,
         recipient: rec,
+        recipient_addr,
     };
-    let key = get_key(info.sender.as_str(), &recipient_addr);
     // Add funds to existing escrow if it exists.
     let existing_escrow = escrows().may_load(deps.storage, key.to_vec())?;
     if let Some(existing_escrow) = existing_escrow {
@@ -181,7 +172,12 @@ fn execute_release_funds(
     for key in keys.iter() {
         let funds: Escrow = escrows().load(deps.storage, key.clone())?;
         if !funds.is_locked(&env.block)? {
-            let msg = funds.recipient.generate_msg_native(deps.api, funds.coins)?;
+            let msg = funds.recipient.generate_msg_native(
+                deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
+                funds.coins,
+            )?;
             msgs.push(msg);
             escrows().remove(deps.storage, key.clone())?;
         }
@@ -213,9 +209,12 @@ fn execute_release_specific_funds(
                 ContractError::FundsAreLocked {},
             )?;
             escrows().remove(deps.storage, key)?;
-            let msg = escrow
-                .recipient
-                .generate_msg_native(deps.api, escrow.coins)?;
+            let msg = escrow.recipient.generate_msg_native(
+                deps.api,
+                &deps.querier,
+                ADOContract::default().get_mission_contract(deps.storage)?,
+                escrow.coins,
+            )?;
             Ok(Response::new().add_submessage(msg).add_attributes(vec![
                 attr("action", "release_funds"),
                 attr("recipient_addr", recipient),
@@ -232,7 +231,7 @@ fn execute_update_address_list(
 ) -> Result<Response, ContractError> {
     let mut state = STATE.load(deps.storage)?;
     require(
-        is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -278,28 +277,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             limit,
         )?),
         QueryMsg::GetTimelockConfig {} => encode_binary(&query_config(deps)?),
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
-    }
-}
-
-fn handle_andromeda_query(
-    deps: Deps,
-    env: Env,
-    msg: AndromedaQuery,
-) -> Result<Binary, ContractError> {
-    match msg {
-        AndromedaQuery::Get(data) => {
-            let received: QueryMsg = parse_message(data)?;
-            match received {
-                QueryMsg::AndrQuery(..) => Err(ContractError::NestedAndromedaMsg {}),
-                _ => query(deps, env, received),
-            }
-        }
-        AndromedaQuery::Owner {} => encode_binary(&query_contract_owner(deps)?),
-        AndromedaQuery::Operators {} => encode_binary(&query_operators(deps)?),
-        AndromedaQuery::IsOperator { address } => {
-            encode_binary(&query_is_operator(deps, &address)?)
-        }
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
 }
 
@@ -345,10 +323,11 @@ fn query_config(deps: Deps) -> Result<GetTimelockConfigResponse, ContractError> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use common::ado_base::AndromedaMsg;
     use cosmwasm_std::{
         coin, coins, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
-        Addr, BankMsg, Coin, Timestamp,
+        BankMsg, Coin, Timestamp,
     };
     use cw721::Expiration;
 
@@ -411,6 +390,7 @@ mod tests {
             coins: funds,
             condition: Some(condition),
             recipient: Recipient::Addr(owner.to_string()),
+            recipient_addr: owner.to_string(),
         };
 
         assert_eq!(val.funds.unwrap(), expected);
@@ -457,6 +437,7 @@ mod tests {
             // Original expiration remains.
             condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
             recipient: Recipient::Addr("recipient".to_string()),
+            recipient_addr: "recipient".to_string(),
         };
 
         assert_eq!(val.funds.unwrap(), expected);
@@ -840,8 +821,19 @@ mod tests {
         let env = mock_env();
         let owner = "creator";
 
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "timelock".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
             .unwrap();
 
         let state = State { address_list: None };
