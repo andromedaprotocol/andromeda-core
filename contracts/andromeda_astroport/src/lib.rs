@@ -1,5 +1,6 @@
 pub mod contract;
+mod primitive_keys;
+mod querier;
 pub mod staking;
-pub mod state;
 #[cfg(test)]
 mod testing;

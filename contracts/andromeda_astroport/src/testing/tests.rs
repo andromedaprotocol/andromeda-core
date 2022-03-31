@@ -1,10 +1,21 @@
+use cosmwasm_std::{
+    coins,
+    testing::{mock_env, mock_info},
+    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Response, SubMsg, Uint128, WasmMsg,
+};
+
 use crate::{
     contract::{execute, instantiate},
+    primitive_keys::{
+        ASTROPORT_ASTRO, ASTROPORT_FACTORY, ASTROPORT_GENERATOR, ASTROPORT_ROUTER,
+        ASTROPORT_STAKING, ASTROPORT_XASTRO,
+    },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ASTROPORT_FACTORY_CONTRACT,
         MOCK_ASTROPORT_GENERATOR_CONTRACT, MOCK_ASTROPORT_PAIR_CONTRACT,
-        MOCK_ASTROPORT_ROUTER_CONTRACT, MOCK_ASTRO_TOKEN, MOCK_LP_ASSET1, MOCK_LP_ASSET2,
-        MOCK_LP_TOKEN_CONTRACT, MOCK_XASTRO_TOKEN,
+        MOCK_ASTROPORT_ROUTER_CONTRACT, MOCK_ASTROPORT_STAKING_CONTRACT, MOCK_ASTRO_TOKEN,
+        MOCK_LP_ASSET1, MOCK_LP_ASSET2, MOCK_LP_TOKEN_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
+        MOCK_XASTRO_TOKEN,
     },
 };
 use ado_base::ADOContract;
@@ -22,23 +33,58 @@ use astroport::{
     staking::Cw20HookMsg as StakingCw20HookMsg,
 };
 use common::error::ContractError;
-use cosmwasm_std::{
-    coins,
-    testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Response, SubMsg, Uint128, WasmMsg,
-};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::{Asset, AssetInfo};
 
-fn init(deps: DepsMut) {
+fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
-        astroport_factory_contract: MOCK_ASTROPORT_FACTORY_CONTRACT.to_owned(),
-        astroport_staking_contract: "staking".to_string(),
-        astroport_router_contract: MOCK_ASTROPORT_ROUTER_CONTRACT.to_owned(),
-        astro_token_contract: MOCK_ASTRO_TOKEN.to_owned(),
-        xastro_token_contract: MOCK_XASTRO_TOKEN.to_owned(),
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
-    let _res = instantiate(deps, mock_env(), mock_info("sender", &[]), msg).unwrap();
+    instantiate(deps, mock_env(), mock_info("sender", &[]), msg).unwrap()
+}
+
+#[test]
+fn test_instantiate() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let res = init(deps.as_mut());
+    let contract = ADOContract::default();
+
+    assert_eq!(
+        MOCK_XASTRO_TOKEN,
+        contract
+            .get_cached_address(deps.as_ref().storage, ASTROPORT_XASTRO)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_ASTRO_TOKEN,
+        contract
+            .get_cached_address(deps.as_ref().storage, ASTROPORT_ASTRO)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_ASTROPORT_ROUTER_CONTRACT,
+        contract
+            .get_cached_address(deps.as_ref().storage, ASTROPORT_ROUTER)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_ASTROPORT_FACTORY_CONTRACT,
+        contract
+            .get_cached_address(deps.as_ref().storage, ASTROPORT_FACTORY)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_ASTROPORT_STAKING_CONTRACT,
+        contract
+            .get_cached_address(deps.as_ref().storage, ASTROPORT_STAKING)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_ASTROPORT_GENERATOR_CONTRACT,
+        contract
+            .get_cached_address(deps.as_ref().storage, ASTROPORT_GENERATOR)
+            .unwrap()
+    );
 }
 
 #[test]
@@ -675,7 +721,7 @@ fn test_claim_lp_staking_rewards_auto_stake() {
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_ASTRO_TOKEN.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: "staking".to_string(),
+                    contract: MOCK_ASTROPORT_STAKING_CONTRACT.to_string(),
                     amount: 10u128.into(),
                     msg: to_binary(&StakingCw20HookMsg::Enter {}).unwrap(),
                 })
@@ -720,7 +766,7 @@ fn test_stake_astro() {
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_ASTRO_TOKEN.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: "staking".to_string(),
+                    contract: MOCK_ASTROPORT_STAKING_CONTRACT.to_string(),
                     amount: 10u128.into(),
                     msg: to_binary(&StakingCw20HookMsg::Enter {}).unwrap(),
                 })
@@ -763,7 +809,7 @@ fn test_unstake_astro() {
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_XASTRO_TOKEN.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
-                    contract: "staking".to_string(),
+                    contract: MOCK_ASTROPORT_STAKING_CONTRACT.to_string(),
                     amount: 10u128.into(),
                     msg: to_binary(&StakingCw20HookMsg::Leave {}).unwrap(),
                 })

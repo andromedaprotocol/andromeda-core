@@ -1,19 +1,16 @@
-use crate::state::CONFIG;
+use cosmwasm_std::{CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg};
+
+use crate::{
+    primitive_keys::{ASTROPORT_ASTRO, ASTROPORT_GENERATOR, ASTROPORT_STAKING, ASTROPORT_XASTRO},
+    querier::{query_amount_staked, query_pending_reward},
+};
 use ado_base::ADOContract;
 use andromeda_protocol::swapper::query_token_balance;
 use astroport::{
-    generator::{
-        Cw20HookMsg as GeneratorCw20HookMsg, ExecuteMsg as GeneratorExecuteMsg,
-        PendingTokenResponse, QueryMsg as GeneratorQueryMsg,
-    },
-    querier::query_factory_config,
+    generator::{Cw20HookMsg as GeneratorCw20HookMsg, ExecuteMsg as GeneratorExecuteMsg},
     staking::Cw20HookMsg as StakingCw20HookMsg,
 };
 use common::{encode_binary, error::ContractError, require};
-use cosmwasm_std::{
-    Addr, CosmosMsg, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
-    Uint128, WasmMsg, WasmQuery,
-};
 use cw20::Cw20ExecuteMsg;
 use std::cmp;
 
@@ -24,8 +21,10 @@ pub fn execute_stake_lp(
     lp_token_contract: String,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    let astroport_generator = contract.get_cached_address(deps.storage, ASTROPORT_GENERATOR)?;
     require(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let balance = query_token_balance(
@@ -34,13 +33,12 @@ pub fn execute_stake_lp(
         env.contract.address,
     )?;
     let amount = cmp::min(amount.unwrap_or(balance), balance);
-    let generator_contract = query_generator_address(&deps.querier, deps.storage)?;
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: lp_token_contract.clone(),
             msg: encode_binary(&Cw20ExecuteMsg::Send {
-                contract: generator_contract,
+                contract: astroport_generator,
                 amount,
                 msg: encode_binary(&GeneratorCw20HookMsg::Deposit {})?,
             })?,
@@ -58,15 +56,16 @@ pub fn execute_unstake_lp(
     lp_token_contract: String,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    let astroport_generator = contract.get_cached_address(deps.storage, ASTROPORT_GENERATOR)?;
     require(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
-    let generator_contract = query_generator_address(&deps.querier, deps.storage)?;
     let lp_token = deps.api.addr_validate(&lp_token_contract)?;
     let amount_staked = query_amount_staked(
         &deps.querier,
-        generator_contract.clone(),
+        astroport_generator.clone(),
         lp_token.clone(),
         env.contract.address,
     )?;
@@ -74,7 +73,7 @@ pub fn execute_unstake_lp(
     let amount = cmp::min(amount.unwrap_or(amount_staked), amount_staked);
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: generator_contract,
+            contract_addr: astroport_generator,
             funds: vec![],
             msg: encode_binary(&GeneratorExecuteMsg::Withdraw { amount, lp_token })?,
         }))
@@ -90,14 +89,15 @@ pub fn execute_claim_lp_staking_rewards(
     lp_token_contract: String,
     auto_stake: Option<bool>,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    let astroport_generator = contract.get_cached_address(deps.storage, ASTROPORT_GENERATOR)?;
     require(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
-    let generator_contract = query_generator_address(&deps.querier, deps.storage)?;
     let lp_token = deps.api.addr_validate(&lp_token_contract)?;
     let lp_unstake_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: generator_contract.clone(),
+        contract_addr: astroport_generator.clone(),
         funds: vec![],
         msg: encode_binary(&GeneratorExecuteMsg::Withdraw {
             // Astroport auto-withdraws rewards when LP tokens are withdrawn, so we can initiate a withdraw
@@ -108,7 +108,7 @@ pub fn execute_claim_lp_staking_rewards(
     });
     let pending_reward = query_pending_reward(
         &deps.querier,
-        generator_contract,
+        astroport_generator,
         lp_token,
         env.contract.address.clone(),
     )?;
@@ -151,34 +151,37 @@ fn stake_or_unstake_astro(
     amount: Option<Uint128>,
     stake: bool,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    let astroport_astro = contract.get_cached_address(deps.storage, ASTROPORT_ASTRO)?;
+    let astroport_xastro = contract.get_cached_address(deps.storage, ASTROPORT_XASTRO)?;
+    let astroport_staking = contract.get_cached_address(deps.storage, ASTROPORT_STAKING)?;
     require(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
-    let config = CONFIG.load(deps.storage)?;
     let (token_addr, msg, action) = if stake {
-        (
-            config.astro_token_contract,
-            StakingCw20HookMsg::Enter {},
-            "stake_astro",
-        )
+        (astroport_astro, StakingCw20HookMsg::Enter {}, "stake_astro")
     } else {
         (
-            config.xastro_token_contract,
+            astroport_xastro,
             StakingCw20HookMsg::Leave {},
             "unstake_astro",
         )
     };
 
-    let balance = query_token_balance(&deps.querier, token_addr.clone(), env.contract.address)?;
+    let balance = query_token_balance(
+        &deps.querier,
+        deps.api.addr_validate(&token_addr)?,
+        env.contract.address,
+    )?;
     let amount = cmp::min(amount.unwrap_or(balance), balance);
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_addr.to_string(),
             msg: encode_binary(&Cw20ExecuteMsg::Send {
-                contract: config.astroport_staking_contract.to_string(),
+                contract: astroport_staking,
                 amount,
                 msg: encode_binary(&msg)?,
             })?,
@@ -186,43 +189,4 @@ fn stake_or_unstake_astro(
         }))
         .add_attribute("action", action)
         .add_attribute("amount", amount))
-}
-
-fn query_generator_address(
-    querier: &QuerierWrapper,
-    storage: &dyn Storage,
-) -> Result<String, ContractError> {
-    let config = CONFIG.load(storage)?;
-    let generator_contract =
-        query_factory_config(querier, config.astroport_factory_contract)?.generator_address;
-    match generator_contract {
-        None => Err(ContractError::GeneratorNotSpecified {}),
-        Some(generator) => Ok(generator.to_string()),
-    }
-}
-
-fn query_amount_staked(
-    querier: &QuerierWrapper,
-    generator_contract: String,
-    lp_token: Addr,
-    user: Addr,
-) -> Result<Uint128, ContractError> {
-    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: generator_contract,
-        msg: encode_binary(&GeneratorQueryMsg::Deposit { lp_token, user })?,
-    }))?)
-}
-
-fn query_pending_reward(
-    querier: &QuerierWrapper,
-    generator_contract: String,
-    lp_token: Addr,
-    user: Addr,
-) -> Result<Uint128, ContractError> {
-    let pending_token_response: PendingTokenResponse =
-        querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: generator_contract,
-            msg: encode_binary(&GeneratorQueryMsg::PendingToken { lp_token, user })?,
-        }))?;
-    Ok(pending_token_response.pending)
 }
