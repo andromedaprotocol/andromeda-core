@@ -1,4 +1,4 @@
 pub mod contract;
-pub mod state;
+mod primitive_keys;
 #[cfg(test)]
-pub mod testing;
+mod testing;

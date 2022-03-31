@@ -6,12 +6,14 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 
-use crate::state::{Config, CONFIG};
+use crate::primitive_keys::{
+    ADDRESSES_TO_CACHE, MIRROR_GOV, MIRROR_LOCK, MIRROR_MINT, MIRROR_MIR, MIRROR_STAKING,
+};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
     common::get_tax_deducted_funds,
     mirror_wrapped_cdp::{
-        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, MirrorLockExecuteMsg,
+        Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, MirrorLockExecuteMsg,
         MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
 };
@@ -32,17 +34,27 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let config = Config {
-        mirror_mint_contract: deps.api.addr_validate(&msg.mirror_mint_contract)?,
-        mirror_staking_contract: deps.api.addr_validate(&msg.mirror_staking_contract)?,
-        mirror_gov_contract: deps.api.addr_validate(&msg.mirror_gov_contract)?,
-        mirror_lock_contract: deps.api.addr_validate(&msg.mirror_lock_contract)?,
-    };
+
+    let contract = ADOContract::default();
+    let resp = contract.instantiate(
+        deps.storage,
+        deps.api,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "mirror".to_string(),
+            operators: msg.operators,
+            modules: None,
+            primitive_contract: Some(msg.primitive_contract),
+        },
+    )?;
+
+    for address in ADDRESSES_TO_CACHE {
+        contract.cache_address(deps.storage, &deps.querier, address)?;
+    }
     let mirror_token_contract = deps
         .api
-        .addr_validate(&msg.mirror_token_contract)?
+        .addr_validate(&contract.get_cached_address(deps.storage, MIRROR_MIR)?)?
         .to_string();
     // We will need to be able to withdraw the MIR token.
     contract.add_withdrawable_token(
@@ -52,19 +64,8 @@ pub fn instantiate(
             contract_addr: mirror_token_contract,
         },
     )?;
-    CONFIG.save(deps.storage, &config)?;
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    contract.instantiate(
-        deps.storage,
-        deps.api,
-        info,
-        BaseInstantiateMsg {
-            ado_type: "mirror".to_string(),
-            operators: msg.operators,
-            modules: None,
-            primitive_contract: None,
-        },
-    )
+
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -74,7 +75,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
+    let mirror_gov_contract = contract.get_cached_address(deps.storage, MIRROR_GOV)?;
     match msg {
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
@@ -86,23 +88,10 @@ pub fn execute(
             deps,
             info.sender.to_string(),
             info.funds,
-            config.mirror_gov_contract.to_string(),
+            mirror_gov_contract,
             encode_binary(&msg)?,
         ),
         ExecuteMsg::MirrorLockExecuteMsg(msg) => execute_mirror_lock_msg(deps, info, msg),
-        ExecuteMsg::UpdateConfig {
-            mirror_mint_contract,
-            mirror_staking_contract,
-            mirror_gov_contract,
-            mirror_lock_contract,
-        } => execute_update_config(
-            deps,
-            info,
-            mirror_mint_contract,
-            mirror_staking_contract,
-            mirror_gov_contract,
-            mirror_lock_contract,
-        ),
     }
 }
 
@@ -111,7 +100,8 @@ fn execute_mirror_mint_msg(
     info: MessageInfo,
     msg: MirrorMintExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
+    let mirror_mint_contract = contract.get_cached_address(deps.storage, MIRROR_MINT)?;
     let binary = encode_binary(&msg)?;
     match msg {
         MirrorMintExecuteMsg::OpenPosition {
@@ -131,7 +121,7 @@ fn execute_mirror_mint_msg(
                 deps,
                 info.sender.to_string(),
                 info.funds,
-                config.mirror_mint_contract.to_string(),
+                mirror_mint_contract,
                 binary,
             )
         }
@@ -139,7 +129,7 @@ fn execute_mirror_mint_msg(
             deps,
             info.sender.to_string(),
             info.funds,
-            config.mirror_mint_contract.to_string(),
+            mirror_mint_contract,
             binary,
         ),
     }
@@ -150,7 +140,8 @@ fn execute_mirror_staking_msg(
     info: MessageInfo,
     msg: MirrorStakingExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
+    let mirror_staking_contract = contract.get_cached_address(deps.storage, MIRROR_STAKING)?;
     let binary = encode_binary(&msg)?;
     match msg {
         MirrorStakingExecuteMsg::Unbond {
@@ -169,7 +160,7 @@ fn execute_mirror_staking_msg(
                 deps,
                 info.sender.to_string(),
                 info.funds,
-                config.mirror_staking_contract.to_string(),
+                mirror_staking_contract,
                 binary,
             )
         }
@@ -177,7 +168,7 @@ fn execute_mirror_staking_msg(
             deps,
             info.sender.to_string(),
             info.funds,
-            config.mirror_staking_contract.to_string(),
+            mirror_staking_contract,
             binary,
         ),
     }
@@ -188,7 +179,8 @@ fn execute_mirror_lock_msg(
     info: MessageInfo,
     msg: MirrorLockExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
+    let mirror_lock_contract = contract.get_cached_address(deps.storage, MIRROR_LOCK)?;
     let binary = encode_binary(&msg)?;
     match msg {
         MirrorLockExecuteMsg::UnlockPositionFunds { positions_idx: _ } => {
@@ -203,7 +195,7 @@ fn execute_mirror_lock_msg(
                 deps,
                 info.sender.to_string(),
                 info.funds,
-                config.mirror_lock_contract.to_string(),
+                mirror_lock_contract,
                 binary,
             )
         }
@@ -211,7 +203,7 @@ fn execute_mirror_lock_msg(
             deps,
             info.sender.to_string(),
             info.funds,
-            config.mirror_lock_contract.to_string(),
+            mirror_lock_contract,
             binary,
         ),
     }
@@ -231,7 +223,6 @@ fn handle_open_position_withdrawable_tokens(
     is_short: bool,
 ) -> Result<(), ContractError> {
     // Barring liquidation we will want to withdraw the collateral at some point.
-
     ADOContract::default().add_withdrawable_token(
         storage,
         &get_asset_name(&collateral_info),
@@ -263,7 +254,10 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
+    let mirror_staking_contract = contract.get_cached_address(deps.storage, MIRROR_STAKING)?;
+    let mirror_gov_contract = contract.get_cached_address(deps.storage, MIRROR_GOV)?;
+
     let token_address = info.sender.to_string();
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::MirrorMintCw20HookMsg(msg) => {
@@ -274,7 +268,7 @@ pub fn receive_cw20(
             cw20_msg.sender,
             token_address,
             cw20_msg.amount,
-            config.mirror_staking_contract.to_string(),
+            mirror_staking_contract,
             encode_binary(&msg)?,
         ),
         Cw20HookMsg::MirrorGovCw20HookMsg(msg) => execute_mirror_cw20_msg(
@@ -282,7 +276,7 @@ pub fn receive_cw20(
             cw20_msg.sender,
             token_address,
             cw20_msg.amount,
-            config.mirror_gov_contract.to_string(),
+            mirror_gov_contract,
             encode_binary(&msg)?,
         ),
     }
@@ -294,7 +288,8 @@ fn execute_mirror_mint_cw20_msg(
     cw20_msg: Cw20ReceiveMsg,
     mirror_msg: MirrorMintCw20HookMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
+    let mirror_mint_contract = contract.get_cached_address(deps.storage, MIRROR_MINT)?;
     let token_address = info.sender.to_string();
     let binary = encode_binary(&mirror_msg)?;
     match mirror_msg {
@@ -316,7 +311,7 @@ fn execute_mirror_mint_cw20_msg(
                 cw20_msg.sender,
                 token_address,
                 cw20_msg.amount,
-                config.mirror_mint_contract.to_string(),
+                mirror_mint_contract,
                 binary,
             )
         }
@@ -325,7 +320,7 @@ fn execute_mirror_mint_cw20_msg(
             cw20_msg.sender,
             token_address,
             cw20_msg.amount,
-            config.mirror_mint_contract.to_string(),
+            mirror_mint_contract,
             binary,
         ),
     }
@@ -374,35 +369,6 @@ pub fn execute_mirror_msg(
     Ok(Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]))
 }
 
-pub fn execute_update_config(
-    deps: DepsMut,
-    info: MessageInfo,
-    mirror_mint_contract: Option<String>,
-    mirror_staking_contract: Option<String>,
-    mirror_gov_contract: Option<String>,
-    mirror_lock_contract: Option<String>,
-) -> Result<Response, ContractError> {
-    require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-    let mut config = CONFIG.load(deps.storage)?;
-    if let Some(mirror_mint_contract) = mirror_mint_contract {
-        config.mirror_mint_contract = deps.api.addr_validate(&mirror_mint_contract)?;
-    }
-    if let Some(mirror_staking_contract) = mirror_staking_contract {
-        config.mirror_staking_contract = deps.api.addr_validate(&mirror_staking_contract)?;
-    }
-    if let Some(mirror_gov_contract) = mirror_gov_contract {
-        config.mirror_gov_contract = deps.api.addr_validate(&mirror_gov_contract)?;
-    }
-    if let Some(mirror_lock_contract) = mirror_lock_contract {
-        config.mirror_lock_contract = deps.api.addr_validate(&mirror_lock_contract)?;
-    }
-    CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attribute("action", "update_config"))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version = get_contract_version(deps.storage)?;
@@ -418,16 +384,5 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
-        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
     }
-}
-
-pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse {
-        mirror_mint_contract: config.mirror_mint_contract.to_string(),
-        mirror_staking_contract: config.mirror_staking_contract.to_string(),
-        mirror_gov_contract: config.mirror_gov_contract.to_string(),
-        mirror_lock_contract: config.mirror_lock_contract.to_string(),
-    })
 }
