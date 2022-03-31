@@ -14,6 +14,8 @@ pub struct ADOContract<'a> {
     pub(crate) mission_contract: Item<'a, Addr>,
     #[cfg(feature = "primitive")]
     pub(crate) primitive_contract: Item<'a, Addr>,
+    #[cfg(feature = "primitive")]
+    pub(crate) cached_addresses: Map<'a, &'a str, String>,
     #[cfg(feature = "modules")]
     pub(crate) module_info: Map<'a, &'a str, Module>,
     #[cfg(feature = "modules")]
@@ -31,6 +33,8 @@ impl<'a> Default for ADOContract<'a> {
             mission_contract: Item::new("mission_contract"),
             #[cfg(feature = "primitive")]
             primitive_contract: Item::new("primitive_contract"),
+            #[cfg(feature = "primitive")]
+            cached_addresses: Map::new("cached_addresses"),
             #[cfg(feature = "modules")]
             module_info: Map::new("andr_modules"),
             #[cfg(feature = "modules")]

@@ -1,21 +1,6 @@
 use cosmwasm_std::{Coin, Decimal, StdError, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-
-/// Enum of possible contracts whose addresses we want to store in a primitive contract.
-pub enum AndromedaContract {
-    Factory,
-}
-
-impl fmt::Display for AndromedaContract {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let string = match self {
-            AndromedaContract::Factory => "factory",
-        };
-        write!(f, "{}", string)
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

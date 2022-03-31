@@ -14,9 +14,7 @@ pub enum WithdrawalType {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub anchor_market: String,
-    pub anchor_bluna_hub: String,
-    pub anchor_bluna_custody: String,
+    pub primitive_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -64,18 +62,6 @@ pub struct MigrateMsg {}
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
-    Config {},
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ConfigResponse {
-    pub anchor_market: String,
-    pub aust_token: String,
-    pub anchor_bluna_hub: String,
-    pub anchor_bluna_custody: String,
-    pub anchor_overseer: String,
-    pub bluna_token: String,
-    pub anchor_oracle: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
