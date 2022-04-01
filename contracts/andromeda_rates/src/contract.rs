@@ -1,18 +1,15 @@
 use crate::state::{Config, CONFIG};
 use ado_base::ADOContract;
-use andromeda_protocol::{
-    modules::common::{calculate_fee, deduct_funds},
-    rates::{
-        ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse, QueryMsg,
-        RateInfo,
-    },
+use andromeda_protocol::rates::{
+    calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
+    QueryMsg, RateInfo,
 };
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
     },
-    encode_binary,
+    deduct_funds, encode_binary,
     error::ContractError,
     parse_message, require, Funds,
 };

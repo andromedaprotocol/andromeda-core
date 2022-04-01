@@ -1,25 +1,18 @@
 use crate::state::SPLITTER;
 use ado_base::ADOContract;
-use andromeda_protocol::{
-    modules::{
-        address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
-        hooks::{HookResponse, MessageHooks},
-        Module, Modules,
-    },
-    splitter::{
-        validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse,
-        InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
-    },
+use andromeda_protocol::splitter::{
+    validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
+    MigrateMsg, QueryMsg, Splitter,
 };
 use common::{
-    ado_base::{AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
     require,
 };
 use cosmwasm_std::{
-    attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, SubMsg, Uint128,
+    attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
+    StdError, SubMsg, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -30,7 +23,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -39,33 +32,20 @@ pub fn instantiate(
     let splitter = Splitter {
         recipients: msg.recipients,
         locked: false,
-        address_list: msg.address_list.clone(),
     };
 
-    // let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
-    let mut module_defs = vec![];
-    if msg.address_list.is_some() {
-        module_defs.push(msg.address_list.unwrap().as_definition());
-    }
-    let modules = Modules::new(module_defs);
-    let inst_msgs =
-        modules.hook(|module| module.on_instantiate(&deps, info.clone(), env.clone()))?;
-
     SPLITTER.save(deps.storage, &splitter)?;
-    let res = ADOContract::default().instantiate(
+    ADOContract::default().instantiate(
         deps.storage,
         deps.api,
         info,
         BaseInstantiateMsg {
             ado_type: "splitter".to_string(),
             operators: None,
-            modules: None,
+            modules: msg.modules,
             primitive_contract: None,
         },
-    )?;
-    Ok(res
-        .add_submessages(inst_msgs.msgs)
-        .add_events(inst_msgs.events))
+    )
 }
 
 #[entry_point]
@@ -75,21 +55,21 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let splitter = SPLITTER.load(deps.storage)?;
-
-    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
-    if let Some(addr_list) = splitter.address_list {
-        addr_list.on_execute(&deps, info.clone(), env.clone())?;
-    }
+    ADOContract::default().module_hook::<Response>(
+        deps.storage,
+        deps.api,
+        deps.querier,
+        AndromedaHook::OnExecute {
+            sender: info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
 
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => {
             execute_update_recipients(deps, info, recipients)
         }
         ExecuteMsg::UpdateLock { lock } => execute_update_lock(deps, info, lock),
-        ExecuteMsg::UpdateAddressList { address_list } => {
-            execute_update_address_list(deps, info, env, address_list)
-        }
         ExecuteMsg::Send {} => execute_send(deps, info),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
     }
@@ -107,20 +87,6 @@ pub fn execute_andromeda(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
-    }
-
-    match msg.id {
-        REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
-        _ => Err(ContractError::InvalidReplyId {}),
-    }
-}
-
 fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let sent_funds: Vec<Coin> = info.funds.clone();
     require(
@@ -131,7 +97,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
     )?;
 
     let splitter = SPLITTER.load(deps.storage)?;
-    let mut submsg: Vec<SubMsg> = Vec::new();
+    let mut msgs: Vec<SubMsg> = Vec::new();
 
     let mut remainder_funds = info.funds.clone();
     // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS.
@@ -159,7 +125,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
             ADOContract::default().get_mission_contract(deps.storage)?,
             vec_coin,
         )?;
-        submsg.push(msg);
+        msgs.push(msg);
     }
     remainder_funds = remainder_funds
         .into_iter()
@@ -172,14 +138,14 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
     // From tests, it looks like owner of smart contract (Andromeda) will recieve the rest of funds.
     // If so, should be documented
     if !remainder_funds.is_empty() {
-        submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: remainder_funds,
         })));
     }
 
     Ok(Response::new()
-        .add_submessages(submsg)
+        .add_submessages(msgs)
         .add_attributes(vec![attr("action", "send"), attr("sender", info.sender)]))
 }
 
@@ -225,36 +191,6 @@ fn execute_update_lock(
     ]))
 }
 
-fn execute_update_address_list(
-    deps: DepsMut,
-    info: MessageInfo,
-    env: Env,
-    address_list: Option<AddressListModule>,
-) -> Result<Response, ContractError> {
-    require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-
-    let mut splitter = SPLITTER.load(deps.storage)?;
-    if splitter.locked {
-        StdError::generic_err("The splitter is currently locked");
-    }
-
-    let mod_resp = match address_list.clone() {
-        None => HookResponse::default(),
-        Some(addr_list) => addr_list.on_instantiate(&deps, info, env)?,
-    };
-    splitter.address_list = address_list;
-
-    SPLITTER.save(deps.storage, &splitter)?;
-
-    Ok(Response::default()
-        .add_submessages(mod_resp.msgs)
-        .add_events(mod_resp.events)
-        .add_attributes(vec![attr("action", "update_address_list")]))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version = get_contract_version(deps.storage)?;
@@ -276,23 +212,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 
 fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError> {
     let splitter = SPLITTER.load(deps.storage)?;
-    let address_list_contract = match splitter.clone().address_list {
-        Some(addr_list) => addr_list.get_contract_address(deps.storage),
-        None => None,
-    };
 
-    Ok(GetSplitterConfigResponse {
-        config: splitter,
-        address_list_contract,
-    })
+    Ok(GetSplitterConfigResponse { config: splitter })
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::modules::address_list::AddressListModule;
     use common::ado_base::recipient::Recipient;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, Addr, Coin, Decimal};
+    use cosmwasm_std::{from_binary, Coin, Decimal};
 
     #[test]
     fn test_instantiate() {
@@ -300,11 +228,11 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            address_list: None,
             recipients: vec![AddressPercent {
                 recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Decimal::one(),
             }],
+            modules: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -320,17 +248,25 @@ mod tests {
         let splitter = Splitter {
             recipients: vec![],
             locked: false,
-            address_list: None,
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
         let lock = true;
         let msg = ExecuteMsg::UpdateLock { lock };
-
+        let deps_mut = deps.as_mut();
         ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
             .unwrap();
 
         let info = mock_info("incorrect_owner", &[]);
@@ -350,55 +286,6 @@ mod tests {
         //check result
         let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
         assert_eq!(splitter.locked, lock);
-    }
-
-    #[test]
-    fn test_execute_update_address_list() {
-        let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
-        let owner = "creator";
-
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
-
-        let splitter = Splitter {
-            recipients: vec![],
-            locked: false,
-            address_list: None,
-        };
-        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
-
-        let address_list = AddressListModule {
-            address: Some(String::from("terra1contractaddress")),
-            code_id: Some(1),
-            operators: Some(vec![String::from("operator1")]),
-            inclusive: true,
-        };
-        let msg = ExecuteMsg::UpdateAddressList {
-            address_list: Some(address_list.clone()),
-        };
-
-        let unauth_info = mock_info("anyone", &[]);
-        let err_res = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
-        assert_eq!(err_res, ContractError::Unauthorized {});
-
-        let info = mock_info(owner, &[]);
-        let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        let mod_resp = address_list
-            .on_instantiate(&deps.as_mut(), info, env)
-            .unwrap();
-        let expected = Response::default()
-            .add_submessages(mod_resp.msgs)
-            .add_events(mod_resp.events)
-            .add_attributes(vec![attr("action", "update_address_list")]);
-
-        assert_eq!(resp, expected);
-
-        let updated = SPLITTER.load(deps.as_mut().storage).unwrap();
-
-        assert_eq!(updated.address_list.unwrap(), address_list);
     }
 
     #[test]
@@ -425,15 +312,25 @@ mod tests {
         let splitter = Splitter {
             recipients: vec![],
             locked: false,
-            address_list: None,
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
+        let deps_mut = deps.as_mut();
         ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
             .unwrap();
+
         let info = mock_info("incorrect_owner", &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
@@ -477,28 +374,27 @@ mod tests {
         ];
         let msg = ExecuteMsg::Send {};
 
-        //incorrect owner
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
-            .unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if let Ok(..) = res {
-            panic!();
-        }
-
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
-
         let splitter = Splitter {
             recipients: recipient,
             locked: false,
-            address_list: None,
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -532,12 +428,6 @@ mod tests {
         let splitter = Splitter {
             recipients: vec![],
             locked: false,
-            address_list: Some(AddressListModule {
-                address: Some(String::from("somecontractaddress")),
-                code_id: None,
-                operators: None,
-                inclusive: false,
-            }),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -547,10 +437,6 @@ mod tests {
         let val: GetSplitterConfigResponse = from_binary(&res).unwrap();
 
         assert_eq!(val.config, splitter);
-        assert_eq!(
-            val.address_list_contract.unwrap(),
-            splitter.address_list.unwrap().address.unwrap()
-        );
     }
 
     #[test]
@@ -591,28 +477,27 @@ mod tests {
         ];
         let msg = ExecuteMsg::Send {};
 
-        //incorrect owner
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("incorrect_owner"))
-            .unwrap();
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if let Ok(..) = res {
-            panic!()
-        }
-
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner))
-            .unwrap();
-
         let splitter = Splitter {
             recipients: recipient,
             locked: false,
-            address_list: None,
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 

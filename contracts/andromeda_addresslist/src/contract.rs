@@ -1,7 +1,12 @@
-use ado_base::state::ADOContract;
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cw2::{get_contract_version, set_contract_version};
+
+use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
+use ado_base::ADOContract;
 use andromeda_protocol::address_list::{
-    add_address, includes_address, remove_address, ExecuteMsg, IncludesAddressResponse,
-    InstantiateMsg, MigrateMsg, QueryMsg, IS_INCLUSIVE,
+    ExecuteMsg, IncludesAddressResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
@@ -9,11 +14,6 @@ use common::{
     error::ContractError,
     parse_message, require,
 };
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response};
-
-use cw2::{get_contract_version, set_contract_version};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-addresslist";
@@ -150,9 +150,22 @@ fn query_address(deps: Deps, address: &str) -> Result<IncludesAddressResponse, C
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_protocol::address_list::ADDRESS_LIST;
+    use crate::state::ADDRESS_LIST;
     use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+
+    fn init(deps: DepsMut, info: MessageInfo) {
+        instantiate(
+            deps,
+            mock_env(),
+            info,
+            InstantiateMsg {
+                operators: vec![],
+                is_inclusive: true,
+            },
+        )
+        .unwrap();
+    }
 
     #[test]
     fn test_instantiate() {
@@ -177,15 +190,10 @@ mod tests {
 
         let address = "whitelistee";
 
-        //input operator for test
+        init(deps.as_mut(), info.clone());
 
         ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
-            .unwrap();
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &info.sender)
+            .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
             .unwrap();
 
         let msg = ExecuteMsg::AddAddress {
@@ -201,14 +209,10 @@ mod tests {
         ]);
         assert_eq!(expected, res);
 
-        let whitelisted = ADDRESS_LIST
-            .load(deps.as_ref().storage, address.to_string())
-            .unwrap();
+        let whitelisted = ADDRESS_LIST.load(deps.as_ref().storage, address).unwrap();
         assert!(whitelisted);
 
-        let included = ADDRESS_LIST
-            .load(deps.as_ref().storage, "111".to_string())
-            .unwrap_err();
+        let included = ADDRESS_LIST.load(deps.as_ref().storage, "111").unwrap_err();
 
         match included {
             cosmwasm_std::StdError::NotFound { .. } => {}
@@ -233,14 +237,11 @@ mod tests {
 
         let address = "whitelistee";
 
+        init(deps.as_mut(), info.clone());
+
         //save operator
         ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
-            .unwrap();
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &info.sender)
+            .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
             .unwrap();
 
         let msg = ExecuteMsg::RemoveAddress {
@@ -251,13 +252,11 @@ mod tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
         let expected = Response::default().add_attributes(vec![
             attr("action", "remove_address"),
-            attr("address", address.to_string()),
+            attr("address", address),
         ]);
         assert_eq!(expected, res);
 
-        let included_is_err = ADDRESS_LIST
-            .load(deps.as_ref().storage, address.to_string())
-            .is_err();
+        let included_is_err = ADDRESS_LIST.load(deps.as_ref().storage, address).is_err();
         assert!(included_is_err);
 
         //add address for unregistered operator
@@ -278,14 +277,7 @@ mod tests {
 
         // Mark it as a whitelist.
         IS_INCLUSIVE.save(deps.as_mut().storage, &true).unwrap();
-        ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
-            .unwrap();
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &info.sender)
-            .unwrap();
+        init(deps.as_mut(), info.clone());
 
         let msg = ExecuteMsg::AddAddress {
             address: address.to_string(),
@@ -318,16 +310,12 @@ mod tests {
         let info = mock_info(operator, &[]);
 
         let address = "blacklistee";
+        init(deps.as_mut(), info.clone());
 
         // Mark it as a blacklist.
         IS_INCLUSIVE.save(deps.as_mut().storage, &false).unwrap();
         ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, operator, &true)
-            .unwrap();
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &info.sender)
+            .execute_update_operators(deps.as_mut(), info.clone(), vec![operator.to_owned()])
             .unwrap();
 
         let msg = ExecuteMsg::AddAddress {
@@ -359,7 +347,7 @@ mod tests {
         let address = "whitelistee";
 
         ADDRESS_LIST
-            .save(deps.as_mut().storage, address.to_string(), &true)
+            .save(deps.as_mut().storage, address, &true)
             .unwrap();
 
         let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(encode_binary(&address).unwrap())));

@@ -1,14 +1,11 @@
 use crate::ADOContract;
-
-use common::{
-    ado_base::query_get, encode_binary, error::ContractError, primitive::AndromedaContract,
-};
+use common::{ado_base::query_get, encode_binary, error::ContractError};
 use cosmwasm_std::{Binary, CosmosMsg, QuerierWrapper, ReplyOn, Storage, SubMsg, WasmMsg};
 
 impl<'a> ADOContract<'a> {
     pub fn generate_instantiate_msg(
         &self,
-        storage: &dyn Storage,
+        storage: &mut dyn Storage,
         querier: &QuerierWrapper,
         msg_id: u64,
         msg: Binary,
@@ -37,11 +34,12 @@ impl<'a> ADOContract<'a> {
 
     fn get_code_id(
         &self,
-        storage: &dyn Storage,
+        storage: &mut dyn Storage,
         querier: &QuerierWrapper,
         name: &str,
     ) -> Result<u64, ContractError> {
-        let factory_address = self.get_address(storage, querier, AndromedaContract::Factory)?;
+        // Do we want to cache the factory address?
+        let factory_address = self.get_address_from_primitive(storage, querier, "factory")?;
         let code_id: u64 = query_get(Some(encode_binary(&name)?), factory_address, querier)?;
         Ok(code_id)
     }

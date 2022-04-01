@@ -39,7 +39,7 @@ pub fn instantiate(
             ado_type: "wrapped_cw721".to_string(),
             operators: None,
             modules: None,
-            primitive_contract: Some(msg.primitive_contract.clone()),
+            primitive_contract: Some(msg.primitive_contract),
         },
     )?;
     match msg.cw721_instantiate_type {
@@ -52,7 +52,6 @@ pub fn instantiate(
                 minter: AndrAddress {
                     identifier: env.contract.address.to_string(),
                 },
-                primitive_contract: msg.primitive_contract,
             };
             let msg = contract.generate_instantiate_msg(
                 deps.storage,
@@ -262,6 +261,20 @@ mod tests {
         CosmosMsg, ReplyOn,
     };
 
+    fn init(deps: DepsMut) {
+        instantiate(
+            deps,
+            mock_env(),
+            mock_info("owner", &[]),
+            InstantiateMsg {
+                primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+                cw721_instantiate_type: InstantiateType::Address(MOCK_CW721_CONTRACT.to_owned()),
+                can_unwrap: true,
+            },
+        )
+        .unwrap();
+    }
+
     #[test]
     fn test_instantiate_address() {
         let mut deps = mock_dependencies(&[]);
@@ -280,13 +293,9 @@ mod tests {
                 .add_attribute("type", "wrapped_cw721"),
             res
         );
-        assert_eq!(
-            "sender".to_string(),
-            ADOContract::default()
-                .owner
-                .load(deps.as_ref().storage)
-                .unwrap()
-        );
+        assert!(ADOContract::default()
+            .is_contract_owner(deps.as_ref().storage, "sender")
+            .unwrap());
         assert_eq!(
             MOCK_CW721_CONTRACT.to_owned(),
             ANDROMEDA_CW721_ADDR.load(deps.as_ref().storage).unwrap()
@@ -317,7 +326,6 @@ mod tests {
             minter: AndrAddress {
                 identifier: mock_env().contract.address.to_string(),
             },
-            primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
         };
         let msg: SubMsg = SubMsg {
             id: 1,
@@ -338,13 +346,9 @@ mod tests {
                 .add_attribute("type", "wrapped_cw721"),
             res
         );
-        assert_eq!(
-            "sender".to_string(),
-            ADOContract::default()
-                .owner
-                .load(deps.as_ref().storage)
-                .unwrap()
-        );
+        assert!(ADOContract::default()
+            .is_contract_owner(deps.as_ref().storage, "sender")
+            .unwrap());
         assert!(CAN_UNWRAP.load(deps.as_ref().storage).unwrap());
     }
 
@@ -356,13 +360,7 @@ mod tests {
         let owner = String::from("owner");
         let token_address = String::from("token_address");
 
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
-            .unwrap();
-        ANDROMEDA_CW721_ADDR
-            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
-            .unwrap();
+        init(deps.as_mut());
 
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: "not_owner".to_string(),
@@ -447,13 +445,7 @@ mod tests {
         let owner = String::from("owner");
         let token_address = String::from("token_address");
 
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
-            .unwrap();
-        ANDROMEDA_CW721_ADDR
-            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
-            .unwrap();
+        init(deps.as_mut());
 
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: owner.clone(),
@@ -522,20 +514,16 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
 
         let token_id = String::from("token_id");
-        let owner = String::from("owner");
         let operator = String::from("operator");
         let token_address = String::from("token_address");
 
+        init(deps.as_mut());
         ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
-            .unwrap();
-        ANDROMEDA_CW721_ADDR
-            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
-            .unwrap();
-        ADOContract::default()
-            .operators
-            .save(deps.as_mut().storage, &operator, &true)
+            .execute_update_operators(
+                deps.as_mut(),
+                mock_info("owner", &[]),
+                vec![operator.to_owned()],
+            )
             .unwrap();
 
         let info = mock_info(&token_address, &[]);
@@ -560,13 +548,7 @@ mod tests {
         let token_id = String::from("token_id");
         let owner = String::from("owner");
 
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
-            .unwrap();
-        ANDROMEDA_CW721_ADDR
-            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
-            .unwrap();
+        init(deps.as_mut());
         CAN_UNWRAP.save(deps.as_mut().storage, &false).unwrap();
 
         let info = mock_info(MOCK_CW721_CONTRACT, &[]);
@@ -589,13 +571,7 @@ mod tests {
         let token_id = String::from("token_id");
         let owner = String::from("owner");
 
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
-            .unwrap();
-        ANDROMEDA_CW721_ADDR
-            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
-            .unwrap();
+        init(deps.as_mut());
         CAN_UNWRAP.save(deps.as_mut().storage, &true).unwrap();
 
         let info = mock_info("invalid_address", &[]);
@@ -621,13 +597,7 @@ mod tests {
         let token_id = String::from("original_token_id");
         let owner = String::from("owner");
 
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(&owner))
-            .unwrap();
-        ANDROMEDA_CW721_ADDR
-            .save(deps.as_mut().storage, &MOCK_CW721_CONTRACT.to_string())
-            .unwrap();
+        init(deps.as_mut());
         CAN_UNWRAP.save(deps.as_mut().storage, &true).unwrap();
 
         let info = mock_info(MOCK_CW721_CONTRACT, &[]);

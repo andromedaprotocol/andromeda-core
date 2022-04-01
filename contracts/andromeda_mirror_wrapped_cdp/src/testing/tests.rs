@@ -1,22 +1,30 @@
-use super::mock_querier::mock_dependencies_custom;
-use crate::contract::{execute, instantiate, query};
-use ado_base::state::ADOContract;
+use cosmwasm_std::{
+    coin, coins, from_binary,
+    testing::{mock_env, mock_info},
+    to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo, Order, Response, Uint128,
+    WasmMsg,
+};
+
+use super::mock_querier::{
+    mock_dependencies_custom, MOCK_MIRROR_GOV_ADDR, MOCK_MIRROR_LOCK_ADDR, MOCK_MIRROR_MINT_ADDR,
+    MOCK_MIRROR_STAKING_ADDR, MOCK_MIRROR_TOKEN_ADDR, MOCK_PRIMITIVE_CONTRACT,
+};
+use crate::{
+    contract::{execute, instantiate, query},
+    primitive_keys::{MIRROR_GOV, MIRROR_LOCK, MIRROR_MINT, MIRROR_MIR, MIRROR_STAKING},
+};
+use ado_base::ADOContract;
 use andromeda_protocol::{
     common::get_tax_deducted_funds,
     mirror_wrapped_cdp::{
-        ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg,
-        MirrorGovExecuteMsg, MirrorLockExecuteMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
+        Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg, MirrorGovExecuteMsg,
+        MirrorLockExecuteMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
         MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, QueryMsg,
     },
 };
 use common::{
     ado_base::{operators::OperatorsResponse, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-};
-use cosmwasm_std::testing::{mock_env, mock_info};
-use cosmwasm_std::{
-    coin, coins, from_binary, to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo,
-    Order, Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use mirror_protocol::{gov::VoteOption, mint::ShortParams};
@@ -26,11 +34,6 @@ use terraswap::asset::{Asset, AssetInfo};
 
 const TEST_TOKEN: &str = "TEST_TOKEN";
 const TEST_AMOUNT: u128 = 100u128;
-const MOCK_MIRROR_TOKEN_ADDR: &str = "mirror_token";
-const MOCK_MIRROR_MINT_ADDR: &str = "mirror_mint";
-const MOCK_MIRROR_STAKING_ADDR: &str = "mirror_staking";
-const MOCK_MIRROR_GOV_ADDR: &str = "mirror_gov";
-const MOCK_MIRROR_LOCK_ADDR: &str = "mirror_lock";
 
 fn assert_mint_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorMintExecuteMsg) {
     let msg = ExecuteMsg::MirrorMintExecuteMsg(mirror_msg.clone());
@@ -181,11 +184,7 @@ fn assert_query_msg<T: DeserializeOwned + Debug + PartialEq>(
 
 fn assert_intantiate(deps: DepsMut, info: MessageInfo) {
     let msg = InstantiateMsg {
-        mirror_token_contract: MOCK_MIRROR_TOKEN_ADDR.to_string(),
-        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
-        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
-        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
-        mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
         operators: None,
     };
     let res = instantiate(deps, mock_env(), info, msg).unwrap();
@@ -204,17 +203,6 @@ fn test_instantiate() {
     assert_intantiate(deps.as_mut(), info);
 
     // Verify that we can query our contract's config.
-    let msg = QueryMsg::Config {};
-    assert_query_msg(
-        deps.as_ref(),
-        msg,
-        ConfigResponse {
-            mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
-            mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
-            mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
-            mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
-        },
-    );
     let contract = ADOContract::default();
     assert_eq!(
         1,
@@ -233,6 +221,37 @@ fn test_instantiate() {
             .load(deps.as_mut().storage, MOCK_MIRROR_TOKEN_ADDR)
             .unwrap()
     );
+
+    assert_eq!(
+        MOCK_MIRROR_MINT_ADDR,
+        contract
+            .get_cached_address(deps.as_ref().storage, MIRROR_MINT)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_MIRROR_STAKING_ADDR,
+        contract
+            .get_cached_address(deps.as_ref().storage, MIRROR_STAKING)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_MIRROR_GOV_ADDR,
+        contract
+            .get_cached_address(deps.as_ref().storage, MIRROR_GOV)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_MIRROR_LOCK_ADDR,
+        contract
+            .get_cached_address(deps.as_ref().storage, MIRROR_LOCK)
+            .unwrap()
+    );
+    assert_eq!(
+        MOCK_MIRROR_TOKEN_ADDR,
+        contract
+            .get_cached_address(deps.as_ref().storage, MIRROR_MIR)
+            .unwrap()
+    );
 }
 
 #[test]
@@ -241,11 +260,7 @@ fn test_instantiate_with_operator() {
     let info = mock_info("creator", &[]);
     let operator = mock_info("operator", &[]);
     let msg = InstantiateMsg {
-        mirror_token_contract: MOCK_MIRROR_TOKEN_ADDR.to_string(),
-        mirror_mint_contract: MOCK_MIRROR_MINT_ADDR.to_string(),
-        mirror_staking_contract: MOCK_MIRROR_STAKING_ADDR.to_string(),
-        mirror_gov_contract: MOCK_MIRROR_GOV_ADDR.to_string(),
-        mirror_lock_contract: MOCK_MIRROR_LOCK_ADDR.to_string(),
+        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
         operators: Some(vec![operator.sender.to_string()]),
     };
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -866,39 +881,6 @@ fn test_mirror_cw20_non_authorized_user() {
     });
     let res_err = execute(deps.as_mut(), mock_env(), mock_info(TEST_TOKEN, &[]), msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res_err);
-}
-
-#[test]
-fn test_update_config() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
-    assert_intantiate(deps.as_mut(), info.clone());
-
-    let mirror_mint_contract = "new_mint".to_string();
-    let mirror_staking_contract = "new_stake".to_string();
-    let mirror_gov_contract = "new_gov".to_string();
-    let mirror_lock_contract = "new_lock".to_string();
-
-    let msg = ExecuteMsg::UpdateConfig {
-        mirror_mint_contract: Some(mirror_mint_contract.clone()),
-        mirror_staking_contract: Some(mirror_staking_contract.clone()),
-        mirror_gov_contract: Some(mirror_gov_contract.clone()),
-        mirror_lock_contract: Some(mirror_lock_contract.clone()),
-    };
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    // Verify that config was updated.
-    let msg = QueryMsg::Config {};
-    assert_query_msg(
-        deps.as_ref(),
-        msg,
-        ConfigResponse {
-            mirror_mint_contract,
-            mirror_staking_contract,
-            mirror_gov_contract,
-            mirror_lock_contract,
-        },
-    );
 }
 
 #[test]

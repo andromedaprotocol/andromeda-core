@@ -5,9 +5,8 @@ use crate::{
     },
 };
 use ado_base::state::ADOContract;
-use andromeda_protocol::{
-    factory::{AddressResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    modules::ModuleDefinition,
+use andromeda_protocol::factory::{
+    AddressResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
@@ -67,11 +66,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Create {
-            symbol,
-            name,
-            modules,
-        } => create(deps, env, info, name, symbol, modules),
+        ExecuteMsg::Create { symbol, name } => create(deps, env, info, name, symbol),
         ExecuteMsg::UpdateAddress {
             symbol,
             new_address,
@@ -92,7 +87,6 @@ pub fn create(
     _info: MessageInfo,
     _name: String,
     symbol: String,
-    _modules: Vec<ModuleDefinition>,
 ) -> Result<Response, ContractError> {
     //let config = read_config(deps.storage)?;
 
@@ -266,7 +260,6 @@ mod tests {
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
-        Addr,
     };
 
     //static TOKEN_CODE_ID: u64 = 0;
@@ -368,10 +361,14 @@ mod tests {
         let env = mock_env();
         let info = mock_info(creator.as_str(), &[]);
 
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner))
-            .unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(&owner, &[]),
+            InstantiateMsg {},
+        )
+        .unwrap();
+
         SYM_ADDRESS
             .save(
                 deps.as_mut().storage,
@@ -414,10 +411,13 @@ mod tests {
         let env = mock_env();
         let info = mock_info(owner.as_str(), &[]);
 
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner))
-            .unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(&owner, &[]),
+            InstantiateMsg {},
+        )
+        .unwrap();
 
         let msg = ExecuteMsg::UpdateCodeId {
             code_id_key: "address_list".to_string(),

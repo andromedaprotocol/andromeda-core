@@ -1,7 +1,5 @@
-use crate::{modules::common::calculate_fee, rates::Rate};
 use common::{
     ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
     mission::AndrAddress,
 };
 use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event};
@@ -24,8 +22,6 @@ pub struct InstantiateMsg {
     pub minter: AndrAddress,
     ///The attached Andromeda modules
     pub modules: Option<Vec<Module>>,
-    /// The primitive contract address used to retrieve contract addresses.
-    pub primitive_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -44,17 +40,6 @@ impl TransferAgreement {
             to_address,
             amount: vec![self.amount.clone()],
         }
-    }
-    /// Generates a `BankMsg` for a given `Rate` to a given address
-    pub fn generate_fee_payment(
-        &self,
-        to_address: String,
-        rate: Rate,
-    ) -> Result<BankMsg, ContractError> {
-        Ok(BankMsg::Send {
-            to_address,
-            amount: vec![calculate_fee(rate, &self.amount)?],
-        })
     }
     /// Generates an event related to the agreed transfer of a token
     pub fn generate_event(self) -> Event {

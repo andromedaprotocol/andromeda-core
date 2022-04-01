@@ -1,6 +1,6 @@
 use crate::state::ADOContract;
 use common::{
-    ado_base::{AndromedaMsg, InstantiateMsg},
+    ado_base::{AndromedaMsg, ExecuteMsg, InstantiateMsg},
     error::ContractError,
     parse_message, require,
 };
@@ -13,7 +13,8 @@ impl<'a> ADOContract<'a> {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
-        api: &dyn Api,
+        #[cfg(feature = "primitive")] api: &dyn Api,
+        #[cfg(not(feature = "primitive"))] _api: &dyn Api,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
@@ -37,6 +38,7 @@ impl<'a> ADOContract<'a> {
         Ok(Response::new().add_attributes(attributes))
     }
 
+    #[allow(unreachable_patterns)]
     pub fn execute<E: DeserializeOwned>(
         &self,
         deps: DepsMut,
@@ -47,7 +49,10 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         match msg {
             AndromedaMsg::Receive(data) => {
-                require(!self.is_nested(&data), ContractError::NestedAndromedaMsg {})?;
+                require(
+                    !self.is_nested::<ExecuteMsg>(&data),
+                    ContractError::NestedAndromedaMsg {},
+                )?;
                 let received: E = parse_message(&data)?;
                 (execute_function)(deps, env, info, received)
             }
@@ -58,42 +63,32 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::UpdateMissionContract { address } => {
                 self.execute_update_mission_contract(deps, info, address)
             }
+            #[cfg(feature = "withdraw")]
             AndromedaMsg::Withdraw {
                 recipient,
                 tokens_to_withdraw,
-            } => {
-                #[cfg(feature = "withdraw")]
-                return self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw);
-
-                #[cfg(not(feature = "withdraw"))]
-                return Err(ContractError::UnsupportedOperation {});
-            }
+            } => self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
+            #[cfg(feature = "modules")]
             AndromedaMsg::RegisterModule { module } => {
-                #[cfg(feature = "modules")]
-                return self.execute_register_module(
-                    deps.storage,
-                    info.sender.as_str(),
-                    module,
-                    true,
-                );
-                #[cfg(not(feature = "modules"))]
-                return Err(ContractError::UnsupportedOperation {});
+                self.execute_register_module(deps.storage, info.sender.as_str(), module, true)
             }
-
+            #[cfg(feature = "modules")]
             AndromedaMsg::DeregisterModule { module_idx } => {
-                #[cfg(feature = "modules")]
-                return self.execute_deregister_module(deps, info, module_idx);
-
-                #[cfg(not(feature = "modules"))]
-                return Err(ContractError::UnsupportedOperation {});
+                self.execute_deregister_module(deps, info, module_idx)
             }
+            #[cfg(feature = "modules")]
             AndromedaMsg::AlterModule { module_idx, module } => {
-                #[cfg(feature = "modules")]
-                return self.execute_alter_module(deps, info, module_idx, module);
-
-                #[cfg(not(feature = "modules"))]
-                return Err(ContractError::UnsupportedOperation {});
+                self.execute_alter_module(deps, info, module_idx, module)
             }
+            #[cfg(feature = "primitive")]
+            AndromedaMsg::RefreshAddress { contract } => {
+                self.execute_refresh_address(deps, contract)
+            }
+            #[cfg(feature = "primitive")]
+            AndromedaMsg::RefreshAddresses { start_after, limit } => {
+                self.execute_refresh_addresses(deps, start_after, limit)
+            }
+            _ => Err(ContractError::UnsupportedOperation {}),
         }
     }
 }
