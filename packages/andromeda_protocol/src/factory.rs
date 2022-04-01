@@ -1,4 +1,3 @@
-use crate::modules::ModuleDefinition;
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -14,7 +13,6 @@ pub enum ExecuteMsg {
     Create {
         name: String,
         symbol: String,
-        modules: Vec<ModuleDefinition>,
     },
     UpdateCodeId {
         code_id_key: String,

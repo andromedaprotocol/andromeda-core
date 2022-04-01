@@ -7,11 +7,7 @@ use cw721_base::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{modules::common::calculate_fee, rates::Rate};
-use common::{
-    ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
-};
+use common::ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -56,17 +52,6 @@ impl TransferAgreement {
             to_address,
             amount: vec![self.amount.clone()],
         }
-    }
-    /// Generates a `BankMsg` for a given `Rate` to a given address
-    pub fn generate_fee_payment(
-        &self,
-        to_address: String,
-        rate: Rate,
-    ) -> Result<BankMsg, ContractError> {
-        Ok(BankMsg::Send {
-            to_address,
-            amount: vec![calculate_fee(rate, &self.amount)?],
-        })
     }
     /// Generates an event related to the agreed transfer of a token
     pub fn generate_event(self) -> Event {

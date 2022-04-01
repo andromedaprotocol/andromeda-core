@@ -10,7 +10,7 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 withdraw = ["terraswap", "cw20"]
-modules = ["instantiate"]
+modules = []
 instantiate = ["primitive"]
 primitive = []
 

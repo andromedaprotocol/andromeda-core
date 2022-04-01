@@ -3,9 +3,8 @@ use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::modules::address_list::AddressListModule;
 use common::{
-    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     merge_coins, require,
 };
@@ -123,8 +122,8 @@ impl Escrow {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    /// An optional address list module to restrict usage of the contract
-    pub address_list: Option<AddressListModule>,
+    /// An optional vector of modules
+    pub modules: Option<Vec<Module>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -135,10 +134,6 @@ pub enum ExecuteMsg {
     HoldFunds {
         condition: Option<EscrowCondition>,
         recipient: Option<Recipient>,
-    },
-    /// Update the optional address list module
-    UpdateAddressList {
-        address_list: Option<AddressListModule>,
     },
     /// Release funds all held in Escrow for the given recipient
     ReleaseFunds {
@@ -164,8 +159,6 @@ pub enum QueryMsg {
         owner: String,
         recipient: String,
     },
-    /// The current config of the contract
-    GetTimelockConfig {},
     /// Queries the funds for the given recipient.
     GetLockedFundsForRecipient {
         recipient: String,
@@ -184,13 +177,6 @@ pub struct GetLockedFundsResponse {
 #[serde(rename_all = "snake_case")]
 pub struct GetLockedFundsForRecipientResponse {
     pub funds: Vec<Escrow>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct GetTimelockConfigResponse {
-    pub address_list: Option<AddressListModule>,
-    pub address_list_contract: Option<String>,
 }
 
 #[cfg(test)]

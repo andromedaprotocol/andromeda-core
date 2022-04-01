@@ -13,8 +13,8 @@ impl<'a> ADOContract<'a> {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
-        #[cfg(any(feature = "modules", feature = "primitive"))] api: &dyn Api,
-        #[cfg(not(any(feature = "modules", feature = "primitive")))] _api: &dyn Api,
+        #[cfg(feature = "primitive")] api: &dyn Api,
+        #[cfg(not(feature = "primitive"))] _api: &dyn Api,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
