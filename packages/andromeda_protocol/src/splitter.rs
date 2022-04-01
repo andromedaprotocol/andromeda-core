@@ -1,6 +1,5 @@
-use crate::modules::address_list::AddressListModule;
 use common::{
-    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     require,
 };
@@ -21,16 +20,14 @@ pub struct Splitter {
     pub recipients: Vec<AddressPercent>,
     /// Whether or not the contract is currently locked. This restricts updating any config related fields.
     pub locked: bool,
-    /// An optional address list to restrict access to the `Splitter` contract.
-    pub address_list: Option<AddressListModule>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    /// The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
+    /// The vector of recipients for the contract. Anytime a `Send` execute message is
+    /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
-    /// An optional address list to restrict access to the `Splitter` contract.
-    pub address_list: Option<AddressListModule>,
+    pub modules: Option<Vec<Module>>,
 }
 
 impl InstantiateMsg {
@@ -50,10 +47,6 @@ pub enum ExecuteMsg {
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock {
         lock: bool,
-    },
-    /// Update the optional address list module. Only executable by the contract owner when the contract is not locked.
-    UpdateAddressList {
-        address_list: Option<AddressListModule>,
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
@@ -75,8 +68,6 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 pub struct GetSplitterConfigResponse {
     pub config: Splitter,
-    /// The address of the address list contract (if it exists)
-    pub address_list_contract: Option<String>,
 }
 
 /// Ensures that a given list of recipients for a `splitter` contract is valid:

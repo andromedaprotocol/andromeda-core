@@ -155,9 +155,30 @@ pub fn merge_coins(coins: &mut Vec<Coin>, coins_to_add: Vec<Coin>) {
     }
 }
 
+/// Deducts a given amount from a vector of `Coin` structs. Alters the given vector, does not return a new vector.
+///
+/// ## Arguments
+/// * `coins` - The vector of `Coin` structs from which to deduct the given funds
+/// * `funds` - The amount to deduct
+pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<bool, ContractError> {
+    let coin_amount = coins.iter_mut().find(|c| c.denom.eq(&funds.denom));
+
+    match coin_amount {
+        Some(c) => {
+            require(
+                c.amount >= funds.amount,
+                ContractError::InsufficientFunds {},
+            )?;
+            c.amount -= funds.amount;
+            Ok(true)
+        }
+        None => Err(ContractError::InsufficientFunds {}),
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use cosmwasm_std::{coin, to_binary, WasmMsg};
+    use cosmwasm_std::{coin, to_binary, Uint128, WasmMsg};
     use cw20::Expiration;
 
     use super::*;
@@ -244,5 +265,24 @@ mod test {
         );
 
         assert_eq!(3, merged_msgs.len());
+    }
+
+    #[test]
+    fn test_deduct_funds() {
+        let mut funds: Vec<Coin> = vec![coin(100, "uluna")];
+
+        deduct_funds(&mut funds, &coin(10, "uluna")).unwrap();
+
+        assert_eq!(Uint128::from(90_u64), funds[0].amount);
+        assert_eq!(String::from("uluna"), funds[0].denom);
+
+        let mut funds: Vec<Coin> = vec![Coin {
+            denom: String::from("uluna"),
+            amount: Uint128::from(5_u64),
+        }];
+
+        let e = deduct_funds(&mut funds, &coin(10, "uluna")).unwrap_err();
+
+        assert_eq!(ContractError::InsufficientFunds {}, e);
     }
 }

@@ -5,9 +5,8 @@ use crate::{
     },
 };
 use ado_base::state::ADOContract;
-use andromeda_protocol::{
-    factory::{AddressResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    modules::ModuleDefinition,
+use andromeda_protocol::factory::{
+    AddressResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
@@ -67,11 +66,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Create {
-            symbol,
-            name,
-            modules,
-        } => create(deps, env, info, name, symbol, modules),
+        ExecuteMsg::Create { symbol, name } => create(deps, env, info, name, symbol),
         ExecuteMsg::UpdateAddress {
             symbol,
             new_address,
@@ -92,7 +87,6 @@ pub fn create(
     _info: MessageInfo,
     _name: String,
     symbol: String,
-    _modules: Vec<ModuleDefinition>,
 ) -> Result<Response, ContractError> {
     //let config = read_config(deps.storage)?;
 

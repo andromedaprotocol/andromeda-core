@@ -8,8 +8,8 @@ use andromeda_protocol::{
     wrapped_cw721::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, QueryMsg},
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
-    response::get_reply_address,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    mission::AndrAddress, require, response::get_reply_address,
 };
 use cosmwasm_std::{
     entry_point, from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
@@ -39,7 +39,7 @@ pub fn instantiate(
             ado_type: "wrapped_cw721".to_string(),
             operators: None,
             modules: None,
-            primitive_contract: Some(msg.primitive_contract.clone()),
+            primitive_contract: Some(msg.primitive_contract),
         },
     )?;
     match msg.cw721_instantiate_type {
@@ -49,8 +49,9 @@ pub fn instantiate(
                 name: specification.name,
                 symbol: specification.symbol,
                 modules: specification.modules,
-                minter: env.contract.address.to_string(),
-                primitive_contract: msg.primitive_contract,
+                minter: AndrAddress {
+                    identifier: env.contract.address.to_string(),
+                },
             };
             let msg = contract.generate_instantiate_msg(
                 deps.storage,
@@ -322,8 +323,9 @@ mod tests {
             name: "name".to_string(),
             symbol: "symbol".to_string(),
             modules: None,
-            minter: mock_env().contract.address.to_string(),
-            primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+            minter: AndrAddress {
+                identifier: mock_env().contract.address.to_string(),
+            },
         };
         let msg: SubMsg = SubMsg {
             id: 1,

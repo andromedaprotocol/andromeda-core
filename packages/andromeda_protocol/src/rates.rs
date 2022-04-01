@@ -11,7 +11,8 @@ use common::{
     require, Funds,
 };
 use cosmwasm_std::{
-    BankMsg, Coin, CosmosMsg, Decimal, QuerierWrapper, QueryRequest, SubMsg, Uint128, WasmQuery,
+    BankMsg, Coin, CosmosMsg, Decimal, Fraction, QuerierWrapper, QueryRequest, SubMsg, Uint128,
+    WasmQuery,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -195,6 +196,39 @@ pub fn on_required_payments(
     Ok(res)
 }
 
+/// Calculates a fee amount given a `Rate` and payment amount.
+///
+/// ## Arguments
+/// * `fee_rate` - The `Rate` of the fee to be paid
+/// * `payment` - The amount used to calculate the fee
+///
+/// Returns the fee amount in a `Coin` struct.
+pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractError> {
+    match fee_rate {
+        Rate::Flat(rate) => Ok(Coin::new(rate.amount.u128(), rate.denom)),
+        Rate::Percent(PercentRate { percent }) => {
+            // [COM-03] Make sure that fee_rate between 0 and 100.
+            require(
+                // No need for rate >=0 due to type limits (Question: Should add or remove?)
+                percent <= Decimal::one() && !percent.is_zero(),
+                ContractError::InvalidRate {},
+            )
+            .unwrap();
+            let mut fee_amount = payment.amount * percent;
+
+            // Always round any remainder up and prioritise the fee receiver.
+            // Inverse of percent will always exist.
+            let reversed_fee = fee_amount * percent.inv().unwrap();
+            if payment.amount > reversed_fee {
+                // [COM-1] Added checked add to fee_amount rather than direct increment
+                fee_amount = fee_amount.checked_add(1u128.into())?;
+            }
+            Ok(Coin::new(fee_amount.u128(), payment.denom.clone()))
+        }
+        Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT};
@@ -221,5 +255,28 @@ mod tests {
         let validated_rate = rate.validate(&deps.as_mut().querier).unwrap();
         let expected_rate = Rate::Flat(coin(1u128, "uusd"));
         assert_eq!(expected_rate, validated_rate);
+    }
+
+    #[test]
+    fn test_calculate_fee() {
+        let payment = coin(101, "uluna");
+        let expected = Ok(coin(5, "uluna"));
+        let fee = Rate::from(Decimal::percent(4));
+
+        let received = calculate_fee(fee, &payment);
+
+        assert_eq!(expected, received);
+
+        assert_eq!(expected, received);
+
+        let payment = coin(125, "uluna");
+        let fee = Rate::Flat(Coin {
+            amount: Uint128::from(5_u128),
+            denom: "uluna".to_string(),
+        });
+
+        let received = calculate_fee(fee, &payment);
+
+        assert_eq!(expected, received);
     }
 }

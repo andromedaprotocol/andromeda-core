@@ -278,6 +278,9 @@ pub enum ContractError {
     #[error("No purchases")]
     NoPurchases {},
 
+    #[error("Cannot mint after sale conducted")]
+    CannotMintAfterSaleConducted {},
+
     #[error("Not implemented")]
     NotImplemented { msg: Option<String> },
 

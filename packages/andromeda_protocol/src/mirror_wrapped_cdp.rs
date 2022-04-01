@@ -11,11 +11,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub mirror_token_contract: String,
-    pub mirror_mint_contract: String,
-    pub mirror_staking_contract: String,
-    pub mirror_gov_contract: String,
-    pub mirror_lock_contract: String,
+    pub primitive_contract: String,
     pub operators: Option<Vec<String>>,
 }
 
@@ -28,12 +24,6 @@ pub enum ExecuteMsg {
     MirrorStakingExecuteMsg(MirrorStakingExecuteMsg),
     MirrorGovExecuteMsg(MirrorGovExecuteMsg),
     MirrorLockExecuteMsg(MirrorLockExecuteMsg),
-    UpdateConfig {
-        mirror_mint_contract: Option<String>,
-        mirror_staking_contract: Option<String>,
-        mirror_gov_contract: Option<String>,
-        mirror_lock_contract: Option<String>,
-    },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -43,7 +33,6 @@ pub struct MigrateMsg {}
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
-    Config {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -52,13 +41,4 @@ pub enum Cw20HookMsg {
     MirrorMintCw20HookMsg(MirrorMintCw20HookMsg),
     MirrorStakingCw20HookMsg(MirrorStakingCw20HookMsg),
     MirrorGovCw20HookMsg(MirrorGovCw20HookMsg),
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct ConfigResponse {
-    pub mirror_mint_contract: String,
-    pub mirror_staking_contract: String,
-    pub mirror_gov_contract: String,
-    pub mirror_lock_contract: String,
 }

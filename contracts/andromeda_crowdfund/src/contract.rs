@@ -1,8 +1,10 @@
-use crate::state::{Config, Purchase, State, CONFIG, PURCHASES, STATE, UNAVAILABLE_TOKENS};
+use crate::state::{
+    Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, SALE_CONDUCTED, STATE,
+};
 use ado_base::ADOContract;
 use andromeda_protocol::{
     crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    cw721::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg},
+    cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
     rates::get_tax_amount,
 };
 use common::{
@@ -34,8 +36,10 @@ pub fn instantiate(
         deps.storage,
         &Config {
             token_address: msg.token_address,
+            can_mint_after_sale: msg.can_mint_after_sale,
         },
     )?;
+    SALE_CONDUCTED.save(deps.storage, &false)?;
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -60,6 +64,7 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
+        ExecuteMsg::Mint(mint_msg) => execute_mint(deps, env, info, mint_msg),
         ExecuteMsg::StartSale {
             expiration,
             price,
@@ -80,6 +85,49 @@ pub fn execute(
         ExecuteMsg::ClaimRefund {} => execute_claim_refund(deps, env, info),
         ExecuteMsg::EndSale { limit } => execute_end_sale(deps, env, limit),
     }
+}
+
+fn execute_mint(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    mint_msg: Box<MintMsg<TokenExtension>>,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    require(
+        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    // Can only mint when no sale is ongoing.
+    require(
+        STATE.may_load(deps.storage)?.is_none(),
+        ContractError::SaleStarted {},
+    )?;
+    let sale_conducted = SALE_CONDUCTED.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
+    require(
+        config.can_mint_after_sale || !sale_conducted,
+        ContractError::CannotMintAfterSaleConducted {},
+    )?;
+    // We allow for owners other than the contract, incase the creator wants to set aside a few
+    // tokens for some other use, say airdrop, team allocation, etc.  Only those which have the
+    // contract as the owner will be available to sell.
+    if mint_msg.owner == env.contract.address {
+        // Mark token as available to purchase in next sale.
+        AVAILABLE_TOKENS.save(deps.storage, &mint_msg.token_id, &true)?;
+    }
+    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let contract_addr =
+        config
+            .token_address
+            .get_address(deps.api, &deps.querier, mission_contract)?;
+    Ok(Response::new()
+        .add_attribute("action", "mint")
+        .add_message(WasmMsg::Execute {
+            contract_addr,
+            msg: encode_binary(&Cw721ExecuteMsg::Mint(mint_msg))?,
+            funds: vec![],
+        }))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -105,8 +153,8 @@ fn execute_start_sale(
         !expiration.is_expired(&env.block),
         ContractError::ExpirationInPast {},
     )?;
+    SALE_CONDUCTED.save(deps.storage, &true)?;
     let state = STATE.may_load(deps.storage)?;
-    // TODO: Remove this once it is possible to reuse this contract.
     require(state.is_none(), ContractError::SaleStarted {})?;
     let max_amount_per_wallet = max_amount_per_wallet.unwrap_or_else(|| Uint128::from(1u128));
     // This is to prevent cloning price.
@@ -124,6 +172,8 @@ fn execute_start_sale(
             recipient,
         },
     )?;
+
+    SALE_CONDUCTED.save(deps.storage, &true)?;
 
     Ok(Response::new()
         .add_attribute("action", "start_sale")
@@ -148,9 +198,6 @@ fn execute_purchase(
         !state.expiration.is_expired(&env.block),
         ContractError::NoOngoingSale {},
     )?;
-    // If the token is in this map, it has been purchased and is therefore unavailable.
-    let token_is_available = !UNAVAILABLE_TOKENS.has(deps.storage, &token_id);
-    require(token_is_available, ContractError::TokenAlreadyPurchased {})?;
 
     let config = CONFIG.load(deps.storage)?;
     let token_owner_res = query_owner_of(
@@ -166,6 +213,11 @@ fn execute_purchase(
         token_owner_res.is_ok() && token_owner_res.unwrap() == env.contract.address,
         ContractError::TokenNotForSale {},
     )?;
+
+    let token_is_available = AVAILABLE_TOKENS.has(deps.storage, &token_id);
+    require(token_is_available, ContractError::TokenAlreadyPurchased {})?;
+
+    AVAILABLE_TOKENS.remove(deps.storage, &token_id);
 
     let mut purchases = PURCHASES
         .may_load(deps.storage, &sender)?
@@ -203,8 +255,6 @@ fn execute_purchase(
         ),
         ContractError::InsufficientFunds {},
     )?;
-
-    UNAVAILABLE_TOKENS.save(deps.storage, &token_id, &false)?;
 
     let purchase = Purchase {
         token_id: token_id.clone(),
@@ -279,6 +329,7 @@ fn issue_refunds_and_burn_tokens(
 ) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    require(limit > 0, ContractError::LimitMustNotBeZero {})?;
     let mut refund_msgs: Vec<CosmosMsg> = vec![];
     // Issue refunds for `limit` number of users.
     let purchases: Vec<Vec<Purchase>> = PURCHASES
@@ -302,6 +353,11 @@ fn issue_refunds_and_burn_tokens(
         env.contract.address.to_string(),
         limit,
     )?;
+
+    if burn_msgs.is_empty() && purchases.is_empty() {
+        // When all tokens have been burned and all purchases have been refunded, the sale is over.
+        STATE.remove(deps.storage);
+    }
 
     Ok(Response::new()
         .add_attribute("action", "issue_refunds_and_burn_tokens")
@@ -331,6 +387,7 @@ fn transfer_tokens_and_send_funds(
                 }],
             )?;
             state.amount_to_send = Uint128::zero();
+            STATE.save(deps.storage, &state)?;
 
             resp = resp.add_submessage(msg);
         }
@@ -344,8 +401,13 @@ fn transfer_tokens_and_send_funds(
             limit,
         )?;
 
-        resp = resp.add_messages(burn_msgs);
-        STATE.save(deps.storage, &state)?;
+        if burn_msgs.is_empty() {
+            // When burn messages are empty, we have finished the sale, which is represented by
+            // having no State.
+            STATE.remove(deps.storage);
+        } else {
+            resp = resp.add_messages(burn_msgs);
+        }
 
         // If we are here then there are no purchases to process so we can exit.
         return Ok(resp.add_attribute("action", "transfer_tokens_and_send_funds"));
@@ -467,7 +529,7 @@ fn process_refund(
 }
 
 fn get_burn_messages(
-    storage: &dyn Storage,
+    storage: &mut dyn Storage,
     querier: &QuerierWrapper,
     api: &dyn Api,
     address: String,
@@ -484,6 +546,8 @@ fn get_burn_messages(
     tokens_to_burn
         .into_iter()
         .map(|token_id| {
+            // Any token that is burnable has been added to this map, and so must be removed.
+            AVAILABLE_TOKENS.remove(storage, &token_id);
             Ok(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: token_address.clone(),
                 funds: vec![],
