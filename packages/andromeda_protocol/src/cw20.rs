@@ -8,7 +8,7 @@ use cw20_base::msg::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use common::ado_base::{modules::Module, AndromedaMsg};
+use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
@@ -19,7 +19,6 @@ pub struct InstantiateMsg {
     pub mint: Option<MinterResponse>,
     pub marketing: Option<InstantiateMarketingInfo>,
     pub modules: Option<Vec<Module>>,
-    pub primitive_contract: String,
 }
 
 impl From<InstantiateMsg> for Cw20InstantiateMsg {
@@ -190,9 +189,12 @@ pub struct MigrateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// Returns the current balance of the given address, 0 if unset.
     /// Return type: BalanceResponse.
-    Balance { address: String },
+    Balance {
+        address: String,
+    },
     /// Returns metadata on the contract - name, decimals, supply, etc.
     /// Return type: TokenInfoResponse.
     TokenInfo {},
@@ -203,7 +205,10 @@ pub enum QueryMsg {
     /// Only with "allowance" extension.
     /// Returns how much spender can use from owner account, 0 if unset.
     /// Return type: AllowanceResponse.
-    Allowance { owner: String, spender: String },
+    Allowance {
+        owner: String,
+        spender: String,
+    },
     /// Only with "enumerable" extension (and "allowances")
     /// Returns all allowances this owner has approved. Supports pagination.
     /// Return type: AllAllowancesResponse.
@@ -252,6 +257,7 @@ impl From<QueryMsg> for Cw20QueryMsg {
             }
             QueryMsg::MarketingInfo {} => Cw20QueryMsg::DownloadLogo {},
             QueryMsg::DownloadLogo {} => Cw20QueryMsg::DownloadLogo {},
+            _ => panic!("Unsupported Msg"),
         }
     }
 }

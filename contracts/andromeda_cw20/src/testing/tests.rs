@@ -1,14 +1,17 @@
-use crate::contract::{execute, instantiate};
+use crate::contract::{execute, instantiate, query};
 use andromeda_protocol::{
-    cw20::{ExecuteMsg, InstantiateMsg},
+    cw20::{ExecuteMsg, InstantiateMsg, QueryMsg},
     receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
-        MOCK_RATES_CONTRACT, MOCK_RECEIPT_CONTRACT,
+        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_CONTRACT,
+        MOCK_RECEIPT_CONTRACT,
     },
 };
 use common::{
-    ado_base::modules::{Module, ADDRESS_LIST, RATES, RECEIPT},
+    ado_base::{
+        modules::{Module, ADDRESS_LIST, RATES, RECEIPT},
+        AndromedaQuery,
+    },
     error::ContractError,
     mission::AndrAddress,
 };
@@ -18,6 +21,32 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;
+
+#[test]
+fn test_andr_query() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("owner", &[]);
+
+    let instantiate_msg = InstantiateMsg {
+        name: "Name".into(),
+        symbol: "Symbol".into(),
+        decimals: 6,
+        initial_balances: vec![Cw20Coin {
+            amount: 1000u128.into(),
+            address: "sender".to_string(),
+        }],
+        mint: None,
+        marketing: None,
+        modules: None,
+    };
+
+    let _res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
+
+    let msg = QueryMsg::AndrQuery(AndromedaQuery::Owner {});
+    let res = query(deps.as_ref(), mock_env(), msg);
+    // Test that the query is hooked up correctly.
+    assert!(res.is_ok())
+}
 
 /*#
  *
@@ -176,7 +205,6 @@ fn test_transfer() {
         mint: None,
         marketing: None,
         modules: Some(modules),
-        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
@@ -304,7 +332,6 @@ fn test_send() {
         mint: None,
         marketing: None,
         modules: Some(modules),
-        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
