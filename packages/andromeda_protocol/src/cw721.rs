@@ -1,17 +1,13 @@
-use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event};
-use cw721::Expiration;
-use cw721_base::{
-    ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MintMsg,
-    QueryMsg as Cw721QueryMsg,
-};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-use crate::{modules::common::calculate_fee, rates::Rate};
 use common::{
     ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
+    mission::AndrAddress,
 };
+use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event};
+use cw721::Expiration;
+pub use cw721_base::MintMsg;
+use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -23,21 +19,9 @@ pub struct InstantiateMsg {
     /// The minter is the only one who can create new NFTs.
     /// This is designed for a base NFT that is controlled by an external program
     /// or contract. You will likely replace this with custom logic in custom NFTs
-    pub minter: String,
+    pub minter: AndrAddress,
     ///The attached Andromeda modules
     pub modules: Option<Vec<Module>>,
-    /// The primitive contract address used to retrieve contract addresses.
-    pub primitive_contract: String,
-}
-
-impl From<InstantiateMsg> for Cw721InstantiateMsg {
-    fn from(msg: InstantiateMsg) -> Self {
-        Self {
-            name: msg.name,
-            symbol: msg.symbol,
-            minter: msg.minter,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -56,17 +40,6 @@ impl TransferAgreement {
             to_address,
             amount: vec![self.amount.clone()],
         }
-    }
-    /// Generates a `BankMsg` for a given `Rate` to a given address
-    pub fn generate_fee_payment(
-        &self,
-        to_address: String,
-        rate: Rate,
-    ) -> Result<BankMsg, ContractError> {
-        Ok(BankMsg::Send {
-            to_address,
-            amount: vec![calculate_fee(rate, &self.amount)?],
-        })
     }
     /// Generates an event related to the agreed transfer of a token
     pub fn generate_event(self) -> Event {

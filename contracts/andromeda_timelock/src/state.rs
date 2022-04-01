@@ -1,18 +1,9 @@
-use andromeda_protocol::{modules::address_list::AddressListModule, timelock::Escrow};
+use andromeda_protocol::timelock::Escrow;
 use cosmwasm_std::{Order, Storage};
-use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, MultiIndex};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-pub const STATE: Item<State> = Item::new("state");
+use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 
 const DEFAULT_LIMIT: u32 = 10u32;
 const MAX_LIMIT: u32 = 30u32;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct State {
-    pub address_list: Option<AddressListModule>,
-}
 
 pub struct EscrowIndexes<'a> {
     /// (recipient, encoded(vec![owner, recipient]))
