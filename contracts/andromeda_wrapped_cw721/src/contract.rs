@@ -39,7 +39,7 @@ pub fn instantiate(
             ado_type: "wrapped_cw721".to_string(),
             operators: None,
             modules: None,
-            primitive_contract: Some(msg.primitive_contract.clone()),
+            primitive_contract: Some(msg.primitive_contract),
         },
     )?;
     match msg.cw721_instantiate_type {
@@ -50,7 +50,6 @@ pub fn instantiate(
                 symbol: specification.symbol,
                 modules: specification.modules,
                 minter: env.contract.address.to_string(),
-                primitive_contract: msg.primitive_contract,
             };
             let msg = contract.generate_instantiate_msg(
                 deps.storage,
@@ -323,7 +322,6 @@ mod tests {
             symbol: "symbol".to_string(),
             modules: None,
             minter: mock_env().contract.address.to_string(),
-            primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
         };
         let msg: SubMsg = SubMsg {
             id: 1,

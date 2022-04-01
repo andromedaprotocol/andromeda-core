@@ -9,6 +9,7 @@ use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::{Module, ADDRESS_LIST, OFFERS, RATES, RECEIPT},
+        AndromedaQuery,
     },
     error::ContractError,
     mission::AndrAddress,
@@ -22,7 +23,7 @@ use andromeda_protocol::{
     receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
         bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
-        MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
+        MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
     },
 };
 use cw721::{NftInfoResponse, OwnerOfResponse};
@@ -39,7 +40,6 @@ fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
         symbol: SYMBOL.to_string(),
         minter: MINTER.to_string(),
         modules,
-        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
     };
 
     instantiate(deps, env, info, inst_msg).unwrap();
@@ -54,6 +54,17 @@ fn mint_token(deps: DepsMut, env: Env, token_id: String, owner: String, extensio
         extension,
     };
     execute(deps, env, info, ExecuteMsg::Mint(Box::new(mint_msg))).unwrap();
+}
+
+#[test]
+fn test_andr_query() {
+    let mut deps = mock_dependencies(&[]);
+    init_setup(deps.as_mut(), mock_env(), None);
+
+    let msg = QueryMsg::AndrQuery(AndromedaQuery::Owner {});
+    let res = query(deps.as_ref(), mock_env(), msg);
+    // Test that the query is hooked up correctly.
+    assert!(res.is_ok())
 }
 
 /*

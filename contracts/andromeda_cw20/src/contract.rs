@@ -40,7 +40,7 @@ pub fn instantiate(
             ado_type: "cw20".to_string(),
             operators: None,
             modules: msg.modules.clone(),
-            primitive_contract: Some(msg.primitive_contract.clone()),
+            primitive_contract: None,
         },
     )?;
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;
@@ -263,5 +263,8 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    Ok(query_cw20(deps, env, msg.into())?)
+    match msg {
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
+        _ => Ok(query_cw20(deps, env, msg.into())?),
+    }
 }

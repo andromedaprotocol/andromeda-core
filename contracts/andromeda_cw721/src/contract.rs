@@ -39,7 +39,7 @@ pub fn instantiate(
             ado_type: "cw721".to_string(),
             operators: None,
             modules: msg.modules.clone(),
-            primitive_contract: Some(msg.primitive_contract.clone()),
+            primitive_contract: None,
         },
     )?;
 
@@ -287,6 +287,7 @@ fn execute_burn(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
     }
 }

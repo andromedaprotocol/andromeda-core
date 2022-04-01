@@ -22,8 +22,6 @@ pub struct InstantiateMsg {
     pub minter: String,
     ///The attached Andromeda modules
     pub modules: Option<Vec<Module>>,
-    /// The primitive contract address used to retrieve contract addresses.
-    pub primitive_contract: String,
 }
 
 impl From<InstantiateMsg> for Cw721InstantiateMsg {
