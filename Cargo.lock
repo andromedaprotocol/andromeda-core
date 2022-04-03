@@ -122,6 +122,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-cw20-staking"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-protocol",
+ "common",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw20 0.9.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-cw721"
 version = "0.1.0"
 dependencies = [
