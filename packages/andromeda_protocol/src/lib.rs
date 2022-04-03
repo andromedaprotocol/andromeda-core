@@ -6,6 +6,7 @@ pub mod auction;
 pub mod common;
 pub mod crowdfund;
 pub mod cw20;
+pub mod cw20_staking;
 pub mod cw721;
 pub mod cw721_offers;
 pub mod factory;
