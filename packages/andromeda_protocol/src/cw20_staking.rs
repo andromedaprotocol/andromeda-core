@@ -3,7 +3,7 @@ use common::{
     mission::AndrAddress,
 };
 use cw20::Cw20ReceiveMsg;
-use cw_asset::{AssetInfoUnchecked, AssetListUnchecked};
+use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -27,14 +27,22 @@ pub enum ExecuteMsg {
     },
     /// Withdraw specified assets, or all of them if not specified.
     WithdrawTokens {
-        assets: Option<AssetListUnchecked>,
+        asset: Option<AssetUnchecked>,
+    },
+    /// Updates the global reward index for the specified assets or all of the specified ones if
+    /// None.
+    UpdateGlobalRewardIndex {
+        asset_infos: Option<Vec<AssetInfoUnchecked>>,
     },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub enum Cw20HookMsg {
-    /// Stake the sent tokens. Address must match the `staking_token` given in instantiation.
+    /// Stake the sent tokens. Address must match the `staking_token` given in instantiation. Upon
+    /// deposit the user's pending reward and user index are updated.
     StakeTokens {},
+    /// Updates the global reward index on deposit of whitelisted cw20 tokens.
+    UpdateGlobalRewardIndex {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]

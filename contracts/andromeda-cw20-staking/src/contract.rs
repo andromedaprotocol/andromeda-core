@@ -1,12 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response,
-    StdResult, Uint128,
+    from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
+    Response, StdResult, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
-use cw_asset::AssetInfo;
+use cw_asset::{Asset, AssetInfo, AssetUnchecked};
+use std::cmp;
 
 use crate::state::{Config, State, CONFIG, STAKERS, STATE};
 use ado_base::ADOContract;
@@ -76,7 +77,8 @@ pub fn execute(
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
         ExecuteMsg::AddRewardToken { asset_info } => panic!(),
-        ExecuteMsg::WithdrawTokens { assets } => panic!(),
+        ExecuteMsg::UpdateGlobalRewardIndex { asset_infos } => panic!(),
+        ExecuteMsg::WithdrawTokens { asset } => execute_withdraw_tokens(deps, env, info, asset),
     }
 }
 
@@ -90,6 +92,7 @@ fn receive_cw20(
         Cw20HookMsg::StakeTokens {} => {
             execute_stake_tokens(deps, env, msg.sender, info.sender.to_string(), msg.amount)
         }
+        Cw20HookMsg::UpdateGlobalRewardIndex {} => panic!(),
     }
 }
 
@@ -121,15 +124,13 @@ fn execute_stake_tokens(
     let mut staker = STAKERS.may_load(deps.storage, &sender)?.unwrap_or_default();
 
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
-    let reward_tokens = [config.additional_reward_tokens, vec![staking_token]].concat();
 
     // Balance already increased, so subtract deposit amount
-    let total_balance = query_token_balances(
-        &deps.querier,
-        reward_tokens,
-        env.contract.address.to_string(),
-    )?
-    .checked_sub(amount)?;
+    let total_balance = staking_token
+        .query_balance(&deps.querier, env.contract.address.to_string())?
+        .checked_sub(amount)?;
+
+    // update the reward indexes
 
     let share = if total_balance.is_zero() || state.total_share.is_zero() {
         amount
@@ -148,6 +149,33 @@ fn execute_stake_tokens(
         .add_attribute("sender", sender)
         .add_attribute("share", share)
         .add_attribute("amount", amount))
+}
+
+fn execute_withdraw_tokens(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    asset: Option<AssetUnchecked>,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    let config = CONFIG.load(deps.storage)?;
+
+    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let staking_token_address =
+        config
+            .staking_token
+            .get_address(deps.api, &deps.querier, mission_contract)?;
+
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
+    let reward_tokens = [config.additional_reward_tokens, vec![staking_token]].concat();
+
+    let mut staker = STAKERS.may_load(deps.storage, &info.sender.as_str())?;
+    let mut state = STATE.load(deps.storage)?;
+
+    require(staker.is_some(), ContractError::WithdrawalIsEmpty {})?;
+    let staker = staker.unwrap();
+
+    Ok(Response::new())
 }
 
 fn query_token_balances(
