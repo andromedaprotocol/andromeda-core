@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
+    from_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
     Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -21,7 +21,8 @@ use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use terraswap::asset::AssetInfo;
+use cw_asset::AssetInfo;
+use terraswap::asset::AssetInfo as TerraSwapAssetInfo;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_mirror_wrapped_cdp";
@@ -59,10 +60,8 @@ pub fn instantiate(
     // We will need to be able to withdraw the MIR token.
     contract.add_withdrawable_token(
         deps.storage,
-        &mirror_token_contract.clone(),
-        &AssetInfo::Token {
-            contract_addr: mirror_token_contract,
-        },
+        &mirror_token_contract,
+        &AssetInfo::Cw20(deps.api.addr_validate(&mirror_token_contract)?),
     )?;
 
     Ok(resp)
@@ -112,8 +111,8 @@ fn execute_mirror_mint_msg(
         } => {
             handle_open_position_withdrawable_tokens(
                 deps.storage,
-                collateral.info,
-                asset_info,
+                ts_asset_info_to_cw_asset_info(collateral.info),
+                ts_asset_info_to_cw_asset_info(asset_info),
                 short_params.is_some(),
             )?;
 
@@ -150,10 +149,8 @@ fn execute_mirror_staking_msg(
         } => {
             ADOContract::default().add_withdrawable_token(
                 deps.storage,
-                &asset_token.clone(),
-                &AssetInfo::Token {
-                    contract_addr: asset_token,
-                },
+                &asset_token,
+                &AssetInfo::Cw20(deps.api.addr_validate(&asset_token)?),
             )?;
 
             execute_mirror_msg(
@@ -187,9 +184,7 @@ fn execute_mirror_lock_msg(
             ADOContract::default().add_withdrawable_token(
                 deps.storage,
                 "uusd",
-                &AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                },
+                &AssetInfo::native("uusd"),
             )?;
             execute_mirror_msg(
                 deps,
@@ -211,8 +206,8 @@ fn execute_mirror_lock_msg(
 
 fn get_asset_name(asset_info: &AssetInfo) -> String {
     match asset_info {
-        AssetInfo::Token { contract_addr } => contract_addr.clone(),
-        AssetInfo::NativeToken { denom } => denom.clone(),
+        AssetInfo::Cw20(contract_addr) => contract_addr.to_string(),
+        AssetInfo::Native(denom) => denom.clone(),
     }
 }
 
@@ -233,9 +228,7 @@ fn handle_open_position_withdrawable_tokens(
         ADOContract::default().add_withdrawable_token(
             storage,
             "uusd",
-            &AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
+            &AssetInfo::native("uusd"),
         )?;
     } else {
         // In this case the minted assets will be immediately sent back to this contract, so
@@ -300,10 +293,8 @@ fn execute_mirror_mint_cw20_msg(
         } => {
             handle_open_position_withdrawable_tokens(
                 deps.storage,
-                AssetInfo::Token {
-                    contract_addr: token_address.clone(),
-                },
-                asset_info,
+                AssetInfo::Cw20(deps.api.addr_validate(&token_address)?),
+                ts_asset_info_to_cw_asset_info(asset_info),
                 short_params.is_some(),
             )?;
             execute_mirror_cw20_msg(
@@ -384,5 +375,16 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
+    }
+}
+
+/// Converts TerraSwapAssetInfo to cw_asset::AssetInfo. Can't use From as these are both external
+/// types.
+fn ts_asset_info_to_cw_asset_info(asset_info: TerraSwapAssetInfo) -> AssetInfo {
+    match asset_info {
+        TerraSwapAssetInfo::NativeToken { denom } => AssetInfo::Native(denom),
+        TerraSwapAssetInfo::Token { contract_addr } => {
+            AssetInfo::Cw20(Addr::unchecked(contract_addr))
+        }
     }
 }

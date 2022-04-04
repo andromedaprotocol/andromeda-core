@@ -1,9 +1,9 @@
 use crate::state::SWAPPER_IMPL_ADDR;
 use ado_base::ADOContract;
 use andromeda_protocol::swapper::{
-    query_balance, query_token_balance, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-    InstantiateType, MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg,
-    SwapperImplExecuteMsg, SwapperMsg,
+    query_balance, query_token_balance, Cw20HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType,
+    MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,
+    SwapperMsg,
 };
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
@@ -18,6 +18,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_asset::AssetInfo;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_swapper";
@@ -119,7 +120,7 @@ fn execute_swap(
     )?;
 
     let coin = &info.funds[0];
-    if let AssetInfo::NativeToken { denom } = &ask_asset_info {
+    if let AssetInfo::Native(denom) = &ask_asset_info {
         if denom == &coin.denom {
             // Send coins as is as there is no need to swap.
             let msg = recipient.generate_msg_native(
@@ -142,7 +143,7 @@ fn execute_swap(
             contract_addr,
             funds: info.funds,
             msg: encode_binary(&SwapperImplExecuteMsg::Swapper(SwapperMsg::Swap {
-                offer_asset_info: AssetInfo::NativeToken { denom },
+                offer_asset_info: AssetInfo::Native(denom),
                 ask_asset_info: ask_asset_info.clone(),
             }))?,
         }))
@@ -168,7 +169,7 @@ fn execute_send(
         ContractError::Unauthorized {},
     )?;
     let msg: SubMsg = match ask_asset_info {
-        AssetInfo::NativeToken { denom } => {
+        AssetInfo::Native(denom) => {
             let amount = query_balance(&deps.querier, env.contract.address, denom.clone())?;
             recipient.generate_msg_native(
                 deps.api,
@@ -177,7 +178,7 @@ fn execute_send(
                 vec![Coin { denom, amount }],
             )?
         }
-        AssetInfo::Token { contract_addr } => {
+        AssetInfo::Cw20(contract_addr) => {
             let amount =
                 query_token_balance(&deps.querier, contract_addr.clone(), env.contract.address)?;
             recipient.generate_msg_cw20(
@@ -228,7 +229,7 @@ fn execute_swap_cw20(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let recipient = recipient.unwrap_or(Recipient::Addr(sender));
-    if let AssetInfo::Token { contract_addr } = &ask_asset_info {
+    if let AssetInfo::Cw20(contract_addr) = &ask_asset_info {
         if *contract_addr == offer_token {
             // Send as is.
             let msg = recipient.generate_msg_cw20(
