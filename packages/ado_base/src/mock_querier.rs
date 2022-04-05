@@ -78,17 +78,17 @@ impl WasmMockQuerier {
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             QueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
-                let name: String = from_binary(&data.unwrap()).unwrap();
-                let msg_response = match name.as_str() {
+                let key: String = from_binary(&data.unwrap()).unwrap();
+                let msg_response = match key.as_str() {
                     "key1" => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String("address1".to_string()),
                     },
                     "key2" => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String("address2".to_string()),
                     },
-                    _ => panic!("Unsupported primitive name"),
+                    _ => panic!("Unsupported primitive key"),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
             }

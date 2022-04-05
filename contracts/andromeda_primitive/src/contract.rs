@@ -51,15 +51,15 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
-        ExecuteMsg::SetValue { name, value } => execute_set_value(deps, info, name, value),
-        ExecuteMsg::DeleteValue { name } => execute_delete_value(deps, info, name),
+        ExecuteMsg::SetValue { key, value } => execute_set_value(deps, info, key, value),
+        ExecuteMsg::DeleteValue { key } => execute_delete_value(deps, info, key),
     }
 }
 
 pub fn execute_set_value(
     deps: DepsMut,
     info: MessageInfo,
-    name: Option<String>,
+    key: Option<String>,
     value: Primitive,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.to_string();
@@ -70,8 +70,8 @@ pub fn execute_set_value(
     if value.is_invalid() {
         return Err(ContractError::InvalidPrimitive {});
     }
-    let name: &str = get_name_or_default(&name);
-    DATA.update::<_, StdError>(deps.storage, name, |old| match old {
+    let key: &str = get_key_or_default(&key);
+    DATA.update::<_, StdError>(deps.storage, key, |old| match old {
         Some(_) => Ok(value.clone()),
         None => Ok(value.clone()),
     })?;
@@ -79,26 +79,26 @@ pub fn execute_set_value(
     Ok(Response::new()
         .add_attribute("method", "set_value")
         .add_attribute("sender", sender)
-        .add_attribute("name", name)
+        .add_attribute("key", key)
         .add_attribute("value", format!("{:?}", value)))
 }
 
 pub fn execute_delete_value(
     deps: DepsMut,
     info: MessageInfo,
-    name: Option<String>,
+    key: Option<String>,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.to_string();
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
-    let name = get_name_or_default(&name);
-    DATA.remove(deps.storage, name);
+    let key = get_key_or_default(&key);
+    DATA.remove(deps.storage, key);
     Ok(Response::new()
         .add_attribute("method", "delete_value")
         .add_attribute("sender", sender)
-        .add_attribute("name", name))
+        .add_attribute("key", key))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -137,16 +137,16 @@ fn handle_andromeda_query(
     }
 }
 
-fn query_value(deps: Deps, name: Option<String>) -> Result<GetValueResponse, ContractError> {
-    let name = get_name_or_default(&name);
-    let value = DATA.load(deps.storage, name)?;
+fn query_value(deps: Deps, key: Option<String>) -> Result<GetValueResponse, ContractError> {
+    let key = get_key_or_default(&key);
+    let value = DATA.load(deps.storage, key)?;
     Ok(GetValueResponse {
-        name: name.to_string(),
+        key: key.to_string(),
         value,
     })
 }
 
-fn get_name_or_default(name: &Option<String>) -> &str {
+fn get_key_or_default(name: &Option<String>) -> &str {
     match name {
         None => DEFAULT_KEY,
         Some(s) => s,
@@ -189,7 +189,7 @@ mod tests {
     }
 
     #[test]
-    fn set_and_update_value_with_name() {
+    fn set_and_update_value_with_key() {
         let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg { operators: vec![] };
@@ -199,7 +199,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::SetValue {
-            name: Some("test1".to_string()),
+            key: Some("test1".to_string()),
             value: Primitive::String("value1".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -207,7 +207,7 @@ mod tests {
             Response::new()
                 .add_attribute("method", "set_value")
                 .add_attribute("sender", "creator")
-                .add_attribute("name", "test1")
+                .add_attribute("key", "test1")
                 .add_attribute("value", "String(\"value1\")"),
             res
         );
@@ -217,7 +217,7 @@ mod tests {
 
         assert_eq!(
             GetValueResponse {
-                name: "test1".to_string(),
+                key: "test1".to_string(),
                 value: Primitive::String("value1".to_string())
             },
             query_res
@@ -225,7 +225,7 @@ mod tests {
 
         // Update the value to something else
         let msg = ExecuteMsg::SetValue {
-            name: Some("test1".to_string()),
+            key: Some("test1".to_string()),
             value: Primitive::String("value2".to_string()),
         };
         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -235,7 +235,7 @@ mod tests {
 
         assert_eq!(
             GetValueResponse {
-                name: "test1".to_string(),
+                key: "test1".to_string(),
                 value: Primitive::String("value2".to_string())
             },
             query_res
@@ -243,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn set_and_update_value_without_name() {
+    fn set_and_update_value_without_key() {
         let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg { operators: vec![] };
@@ -253,7 +253,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::SetValue {
-            name: None,
+            key: None,
             value: Primitive::String("value1".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -261,7 +261,7 @@ mod tests {
             Response::new()
                 .add_attribute("method", "set_value")
                 .add_attribute("sender", "creator")
-                .add_attribute("name", DEFAULT_KEY)
+                .add_attribute("key", DEFAULT_KEY)
                 .add_attribute("value", "String(\"value1\")"),
             res
         );
@@ -270,7 +270,7 @@ mod tests {
 
         assert_eq!(
             GetValueResponse {
-                name: DEFAULT_KEY.to_string(),
+                key: DEFAULT_KEY.to_string(),
                 value: Primitive::String("value1".to_string())
             },
             query_res
@@ -278,7 +278,7 @@ mod tests {
 
         // Update the value to something else
         let msg = ExecuteMsg::SetValue {
-            name: None,
+            key: None,
             value: Primitive::String("value2".to_string()),
         };
         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -287,7 +287,7 @@ mod tests {
 
         assert_eq!(
             GetValueResponse {
-                name: DEFAULT_KEY.to_string(),
+                key: DEFAULT_KEY.to_string(),
                 value: Primitive::String("value2".to_string())
             },
             query_res
@@ -305,7 +305,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::SetValue {
-            name: None,
+            key: None,
             value: Primitive::Vec(vec![Primitive::Vec(vec![])]),
         };
         let res: Result<Response, ContractError> = execute(deps.as_mut(), mock_env(), info, msg);
@@ -313,7 +313,7 @@ mod tests {
     }
 
     #[test]
-    fn delete_value_with_name() {
+    fn delete_value_with_key() {
         let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg { operators: vec![] };
@@ -323,7 +323,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::SetValue {
-            name: Some("test1".to_string()),
+            key: Some("test1".to_string()),
             value: Primitive::String("value1".to_string()),
         };
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -333,14 +333,14 @@ mod tests {
 
         assert_eq!(
             GetValueResponse {
-                name: "test1".to_string(),
+                key: "test1".to_string(),
                 value: Primitive::String("value1".to_string())
             },
             query_res
         );
 
         let msg = ExecuteMsg::DeleteValue {
-            name: Some("test1".to_string()),
+            key: Some("test1".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(
@@ -348,14 +348,14 @@ mod tests {
             Response::new()
                 .add_attribute("method", "delete_value")
                 .add_attribute("sender", "creator")
-                .add_attribute("name", "test1")
+                .add_attribute("key", "test1")
         );
         let query_res = query_value_helper(deps.as_ref(), Some("test1".to_string()));
         assert!(query_res.is_err());
     }
 
     #[test]
-    fn delete_value_without_name() {
+    fn delete_value_without_key() {
         let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg { operators: vec![] };
@@ -365,7 +365,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::SetValue {
-            name: None,
+            key: None,
             value: Primitive::String("value1".to_string()),
         };
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -374,20 +374,20 @@ mod tests {
 
         assert_eq!(
             GetValueResponse {
-                name: DEFAULT_KEY.to_string(),
+                key: DEFAULT_KEY.to_string(),
                 value: Primitive::String("value1".to_string())
             },
             query_res
         );
 
-        let msg = ExecuteMsg::DeleteValue { name: None };
+        let msg = ExecuteMsg::DeleteValue { key: None };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(
             res,
             Response::new()
                 .add_attribute("method", "delete_value")
                 .add_attribute("sender", "creator")
-                .add_attribute("name", DEFAULT_KEY)
+                .add_attribute("key", DEFAULT_KEY)
         );
         let query_res = &query_value_helper(deps.as_ref(), None);
         assert!(query_res.is_err());
@@ -405,7 +405,7 @@ mod tests {
 
         let user1 = mock_info("user1", &[]);
         let msg = ExecuteMsg::SetValue {
-            name: Some("test1".to_string()),
+            key: Some("test1".to_string()),
             value: Primitive::String("value1".to_string()),
         };
         let res: Result<Response, ContractError> = execute(deps.as_mut(), mock_env(), user1, msg);
@@ -423,13 +423,13 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::SetValue {
-            name: None,
+            key: None,
             value: Primitive::String("value1".to_string()),
         };
         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let user1 = mock_info("user1", &[]);
-        let msg = ExecuteMsg::DeleteValue { name: None };
+        let msg = ExecuteMsg::DeleteValue { key: None };
         let res: Result<Response, ContractError> = execute(deps.as_mut(), mock_env(), user1, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
@@ -445,7 +445,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::SetValue {
-            name: None,
+            key: None,
             value: Primitive::String("value1".to_string()),
         };
         let msg_binary = encode_binary(&msg).unwrap();
@@ -455,7 +455,7 @@ mod tests {
             Response::new()
                 .add_attribute("method", "set_value")
                 .add_attribute("sender", "creator")
-                .add_attribute("name", DEFAULT_KEY)
+                .add_attribute("key", DEFAULT_KEY)
                 .add_attribute("value", "String(\"value1\")"),
             res
         );
@@ -466,7 +466,7 @@ mod tests {
             from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
         assert_eq!(
             GetValueResponse {
-                name: DEFAULT_KEY.to_string(),
+                key: DEFAULT_KEY.to_string(),
                 value: Primitive::String("value1".to_string())
             },
             res
@@ -476,7 +476,7 @@ mod tests {
         let res = query_value_helper(deps.as_ref(), Some("default".to_string())).unwrap();
         assert_eq!(
             GetValueResponse {
-                name: DEFAULT_KEY.to_string(),
+                key: DEFAULT_KEY.to_string(),
                 value: Primitive::String("value1".to_string())
             },
             res
@@ -486,7 +486,7 @@ mod tests {
         let res = query_value_helper(deps.as_ref(), None).unwrap();
         assert_eq!(
             GetValueResponse {
-                name: DEFAULT_KEY.to_string(),
+                key: DEFAULT_KEY.to_string(),
                 value: Primitive::String("value1".to_string())
             },
             res
