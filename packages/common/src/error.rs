@@ -301,6 +301,9 @@ pub enum ContractError {
 
     #[error("Verification Failed")]
     VerificationFailed {},
+
+    #[error("Invalid Asset: {asset}")]
+    InvalidAsset { asset: String },
 }
 
 impl From<Cw20ContractError> for ContractError {

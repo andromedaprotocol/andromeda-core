@@ -32,8 +32,8 @@ pub enum ExecuteMsg {
     },
     ClaimRewards {},
     /// Updates the global reward index for the specified assets or all of the specified ones if
-    /// None.
-    UpdateGlobalRewardIndex {
+    /// None. Funds may be sent along with this.
+    UpdateGlobalIndex {
         asset_infos: Option<Vec<AssetInfoUnchecked>>,
     },
 }
