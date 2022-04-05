@@ -1,5 +1,6 @@
 use common::mission::AndrAddress;
-use cosmwasm_std::{Decimal256, Uint128};
+use cosmwasm_bignumber::Decimal256;
+use cosmwasm_std::Uint128;
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
@@ -27,7 +28,7 @@ pub struct State {
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ContractRewardInfo {
     pub index: Decimal256,
-    pub previous_reward_balance: Decimal256,
+    pub previous_reward_balance: Uint128,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

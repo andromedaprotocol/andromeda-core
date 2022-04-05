@@ -30,6 +30,7 @@ pub enum ExecuteMsg {
     UnstakeTokens {
         amount: Option<Uint128>,
     },
+    ClaimRewards {},
     /// Updates the global reward index for the specified assets or all of the specified ones if
     /// None.
     UpdateGlobalRewardIndex {

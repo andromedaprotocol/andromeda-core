@@ -1,13 +1,15 @@
+use cosmwasm_bignumber::{Decimal256, Uint256};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, CosmosMsg, Decimal, Decimal256, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, Response, StdResult, Uint128, Uint256,
+    from_binary, to_binary, BankMsg, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo,
+    QuerierWrapper, Response, StdResult, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
-use cw_asset::{Asset, AssetInfo, AssetUnchecked};
+use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked, AssetUnchecked};
 use std::collections::BTreeMap;
+use std::str::FromStr;
 
 use crate::state::{
     Config, ContractRewardInfo, Staker, StakerRewardInfo, State, CONFIG, STAKERS, STATE,
@@ -86,6 +88,7 @@ pub fn execute(
         ExecuteMsg::AddRewardToken { asset_info } => panic!(),
         ExecuteMsg::UpdateGlobalRewardIndex { asset_infos } => panic!(),
         ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(deps, env, info, amount),
+        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, info),
     }
 }
 
@@ -159,20 +162,6 @@ fn execute_stake_tokens(
         .add_attribute("amount", amount))
 }
 
-fn update_rewards(state: &State, staker: &mut Staker) {
-    for (token, contract_reward_info) in state.additional_reward_info.iter() {
-        let mut staker_reward_info = staker.reward_info[token].clone();
-        let rewards =
-            (contract_reward_info.index - staker_reward_info.index) * Uint256::from(staker.share);
-
-        staker_reward_info.index = contract_reward_info.index;
-        staker_reward_info.pending_rewards = staker_reward_info.pending_rewards
-            + Decimal256::from_ratio(rewards, Uint256::from(1u128));
-
-        staker.reward_info.insert(token.clone(), staker_reward_info);
-    }
-}
-
 fn execute_unstake_tokens(
     deps: DepsMut,
     env: Env,
@@ -229,6 +218,75 @@ fn execute_unstake_tokens(
         Ok(Response::new().add_message(asset.transfer_msg(info.sender)?))
     } else {
         Err(ContractError::WithdrawalIsEmpty {})
+    }
+}
+
+fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    let sender = info.sender.as_str();
+    let mut state = STATE.load(deps.storage)?;
+    if let Some(mut staker) = STAKERS.may_load(deps.storage, sender)? {
+        update_rewards(&state, &mut staker);
+        let mut msgs: Vec<CosmosMsg> = vec![];
+
+        for (token, mut staker_reward_info) in staker.reward_info.clone() {
+            let rewards: Uint128 =
+                Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128);
+
+            let decimals: Decimal256 = staker_reward_info.pending_rewards
+                - Decimal256::from_ratio(Uint256::from(rewards), Uint256::from(1u128));
+
+            if !rewards.is_zero() {
+                // Reduce pending rewards for staker.
+                staker_reward_info.pending_rewards = decimals;
+
+                let mut contract_reward_info = state.additional_reward_info[&token].clone();
+
+                // Reduce reward balance.
+                contract_reward_info.previous_reward_balance = contract_reward_info
+                    .previous_reward_balance
+                    .checked_sub(rewards)?;
+
+                state
+                    .additional_reward_info
+                    .insert(token.clone(), contract_reward_info);
+
+                let asset = Asset {
+                    info: AssetInfoUnchecked::from_str(&token)?.check(deps.api, None)?,
+                    amount: rewards,
+                };
+
+                msgs.push(asset.transfer_msg(sender)?);
+
+                staker.reward_info.insert(token, staker_reward_info);
+            }
+        }
+
+        require(!msgs.is_empty(), ContractError::WithdrawalIsEmpty {})?;
+
+        STATE.save(deps.storage, &state)?;
+        STAKERS.save(deps.storage, sender, &staker)?;
+        Ok(Response::new().add_messages(msgs))
+    } else {
+        Err(ContractError::WithdrawalIsEmpty {})
+    }
+}
+
+fn update_rewards(state: &State, staker: &mut Staker) {
+    for (token, contract_reward_info) in state.additional_reward_info.iter() {
+        let mut staker_reward_info = staker
+            .reward_info
+            .get(token)
+            .unwrap_or(&StakerRewardInfo::default())
+            .to_owned();
+
+        let rewards =
+            (contract_reward_info.index - staker_reward_info.index) * Uint256::from(staker.share);
+
+        staker_reward_info.index = contract_reward_info.index;
+        staker_reward_info.pending_rewards = staker_reward_info.pending_rewards
+            + Decimal256::from_ratio(rewards, Uint256::from(1u128));
+
+        staker.reward_info.insert(token.clone(), staker_reward_info);
     }
 }
 
