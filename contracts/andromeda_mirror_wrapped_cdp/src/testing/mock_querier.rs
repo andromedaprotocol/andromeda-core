@@ -1,8 +1,15 @@
 use cosmwasm_std::{
-    from_slice,
+    from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SystemError, SystemResult, Uint128,
+    to_binary, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult,
+    QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+};
+
+use crate::primitive_keys::{MIRROR_GOV, MIRROR_LOCK, MIRROR_MINT, MIRROR_MIR, MIRROR_STAKING};
+use andromeda_protocol::primitive::QueryMsg as PrimitiveQueryMsg;
+use common::{
+    ado_base::AndromedaQuery,
+    primitive::{GetValueResponse, Primitive},
 };
 pub use mirror_protocol::{
     collateral_oracle::{
@@ -17,6 +24,13 @@ pub use mirror_protocol::{
 };
 use std::collections::HashMap;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
+
+pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
+pub const MOCK_MIRROR_TOKEN_ADDR: &str = "mirror_token";
+pub const MOCK_MIRROR_MINT_ADDR: &str = "mirror_mint";
+pub const MOCK_MIRROR_STAKING_ADDR: &str = "mirror_staking";
+pub const MOCK_MIRROR_GOV_ADDR: &str = "mirror_gov";
+pub const MOCK_MIRROR_LOCK_ADDR: &str = "mirror_lock";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -104,7 +118,46 @@ impl WasmMockQuerier {
                     panic!("DO NOT ENTER HERE")
                 }
             }
+            QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
+                match contract_addr.as_str() {
+                    MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
+                    _ => panic!("Unsupported Query for address {}", contract_addr),
+                }
+            }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            PrimitiveQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
+                let name: String = from_binary(&data.unwrap()).unwrap();
+                let msg_response = match name.as_str() {
+                    MIRROR_MINT => GetValueResponse {
+                        name,
+                        value: Primitive::String(MOCK_MIRROR_MINT_ADDR.to_owned()),
+                    },
+                    MIRROR_STAKING => GetValueResponse {
+                        name,
+                        value: Primitive::String(MOCK_MIRROR_STAKING_ADDR.to_owned()),
+                    },
+                    MIRROR_GOV => GetValueResponse {
+                        name,
+                        value: Primitive::String(MOCK_MIRROR_GOV_ADDR.to_owned()),
+                    },
+                    MIRROR_LOCK => GetValueResponse {
+                        name,
+                        value: Primitive::String(MOCK_MIRROR_LOCK_ADDR.to_owned()),
+                    },
+                    MIRROR_MIR => GetValueResponse {
+                        name,
+                        value: Primitive::String(MOCK_MIRROR_TOKEN_ADDR.to_owned()),
+                    },
+                    _ => panic!("Unsupported primitive name"),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
         }
     }
 

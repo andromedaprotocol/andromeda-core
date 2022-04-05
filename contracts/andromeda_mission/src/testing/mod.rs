@@ -42,7 +42,6 @@ fn test_instantiation() {
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
         }],
-
         name: String::from("Some Mission"),
         primitive_contract: String::from("primitive_contract"),
     };
