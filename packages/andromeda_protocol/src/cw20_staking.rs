@@ -33,7 +33,7 @@ pub enum ExecuteMsg {
     ClaimRewards {},
     /// Updates the global reward index for the specified assets or all of the specified ones if
     /// None. Funds may be sent along with this.
-    UpdateGlobalIndex {
+    UpdateGlobalIndexes {
         asset_infos: Option<Vec<AssetInfoUnchecked>>,
     },
 }
@@ -44,7 +44,7 @@ pub enum Cw20HookMsg {
     /// deposit the user's pending reward and user index are updated.
     StakeTokens {},
     /// Updates the global reward index on deposit of whitelisted cw20 tokens.
-    UpdateGlobalRewardIndex {},
+    UpdateGlobalRewardIndexes {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
