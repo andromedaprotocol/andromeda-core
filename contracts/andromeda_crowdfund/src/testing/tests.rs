@@ -136,7 +136,7 @@ fn test_mint_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
 
-    let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+    let msg = ExecuteMsg::Mint(vec![MintMsg {
         token_id: "token_id".to_string(),
         owner: mock_env().contract.address.to_string(),
         token_uri: None,
@@ -149,7 +149,7 @@ fn test_mint_unauthorized() {
             archived: false,
             pricing: None,
         },
-    }));
+    }]);
     let info = mock_info("not_owner", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -161,7 +161,7 @@ fn test_mint_owner_not_crowdfund() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
 
-    let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+    let msg = ExecuteMsg::Mint(vec![MintMsg {
         token_id: "token_id".to_string(),
         owner: "not_crowdfund".to_string(),
         token_uri: None,
@@ -174,7 +174,7 @@ fn test_mint_owner_not_crowdfund() {
             archived: false,
             pricing: None,
         },
-    }));
+    }]);
     let info = mock_info("owner", &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -754,7 +754,7 @@ fn test_end_sale_not_expired() {
 }
 
 fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+    let msg = ExecuteMsg::Mint(vec![MintMsg {
         token_id: token_id.into(),
         owner: mock_env().contract.address.to_string(),
         token_uri: None,
@@ -767,7 +767,7 @@ fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, Contract
             archived: false,
             pricing: None,
         },
-    }));
+    }]);
     execute(deps, mock_env(), mock_info("owner", &[]), msg)
 }
 

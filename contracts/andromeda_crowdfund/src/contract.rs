@@ -64,7 +64,7 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
-        ExecuteMsg::Mint(mint_msg) => execute_mint(deps, env, info, mint_msg),
+        ExecuteMsg::Mint(mint_msgs) => execute_mint(deps, env, info, mint_msgs),
         ExecuteMsg::StartSale {
             expiration,
             price,
@@ -91,7 +91,7 @@ fn execute_mint(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    mint_msg: Box<MintMsg<TokenExtension>>,
+    mint_msgs: Vec<MintMsg<TokenExtension>>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     require(
@@ -109,23 +109,48 @@ fn execute_mint(
         config.can_mint_after_sale || !sale_conducted,
         ContractError::CannotMintAfterSaleConducted {},
     )?;
-    // We allow for owners other than the contract, incase the creator wants to set aside a few
-    // tokens for some other use, say airdrop, team allocation, etc.  Only those which have the
-    // contract as the owner will be available to sell.
-    if mint_msg.owner == env.contract.address {
-        // Mark token as available to purchase in next sale.
-        AVAILABLE_TOKENS.save(deps.storage, &mint_msg.token_id, &true)?;
-    }
+
     let mission_contract = contract.get_mission_contract(deps.storage)?;
-    let contract_addr =
+    let token_contract =
         config
             .token_address
             .get_address(deps.api, &deps.querier, mission_contract)?;
+    let crowdfund_contract = env.contract.address.to_string();
+
+    let mut resp = Response::new();
+    for mint_msg in mint_msgs {
+        let mint_resp = mint(
+            deps.storage,
+            &crowdfund_contract,
+            token_contract.clone(),
+            mint_msg,
+        )?;
+        resp = resp
+            .add_attributes(mint_resp.attributes)
+            .add_submessages(mint_resp.messages);
+    }
+
+    Ok(resp)
+}
+
+fn mint(
+    storage: &mut dyn Storage,
+    crowdfund_contract: &str,
+    token_contract: String,
+    mint_msg: MintMsg<TokenExtension>,
+) -> Result<Response, ContractError> {
+    // We allow for owners other than the contract, incase the creator wants to set aside a few
+    // tokens for some other use, say airdrop, team allocation, etc.  Only those which have the
+    // contract as the owner will be available to sell.
+    if mint_msg.owner == crowdfund_contract {
+        // Mark token as available to purchase in next sale.
+        AVAILABLE_TOKENS.save(storage, &mint_msg.token_id, &true)?;
+    }
     Ok(Response::new()
         .add_attribute("action", "mint")
         .add_message(WasmMsg::Execute {
-            contract_addr,
-            msg: encode_binary(&Cw721ExecuteMsg::Mint(mint_msg))?,
+            contract_addr: token_contract,
+            msg: encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msg)))?,
             funds: vec![],
         }))
 }
