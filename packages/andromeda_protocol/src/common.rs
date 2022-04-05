@@ -1,26 +1,7 @@
-use crate::modules::{hooks::HookResponse, Module};
-use common::error::ContractError;
-use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Coin, DepsMut, Response, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use terraswap::asset::{Asset, AssetInfo};
-
-//Redundant? Can maybe use `Modules` struct?
-pub fn generate_instantiate_msgs(
-    deps: &DepsMut,
-    info: MessageInfo,
-    env: Env,
-    modules: Vec<Option<impl Module>>,
-) -> Result<HookResponse, ContractError> {
-    let mut resp = HookResponse::default();
-
-    for module in modules.into_iter().flatten() {
-        let hook_resp = module.on_instantiate(deps, info.clone(), env.clone())?;
-        resp = resp.add_resp(hook_resp);
-    }
-
-    Ok(resp)
-}
 
 pub fn merge_responses(resp_a: Response, resp_b: Response) -> Response {
     resp_a

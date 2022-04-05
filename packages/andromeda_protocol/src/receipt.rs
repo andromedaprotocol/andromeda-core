@@ -13,7 +13,8 @@ pub struct Config {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-/// A struct representation of a receipt. Contains a vector of CosmWasm [Event](https://docs.rs/cosmwasm-std/0.16.0/cosmwasm_std/struct.Event.html) structs.
+/// A struct representation of a receipt. Contains a vector of CosmWasm
+/// [Event](https://docs.rs/cosmwasm-std/0.16.0/cosmwasm_std/struct.Event.html) structs.
 pub struct Receipt {
     /// A vector of CosmWasm [Event](https://docs.rs/cosmwasm-std/0.16.0/cosmwasm_std/struct.Event.html) structs related to the receipt
     pub events: Vec<Event>,

@@ -1,6 +1,6 @@
-use crate::state::ADOContract;
+use crate::ADOContract;
 use common::{
-    ado_base::{AndromedaMsg, InstantiateMsg},
+    ado_base::{AndromedaMsg, ExecuteMsg, InstantiateMsg},
     error::ContractError,
     parse_message, require,
 };
@@ -13,8 +13,8 @@ impl<'a> ADOContract<'a> {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
-        #[cfg(any(feature = "modules", feature = "primitive"))] api: &dyn Api,
-        #[cfg(not(any(feature = "modules", feature = "primitive")))] _api: &dyn Api,
+        #[cfg(feature = "primitive")] api: &dyn Api,
+        #[cfg(not(feature = "primitive"))] _api: &dyn Api,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
@@ -49,7 +49,10 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         match msg {
             AndromedaMsg::Receive(data) => {
-                require(!self.is_nested(&data), ContractError::NestedAndromedaMsg {})?;
+                require(
+                    !self.is_nested::<ExecuteMsg>(&data),
+                    ContractError::NestedAndromedaMsg {},
+                )?;
                 let received: E = parse_message(&data)?;
                 (execute_function)(deps, env, info, received)
             }

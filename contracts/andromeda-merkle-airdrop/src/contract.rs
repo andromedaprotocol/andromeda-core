@@ -360,14 +360,9 @@ mod tests {
         // it worked, let's query the state
         let res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
         let config: ConfigResponse = from_binary(&res).unwrap();
-        assert_eq!(
-            "owner0000",
-            ADOContract::default()
-                .owner
-                .load(deps.as_ref().storage)
-                .unwrap()
-                .to_string()
-        );
+        assert!(ADOContract::default()
+            .is_contract_owner(deps.as_ref().storage, "owner0000")
+            .unwrap());
         assert_eq!(
             AssetInfo::cw20(Addr::unchecked("anchor0000")),
             config.asset_info

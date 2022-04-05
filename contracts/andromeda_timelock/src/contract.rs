@@ -1,23 +1,13 @@
-use cosmwasm_std::{
-    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg,
-};
+use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, SubMsg};
 
-use crate::state::{escrows, get_key, get_keys_for_recipient, State, STATE};
+use crate::state::{escrows, get_key, get_keys_for_recipient};
 use ado_base::ADOContract;
-use andromeda_protocol::{
-    modules::{
-        address_list::{on_address_list_reply, AddressListModule, REPLY_ADDRESS_LIST},
-        generate_instantiate_msgs,
-        hooks::HookResponse,
-    },
-    modules::{hooks::MessageHooks, Module},
-    timelock::{
-        Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
-        GetLockedFundsResponse, GetTimelockConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg,
-    },
+use andromeda_protocol::timelock::{
+    Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
+    GetLockedFundsResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
     require,
@@ -31,46 +21,23 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let state = State {
-        address_list: msg.address_list.clone(),
-    };
 
-    let inst_msgs = generate_instantiate_msgs(&deps, info.clone(), env, vec![msg.address_list])?;
-
-    STATE.save(deps.storage, &state)?;
-    let res = ADOContract::default().instantiate(
+    ADOContract::default().instantiate(
         deps.storage,
         deps.api,
         info,
         BaseInstantiateMsg {
             ado_type: "timelock".to_string(),
             operators: None,
-            modules: None,
+            modules: msg.modules,
             primitive_contract: None,
         },
-    )?;
-    Ok(res
-        .add_submessages(inst_msgs.msgs)
-        .add_events(inst_msgs.events))
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
-    }
-
-    match msg.id {
-        REPLY_ADDRESS_LIST => on_address_list_reply(deps, msg),
-        _ => Err(ContractError::InvalidReplyId {}),
-    }
+    )
 }
 
 #[entry_point]
@@ -80,13 +47,16 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let state = STATE.load(deps.storage)?;
+    ADOContract::default().module_hook::<Response>(
+        deps.storage,
+        deps.api,
+        deps.querier,
+        AndromedaHook::OnExecute {
+            sender: info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
 
-    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
-    if let Some(address_list) = state.address_list {
-        let addr_list = address_list;
-        addr_list.on_execute(&deps, info.clone(), env.clone())?;
-    }
     match msg {
         ExecuteMsg::HoldFunds {
             condition,
@@ -101,9 +71,6 @@ pub fn execute(
             owner,
             recipient_addr,
         } => execute_release_specific_funds(deps, env, info, owner, recipient_addr),
-        ExecuteMsg::UpdateAddressList { address_list } => {
-            execute_update_address_list(deps, info, env, address_list)
-        }
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
@@ -223,32 +190,6 @@ fn execute_release_specific_funds(
     }
 }
 
-fn execute_update_address_list(
-    deps: DepsMut,
-    info: MessageInfo,
-    env: Env,
-    address_list: Option<AddressListModule>,
-) -> Result<Response, ContractError> {
-    let mut state = STATE.load(deps.storage)?;
-    require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-
-    let mod_resp = match address_list.clone() {
-        None => HookResponse::default(),
-        Some(addr_list) => addr_list.on_instantiate(&deps, info, env)?,
-    };
-    state.address_list = address_list;
-
-    STATE.save(deps.storage, &state)?;
-
-    Ok(Response::default()
-        .add_submessages(mod_resp.msgs)
-        .add_events(mod_resp.events)
-        .add_attributes(vec![attr("action", "update_address_list")]))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version = get_contract_version(deps.storage)?;
@@ -276,7 +217,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             start_after,
             limit,
         )?),
-        QueryMsg::GetTimelockConfig {} => encode_binary(&query_config(deps)?),
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
 }
@@ -306,20 +246,6 @@ fn query_held_funds(
     Ok(GetLockedFundsResponse { funds: hold_funds })
 }
 
-fn query_config(deps: Deps) -> Result<GetTimelockConfigResponse, ContractError> {
-    let state = STATE.load(deps.storage)?;
-
-    let address_list_contract = match state.address_list.clone() {
-        None => None,
-        Some(addr_list) => addr_list.get_contract_address(deps.storage),
-    };
-
-    Ok(GetTimelockConfigResponse {
-        address_list: state.address_list,
-        address_list_contract,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -327,13 +253,9 @@ mod tests {
     use cosmwasm_std::{
         coin, coins, from_binary,
         testing::{mock_dependencies, mock_env, mock_info},
-        Addr, BankMsg, Coin, Timestamp,
+        BankMsg, Coin, Timestamp,
     };
     use cw721::Expiration;
-
-    fn mock_state() -> State {
-        State { address_list: None }
-    }
 
     #[test]
     fn test_instantiate() {
@@ -341,14 +263,10 @@ mod tests {
         let env = mock_env();
         let owner = "owner";
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg { address_list: None };
-        let res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
+        let msg = InstantiateMsg { modules: None };
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         assert_eq!(0, res.messages.len());
-
-        //checking
-        let state = STATE.load(deps.as_ref().storage).unwrap();
-        assert_eq!(msg.address_list, state.address_list);
     }
 
     #[test]
@@ -359,7 +277,6 @@ mod tests {
         let funds = vec![Coin::new(1000, "uusd")];
         let condition = EscrowCondition::Expiration(Expiration::AtHeight(1));
         let info = mock_info(owner, &funds);
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let msg = ExecuteMsg::HoldFunds {
             condition: Some(condition.clone()),
@@ -403,7 +320,6 @@ mod tests {
 
         let owner = "owner";
         let info = mock_info(owner, &coins(100, "uusd"));
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let msg = ExecuteMsg::HoldFunds {
             condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
@@ -448,7 +364,6 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let mut env = mock_env();
         let owner = "owner";
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
@@ -483,7 +398,6 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
@@ -516,7 +430,6 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let recipient = Recipient::Addr("recipient".into());
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let msg = ExecuteMsg::HoldFunds {
             condition: None,
@@ -560,7 +473,6 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let mut env = mock_env();
         let owner = "owner";
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
@@ -598,7 +510,6 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let mut env = mock_env();
         let owner = "owner";
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
@@ -625,7 +536,6 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
@@ -681,7 +591,6 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let info = mock_info(owner, &[]);
         let msg = ExecuteMsg::ReleaseSpecificFunds {
@@ -697,7 +606,6 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
@@ -729,7 +637,6 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let mut env = mock_env();
         let owner = "owner";
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
@@ -766,7 +673,6 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let info = mock_info(owner, &[coin(100, "uusd")]);
         let msg = ExecuteMsg::HoldFunds {
@@ -816,58 +722,12 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_update_address_list() {
-        let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
-        let owner = "creator";
-
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked(owner.to_string()))
-            .unwrap();
-
-        let state = State { address_list: None };
-        STATE.save(deps.as_mut().storage, &state).unwrap();
-
-        let address_list = AddressListModule {
-            address: Some(String::from("terra1contractaddress")),
-            code_id: Some(1),
-            operators: Some(vec![String::from("operator1")]),
-            inclusive: true,
-        };
-        let msg = ExecuteMsg::UpdateAddressList {
-            address_list: Some(address_list.clone()),
-        };
-
-        let unauth_info = mock_info("anyone", &[]);
-        let err_res = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
-        assert_eq!(err_res, ContractError::Unauthorized {});
-
-        let info = mock_info(owner, &[]);
-        let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        let mod_resp = address_list
-            .on_instantiate(&deps.as_mut(), info, env)
-            .unwrap();
-        let expected = Response::default()
-            .add_submessages(mod_resp.msgs)
-            .add_events(mod_resp.events)
-            .add_attributes(vec![attr("action", "update_address_list")]);
-
-        assert_eq!(resp, expected);
-
-        let updated = STATE.load(deps.as_mut().storage).unwrap();
-
-        assert_eq!(updated.address_list.unwrap(), address_list);
-    }
-
-    #[test]
     fn test_execute_receive() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
         let funds = vec![Coin::new(1000, "uusd")];
         let info = mock_info(owner, &funds);
-        STATE.save(deps.as_mut().storage, &mock_state()).unwrap();
 
         let msg_struct = ExecuteMsg::HoldFunds {
             condition: None,

@@ -275,6 +275,21 @@ pub enum ContractError {
     #[error("No purchases")]
     NoPurchases {},
 
+    #[error("Cannot mint after sale conducted")]
+    CannotMintAfterSaleConducted {},
+
+    #[error("Not implemented")]
+    NotImplemented { msg: Option<String> },
+
+    #[error("Invalid Strategy")]
+    InvalidStrategy { strategy: String },
+
+    #[error("Invalid Query")]
+    InvalidQuery {},
+
+    #[error("Invalid Withdrawal")]
+    InvalidWithdrawal { msg: Option<String> },
+
     #[error("Airdrop stage {stage} expired at {expiration}")]
     StageExpired { stage: u8, expiration: Expiration },
 
