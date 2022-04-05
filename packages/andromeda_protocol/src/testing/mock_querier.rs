@@ -412,25 +412,25 @@ impl WasmMockQuerier {
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             PrimitiveQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
-                let name: String = from_binary(&data.unwrap()).unwrap();
-                let msg_response = match name.as_str() {
+                let key: String = from_binary(&data.unwrap()).unwrap();
+                let msg_response = match key.as_str() {
                     "percent" => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::Decimal(Decimal::percent(1)),
                     },
                     "flat" => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::Coin(coin(1u128, "uusd")),
                     },
                     "flat_cw20" => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::Coin(coin(1u128, "address")),
                     },
                     "factory" => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_FACTORY_CONTRACT.to_owned()),
                     },
-                    _ => panic!("Unsupported primitive name"),
+                    _ => panic!("Unsupported primitive key"),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
             }
