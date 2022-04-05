@@ -37,12 +37,15 @@ pub enum ExecuteMsg {
     WithdrawUnbonded {
         recipient: Option<Recipient>,
     },
+    /// Claims any outstanding ANC rewards with an option to stake them in governance.
     ClaimAncRewards {
         auto_stake: Option<bool>,
     },
+    /// Stakes all or the specified amount of ANC tokens in the contract in governance.
     StakeAnc {
         amount: Option<Uint128>,
     },
+    /// Unstakes all or the specified amount of ANC tokens in the contract in governance.
     UnstakeAnc {
         amount: Option<Uint128>,
     },
