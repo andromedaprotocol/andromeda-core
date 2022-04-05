@@ -1,15 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    Response, StdResult, Uint128,
+    from_binary, to_binary, Binary, CosmosMsg, Decimal, Decimal256, Deps, DepsMut, Env,
+    MessageInfo, QuerierWrapper, Response, StdResult, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo, AssetUnchecked};
-use std::cmp;
+use std::collections::BTreeMap;
 
-use crate::state::{Config, State, CONFIG, STAKERS, STATE};
+use crate::state::{
+    Config, ContractRewardInfo, Staker, StakerRewardInfo, State, CONFIG, STAKERS, STATE,
+};
 use ado_base::ADOContract;
 use andromeda_protocol::cw20_staking::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
@@ -37,6 +39,10 @@ pub fn instantiate(
     } else {
         vec![]
     };
+    let mut additional_reward_info: BTreeMap<String, ContractRewardInfo> = BTreeMap::new();
+    for token in additional_reward_tokens.iter() {
+        additional_reward_info.insert(token.to_string(), ContractRewardInfo::default());
+    }
     CONFIG.save(
         deps.storage,
         &Config {
@@ -48,6 +54,7 @@ pub fn instantiate(
         deps.storage,
         &State {
             total_share: Uint128::zero(),
+            additional_reward_info,
         },
     )?;
 
@@ -78,7 +85,7 @@ pub fn execute(
         }
         ExecuteMsg::AddRewardToken { asset_info } => panic!(),
         ExecuteMsg::UpdateGlobalRewardIndex { asset_infos } => panic!(),
-        ExecuteMsg::WithdrawTokens { asset } => execute_withdraw_tokens(deps, env, info, asset),
+        ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(deps, env, info, amount),
     }
 }
 
@@ -123,14 +130,15 @@ fn execute_stake_tokens(
     let mut state = STATE.load(deps.storage)?;
     let mut staker = STAKERS.may_load(deps.storage, &sender)?.unwrap_or_default();
 
+    // Update the rewards for the user. This must be done before the new share is calculated.
+    update_rewards(&state, &mut staker);
+
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
 
     // Balance already increased, so subtract deposit amount
     let total_balance = staking_token
         .query_balance(&deps.querier, env.contract.address.to_string())?
         .checked_sub(amount)?;
-
-    // update the reward indexes
 
     let share = if total_balance.is_zero() || state.total_share.is_zero() {
         amount
@@ -151,14 +159,29 @@ fn execute_stake_tokens(
         .add_attribute("amount", amount))
 }
 
-fn execute_withdraw_tokens(
+fn update_rewards(state: &State, staker: &mut Staker) {
+    for (token, contract_reward_info) in state.additional_reward_info.iter() {
+        let mut staker_reward_info = staker.reward_info[token].clone();
+        let rewards =
+            (contract_reward_info.index - staker_reward_info.index) * Uint256::from(staker.share);
+
+        staker_reward_info.index = contract_reward_info.index;
+        staker_reward_info.pending_rewards = staker_reward_info.pending_rewards
+            + Decimal256::from_ratio(rewards, Uint256::from(1u128));
+
+        staker.reward_info.insert(token.clone(), staker_reward_info);
+    }
+}
+
+fn execute_unstake_tokens(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    asset: Option<AssetUnchecked>,
+    amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
+    let sender = info.sender.as_str();
 
     let mission_contract = contract.get_mission_contract(deps.storage)?;
     let staking_token_address =
@@ -167,27 +190,46 @@ fn execute_withdraw_tokens(
             .get_address(deps.api, &deps.querier, mission_contract)?;
 
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
-    let reward_tokens = [config.additional_reward_tokens, vec![staking_token]].concat();
+    let total_balance = staking_token.query_balance(&deps.querier, env.contract.address)?;
 
-    let mut staker = STAKERS.may_load(deps.storage, &info.sender.as_str())?;
-    let mut state = STATE.load(deps.storage)?;
+    let staker = STAKERS.may_load(deps.storage, sender)?;
+    if let Some(mut staker) = staker {
+        let mut state = STATE.load(deps.storage)?;
+        update_rewards(&state, &mut staker);
 
-    require(staker.is_some(), ContractError::WithdrawalIsEmpty {})?;
-    let staker = staker.unwrap();
+        let withdraw_share = amount
+            .map(|v| {
+                std::cmp::max(
+                    v.multiply_ratio(state.total_share, total_balance),
+                    Uint128::new(1),
+                )
+            })
+            .unwrap_or(staker.share);
 
-    Ok(Response::new())
-}
+        require(
+            withdraw_share <= staker.share,
+            ContractError::InvalidWithdrawal {
+                msg: Some("Desired amount exceeds balance".to_string()),
+            },
+        )?;
 
-fn query_token_balances(
-    querier: &QuerierWrapper,
-    tokens: Vec<AssetInfo>,
-    address: String,
-) -> Result<Uint128, ContractError> {
-    let mut balance = Uint128::zero();
-    for token in tokens {
-        balance = balance.checked_add(token.query_balance(querier, address.clone())?)?;
+        staker.share -= withdraw_share;
+        state.total_share -= withdraw_share;
+
+        STATE.save(deps.storage, &state)?;
+        STAKERS.save(deps.storage, sender, &staker)?;
+
+        let withdraw_amount =
+            amount.unwrap_or_else(|| withdraw_share * total_balance / state.total_share);
+
+        let asset = Asset {
+            info: staking_token,
+            amount: withdraw_amount,
+        };
+        Ok(Response::new().add_message(asset.transfer_msg(info.sender)?))
+    } else {
+        Err(ContractError::WithdrawalIsEmpty {})
     }
-    Ok(balance)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

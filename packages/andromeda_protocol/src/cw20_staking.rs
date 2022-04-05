@@ -2,6 +2,7 @@ use common::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     mission::AndrAddress,
 };
+use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{AssetInfoUnchecked, AssetUnchecked};
 use schemars::JsonSchema;
@@ -25,9 +26,9 @@ pub enum ExecuteMsg {
     AddRewardToken {
         asset_info: AssetInfoUnchecked,
     },
-    /// Withdraw specified assets, or all of them if not specified.
-    WithdrawTokens {
-        asset: Option<AssetUnchecked>,
+    /// Unstakes the specified amount of assets, or all if not specified.
+    UnstakeTokens {
+        amount: Option<Uint128>,
     },
     /// Updates the global reward index for the specified assets or all of the specified ones if
     /// None.
