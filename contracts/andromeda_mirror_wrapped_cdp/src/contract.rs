@@ -10,12 +10,9 @@ use crate::primitive_keys::{
     ADDRESSES_TO_CACHE, MIRROR_GOV, MIRROR_LOCK, MIRROR_MINT, MIRROR_MIR, MIRROR_STAKING,
 };
 use ado_base::state::ADOContract;
-use andromeda_protocol::{
-    common::get_tax_deducted_funds,
-    mirror_wrapped_cdp::{
-        Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, MirrorLockExecuteMsg,
-        MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
-    },
+use andromeda_protocol::mirror_wrapped_cdp::{
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, MirrorLockExecuteMsg,
+    MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
@@ -350,11 +347,10 @@ pub fn execute_mirror_msg(
             msg: "Mirror expects zero or one coin to be sent".to_string(),
         },
     )?;
-    let tax_deducted_funds = get_tax_deducted_funds(&deps, funds)?;
 
     let execute_msg = WasmMsg::Execute {
         contract_addr,
-        funds: tax_deducted_funds,
+        funds,
         msg: msg_binary,
     };
     Ok(Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]))
