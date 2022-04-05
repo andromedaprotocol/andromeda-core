@@ -277,6 +277,66 @@ fn test_mint_successful() {
 }
 
 #[test]
+fn test_mint_multiple_successful() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    let mint_msgs = vec![
+        MintMsg {
+            token_id: "token_id1".to_string(),
+            owner: mock_env().contract.address.to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                name: "name1".to_string(),
+                publisher: "publisher".to_string(),
+                description: None,
+                transfer_agreement: None,
+                metadata: None,
+                archived: false,
+                pricing: None,
+            },
+        },
+        MintMsg {
+            token_id: "token_id2".to_string(),
+            owner: mock_env().contract.address.to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                name: "name2".to_string(),
+                publisher: "publisher".to_string(),
+                description: None,
+                transfer_agreement: None,
+                metadata: None,
+                archived: false,
+                pricing: None,
+            },
+        },
+    ];
+
+    let msg = ExecuteMsg::Mint(mint_msgs.clone());
+    let res = execute(deps.as_mut(), mock_env(), mock_info("owner", &[]), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "mint")
+            .add_attribute("action", "mint")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
+                msg: encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msgs[0].clone()))).unwrap(),
+                funds: vec![],
+            })
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
+                msg: encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msgs[1].clone()))).unwrap(),
+                funds: vec![],
+            }),
+        res
+    );
+
+    assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, "token_id1"));
+    assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, "token_id2"));
+}
+
+#[test]
 fn test_start_sale_no_expiration() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
