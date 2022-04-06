@@ -2,15 +2,15 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
     coins,
     testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, DepsMut, Response, Uint128, WasmMsg,
+    to_binary, Addr, BankMsg, DepsMut, Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 use crate::{
     contract::{execute, instantiate},
     state::{
-        Config, GlobalRewardInfo, Staker, State, CONFIG, GLOBAL_REWARD_INFOS, STAKERS,
-        STAKER_REWARD_INFOS, STATE,
+        Config, GlobalRewardInfo, Staker, StakerRewardInfo, State, CONFIG, GLOBAL_REWARD_INFOS,
+        STAKERS, STAKER_REWARD_INFOS, STATE,
     },
     testing::mock_querier::mock_dependencies_custom,
 };
@@ -443,5 +443,242 @@ fn test_update_global_indexes_invalid_asset() {
             asset: "native:uluna".to_string(),
         },
         res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_update_global_indexes_cw20_deposit() {
+    let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
+    init(
+        deps.as_mut(),
+        Some(vec![
+            AssetInfoUnchecked::native("uusd"),
+            AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+        ]),
+    );
+
+    deps.querier.with_token_balances(&[
+        (
+            &MOCK_STAKING_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
+        (
+            &MOCK_INCENTIVE_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
+        ),
+    ]);
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                total_share: Uint128::new(100),
+            },
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        amount: Uint128::new(20),
+        msg: to_binary(&Cw20HookMsg::UpdateGlobalRewardIndexes {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new().add_attribute("action", "update_global_indexes"),
+        res
+    );
+
+    assert_eq!(
+        GlobalRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
+            previous_reward_balance: Uint128::new(20)
+        },
+        GLOBAL_REWARD_INFOS
+            .load(deps.as_ref().storage, "cw20:incentive_token")
+            .unwrap()
+    );
+
+    assert_eq!(
+        GlobalRewardInfo {
+            index: Decimal256::zero(),
+            previous_reward_balance: Uint128::zero()
+        },
+        GLOBAL_REWARD_INFOS
+            .load(deps.as_ref().storage, "native:uusd")
+            .unwrap()
+    );
+}
+
+#[test]
+fn test_update_global_indexes_unauthorized() {
+    let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
+    init(
+        deps.as_mut(),
+        Some(vec![
+            AssetInfoUnchecked::native("uusd"),
+            AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+        ]),
+    );
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                total_share: Uint128::new(100),
+            },
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
+
+    let info = mock_info("not_owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_claim_rewards() {
+    let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
+    init(
+        deps.as_mut(),
+        Some(vec![AssetInfoUnchecked::native("uusd")]),
+    );
+
+    deps.querier.with_token_balances(&[(
+        &MOCK_STAKING_TOKEN.to_string(),
+        &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+    )]);
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "user1".to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_STAKING_TOKEN, &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    deps.querier.with_token_balances(&[(
+        &MOCK_STAKING_TOKEN.to_string(),
+        &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(200 + 100))],
+    )]);
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "user2".to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_STAKING_TOKEN, &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Staker {
+            share: Uint128::new(100)
+        },
+        STAKERS.load(deps.as_ref().storage, "user1").unwrap()
+    );
+    assert_eq!(
+        Staker {
+            share: Uint128::new(50)
+        },
+        STAKERS.load(deps.as_ref().storage, "user2").unwrap()
+    );
+
+    let info = mock_info("user1", &[]);
+    let msg = ExecuteMsg::ClaimRewards {};
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    // No rewards have been given yet.
+    assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
+
+    // Update the global index for uusd by depositing 100 uusd
+    let msg = ExecuteMsg::UpdateGlobalIndexes {
+        asset_infos: Some(vec![AssetInfoUnchecked::native("uusd")]),
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        GlobalRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
+            previous_reward_balance: Uint128::new(100)
+        },
+        GLOBAL_REWARD_INFOS
+            .load(deps.as_ref().storage, "native:uusd")
+            .unwrap()
+    );
+
+    let info = mock_info("user1", &[]);
+    let msg = ExecuteMsg::ClaimRewards {};
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        StakerRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
+            // User is left with some decimals since percent is 66.666666666666666666
+            pending_rewards: Decimal256::from_uint256(Uint256::from(66u128)),
+        },
+        STAKER_REWARD_INFOS
+            .load(deps.as_ref().storage, ("user1", "native:uusd"))
+            .unwrap()
+    );
+
+    assert_eq!(
+        GlobalRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
+            previous_reward_balance: Uint128::new(34)
+        },
+        GLOBAL_REWARD_INFOS
+            .load(deps.as_ref().storage, "native:uusd")
+            .unwrap()
+    );
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "claim_rewards")
+            .add_message(BankMsg::Send {
+                to_address: "user1".to_string(),
+                amount: coins(66, "uusd")
+            }),
+        res
+    );
+
+    let info = mock_info("user2", &[]);
+    let msg = ExecuteMsg::ClaimRewards {};
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        StakerRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
+            // User is left with some decimals since percent is 33.333333333333333333
+            pending_rewards: Decimal256::from_uint256(Uint256::from(33u128)),
+        },
+        STAKER_REWARD_INFOS
+            .load(deps.as_ref().storage, ("user2", "native:uusd"))
+            .unwrap()
+    );
+
+    assert_eq!(
+        GlobalRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
+            previous_reward_balance: Uint128::new(1),
+        },
+        GLOBAL_REWARD_INFOS
+            .load(deps.as_ref().storage, "native:uusd")
+            .unwrap()
+    );
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "claim_rewards")
+            .add_message(BankMsg::Send {
+                to_address: "user2".to_string(),
+                amount: coins(33, "uusd")
+            }),
+        res
     );
 }

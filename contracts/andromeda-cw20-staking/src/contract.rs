@@ -294,7 +294,6 @@ fn execute_unstake_tokens(
 
 fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
-    let state = STATE.load(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
     if let Some(staker) = STAKERS.may_load(deps.storage, sender)? {
         update_rewards(deps.storage, sender, &staker)?;
@@ -324,6 +323,8 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
                     .previous_reward_balance
                     .checked_sub(rewards)?;
 
+                GLOBAL_REWARD_INFOS.save(deps.storage, &token_string, &global_reward_info)?;
+
                 let asset = Asset {
                     info: AssetInfoUnchecked::from_str(&token_string)?.check(deps.api, None)?,
                     amount: rewards,
@@ -335,8 +336,6 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
 
         require(!msgs.is_empty(), ContractError::WithdrawalIsEmpty {})?;
 
-        STATE.save(deps.storage, &state)?;
-        STAKERS.save(deps.storage, sender, &staker)?;
         Ok(Response::new()
             .add_attribute("action", "claim_rewards")
             .add_messages(msgs))
