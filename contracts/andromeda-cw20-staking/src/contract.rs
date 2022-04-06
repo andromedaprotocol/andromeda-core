@@ -131,7 +131,7 @@ fn receive_cw20(
         Cw20HookMsg::StakeTokens {} => {
             execute_stake_tokens(deps, env, msg.sender, info.sender.to_string(), msg.amount)
         }
-        Cw20HookMsg::UpdateGlobalRewardIndexes {} => execute_update_global_indexes(
+        Cw20HookMsg::UpdateGlobalIndex {} => execute_update_global_indexes(
             deps,
             env,
             msg.sender,

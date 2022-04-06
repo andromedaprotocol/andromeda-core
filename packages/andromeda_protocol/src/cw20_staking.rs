@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 pub struct InstantiateMsg {
     /// The cw20 token that can be staked.
     pub staking_token: AndrAddress,
-    /// Any rewards in addition to the base token.
+    /// Any rewards in addition to the staking token. This list cannot include the staking token.
     pub additional_rewards: Option<Vec<AssetInfoUnchecked>>,
 }
 
@@ -24,10 +24,12 @@ pub enum ExecuteMsg {
     AddRewardToken {
         asset_info: AssetInfoUnchecked,
     },
-    /// Unstakes the specified amount of assets, or all if not specified.
+    /// Unstakes the specified amount of assets, or all if not specified. The user's pending
+    /// rewards and indexes are updated for each additional reward token.
     UnstakeTokens {
         amount: Option<Uint128>,
     },
+    /// Claims any outstanding rewards from the addtional reward tokens.
     ClaimRewards {},
     /// Updates the global reward index for the specified assets or all of the specified ones if
     /// None. Funds may be sent along with this.
@@ -38,11 +40,11 @@ pub enum ExecuteMsg {
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub enum Cw20HookMsg {
-    /// Stake the sent tokens. Address must match the `staking_token` given in instantiation. Upon
-    /// deposit the user's pending reward and user index are updated.
+    /// Stake the sent tokens. Address must match the `staking_token` given on instantiation. The user's pending
+    /// rewards and indexes are updated for each additional reward token.
     StakeTokens {},
-    /// Updates the global reward index on deposit of whitelisted cw20 tokens.
-    UpdateGlobalRewardIndexes {},
+    /// Updates the global reward index on deposit of a valid cw20 token.
+    UpdateGlobalIndex {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]

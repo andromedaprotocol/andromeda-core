@@ -504,7 +504,7 @@ fn test_update_global_indexes_cw20_deposit() {
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
         amount: Uint128::new(20),
-        msg: to_binary(&Cw20HookMsg::UpdateGlobalRewardIndexes {}).unwrap(),
+        msg: to_binary(&Cw20HookMsg::UpdateGlobalIndex {}).unwrap(),
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);

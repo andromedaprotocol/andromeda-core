@@ -19,7 +19,9 @@ pub const STAKER_REWARD_INFOS: Map<(&str, &str), StakerRewardInfo> =
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
+    /// The token accepted for staking.
     pub staking_token: AndrAddress,
+    /// Any additional tokens used for rewards. Cannot include the staking token.
     pub additional_reward_tokens: Vec<AssetInfo>,
 }
 
@@ -31,7 +33,9 @@ pub struct State {
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GlobalRewardInfo {
+    /// The index of this particular reward.
     pub index: Decimal256,
+    /// The reward balance to compare to when updating the index.
     pub previous_reward_balance: Uint128,
 }
 
@@ -43,6 +47,8 @@ pub struct Staker {
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StakerRewardInfo {
+    /// The index of this particular reward.
     pub index: Decimal256,
+    /// The pending rewards for this particular reward.
     pub pending_rewards: Decimal256,
 }
