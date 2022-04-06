@@ -193,7 +193,7 @@ fn test_stake_unstake_tokens() {
     };
 
     let info = mock_info("sender", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
     assert_eq!(
         ContractError::InvalidWithdrawal {
@@ -205,7 +205,7 @@ fn test_stake_unstake_tokens() {
     // User 1 unstakes all
     let msg = ExecuteMsg::UnstakeTokens { amount: None };
 
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -248,7 +248,7 @@ fn test_stake_unstake_tokens() {
     let msg = ExecuteMsg::UnstakeTokens { amount: None };
 
     let info = mock_info("other_sender", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()

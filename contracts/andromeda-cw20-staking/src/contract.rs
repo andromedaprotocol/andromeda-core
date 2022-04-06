@@ -382,7 +382,7 @@ fn execute_update_global_indexes(
     )?;
     let state = STATE.load(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
-    let reward_tokens = asset_infos.unwrap_or(config.additional_reward_tokens.clone());
+    let reward_tokens = asset_infos.unwrap_or_else(|| config.additional_reward_tokens.clone());
 
     for token in reward_tokens {
         update_global_index(
