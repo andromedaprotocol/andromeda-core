@@ -14,8 +14,6 @@ pub struct InstantiateMsg {
     pub staking_token: AndrAddress,
     /// Any rewards in addition to the base token.
     pub additional_rewards: Option<Vec<AssetInfoUnchecked>>,
-    /// Optional modules.
-    pub modules: Option<Vec<Module>>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]

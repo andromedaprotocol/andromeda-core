@@ -136,6 +136,7 @@ dependencies = [
  "cw20 0.9.1",
  "schemars",
  "serde",
+ "terra-cosmwasm",
 ]
 
 [[package]]

@@ -2,17 +2,17 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    Response, StdResult, Uint128,
+    from_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
+    QuerierWrapper, Response, StdResult, Storage, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
-use std::collections::BTreeMap;
 use std::str::FromStr;
 
 use crate::state::{
-    Config, ContractRewardInfo, Staker, StakerRewardInfo, State, CONFIG, STAKERS, STATE,
+    Config, GlobalRewardInfo, Staker, State, CONFIG, GLOBAL_REWARD_INFOS, STAKERS,
+    STAKER_REWARD_INFOS, STATE,
 };
 use ado_base::ADOContract;
 use andromeda_protocol::cw20_staking::{
@@ -41,9 +41,12 @@ pub fn instantiate(
     } else {
         vec![]
     };
-    let mut additional_reward_info: BTreeMap<String, ContractRewardInfo> = BTreeMap::new();
     for token in additional_reward_tokens.iter() {
-        additional_reward_info.insert(token.to_string(), ContractRewardInfo::default());
+        GLOBAL_REWARD_INFOS.save(
+            deps.storage,
+            &token.to_string(),
+            &GlobalRewardInfo::default(),
+        )?;
     }
     CONFIG.save(
         deps.storage,
@@ -56,7 +59,6 @@ pub fn instantiate(
         deps.storage,
         &State {
             total_share: Uint128::zero(),
-            additional_reward_info,
         },
     )?;
 
@@ -67,7 +69,7 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "cw20_staking".to_string(),
             operators: None,
-            modules: msg.modules,
+            modules: None,
             primitive_contract: None,
         },
     )
@@ -153,6 +155,7 @@ fn execute_add_reward_token(
 
     let mut state = STATE.load(deps.storage)?;
     update_global_index(
+        deps.storage,
         &deps.querier,
         env.contract.address,
         &mut state,
@@ -195,7 +198,7 @@ fn execute_stake_tokens(
     let mut staker = STAKERS.may_load(deps.storage, &sender)?.unwrap_or_default();
 
     // Update the rewards for the user. This must be done before the new share is calculated.
-    update_rewards(&state, &mut staker);
+    update_rewards(deps.storage, &sender, &staker)?;
 
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
 
@@ -245,7 +248,7 @@ fn execute_unstake_tokens(
     let staker = STAKERS.may_load(deps.storage, sender)?;
     if let Some(mut staker) = staker {
         let mut state = STATE.load(deps.storage)?;
-        update_rewards(&state, &mut staker);
+        update_rewards(deps.storage, sender, &staker)?;
 
         let withdraw_share = amount
             .map(|v| {
@@ -289,17 +292,18 @@ fn execute_unstake_tokens(
 
 fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
-    let mut state = STATE.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
-    if let Some(mut staker) = STAKERS.may_load(deps.storage, sender)? {
-        update_rewards(&state, &mut staker);
+    if let Some(staker) = STAKERS.may_load(deps.storage, sender)? {
+        update_rewards(deps.storage, sender, &staker)?;
         let mut msgs: Vec<CosmosMsg> = vec![];
 
         for token in config.additional_reward_tokens {
             let token_string = token.to_string();
 
             // Since we call `update_rewards` first, this entry will always exist.
-            let mut staker_reward_info = staker.reward_info.get_mut(&token_string).unwrap();
+            let mut staker_reward_info =
+                STAKER_REWARD_INFOS.load(deps.storage, (sender, &token_string))?;
             let rewards: Uint128 =
                 Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128);
 
@@ -310,11 +314,11 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
                 // Reduce pending rewards for staker to what is left over after rounding.
                 staker_reward_info.pending_rewards = decimals;
 
-                let mut contract_reward_info =
-                    state.additional_reward_info.get_mut(&token_string).unwrap();
+                let mut global_reward_info =
+                    GLOBAL_REWARD_INFOS.load(deps.storage, &token_string)?;
 
                 // Reduce reward balance.
-                contract_reward_info.previous_reward_balance = contract_reward_info
+                global_reward_info.previous_reward_balance = global_reward_info
                     .previous_reward_balance
                     .checked_sub(rewards)?;
 
@@ -350,15 +354,16 @@ fn execute_update_global_indexes(
         contract.is_owner_or_operator(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
-    let mut state = STATE.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
     let reward_tokens = asset_infos.unwrap_or(config.additional_reward_tokens.clone());
 
     for token in reward_tokens {
         update_global_index(
+            deps.storage,
             &deps.querier,
             env.contract.address.clone(),
-            &mut state,
+            &state,
             &config,
             token,
         )?;
@@ -369,9 +374,10 @@ fn execute_update_global_indexes(
 }
 
 fn update_global_index(
+    storage: &mut dyn Storage,
     querier: &QuerierWrapper,
     contract_address: Addr,
-    state: &mut State,
+    state: &State,
     config: &Config,
     token: AssetInfo,
 ) -> Result<(), ContractError> {
@@ -383,45 +389,51 @@ fn update_global_index(
     )?;
 
     let token_string = token.to_string();
-    if !state.additional_reward_info.contains_key(&token_string) {
-        state
-            .additional_reward_info
-            .insert(token_string.clone(), ContractRewardInfo::default());
-    }
-
-    // Can unwrap since we it will always be there.
-    let contract_reward_info = state.additional_reward_info.get_mut(&token_string).unwrap();
+    let mut global_reward_info = GLOBAL_REWARD_INFOS
+        .may_load(storage, &token_string)?
+        .unwrap_or_default();
 
     let reward_balance = token.query_balance(querier, contract_address)?;
     let deposited_amount =
-        reward_balance.checked_sub(contract_reward_info.previous_reward_balance)?;
+        reward_balance.checked_sub(global_reward_info.previous_reward_balance)?;
 
-    contract_reward_info.index +=
+    global_reward_info.index +=
         Decimal256::from(Decimal::from_ratio(deposited_amount, state.total_share));
 
-    contract_reward_info.previous_reward_balance = reward_balance;
+    global_reward_info.previous_reward_balance = reward_balance;
+
+    GLOBAL_REWARD_INFOS.save(storage, &token_string, &global_reward_info)?;
 
     Ok(())
 }
 
-fn update_rewards(state: &State, staker: &mut Staker) {
-    for (token, contract_reward_info) in state.additional_reward_info.iter() {
-        let token_string = token.to_string();
+fn update_rewards(
+    storage: &mut dyn Storage,
+    staker_address: &str,
+    staker: &Staker,
+) -> Result<(), ContractError> {
+    let reward_infos: Result<Vec<(String, GlobalRewardInfo)>, ContractError> = GLOBAL_REWARD_INFOS
+        .range(storage, None, None, Order::Ascending)
+        .map(|v| {
+            let (token, reward_infos) = v?;
+            Ok((String::from_utf8(token)?, reward_infos))
+        })
+        .collect();
 
-        if !staker.reward_info.contains_key(&token_string) {
-            staker
-                .reward_info
-                .insert(token_string.clone(), StakerRewardInfo::default());
-        }
-
-        let staker_reward_info = staker.reward_info.get_mut(&token_string).unwrap();
+    for (token, global_reward_info) in reward_infos? {
+        let mut staker_reward_info = STAKER_REWARD_INFOS
+            .may_load(storage, (staker_address, &token))?
+            .unwrap_or_default();
 
         let staker_share = Uint256::from(staker.share);
-        let rewards = (contract_reward_info.index - staker_reward_info.index) * staker_share;
+        let rewards = (global_reward_info.index - staker_reward_info.index) * staker_share;
 
-        staker_reward_info.index = contract_reward_info.index;
+        staker_reward_info.index = global_reward_info.index;
         staker_reward_info.pending_rewards += Decimal256::from_uint256(rewards);
+
+        STAKER_REWARD_INFOS.save(storage, (staker_address, &token), &staker_reward_info)?;
     }
+    Ok(())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -441,6 +453,3 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     }
     Ok(Response::default())
 }
-
-#[cfg(test)]
-mod tests {}
