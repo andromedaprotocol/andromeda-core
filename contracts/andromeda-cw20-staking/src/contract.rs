@@ -3,7 +3,7 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, Response, StdResult, Storage, Uint128,
+    QuerierWrapper, Response, Storage, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
