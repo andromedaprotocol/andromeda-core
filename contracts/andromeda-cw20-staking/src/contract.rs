@@ -32,10 +32,21 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let additional_reward_tokens = if let Some(additional_rewards) = msg.additional_rewards {
-        let additional_rewards: StdResult<Vec<AssetInfo>> = additional_rewards
+    let additional_reward_tokens = if let Some(ref additional_rewards) = msg.additional_rewards {
+        let staking_token = AssetInfoUnchecked::cw20(msg.staking_token.identifier.to_lowercase());
+        let additional_rewards: Result<Vec<AssetInfo>, ContractError> = additional_rewards
             .iter()
-            .map(|r| r.check(deps.api, None))
+            .map(|r| {
+                // Staking token cannot be used as an additional reward as it is a reward by
+                // default.
+                require(
+                    &staking_token != r,
+                    ContractError::InvalidAsset {
+                        asset: msg.staking_token.identifier.clone(),
+                    },
+                )?;
+                Ok(r.check(deps.api, None)?)
+            })
             .collect();
         additional_rewards?
     } else {
@@ -135,8 +146,9 @@ fn execute_add_reward_token(
     info: MessageInfo,
     asset_info: AssetInfoUnchecked,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
     require(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     let mut config = CONFIG.load(deps.storage)?;
@@ -148,17 +160,30 @@ fn execute_add_reward_token(
         },
     )?;
 
+    let staking_token_address = config.staking_token.get_address(
+        deps.api,
+        &deps.querier,
+        contract.get_mission_contract(deps.storage)?,
+    )?;
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
+    require(
+        staking_token != asset_info,
+        ContractError::InvalidAsset {
+            asset: asset_info.to_string(),
+        },
+    )?;
+
     let asset_info_string = asset_info.to_string();
     config.additional_reward_tokens.push(asset_info.clone());
 
     CONFIG.save(deps.storage, &config)?;
 
-    let mut state = STATE.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     update_global_index(
         deps.storage,
         &deps.querier,
         env.contract.address,
-        &mut state,
+        &state,
         &config,
         asset_info,
     )?;

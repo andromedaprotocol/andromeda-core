@@ -21,7 +21,10 @@ use cw_asset::{AssetInfo, AssetInfoUnchecked};
 const MOCK_STAKING_TOKEN: &str = "staking_token";
 const MOCK_INCENTIVE_TOKEN: &str = "incentive_token";
 
-fn init(deps: DepsMut, additional_rewards: Option<Vec<AssetInfoUnchecked>>) -> Response {
+fn init(
+    deps: DepsMut,
+    additional_rewards: Option<Vec<AssetInfoUnchecked>>,
+) -> Result<Response, ContractError> {
     let info = mock_info("owner", &[]);
 
     let msg = InstantiateMsg {
@@ -31,7 +34,7 @@ fn init(deps: DepsMut, additional_rewards: Option<Vec<AssetInfoUnchecked>>) -> R
         additional_rewards,
     };
 
-    instantiate(deps, mock_env(), info, msg).unwrap()
+    instantiate(deps, mock_env(), info, msg)
 }
 
 #[test]
@@ -44,7 +47,8 @@ fn test_instantiate() {
             AssetInfoUnchecked::native("uusd"),
             AssetInfoUnchecked::cw20("incentive_token"),
         ]),
-    );
+    )
+    .unwrap();
 
     assert_eq!(
         Response::new()
@@ -88,9 +92,25 @@ fn test_instantiate() {
 }
 
 #[test]
+fn test_instantiate_staking_token_as_addtional_reward() {
+    let mut deps = mock_dependencies(&[]);
+
+    let res = init(
+        deps.as_mut(),
+        Some(vec![AssetInfoUnchecked::cw20(MOCK_STAKING_TOKEN)]),
+    );
+    assert_eq!(
+        ContractError::InvalidAsset {
+            asset: "staking_token".to_string()
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
 fn test_stake_unstake_tokens() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut(), None);
+    init(deps.as_mut(), None).unwrap();
 
     deps.querier.with_token_balances(&[(
         &MOCK_STAKING_TOKEN.to_string(),
@@ -266,7 +286,7 @@ fn test_stake_unstake_tokens() {
 #[test]
 fn test_stake_invalid_token() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut(), None);
+    init(deps.as_mut(), None).unwrap();
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "sender".to_string(),
@@ -294,7 +314,8 @@ fn test_update_global_indexes() {
             AssetInfoUnchecked::native("uusd"),
             AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
         ]),
-    );
+    )
+    .unwrap();
 
     deps.querier.with_token_balances(&[
         (
@@ -356,7 +377,8 @@ fn test_update_global_indexes_selective() {
             AssetInfoUnchecked::native("uusd"),
             AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
         ]),
-    );
+    )
+    .unwrap();
 
     deps.querier.with_token_balances(&[
         (
@@ -420,7 +442,8 @@ fn test_update_global_indexes_invalid_asset() {
             AssetInfoUnchecked::native("uusd"),
             AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
         ]),
-    );
+    )
+    .unwrap();
 
     STATE
         .save(
@@ -455,7 +478,8 @@ fn test_update_global_indexes_cw20_deposit() {
             AssetInfoUnchecked::native("uusd"),
             AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
         ]),
-    );
+    )
+    .unwrap();
 
     deps.querier.with_token_balances(&[
         (
@@ -521,7 +545,8 @@ fn test_update_global_indexes_unauthorized() {
             AssetInfoUnchecked::native("uusd"),
             AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
         ]),
-    );
+    )
+    .unwrap();
 
     STATE
         .save(
@@ -547,7 +572,8 @@ fn test_claim_rewards() {
     init(
         deps.as_mut(),
         Some(vec![AssetInfoUnchecked::native("uusd")]),
-    );
+    )
+    .unwrap();
 
     deps.querier.with_token_balances(&[(
         &MOCK_STAKING_TOKEN.to_string(),
@@ -693,7 +719,8 @@ fn test_stake_rewards_update() {
             AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
             AssetInfoUnchecked::native("uusd"),
         ]),
-    );
+    )
+    .unwrap();
 
     deps.querier.with_token_balances(&[(
         &MOCK_STAKING_TOKEN.to_string(),
@@ -779,7 +806,8 @@ fn test_unstake_rewards_update() {
             AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
             AssetInfoUnchecked::native("uusd"),
         ]),
-    );
+    )
+    .unwrap();
 
     deps.querier.with_token_balances(&[(
         &MOCK_STAKING_TOKEN.to_string(),
@@ -850,4 +878,120 @@ fn test_unstake_rewards_update() {
             .load(deps.as_ref().storage, ("user1", "native:uusd"))
             .unwrap()
     );
+}
+
+#[test]
+fn test_add_reward_token() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None).unwrap();
+
+    deps.querier.with_token_balances(&[
+        (
+            &MOCK_STAKING_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
+        (
+            &MOCK_INCENTIVE_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::zero())],
+        ),
+    ]);
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                total_share: Uint128::new(100),
+            },
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::AddRewardToken {
+        asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+    };
+    let info = mock_info("owner", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "add_reward_token")
+            .add_attribute("added_token", "cw20:incentive_token"),
+        res
+    );
+
+    assert_eq!(
+        GlobalRewardInfo {
+            index: Decimal256::zero(),
+            previous_reward_balance: Uint128::zero(),
+        },
+        GLOBAL_REWARD_INFOS
+            .load(deps.as_ref().storage, "cw20:incentive_token")
+            .unwrap()
+    );
+
+    assert_eq!(
+        Config {
+            staking_token: AndrAddress {
+                identifier: MOCK_STAKING_TOKEN.to_owned()
+            },
+            additional_reward_tokens: vec![AssetInfo::cw20(Addr::unchecked(MOCK_INCENTIVE_TOKEN))]
+        },
+        CONFIG.load(deps.as_ref().storage).unwrap()
+    );
+}
+
+#[test]
+fn test_add_reward_token_duplicate() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(
+        deps.as_mut(),
+        Some(vec![AssetInfoUnchecked::native("uusd")]),
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::AddRewardToken {
+        asset_info: AssetInfoUnchecked::native("uusd"),
+    };
+    let info = mock_info("owner", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(
+        ContractError::InvalidAsset {
+            asset: "native:uusd".to_string()
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_add_reward_token_staking_token() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None).unwrap();
+
+    let msg = ExecuteMsg::AddRewardToken {
+        asset_info: AssetInfoUnchecked::cw20(MOCK_STAKING_TOKEN),
+    };
+    let info = mock_info("owner", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(
+        ContractError::InvalidAsset {
+            asset: "cw20:staking_token".to_string()
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_add_reward_token_unauthorized() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None).unwrap();
+
+    let msg = ExecuteMsg::AddRewardToken {
+        asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+    };
+    let info = mock_info("not_owner", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
