@@ -1,8 +1,10 @@
-use common::mission::AndrAddress;
 use cosmwasm_bignumber::Decimal256;
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Order, Storage, Uint128};
 use cw_asset::AssetInfo;
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::{Bound, Item, Map};
+
+use andromeda_protocol::cw20_staking::StakerResponse;
+use common::{error::ContractError, mission::AndrAddress};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -51,4 +53,28 @@ pub struct StakerRewardInfo {
     pub index: Decimal256,
     /// The pending rewards for this particular reward.
     pub pending_rewards: Decimal256,
+}
+
+const MAX_LIMIT: u32 = 30;
+const DEFAULT_LIMIT: u32 = 10;
+pub(crate) fn get_stakers(
+    storage: &dyn Storage,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<StakerResponse>, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    STAKERS
+        .range(storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|elem| {
+            let (k, v) = elem?;
+            let address: String = String::from_utf8(k)?;
+            Ok(StakerResponse {
+                address,
+                share: v.share,
+            })
+        })
+        .collect()
 }

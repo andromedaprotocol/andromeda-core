@@ -11,14 +11,16 @@ use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 use std::str::FromStr;
 
 use crate::state::{
-    Config, GlobalRewardInfo, Staker, State, CONFIG, GLOBAL_REWARD_INFOS, STAKERS,
-    STAKER_REWARD_INFOS, STATE,
+    get_stakers, Config, GlobalRewardInfo, Staker, StakerRewardInfo, State, CONFIG,
+    GLOBAL_REWARD_INFOS, STAKERS, STAKER_REWARD_INFOS, STATE,
 };
 use ado_base::ADOContract;
 use andromeda_protocol::cw20_staking::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakerResponse,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, error::ContractError, require};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
+};
 
 // Version info, for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20-staking";
@@ -442,35 +444,104 @@ fn update_rewards(
     staker_address: &str,
     staker: &Staker,
 ) -> Result<(), ContractError> {
-    let reward_infos: Result<Vec<(String, GlobalRewardInfo)>, ContractError> = GLOBAL_REWARD_INFOS
-        .range(storage, None, None, Order::Ascending)
-        .map(|v| {
-            let (token, reward_infos) = v?;
-            Ok((String::from_utf8(token)?, reward_infos))
-        })
-        .collect();
-
-    for (token, global_reward_info) in reward_infos? {
-        let mut staker_reward_info = STAKER_REWARD_INFOS
-            .may_load(storage, (staker_address, &token))?
-            .unwrap_or_default();
-
-        let staker_share = Uint256::from(staker.share);
-        let rewards = (global_reward_info.index - staker_reward_info.index) * staker_share;
-
-        staker_reward_info.index = global_reward_info.index;
-        staker_reward_info.pending_rewards += Decimal256::from_uint256(rewards);
+    let reward_infos: Vec<(String, GlobalRewardInfo)> = get_global_reward_infos(storage)?;
+    for (token, global_reward_info) in reward_infos {
+        let staker_reward_info = get_updated_staker_reward_info(
+            storage,
+            staker_address,
+            staker,
+            &token,
+            global_reward_info,
+        )?;
 
         STAKER_REWARD_INFOS.save(storage, (staker_address, &token), &staker_reward_info)?;
     }
     Ok(())
 }
 
+fn get_global_reward_infos(
+    storage: &dyn Storage,
+) -> Result<Vec<(String, GlobalRewardInfo)>, ContractError> {
+    GLOBAL_REWARD_INFOS
+        .range(storage, None, None, Order::Ascending)
+        .map(|v| {
+            let (token, reward_infos) = v?;
+            Ok((String::from_utf8(token)?, reward_infos))
+        })
+        .collect()
+}
+
+fn get_updated_staker_reward_info(
+    storage: &dyn Storage,
+    staker_address: &str,
+    staker: &Staker,
+    token: &str,
+    global_reward_info: GlobalRewardInfo,
+) -> Result<StakerRewardInfo, ContractError> {
+    let mut staker_reward_info = STAKER_REWARD_INFOS
+        .may_load(storage, (staker_address, &token))?
+        .unwrap_or_default();
+
+    let staker_share = Uint256::from(staker.share);
+    let rewards = (global_reward_info.index - staker_reward_info.index) * staker_share;
+
+    staker_reward_info.index = global_reward_info.index;
+    staker_reward_info.pending_rewards += Decimal256::from_uint256(rewards);
+
+    Ok(staker_reward_info)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
+        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+        QueryMsg::State {} => encode_binary(&query_state(deps)?),
+        QueryMsg::Staker { address } => encode_binary(&query_staker(deps, address)?),
+        QueryMsg::Stakers { start_after, limit } => {
+            encode_binary(&query_stakers(deps, start_after, limit)?)
+        }
     }
+}
+
+fn query_config(deps: Deps) -> Result<Config, ContractError> {
+    Ok(CONFIG.load(deps.storage)?)
+}
+
+fn query_state(deps: Deps) -> Result<State, ContractError> {
+    Ok(STATE.load(deps.storage)?)
+}
+
+fn query_staker(deps: Deps, address: String) -> Result<StakerResponse, ContractError> {
+    let staker = STAKERS.load(deps.storage, &address)?;
+    let reward_infos: Vec<(String, GlobalRewardInfo)> = get_global_reward_infos(deps.storage)?;
+    let mut pending_rewards = vec![];
+    for (token, global_reward_info) in reward_infos {
+        let staker_reward_info = get_updated_staker_reward_info(
+            deps.storage,
+            &address,
+            &staker,
+            &token,
+            global_reward_info,
+        )?;
+        pending_rewards.push((
+            token,
+            Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128),
+        ))
+    }
+    Ok(StakerResponse {
+        address,
+        share: staker.share,
+        pending_rewards,
+    })
+}
+
+fn query_stakers(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<StakerResponse>, ContractError> {
+    get_stakers(deps.storage, start_after, limit)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
