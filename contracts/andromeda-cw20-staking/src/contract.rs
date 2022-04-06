@@ -259,6 +259,7 @@ fn execute_unstake_tokens(
             })
             .unwrap_or(staker.share);
 
+        println!("{}", withdraw_share);
         require(
             withdraw_share <= staker.share,
             ContractError::InvalidWithdrawal {
@@ -266,19 +267,20 @@ fn execute_unstake_tokens(
             },
         )?;
 
+        let withdraw_amount = amount
+            .unwrap_or_else(|| withdraw_share.multiply_ratio(total_balance, state.total_share));
+
+        let asset = Asset {
+            info: staking_token,
+            amount: withdraw_amount,
+        };
+
         staker.share -= withdraw_share;
         state.total_share -= withdraw_share;
 
         STATE.save(deps.storage, &state)?;
         STAKERS.save(deps.storage, sender, &staker)?;
 
-        let withdraw_amount =
-            amount.unwrap_or_else(|| withdraw_share * total_balance / state.total_share);
-
-        let asset = Asset {
-            info: staking_token,
-            amount: withdraw_amount,
-        };
         Ok(Response::new()
             .add_attribute("action", "unstake_tokens")
             .add_attribute("sender", sender)
