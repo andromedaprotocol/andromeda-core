@@ -542,6 +542,7 @@ fn test_update_global_indexes_unauthorized() {
 
 #[test]
 fn test_claim_rewards() {
+    // uusd is for the reward.
     let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
     init(
         deps.as_mut(),
@@ -680,5 +681,173 @@ fn test_claim_rewards() {
                 amount: coins(33, "uusd")
             }),
         res
+    );
+}
+
+#[test]
+fn test_stake_rewards_update() {
+    let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
+    init(
+        deps.as_mut(),
+        Some(vec![
+            AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+            AssetInfoUnchecked::native("uusd"),
+        ]),
+    );
+
+    deps.querier.with_token_balances(&[(
+        &MOCK_STAKING_TOKEN.to_string(),
+        &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+    )]);
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "user1".to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_STAKING_TOKEN, &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    deps.querier.with_token_balances(&[
+        (
+            &MOCK_STAKING_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
+        (
+            // Deposit incentive token
+            &MOCK_INCENTIVE_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
+        ),
+    ]);
+
+    // Update global index.
+    let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
+    let info = mock_info("owner", &[]);
+
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    deps.querier.with_token_balances(&[
+        (
+            &MOCK_STAKING_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100 + 50))],
+        ),
+        (
+            // Deposit incentive token
+            &MOCK_INCENTIVE_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
+        ),
+    ]);
+
+    // Stake 50 more.
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "user1".to_string(),
+        amount: Uint128::new(50),
+        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_STAKING_TOKEN, &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        StakerRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
+            pending_rewards: Decimal256::from_uint256(Uint256::from(20u128))
+        },
+        STAKER_REWARD_INFOS
+            .load(deps.as_ref().storage, ("user1", "cw20:incentive_token"))
+            .unwrap()
+    );
+
+    assert_eq!(
+        StakerRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
+            pending_rewards: Decimal256::from_uint256(Uint256::from(40u128))
+        },
+        STAKER_REWARD_INFOS
+            .load(deps.as_ref().storage, ("user1", "native:uusd"))
+            .unwrap()
+    );
+}
+
+#[test]
+fn test_unstake_rewards_update() {
+    let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
+    init(
+        deps.as_mut(),
+        Some(vec![
+            AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+            AssetInfoUnchecked::native("uusd"),
+        ]),
+    );
+
+    deps.querier.with_token_balances(&[(
+        &MOCK_STAKING_TOKEN.to_string(),
+        &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+    )]);
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "user1".to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_STAKING_TOKEN, &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    deps.querier.with_token_balances(&[
+        (
+            &MOCK_STAKING_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
+        (
+            // Deposit incentive token
+            &MOCK_INCENTIVE_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
+        ),
+    ]);
+
+    // Update global index.
+    let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
+    let info = mock_info("owner", &[]);
+
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    deps.querier.with_token_balances(&[
+        (
+            &MOCK_STAKING_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
+        (
+            // Deposit incentive token
+            &MOCK_INCENTIVE_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
+        ),
+    ]);
+
+    // Unstake all.
+    let msg = ExecuteMsg::UnstakeTokens { amount: None };
+
+    let info = mock_info("user1", &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        StakerRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
+            pending_rewards: Decimal256::from_uint256(Uint256::from(20u128))
+        },
+        STAKER_REWARD_INFOS
+            .load(deps.as_ref().storage, ("user1", "cw20:incentive_token"))
+            .unwrap()
+    );
+
+    assert_eq!(
+        StakerRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
+            pending_rewards: Decimal256::from_uint256(Uint256::from(40u128))
+        },
+        STAKER_REWARD_INFOS
+            .load(deps.as_ref().storage, ("user1", "native:uusd"))
+            .unwrap()
     );
 }
