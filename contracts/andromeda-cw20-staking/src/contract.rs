@@ -370,7 +370,6 @@ fn execute_update_global_indexes(
             token,
         )?;
     }
-    STATE.save(deps.storage, &state)?;
 
     Ok(Response::new().add_attribute("action", "update_global_indexes"))
 }
@@ -389,6 +388,11 @@ fn update_global_index(
             asset: token.to_string(),
         },
     )?;
+
+    // In this case there is no point updating the index if no one is staked.
+    if state.total_share.is_zero() {
+        return Ok(());
+    }
 
     let token_string = token.to_string();
     let mut global_reward_info = GLOBAL_REWARD_INFOS

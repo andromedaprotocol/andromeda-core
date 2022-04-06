@@ -1,5 +1,6 @@
-use cosmwasm_bignumber::Decimal256;
+use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
+    coins,
     testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
     to_binary, Addr, DepsMut, Response, Uint128, WasmMsg,
 };
@@ -18,6 +19,7 @@ use common::{error::ContractError, mission::AndrAddress};
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
 const MOCK_STAKING_TOKEN: &str = "staking_token";
+const MOCK_INCENTIVE_TOKEN: &str = "incentive_token";
 
 fn init(deps: DepsMut, additional_rewards: Option<Vec<AssetInfoUnchecked>>) -> Response {
     let info = mock_info("owner", &[]);
@@ -278,6 +280,167 @@ fn test_stake_invalid_token() {
     assert_eq!(
         ContractError::InvalidFunds {
             msg: "Deposited cw20 token is not the staking token".to_string(),
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_update_global_indexes() {
+    let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
+    init(
+        deps.as_mut(),
+        Some(vec![
+            AssetInfoUnchecked::native("uusd"),
+            AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+        ]),
+    );
+
+    deps.querier.with_token_balances(&[
+        (
+            &MOCK_STAKING_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
+        (
+            &MOCK_INCENTIVE_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
+        ),
+    ]);
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                total_share: Uint128::new(100),
+            },
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new().add_attribute("action", "update_global_indexes"),
+        res
+    );
+
+    assert_eq!(
+        GlobalRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
+            previous_reward_balance: Uint128::new(40)
+        },
+        GLOBAL_REWARD_INFOS
+            .load(deps.as_ref().storage, "native:uusd")
+            .unwrap()
+    );
+
+    assert_eq!(
+        GlobalRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
+            previous_reward_balance: Uint128::new(20)
+        },
+        GLOBAL_REWARD_INFOS
+            .load(deps.as_ref().storage, "cw20:incentive_token")
+            .unwrap()
+    );
+}
+
+#[test]
+fn test_update_global_indexes_selective() {
+    let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
+    init(
+        deps.as_mut(),
+        Some(vec![
+            AssetInfoUnchecked::native("uusd"),
+            AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+        ]),
+    );
+
+    deps.querier.with_token_balances(&[
+        (
+            &MOCK_STAKING_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
+        (
+            &MOCK_INCENTIVE_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
+        ),
+    ]);
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                total_share: Uint128::new(100),
+            },
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::UpdateGlobalIndexes {
+        asset_infos: Some(vec![AssetInfoUnchecked::native("uusd")]),
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new().add_attribute("action", "update_global_indexes"),
+        res
+    );
+
+    assert_eq!(
+        GlobalRewardInfo {
+            index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
+            previous_reward_balance: Uint128::new(40)
+        },
+        GLOBAL_REWARD_INFOS
+            .load(deps.as_ref().storage, "native:uusd")
+            .unwrap()
+    );
+
+    assert_eq!(
+        GlobalRewardInfo {
+            index: Decimal256::zero(),
+            previous_reward_balance: Uint128::zero()
+        },
+        GLOBAL_REWARD_INFOS
+            .load(deps.as_ref().storage, "cw20:incentive_token")
+            .unwrap()
+    );
+}
+
+#[test]
+fn test_update_global_indexes_invalid_asset() {
+    let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
+    init(
+        deps.as_mut(),
+        Some(vec![
+            AssetInfoUnchecked::native("uusd"),
+            AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+        ]),
+    );
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                total_share: Uint128::new(100),
+            },
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::UpdateGlobalIndexes {
+        asset_infos: Some(vec![AssetInfoUnchecked::native("uluna")]),
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidAsset {
+            asset: "native:uluna".to_string(),
         },
         res.unwrap_err()
     );
