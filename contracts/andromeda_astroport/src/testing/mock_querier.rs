@@ -98,7 +98,6 @@ impl WasmMockQuerier {
                     MOCK_ASTROPORT_PAIR_CONTRACT => self.handle_astroport_pair_query(msg),
                     MOCK_ASTROPORT_ROUTER_CONTRACT => self.handle_astroport_router_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
-                    MOCK_ASTROPORT_PAIR_CONTRACT => self.handle_astroport_pair_query(msg),
                     _ => {
                         panic!("Unsupported Query for  {}", contract_addr)
                     }

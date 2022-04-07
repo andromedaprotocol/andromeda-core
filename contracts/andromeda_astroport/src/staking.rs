@@ -179,7 +179,7 @@ fn stake_or_unstake_astro(
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: token_addr.to_string(),
+            contract_addr: token_addr,
             msg: encode_binary(&Cw20ExecuteMsg::Send {
                 contract: astroport_staking,
                 amount,
