@@ -110,7 +110,7 @@ pub fn execute_claim_lp_staking_rewards(
         &deps.querier,
         astroport_generator,
         lp_token,
-        env.contract.address.clone(),
+        env.contract.address,
     )?;
     let auto_stake = auto_stake.unwrap_or(false);
     let res = Response::new()
