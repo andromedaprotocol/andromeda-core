@@ -1,20 +1,22 @@
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
-    coins,
+    coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
     to_binary, Addr, BankMsg, DepsMut, Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 use crate::{
-    contract::{execute, instantiate},
+    contract::{execute, instantiate, query},
     state::{
         Config, GlobalRewardInfo, Staker, StakerRewardInfo, State, CONFIG, GLOBAL_REWARD_INFOS,
         STAKERS, STAKER_REWARD_INFOS, STATE,
     },
     testing::mock_querier::mock_dependencies_custom,
 };
-use andromeda_protocol::cw20_staking::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
+use andromeda_protocol::cw20_staking::{
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StakerResponse,
+};
 use common::{error::ContractError, mission::AndrAddress};
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
@@ -641,6 +643,30 @@ fn test_claim_rewards() {
             .unwrap()
     );
 
+    // Verify that the queries return the updated rewards.
+    let msg = QueryMsg::Stakers {
+        start_after: None,
+        limit: None,
+    };
+    let res: Vec<StakerResponse> =
+        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    assert_eq!(
+        vec![
+            StakerResponse {
+                address: "user1".to_string(),
+                share: Uint128::new(100),
+                pending_rewards: vec![("native:uusd".to_string(), Uint128::new(66))]
+            },
+            StakerResponse {
+                address: "user2".to_string(),
+                share: Uint128::new(50),
+                pending_rewards: vec![("native:uusd".to_string(), Uint128::new(33))]
+            },
+        ],
+        res
+    );
+
     let info = mock_info("user1", &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -648,8 +674,7 @@ fn test_claim_rewards() {
     assert_eq!(
         StakerRewardInfo {
             index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
-            // User is left with some decimals since percent is 66.666666666666666666
-            pending_rewards: Decimal256::from_uint256(Uint256::from(66u128)),
+            pending_rewards: Decimal256::zero(),
         },
         STAKER_REWARD_INFOS
             .load(deps.as_ref().storage, ("user1", "native:uusd"))
@@ -680,10 +705,19 @@ fn test_claim_rewards() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
+        Response::new()
+            .add_attribute("action", "claim_rewards")
+            .add_message(BankMsg::Send {
+                to_address: "user2".to_string(),
+                amount: coins(33, "uusd")
+            }),
+        res
+    );
+
+    assert_eq!(
         StakerRewardInfo {
             index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
-            // User is left with some decimals since percent is 33.333333333333333333
-            pending_rewards: Decimal256::from_uint256(Uint256::from(33u128)),
+            pending_rewards: Decimal256::zero(),
         },
         STAKER_REWARD_INFOS
             .load(deps.as_ref().storage, ("user2", "native:uusd"))
@@ -699,13 +733,28 @@ fn test_claim_rewards() {
             .load(deps.as_ref().storage, "native:uusd")
             .unwrap()
     );
+
+    // Verify that the queries return the correct pending rewards.
+    let msg = QueryMsg::Stakers {
+        start_after: None,
+        limit: None,
+    };
+    let res: Vec<StakerResponse> =
+        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
     assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_message(BankMsg::Send {
-                to_address: "user2".to_string(),
-                amount: coins(33, "uusd")
-            }),
+        vec![
+            StakerResponse {
+                address: "user1".to_string(),
+                share: Uint128::new(100),
+                pending_rewards: vec![("native:uusd".to_string(), Uint128::zero())]
+            },
+            StakerResponse {
+                address: "user2".to_string(),
+                share: Uint128::new(50),
+                pending_rewards: vec![("native:uusd".to_string(), Uint128::zero())]
+            },
+        ],
         res
     );
 }
@@ -765,6 +814,24 @@ fn test_stake_rewards_update() {
             &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
         ),
     ]);
+
+    // Verify pending rewards updated with query.
+    let msg = QueryMsg::Staker {
+        address: "user1".to_string(),
+    };
+    let res: StakerResponse = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    assert_eq!(
+        StakerResponse {
+            address: "user1".to_string(),
+            share: Uint128::new(100),
+            pending_rewards: vec![
+                ("cw20:incentive_token".to_string(), Uint128::new(20)),
+                ("native:uusd".to_string(), Uint128::new(40))
+            ]
+        },
+        res
+    );
 
     // Stake 50 more.
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {

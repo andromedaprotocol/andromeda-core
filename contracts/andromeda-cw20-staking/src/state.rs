@@ -3,6 +3,7 @@ use cosmwasm_std::{Order, Storage, Uint128};
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Bound, Item, Map};
 
+use crate::contract::get_pending_rewards;
 use andromeda_protocol::cw20_staking::StakerResponse;
 use common::{error::ContractError, mission::AndrAddress};
 use schemars::JsonSchema;
@@ -71,9 +72,11 @@ pub(crate) fn get_stakers(
         .map(|elem| {
             let (k, v) = elem?;
             let address: String = String::from_utf8(k)?;
+            let pending_rewards = get_pending_rewards(storage, &address, &v)?;
             Ok(StakerResponse {
                 address,
                 share: v.share,
+                pending_rewards,
             })
         })
         .collect()

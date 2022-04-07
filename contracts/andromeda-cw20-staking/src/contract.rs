@@ -286,7 +286,6 @@ fn execute_unstake_tokens(
             })
             .unwrap_or(staker.share);
 
-        println!("{}", withdraw_share);
         require(
             withdraw_share <= staker.share,
             ContractError::InvalidWithdrawal {
@@ -335,12 +334,18 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
             let rewards: Uint128 =
                 Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128);
 
-            let decimals: Decimal256 = staker_reward_info.pending_rewards
+            let decimals: Decimal256 = Decimal256::from_uint256(Uint256::from(rewards))
                 - Decimal256::from_uint256(Uint256::from(rewards));
 
             if !rewards.is_zero() {
                 // Reduce pending rewards for staker to what is left over after rounding.
                 staker_reward_info.pending_rewards = decimals;
+
+                STAKER_REWARD_INFOS.save(
+                    deps.storage,
+                    (sender, &token_string),
+                    &staker_reward_info,
+                )?;
 
                 let mut global_reward_info =
                     GLOBAL_REWARD_INFOS.load(deps.storage, &token_string)?;
@@ -356,7 +361,6 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
                     info: AssetInfoUnchecked::from_str(&token_string)?.check(deps.api, None)?,
                     amount: rewards,
                 };
-
                 msgs.push(asset.transfer_msg(sender)?);
             }
         }
@@ -514,26 +518,32 @@ fn query_state(deps: Deps) -> Result<State, ContractError> {
 
 fn query_staker(deps: Deps, address: String) -> Result<StakerResponse, ContractError> {
     let staker = STAKERS.load(deps.storage, &address)?;
-    let reward_infos: Vec<(String, GlobalRewardInfo)> = get_global_reward_infos(deps.storage)?;
-    let mut pending_rewards = vec![];
-    for (token, global_reward_info) in reward_infos {
-        let staker_reward_info = get_updated_staker_reward_info(
-            deps.storage,
-            &address,
-            &staker,
-            &token,
-            global_reward_info,
-        )?;
-        pending_rewards.push((
-            token,
-            Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128),
-        ))
-    }
+    let pending_rewards = get_pending_rewards(deps.storage, &address, &staker)?;
     Ok(StakerResponse {
         address,
         share: staker.share,
         pending_rewards,
     })
+}
+
+/// Gets the pending rewards for the user in the form of a vector of (token, pending_reward)
+/// tuples.
+pub(crate) fn get_pending_rewards(
+    storage: &dyn Storage,
+    address: &str,
+    staker: &Staker,
+) -> Result<Vec<(String, Uint128)>, ContractError> {
+    let reward_infos: Vec<(String, GlobalRewardInfo)> = get_global_reward_infos(storage)?;
+    let mut pending_rewards = vec![];
+    for (token, global_reward_info) in reward_infos {
+        let staker_reward_info =
+            get_updated_staker_reward_info(storage, &address, &staker, &token, global_reward_info)?;
+        pending_rewards.push((
+            token,
+            Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128),
+        ))
+    }
+    Ok(pending_rewards)
 }
 
 fn query_stakers(

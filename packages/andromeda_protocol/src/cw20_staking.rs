@@ -50,11 +50,17 @@ pub enum Cw20HookMsg {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
+    /// Gets the config of the contract.
     Config {},
+    /// Gets the state of the contract.
     State {},
+    /// Returns a `StakerResponse` for the given staker. The pending rewards are updated to the
+    /// present index.
     Staker {
         address: String,
     },
+    /// Returns a `Vec<StakerResponse>` for range of stakers. The pending rewards are updated to the
+    /// present index for each staker.
     Stakers {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -62,11 +68,11 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
-pub enum MigrateMsg {}
-
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct StakerResponse {
     pub address: String,
     pub share: Uint128,
     pub pending_rewards: Vec<(String, Uint128)>,
 }
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub enum MigrateMsg {}
