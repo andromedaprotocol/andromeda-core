@@ -98,6 +98,7 @@ impl WasmMockQuerier {
                     MOCK_ASTROPORT_PAIR_CONTRACT => self.handle_astroport_pair_query(msg),
                     MOCK_ASTROPORT_ROUTER_CONTRACT => self.handle_astroport_router_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
+                    MOCK_ASTROPORT_PAIR_CONTRACT => self.handle_astroport_pair_query(msg),
                     _ => {
                         panic!("Unsupported Query for  {}", contract_addr)
                     }
@@ -110,33 +111,33 @@ impl WasmMockQuerier {
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             BaseQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
-                let name: String = from_binary(&data.unwrap()).unwrap();
-                let msg_response = match name.as_str() {
+                let key: String = from_binary(&data.unwrap()).unwrap();
+                let msg_response = match key.as_str() {
                     ASTROPORT_ASTRO => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_ASTRO_TOKEN.to_owned()),
                     },
                     ASTROPORT_ROUTER => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_ASTROPORT_ROUTER_CONTRACT.to_owned()),
                     },
                     ASTROPORT_STAKING => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_ASTROPORT_STAKING_CONTRACT.to_owned()),
                     },
                     ASTROPORT_FACTORY => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_ASTROPORT_FACTORY_CONTRACT.to_owned()),
                     },
                     ASTROPORT_GENERATOR => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_ASTROPORT_GENERATOR_CONTRACT.to_owned()),
                     },
                     ASTROPORT_XASTRO => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_XASTRO_TOKEN.to_owned()),
                     },
-                    _ => panic!("Unsupported primitive name"),
+                    _ => panic!("Unsupported primitive key"),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
             }

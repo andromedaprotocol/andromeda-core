@@ -71,7 +71,7 @@ impl Primitive {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GetValueResponse {
-    pub name: String,
+    pub key: String,
     pub value: Primitive,
 }
 

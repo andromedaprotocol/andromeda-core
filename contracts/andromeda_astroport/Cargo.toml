@@ -28,10 +28,11 @@ cw20 = { version = "0.9.1" }
 cw2 = "0.9.1"
 terraswap = "2.4.0"
 astroport = "1.0.1"
+cw-asset = { version = "1.0.2", features = ["legacy"] }
+
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
 common = { version = "0.1.0", path = "../../packages/common" }
 ado-base = { path = "../../packages/ado_base", version = "0.1.0", features = ["withdraw", "primitive"] }
-cw-asset = { version = "1.0.2", features = ["legacy"] }
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }
