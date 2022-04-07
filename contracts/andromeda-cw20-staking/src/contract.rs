@@ -404,6 +404,8 @@ fn execute_update_global_indexes(
     Ok(Response::new().add_attribute("action", "update_global_indexes"))
 }
 
+/// This approach was inspired by Lido's bluna reward system.
+/// https://github.com/lidofinance/lido-terra-contracts/tree/d7026b9142d718f9b5b6be03b1af33040499553c/contracts/lido_terra_reward/src
 fn update_global_index(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
