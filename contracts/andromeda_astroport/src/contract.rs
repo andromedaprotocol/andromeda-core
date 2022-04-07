@@ -16,7 +16,7 @@ use crate::{
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
     astroport::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    swapper::{query_token_balance, SwapperCw20HookMsg, SwapperMsg},
+    swapper::{SwapperCw20HookMsg, SwapperMsg},
 };
 use astroport::{
     asset::AssetInfo as AstroportAssetInfo,
@@ -226,11 +226,8 @@ fn execute_withdraw_liquidity(
     )?;
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(sender.to_owned()));
     let pair_info = query_pair_given_address(&deps.querier, pair_address)?;
-    let total_amount = query_token_balance(
-        &deps.querier,
-        pair_info.liquidity_token.clone(),
-        env.contract.address,
-    )?;
+    let lp_token_asset_info = AssetInfo::cw20(pair_info.liquidity_token.clone());
+    let total_amount = lp_token_asset_info.query_balance(&deps.querier, env.contract.address)?;
     let withdraw_amount = match amount {
         None => total_amount,
         Some(amount) => cmp::min(amount, total_amount),

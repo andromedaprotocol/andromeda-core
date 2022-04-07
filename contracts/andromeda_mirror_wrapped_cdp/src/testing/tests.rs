@@ -14,13 +14,10 @@ use crate::{
     primitive_keys::{MIRROR_GOV, MIRROR_LOCK, MIRROR_MINT, MIRROR_MIR, MIRROR_STAKING},
 };
 use ado_base::ADOContract;
-use andromeda_protocol::{
-    common::get_tax_deducted_funds,
-    mirror_wrapped_cdp::{
-        Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg, MirrorGovExecuteMsg,
-        MirrorLockExecuteMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
-        MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, QueryMsg,
-    },
+use andromeda_protocol::mirror_wrapped_cdp::{
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg, MirrorGovExecuteMsg,
+    MirrorLockExecuteMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingCw20HookMsg,
+    MirrorStakingExecuteMsg, QueryMsg,
 };
 use common::{
     ado_base::{operators::OperatorsResponse, AndromedaMsg, AndromedaQuery},
@@ -133,11 +130,10 @@ fn assert_execute_msg(
     mirror_msg_binary: Binary,
     contract_addr: String,
 ) {
-    let tax_deducted_funds = get_tax_deducted_funds(&deps, info.funds.clone()).unwrap();
-    let res = execute(deps, mock_env(), info, msg).unwrap();
+    let res = execute(deps, mock_env(), info.clone(), msg).unwrap();
     let execute_msg = WasmMsg::Execute {
         contract_addr,
-        funds: tax_deducted_funds,
+        funds: info.funds,
         msg: mirror_msg_binary,
     };
     assert_eq!(
@@ -368,10 +364,6 @@ fn test_mirror_mint_open_position_short() {
 #[test]
 fn test_mirror_mint_deposit() {
     let mut deps = mock_dependencies_custom(&[]);
-    deps.querier.with_tax(
-        Decimal::percent(10),
-        &[(&"uusd".to_string(), &Uint128::from(1500000u128))],
-    );
     let info = mock_info("creator", &coins(10u128, "uusd"));
     assert_intantiate(deps.as_mut(), info.clone());
 

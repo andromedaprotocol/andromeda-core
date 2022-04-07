@@ -5,13 +5,13 @@ use crate::{
     querier::{query_amount_staked, query_pending_reward},
 };
 use ado_base::ADOContract;
-use andromeda_protocol::swapper::query_token_balance;
 use astroport::{
     generator::{Cw20HookMsg as GeneratorCw20HookMsg, ExecuteMsg as GeneratorExecuteMsg},
     staking::Cw20HookMsg as StakingCw20HookMsg,
 };
 use common::{encode_binary, error::ContractError, require};
 use cw20::Cw20ExecuteMsg;
+use cw_asset::AssetInfo;
 use std::cmp;
 
 pub fn execute_stake_lp(
@@ -27,11 +27,8 @@ pub fn execute_stake_lp(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
-    let balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_validate(&lp_token_contract)?,
-        env.contract.address,
-    )?;
+    let lp_token = AssetInfo::cw20(deps.api.addr_validate(&lp_token_contract)?);
+    let balance = lp_token.query_balance(&deps.querier, env.contract.address)?;
     let amount = cmp::min(amount.unwrap_or(balance), balance);
 
     Ok(Response::new()
@@ -170,11 +167,8 @@ fn stake_or_unstake_astro(
         )
     };
 
-    let balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_validate(&token_addr)?,
-        env.contract.address,
-    )?;
+    let token = AssetInfo::cw20(deps.api.addr_validate(&token_addr)?);
+    let balance = token.query_balance(&deps.querier, env.contract.address)?;
     let amount = cmp::min(amount.unwrap_or(balance), balance);
 
     Ok(Response::new()
