@@ -334,7 +334,7 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
             let rewards: Uint128 =
                 Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128);
 
-            let decimals: Decimal256 = Decimal256::from_uint256(Uint256::from(rewards))
+            let decimals: Decimal256 = staker_reward_info.pending_rewards
                 - Decimal256::from_uint256(Uint256::from(rewards));
 
             if !rewards.is_zero() {

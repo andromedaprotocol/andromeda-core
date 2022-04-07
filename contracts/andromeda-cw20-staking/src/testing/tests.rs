@@ -727,6 +727,7 @@ fn test_claim_rewards() {
     assert_eq!(
         GlobalRewardInfo {
             index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
+            // Small rounding error, shouldn't really make a difference and is inevitable.
             previous_reward_balance: Uint128::new(1),
         },
         GLOBAL_REWARD_INFOS
