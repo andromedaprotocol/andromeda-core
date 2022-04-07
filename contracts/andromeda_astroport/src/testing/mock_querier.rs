@@ -148,7 +148,7 @@ impl WasmMockQuerier {
         match from_binary(msg).unwrap() {
             GeneratorQueryMsg::PendingToken { .. } => SystemResult::Ok(ContractResult::Ok(
                 to_binary(&PendingTokenResponse {
-                    pending: 10u128.into(),
+                    pending: 110u128.into(),
                     pending_on_proxy: None,
                 })
                 .unwrap(),

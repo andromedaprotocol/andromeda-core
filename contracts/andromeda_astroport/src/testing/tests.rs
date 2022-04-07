@@ -708,7 +708,7 @@ fn test_claim_lp_staking_rewards_auto_stake() {
         Response::new()
             .add_attribute("action", "claim_lp_staking_rewards")
             .add_attribute("action", "stake_astro")
-            .add_attribute("amount", "10")
+            .add_attribute("amount", "110")
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: MOCK_ASTROPORT_GENERATOR_CONTRACT.to_owned(),
                 funds: vec![],
@@ -722,7 +722,7 @@ fn test_claim_lp_staking_rewards_auto_stake() {
                 contract_addr: MOCK_ASTRO_TOKEN.to_owned(),
                 msg: to_binary(&Cw20ExecuteMsg::Send {
                     contract: MOCK_ASTROPORT_STAKING_CONTRACT.to_string(),
-                    amount: 10u128.into(),
+                    amount: 110u128.into(),
                     msg: to_binary(&StakingCw20HookMsg::Enter {}).unwrap(),
                 })
                 .unwrap(),

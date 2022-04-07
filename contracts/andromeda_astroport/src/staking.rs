@@ -1,4 +1,7 @@
-use cosmwasm_std::{CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg};
+use cosmwasm_std::{
+    Addr, Api, CosmosMsg, DepsMut, Env, MessageInfo, QuerierWrapper, Response, Storage, Uint128,
+    WasmMsg,
+};
 
 use crate::{
     primitive_keys::{ASTROPORT_ASTRO, ASTROPORT_GENERATOR, ASTROPORT_STAKING, ASTROPORT_XASTRO},
@@ -114,7 +117,7 @@ pub fn execute_claim_lp_staking_rewards(
         .add_attribute("action", "claim_lp_staking_rewards")
         .add_message(lp_unstake_msg);
     if auto_stake {
-        let stake_res = execute_stake_astro(deps, env, info, Some(pending_reward))?;
+        let stake_res = stake_or_unstake_astro(deps, info, pending_reward, true)?;
         Ok(res
             .add_attributes(stake_res.attributes)
             .add_submessages(stake_res.messages))
@@ -129,7 +132,15 @@ pub fn execute_stake_astro(
     info: MessageInfo,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    stake_or_unstake_astro(deps, env, info, amount, true)
+    let balance = get_balance(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        env.contract.address,
+        ASTROPORT_ASTRO,
+    )?;
+    let amount = cmp::min(amount.unwrap_or(balance), balance);
+    stake_or_unstake_astro(deps, info, amount, true)
 }
 
 pub fn execute_unstake_astro(
@@ -138,14 +149,21 @@ pub fn execute_unstake_astro(
     info: MessageInfo,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    stake_or_unstake_astro(deps, env, info, amount, false)
+    let balance = get_balance(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        env.contract.address,
+        ASTROPORT_XASTRO,
+    )?;
+    let amount = cmp::min(amount.unwrap_or(balance), balance);
+    stake_or_unstake_astro(deps, info, amount, false)
 }
 
 fn stake_or_unstake_astro(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
-    amount: Option<Uint128>,
+    amount: Uint128,
     stake: bool,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
@@ -167,10 +185,6 @@ fn stake_or_unstake_astro(
         )
     };
 
-    let token = AssetInfo::cw20(deps.api.addr_validate(&token_addr)?);
-    let balance = token.query_balance(&deps.querier, env.contract.address)?;
-    let amount = cmp::min(amount.unwrap_or(balance), balance);
-
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_addr,
@@ -183,4 +197,19 @@ fn stake_or_unstake_astro(
         }))
         .add_attribute("action", action)
         .add_attribute("amount", amount))
+}
+
+fn get_balance(
+    storage: &dyn Storage,
+    api: &dyn Api,
+    querier: &QuerierWrapper,
+    contract_address: Addr,
+    primitive_key: &str,
+) -> Result<Uint128, ContractError> {
+    let contract = ADOContract::default();
+    let token_addr = contract.get_cached_address(storage, primitive_key)?;
+    let token = AssetInfo::cw20(api.addr_validate(&token_addr)?);
+    let balance = token.query_balance(querier, contract_address)?;
+
+    Ok(balance)
 }
