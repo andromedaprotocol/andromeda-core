@@ -46,7 +46,7 @@ fn init(deps: DepsMut) -> Response {
 #[test]
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut());
+    let _res = init(deps.as_mut());
     let contract = ADOContract::default();
 
     assert_eq!(
