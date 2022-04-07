@@ -34,7 +34,7 @@ use astroport::{
 };
 use common::error::ContractError;
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use cw_asset::{Asset, AssetInfo};
+use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked, AssetUnchecked};
 
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
@@ -287,18 +287,18 @@ fn test_provide_liquidity_unauthorized() {
         .has(deps.as_mut().storage, MOCK_ASTRO_TOKEN));
 
     let assets = [
-        Asset {
-            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET1)),
+        AssetUnchecked {
+            info: AssetInfoUnchecked::cw20(MOCK_LP_ASSET1),
             amount: 100u128.into(),
         },
-        Asset {
-            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET2)),
+        AssetUnchecked {
+            info: AssetInfoUnchecked::cw20(MOCK_LP_ASSET2),
             amount: 200u128.into(),
         },
     ];
 
     let msg = ExecuteMsg::ProvideLiquidity {
-        assets: assets.map(|a| a),
+        assets,
         slippage_tolerance: None,
         auto_stake: None,
     };
@@ -319,12 +319,12 @@ fn test_provide_liquidity_cw20_cw20() {
         .has(deps.as_mut().storage, MOCK_ASTRO_TOKEN));
 
     let assets = [
-        Asset {
-            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET1)),
+        AssetUnchecked {
+            info: AssetInfoUnchecked::cw20(MOCK_LP_ASSET1),
             amount: 100u128.into(),
         },
-        Asset {
-            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET2)),
+        AssetUnchecked {
+            info: AssetInfoUnchecked::cw20(MOCK_LP_ASSET2),
             amount: 200u128.into(),
         },
     ];
@@ -423,12 +423,12 @@ fn test_provide_liquidity_native_cw20() {
         .has(deps.as_mut().storage, MOCK_ASTRO_TOKEN));
 
     let assets = [
-        Asset {
-            info: AssetInfo::native("uusd"),
+        AssetUnchecked {
+            info: AssetInfoUnchecked::native("uusd"),
             amount: 100u128.into(),
         },
-        Asset {
-            info: AssetInfo::Cw20(Addr::unchecked(MOCK_LP_ASSET2)),
+        AssetUnchecked {
+            info: AssetInfoUnchecked::cw20(MOCK_LP_ASSET2),
             amount: 200u128.into(),
         },
     ];

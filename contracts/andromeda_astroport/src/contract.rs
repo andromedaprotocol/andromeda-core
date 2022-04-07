@@ -36,7 +36,7 @@ use common::{
 
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use cw_asset::{Asset, AssetInfo};
+use cw_asset::{Asset, AssetInfo, AssetUnchecked};
 use std::cmp;
 
 // version info for migration info
@@ -130,7 +130,7 @@ fn execute_provide_liquidity(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    assets: [Asset; 2],
+    assets: [AssetUnchecked; 2],
     slippage_tolerance: Option<Decimal>,
     auto_stake: Option<bool>,
 ) -> Result<Response, ContractError> {
@@ -141,6 +141,12 @@ fn execute_provide_liquidity(
         contract.is_owner_or_operator(deps.storage, sender)?,
         ContractError::Unauthorized {},
     )?;
+
+    let assets = [
+        assets[0].check(deps.api, None)?,
+        assets[1].check(deps.api, None)?,
+    ];
+
     let pair = query_pair_info(
         &deps.querier,
         deps.api.addr_validate(&astroport_factory)?,

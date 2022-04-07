@@ -3,7 +3,7 @@ use astroport::factory::ExecuteMsg as AstroportFactoryExecuteMsg;
 use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw_asset::Asset;
+use cw_asset::AssetUnchecked;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +20,7 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     AstroportFactoryExecuteMsg(AstroportFactoryExecuteMsg),
     ProvideLiquidity {
-        assets: [Asset; 2],
+        assets: [AssetUnchecked; 2],
         slippage_tolerance: Option<Decimal>,
         auto_stake: Option<bool>,
     },
