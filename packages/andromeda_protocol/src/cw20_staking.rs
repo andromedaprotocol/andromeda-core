@@ -17,6 +17,7 @@ pub struct InstantiateMsg {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     AndrReceive(AndromedaMsg),
@@ -39,6 +40,7 @@ pub enum ExecuteMsg {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum Cw20HookMsg {
     /// Stake the sent tokens. Address must match the `staking_token` given on instantiation. The user's pending
     /// rewards and indexes are updated for each additional reward token.
@@ -48,6 +50,7 @@ pub enum Cw20HookMsg {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     /// Gets the config of the contract.
@@ -75,4 +78,5 @@ pub struct StakerResponse {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum MigrateMsg {}
