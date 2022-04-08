@@ -75,14 +75,11 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     }
 
     let id = msg.id.to_string();
-    require(
-        ADO_DESCRIPTORS.load(deps.storage, &id).is_ok(),
-        ContractError::InvalidReplyId {},
-    )?;
+    let descriptor = ADO_DESCRIPTORS.load(deps.storage, &id)?;
 
     let addr_str = get_reply_address(&msg)?;
     let addr = &deps.api.addr_validate(&addr_str)?;
-    ADO_ADDRESSES.save(deps.storage, &id, addr)?;
+    ADO_ADDRESSES.save(deps.storage, &descriptor.name, addr)?;
     let assign_mission = generate_assign_mission_message(addr, &env.contract.address.to_string())?;
     Ok(Response::default().add_submessage(assign_mission))
 }

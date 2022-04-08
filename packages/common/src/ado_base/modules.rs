@@ -24,7 +24,6 @@ pub const OTHER: &str = "other";
 pub enum InstantiateType {
     New(Binary),
     Address(String),
-<<<<<<< HEAD
 }*/
 
 /// A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated
@@ -38,14 +37,6 @@ pub struct Module {
 
 // TODO: Remove ModuleInfoWithAddress when we are confident with the AndrAddress replacement.
 /*#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-=======
-    pub instantiate: InstantiateType,
-    pub is_mutable: bool,
-}
-
-/// Struct used to represent a module and its currently recorded address
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
->>>>>>> e7a02a492c55a32cee8e5c85ab8b1d4b1e2fe673
 #[serde(rename_all = "snake_case")]
 pub struct ModuleInfoWithAddress {
     pub module: Module,

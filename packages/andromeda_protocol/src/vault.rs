@@ -1,6 +1,7 @@
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
+    mission::AndrAddress,
     require,
     withdraw::Withdrawal,
 };
@@ -17,6 +18,7 @@ pub const STRATEGY_CONTRACT_ADDRESSES: Map<String, String> =
     Map::new("strategy_contract_addresses");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum StrategyType {
     Anchor,
     // NoStrategy, //Can be used if we wish to add a default strategy
@@ -25,7 +27,7 @@ pub enum StrategyType {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct YieldStrategy {
     pub strategy_type: StrategyType,
-    pub address: String,
+    pub address: AndrAddress,
 }
 
 impl StrategyType {
@@ -90,6 +92,7 @@ impl InstantiateMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Deposit {
         recipient: Option<Recipient>,
@@ -105,6 +108,7 @@ pub enum ExecuteMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     Balance {
@@ -137,11 +141,15 @@ mod testing {
             strategies: vec![
                 YieldStrategy {
                     strategy_type: StrategyType::Anchor,
-                    address: "terra1abc".to_string(),
+                    address: AndrAddress {
+                        identifier: "terra1abc".to_string(),
+                    },
                 },
                 YieldStrategy {
                     strategy_type: StrategyType::Anchor,
-                    address: "terra1def".to_string(),
+                    address: AndrAddress {
+                        identifier: "terra1def".to_string(),
+                    },
                 },
             ],
         };
@@ -159,11 +167,15 @@ mod testing {
             strategies: vec![
                 YieldStrategy {
                     strategy_type: StrategyType::Anchor,
-                    address: "terra1abc".to_string(),
+                    address: AndrAddress {
+                        identifier: "terra1abc".to_string(),
+                    },
                 },
                 YieldStrategy {
                     strategy_type: StrategyType::Anchor,
-                    address: "terra1abc".to_string(),
+                    address: AndrAddress {
+                        identifier: "terra1abc".to_string(),
+                    },
                 },
             ],
         };
@@ -180,7 +192,9 @@ mod testing {
             operators: None,
             strategies: vec![YieldStrategy {
                 strategy_type: StrategyType::Anchor,
-                address: "terra1abc".to_string(),
+                address: AndrAddress {
+                    identifier: "terra1abc".to_string(),
+                },
             }],
         };
 

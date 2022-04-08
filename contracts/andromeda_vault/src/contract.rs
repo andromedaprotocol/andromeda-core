@@ -34,11 +34,14 @@ pub fn instantiate(
     msg.validate()?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
     for strategy in msg.strategies {
         STRATEGY_CONTRACT_ADDRESSES.save(
             deps.storage,
             strategy.strategy_type.to_string(),
-            &strategy.address,
+            &strategy
+                .address
+                .get_address(deps.api, &deps.querier, mission_contract.clone())?,
         )?;
     }
     ADOContract::default().instantiate(
@@ -83,17 +86,9 @@ fn execute_andr_receive(
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        AndromedaMsg::Receive(data) => {
-            let strategy: Option<StrategyType> = parse_message(&data)?;
+        AndromedaMsg::Receive(None) => {
             let sender = info.sender.to_string();
-            execute_deposit(
-                deps,
-                env,
-                info,
-                None,
-                Some(Recipient::Addr(sender)),
-                strategy,
-            )
+            execute_deposit(deps, env, info, None, Some(Recipient::Addr(sender)), None)
         }
         _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
