@@ -301,6 +301,9 @@ pub enum ContractError {
 
     #[error("Verification Failed")]
     VerificationFailed {},
+
+    #[error("Too many mint messages, limit is {limit}")]
+    TooManyMintMessages { limit: u32 },
 }
 
 impl From<Cw20ContractError> for ContractError {

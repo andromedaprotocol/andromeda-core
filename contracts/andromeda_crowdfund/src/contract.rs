@@ -24,6 +24,7 @@ use cw721::{OwnerOfResponse, TokensResponse};
 
 const MAX_LIMIT: u32 = 100;
 const DEFAULT_LIMIT: u32 = 50;
+pub(crate) const MAX_MINT_LIMIT: u32 = 100;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -93,6 +94,12 @@ fn execute_mint(
     info: MessageInfo,
     mint_msgs: Vec<MintMsg<TokenExtension>>,
 ) -> Result<Response, ContractError> {
+    require(
+        mint_msgs.len() <= MAX_MINT_LIMIT as usize,
+        ContractError::TooManyMintMessages {
+            limit: MAX_MINT_LIMIT,
+        },
+    )?;
     let contract = ADOContract::default();
     require(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
