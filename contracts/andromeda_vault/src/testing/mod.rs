@@ -12,6 +12,7 @@ use andromeda_protocol::{
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg},
     error::ContractError,
+    mission::AndrAddress,
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{
@@ -26,7 +27,9 @@ use self::mock_querier::MOCK_ANCHOR_CONTRACT;
 fn test_instantiate() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: "terra1anchoraddress".to_string(),
+        address: AndrAddress {
+            identifier: "terra1anchoraddress".to_string(),
+        },
     };
     let inst_msg = InstantiateMsg {
         operators: None,
@@ -106,7 +109,9 @@ fn test_deposit_insufficient_funds() {
 fn test_deposit_strategy() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: "terra1anchoraddress".to_string(),
+        address: AndrAddress {
+            identifier: "terra1anchoraddress".to_string(),
+        },
     };
     let inst_msg = InstantiateMsg {
         operators: None,
@@ -132,7 +137,11 @@ fn test_deposit_strategy() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let msg = wasm_execute(
-        yield_strategy.address.clone(),
+        yield_strategy
+            .address
+            .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
+            .unwrap()
+            .clone(),
         &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
             to_binary(&"depositor".to_string()).unwrap(),
         ))),
@@ -140,7 +149,11 @@ fn test_deposit_strategy() {
     )
     .unwrap();
     let msg_two = wasm_execute(
-        yield_strategy.address,
+        yield_strategy
+            .address
+            .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
+            .unwrap()
+            .clone(),
         &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
             to_binary(&"depositor".to_string()).unwrap(),
         ))),
@@ -170,7 +183,9 @@ fn test_deposit_strategy() {
 fn test_deposit_strategy_partial_amount() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: "terra1anchoraddress".to_string(),
+        address: AndrAddress {
+            identifier: "terra1anchoraddress".to_string(),
+        },
     };
     let inst_msg = InstantiateMsg {
         operators: None,
@@ -203,7 +218,11 @@ fn test_deposit_strategy_partial_amount() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let msg = wasm_execute(
-        yield_strategy.address,
+        yield_strategy
+            .address
+            .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
+            .unwrap()
+            .clone(),
         &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
             to_binary(&"depositor".to_string()).unwrap(),
         ))),
@@ -249,7 +268,9 @@ fn test_deposit_strategy_empty_funds_non_empty_amount() {
 fn test_deposit_strategy_insufficient_partial_amount() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: "terra1anchoraddress".to_string(),
+        address: AndrAddress {
+            identifier: "terra1anchoraddress".to_string(),
+        },
     };
     let inst_msg = InstantiateMsg {
         operators: None,
