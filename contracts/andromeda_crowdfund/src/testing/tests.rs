@@ -3,8 +3,8 @@ use crate::{
     state::{Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, SALE_CONDUCTED, STATE},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_CONDITIONS_NOT_MET_CONTRACT,
-        MOCK_NON_EXISTING_TOKEN, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT,
-        MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
+        MOCK_NON_EXISTING_TOKEN, MOCK_RATES_CONTRACT, MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT,
+        MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
     },
 };
 use andromeda_protocol::{
@@ -87,7 +87,6 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
             identifier: MOCK_TOKEN_CONTRACT.to_owned(),
         },
         modules,
-        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
         can_mint_after_sale: true,
     };
 
@@ -211,7 +210,6 @@ fn test_mint_sale_conducted_cant_mint_after_sale() {
             identifier: MOCK_TOKEN_CONTRACT.to_owned(),
         },
         modules: None,
-        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
         can_mint_after_sale: false,
     };
 

@@ -48,7 +48,7 @@ pub fn instantiate(
             ado_type: "crowdfund".to_string(),
             operators: None,
             modules: msg.modules,
-            primitive_contract: Some(msg.primitive_contract),
+            primitive_contract: None,
         },
     )
 }
