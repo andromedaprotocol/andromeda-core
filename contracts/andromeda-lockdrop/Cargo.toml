@@ -38,6 +38,7 @@ cw-storage-plus = "0.9"
 cw2 = "0.9"
 cw20 = { version = "0.9" }
 cw20-base = { version = "0.9", features = ["library"] }
+cw-asset = "1.0.2"
 
 schemars = "0.8.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
