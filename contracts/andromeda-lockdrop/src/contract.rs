@@ -46,7 +46,7 @@ pub fn instantiate(
     require(
         msg.deposit_window > 0
             && msg.withdrawal_window > 0
-            && msg.deposit_window < msg.withdrawal_window,
+            && msg.withdrawal_window < msg.deposit_window,
         ContractError::InvalidWindow {},
     )?;
 
@@ -67,7 +67,7 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "lock_drop".to_string(),
+            ado_type: "lockdrop".to_string(),
             operators: None,
             modules: None,
             primitive_contract: None,
