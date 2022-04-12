@@ -54,33 +54,17 @@ pub fn instantiate(
         )));
     }
 
-    // CHECK :: init_timestamp needs to be valid
-    if msg.seconds_per_duration_unit == 0u64 {
-        return Err(ContractError::Std(StdError::generic_err(
-            "seconds_per_duration_unit cannot be 0",
-        )));
-    }
-
     let config = Config {
         auction_contract_address: msg.auction_contract,
         init_timestamp: msg.init_timestamp,
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
-        seconds_per_duration_unit: msg.seconds_per_duration_unit,
         lockdrop_incentives: Uint128::zero(),
         incentive_token: msg.incentive_token,
     };
 
-    let state = State {
-        final_ust_locked: Uint128::zero(),
-        final_maust_locked: Uint128::zero(),
-        total_ust_locked: Uint128::zero(),
-        total_mars_delegated: Uint128::zero(),
-        are_claims_allowed: false,
-    };
-
     CONFIG.save(deps.storage, &config)?;
-    STATE.save(deps.storage, &state)?;
+    STATE.save(deps.storage, &State::default())?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -103,11 +87,14 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::DepositUst {} => try_deposit_ust(deps, env, info),
         ExecuteMsg::WithdrawUst { amount } => try_withdraw_ust(deps, env, info, amount),
         ExecuteMsg::DepositToAuction { amount } => {
-            handle_deposit_mars_to_auction(deps, env, info, amount)
+            handle_deposit_to_auction(deps, env, info, amount)
         }
         ExecuteMsg::EnableClaims {} => handle_enable_claims(deps, env, info),
         ExecuteMsg::ClaimRewards {} => handle_claim_rewards(deps, env, info),
@@ -143,6 +130,7 @@ pub fn receive_cw20(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::State {} => encode_binary(&query_state(deps)?),
         QueryMsg::UserInfo { address } => encode_binary(&query_user_info(deps, env, address)?),
@@ -363,7 +351,7 @@ pub fn handle_enable_claims(
 
 /// @dev Function to delegate part of the MARS rewards to be used for LP Bootstrapping via auction
 /// @param amount : Number of MARS to delegate
-pub fn handle_deposit_mars_to_auction(
+pub fn handle_deposit_to_auction(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -514,7 +502,6 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
         init_timestamp: config.init_timestamp,
         deposit_window: config.deposit_window,
         withdrawal_window: config.withdrawal_window,
-        seconds_per_duration_unit: config.seconds_per_duration_unit,
         lockdrop_incentives: config.lockdrop_incentives,
     })
 }
@@ -566,19 +553,11 @@ pub fn query_max_withdrawable_percent(
     timestamp: Option<u64>,
 ) -> Result<Decimal, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let max_withdrawable_percent: Decimal;
 
-    match timestamp {
-        Some(timestamp) => {
-            max_withdrawable_percent = allowed_withdrawal_percent(timestamp, &config);
-        }
-        None => {
-            max_withdrawable_percent =
-                allowed_withdrawal_percent(env.block.time.seconds(), &config);
-        }
-    }
-
-    Ok(max_withdrawable_percent)
+    Ok(match timestamp {
+        Some(timestamp) => allowed_withdrawal_percent(timestamp, &config),
+        None => allowed_withdrawal_percent(env.block.time.seconds(), &config),
+    })
 }
 
 //----------------------------------------------------------------------------------------

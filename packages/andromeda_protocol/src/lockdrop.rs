@@ -1,4 +1,7 @@
-use common::mission::AndrAddress;
+use common::{
+    ado_base::{AndromedaMsg, AndromedaQuery},
+    mission::AndrAddress,
+};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
@@ -14,8 +17,6 @@ pub struct InstantiateMsg {
     pub deposit_window: u64,
     /// Number of seconds for which lockup withdrawals will be allowed
     pub withdrawal_window: u64,
-    /// Number of seconds per week
-    pub seconds_per_duration_unit: u64,
     /// The token being given as incentive.
     pub incentive_token: String,
 }
@@ -24,7 +25,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-
+    AndrReceive(AndromedaMsg),
     /// Function to deposit UST in the contract locked for `duration` number of weeks, starting once the deposits/withdrawals are disabled
     DepositUst {},
     /// Function to withdraw UST from the lockup position which is locked for `duration` number of weeks
@@ -50,6 +51,7 @@ pub enum Cw20HookMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     Config {},
     State {},
     UserInfo { address: String },
@@ -66,8 +68,6 @@ pub struct ConfigResponse {
     pub deposit_window: u64,
     /// Number of seconds for which lockup withdrawals will be allowed
     pub withdrawal_window: u64,
-    /// Number of seconds per week
-    pub seconds_per_duration_unit: u64,
     /// Total MARS lockdrop incentives to be distributed among the users
     pub lockdrop_incentives: Uint128,
 }

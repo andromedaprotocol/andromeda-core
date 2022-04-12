@@ -23,14 +23,12 @@ pub struct Config {
     pub deposit_window: u64,
     /// Withdrawal Window Length
     pub withdrawal_window: u64,
-    /// Number of seconds per week
-    pub seconds_per_duration_unit: u64,
     /// Total MARS lockdrop incentives to be distributed among the users
     pub lockdrop_incentives: Uint128,
     pub incentive_token: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
     /// Total UST deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window
     pub final_ust_locked: Uint128,
@@ -44,7 +42,7 @@ pub struct State {
     pub are_claims_allowed: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserInfo {
     /// Total UST amount deposited by the user across all his lockup positions
     pub total_ust_locked: Uint128,
@@ -57,17 +55,4 @@ pub struct UserInfo {
     /// Ratio used to calculate deposit_rewards (XMARS) accured by the user
     pub reward_index: Decimal,
     pub withdrawal_flag: bool,
-}
-
-impl Default for UserInfo {
-    fn default() -> Self {
-        UserInfo {
-            total_ust_locked: Uint128::zero(),
-            total_incentives: Uint128::zero(),
-            delegated_mars_incentives: Uint128::zero(),
-            lockdrop_claimed: false,
-            reward_index: Decimal::zero(),
-            withdrawal_flag: false,
-        }
-    }
 }
