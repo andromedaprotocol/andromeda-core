@@ -106,9 +106,9 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::DepositUst {} => try_deposit_ust(deps, env, info),
         ExecuteMsg::WithdrawUst { amount } => try_withdraw_ust(deps, env, info, amount),
-        /*ExecuteMsg::DepositMarsToAuction { amount } => {
+        ExecuteMsg::DepositToAuction { amount } => {
             handle_deposit_mars_to_auction(deps, env, info, amount)
-        }*/
+        }
         ExecuteMsg::EnableClaims {} => handle_enable_claims(deps, env, info),
         ExecuteMsg::ClaimRewards {} => handle_claim_rewards(deps, env, info),
     }
@@ -173,11 +173,10 @@ pub fn handle_increase_incentives(
         },
     )?;
 
-    let valid_deposit_time =
-        config.init_timestamp + config.deposit_window + config.withdrawal_window;
+    let phase_end = config.init_timestamp + config.deposit_window + config.withdrawal_window;
 
     require(
-        env.block.time.seconds() < valid_deposit_time,
+        env.block.time.seconds() < phase_end,
         ContractError::TokenAlreadyBeingDistributed {},
     )?;
 
@@ -362,86 +361,68 @@ pub fn handle_enable_claims(
     Ok(Response::new().add_attribute("action", "Lockdrop::ExecuteMsg::EnableClaims"))
 }
 
-/*/// @dev Function to delegate part of the MARS rewards to be used for LP Bootstrapping via auction
+/// @dev Function to delegate part of the MARS rewards to be used for LP Bootstrapping via auction
 /// @param amount : Number of MARS to delegate
 pub fn handle_deposit_mars_to_auction(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     amount: Uint128,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
     let user_address = info.sender.clone();
 
+    let phase_end = config.init_timestamp + config.deposit_window + config.withdrawal_window;
     // CHECK :: Have the deposit / withdraw windows concluded
-    if env.block.time.seconds()
-        < (config.init_timestamp + config.deposit_window + config.withdrawal_window)
-    {
-        return Err(StdError::generic_err(
-            "Deposit / withdraw windows not closed yet",
-        ));
-    }
+    require(
+        env.block.time.seconds() >= phase_end,
+        ContractError::PhaseOngoing {},
+    )?;
 
     // CHECK :: Can users withdraw their MARS tokens ? -> if so, then delegation is no longer allowed
-    if state.are_claims_allowed {
-        return Err(StdError::generic_err("Auction deposits no longer possible"));
-    }
-
-    // CHECK :: Address provider should be set
-    if config.address_provider.is_none() {
-        return Err(StdError::generic_err("Address provider not set"));
-    }
+    require(
+        !state.are_claims_allowed,
+        ContractError::ClaimsAlreadyAllowed {},
+    )?;
 
     // CHECK :: Auction contract address should be set
-    if config.auction_contract_address.is_none() {
-        return Err(StdError::generic_err("Auction contract address not set"));
-    }
+    require(
+        config.auction_contract_address.is_some(),
+        ContractError::NoSavedAuctionContract {},
+    )?;
 
     let mut user_info = USER_INFO
         .may_load(deps.storage, &user_address)?
         .unwrap_or_default();
 
-    // CHECK :: User needs to have atleast 1 lockup position
-    if user_info.lockup_positions.is_empty() {
-        return Err(StdError::generic_err("No valid lockup positions"));
-    }
-
     // Init response
     let mut response =
         Response::new().add_attribute("action", "Auction::ExecuteMsg::DelegateMarsToAuction");
 
-    // If user's total maUST share == 0 :: We update it
-    if user_info.total_maust_share.is_zero() {
-        user_info.total_maust_share = calculate_ma_ust_share(
-            user_info.total_ust_locked,
-            state.final_ust_locked,
-            state.final_maust_locked,
-        );
-        response = response.add_attribute(
-            "user_total_maust_share",
-            user_info.total_maust_share.to_string(),
-        );
-    }
-
     // If user's total MARS rewards == 0 :: We update all of the user's lockup positions to calculate MARS rewards
-    if user_info.total_mars_incentives == Uint128::zero() {
-        user_info.total_mars_incentives = update_mars_rewards_allocated_to_lockup_positions(
-            deps.branch(),
-            &config,
-            &state,
-            user_info.clone(),
-        )?;
+    if user_info.total_incentives == Uint128::zero() {
+        user_info.total_incentives = config
+            .lockdrop_incentives
+            .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
         response = response.add_attribute(
             "user_total_mars_incentives",
-            user_info.total_mars_incentives.to_string(),
+            user_info.total_incentives.to_string(),
         );
     }
 
     // CHECK :: MARS to delegate cannot exceed user's unclaimed MARS balance
-    if amount > (user_info.total_mars_incentives - user_info.delegated_mars_incentives) {
-        return Err(StdError::generic_err(format!("Amount cannot exceed user's unclaimed MARS balance. MARS to delegate = {}, Max delegatable MARS = {} ",amount, (user_info.total_mars_incentives - user_info.delegated_mars_incentives))));
-    }
+    let available_amount = user_info.total_incentives - user_info.delegated_mars_incentives;
+    require(
+        amount <= available_amount,
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Amount cannot exceed user's unclaimed MARS balance. MARS to delegate = {}, Max delegatable MARS = {} ",
+                amount,
+                available_amount
+            ),
+        },
+    )?;
 
     // UPDATE STATE
     user_info.delegated_mars_incentives += amount;
@@ -451,28 +432,14 @@ pub fn handle_deposit_mars_to_auction(
     STATE.save(deps.storage, &state)?;
     USER_INFO.save(deps.storage, &user_address, &user_info)?;
 
-    let mars_token_address = query_address(
-        &deps.querier,
-        config.address_provider.unwrap(),
-        MarsContract::MarsToken,
-    )?;
-
     // COSMOS_MSG ::Delegate MARS to the LP Bootstrapping via Auction contract
-    let delegate_msg = build_send_cw20_token_msg(
-        config.auction_contract_address.unwrap().to_string(),
-        mars_token_address.to_string(),
-        amount,
-        to_binary(&AuctionCw20HookMsg::DepositMarsTokens {
-            user_address: info.sender,
-        })?,
-    )?;
+    // TODO: When Boostrapping contract is created add this message.
     response = response
-        .add_message(delegate_msg)
         .add_attribute("user_address", &user_address.to_string())
         .add_attribute("delegated_mars", amount.to_string());
 
     Ok(response)
-}*/
+}
 
 /// @dev Function to claim Rewards and optionally unlock a lockup position (either naturally or forcefully). Claims pending incentives (xMARS) internally and accounts for them via the index updates
 /// @params lockup_to_unlock_duration : Duration of the lockup to be unlocked. If 0 then no lockup is to be unlocked

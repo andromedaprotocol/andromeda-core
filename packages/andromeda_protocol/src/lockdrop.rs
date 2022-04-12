@@ -31,10 +31,10 @@ pub enum ExecuteMsg {
     WithdrawUst {
         amount: Uint128,
     },
-    /*/// Deposit MARS to auction contract
-    DepositMarsToAuction {
+    /// Deposit MARS to auction contract
+    DepositToAuction {
         amount: Uint128,
-    },*/
+    },
     /// Facilitates MARS reward claim and optionally unlocking any lockup position once the lockup duration is over
     ClaimRewards {},
     /// Called by the bootstrap auction contract when liquidity is added to the MARS-UST Pool to enable MARS withdrawals by users
