@@ -140,8 +140,7 @@ fn test_deposit_strategy() {
         yield_strategy
             .address
             .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap()
-            ,
+            .unwrap(),
         &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
             to_binary(&"depositor".to_string()).unwrap(),
         ))),
@@ -152,8 +151,7 @@ fn test_deposit_strategy() {
         yield_strategy
             .address
             .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap()
-            ,
+            .unwrap(),
         &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
             to_binary(&"depositor".to_string()).unwrap(),
         ))),
@@ -221,8 +219,7 @@ fn test_deposit_strategy_partial_amount() {
         yield_strategy
             .address
             .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap()
-            ,
+            .unwrap(),
         &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
             to_binary(&"depositor".to_string()).unwrap(),
         ))),
