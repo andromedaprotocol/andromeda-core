@@ -1,18 +1,21 @@
 use cosmwasm_std::{
-    entry_point, from_binary, to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut,
-    Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, Uint128,
-    WasmMsg, WasmQuery,
+    entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+    StdResult, Uint128,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::Asset;
 
+use ado_base::ADOContract;
 use andromeda_protocol::lockdrop::{
-    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, LockupInfoQueryData,
-    LockupInfoResponse, MigrateMsg, QueryMsg, StateResponse, UpdateConfigMsg, UserInfoResponse,
+    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StateResponse,
+    UserInfoResponse,
+};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 
-use crate::state::{Config, State, UserInfo, CONFIG, STATE, USER_INFO};
+use crate::state::{Config, State, CONFIG, STATE, USER_INFO};
 
 const UUSD_DENOM: &str = "uusd";
 
@@ -28,17 +31,17 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // CHECK :: init_timestamp needs to be valid
     if msg.init_timestamp < env.block.time.seconds() {
-        return Err(StdError::generic_err(format!(
+        return Err(ContractError::Std(StdError::generic_err(format!(
             "Invalid timestamp. Current timestamp : {}",
             env.block.time.seconds()
-        )));
+        ))));
     }
 
     // CHECK :: deposit_window,withdrawal_window need to be valid (withdrawal_window < deposit_window)
@@ -46,18 +49,20 @@ pub fn instantiate(
         || msg.withdrawal_window == 0u64
         || msg.deposit_window <= msg.withdrawal_window
     {
-        return Err(StdError::generic_err("Invalid deposit / withdraw window"));
+        return Err(ContractError::Std(StdError::generic_err(
+            "Invalid deposit / withdraw window",
+        )));
     }
 
     // CHECK :: init_timestamp needs to be valid
     if msg.seconds_per_duration_unit == 0u64 {
-        return Err(StdError::generic_err(
+        return Err(ContractError::Std(StdError::generic_err(
             "seconds_per_duration_unit cannot be 0",
-        ));
+        )));
     }
 
     let config = Config {
-        auction_contract_address: None,
+        auction_contract_address: msg.auction_contract,
         init_timestamp: msg.init_timestamp,
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
@@ -76,14 +81,29 @@ pub fn instantiate(
 
     CONFIG.save(deps.storage, &config)?;
     STATE.save(deps.storage, &state)?;
-    Ok(Response::default())
+
+    ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "lock_drop".to_string(),
+            operators: None,
+            modules: None,
+            primitive_contract: None,
+        },
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
-        ExecuteMsg::UpdateConfig { new_config } => update_config(deps, env, info, new_config),
         ExecuteMsg::DepositUst {} => try_deposit_ust(deps, env, info),
         ExecuteMsg::WithdrawUst { amount } => try_withdraw_ust(deps, env, info, amount),
         /*ExecuteMsg::DepositMarsToAuction { amount } => {
@@ -104,13 +124,14 @@ pub fn receive_cw20(
     env: Env,
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
-) -> Result<Response, StdError> {
+) -> Result<Response, ContractError> {
     // CHECK :: Tokens sent > 0
-    if cw20_msg.amount == Uint128::zero() {
-        return Err(StdError::generic_err(
-            "Number of tokens sent should be > 0 ",
-        ));
-    }
+    require(
+        !cw20_msg.amount.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Number of tokens should be > 0".to_string(),
+        },
+    )?;
 
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::IncreaseIncentives {} => {
@@ -120,13 +141,13 @@ pub fn receive_cw20(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::State {} => to_binary(&query_state(deps)?),
-        QueryMsg::UserInfo { address } => to_binary(&query_user_info(deps, env, address)?),
+        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+        QueryMsg::State {} => encode_binary(&query_state(deps)?),
+        QueryMsg::UserInfo { address } => encode_binary(&query_user_info(deps, env, address)?),
         QueryMsg::WithdrawalPercentAllowed { timestamp } => {
-            to_binary(&query_max_withdrawable_percent(deps, env, timestamp)?)
+            encode_binary(&query_max_withdrawable_percent(deps, env, timestamp)?)
         }
     }
 }
@@ -142,18 +163,23 @@ pub fn handle_increase_incentives(
     env: Env,
     info: MessageInfo,
     amount: Uint128,
-) -> Result<Response, StdError> {
+) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
 
-    if info.sender != config.incentive_token {
-        return Err(StdError::generic_err("Only incentive tokens are received!"));
-    }
+    require(
+        info.sender == config.incentive_token,
+        ContractError::InvalidFunds {
+            msg: "Only incentive tokens are valid".to_string(),
+        },
+    )?;
 
-    if env.block.time.seconds()
-        >= config.init_timestamp + config.deposit_window + config.withdrawal_window
-    {
-        return Err(StdError::generic_err("Token is already being distributed"));
-    };
+    let valid_deposit_time =
+        config.init_timestamp + config.deposit_window + config.withdrawal_window;
+
+    require(
+        env.block.time.seconds() < valid_deposit_time,
+        ContractError::TokenAlreadyBeingDistributed {},
+    )?;
 
     config.lockdrop_incentives += amount;
     CONFIG.save(deps.storage, &config)?;
@@ -162,55 +188,47 @@ pub fn handle_increase_incentives(
         .add_attribute("amount", amount))
 }
 
-/// @dev ADMIN Function. Facilitates state update. Will be used to set address_provider / maUST token address most probably, based on deployment schedule
-/// @params new_config : New configuration struct
-pub fn update_config(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    new_config: UpdateConfigMsg,
-) -> StdResult<Response> {
-    let mut config = CONFIG.load(deps.storage)?;
-
-    if new_config.auction_contract_address.is_some() {
-        config.auction_contract_address = Some(
-            deps.api
-                .addr_validate(&new_config.auction_contract_address.unwrap())?,
-        );
-    }
-
-    CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attribute("action", "lockdrop::ExecuteMsg::UpdateConfig"))
-}
-
 /// @dev Facilitates UST deposits locked for selected number of weeks
 /// @param duration : Number of weeks for which UST will be locked
-pub fn try_deposit_ust(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
+pub fn try_deposit_ust(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
     let depositor_address = info.sender;
 
     // CHECK :: Lockdrop deposit window open
-    if !is_deposit_open(env.block.time.seconds(), &config) {
-        return Err(StdError::generic_err("Deposit window closed"));
-    }
+    require(
+        is_deposit_open(env.block.time.seconds(), &config),
+        ContractError::DepositWindowClosed {},
+    )?;
 
     // Check if multiple native coins sent by the user
-    if info.funds.len() > 1 {
-        return Err(StdError::generic_err("Trying to deposit several coins"));
-    }
+    require(
+        info.funds.len() == 1,
+        ContractError::InvalidFunds {
+            msg: "Must deposit a single fund".to_string(),
+        },
+    )?;
 
     let native_token = info.funds.first().unwrap();
-    if native_token.denom != UUSD_DENOM {
-        return Err(StdError::generic_err(
-            "Only UST among native tokens accepted",
-        ));
-    }
+    require(
+        native_token.denom == UUSD_DENOM,
+        ContractError::InvalidFunds {
+            msg: "Only UST accepted".to_string(),
+        },
+    )?;
+
     // CHECK ::: Amount needs to be valid
-    if native_token.amount.is_zero() {
-        return Err(StdError::generic_err("Amount must be greater than 0"));
-    }
+    require(
+        !native_token.amount.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Amount must be greater than 0".to_string(),
+        },
+    )?;
 
     // USER INFO :: RETRIEVE --> UPDATE
     let mut user_info = USER_INFO
@@ -240,7 +258,7 @@ pub fn try_withdraw_ust(
     env: Env,
     info: MessageInfo,
     withdraw_amount: Uint128,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
@@ -250,26 +268,35 @@ pub fn try_withdraw_ust(
     let withdrawer_address = info.sender;
 
     // CHECK :: Lockdrop withdrawal window open
-    if !is_withdraw_open(env.block.time.seconds(), &config) {
-        return Err(StdError::generic_err("Withdrawals not allowed"));
-    }
+    require(
+        is_withdraw_open(env.block.time.seconds(), &config),
+        ContractError::InvalidWithdrawal {
+            msg: Some("Withdrawals not available".to_string()),
+        },
+    )?;
 
     // Check :: Amount should be within the allowed withdrawal limit bounds
     let max_withdrawal_percent = allowed_withdrawal_percent(env.block.time.seconds(), &config);
     let max_withdrawal_allowed = user_info.total_ust_locked * max_withdrawal_percent;
-    if withdraw_amount > max_withdrawal_allowed {
-        return Err(StdError::generic_err(format!(
-            "Amount exceeds maximum allowed withdrawal limit of {} ",
-            max_withdrawal_allowed
-        )));
-    }
+    require(
+        withdraw_amount <= max_withdrawal_allowed,
+        ContractError::InvalidWithdrawal {
+            msg: Some(format!(
+                "Amount exceeds max allowed withdrawal limit of {}",
+                max_withdrawal_allowed
+            )),
+        },
+    )?;
 
     // Update withdrawal flag after the deposit window
     if env.block.time.seconds() >= config.init_timestamp + config.deposit_window {
         // CHECK :: Max 1 withdrawal allowed
-        if user_info.withdrawal_flag {
-            return Err(StdError::generic_err("Max 1 withdrawal allowed"));
-        }
+        require(
+            !user_info.withdrawal_flag,
+            ContractError::InvalidWithdrawal {
+                msg: Some("Max 1 withdrawal allowed".to_string()),
+            },
+        )?;
 
         user_info.withdrawal_flag = true;
     }
@@ -296,31 +323,39 @@ pub fn try_withdraw_ust(
 }
 
 /// @dev Function callable only by Auction contract to enable MARS Claims by users. Called along-with Bootstrap Auction contract's LP Pool provide liquidity tx
-pub fn handle_enable_claims(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
+pub fn handle_enable_claims(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
-    // CHECK :: Auction contract should be set
-    if config.auction_contract_address.is_none() {
-        return Err(StdError::generic_err("Auction address in lockdrop not set"));
-    }
+    // If auction is specified then only it can enable claims.
+    if let Some(auction_contract_address) = &config.auction_contract_address {
+        let mission_contract = contract.get_mission_contract(deps.storage)?;
+        let auction_contract_address =
+            auction_contract_address.get_address(deps.api, &deps.querier, mission_contract)?;
 
-    // CHECK :: ONLY AUCTION CONTRACT CAN CALL THIS FUNCTION
-    if info.sender != config.auction_contract_address.clone().unwrap() {
-        return Err(StdError::generic_err("Unauthorized"));
+        // CHECK :: ONLY AUCTION CONTRACT CAN CALL THIS FUNCTION
+        require(
+            info.sender == auction_contract_address,
+            ContractError::Unauthorized {},
+        )?;
     }
 
     // CHECK :: Claims can only be enabled after the deposit / withdrawal windows are closed
-    if is_withdraw_open(env.block.time.seconds(), &config) {
-        return Err(StdError::generic_err(
-            "Claims can only be enabled after the deposit / withdrawal windows are closed",
-        ));
-    }
+    require(
+        !is_withdraw_open(env.block.time.seconds(), &config),
+        ContractError::PhaseOngoing {},
+    )?;
 
     // CHECK ::: Claims are only enabled once
-    if state.are_claims_allowed {
-        return Err(StdError::generic_err("Already allowed"));
-    }
+    require(
+        !state.are_claims_allowed,
+        ContractError::ClaimsAlreadyAllowed {},
+    )?;
     state.are_claims_allowed = true;
 
     STATE.save(deps.storage, &state)?;
@@ -441,7 +476,11 @@ pub fn handle_deposit_mars_to_auction(
 
 /// @dev Function to claim Rewards and optionally unlock a lockup position (either naturally or forcefully). Claims pending incentives (xMARS) internally and accounts for them via the index updates
 /// @params lockup_to_unlock_duration : Duration of the lockup to be unlocked. If 0 then no lockup is to be unlocked
-pub fn handle_claim_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
+pub fn handle_claim_rewards(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
 
@@ -455,18 +494,15 @@ pub fn handle_claim_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> StdRe
         "Auction::ExecuteMsg::ClaimRewardsAndUnlockPosition",
     );
 
-    // CHECKS ::
-    // 2. Valid lockup positions available ?
-    // 3. Are claims allowed
-    if user_info.lockdrop_claimed {
-        return Err(StdError::generic_err("Lockdrop claimed"));
-    }
-    if user_info.total_ust_locked == Uint128::zero() {
-        return Err(StdError::generic_err("No lockup to claim rewards for"));
-    }
-    if !state.are_claims_allowed {
-        return Err(StdError::generic_err("Claim not allowed"));
-    }
+    require(
+        !user_info.lockdrop_claimed,
+        ContractError::LockdropAlreadyClaimed {},
+    )?;
+    require(
+        !user_info.total_ust_locked.is_zero(),
+        ContractError::NoLockup {},
+    )?;
+    require(state.are_claims_allowed, ContractError::ClaimsNotAllowed {})?;
 
     // If user's total MARS rewards == 0 :: We update all of the user's lockup positions to calculate MARS rewards
     if user_info.total_incentives.is_zero() {
@@ -496,11 +532,18 @@ pub fn handle_claim_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> StdRe
 //----------------------------------------------------------------------------------------
 
 /// @dev Returns the contract's configuration
-pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
+    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let auction_contract_address = config
+        .auction_contract_address
+        .map(|a| a.get_address(deps.api, &deps.querier, mission_contract))
+        // Flip Option<Result> to Result<Option>
+        .map_or(Ok(None), |v| v.map(Some));
 
     Ok(ConfigResponse {
-        auction_contract_address: config.auction_contract_address,
+        auction_contract_address: auction_contract_address?,
         init_timestamp: config.init_timestamp,
         deposit_window: config.deposit_window,
         withdrawal_window: config.withdrawal_window,
@@ -510,7 +553,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 }
 
 /// @dev Returns the contract's Global State
-pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
+pub fn query_state(deps: Deps) -> Result<StateResponse, ContractError> {
     let state: State = STATE.load(deps.storage)?;
     Ok(StateResponse {
         final_ust_locked: state.final_ust_locked,
@@ -522,10 +565,14 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
 
 /// @dev Returns summarized details regarding the user
 /// @params user_address : User address whose state is being queries
-pub fn query_user_info(deps: Deps, env: Env, user_address_: String) -> StdResult<UserInfoResponse> {
+pub fn query_user_info(
+    deps: Deps,
+    _env: Env,
+    user_address_: String,
+) -> Result<UserInfoResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let user_address = deps.api.addr_validate(&user_address_)?;
-    let mut state: State = STATE.load(deps.storage)?;
+    let state: State = STATE.load(deps.storage)?;
     let mut user_info = USER_INFO
         .may_load(deps.storage, &user_address)?
         .unwrap_or_default();
@@ -536,8 +583,6 @@ pub fn query_user_info(deps: Deps, env: Env, user_address_: String) -> StdResult
             .lockdrop_incentives
             .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
     }
-
-    let mut pending_xmars_to_claim = Uint128::zero();
 
     Ok(UserInfoResponse {
         total_ust_locked: user_info.total_ust_locked,
@@ -552,7 +597,7 @@ pub fn query_max_withdrawable_percent(
     deps: Deps,
     env: Env,
     timestamp: Option<u64>,
-) -> StdResult<Decimal> {
+) -> Result<Decimal, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let max_withdrawable_percent: Decimal;
 
@@ -584,14 +629,6 @@ fn is_withdraw_open(current_timestamp: u64, config: &Config) -> bool {
     let withdrawals_opened_till =
         config.init_timestamp + config.deposit_window + config.withdrawal_window;
     (current_timestamp >= config.init_timestamp) && (withdrawals_opened_till >= current_timestamp)
-}
-
-/// @dev Returns the timestamp when the lockup will get unlocked
-fn calculate_unlock_timestamp(config: &Config, duration: u64) -> u64 {
-    config.init_timestamp
-        + config.deposit_window
-        + config.withdrawal_window
-        + (duration * config.seconds_per_duration_unit)
 }
 
 /// @dev Helper function to calculate maximum % of UST deposited that can be withdrawn

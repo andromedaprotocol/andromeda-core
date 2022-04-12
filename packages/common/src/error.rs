@@ -301,6 +301,30 @@ pub enum ContractError {
 
     #[error("Verification Failed")]
     VerificationFailed {},
+
+    #[error("Token already being distributed")]
+    TokenAlreadyBeingDistributed {},
+
+    #[error("Deposit window closed")]
+    DepositWindowClosed {},
+
+    #[error("No saved auction contract")]
+    NoSavedAuctionContract {},
+
+    #[error("Phase ongoing")]
+    PhaseOngoing {},
+
+    #[error("Claims already allowed")]
+    ClaimsAlreadyAllowed {},
+
+    #[error("ClaimsNotAllowed")]
+    ClaimsNotAllowed {},
+
+    #[error("Lockdrop already claimed")]
+    LockdropAlreadyClaimed {},
+
+    #[error("No lockup to claim rewards for")]
+    NoLockup {},
 }
 
 impl From<Cw20ContractError> for ContractError {

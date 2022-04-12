@@ -1,6 +1,7 @@
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Item, Map};
 
+use common::mission::AndrAddress;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +16,7 @@ pub const USER_INFO: Map<&Addr, UserInfo> = Map::new("users");
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     /// Auction Contract address to which MARS tokens can be deposited for bootstrapping MARS-UST Pool
-    pub auction_contract_address: Option<Addr>,
+    pub auction_contract_address: Option<AndrAddress>,
     /// Timestamp when Contract will start accepting deposits
     pub init_timestamp: u64,
     /// Deposit Window Length
