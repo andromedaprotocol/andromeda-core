@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
-    Response, Uint128,
+    to_binary, Response, Uint128,
 };
 
 use crate::{
@@ -12,6 +12,7 @@ use andromeda_protocol::lockdrop::{
     UserInfoResponse,
 };
 use common::error::ContractError;
+use cw20::Cw20ReceiveMsg;
 
 const MOCK_INCENTIVE_TOKEN: &str = "mock_incentive_token";
 
@@ -134,4 +135,141 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
     let res = instantiate(deps.as_mut(), env, info, msg);
 
     assert_eq!(ContractError::InvalidWindow {}, res.unwrap_err());
+}
+
+#[test]
+fn test_increase_incentives() {
+    let mut deps = mock_dependencies(&[]);
+    let env = mock_env();
+    let info = mock_info("owner", &[]);
+
+    let msg = InstantiateMsg {
+        auction_contract: None,
+        init_timestamp: env.block.time.seconds(),
+        deposit_window: 5,
+        withdrawal_window: 2,
+        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+    };
+
+    let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "incentives_increased")
+            .add_attribute("amount", "100"),
+        res
+    );
+
+    assert_eq!(
+        Uint128::new(100),
+        CONFIG
+            .load(deps.as_ref().storage)
+            .unwrap()
+            .lockdrop_incentives
+    );
+}
+
+#[test]
+fn test_increase_incentives_invalid_token() {
+    let mut deps = mock_dependencies(&[]);
+    let env = mock_env();
+    let info = mock_info("owner", &[]);
+
+    let msg = InstantiateMsg {
+        auction_contract: None,
+        init_timestamp: env.block.time.seconds(),
+        deposit_window: 5,
+        withdrawal_window: 2,
+        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+    };
+
+    let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+    });
+
+    let info = mock_info("invalid_token", &[]);
+    let res = execute(deps.as_mut(), env, info, msg);
+    assert_eq!(
+        ContractError::InvalidFunds {
+            msg: "Only incentive tokens are valid".to_string(),
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_increase_incentives_after_phase_ends() {
+    let mut deps = mock_dependencies(&[]);
+    let mut env = mock_env();
+    let info = mock_info("owner", &[]);
+
+    let msg = InstantiateMsg {
+        auction_contract: None,
+        init_timestamp: env.block.time.seconds(),
+        deposit_window: 5,
+        withdrawal_window: 2,
+        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+    };
+
+    let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+    });
+
+    env.block.time = env.block.time.plus_seconds(5 + 2);
+    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let res = execute(deps.as_mut(), env, info, msg);
+    assert_eq!(
+        ContractError::TokenAlreadyBeingDistributed {},
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_increase_incentives_zero_amount() {
+    let mut deps = mock_dependencies(&[]);
+    let env = mock_env();
+    let info = mock_info("owner", &[]);
+
+    let msg = InstantiateMsg {
+        auction_contract: None,
+        init_timestamp: env.block.time.seconds(),
+        deposit_window: 5,
+        withdrawal_window: 2,
+        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+    };
+
+    let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        amount: Uint128::zero(),
+        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let res = execute(deps.as_mut(), env, info, msg);
+
+    assert_eq!(
+        ContractError::InvalidFunds {
+            msg: "Number of tokens should be > 0".to_string(),
+        },
+        res.unwrap_err()
+    );
 }

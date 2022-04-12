@@ -23,7 +23,7 @@ pub struct Config {
     pub deposit_window: u64,
     /// Withdrawal Window Length
     pub withdrawal_window: u64,
-    /// Total MARS lockdrop incentives to be distributed among the users
+    /// Total Token lockdrop incentives to be distributed among the users
     pub lockdrop_incentives: Uint128,
     pub incentive_token: String,
 }
