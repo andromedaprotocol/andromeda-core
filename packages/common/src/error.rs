@@ -325,6 +325,9 @@ pub enum ContractError {
 
     #[error("No lockup to claim rewards for")]
     NoLockup {},
+
+    #[error("Invalid deposit/withdraw window")]
+    InvalidWindow {},
 }
 
 impl From<Cw20ContractError> for ContractError {

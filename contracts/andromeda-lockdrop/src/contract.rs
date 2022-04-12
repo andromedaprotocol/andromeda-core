@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+    entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
     StdResult, Uint128,
 };
 use cw2::set_contract_version;
@@ -37,22 +37,18 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // CHECK :: init_timestamp needs to be valid
-    if msg.init_timestamp < env.block.time.seconds() {
-        return Err(ContractError::Std(StdError::generic_err(format!(
-            "Invalid timestamp. Current timestamp : {}",
-            env.block.time.seconds()
-        ))));
-    }
+    require(
+        msg.init_timestamp >= env.block.time.seconds(),
+        ContractError::StartTimeInThePast {},
+    )?;
 
     // CHECK :: deposit_window,withdrawal_window need to be valid (withdrawal_window < deposit_window)
-    if msg.deposit_window == 0u64
-        || msg.withdrawal_window == 0u64
-        || msg.deposit_window <= msg.withdrawal_window
-    {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Invalid deposit / withdraw window",
-        )));
-    }
+    require(
+        msg.deposit_window > 0
+            && msg.withdrawal_window > 0
+            && msg.deposit_window < msg.withdrawal_window,
+        ContractError::InvalidWindow {},
+    )?;
 
     let config = Config {
         auction_contract_address: msg.auction_contract,
@@ -384,23 +380,12 @@ pub fn handle_deposit_to_auction(
         .may_load(deps.storage, &user_address)?
         .unwrap_or_default();
 
-    // Init response
-    let mut response =
-        Response::new().add_attribute("action", "Auction::ExecuteMsg::DelegateMarsToAuction");
-
-    // If user's total MARS rewards == 0 :: We update all of the user's lockup positions to calculate MARS rewards
-    if user_info.total_incentives == Uint128::zero() {
-        user_info.total_incentives = config
-            .lockdrop_incentives
-            .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
-        response = response.add_attribute(
-            "user_total_mars_incentives",
-            user_info.total_incentives.to_string(),
-        );
-    }
+    let total_incentives = config
+        .lockdrop_incentives
+        .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
 
     // CHECK :: MARS to delegate cannot exceed user's unclaimed MARS balance
-    let available_amount = user_info.total_incentives - user_info.delegated_mars_incentives;
+    let available_amount = total_incentives - user_info.delegated_mars_incentives;
     require(
         amount <= available_amount,
         ContractError::InvalidFunds {
@@ -422,11 +407,11 @@ pub fn handle_deposit_to_auction(
 
     // COSMOS_MSG ::Delegate MARS to the LP Bootstrapping via Auction contract
     // TODO: When Boostrapping contract is created add this message.
-    response = response
-        .add_attribute("user_address", &user_address.to_string())
-        .add_attribute("delegated_mars", amount.to_string());
 
-    Ok(response)
+    Ok(Response::new()
+        .add_attribute("action", "Auction::ExecuteMsg::DelegateMarsToAuction")
+        .add_attribute("user_address", &user_address.to_string())
+        .add_attribute("delegated_mars", amount.to_string()))
 }
 
 /// @dev Function to claim Rewards and optionally unlock a lockup position (either naturally or forcefully). Claims pending incentives (xMARS) internally and accounts for them via the index updates
@@ -444,11 +429,6 @@ pub fn handle_claim_rewards(
         .may_load(deps.storage, &user_address)?
         .unwrap_or_default();
 
-    let mut response = Response::new().add_attribute(
-        "action",
-        "Auction::ExecuteMsg::ClaimRewardsAndUnlockPosition",
-    );
-
     require(
         !user_info.lockdrop_claimed,
         ContractError::LockdropAlreadyClaimed {},
@@ -459,18 +439,11 @@ pub fn handle_claim_rewards(
     )?;
     require(state.are_claims_allowed, ContractError::ClaimsNotAllowed {})?;
 
-    // If user's total MARS rewards == 0 :: We update all of the user's lockup positions to calculate MARS rewards
-    if user_info.total_incentives.is_zero() {
-        user_info.total_incentives = config
-            .lockdrop_incentives
-            .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
-        response = response.add_attribute(
-            "user_total_incentives",
-            user_info.total_incentives.to_string(),
-        );
-    }
+    let total_incentives = config
+        .lockdrop_incentives
+        .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
 
-    let amount_to_transfer = user_info.total_incentives - user_info.delegated_mars_incentives;
+    let amount_to_transfer = total_incentives - user_info.delegated_mars_incentives;
     let token = Asset::cw20(
         deps.api.addr_validate(&config.incentive_token)?,
         amount_to_transfer,
@@ -479,7 +452,62 @@ pub fn handle_claim_rewards(
     user_info.lockdrop_claimed = true;
 
     USER_INFO.save(deps.storage, &user_address, &user_info)?;
-    Ok(response.add_message(transfer_msg))
+
+    Ok(Response::new()
+        .add_attribute(
+            "action",
+            "Auction::ExecuteMsg::ClaimRewardsAndUnlockPosition",
+        )
+        .add_message(transfer_msg))
+}
+
+pub fn try_withdraw_proceeds(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    recipient: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
+    // CHECK :: Only Owner can call this function
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    // CHECK :: Lockdrop withdrawal window should be closed
+    let current_timestamp = env.block.time.seconds();
+    require(
+        current_timestamp >= config.init_timestamp && !is_withdraw_open(current_timestamp, &config),
+        ContractError::InvalidWithdrawal {
+            msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
+        },
+    )?;
+
+    let uusd_token = Asset::native(UUSD_DENOM, state.total_ust_locked);
+
+    let balance = uusd_token
+        .info
+        .query_balance(&deps.querier, env.contract.address)?;
+    require(
+        balance >= state.total_ust_locked,
+        ContractError::InvalidWithdrawal {
+            msg: Some("Already withdrew funds".to_string()),
+        },
+    )?;
+
+    let transfer_msg = uusd_token.transfer_msg(recipient)?;
+
+    Ok(Response::new()
+        .add_message(transfer_msg)
+        .add_attributes(vec![
+            ("action", "lockdrop::ExecuteMsg::DepositInRedBank"),
+            (
+                "ust_deposited_in_red_bank",
+                state.total_ust_locked.to_string().as_str(),
+            ),
+            ("timestamp", env.block.time.seconds().to_string().as_str()),
+        ]))
 }
 
 //----------------------------------------------------------------------------------------
@@ -510,7 +538,6 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
 pub fn query_state(deps: Deps) -> Result<StateResponse, ContractError> {
     let state: State = STATE.load(deps.storage)?;
     Ok(StateResponse {
-        final_ust_locked: state.final_ust_locked,
         total_ust_locked: state.total_ust_locked,
         total_mars_delegated: state.total_mars_delegated,
         are_claims_allowed: state.are_claims_allowed,
@@ -527,20 +554,17 @@ pub fn query_user_info(
     let config = CONFIG.load(deps.storage)?;
     let user_address = deps.api.addr_validate(&user_address_)?;
     let state: State = STATE.load(deps.storage)?;
-    let mut user_info = USER_INFO
+    let user_info = USER_INFO
         .may_load(deps.storage, &user_address)?
         .unwrap_or_default();
 
-    // Calculate user's lockdrop incentive share if not finalized
-    if user_info.total_incentives.is_zero() {
-        user_info.total_incentives = config
-            .lockdrop_incentives
-            .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
-    }
+    let total_incentives = config
+        .lockdrop_incentives
+        .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
 
     Ok(UserInfoResponse {
         total_ust_locked: user_info.total_ust_locked,
-        total_mars_incentives: user_info.total_incentives,
+        total_mars_incentives: total_incentives,
         delegated_mars_incentives: user_info.delegated_mars_incentives,
         is_lockdrop_claimed: user_info.lockdrop_claimed,
     })

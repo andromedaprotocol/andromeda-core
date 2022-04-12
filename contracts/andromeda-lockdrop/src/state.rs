@@ -31,10 +31,6 @@ pub struct Config {
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
     /// Total UST deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window
-    pub final_ust_locked: Uint128,
-    /// maUST minted at the end of Lockdrop window upon UST deposit in red bank. This value remains unchanged post the lockdrop window
-    pub final_maust_locked: Uint128,
-    /// UST deposited in the contract. This value is updated real-time upon each UST deposit / unlock
     pub total_ust_locked: Uint128,
     /// MARS Tokens deposited into the bootstrap auction contract
     pub total_mars_delegated: Uint128,
@@ -46,8 +42,6 @@ pub struct State {
 pub struct UserInfo {
     /// Total UST amount deposited by the user across all his lockup positions
     pub total_ust_locked: Uint128,
-    /// MARS incentives allocated to the user for his weighted lockup positions
-    pub total_incentives: Uint128,
     /// MARS incentives deposited to the auction contract for MARS-UST Bootstrapping auction
     pub delegated_mars_incentives: Uint128,
     /// Boolean value indicating if the lockdrop_rewards for the lockup positions have been claimed or not

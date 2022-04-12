@@ -75,8 +75,6 @@ pub struct ConfigResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StateResponse {
     /// Total UST deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window
-    pub final_ust_locked: Uint128,
-    /// UST deposited in the contract. This value is updated real-time upon each UST deposit / unlock
     pub total_ust_locked: Uint128,
     /// MARS Tokens deposited into the bootstrap auction contract
     pub total_mars_delegated: Uint128,
