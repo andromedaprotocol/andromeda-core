@@ -364,14 +364,14 @@ pub fn handle_enable_claims(
 /// @dev Function to delegate part of the MARS rewards to be used for LP Bootstrapping via auction
 /// @param amount : Number of MARS to delegate
 pub fn handle_deposit_mars_to_auction(
-    mut deps: DepsMut,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
-    let user_address = info.sender.clone();
+    let user_address = info.sender;
 
     let phase_end = config.init_timestamp + config.deposit_window + config.withdrawal_window;
     // CHECK :: Have the deposit / withdraw windows concluded
