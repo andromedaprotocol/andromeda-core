@@ -76,14 +76,16 @@ pub struct ConfigResponse {
     pub withdrawal_window: u64,
     /// Total MARS lockdrop incentives to be distributed among the users
     pub lockdrop_incentives: Uint128,
+    pub incentive_token: String,
+    pub native_denom: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StateResponse {
     /// Total NATIVE deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window
     pub total_native_locked: Uint128,
-    /// MARS Tokens deposited into the bootstrap auction contract
-    pub total_mars_delegated: Uint128,
+    /// Number of Tokens deposited into the bootstrap auction contract
+    pub total_delegated: Uint128,
     /// Boolean value indicating if the user can withdraw thier MARS rewards or not
     pub are_claims_allowed: bool,
 }
@@ -91,9 +93,10 @@ pub struct StateResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserInfoResponse {
     pub total_native_locked: Uint128,
-    pub total_mars_incentives: Uint128,
-    pub delegated_mars_incentives: Uint128,
+    pub total_incentives: Uint128,
+    pub delegated_incentives: Uint128,
     pub is_lockdrop_claimed: bool,
+    pub withdrawal_flag: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -522,6 +522,8 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
         deposit_window: config.deposit_window,
         withdrawal_window: config.withdrawal_window,
         lockdrop_incentives: config.lockdrop_incentives,
+        incentive_token: config.incentive_token,
+        native_denom: config.native_denom,
     })
 }
 
@@ -530,7 +532,7 @@ pub fn query_state(deps: Deps) -> Result<StateResponse, ContractError> {
     let state: State = STATE.load(deps.storage)?;
     Ok(StateResponse {
         total_native_locked: state.total_native_locked,
-        total_mars_delegated: state.total_delegated,
+        total_delegated: state.total_delegated,
         are_claims_allowed: state.are_claims_allowed,
     })
 }
@@ -555,9 +557,10 @@ pub fn query_user_info(
 
     Ok(UserInfoResponse {
         total_native_locked: user_info.total_native_locked,
-        total_mars_incentives: total_incentives,
-        delegated_mars_incentives: user_info.delegated_incentives,
+        total_incentives,
+        delegated_incentives: user_info.delegated_incentives,
         is_lockdrop_claimed: user_info.lockdrop_claimed,
+        withdrawal_flag: user_info.withdrawal_flag,
     })
 }
 
@@ -592,7 +595,7 @@ fn is_withdraw_open(current_timestamp: u64, config: &Config) -> bool {
     (current_timestamp >= config.init_timestamp) && (withdrawals_opened_till >= current_timestamp)
 }
 
-/// @dev Helper function to calculate maximum % of UST deposited that can be withdrawn
+/// @dev Helper function to calculate maximum % of NATIVE deposited that can be withdrawn
 /// @params current_timestamp : Current block timestamp
 /// @params config : Contract configuration
 fn allowed_withdrawal_percent(current_timestamp: u64, config: &Config) -> Decimal {

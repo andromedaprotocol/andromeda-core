@@ -1,15 +1,15 @@
 use cosmwasm_std::{
-    coin, coins,
+    coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, BankMsg, DepsMut, Response, Uint128, WasmMsg,
+    to_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
 };
 
 use crate::{
     contract::{execute, instantiate, query},
-    state::{Config, State, UserInfo, CONFIG, STATE, USER_INFO},
+    state::{State, UserInfo, CONFIG, STATE, USER_INFO},
 };
 use andromeda_protocol::lockdrop::{
-    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StateResponse,
+    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };
 use common::{error::ContractError, mission::AndrAddress};
@@ -49,8 +49,12 @@ fn test_instantiate() {
         res
     );
 
+    let msg = QueryMsg::Config {};
+    let config_res: ConfigResponse =
+        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
     assert_eq!(
-        Config {
+        ConfigResponse {
             auction_contract_address: None,
             init_timestamp: mock_env().block.time.seconds(),
             deposit_window: DEPOSIT_WINDOW,
@@ -59,16 +63,20 @@ fn test_instantiate() {
             incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
             native_denom: "uusd".to_string()
         },
-        CONFIG.load(deps.as_ref().storage).unwrap()
+        config_res
     );
 
+    let msg = QueryMsg::State {};
+    let state_res: StateResponse =
+        from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
     assert_eq!(
-        State {
+        StateResponse {
             total_native_locked: Uint128::zero(),
             total_delegated: Uint128::zero(),
             are_claims_allowed: false,
         },
-        STATE.load(deps.as_ref().storage).unwrap()
+        state_res
     );
 }
 
@@ -848,16 +856,21 @@ fn test_claim_rewards() {
         res
     );
 
+    let msg = QueryMsg::UserInfo {
+        address: "user1".to_string(),
+    };
+    let user_res: UserInfoResponse =
+        from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+
     assert_eq!(
-        UserInfo {
+        UserInfoResponse {
             total_native_locked: Uint128::new(75),
             delegated_incentives: Uint128::zero(),
-            lockdrop_claimed: true,
+            is_lockdrop_claimed: true,
             withdrawal_flag: false,
+            total_incentives: Uint128::new(75),
         },
-        USER_INFO
-            .load(deps.as_ref().storage, &Addr::unchecked("user1"))
-            .unwrap()
+        user_res
     );
 
     // User 2 claims rewards
@@ -882,16 +895,21 @@ fn test_claim_rewards() {
         res
     );
 
+    let msg = QueryMsg::UserInfo {
+        address: "user2".to_string(),
+    };
+    let user_res: UserInfoResponse =
+        from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+
     assert_eq!(
-        UserInfo {
+        UserInfoResponse {
             total_native_locked: Uint128::new(25),
             delegated_incentives: Uint128::zero(),
-            lockdrop_claimed: true,
+            is_lockdrop_claimed: true,
             withdrawal_flag: false,
+            total_incentives: Uint128::new(25),
         },
-        USER_INFO
-            .load(deps.as_ref().storage, &Addr::unchecked("user2"))
-            .unwrap()
+        user_res
     );
 
     // User 3 tries to claim rewards
@@ -935,4 +953,34 @@ fn test_claim_rewards_not_available() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::ClaimsNotAllowed {}, res.unwrap_err());
+}
+
+#[test]
+fn test_query_withdrawable_percent() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut()).unwrap();
+
+    let msg = QueryMsg::WithdrawalPercentAllowed { timestamp: None };
+    let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    assert_eq!(Decimal::one(), res);
+
+    let timestamp = mock_env().block.time.plus_seconds(DEPOSIT_WINDOW + 1);
+    let msg = QueryMsg::WithdrawalPercentAllowed {
+        timestamp: Some(timestamp.seconds()),
+    };
+    let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    assert_eq!(Decimal::percent(50), res);
+
+    let timestamp = mock_env()
+        .block
+        .time
+        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW);
+    let msg = QueryMsg::WithdrawalPercentAllowed {
+        timestamp: Some(timestamp.seconds()),
+    };
+    let res: Decimal = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    assert_eq!(Decimal::zero(), res);
 }
