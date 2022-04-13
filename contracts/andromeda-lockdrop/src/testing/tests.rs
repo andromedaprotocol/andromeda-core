@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Response, Uint128,
+    to_binary, DepsMut, Response, Uint128,
 };
 
 use crate::{
@@ -15,22 +15,29 @@ use common::error::ContractError;
 use cw20::Cw20ReceiveMsg;
 
 const MOCK_INCENTIVE_TOKEN: &str = "mock_incentive_token";
+const DEPOSIT_WINDOW: u64 = 5;
+const WITHDRAWAL_WINDOW: u64 = 2;
 
-#[test]
-fn test_instantiate() {
-    let mut deps = mock_dependencies(&[]);
+fn init(deps: DepsMut) -> Result<Response, ContractError> {
     let env = mock_env();
     let info = mock_info("owner", &[]);
 
     let msg = InstantiateMsg {
         auction_contract: None,
         init_timestamp: env.block.time.seconds(),
-        deposit_window: 5,
-        withdrawal_window: 2,
+        deposit_window: DEPOSIT_WINDOW,
+        withdrawal_window: WITHDRAWAL_WINDOW,
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
     };
 
-    let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+    instantiate(deps, env, info, msg)
+}
+
+#[test]
+fn test_instantiate() {
+    let mut deps = mock_dependencies(&[]);
+
+    let res = init(deps.as_mut()).unwrap();
 
     assert_eq!(
         Response::new()
@@ -42,7 +49,7 @@ fn test_instantiate() {
     assert_eq!(
         Config {
             auction_contract_address: None,
-            init_timestamp: env.block.time.seconds(),
+            init_timestamp: mock_env().block.time.seconds(),
             deposit_window: 5,
             withdrawal_window: 2,
             lockdrop_incentives: Uint128::zero(),
@@ -140,18 +147,8 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
 #[test]
 fn test_increase_incentives() {
     let mut deps = mock_dependencies(&[]);
-    let env = mock_env();
-    let info = mock_info("owner", &[]);
 
-    let msg = InstantiateMsg {
-        auction_contract: None,
-        init_timestamp: env.block.time.seconds(),
-        deposit_window: 5,
-        withdrawal_window: 2,
-        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
-    };
-
-    let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
@@ -160,7 +157,7 @@ fn test_increase_incentives() {
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -181,18 +178,8 @@ fn test_increase_incentives() {
 #[test]
 fn test_increase_incentives_invalid_token() {
     let mut deps = mock_dependencies(&[]);
-    let env = mock_env();
-    let info = mock_info("owner", &[]);
 
-    let msg = InstantiateMsg {
-        auction_contract: None,
-        init_timestamp: env.block.time.seconds(),
-        deposit_window: 5,
-        withdrawal_window: 2,
-        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
-    };
-
-    let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
@@ -201,7 +188,7 @@ fn test_increase_incentives_invalid_token() {
     });
 
     let info = mock_info("invalid_token", &[]);
-    let res = execute(deps.as_mut(), env, info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
         ContractError::InvalidFunds {
             msg: "Only incentive tokens are valid".to_string(),
@@ -214,17 +201,8 @@ fn test_increase_incentives_invalid_token() {
 fn test_increase_incentives_after_phase_ends() {
     let mut deps = mock_dependencies(&[]);
     let mut env = mock_env();
-    let info = mock_info("owner", &[]);
 
-    let msg = InstantiateMsg {
-        auction_contract: None,
-        init_timestamp: env.block.time.seconds(),
-        deposit_window: 5,
-        withdrawal_window: 2,
-        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
-    };
-
-    let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
@@ -244,18 +222,8 @@ fn test_increase_incentives_after_phase_ends() {
 #[test]
 fn test_increase_incentives_zero_amount() {
     let mut deps = mock_dependencies(&[]);
-    let env = mock_env();
-    let info = mock_info("owner", &[]);
 
-    let msg = InstantiateMsg {
-        auction_contract: None,
-        init_timestamp: env.block.time.seconds(),
-        deposit_window: 5,
-        withdrawal_window: 2,
-        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
-    };
-
-    let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
@@ -264,7 +232,7 @@ fn test_increase_incentives_zero_amount() {
     });
 
     let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
-    let res = execute(deps.as_mut(), env, info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
         ContractError::InvalidFunds {
