@@ -1160,7 +1160,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(150);
 
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-        let res = execute(deps.as_mut(), env, info, msg);
+        let res = execute(deps.as_mut(), env.clone(), info, msg);
 
         assert_eq!(
             ContractError::StartTimeInThePast {
@@ -1309,7 +1309,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(0);
 
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let res = execute(deps.as_mut(), env, info, msg);
+        let res = execute(deps.as_mut(), env.clone(), info, msg);
 
         assert_eq!(
             ContractError::StartTimeInThePast {
