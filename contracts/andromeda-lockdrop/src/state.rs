@@ -15,7 +15,7 @@ pub const USER_INFO: Map<&Addr, UserInfo> = Map::new("users");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    /// Bootstrap Contract address to which MARS tokens can be deposited for bootstrapping MARS-UST Pool
+    /// Bootstrap Contract address to which incentive tokens can be deposited for bootstrapping TOKEN-NATIVE Pool
     pub bootstrap_contract_address: Option<AndrAddress>,
     /// Timestamp when Contract will start accepting deposits
     pub init_timestamp: u64,
@@ -37,7 +37,7 @@ pub struct State {
     pub total_native_locked: Uint128,
     /// Number of Tokens deposited into the bootstrap contract
     pub total_delegated: Uint128,
-    /// Boolean value indicating if the user can withdraw thier MARS rewards or not
+    /// Boolean value indicating if the user can withdraw their token rewards or not
     pub are_claims_allowed: bool,
 }
 
@@ -49,5 +49,6 @@ pub struct UserInfo {
     pub delegated_incentives: Uint128,
     /// Boolean value indicating if the lockdrop_rewards for the lockup positions have been claimed or not
     pub lockdrop_claimed: bool,
+    /// Whether or not the user has withdrawn during the withdrawal phase.
     pub withdrawal_flag: bool,
 }

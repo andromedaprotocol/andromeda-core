@@ -118,8 +118,13 @@ pub enum ContractError {
     #[error("StartTimeAfterEndTime")]
     StartTimeAfterEndTime {},
 
-    #[error("StartTimeInThePast")]
-    StartTimeInThePast {},
+    #[error(
+        "Start time in past. Current seconds: {current_seconds}. Current block: {current_block}"
+    )]
+    StartTimeInThePast {
+        current_seconds: u64,
+        current_block: u64,
+    },
 
     #[error("HighestBidderCannotOutBid")]
     HighestBidderCannotOutBid {},

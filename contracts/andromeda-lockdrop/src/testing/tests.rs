@@ -95,9 +95,15 @@ fn test_instantiate_init_timestamp_past() {
         native_denom: "uusd".to_string(),
     };
 
-    let res = instantiate(deps.as_mut(), env, info, msg);
+    let res = instantiate(deps.as_mut(), env.clone(), info, msg);
 
-    assert_eq!(ContractError::StartTimeInThePast {}, res.unwrap_err());
+    assert_eq!(
+        ContractError::StartTimeInThePast {
+            current_seconds: env.block.time.seconds(),
+            current_block: env.block.height,
+        },
+        res.unwrap_err()
+    );
 }
 
 #[test]

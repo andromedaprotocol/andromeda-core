@@ -1,3 +1,6 @@
+// The mars lockdrop contract was used as a base for this.
+// https://github.com/mars-protocol/mars-periphery/tree/main/contracts/lockdrop
+
 use cosmwasm_std::{
     entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
     StdResult, Uint128,
@@ -37,7 +40,10 @@ pub fn instantiate(
     // CHECK :: init_timestamp needs to be valid
     require(
         msg.init_timestamp >= env.block.time.seconds(),
-        ContractError::StartTimeInThePast {},
+        ContractError::StartTimeInThePast {
+            current_seconds: env.block.time.seconds(),
+            current_block: env.block.height,
+        },
     )?;
 
     // CHECK :: deposit_window,withdrawal_window need to be valid (withdrawal_window < deposit_window)
@@ -86,13 +92,13 @@ pub fn execute(
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
-        ExecuteMsg::DepositNative {} => try_deposit_native(deps, env, info),
-        ExecuteMsg::WithdrawNative { amount } => try_withdraw_native(deps, env, info, amount),
+        ExecuteMsg::DepositNative {} => execute_deposit_native(deps, env, info),
+        ExecuteMsg::WithdrawNative { amount } => execute_withdraw_native(deps, env, info, amount),
         ExecuteMsg::DepositToBootstrap { amount } => {
-            handle_deposit_to_bootstrap(deps, env, info, amount)
+            execute_deposit_to_bootstrap(deps, env, info, amount)
         }
-        ExecuteMsg::EnableClaims {} => handle_enable_claims(deps, env, info),
-        ExecuteMsg::ClaimRewards {} => handle_claim_rewards(deps, env, info),
+        ExecuteMsg::EnableClaims {} => execute_enable_claims(deps, env, info),
+        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
         ExecuteMsg::WithdrawProceeds { recipient } => {
             execute_withdraw_proceeds(deps, env, info, recipient)
         }
@@ -120,7 +126,7 @@ pub fn receive_cw20(
 
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::IncreaseIncentives {} => {
-            handle_increase_incentives(deps, env, info, cw20_msg.amount)
+            execute_increase_incentives(deps, env, info, cw20_msg.amount)
         }
     }
 }
@@ -139,12 +145,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 }
 
 //----------------------------------------------------------------------------------------
-// Handle Functions
+// Execute Functions
 //----------------------------------------------------------------------------------------
 
 /// @dev Facilitates increasing token incentives that are to be distributed as Lockdrop participation reward
 /// @params amount : Number of tokens which are to be added to current incentives
-pub fn handle_increase_incentives(
+pub fn execute_increase_incentives(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -171,8 +177,8 @@ pub fn handle_increase_incentives(
         .add_attribute("amount", amount))
 }
 
-/// @dev Facilitates NATIVE deposits locked for selected number of weeks
-pub fn try_deposit_native(
+/// @dev Facilitates NATIVE deposits.
+pub fn execute_deposit_native(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -233,7 +239,7 @@ pub fn try_deposit_native(
 
 /// @dev Facilitates NATIVE withdrawal from an existing Lockup position. Can only be called when deposit / withdrawal window is open
 /// @param withdraw_amount : NATIVE amount to be withdrawn
-pub fn try_withdraw_native(
+pub fn execute_withdraw_native(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -304,7 +310,7 @@ pub fn try_withdraw_native(
 /// Function callable only by Bootstrap contract (if it is specified) to enable TOKEN Claims by users.
 /// Called along-with Bootstrap contract's LP Pool provide liquidity tx. If it is not
 /// specified then anyone can execute this when the phase has ended.
-pub fn handle_enable_claims(
+pub fn execute_enable_claims(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -346,7 +352,7 @@ pub fn handle_enable_claims(
 /// @dev Function to delegate part of the token rewards to be used for LP Bootstrapping via
 /// bootstrap
 /// @param amount : Number of tokens to delegate
-pub fn handle_deposit_to_bootstrap(
+pub fn execute_deposit_to_bootstrap(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -413,7 +419,7 @@ pub fn handle_deposit_to_bootstrap(
 }
 
 /// @dev Function to claim Rewards from lockdrop.
-pub fn handle_claim_rewards(
+pub fn execute_claim_rewards(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,

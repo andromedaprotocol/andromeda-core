@@ -140,7 +140,10 @@ fn execute_start_auction(
     let block_time = block_to_expiration(&env.block, start_time).unwrap();
     require(
         start_time > block_time,
-        ContractError::StartTimeInThePast {},
+        ContractError::StartTimeInThePast {
+            current_seconds: env.block.time.seconds(),
+            current_block: env.block.height,
+        },
     )?;
 
     let auction_id = get_and_increment_next_auction_id(deps.storage, &token_id, &token_address)?;
@@ -211,7 +214,10 @@ fn execute_update_auction(
     )?;
     require(
         !start_time.is_expired(&env.block),
-        ContractError::StartTimeInThePast {},
+        ContractError::StartTimeInThePast {
+            current_seconds: env.block.time.seconds(),
+            current_block: env.block.height,
+        },
     )?;
 
     token_auction_state.start_time = start_time;
@@ -1156,7 +1162,13 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::StartTimeInThePast {}, res.unwrap_err());
+        assert_eq!(
+            ContractError::StartTimeInThePast {
+                current_seconds: env.block.time.seconds(),
+                current_block: env.block.height,
+            },
+            res.unwrap_err()
+        );
     }
 
     #[test]
@@ -1299,7 +1311,13 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::StartTimeInThePast {}, res.unwrap_err());
+        assert_eq!(
+            ContractError::StartTimeInThePast {
+                current_seconds: env.block.time.seconds(),
+                current_block: env.block.height,
+            },
+            res.unwrap_err()
+        );
     }
 
     #[test]
