@@ -43,6 +43,9 @@ pub enum ExecuteMsg {
     ClaimRewards {},
     /// Called by the bootstrap auction contract when liquidity is added to the TOKEN-NATIVE Pool to enable TOKEN withdrawals by users
     EnableClaims {},
+    WithdrawProceeds {
+        recipient: Option<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

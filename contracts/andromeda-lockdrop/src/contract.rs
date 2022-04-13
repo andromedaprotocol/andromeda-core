@@ -93,6 +93,9 @@ pub fn execute(
         }
         ExecuteMsg::EnableClaims {} => handle_enable_claims(deps, env, info),
         ExecuteMsg::ClaimRewards {} => handle_claim_rewards(deps, env, info),
+        ExecuteMsg::WithdrawProceeds { recipient } => {
+            execute_withdraw_proceeds(deps, env, info, recipient)
+        }
     }
 }
 
@@ -298,7 +301,9 @@ pub fn try_withdraw_native(
         .add_attribute("amount", withdraw_amount))
 }
 
-/// @dev Function callable only by Auction contract to enable MARS Claims by users. Called along-with Bootstrap Auction contract's LP Pool provide liquidity tx
+/// Function callable only by Auction contract (if it is specified) to enable TOKEN Claims by users.
+/// Called along-with Bootstrap Auction contract's LP Pool provide liquidity tx. If it is not
+/// specified then anyone can execute this when the phase has ended.
 pub fn handle_enable_claims(
     deps: DepsMut,
     env: Env,
@@ -335,7 +340,7 @@ pub fn handle_enable_claims(
     state.are_claims_allowed = true;
 
     STATE.save(deps.storage, &state)?;
-    Ok(Response::new().add_attribute("action", "Lockdrop::ExecuteMsg::EnableClaims"))
+    Ok(Response::new().add_attribute("action", "enable_claims"))
 }
 
 /// @dev Function to delegate part of the MARS rewards to be used for LP Bootstrapping via auction
@@ -453,12 +458,13 @@ pub fn handle_claim_rewards(
         .add_message(transfer_msg))
 }
 
-pub fn try_withdraw_proceeds(
+fn execute_withdraw_proceeds(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    recipient: String,
+    recipient: Option<String>,
 ) -> Result<Response, ContractError> {
+    let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
     let config = CONFIG.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
     // CHECK :: Only Owner can call this function
@@ -470,7 +476,7 @@ pub fn try_withdraw_proceeds(
     // CHECK :: Lockdrop withdrawal window should be closed
     let current_timestamp = env.block.time.seconds();
     require(
-        current_timestamp >= config.init_timestamp && !is_withdraw_open(current_timestamp, &config),
+        !is_withdraw_open(current_timestamp, &config),
         ContractError::InvalidWithdrawal {
             msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
         },
@@ -492,14 +498,9 @@ pub fn try_withdraw_proceeds(
 
     Ok(Response::new()
         .add_message(transfer_msg)
-        .add_attributes(vec![
-            ("action", "lockdrop::ExecuteMsg::DepositInRedBank"),
-            (
-                "ust_deposited_in_red_bank",
-                state.total_native_locked.to_string().as_str(),
-            ),
-            ("timestamp", env.block.time.seconds().to_string().as_str()),
-        ]))
+        .add_attribute("action", "withdraw_proceeds")
+        .add_attribute("amount", state.total_native_locked)
+        .add_attribute("timestamp", env.block.time.seconds().to_string()))
 }
 
 //----------------------------------------------------------------------------------------

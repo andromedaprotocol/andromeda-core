@@ -12,10 +12,11 @@ use andromeda_protocol::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };
-use common::error::ContractError;
+use common::{error::ContractError, mission::AndrAddress};
 use cw20::Cw20ReceiveMsg;
 
 const MOCK_INCENTIVE_TOKEN: &str = "mock_incentive_token";
+const MOCK_AUCTION_CONTRACT: &str = "mock_auction_contract";
 const DEPOSIT_WINDOW: u64 = 5;
 const WITHDRAWAL_WINDOW: u64 = 4;
 
@@ -562,4 +563,216 @@ fn test_withdraw_native_withdrawal_closed() {
         },
         res.unwrap_err()
     );
+}
+
+#[test]
+fn test_withdraw_proceeds_unauthorized() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut()).unwrap();
+
+    let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
+
+    let info = mock_info("not owner", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_withdraw_proceeds_phase_not_started() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut()).unwrap();
+
+    let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
+
+    let info = mock_info("owner", &[]);
+    let mut env = mock_env();
+    env.block.time = env.block.time.minus_seconds(1);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidWithdrawal {
+            msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_withdraw_proceeds_phase_not_ended() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut()).unwrap();
+
+    let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
+
+    let info = mock_info("owner", &[]);
+    let mut env = mock_env();
+    env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidWithdrawal {
+            msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_withdraw_proceeds() {
+    // This uusd is to simulate the deposit made prior to withdrawing proceeds. This is needed
+    // since the mock querier doesn't automatically assign balances.
+    let amount = 100;
+    let mut deps = mock_dependencies(&coins(amount, "uusd"));
+    init(deps.as_mut()).unwrap();
+
+    let msg = ExecuteMsg::DepositNative {};
+    let info = mock_info("sender", &coins(amount, "uusd"));
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
+
+    let info = mock_info("owner", &[]);
+    let mut env = mock_env();
+    env.block.time = env
+        .block
+        .time
+        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(BankMsg::Send {
+                to_address: "owner".to_string(),
+                amount: coins(100, "uusd")
+            })
+            .add_attribute("action", "withdraw_proceeds")
+            .add_attribute("amount", "100")
+            .add_attribute("timestamp", env.block.time.seconds().to_string()),
+        res
+    );
+
+    // Remove withdrawn funds.
+    deps.querier
+        .update_balance(env.contract.address.clone(), vec![]);
+
+    // try to withdraw again
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidWithdrawal {
+            msg: Some("Already withdrew funds".to_string()),
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_enable_claims_no_auction_specified() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut()).unwrap();
+
+    let msg = ExecuteMsg::EnableClaims {};
+
+    let mut env = mock_env();
+    env.block.time = env
+        .block
+        .time
+        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
+
+    let info = mock_info("sender", &[]);
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+    assert_eq!(
+        Response::new().add_attribute("action", "enable_claims"),
+        res
+    );
+
+    assert_eq!(
+        State {
+            total_delegated: Uint128::zero(),
+            total_native_locked: Uint128::zero(),
+            are_claims_allowed: true
+        },
+        STATE.load(deps.as_ref().storage).unwrap()
+    );
+
+    // Try to do it again.
+    let res = execute(deps.as_mut(), env, info, msg);
+
+    assert_eq!(ContractError::ClaimsAlreadyAllowed {}, res.unwrap_err());
+}
+
+#[test]
+fn test_enable_claims_auction_specified() {
+    let mut deps = mock_dependencies(&[]);
+    let msg = InstantiateMsg {
+        auction_contract: Some(AndrAddress {
+            identifier: MOCK_AUCTION_CONTRACT.to_owned(),
+        }),
+        init_timestamp: mock_env().block.time.seconds(),
+        deposit_window: DEPOSIT_WINDOW,
+        withdrawal_window: WITHDRAWAL_WINDOW,
+        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+        native_denom: "uusd".to_string(),
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::EnableClaims {};
+
+    let mut env = mock_env();
+    env.block.time = env
+        .block
+        .time
+        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
+
+    let info = mock_info("not_auction_contract", &[]);
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+    let info = mock_info(MOCK_AUCTION_CONTRACT, &[]);
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+    assert_eq!(
+        Response::new().add_attribute("action", "enable_claims"),
+        res
+    );
+
+    assert_eq!(
+        State {
+            total_delegated: Uint128::zero(),
+            total_native_locked: Uint128::zero(),
+            are_claims_allowed: true
+        },
+        STATE.load(deps.as_ref().storage).unwrap()
+    );
+
+    // Try to do it again.
+    let res = execute(deps.as_mut(), env, info, msg);
+
+    assert_eq!(ContractError::ClaimsAlreadyAllowed {}, res.unwrap_err());
+}
+
+#[test]
+fn test_enable_claims_phase_not_ended() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut()).unwrap();
+
+    let msg = ExecuteMsg::EnableClaims {};
+
+    let mut env = mock_env();
+    env.block.time = env
+        .block
+        .time
+        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW);
+
+    let info = mock_info("sender", &[]);
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+
+    assert_eq!(ContractError::PhaseOngoing {}, res.unwrap_err());
 }
