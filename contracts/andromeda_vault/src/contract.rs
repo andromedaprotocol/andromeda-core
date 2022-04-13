@@ -10,6 +10,7 @@ use common::{
     },
     encode_binary,
     error::ContractError,
+    mission::AndrAddress,
     parse_message, require,
     withdraw::{Withdrawal, WithdrawalType},
 };
@@ -31,19 +32,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    msg.validate()?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
-    for strategy in msg.strategies {
-        STRATEGY_CONTRACT_ADDRESSES.save(
-            deps.storage,
-            strategy.strategy_type.to_string(),
-            &strategy
-                .address
-                .get_address(deps.api, &deps.querier, mission_contract.clone())?,
-        )?;
-    }
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -76,6 +66,9 @@ pub fn execute(
             withdrawals,
             strategy,
         } => execute_withdraw(deps, env, info, recipient, withdrawals, strategy),
+        ExecuteMsg::UpdateStrategy { strategy, address } => {
+            execute_update_strategy(deps, env, info, strategy, address)
+        }
     }
 }
 
@@ -329,6 +322,27 @@ pub fn withdraw_strategy(
     };
 
     Ok(res.add_submessage(withdraw_submsg))
+}
+
+fn execute_update_strategy(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    strategy: StrategyType,
+    address: AndrAddress,
+) -> Result<Response, ContractError> {
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, &info.sender.to_string())?,
+        ContractError::Unauthorized {},
+    )?;
+    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
+    let strategy_addr = address.get_address(deps.api, &deps.querier, mission_contract.clone())?;
+    STRATEGY_CONTRACT_ADDRESSES.save(deps.storage, strategy.to_string(), &strategy_addr)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "update_strategy")
+        .add_attribute("strategy_type", strategy.to_string())
+        .add_attribute("addr", strategy_addr))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

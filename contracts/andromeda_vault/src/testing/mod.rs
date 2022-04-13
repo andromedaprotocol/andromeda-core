@@ -18,23 +18,15 @@ use common::{
 use cosmwasm_std::{
     coin, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, wasm_execute, BankMsg, Coin, CosmosMsg, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
+    to_binary, wasm_execute, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, ReplyOn,
+    Response, SubMsg, Uint128, WasmMsg,
 };
 
 use self::mock_querier::MOCK_ANCHOR_CONTRACT;
 
 #[test]
 fn test_instantiate() {
-    let yield_strategy = YieldStrategy {
-        strategy_type: StrategyType::Anchor,
-        address: AndrAddress {
-            identifier: "terra1anchoraddress".to_string(),
-        },
-    };
-    let inst_msg = InstantiateMsg {
-        operators: None,
-        strategies: vec![yield_strategy],
-    };
+    let inst_msg = InstantiateMsg { operators: None };
     let env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies(&[]);
@@ -67,6 +59,49 @@ fn test_deposit() {
         .load(deps.as_ref().storage, (&depositor, "uluna"))
         .unwrap();
     assert_eq!(uluna_balance, extra_sent_funds.amount)
+}
+
+fn add_strategy(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    strategy: StrategyType,
+    address: AndrAddress,
+) -> Response {
+    let msg = ExecuteMsg::UpdateStrategy { strategy, address };
+    execute(deps, env, info, msg).unwrap()
+}
+
+#[test]
+fn test_execute_update_strategy() {
+    let env = mock_env();
+    let depositor = "depositor".to_string();
+    let mut deps = mock_dependencies(&[]);
+    let inst_msg = InstantiateMsg { operators: None };
+    let info = mock_info(&depositor, &[]);
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+
+    let resp = add_strategy(
+        deps.as_mut(),
+        env,
+        info,
+        StrategyType::Anchor,
+        AndrAddress {
+            identifier: "terra1anchoraddress".to_string(),
+        },
+    );
+
+    let expected = Response::default()
+        .add_attribute("action", "update_strategy")
+        .add_attribute("strategy_type", StrategyType::Anchor.to_string())
+        .add_attribute("addr", "terra1anchoraddress".to_string());
+
+    assert_eq!(resp, expected);
+
+    let addr = STRATEGY_CONTRACT_ADDRESSES
+        .load(deps.as_mut().storage, StrategyType::Anchor.to_string())
+        .unwrap();
+    assert_eq!(addr, "terra1anchoraddress".to_string());
 }
 
 #[test]
@@ -113,10 +148,7 @@ fn test_deposit_strategy() {
             identifier: "terra1anchoraddress".to_string(),
         },
     };
-    let inst_msg = InstantiateMsg {
-        operators: None,
-        strategies: vec![yield_strategy.clone()],
-    };
+    let inst_msg = InstantiateMsg { operators: None };
     let env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies(&[]);
@@ -187,10 +219,7 @@ fn test_deposit_strategy_partial_amount() {
             identifier: "terra1anchoraddress".to_string(),
         },
     };
-    let inst_msg = InstantiateMsg {
-        operators: None,
-        strategies: vec![yield_strategy.clone()],
-    };
+    let inst_msg = InstantiateMsg { operators: None };
     let env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies(&[]);
@@ -272,10 +301,7 @@ fn test_deposit_strategy_insufficient_partial_amount() {
             identifier: "terra1anchoraddress".to_string(),
         },
     };
-    let inst_msg = InstantiateMsg {
-        operators: None,
-        strategies: vec![yield_strategy.clone()],
-    };
+    let inst_msg = InstantiateMsg { operators: None };
     let env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies(&[]);
