@@ -309,7 +309,7 @@ pub enum ContractError {
     DepositWindowClosed {},
 
     #[error("No saved auction contract")]
-    NoSavedAuctionContract {},
+    NoSavedBootstrapContract {},
 
     #[error("Phase ongoing")]
     PhaseOngoing {},

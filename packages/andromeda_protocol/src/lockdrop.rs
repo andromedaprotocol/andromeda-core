@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    /// The auction contract to be used in the second phase.
-    pub auction_contract: Option<AndrAddress>,
+    /// The bootsrap contract to be used in the second phase.
+    pub bootstrap_contract: Option<AndrAddress>,
     /// Timestamp till when deposits can be made
     pub init_timestamp: u64,
     /// Number of seconds for which lockup deposits will be accepted
@@ -35,13 +35,13 @@ pub enum ExecuteMsg {
     WithdrawNative {
         amount: Option<Uint128>,
     },
-    /// Deposit TOKEN to auction contract
-    DepositToAuction {
+    /// Deposit TOKEN to bootstrap contract
+    DepositToBootstrap {
         amount: Uint128,
     },
     /// Facilitates reward claim after claims are enabled.
     ClaimRewards {},
-    /// Called by the bootstrap auction contract when liquidity is added to the TOKEN-NATIVE Pool to enable TOKEN withdrawals by users
+    /// Called by the bootstrap contract when liquidity is added to the TOKEN-NATIVE Pool to enable TOKEN withdrawals by users
     EnableClaims {},
     WithdrawProceeds {
         recipient: Option<String>,
@@ -66,8 +66,8 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
-    /// Auction Contract address to which MARS tokens can be delegated to for bootstrapping MARS-UST Pool
-    pub auction_contract_address: Option<String>,
+    /// Bootstrap Contract address to which MARS tokens can be delegated to for bootstrapping MARS-UST Pool
+    pub bootstrap_contract_address: Option<String>,
     /// Timestamp till when deposits can be made
     pub init_timestamp: u64,
     /// Number of seconds for which lockup deposits will be accepted
@@ -84,7 +84,7 @@ pub struct ConfigResponse {
 pub struct StateResponse {
     /// Total NATIVE deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window
     pub total_native_locked: Uint128,
-    /// Number of Tokens deposited into the bootstrap auction contract
+    /// Number of Tokens deposited into the bootstrap contract
     pub total_delegated: Uint128,
     /// Boolean value indicating if the user can withdraw thier MARS rewards or not
     pub are_claims_allowed: bool,

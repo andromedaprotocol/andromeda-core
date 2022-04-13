@@ -49,7 +49,7 @@ pub fn instantiate(
     )?;
 
     let config = Config {
-        auction_contract_address: msg.auction_contract,
+        bootstrap_contract_address: msg.bootstrap_contract,
         init_timestamp: msg.init_timestamp,
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
@@ -88,8 +88,8 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::DepositNative {} => try_deposit_native(deps, env, info),
         ExecuteMsg::WithdrawNative { amount } => try_withdraw_native(deps, env, info, amount),
-        ExecuteMsg::DepositToAuction { amount } => {
-            handle_deposit_to_auction(deps, env, info, amount)
+        ExecuteMsg::DepositToBootstrap { amount } => {
+            handle_deposit_to_bootstrap(deps, env, info, amount)
         }
         ExecuteMsg::EnableClaims {} => handle_enable_claims(deps, env, info),
         ExecuteMsg::ClaimRewards {} => handle_claim_rewards(deps, env, info),
@@ -143,7 +143,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 //----------------------------------------------------------------------------------------
 
 /// @dev Facilitates increasing token incentives that are to be distributed as Lockdrop participation reward
-/// @params amount : Number of MARS tokens which are to be added to current incentives
+/// @params amount : Number of tokens which are to be added to current incentives
 pub fn handle_increase_incentives(
     deps: DepsMut,
     env: Env,
@@ -301,8 +301,8 @@ pub fn try_withdraw_native(
         .add_attribute("amount", withdraw_amount))
 }
 
-/// Function callable only by Auction contract (if it is specified) to enable TOKEN Claims by users.
-/// Called along-with Bootstrap Auction contract's LP Pool provide liquidity tx. If it is not
+/// Function callable only by Bootstrap contract (if it is specified) to enable TOKEN Claims by users.
+/// Called along-with Bootstrap contract's LP Pool provide liquidity tx. If it is not
 /// specified then anyone can execute this when the phase has ended.
 pub fn handle_enable_claims(
     deps: DepsMut,
@@ -313,15 +313,15 @@ pub fn handle_enable_claims(
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
-    // If auction is specified then only it can enable claims.
-    if let Some(auction_contract_address) = &config.auction_contract_address {
+    // If bootstrap is specified then only it can enable claims.
+    if let Some(bootstrap_contract_address) = &config.bootstrap_contract_address {
         let mission_contract = contract.get_mission_contract(deps.storage)?;
-        let auction_contract_address =
-            auction_contract_address.get_address(deps.api, &deps.querier, mission_contract)?;
+        let bootstrap_contract_address =
+            bootstrap_contract_address.get_address(deps.api, &deps.querier, mission_contract)?;
 
-        // CHECK :: ONLY AUCTION CONTRACT CAN CALL THIS FUNCTION
+        // CHECK :: ONLY BOOTSTRAP CONTRACT CAN CALL THIS FUNCTION
         require(
-            info.sender == auction_contract_address,
+            info.sender == bootstrap_contract_address,
             ContractError::Unauthorized {},
         )?;
     }
@@ -343,9 +343,10 @@ pub fn handle_enable_claims(
     Ok(Response::new().add_attribute("action", "enable_claims"))
 }
 
-/// @dev Function to delegate part of the MARS rewards to be used for LP Bootstrapping via auction
-/// @param amount : Number of MARS to delegate
-pub fn handle_deposit_to_auction(
+/// @dev Function to delegate part of the token rewards to be used for LP Bootstrapping via
+/// bootstrap
+/// @param amount : Number of tokens to delegate
+pub fn handle_deposit_to_bootstrap(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -361,16 +362,16 @@ pub fn handle_deposit_to_auction(
         ContractError::PhaseOngoing {},
     )?;
 
-    // CHECK :: Can users withdraw their MARS tokens ? -> if so, then delegation is no longer allowed
+    // CHECK :: Can users withdraw their tokens ? -> if so, then delegation is no longer allowed
     require(
         !state.are_claims_allowed,
         ContractError::ClaimsAlreadyAllowed {},
     )?;
 
-    // CHECK :: Auction contract address should be set
+    // CHECK :: Bootstrap contract address should be set
     require(
-        config.auction_contract_address.is_some(),
-        ContractError::NoSavedAuctionContract {},
+        config.bootstrap_contract_address.is_some(),
+        ContractError::NoSavedBootstrapContract {},
     )?;
 
     let mut user_info = USER_INFO
@@ -381,13 +382,13 @@ pub fn handle_deposit_to_auction(
         .lockdrop_incentives
         .multiply_ratio(user_info.total_native_locked, state.total_native_locked);
 
-    // CHECK :: MARS to delegate cannot exceed user's unclaimed MARS balance
+    // CHECK :: token to delegate cannot exceed user's unclaimed token balance
     let available_amount = total_incentives - user_info.delegated_incentives;
     require(
         amount <= available_amount,
         ContractError::InvalidFunds {
             msg: format!(
-                "Amount cannot exceed user's unclaimed MARS balance. MARS to delegate = {}, Max delegatable MARS = {} ",
+                "Amount cannot exceed user's unclaimed token balance. Tokens to delegate = {}, Max delegatable tokens = {}",
                 amount,
                 available_amount
             ),
@@ -402,17 +403,16 @@ pub fn handle_deposit_to_auction(
     STATE.save(deps.storage, &state)?;
     USER_INFO.save(deps.storage, &user_address, &user_info)?;
 
-    // COSMOS_MSG ::Delegate MARS to the LP Bootstrapping via Auction contract
+    // COSMOS_MSG ::Delegate tokens to the LP Bootstrapping via Bootstrap contract
     // TODO: When Boostrapping contract is created add this message.
 
     Ok(Response::new()
-        .add_attribute("action", "Auction::ExecuteMsg::DelegateMarsToAuction")
-        .add_attribute("user_address", &user_address.to_string())
-        .add_attribute("delegated_mars", amount.to_string()))
+        .add_attribute("action", "deposit_to_bootstrap")
+        .add_attribute("user_address", user_address)
+        .add_attribute("delegated_amount", amount))
 }
 
-/// @dev Function to claim Rewards and optionally unlock a lockup position (either naturally or forcefully). Claims pending incentives (xMARS) internally and accounts for them via the index updates
-/// @params lockup_to_unlock_duration : Duration of the lockup to be unlocked. If 0 then no lockup is to be unlocked
+/// @dev Function to claim Rewards from lockdrop.
 pub fn handle_claim_rewards(
     deps: DepsMut,
     _env: Env,
@@ -474,7 +474,7 @@ fn execute_withdraw_proceeds(
     // CHECK :: Lockdrop withdrawal window should be closed
     let current_timestamp = env.block.time.seconds();
     require(
-        !is_withdraw_open(current_timestamp, &config),
+        current_timestamp >= config.init_timestamp && !is_withdraw_open(current_timestamp, &config),
         ContractError::InvalidWithdrawal {
             msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
         },
@@ -510,14 +510,14 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let contract = ADOContract::default();
     let mission_contract = contract.get_mission_contract(deps.storage)?;
-    let auction_contract_address = config
-        .auction_contract_address
+    let bootstrap_contract_address = config
+        .bootstrap_contract_address
         .map(|a| a.get_address(deps.api, &deps.querier, mission_contract))
         // Flip Option<Result> to Result<Option>
         .map_or(Ok(None), |v| v.map(Some));
 
     Ok(ConfigResponse {
-        auction_contract_address: auction_contract_address?,
+        bootstrap_contract_address: bootstrap_contract_address?,
         init_timestamp: config.init_timestamp,
         deposit_window: config.deposit_window,
         withdrawal_window: config.withdrawal_window,
