@@ -18,6 +18,7 @@ pub mod splitter;
 pub mod swapper;
 pub mod vault;
 pub mod wrapped_cw721;
+pub mod portal_ado;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing;
