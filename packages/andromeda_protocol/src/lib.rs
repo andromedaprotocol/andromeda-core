@@ -11,6 +11,7 @@ pub mod cw721_offers;
 pub mod factory;
 pub mod mirror_wrapped_cdp;
 pub mod mission;
+pub mod portal_ado;
 pub mod primitive;
 pub mod rates;
 pub mod receipt;
@@ -18,7 +19,6 @@ pub mod splitter;
 pub mod swapper;
 pub mod vault;
 pub mod wrapped_cw721;
-pub mod portal_ado;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing;

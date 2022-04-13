@@ -1,16 +1,18 @@
-use cosmwasm_std::{coin, coins, CosmosMsg, from_binary, IbcMsg, StdError, to_binary, Uint128};
-use cosmwasm_std::testing::{mock_env, mock_info};
-use cw0::PaymentError;
-use cw20::Cw20ReceiveMsg;
-use andromeda_protocol::portal_ado::{ChannelResponse, ExecuteMsg, ListChannelsResponse, QueryMsg, TransferMsg, WhitelistResponse};
-use common::ado_base::{AndromedaMsg, AndromedaQuery};
-use common::error::ContractError;
 use crate::contract::{execute, execute_andr_receive, query};
 use crate::ibc::Ics20Packet;
-use crate::testing::test_helpers::{DEFAULT_TIMEOUT, mock_channel_info, setup};
+use crate::testing::test_helpers::{mock_channel_info, setup, DEFAULT_TIMEOUT};
+use andromeda_protocol::portal_ado::{
+    ChannelResponse, ExecuteMsg, ListChannelsResponse, QueryMsg, TransferMsg, WhitelistResponse,
+};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use common::error::ContractError;
+use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::{coin, coins, from_binary, to_binary, CosmosMsg, IbcMsg, StdError, Uint128};
+use cw0::PaymentError;
+use cw20::Cw20ReceiveMsg;
 
 #[test]
-fn test_transfer(){
+fn test_transfer() {
     let send_channel = "channel-15";
     let cw20_addr = "my-token";
     let mut deps = setup(&["channel-3", send_channel], &[cw20_addr]);
@@ -27,10 +29,10 @@ fn test_transfer(){
     assert_eq!(res.messages[0].gas_limit, None);
     assert_eq!(1, res.messages.len());
     if let CosmosMsg::Ibc(IbcMsg::SendPacket {
-                              channel_id,
-                              data,
-                              timeout,
-                          }) = &res.messages[0].msg
+        channel_id,
+        data,
+        timeout,
+    }) = &res.messages[0].msg
     {
         let expected_timeout = mock_env().block.time.plus_seconds(7777);
         assert_eq!(timeout, &expected_timeout.into());
@@ -43,7 +45,6 @@ fn test_transfer(){
     } else {
         panic!("Unexpected return message: {:?}", res.messages[0]);
     }
-
 }
 
 #[test]
@@ -62,7 +63,8 @@ fn setup_and_query() {
         QueryMsg::Channel {
             id: "channel-3".to_string(),
         },
-    ).unwrap();
+    )
+    .unwrap();
     let chan_res: ChannelResponse = from_binary(&raw_channel).unwrap();
     assert_eq!(chan_res.info, mock_channel_info("channel-3"));
     assert_eq!(0, chan_res.total_sent.len());
@@ -75,19 +77,22 @@ fn setup_and_query() {
             id: "channel-10".to_string(),
         },
     )
-        .unwrap_err();
-    assert_eq!(err, ContractError::Std(StdError::NotFound { kind: "andromeda_protocol::portal_ado::ChannelInfo".to_string() }));
+    .unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::Std(StdError::NotFound {
+            kind: "andromeda_protocol::portal_ado::ChannelInfo".to_string()
+        })
+    );
 
     let whitelist_query = query(
         deps.as_ref(),
         mock_env(),
-        QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary("WHITELIST1").unwrap())))
-    ).unwrap();
-    let res:WhitelistResponse = from_binary(&whitelist_query).unwrap();
-    assert_eq!(res, WhitelistResponse{
-        is_whitelist: true
-    })
-
+        QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary("WHITELIST1").unwrap()))),
+    )
+    .unwrap();
+    let res: WhitelistResponse = from_binary(&whitelist_query).unwrap();
+    assert_eq!(res, WhitelistResponse { is_whitelist: true })
 }
 
 #[test]
@@ -108,10 +113,10 @@ fn proper_checks_on_execute_native() {
     assert_eq!(res.messages[0].gas_limit, None);
     assert_eq!(1, res.messages.len());
     if let CosmosMsg::Ibc(IbcMsg::SendPacket {
-                              channel_id,
-                              data,
-                              timeout,
-                          }) = &res.messages[0].msg
+        channel_id,
+        data,
+        timeout,
+    }) = &res.messages[0].msg
     {
         let expected_timeout = mock_env().block.time.plus_seconds(DEFAULT_TIMEOUT);
         assert_eq!(timeout, &expected_timeout.into());
@@ -173,10 +178,10 @@ fn proper_checks_on_execute_cw20() {
     assert_eq!(1, res.messages.len());
     assert_eq!(res.messages[0].gas_limit, None);
     if let CosmosMsg::Ibc(IbcMsg::SendPacket {
-                              channel_id,
-                              data,
-                              timeout,
-                          }) = &res.messages[0].msg
+        channel_id,
+        data,
+        timeout,
+    }) = &res.messages[0].msg
     {
         let expected_timeout = mock_env().block.time.plus_seconds(7777);
         assert_eq!(timeout, &expected_timeout.into());

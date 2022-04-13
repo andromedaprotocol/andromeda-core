@@ -1,8 +1,8 @@
+use cosmwasm_std::{Coin, IbcEndpoint, Uint128};
+use cw20::Cw20Coin;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Coin, IbcEndpoint, Uint128};
-use cw20::Cw20Coin;
 
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
 
@@ -46,11 +46,15 @@ pub enum QueryMsg {
     ListChannels {},
     /// Returns the details of the name channel, error if not created.
     /// Return type: ChannelResponse.
-    Channel { id: String },
+    Channel {
+        id: String,
+    },
     /// Show the Config. Returns ConfigResponse
     Config {},
     /// Query if a given cw20 contract is allowed. Returns AllowedResponse
-    Whitelisted { contract: String },
+    Whitelisted {
+        contract: String,
+    },
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct ConfigResponse {
@@ -92,7 +96,6 @@ pub struct ChannelInfo {
     /// the connection this exists on (you can use to query client/consensus info)
     pub connection_id: String,
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

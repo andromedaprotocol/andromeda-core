@@ -2,6 +2,18 @@ use crate::ibc::Ics20Packet;
 use crate::state::{
     increase_channel_balance, Config, CHANNEL_INFO, CHANNEL_STATE, CONFIG, WHITE_LIST,
 };
+use ado_base::ADOContract;
+use andromeda_protocol::portal_ado::{
+    Amount, ChannelResponse, ConfigResponse, ExecuteMsg, InitMsg, ListChannelsResponse,
+    PortResponse, QueryMsg, TransferMsg, WhitelistResponse,
+};
+use common::ado_base::AndromedaMsg;
+use common::{
+    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    parse_message,
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -11,10 +23,6 @@ use cosmwasm_std::{
 use cw0::PaymentError;
 use cw2::set_contract_version;
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
-use ado_base::ADOContract;
-use andromeda_protocol::portal_ado::{Amount, ChannelResponse, ConfigResponse, ExecuteMsg, InitMsg, ListChannelsResponse, PortResponse, QueryMsg, TransferMsg, WhitelistResponse};
-use common::{ado_base::{ AndromedaQuery, InstantiateMsg as BaseInstantiateMsg}, encode_binary, error::ContractError, parse_message};
-use common::ado_base::AndromedaMsg;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "andromeda-portal-ado";
@@ -111,7 +119,6 @@ pub fn execute_andr_receive(
     }
 }
 
-
 pub fn execute_receive(
     deps: DepsMut,
     env: Env,
@@ -179,7 +186,6 @@ pub fn execute_transfer(
         timeout: timeout.into(),
     };
 
-
     // send response
     Ok(Response::new().add_message(msg).add_attributes(vec![
         attr("action", "transfer"),
@@ -193,7 +199,7 @@ pub fn execute_transfer(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps,env,msg),
+        QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::Port {} => encode_binary(&query_port(deps)?),
         QueryMsg::ListChannels {} => encode_binary(&query_list(deps)?),
         QueryMsg::Channel { id } => encode_binary(&query_channel(deps, id)?),

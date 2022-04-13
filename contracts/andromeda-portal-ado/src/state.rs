@@ -1,9 +1,9 @@
+use andromeda_protocol::portal_ado::ChannelInfo;
+use common::error::ContractError;
 use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use andromeda_protocol::portal_ado::ChannelInfo;
-use common::error::ContractError;
 
 pub const CONFIG: Item<Config> = Item::new("ics20_config");
 /// indexed by (channel_id, denom) maintaining the balance of the channel in that currency
@@ -34,8 +34,6 @@ pub struct ReplyArgs {
     pub denom: String,
     pub amount: Uint128,
 }
-
-
 
 // this is like increase, but it only "un-subtracts" (= adds) outstanding, not total_sent
 // calling `reduce_channel_balance` and then `undo_reduce_channel_balance` should leave state unchanged.

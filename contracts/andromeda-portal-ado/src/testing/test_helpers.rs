@@ -1,8 +1,12 @@
-use cosmwasm_std::{DepsMut, IbcChannel, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcEndpoint, OwnedDeps};
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage};
-use andromeda_protocol::portal_ado::{ChannelInfo, InitMsg};
 use crate::contract::instantiate;
 use crate::ibc::{ibc_channel_connect, ibc_channel_open, ICS20_ORDERING, ICS20_VERSION};
+use andromeda_protocol::portal_ado::{ChannelInfo, InitMsg};
+use cosmwasm_std::testing::{
+    mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
+};
+use cosmwasm_std::{
+    DepsMut, IbcChannel, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcEndpoint, OwnedDeps,
+};
 
 pub const DEFAULT_TIMEOUT: u64 = 3600; // 1 hour,
 pub const CONTRACT_PORT: &str = "ibc:wasm1234567890abcdef";
@@ -17,15 +21,13 @@ pub fn setup(
 
     let white_list = whitelist
         .iter()
-        .map(|contract|
-            contract.to_string()
-        )
+        .map(|contract| contract.to_string())
         .collect();
 
     // instantiate an empty contract
     let instantiate_msg = InitMsg {
         default_timeout: DEFAULT_TIMEOUT,
-        whitelist: white_list
+        whitelist: white_list,
     };
     let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
