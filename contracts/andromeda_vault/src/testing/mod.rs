@@ -153,7 +153,14 @@ fn test_deposit_strategy() {
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies(&[]);
 
-    instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    add_strategy(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        yield_strategy.clone().strategy_type,
+        yield_strategy.clone().address,
+    );
 
     let sent_funds = coin(100, "uusd");
     let extra_sent_funds = coin(100, "uluna");
@@ -163,9 +170,8 @@ fn test_deposit_strategy() {
     let msg = ExecuteMsg::Deposit {
         recipient: None,
         amount: None,
-        strategy: Some(yield_strategy.strategy_type),
+        strategy: Some(yield_strategy.clone().strategy_type),
     };
-
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let msg = wasm_execute(
@@ -222,7 +228,14 @@ fn test_deposit_strategy_partial_amount() {
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies(&[]);
 
-    instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    add_strategy(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        yield_strategy.clone().strategy_type,
+        yield_strategy.clone().address,
+    );
 
     let sent_funds = coin(90, "uusd");
     let funds = vec![sent_funds.clone()];
@@ -239,7 +252,7 @@ fn test_deposit_strategy_partial_amount() {
     let msg = ExecuteMsg::Deposit {
         recipient: None,
         amount: Some(coin(100, sent_funds.denom.clone())),
-        strategy: Some(yield_strategy.strategy_type),
+        strategy: Some(yield_strategy.clone().strategy_type),
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();

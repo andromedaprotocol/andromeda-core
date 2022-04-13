@@ -336,7 +336,7 @@ fn execute_update_strategy(
         ContractError::Unauthorized {},
     )?;
     let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
-    let strategy_addr = address.get_address(deps.api, &deps.querier, mission_contract.clone())?;
+    let strategy_addr = address.get_address(deps.api, &deps.querier, mission_contract)?;
     STRATEGY_CONTRACT_ADDRESSES.save(deps.storage, strategy.to_string(), &strategy_addr)?;
 
     Ok(Response::default()

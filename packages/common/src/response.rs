@@ -5,7 +5,7 @@ pub fn get_reply_address(msg: &Reply) -> StdResult<String> {
     let events = &res.events;
     for event in events.iter() {
         for attr in event.attributes.iter() {
-            if attr.key == "contract_address" && attr.value.clone().len() > 0 {
+            if attr.key == "contract_address" && !attr.value.is_empty() {
                 return Ok(attr.value.clone());
             }
         }
