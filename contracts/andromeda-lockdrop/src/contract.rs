@@ -276,7 +276,7 @@ pub fn execute_withdraw_native(
     )?;
 
     // Update withdrawal flag after the deposit window
-    if env.block.time.seconds() >= config.init_timestamp + config.deposit_window {
+    if env.block.time.seconds() > config.init_timestamp + config.deposit_window {
         // CHECK :: Max 1 withdrawal allowed
         require(
             !user_info.withdrawal_flag,
@@ -410,7 +410,7 @@ pub fn execute_deposit_to_bootstrap(
     USER_INFO.save(deps.storage, &user_address, &user_info)?;
 
     // COSMOS_MSG ::Delegate tokens to the LP Bootstrapping via Bootstrap contract
-    // TODO: When Boostrapping contract is created add this message.
+    // TODO: When Bootstrapping contract is created add this message.
 
     Ok(Response::new()
         .add_attribute("action", "deposit_to_bootstrap")
