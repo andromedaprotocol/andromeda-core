@@ -23,7 +23,7 @@ fn test_transfer(){
 
     let andr_msg = AndromedaMsg::Receive(Some(to_binary(&transfer).unwrap()));
     let info = mock_info("foobar", &coins(1234567, "ucosm"));
-    let res = execute_andr_receive(deps.as_mut(), mock_env(), info, andr_msg.clone()).unwrap();
+    let res = execute_andr_receive(deps.as_mut(), mock_env(), info, andr_msg).unwrap();
     assert_eq!(res.messages[0].gas_limit, None);
     assert_eq!(1, res.messages.len());
     if let CosmosMsg::Ibc(IbcMsg::SendPacket {
