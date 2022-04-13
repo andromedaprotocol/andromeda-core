@@ -451,10 +451,8 @@ pub fn handle_claim_rewards(
     USER_INFO.save(deps.storage, &user_address, &user_info)?;
 
     Ok(Response::new()
-        .add_attribute(
-            "action",
-            "Auction::ExecuteMsg::ClaimRewardsAndUnlockPosition",
-        )
+        .add_attribute("action", "claim_rewards")
+        .add_attribute("amount", amount_to_transfer)
         .add_message(transfer_msg))
 }
 

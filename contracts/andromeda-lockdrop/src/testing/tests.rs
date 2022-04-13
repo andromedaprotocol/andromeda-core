@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     coin, coins,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, BankMsg, DepsMut, Response, Uint128,
+    to_binary, Addr, BankMsg, DepsMut, Response, Uint128, WasmMsg,
 };
 
 use crate::{
@@ -13,7 +13,7 @@ use andromeda_protocol::lockdrop::{
     UserInfoResponse,
 };
 use common::{error::ContractError, mission::AndrAddress};
-use cw20::Cw20ReceiveMsg;
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 const MOCK_INCENTIVE_TOKEN: &str = "mock_incentive_token";
 const MOCK_AUCTION_CONTRACT: &str = "mock_auction_contract";
@@ -775,4 +775,164 @@ fn test_enable_claims_phase_not_ended() {
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
 
     assert_eq!(ContractError::PhaseOngoing {}, res.unwrap_err());
+}
+
+#[test]
+fn test_claim_rewards() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut()).unwrap();
+
+    // First increase incentives
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // Then User1 deposits
+    let msg = ExecuteMsg::DepositNative {};
+    let info = mock_info("user1", &coins(75, "uusd"));
+
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // Then User2 deposits
+    let msg = ExecuteMsg::DepositNative {};
+    let info = mock_info("user2", &coins(25, "uusd"));
+
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        State {
+            total_native_locked: Uint128::new(100),
+            total_delegated: Uint128::zero(),
+            are_claims_allowed: false
+        },
+        STATE.load(deps.as_ref().storage).unwrap()
+    );
+
+    // Skip time to end of phase
+    let mut env = mock_env();
+    env.block.time = env
+        .block
+        .time
+        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
+
+    // Enable claims
+    let msg = ExecuteMsg::EnableClaims {};
+
+    let info = mock_info("sender", &[]);
+    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // User 1 claims rewards
+    let msg = ExecuteMsg::ClaimRewards {};
+    let info = mock_info("user1", &[]);
+
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "claim_rewards")
+            .add_attribute("amount", "75")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_INCENTIVE_TOKEN.to_owned(),
+                funds: vec![],
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: "user1".to_string(),
+                    amount: Uint128::new(75)
+                })
+                .unwrap()
+            }),
+        res
+    );
+
+    assert_eq!(
+        UserInfo {
+            total_native_locked: Uint128::new(75),
+            delegated_incentives: Uint128::zero(),
+            lockdrop_claimed: true,
+            withdrawal_flag: false,
+        },
+        USER_INFO
+            .load(deps.as_ref().storage, &Addr::unchecked("user1"))
+            .unwrap()
+    );
+
+    // User 2 claims rewards
+    let msg = ExecuteMsg::ClaimRewards {};
+    let info = mock_info("user2", &[]);
+
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "claim_rewards")
+            .add_attribute("amount", "25")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_INCENTIVE_TOKEN.to_owned(),
+                funds: vec![],
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: "user2".to_string(),
+                    amount: Uint128::new(25)
+                })
+                .unwrap()
+            }),
+        res
+    );
+
+    assert_eq!(
+        UserInfo {
+            total_native_locked: Uint128::new(25),
+            delegated_incentives: Uint128::zero(),
+            lockdrop_claimed: true,
+            withdrawal_flag: false,
+        },
+        USER_INFO
+            .load(deps.as_ref().storage, &Addr::unchecked("user2"))
+            .unwrap()
+    );
+
+    // User 3 tries to claim rewards
+    let msg = ExecuteMsg::ClaimRewards {};
+    let info = mock_info("user3", &[]);
+
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    assert_eq!(ContractError::NoLockup {}, res.unwrap_err());
+
+    // User 2 tries to claim again
+    let msg = ExecuteMsg::ClaimRewards {};
+    let info = mock_info("user2", &[]);
+
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    assert_eq!(ContractError::LockdropAlreadyClaimed {}, res.unwrap_err());
+}
+
+#[test]
+fn test_claim_rewards_not_available() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut()).unwrap();
+
+    // First increase incentives
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "owner".to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
+    });
+
+    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // Then User1 deposits
+    let msg = ExecuteMsg::DepositNative {};
+    let info = mock_info("user1", &coins(75, "uusd"));
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    // Try to claim rewards
+    let msg = ExecuteMsg::ClaimRewards {};
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::ClaimsNotAllowed {}, res.unwrap_err());
 }
