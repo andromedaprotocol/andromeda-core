@@ -25,15 +25,18 @@ pub struct Config {
     pub withdrawal_window: u64,
     /// Total Token lockdrop incentives to be distributed among the users
     pub lockdrop_incentives: Uint128,
+    /// The token being given as incentive.
     pub incentive_token: String,
+    /// The native token being deposited.
+    pub native_denom: String,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
-    /// Total UST deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window
-    pub total_ust_locked: Uint128,
-    /// MARS Tokens deposited into the bootstrap auction contract
-    pub total_mars_delegated: Uint128,
+    /// Total NATIVE deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window
+    pub total_native_locked: Uint128,
+    /// Number of Tokens deposited into the bootstrap auction contract
+    pub total_delegated: Uint128,
     /// Boolean value indicating if the user can withdraw thier MARS rewards or not
     pub are_claims_allowed: bool,
 }
@@ -41,12 +44,10 @@ pub struct State {
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserInfo {
     /// Total UST amount deposited by the user across all his lockup positions
-    pub total_ust_locked: Uint128,
-    /// MARS incentives deposited to the auction contract for MARS-UST Bootstrapping auction
-    pub delegated_mars_incentives: Uint128,
+    pub total_native_locked: Uint128,
+    /// TOKEN incentives deposited to the auction contract for TOKEN-UST Bootstrapping auction
+    pub delegated_incentives: Uint128,
     /// Boolean value indicating if the lockdrop_rewards for the lockup positions have been claimed or not
     pub lockdrop_claimed: bool,
-    /// Ratio used to calculate deposit_rewards (XMARS) accured by the user
-    pub reward_index: Decimal,
     pub withdrawal_flag: bool,
 }

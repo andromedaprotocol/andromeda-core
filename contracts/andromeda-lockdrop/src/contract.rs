@@ -17,8 +17,6 @@ use common::{
 
 use crate::state::{Config, State, CONFIG, STATE, USER_INFO};
 
-const UUSD_DENOM: &str = "uusd";
-
 // version info for migration info
 const CONTRACT_NAME: &str = "andromeda-lockup";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -57,6 +55,7 @@ pub fn instantiate(
         withdrawal_window: msg.withdrawal_window,
         lockdrop_incentives: Uint128::zero(),
         incentive_token: msg.incentive_token,
+        native_denom: msg.native_denom,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -87,8 +86,8 @@ pub fn execute(
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
-        ExecuteMsg::DepositUst {} => try_deposit_ust(deps, env, info),
-        ExecuteMsg::WithdrawUst { amount } => try_withdraw_ust(deps, env, info, amount),
+        ExecuteMsg::DepositNative {} => try_deposit_native(deps, env, info),
+        ExecuteMsg::WithdrawNative { amount } => try_withdraw_native(deps, env, info, amount),
         ExecuteMsg::DepositToAuction { amount } => {
             handle_deposit_to_auction(deps, env, info, amount)
         }
@@ -157,10 +156,8 @@ pub fn handle_increase_incentives(
         },
     )?;
 
-    let phase_end = config.init_timestamp + config.deposit_window + config.withdrawal_window;
-
     require(
-        env.block.time.seconds() < phase_end,
+        is_withdraw_open(env.block.time.seconds(), &config),
         ContractError::TokenAlreadyBeingDistributed {},
     )?;
 
@@ -171,9 +168,8 @@ pub fn handle_increase_incentives(
         .add_attribute("amount", amount))
 }
 
-/// @dev Facilitates UST deposits locked for selected number of weeks
-/// @param duration : Number of weeks for which UST will be locked
-pub fn try_deposit_ust(
+/// @dev Facilitates NATIVE deposits locked for selected number of weeks
+pub fn try_deposit_native(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -199,9 +195,9 @@ pub fn try_deposit_ust(
 
     let native_token = info.funds.first().unwrap();
     require(
-        native_token.denom == UUSD_DENOM,
+        native_token.denom == config.native_denom,
         ContractError::InvalidFunds {
-            msg: "Only UST accepted".to_string(),
+            msg: format!("Only {} accepted", config.native_denom),
         },
     )?;
 
@@ -218,29 +214,27 @@ pub fn try_deposit_ust(
         .may_load(deps.storage, &depositor_address)?
         .unwrap_or_default();
 
-    user_info.total_ust_locked += native_token.amount;
+    user_info.total_native_locked += native_token.amount;
 
     // STATE :: UPDATE --> SAVE
-    state.total_ust_locked += native_token.amount;
+    state.total_native_locked += native_token.amount;
 
     STATE.save(deps.storage, &state)?;
     USER_INFO.save(deps.storage, &depositor_address, &user_info)?;
 
-    Ok(Response::new().add_attributes(vec![
-        ("action", "lockdrop::ExecuteMsg::lock_ust"),
-        ("user", &depositor_address.to_string()),
-        ("ust_deposited", native_token.amount.to_string().as_str()),
-    ]))
+    Ok(Response::new()
+        .add_attribute("action", "lock_native")
+        .add_attribute("user", depositor_address)
+        .add_attribute("ust_deposited", native_token.amount))
 }
 
-/// @dev Facilitates UST withdrawal from an existing Lockup position. Can only be called when deposit / withdrawal window is open
-/// @param duration : Duration of the lockup position from which withdrawal is to be made
-/// @param withdraw_amount :  UST amount to be withdrawn
-pub fn try_withdraw_ust(
+/// @dev Facilitates NATIVE withdrawal from an existing Lockup position. Can only be called when deposit / withdrawal window is open
+/// @param withdraw_amount : NATIVE amount to be withdrawn
+pub fn try_withdraw_native(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    withdraw_amount: Uint128,
+    withdraw_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
@@ -260,7 +254,8 @@ pub fn try_withdraw_ust(
 
     // Check :: Amount should be within the allowed withdrawal limit bounds
     let max_withdrawal_percent = allowed_withdrawal_percent(env.block.time.seconds(), &config);
-    let max_withdrawal_allowed = user_info.total_ust_locked * max_withdrawal_percent;
+    let max_withdrawal_allowed = user_info.total_native_locked * max_withdrawal_percent;
+    let withdraw_amount = withdraw_amount.unwrap_or(max_withdrawal_allowed);
     require(
         withdraw_amount <= max_withdrawal_allowed,
         ContractError::InvalidWithdrawal {
@@ -284,25 +279,23 @@ pub fn try_withdraw_ust(
         user_info.withdrawal_flag = true;
     }
 
-    user_info.total_ust_locked -= withdraw_amount;
+    user_info.total_native_locked -= withdraw_amount;
 
     USER_INFO.save(deps.storage, &withdrawer_address, &user_info)?;
 
     // STATE :: UPDATE --> SAVE
-    state.total_ust_locked -= withdraw_amount;
+    state.total_native_locked -= withdraw_amount;
     STATE.save(deps.storage, &state)?;
 
-    // COSMOS_MSG ::TRANSFER WITHDRAWN UST
-    let uusd_token = Asset::native(UUSD_DENOM, withdraw_amount);
-    let withdraw_msg = uusd_token.transfer_msg(withdrawer_address.clone())?;
+    // COSMOS_MSG ::TRANSFER WITHDRAWN native token
+    let native_token = Asset::native(config.native_denom, withdraw_amount);
+    let withdraw_msg = native_token.transfer_msg(withdrawer_address.clone())?;
 
     Ok(Response::new()
-        .add_messages(vec![withdraw_msg])
-        .add_attributes(vec![
-            ("action", "lockdrop::ExecuteMsg::withdraw_ust"),
-            ("user", &withdrawer_address.to_string()),
-            ("ust_withdrawn", withdraw_amount.to_string().as_str()),
-        ]))
+        .add_message(withdraw_msg)
+        .add_attribute("action", "withdraw_native")
+        .add_attribute("user", withdrawer_address)
+        .add_attribute("amount", withdraw_amount))
 }
 
 /// @dev Function callable only by Auction contract to enable MARS Claims by users. Called along-with Bootstrap Auction contract's LP Pool provide liquidity tx
@@ -357,10 +350,9 @@ pub fn handle_deposit_to_auction(
     let mut state = STATE.load(deps.storage)?;
     let user_address = info.sender;
 
-    let phase_end = config.init_timestamp + config.deposit_window + config.withdrawal_window;
     // CHECK :: Have the deposit / withdraw windows concluded
     require(
-        env.block.time.seconds() >= phase_end,
+        !is_withdraw_open(env.block.time.seconds(), &config),
         ContractError::PhaseOngoing {},
     )?;
 
@@ -382,10 +374,10 @@ pub fn handle_deposit_to_auction(
 
     let total_incentives = config
         .lockdrop_incentives
-        .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
+        .multiply_ratio(user_info.total_native_locked, state.total_native_locked);
 
     // CHECK :: MARS to delegate cannot exceed user's unclaimed MARS balance
-    let available_amount = total_incentives - user_info.delegated_mars_incentives;
+    let available_amount = total_incentives - user_info.delegated_incentives;
     require(
         amount <= available_amount,
         ContractError::InvalidFunds {
@@ -398,8 +390,8 @@ pub fn handle_deposit_to_auction(
     )?;
 
     // UPDATE STATE
-    user_info.delegated_mars_incentives += amount;
-    state.total_mars_delegated += amount;
+    user_info.delegated_incentives += amount;
+    state.total_delegated += amount;
 
     // SAVE UPDATED STATE
     STATE.save(deps.storage, &state)?;
@@ -434,16 +426,16 @@ pub fn handle_claim_rewards(
         ContractError::LockdropAlreadyClaimed {},
     )?;
     require(
-        !user_info.total_ust_locked.is_zero(),
+        !user_info.total_native_locked.is_zero(),
         ContractError::NoLockup {},
     )?;
     require(state.are_claims_allowed, ContractError::ClaimsNotAllowed {})?;
 
     let total_incentives = config
         .lockdrop_incentives
-        .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
+        .multiply_ratio(user_info.total_native_locked, state.total_native_locked);
 
-    let amount_to_transfer = total_incentives - user_info.delegated_mars_incentives;
+    let amount_to_transfer = total_incentives - user_info.delegated_incentives;
     let token = Asset::cw20(
         deps.api.addr_validate(&config.incentive_token)?,
         amount_to_transfer,
@@ -484,19 +476,19 @@ pub fn try_withdraw_proceeds(
         },
     )?;
 
-    let uusd_token = Asset::native(UUSD_DENOM, state.total_ust_locked);
+    let native_token = Asset::native(config.native_denom, state.total_native_locked);
 
-    let balance = uusd_token
+    let balance = native_token
         .info
         .query_balance(&deps.querier, env.contract.address)?;
     require(
-        balance >= state.total_ust_locked,
+        balance >= state.total_native_locked,
         ContractError::InvalidWithdrawal {
             msg: Some("Already withdrew funds".to_string()),
         },
     )?;
 
-    let transfer_msg = uusd_token.transfer_msg(recipient)?;
+    let transfer_msg = native_token.transfer_msg(recipient)?;
 
     Ok(Response::new()
         .add_message(transfer_msg)
@@ -504,7 +496,7 @@ pub fn try_withdraw_proceeds(
             ("action", "lockdrop::ExecuteMsg::DepositInRedBank"),
             (
                 "ust_deposited_in_red_bank",
-                state.total_ust_locked.to_string().as_str(),
+                state.total_native_locked.to_string().as_str(),
             ),
             ("timestamp", env.block.time.seconds().to_string().as_str()),
         ]))
@@ -538,8 +530,8 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
 pub fn query_state(deps: Deps) -> Result<StateResponse, ContractError> {
     let state: State = STATE.load(deps.storage)?;
     Ok(StateResponse {
-        total_ust_locked: state.total_ust_locked,
-        total_mars_delegated: state.total_mars_delegated,
+        total_native_locked: state.total_native_locked,
+        total_mars_delegated: state.total_delegated,
         are_claims_allowed: state.are_claims_allowed,
     })
 }
@@ -560,12 +552,12 @@ pub fn query_user_info(
 
     let total_incentives = config
         .lockdrop_incentives
-        .multiply_ratio(user_info.total_ust_locked, state.total_ust_locked);
+        .multiply_ratio(user_info.total_native_locked, state.total_native_locked);
 
     Ok(UserInfoResponse {
-        total_ust_locked: user_info.total_ust_locked,
+        total_native_locked: user_info.total_native_locked,
         total_mars_incentives: total_incentives,
-        delegated_mars_incentives: user_info.delegated_mars_incentives,
+        delegated_mars_incentives: user_info.delegated_incentives,
         is_lockdrop_claimed: user_info.lockdrop_claimed,
     })
 }

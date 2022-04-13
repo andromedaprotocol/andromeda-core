@@ -19,6 +19,8 @@ pub struct InstantiateMsg {
     pub withdrawal_window: u64,
     /// The token being given as incentive.
     pub incentive_token: String,
+    /// The native token being deposited.
+    pub native_denom: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -26,19 +28,20 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     AndrReceive(AndromedaMsg),
-    /// Function to deposit UST in the contract locked for `duration` number of weeks, starting once the deposits/withdrawals are disabled
-    DepositUst {},
-    /// Function to withdraw UST from the lockup position which is locked for `duration` number of weeks
-    WithdrawUst {
-        amount: Uint128,
+    /// Function to deposit native fund in the contract in exchange for recieving a proportion of the
+    /// TOKEN.
+    DepositNative {},
+    /// Function to withdraw native fund from the lockup position.
+    WithdrawNative {
+        amount: Option<Uint128>,
     },
-    /// Deposit MARS to auction contract
+    /// Deposit TOKEN to auction contract
     DepositToAuction {
         amount: Uint128,
     },
-    /// Facilitates MARS reward claim and optionally unlocking any lockup position once the lockup duration is over
+    /// Facilitates reward claim after claims are enabled.
     ClaimRewards {},
-    /// Called by the bootstrap auction contract when liquidity is added to the MARS-UST Pool to enable MARS withdrawals by users
+    /// Called by the bootstrap auction contract when liquidity is added to the TOKEN-NATIVE Pool to enable TOKEN withdrawals by users
     EnableClaims {},
 }
 
@@ -74,8 +77,8 @@ pub struct ConfigResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StateResponse {
-    /// Total UST deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window
-    pub total_ust_locked: Uint128,
+    /// Total NATIVE deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window
+    pub total_native_locked: Uint128,
     /// MARS Tokens deposited into the bootstrap auction contract
     pub total_mars_delegated: Uint128,
     /// Boolean value indicating if the user can withdraw thier MARS rewards or not
@@ -84,7 +87,7 @@ pub struct StateResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserInfoResponse {
-    pub total_ust_locked: Uint128,
+    pub total_native_locked: Uint128,
     pub total_mars_incentives: Uint128,
     pub delegated_mars_incentives: Uint128,
     pub is_lockdrop_claimed: bool,
