@@ -563,7 +563,7 @@ fn test_withdraw_native_withdrawal_closed() {
         .block
         .time
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    let res = execute(deps.as_mut(), env, info, msg);
 
     assert_eq!(
         ContractError::InvalidWithdrawal {
@@ -637,7 +637,7 @@ fn test_withdraw_proceeds() {
     let msg = ExecuteMsg::DepositNative {};
     let info = mock_info("sender", &coins(amount, "uusd"));
 
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
@@ -667,7 +667,7 @@ fn test_withdraw_proceeds() {
         .update_balance(env.contract.address.clone(), vec![]);
 
     // try to withdraw again
-    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    let res = execute(deps.as_mut(), env, info, msg);
 
     assert_eq!(
         ContractError::InvalidWithdrawal {
@@ -739,7 +739,7 @@ fn test_enable_claims_bootstrap_specified() {
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
 
     let info = mock_info("not_bootstrap_contract", &[]);
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
@@ -780,7 +780,7 @@ fn test_enable_claims_phase_not_ended() {
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW);
 
     let info = mock_info("sender", &[]);
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    let res = execute(deps.as_mut(), env, info, msg);
 
     assert_eq!(ContractError::PhaseOngoing {}, res.unwrap_err());
 }
@@ -832,7 +832,7 @@ fn test_claim_rewards() {
     let msg = ExecuteMsg::EnableClaims {};
 
     let info = mock_info("sender", &[]);
-    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // User 1 claims rewards
     let msg = ExecuteMsg::ClaimRewards {};
@@ -923,7 +923,7 @@ fn test_claim_rewards() {
     let msg = ExecuteMsg::ClaimRewards {};
     let info = mock_info("user2", &[]);
 
-    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::LockdropAlreadyClaimed {}, res.unwrap_err());
 }
 
@@ -1141,7 +1141,7 @@ fn test_deposit_to_bootstrap() {
     // User1 claims remainder (only 25 left)
     let msg = ExecuteMsg::ClaimRewards {};
     let info = mock_info("user1", &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(
         Response::new()
