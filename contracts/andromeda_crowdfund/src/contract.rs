@@ -10,7 +10,7 @@ use andromeda_protocol::{
 };
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
+    deduct_funds, encode_binary,
     error::ContractError,
     merge_sub_msgs, require, Funds,
 };
@@ -252,22 +252,35 @@ fn execute_purchase(
     }
 
     // CHECK :: User has sent enough to cover taxes.
+    let required_payment = Coin {
+        denom: state.price.denom.clone(),
+        amount: state.price.amount * Uint128::from(number_of_tokens_purchased as u128)
+            + total_tax_amount,
+    };
     require(
-        has_coins(
-            &info.funds,
-            &Coin {
-                denom: state.price.denom.clone(),
-                amount: state.price.amount * Uint128::from(number_of_tokens_purchased as u128)
-                    + total_tax_amount,
-            },
-        ),
+        has_coins(&info.funds, &required_payment),
         ContractError::InsufficientFunds {},
     )?;
 
     PURCHASES.save(deps.storage, &sender, &purchases)?;
     STATE.save(deps.storage, &state)?;
 
-    Ok(Response::new()
+    // Refund user if they sent more. This can happen near the end of the sale when they weren't
+    // able to get the amount that they wanted.
+    let mut funds = info.funds.clone();
+    deduct_funds(&mut funds, &required_payment)?;
+
+    // If any funds were remaining after deduction, send refund.
+    let resp = if has_coins(&funds, &Coin::new(1, state.price.denom)) {
+        Response::new().add_message(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: funds,
+        })
+    } else {
+        Response::new()
+    };
+
+    Ok(resp
         .add_attribute("action", "purchase")
         .add_attribute(
             "number_of_tokens_wanted",

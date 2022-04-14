@@ -613,9 +613,11 @@ fn test_multiple_purchases() {
     }];
     init(deps.as_mut(), Some(modules));
 
+    // Mint four tokens.
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[1]).unwrap();
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[2]).unwrap();
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[3]).unwrap();
 
     // Query available tokens.
     let msg = QueryMsg::AvailableTokens {
@@ -627,7 +629,8 @@ fn test_multiple_purchases() {
         vec![
             MOCK_TOKENS_FOR_SALE[0],
             MOCK_TOKENS_FOR_SALE[1],
-            MOCK_TOKENS_FOR_SALE[2]
+            MOCK_TOKENS_FOR_SALE[2],
+            MOCK_TOKENS_FOR_SALE[3]
         ],
         res
     );
@@ -641,21 +644,21 @@ fn test_multiple_purchases() {
 
     // Query if another token is available
     let msg = QueryMsg::IsTokenAvailable {
-        id: MOCK_TOKENS_FOR_SALE[3].to_owned(),
+        id: MOCK_TOKENS_FOR_SALE[4].to_owned(),
     };
     let res: bool = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
     assert!(!res);
 
-    // Purchase token
+    // Purchase 2 tokens
     let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
+        number_of_tokens: Some(2),
     };
 
     let mut state = State {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
-        max_amount_per_wallet: 2,
+        max_amount_per_wallet: 3,
         amount_sold: Uint128::zero(),
         amount_to_send: Uint128::zero(),
         amount_transferred: Uint128::zero(),
@@ -663,43 +666,60 @@ fn test_multiple_purchases() {
     };
     STATE.save(deps.as_mut().storage, &state).unwrap();
 
-    let info = mock_info("sender", &coins(150u128, "uusd"));
+    let info = mock_info("sender", &coins(300u128, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     assert_eq!(
         Response::new()
+            .add_attribute("action", "purchase")
+            .add_attribute("number_of_tokens_wanted", "2")
+            .add_attribute("number_of_tokens_purchased", "2"),
+        res
+    );
+
+    state.amount_to_send += Uint128::from(180u128);
+    state.amount_sold += Uint128::from(2u128);
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
+
+    assert_eq!(
+        vec![
+            get_purchase(MOCK_TOKENS_FOR_SALE[0], "sender"),
+            get_purchase(MOCK_TOKENS_FOR_SALE[1], "sender")
+        ],
+        PURCHASES.load(deps.as_ref().storage, "sender").unwrap()
+    );
+
+    // Purchase max number of tokens.
+    let msg = ExecuteMsg::Purchase {
+        number_of_tokens: None,
+    };
+
+    let info = mock_info("sender", &coins(300u128, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(BankMsg::Send {
+                to_address: "sender".to_string(),
+                // Refund sent back as they only were able to mint one.
+                amount: coins(150, "uusd")
+            })
             .add_attribute("action", "purchase")
             .add_attribute("number_of_tokens_wanted", "1")
             .add_attribute("number_of_tokens_purchased", "1"),
         res
     );
 
-    state.amount_to_send += Uint128::from(90u128);
-    state.amount_sold += Uint128::from(1u128);
-    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
-
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
-
-    assert_eq!(
-        vec![get_purchase(MOCK_TOKENS_FOR_SALE[0], "sender")],
-        PURCHASES.load(deps.as_ref().storage, "sender").unwrap()
-    );
-
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: Some(1),
-    };
-
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[1]));
-
-    state.amount_to_send += Uint128::from(90u128);
-    state.amount_sold += Uint128::from(1u128);
-    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
 
     assert_eq!(
         vec![
             get_purchase(MOCK_TOKENS_FOR_SALE[0], "sender"),
-            get_purchase(MOCK_TOKENS_FOR_SALE[1], "sender")
+            get_purchase(MOCK_TOKENS_FOR_SALE[1], "sender"),
+            get_purchase(MOCK_TOKENS_FOR_SALE[2], "sender")
         ],
         PURCHASES.load(deps.as_ref().storage, "sender").unwrap()
     );
@@ -711,6 +731,43 @@ fn test_multiple_purchases() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::PurchaseLimitReached {}, res.unwrap_err());
+
+    // User 2 tries to purchase 2.
+    let msg = ExecuteMsg::Purchase {
+        number_of_tokens: Some(2),
+    };
+
+    let info = mock_info("user2", &coins(300, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(BankMsg::Send {
+                to_address: "user2".to_string(),
+                // Refund sent back as they only were able to mint one.
+                amount: coins(150, "uusd")
+            })
+            .add_attribute("action", "purchase")
+            .add_attribute("number_of_tokens_wanted", "2")
+            .add_attribute("number_of_tokens_purchased", "1"),
+        res
+    );
+
+    assert_eq!(
+        vec![get_purchase(MOCK_TOKENS_FOR_SALE[3], "user2"),],
+        PURCHASES.load(deps.as_ref().storage, "user2").unwrap()
+    );
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
+
+    // User 2 tries to purchase again.
+    let msg = ExecuteMsg::Purchase {
+        number_of_tokens: None,
+    };
+
+    let info = mock_info("user2", &coins(150, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::AllTokensPurchased {}, res.unwrap_err());
 }
 
 #[test]
