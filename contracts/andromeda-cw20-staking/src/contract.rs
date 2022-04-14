@@ -47,7 +47,7 @@ pub fn instantiate(
                         asset: msg.staking_token.identifier.clone(),
                     },
                 )?;
-                Ok(r.check(deps.api, None)?)
+                Ok(r.check(deps.api)?)
             })
             .collect();
         additional_rewards?

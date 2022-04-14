@@ -1,10 +1,11 @@
 use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
+    error::ContractError,
     mission::AndrAddress,
 };
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Api, Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw_asset::AssetInfoUnchecked;
+use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +14,7 @@ pub struct InstantiateMsg {
     /// The cw20 token that can be staked.
     pub staking_token: AndrAddress,
     /// Any rewards in addition to the staking token. This list cannot include the staking token.
-    pub additional_rewards: Option<Vec<AssetInfoUnchecked>>,
+    pub additional_rewards: Option<Vec<RewardTokenUnchecked>>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
@@ -68,6 +69,42 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub struct RewardTokenUnchecked {
+    pub asset_info: AssetInfoUnchecked,
+    pub allocation_info: Option<AllocationInfo>,
+}
+
+impl RewardTokenUnchecked {
+    pub fn check(self, api: &dyn Api) -> Result<RewardToken, ContractError> {
+        let checked_asset_info = self.asset_info.check(api, None)?;
+        Ok(RewardToken {
+            asset_info: checked_asset_info,
+            allocation_info: self.allocation_info,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub struct RewardToken {
+    pub asset_info: AssetInfo,
+    pub allocation_info: Option<AllocationInfo>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub struct AllocationInfo {
+    /// Timestamp from which Rewards will start getting accrued against the staked LP tokens
+    pub init_timestamp: u64,
+    /// Timestamp till which Rewards will be accrued. No staking rewards are accrued beyond this timestamp
+    pub till_timestamp: u64,
+    /// Rewards distributed during the 1st cycle.
+    pub cycle_rewards: Uint128,
+    /// Cycle duration in timestamps
+    pub cycle_duration: u64,
+    /// Percent increase in Rewards per cycle
+    pub reward_increase: Option<Decimal>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
