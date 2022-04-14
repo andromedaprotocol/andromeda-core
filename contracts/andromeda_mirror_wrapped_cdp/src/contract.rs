@@ -244,6 +244,13 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
+    require(
+        !cw20_msg.amount.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string(),
+        },
+    )?;
+
     let contract = ADOContract::default();
     let mirror_staking_contract = contract.get_cached_address(deps.storage, MIRROR_STAKING)?;
     let mirror_gov_contract = contract.get_cached_address(deps.storage, MIRROR_GOV)?;
