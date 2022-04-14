@@ -129,6 +129,13 @@ fn receive_cw20(
     info: MessageInfo,
     msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
+    require(
+        !msg.amount.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string(),
+        },
+    )?;
+
     match from_binary(&msg.msg)? {
         Cw20HookMsg::StakeTokens {} => {
             execute_stake_tokens(deps, env, msg.sender, info.sender.to_string(), msg.amount)
