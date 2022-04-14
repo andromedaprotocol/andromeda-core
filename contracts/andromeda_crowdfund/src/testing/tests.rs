@@ -1,5 +1,5 @@
 use crate::{
-    contract::{execute, instantiate},
+    contract::{execute, instantiate, query},
     state::{Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, SALE_CONDUCTED, STATE},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_CONDITIONS_NOT_MET_CONTRACT,
@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use andromeda_protocol::{
-    crowdfund::{ExecuteMsg, InstantiateMsg},
+    crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
 };
 use common::{
@@ -21,7 +21,7 @@ use common::{
     mission::AndrAddress,
 };
 use cosmwasm_std::{
-    coin, coins,
+    coin, coins, from_binary,
     testing::{mock_env, mock_info},
     Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, SubMsg, Uint128, WasmMsg,
 };
@@ -658,6 +658,36 @@ fn test_multiple_purchases() {
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[1]).unwrap();
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[2]).unwrap();
 
+    // Query available tokens.
+    let msg = QueryMsg::AvailableTokens {
+        start_after: None,
+        limit: None,
+    };
+    let res: Vec<String> = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    assert_eq!(
+        vec![
+            MOCK_TOKENS_FOR_SALE[0],
+            MOCK_TOKENS_FOR_SALE[1],
+            MOCK_TOKENS_FOR_SALE[2]
+        ],
+        res
+    );
+
+    // Query if individual token is available
+    let msg = QueryMsg::IsTokenAvailable {
+        id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+    };
+    let res: bool = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    assert!(res);
+
+    // Query if another token is available
+    let msg = QueryMsg::IsTokenAvailable {
+        id: MOCK_TOKENS_FOR_SALE[3].to_owned(),
+    };
+    let res: bool = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    assert!(!res);
+
+    // Purchase token
     let msg = ExecuteMsg::Purchase {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
     };

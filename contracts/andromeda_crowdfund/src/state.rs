@@ -1,7 +1,7 @@
-use common::{ado_base::recipient::Recipient, mission::AndrAddress};
-use cosmwasm_std::{Coin, SubMsg, Uint128};
+use common::{ado_base::recipient::Recipient, error::ContractError, mission::AndrAddress};
+use cosmwasm_std::{Coin, Deps, Order, SubMsg, Uint128};
 use cw0::Expiration;
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::{Bound, Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -60,4 +60,24 @@ pub struct State {
     pub amount_transferred: Uint128,
     /// The recipient of the raised funds if the sale is successful.
     pub recipient: Recipient,
+}
+
+const MAX_LIMIT: u32 = 50;
+const DEFAULT_LIMIT: u32 = 20;
+pub(crate) fn get_available_tokens(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<String>, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+    let tokens: Result<Vec<String>, ContractError> = AVAILABLE_TOKENS
+        .keys(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|v| {
+            let token = String::from_utf8(v)?;
+            Ok(token)
+        })
+        .collect();
+    tokens
 }
