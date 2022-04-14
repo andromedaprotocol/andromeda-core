@@ -714,6 +714,9 @@ fn test_multiple_purchases() {
     );
 
     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
+    state.amount_to_send += Uint128::from(90u128);
+    state.amount_sold += Uint128::from(1u128);
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
     assert_eq!(
         vec![
@@ -732,7 +735,7 @@ fn test_multiple_purchases() {
 
     assert_eq!(ContractError::PurchaseLimitReached {}, res.unwrap_err());
 
-    // User 2 tries to purchase 2.
+    // User 2 tries to purchase 2 but only 1 is left.
     let msg = ExecuteMsg::Purchase {
         number_of_tokens: Some(2),
     };
@@ -758,6 +761,9 @@ fn test_multiple_purchases() {
         PURCHASES.load(deps.as_ref().storage, "user2").unwrap()
     );
     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
+    state.amount_to_send += Uint128::from(90u128);
+    state.amount_sold += Uint128::from(1u128);
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
     // User 2 tries to purchase again.
     let msg = ExecuteMsg::Purchase {
@@ -768,6 +774,58 @@ fn test_multiple_purchases() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::AllTokensPurchased {}, res.unwrap_err());
+}
+
+#[test]
+fn test_purchase_more_than_allowed_per_wallet() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let modules = vec![Module {
+        module_type: RATES.to_owned(),
+        address: AndrAddress {
+            identifier: MOCK_RATES_CONTRACT.to_owned(),
+        },
+        is_mutable: false,
+    }];
+    init(deps.as_mut(), Some(modules));
+
+    // Mint four tokens.
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[1]).unwrap();
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[2]).unwrap();
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[3]).unwrap();
+
+    // Try to purchase 4
+    let msg = ExecuteMsg::Purchase {
+        number_of_tokens: Some(4),
+    };
+
+    let state = State {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(1u128),
+        max_amount_per_wallet: 3,
+        amount_sold: Uint128::zero(),
+        amount_to_send: Uint128::zero(),
+        amount_transferred: Uint128::zero(),
+        recipient: Recipient::Addr("recipient".to_string()),
+    };
+    STATE.save(deps.as_mut().storage, &state).unwrap();
+
+    let info = mock_info("sender", &coins(600, "uusd"));
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(BankMsg::Send {
+                to_address: "sender".to_string(),
+                amount: coins(150, "uusd")
+            })
+            .add_attribute("action", "purchase")
+            // Number got truncated to 3 which is the max possible.
+            .add_attribute("number_of_tokens_wanted", "3")
+            .add_attribute("number_of_tokens_purchased", "3"),
+        res
+    );
 }
 
 #[test]

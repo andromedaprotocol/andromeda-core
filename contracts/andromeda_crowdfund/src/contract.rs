@@ -238,17 +238,36 @@ fn execute_purchase(
 
     let mut total_tax_amount = Uint128::zero();
 
+    // This is the same for each token, so we only need to do it once.
+    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        sender.to_owned(),
+        Funds::Native(state.price.clone()),
+        encode_binary(&"")?,
+    )?;
+
     for token_id in token_ids {
-        purchase(
-            deps.storage,
-            deps.api,
-            &deps.querier,
-            &sender,
-            token_id,
-            &mut state,
-            &mut purchases,
-            &mut total_tax_amount,
-        )?;
+        let remaining_amount = remainder.try_get_coin()?;
+
+        let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
+
+        let purchase = Purchase {
+            token_id: token_id.clone(),
+            tax_amount,
+            msgs: msgs.clone(),
+            purchaser: sender.to_owned(),
+        };
+
+        total_tax_amount += tax_amount;
+
+        state.amount_to_send += remaining_amount.amount;
+        state.amount_sold += Uint128::new(1);
+
+        purchases.push(purchase);
+
+        AVAILABLE_TOKENS.remove(deps.storage, &token_id);
     }
 
     // CHECK :: User has sent enough to cover taxes.
@@ -290,49 +309,6 @@ fn execute_purchase(
             "number_of_tokens_purchased",
             number_of_tokens_purchased.to_string(),
         ))
-}
-
-#[allow(clippy::too_many_arguments)]
-fn purchase(
-    storage: &mut dyn Storage,
-    api: &dyn Api,
-    querier: &QuerierWrapper,
-    sender: &str,
-    token_id: String,
-    state: &mut State,
-    purchases: &mut Vec<Purchase>,
-    total_tax_amount: &mut Uint128,
-) -> Result<(), ContractError> {
-    // Need to do this per token as flat fees won't scale otherwise.
-    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-        storage,
-        api,
-        querier,
-        sender.to_owned(),
-        Funds::Native(state.price.clone()),
-        encode_binary(&"")?,
-    )?;
-    let remaining_amount = remainder.try_get_coin()?;
-
-    let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
-
-    let purchase = Purchase {
-        token_id: token_id.clone(),
-        tax_amount,
-        msgs,
-        purchaser: sender.to_owned(),
-    };
-
-    *total_tax_amount += tax_amount;
-
-    state.amount_to_send += remaining_amount.amount;
-    state.amount_sold += Uint128::new(1);
-
-    purchases.push(purchase);
-
-    AVAILABLE_TOKENS.remove(storage, &token_id);
-
-    Ok(())
 }
 
 fn execute_claim_refund(
