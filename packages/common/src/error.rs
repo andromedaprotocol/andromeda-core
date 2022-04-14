@@ -28,6 +28,12 @@ pub enum ContractError {
     #[error("IllegalTokenSymbol")]
     IllegalTokenSymbol {},
 
+    #[error("Refilling")]
+    Refilling {},
+
+    #[error("NotInRefillMode")]
+    NotInRefillMode {},
+
     #[error("MinterBlacklisted")]
     MinterBlacklisted {},
 
@@ -120,6 +126,9 @@ pub enum ContractError {
 
     #[error("StartTimeInThePast")]
     StartTimeInThePast {},
+
+    #[error("OutOfNFTs")]
+    OutOfNFTs {},
 
     #[error("HighestBidderCannotOutBid")]
     HighestBidderCannotOutBid {},
