@@ -883,7 +883,7 @@ fn test_mirror_andr_receive() {
 fn test_receive_cw20_zero_amount() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = mock_info("creator", &[]);
-    assert_intantiate(deps.as_mut(), info.clone());
+    assert_intantiate(deps.as_mut(), info);
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "sender".to_string(),
