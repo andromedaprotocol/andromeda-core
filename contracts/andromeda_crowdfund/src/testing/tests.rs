@@ -3,8 +3,8 @@ use crate::{
     state::{Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, SALE_CONDUCTED, STATE},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_CONDITIONS_NOT_MET_CONTRACT,
-        MOCK_NON_EXISTING_TOKEN, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT,
-        MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
+        MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT,
+        MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
     },
 };
 use andromeda_protocol::{
@@ -191,7 +191,7 @@ fn test_mint_sale_started() {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
-        max_amount_per_wallet: Some(Uint128::from(5u128)),
+        max_amount_per_wallet: Some(5),
         recipient: Recipient::Addr("recipient".to_string()),
     };
 
@@ -360,7 +360,7 @@ fn test_start_sale_max_default() {
             expiration: Expiration::AtHeight(mock_env().block.height + 1),
             price: coin(100, "uusd"),
             min_tokens_sold: Uint128::from(1u128),
-            max_amount_per_wallet: Uint128::from(1u128),
+            max_amount_per_wallet: 1,
             amount_sold: Uint128::zero(),
             amount_to_send: Uint128::zero(),
             amount_transferred: Uint128::zero(),
@@ -384,7 +384,7 @@ fn test_start_sale_max_modified() {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
-        max_amount_per_wallet: Some(Uint128::from(5u128)),
+        max_amount_per_wallet: Some(5),
         recipient: Recipient::Addr("recipient".to_string()),
     };
 
@@ -405,7 +405,7 @@ fn test_start_sale_max_modified() {
             expiration: Expiration::AtHeight(mock_env().block.height + 1),
             price: coin(100, "uusd"),
             min_tokens_sold: Uint128::from(1u128),
-            max_amount_per_wallet: Uint128::from(5u128),
+            max_amount_per_wallet: 5,
             amount_sold: Uint128::zero(),
             amount_to_send: Uint128::zero(),
             amount_transferred: Uint128::zero(),
@@ -421,7 +421,7 @@ fn test_purchase_sale_not_started() {
     init(deps.as_mut(), None);
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec!["token_id".to_string()],
+        number_of_tokens: None,
     };
 
     let info = mock_info("sender", &[]);
@@ -435,7 +435,7 @@ fn test_purchase_sale_not_ended() {
     init(deps.as_mut(), None);
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec!["token_id".to_string()],
+        number_of_tokens: None,
     };
 
     STATE
@@ -445,7 +445,7 @@ fn test_purchase_sale_not_ended() {
                 expiration: Expiration::AtHeight(mock_env().block.height - 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
-                max_amount_per_wallet: Uint128::from(5u128),
+                max_amount_per_wallet: 5,
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
@@ -459,47 +459,6 @@ fn test_purchase_sale_not_ended() {
     assert_eq!(ContractError::NoOngoingSale {}, res.unwrap_err());
 }
 
-macro_rules! purchase_not_for_sale_tests {
-    ($($name:ident: $token_ids:expr,)*) => {
-    $(
-        #[test]
-        fn $name() {
-            let mut deps = mock_dependencies_custom(&[]);
-            init(deps.as_mut(), None);
-
-            let msg = ExecuteMsg::Purchase {
-                token_ids: $token_ids.clone(),
-            };
-
-            STATE
-                .save(
-                    deps.as_mut().storage,
-                    &State {
-                        expiration: Expiration::AtHeight(mock_env().block.height + 1),
-                        price: coin(100, "uusd"),
-                        min_tokens_sold: Uint128::from(1u128),
-                        max_amount_per_wallet: Uint128::from(5u128),
-                        amount_sold: Uint128::zero(),
-                        amount_to_send: Uint128::zero(),
-                        amount_transferred: Uint128::zero(),
-                        recipient: Recipient::Addr("recipient".to_string()),
-                    },
-                )
-                .unwrap();
-
-            let info = mock_info("sender", &[]);
-            let res = execute(deps.as_mut(), mock_env(), info, msg);
-            assert_eq!(ContractError::TokenNotAvailable {id: $token_ids[0].clone()}, res.unwrap_err());
-        }
-    )*
-    }
-}
-
-purchase_not_for_sale_tests! {
-    test_purchase_existing_token_not_for_sale: vec!["token_not_for_sale".to_string()],
-    test_purchase_not_existing_token_not_for_sale: vec![MOCK_NON_EXISTING_TOKEN.to_string()],
-}
-
 #[test]
 fn test_purchase_no_funds() {
     let mut deps = mock_dependencies_custom(&[]);
@@ -508,7 +467,7 @@ fn test_purchase_no_funds() {
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
+        number_of_tokens: None,
     };
 
     STATE
@@ -518,7 +477,7 @@ fn test_purchase_no_funds() {
                 expiration: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
-                max_amount_per_wallet: Uint128::from(5u128),
+                max_amount_per_wallet: 5,
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
@@ -540,7 +499,7 @@ fn test_purchase_wrong_denom() {
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
+        number_of_tokens: None,
     };
 
     STATE
@@ -550,7 +509,7 @@ fn test_purchase_wrong_denom() {
                 expiration: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
-                max_amount_per_wallet: Uint128::from(5u128),
+                max_amount_per_wallet: 5,
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
@@ -579,7 +538,7 @@ fn test_purchase_not_enough_for_price() {
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
+        number_of_tokens: None,
     };
 
     STATE
@@ -589,7 +548,7 @@ fn test_purchase_not_enough_for_price() {
                 expiration: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
-                max_amount_per_wallet: Uint128::from(5u128),
+                max_amount_per_wallet: 5,
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
@@ -618,7 +577,7 @@ fn test_purchase_not_enough_for_tax() {
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
+        number_of_tokens: None,
     };
 
     STATE
@@ -628,7 +587,7 @@ fn test_purchase_not_enough_for_tax() {
                 expiration: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
-                max_amount_per_wallet: Uint128::from(5u128),
+                max_amount_per_wallet: 5,
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
@@ -689,14 +648,14 @@ fn test_multiple_purchases() {
 
     // Purchase token
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
+        number_of_tokens: Some(1),
     };
 
     let mut state = State {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
-        max_amount_per_wallet: Uint128::from(2u128),
+        max_amount_per_wallet: 2,
         amount_sold: Uint128::zero(),
         amount_to_send: Uint128::zero(),
         amount_transferred: Uint128::zero(),
@@ -710,7 +669,8 @@ fn test_multiple_purchases() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "purchase")
-            .add_attribute("token_ids", format!("[\"{}\"]", MOCK_TOKENS_FOR_SALE[0])),
+            .add_attribute("number_of_tokens_wanted", "1")
+            .add_attribute("number_of_tokens_purchased", "1"),
         res
     );
 
@@ -726,19 +686,7 @@ fn test_multiple_purchases() {
     );
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
-    };
-
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
-    assert_eq!(
-        ContractError::TokenNotAvailable {
-            id: MOCK_TOKENS_FOR_SALE[0].to_owned()
-        },
-        res.unwrap_err()
-    );
-
-    let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[1].to_owned()],
+        number_of_tokens: Some(1),
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -757,7 +705,7 @@ fn test_multiple_purchases() {
     );
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[2].to_owned()],
+        number_of_tokens: Some(1),
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -774,7 +722,7 @@ fn test_end_sale_not_expired() {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
-        max_amount_per_wallet: Uint128::from(2u128),
+        max_amount_per_wallet: 2,
         amount_sold: Uint128::zero(),
         amount_to_send: Uint128::zero(),
         amount_transferred: Uint128::zero(),
@@ -828,7 +776,7 @@ fn test_integration_conditions_not_met() {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(5u128),
-        max_amount_per_wallet: Some(Uint128::from(2u128)),
+        max_amount_per_wallet: Some(2),
         recipient: Recipient::Addr("recipient".to_string()),
     };
 
@@ -840,24 +788,24 @@ fn test_integration_conditions_not_met() {
     assert_eq!(ContractError::SaleStarted {}, res.unwrap_err());
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
+        number_of_tokens: Some(1),
     };
     let info = mock_info("A", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[1].to_owned()],
+        number_of_tokens: Some(1),
     };
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[2].to_owned()],
+        number_of_tokens: Some(1),
     };
     let info = mock_info("B", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[3].to_owned()],
+        number_of_tokens: Some(1),
     };
     let info = mock_info("C", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -866,7 +814,7 @@ fn test_integration_conditions_not_met() {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(5u128),
-        max_amount_per_wallet: Uint128::from(2u128),
+        max_amount_per_wallet: 2,
         amount_sold: Uint128::from(4u128),
         amount_to_send: Uint128::from(360u128),
         amount_transferred: Uint128::zero(),
@@ -988,7 +936,7 @@ fn test_integration_conditions_met() {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(3u128),
-        max_amount_per_wallet: Some(Uint128::from(2u128)),
+        max_amount_per_wallet: Some(2),
         recipient: Recipient::Addr("recipient".to_string()),
     };
 
@@ -996,30 +944,30 @@ fn test_integration_conditions_met() {
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
+        number_of_tokens: Some(1),
     };
     let info = mock_info("A", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[1].to_owned()],
+        number_of_tokens: Some(1),
     };
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[2].to_owned()],
+        number_of_tokens: Some(1),
     };
     let info = mock_info("B", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[3].to_owned()],
+        number_of_tokens: Some(1),
     };
     let info = mock_info("C", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_ids: vec![MOCK_TOKENS_FOR_SALE[4].to_owned()],
+        number_of_tokens: Some(1),
     };
     let info = mock_info("D", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -1028,7 +976,7 @@ fn test_integration_conditions_met() {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(3u128),
-        max_amount_per_wallet: Uint128::from(2u128),
+        max_amount_per_wallet: 2,
         amount_sold: Uint128::from(5u128),
         amount_to_send: Uint128::from(450u128),
         amount_transferred: Uint128::zero(),
@@ -1196,7 +1144,7 @@ fn test_end_sale_single_purchase() {
                 expiration: Expiration::AtHeight(mock_env().block.height - 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
-                max_amount_per_wallet: Uint128::from(5u128),
+                max_amount_per_wallet: 5,
                 amount_sold: Uint128::from(1u128),
                 amount_to_send: Uint128::from(100u128),
                 amount_transferred: Uint128::zero(),
@@ -1243,7 +1191,7 @@ fn test_end_sale_limit_zero() {
                 expiration: Expiration::AtHeight(mock_env().block.height - 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
-                max_amount_per_wallet: Uint128::from(5u128),
+                max_amount_per_wallet: 5,
                 amount_sold: Uint128::from(1u128),
                 amount_to_send: Uint128::from(100u128),
                 amount_transferred: Uint128::zero(),

@@ -1,5 +1,5 @@
 use common::{ado_base::recipient::Recipient, error::ContractError, mission::AndrAddress};
-use cosmwasm_std::{Coin, Deps, Order, SubMsg, Uint128};
+use cosmwasm_std::{Coin, Order, Storage, SubMsg, Uint128};
 use cw0::Expiration;
 use cw_storage_plus::{Bound, Item, Map};
 use schemars::JsonSchema;
@@ -50,7 +50,7 @@ pub struct State {
     /// The minimum number of tokens sold for the sale to go through.
     pub min_tokens_sold: Uint128,
     /// The max number of tokens allowed per wallet.
-    pub max_amount_per_wallet: Uint128,
+    pub max_amount_per_wallet: u32,
     /// Number of tokens sold.
     pub amount_sold: Uint128,
     /// The amount of funds to send to recipient if sale successful. This already
@@ -65,14 +65,14 @@ pub struct State {
 const MAX_LIMIT: u32 = 50;
 const DEFAULT_LIMIT: u32 = 20;
 pub(crate) fn get_available_tokens(
-    deps: Deps,
+    storage: &dyn Storage,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<String>, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
     let tokens: Result<Vec<String>, ContractError> = AVAILABLE_TOKENS
-        .keys(deps.storage, start, None, Order::Ascending)
+        .keys(storage, start, None, Order::Ascending)
         .take(limit)
         .map(|v| {
             let token = String::from_utf8(v)?;

@@ -299,8 +299,8 @@ pub enum ContractError {
     #[error("Duplicate tokens")]
     DuplicateTokens {},
 
-    #[error("Token '{id}' not available")]
-    TokenNotAvailable { id: String },
+    #[error("All tokens purchased")]
+    AllTokensPurchased {},
 }
 
 impl From<Cw20ContractError> for ContractError {

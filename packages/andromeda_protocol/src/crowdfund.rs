@@ -31,13 +31,13 @@ pub enum ExecuteMsg {
         /// The minimum amount of tokens sold to go through with the sale.
         min_tokens_sold: Uint128,
         /// The amount of tokens a wallet can purchase, default is 1.
-        max_amount_per_wallet: Option<Uint128>,
+        max_amount_per_wallet: Option<u32>,
         /// The recipient of the funds if the sale met the minimum sold.
         recipient: Recipient,
     },
     /// Puchases tokens in an ongoing sale.
     Purchase {
-        token_ids: Vec<String>,
+        number_of_tokens: Option<u32>,
     },
     /// Allow a user to claim their own refund if the minimum number of tokens are not sold.
     ClaimRefund {},
