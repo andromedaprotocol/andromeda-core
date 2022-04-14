@@ -197,7 +197,7 @@ fn execute_purchase(
     let sender = info.sender.to_string();
     let state = STATE.may_load(deps.storage)?;
 
-    // CHECK :: There is an ongoing sale.
+    // CHECK :: That there is an ongoing sale.
     require(state.is_some(), ContractError::NoOngoingSale {})?;
 
     let mut state = state.unwrap();
@@ -273,7 +273,7 @@ fn execute_purchase(
     // If any funds were remaining after deduction, send refund.
     let resp = if has_coins(&funds, &Coin::new(1, state.price.denom)) {
         Response::new().add_message(BankMsg::Send {
-            to_address: info.sender.to_string(),
+            to_address: sender,
             amount: funds,
         })
     } else {
