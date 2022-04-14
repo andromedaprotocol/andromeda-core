@@ -727,6 +727,7 @@ fn test_multiple_purchases() {
         PURCHASES.load(deps.as_ref().storage, "sender").unwrap()
     );
 
+    // Try to purchase an additional token when limit has already been reached.
     let msg = ExecuteMsg::Purchase {
         number_of_tokens: Some(1),
     };

@@ -218,7 +218,7 @@ fn execute_purchase(
     let number_of_tokens_wanted =
         number_of_tokens.map_or(max_possible, |n| cmp::min(n, max_possible));
 
-    // The number of token ids here is equal to max(number_of_tokens_wanted, num_tokens_left).
+    // The number of token ids here is equal to min(number_of_tokens_wanted, num_tokens_left).
     let token_ids = get_available_tokens(deps.storage, None, Some(number_of_tokens_wanted))?;
 
     // CHECK :: There are any tokens left to purchase.
