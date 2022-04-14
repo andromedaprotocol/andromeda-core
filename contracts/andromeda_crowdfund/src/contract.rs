@@ -267,7 +267,7 @@ fn execute_purchase(
 
     // Refund user if they sent more. This can happen near the end of the sale when they weren't
     // able to get the amount that they wanted.
-    let mut funds = info.funds.clone();
+    let mut funds = info.funds;
     deduct_funds(&mut funds, &required_payment)?;
 
     // If any funds were remaining after deduction, send refund.
