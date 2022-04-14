@@ -667,7 +667,7 @@ fn test_multiple_purchases() {
     STATE.save(deps.as_mut().storage, &state).unwrap();
 
     let info = mock_info("sender", &coins(300u128, "uusd"));
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()

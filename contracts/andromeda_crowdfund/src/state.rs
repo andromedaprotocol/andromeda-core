@@ -79,5 +79,5 @@ pub(crate) fn get_available_tokens(
             Ok(token)
         })
         .collect();
-    Ok(tokens?)
+    tokens
 }

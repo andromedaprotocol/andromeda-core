@@ -57,7 +57,7 @@ impl<'a> ADOContract<'a> {
             let mission_contract = self.get_mission_contract(storage)?;
             let module_address = module
                 .address
-                .get_address(api, &querier, mission_contract)?;
+                .get_address(api, querier, mission_contract)?;
             if module.module_type == RECEIPT {
                 // If receipt module exists we want to make sure we do it last.
                 receipt_module_address = Some(module_address);

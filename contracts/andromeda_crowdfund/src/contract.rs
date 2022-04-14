@@ -222,7 +222,7 @@ fn execute_purchase(
     let token_ids = get_available_tokens(deps.storage, None, Some(number_of_tokens_wanted))?;
 
     // CHECK :: There are any tokens left to purchase.
-    require(token_ids.len() > 0, ContractError::AllTokensPurchased {})?;
+    require(!token_ids.is_empty(), ContractError::AllTokensPurchased {})?;
 
     let number_of_tokens_purchased = token_ids.len();
 
@@ -292,6 +292,7 @@ fn execute_purchase(
         ))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn purchase(
     storage: &mut dyn Storage,
     api: &dyn Api,
