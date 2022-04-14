@@ -1,68 +1,21 @@
-# Andromeda ADO Contracts
+# The Gumball of the 2020s
 
-A monorepository containing all the contracts and packages related to Andromeda Protocol using the [Terra](https://www.terra.money/) blockchain. All related docs can be found [here](https://app.gitbook.com/@andromedaprotocol/s/andromeda/).
+Send funds, receive a random NFT 
 
-## Contracts
+## Basic Functionality
+Instantiating the contract sets the cw-721 contract's address
 
-| Contract      | Description |
-| ----------- | ----------- |
-| [andromeda_factory](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_factory) | Factory contract used to initialise a given token contract using a preset Code ID. Stores a record of all initialised token contracts via a symbol reference. |
-| [andromeda_token](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_token)      | Token contract used to store all related tokens and any modules that may be attached to them. Initialised by the `andromeda_factory` contract.|
-| [andromeda_addresslist](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_addresslist)      | Contract used to store a list of addresses. Queriable for inclusion of a given address. Used for both whitelist and blacklist modules.|
-| [andromeda_splitter](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_splitter)      | Contract used to split any sent funds amongst defined addresses.|
-| [andromeda_timelock](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_timelock)      | Contract used to store funds for a defined period of time before being released, similar to Escrow. |
-| [andromeda_receipt](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/contracts/andromeda_receipt)      | Contract used to mint receipts. |
+There are 2 statuses:
+Available (represented by "true" status)
+Refilling (represented by "false" status)
 
-## Packages
-| Contract      | Description |
-| ----------- | ----------- |
-| [andromeda_protocol](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/packages/andromeda_protocol)      | Package used to define message types and various utility methods used by Andromeda ADO Contracts. Andromeda modules are also defined in this package. |
+Available: halts the mint function and allows the buy function.
+Refilling: halts the buy function and allows the mint function.
 
-## Development
+Switch State: The function used to set the price, recipient, status, and max amount per wallet.
 
-### Environment Setup
-To set up your environment follow the documentation provided at [Terra Docs](https://docs.terra.money/contracts/tutorial/).
+Randomness: Ideally terrand can provide a random number in the range of the number of available NFTs for sale, we'll then us that number as the index of the vector which holds all the NFTs. 
 
-### Testing
-All tests can be run using:
-
-```cargo test --workspace```
-
-### Building
-All contracts and packages can be built by running the build script:
-
-```./build.sh```
-
-This will build all contract `.wasm` files in to the `artifacts` directory at the project root.
-
-### Formatting
-
-Make sure you run `rustfmt` before creating a PR to the repo. You need to install the `nightly` version of `rustfmt`.
-
-```sh
-rustup toolchain install nightly
-```
-
-To run `rustfmt`,
-
-```sh
-cargo fmt
-```
-
-### Linting
-
-You should run `clippy` also. This is a lint tool for rust. It suggests more efficient/readable code.
-You can see [the clippy document](https://rust-lang.github.io/rust-clippy/master/index.html) for more information.
-You need to install `nightly` version of `clippy`.
-
-#### Install
-
-```sh
-rustup toolchain install nightly
-```
-
-#### Run
-
-```sh
-cargo clippy --all --all-targets -- -D warnings
-```
+## Currently Tackling
+Mint function (which may or may not be desired in the first place)
+Terrand (Limited documentation)
