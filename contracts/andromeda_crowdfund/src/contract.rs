@@ -21,7 +21,8 @@ use cosmwasm_std::{
     QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
-use cw721::{OwnerOfResponse, TokensResponse};
+use cw721::TokensResponse;
+use std::collections::HashSet;
 
 const MAX_LIMIT: u32 = 100;
 const DEFAULT_LIMIT: u32 = 50;
@@ -82,7 +83,7 @@ pub fn execute(
             max_amount_per_wallet,
             recipient,
         ),
-        ExecuteMsg::Purchase { token_id } => execute_purchase(deps, env, info, token_id),
+        ExecuteMsg::Purchase { token_ids } => execute_purchase(deps, env, info, token_ids),
         ExecuteMsg::ClaimRefund {} => execute_claim_refund(deps, env, info),
         ExecuteMsg::EndSale { limit } => execute_end_sale(deps, env, limit),
     }
@@ -188,10 +189,12 @@ fn execute_purchase(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    token_id: String,
+    token_ids: Vec<String>,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.to_string();
     let state = STATE.may_load(deps.storage)?;
+
+    // CHECK :: There is an ongoing sale.
     require(state.is_some(), ContractError::NoOngoingSale {})?;
 
     let mut state = state.unwrap();
@@ -200,79 +203,119 @@ fn execute_purchase(
         ContractError::NoOngoingSale {},
     )?;
 
-    let config = CONFIG.load(deps.storage)?;
-    let token_owner_res = query_owner_of(
-        &deps.querier,
-        config.token_address.get_address(
-            deps.api,
-            &deps.querier,
-            ADOContract::default().get_mission_contract(deps.storage)?,
-        )?,
-        token_id.clone(),
-    );
-    require(
-        token_owner_res.is_ok() && token_owner_res.unwrap() == env.contract.address,
-        ContractError::TokenNotForSale {},
-    )?;
-
-    let token_is_available = AVAILABLE_TOKENS.has(deps.storage, &token_id);
-    require(token_is_available, ContractError::TokenAlreadyPurchased {})?;
-
-    AVAILABLE_TOKENS.remove(deps.storage, &token_id);
+    let mut hashset: HashSet<String> = HashSet::new();
+    // CHECK :: Each token id is available for purchase and is unique.
+    for token_id in token_ids.iter() {
+        // CHECK :: Each token is unique;
+        require(
+            !hashset.contains(token_id),
+            ContractError::DuplicateTokens {},
+        )?;
+        hashset.insert(token_id.to_owned());
+        let token_is_available = AVAILABLE_TOKENS.has(deps.storage, token_id);
+        require(
+            token_is_available,
+            ContractError::TokenNotAvailable {
+                id: token_id.to_owned(),
+            },
+        )?;
+        AVAILABLE_TOKENS.remove(deps.storage, token_id);
+    }
 
     let mut purchases = PURCHASES
         .may_load(deps.storage, &sender)?
         .unwrap_or_default();
 
+    // CHECK :: The user is able to purchase these without going over the limit.
     require(
-        purchases.len() < state.max_amount_per_wallet.u128() as usize,
+        purchases.len() + token_ids.len() <= state.max_amount_per_wallet.u128() as usize,
         ContractError::PurchaseLimitReached {},
     )?;
+
+    // CHECK :: The user has sent enough funds to cover the base fee (without any taxes).
+    let total_cost = Coin::new(
+        state.price.amount.u128() * token_ids.len() as u128,
+        state.price.denom.clone(),
+    );
     require(
-        has_coins(&info.funds, &state.price),
+        has_coins(&info.funds, &total_cost),
         ContractError::InsufficientFunds {},
     )?;
-    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
-        deps.storage,
-        deps.api,
-        deps.querier,
-        sender.clone(),
-        Funds::Native(state.price.clone()),
-        encode_binary(&"")?,
-    )?;
-    let remaining_amount = remainder.try_get_coin()?;
 
-    state.amount_to_send += remaining_amount.amount;
+    state.amount_sold += Uint128::from(token_ids.len() as u128);
 
-    let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
-    // require that the sender has sent enough for taxes
+    let token_ids_string = format!("{:?}", &token_ids);
+
+    let mut total_tax_amount = Uint128::zero();
+    for token_id in token_ids {
+        purchase(
+            deps.storage,
+            deps.api,
+            &deps.querier,
+            &sender,
+            token_id,
+            &mut state,
+            &mut purchases,
+            &mut total_tax_amount,
+        )?;
+    }
+
+    // CHECK :: User has sent enough to cover taxes.
     require(
         has_coins(
             &info.funds,
             &Coin {
                 denom: state.price.denom.clone(),
-                amount: state.price.amount + tax_amount,
+                amount: state.price.amount + total_tax_amount,
             },
         ),
         ContractError::InsufficientFunds {},
     )?;
 
-    let purchase = Purchase {
-        token_id: token_id.clone(),
-        tax_amount,
-        msgs,
-        purchaser: sender.clone(),
-    };
-
-    purchases.push(purchase);
     PURCHASES.save(deps.storage, &sender, &purchases)?;
-
-    state.amount_sold += Uint128::from(1u128);
     STATE.save(deps.storage, &state)?;
 
     Ok(Response::new()
         .add_attribute("action", "purchase")
-        .add_attribute("token_id", token_id))
+        .add_attribute("token_ids", token_ids_string))
+}
+
+fn purchase(
+    storage: &dyn Storage,
+    api: &dyn Api,
+    querier: &QuerierWrapper,
+    sender: &str,
+    token_id: String,
+    state: &mut State,
+    purchases: &mut Vec<Purchase>,
+    total_tax_amount: &mut Uint128,
+) -> Result<(), ContractError> {
+    // Need to do this per token as flat fees won't scale otherwise.
+    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
+        storage,
+        api,
+        querier,
+        sender.to_owned(),
+        Funds::Native(state.price.clone()),
+        encode_binary(&"")?,
+    )?;
+    let remaining_amount = remainder.try_get_coin()?;
+
+    let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
+    // require that the sender has sent enough for taxes
+
+    let purchase = Purchase {
+        token_id: token_id.clone(),
+        tax_amount,
+        msgs,
+        purchaser: sender.to_owned(),
+    };
+
+    *total_tax_amount += tax_amount;
+    state.amount_to_send += remaining_amount.amount;
+    purchases.push(purchase);
+
+    Ok(())
 }
 
 fn execute_claim_refund(
@@ -556,21 +599,6 @@ fn get_burn_messages(
             }))
         })
         .collect()
-}
-
-fn query_owner_of(
-    querier: &QuerierWrapper,
-    token_address: String,
-    token_id: String,
-) -> Result<String, ContractError> {
-    let res: OwnerOfResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: token_address,
-        msg: encode_binary(&Cw721QueryMsg::OwnerOf {
-            token_id,
-            include_expired: None,
-        })?,
-    }))?;
-    Ok(res.owner)
 }
 
 fn query_tokens(

@@ -251,12 +251,6 @@ pub enum ContractError {
     #[error("No Ongoing Sale")]
     NoOngoingSale {},
 
-    #[error("Token not for sale")]
-    TokenNotForSale {},
-
-    #[error("Token already purchased")]
-    TokenAlreadyPurchased {},
-
     #[error("Purchase limit reached")]
     PurchaseLimitReached {},
 
@@ -301,6 +295,12 @@ pub enum ContractError {
 
     #[error("Verification Failed")]
     VerificationFailed {},
+
+    #[error("Duplicate tokens")]
+    DuplicateTokens {},
+
+    #[error("Token '{id}' not available")]
+    TokenNotAvailable { id: String },
 }
 
 impl From<Cw20ContractError> for ContractError {

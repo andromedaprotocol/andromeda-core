@@ -35,9 +35,9 @@ pub enum ExecuteMsg {
         /// The recipient of the funds if the sale met the minimum sold.
         recipient: Recipient,
     },
-    /// Puchases a token in an ongoing sale.
+    /// Puchases tokens in an ongoing sale.
     Purchase {
-        token_id: String,
+        token_ids: Vec<String>,
     },
     /// Allow a user to claim their own refund if the minimum number of tokens are not sold.
     ClaimRefund {},

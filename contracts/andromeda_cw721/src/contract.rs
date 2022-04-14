@@ -164,7 +164,7 @@ fn execute_transfer(
         let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
             deps.storage,
             deps.api,
-            deps.querier,
+            &deps.querier,
             info.sender.to_string(),
             Funds::Native(agreement.amount.clone()),
             encode_binary(&ExecuteMsg::TransferNft {
@@ -334,7 +334,7 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
                 deps.storage,
                 deps.api,
-                deps.querier,
+                &deps.querier,
                 sender,
                 amount,
                 encode_binary(&String::default())?,

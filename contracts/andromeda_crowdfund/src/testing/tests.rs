@@ -421,7 +421,7 @@ fn test_purchase_sale_not_started() {
     init(deps.as_mut(), None);
 
     let msg = ExecuteMsg::Purchase {
-        token_id: "token_id".to_string(),
+        token_ids: vec!["token_id".to_string()],
     };
 
     let info = mock_info("sender", &[]);
@@ -435,7 +435,7 @@ fn test_purchase_sale_not_ended() {
     init(deps.as_mut(), None);
 
     let msg = ExecuteMsg::Purchase {
-        token_id: "token_id".to_string(),
+        token_ids: vec!["token_id".to_string()],
     };
 
     STATE
@@ -460,7 +460,7 @@ fn test_purchase_sale_not_ended() {
 }
 
 macro_rules! purchase_not_for_sale_tests {
-    ($($name:ident: $token_id:expr,)*) => {
+    ($($name:ident: $token_ids:expr,)*) => {
     $(
         #[test]
         fn $name() {
@@ -468,7 +468,7 @@ macro_rules! purchase_not_for_sale_tests {
             init(deps.as_mut(), None);
 
             let msg = ExecuteMsg::Purchase {
-                token_id: $token_id,
+                token_ids: $token_ids.clone(),
             };
 
             STATE
@@ -489,15 +489,15 @@ macro_rules! purchase_not_for_sale_tests {
 
             let info = mock_info("sender", &[]);
             let res = execute(deps.as_mut(), mock_env(), info, msg);
-            assert_eq!(ContractError::TokenNotForSale {}, res.unwrap_err());
+            assert_eq!(ContractError::TokenNotAvailable {id: $token_ids[0].clone()}, res.unwrap_err());
         }
     )*
     }
 }
 
 purchase_not_for_sale_tests! {
-    test_purchase_existing_token_not_for_sale: ("token_not_for_sale".to_string()),
-    test_purchase_not_existing_token_not_for_sale: MOCK_NON_EXISTING_TOKEN.to_string(),
+    test_purchase_existing_token_not_for_sale: vec!["token_not_for_sale".to_string()],
+    test_purchase_not_existing_token_not_for_sale: vec![MOCK_NON_EXISTING_TOKEN.to_string()],
 }
 
 #[test]
@@ -508,7 +508,7 @@ fn test_purchase_no_funds() {
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
     };
 
     STATE
@@ -540,7 +540,7 @@ fn test_purchase_wrong_denom() {
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
     };
 
     STATE
@@ -579,7 +579,7 @@ fn test_purchase_not_enough_for_price() {
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
     };
 
     STATE
@@ -618,7 +618,7 @@ fn test_purchase_not_enough_for_tax() {
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
     };
 
     STATE
@@ -689,7 +689,7 @@ fn test_multiple_purchases() {
 
     // Purchase token
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
     };
 
     let mut state = State {
@@ -710,7 +710,7 @@ fn test_multiple_purchases() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "purchase")
-            .add_attribute("token_id", MOCK_TOKENS_FOR_SALE[0]),
+            .add_attribute("token_ids", format!("[\"{}\"]", MOCK_TOKENS_FOR_SALE[0])),
         res
     );
 
@@ -726,14 +726,19 @@ fn test_multiple_purchases() {
     );
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
     };
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
-    assert_eq!(ContractError::TokenAlreadyPurchased {}, res.unwrap_err());
+    assert_eq!(
+        ContractError::TokenNotAvailable {
+            id: MOCK_TOKENS_FOR_SALE[0].to_owned()
+        },
+        res.unwrap_err()
+    );
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[1].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[1].to_owned()],
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -752,7 +757,7 @@ fn test_multiple_purchases() {
     );
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[2].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[2].to_owned()],
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -835,24 +840,24 @@ fn test_integration_conditions_not_met() {
     assert_eq!(ContractError::SaleStarted {}, res.unwrap_err());
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
     };
     let info = mock_info("A", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[1].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[1].to_owned()],
     };
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[2].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[2].to_owned()],
     };
     let info = mock_info("B", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[3].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[3].to_owned()],
     };
     let info = mock_info("C", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -991,30 +996,30 @@ fn test_integration_conditions_met() {
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[0].to_owned()],
     };
     let info = mock_info("A", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[1].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[1].to_owned()],
     };
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[2].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[2].to_owned()],
     };
     let info = mock_info("B", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[3].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[3].to_owned()],
     };
     let info = mock_info("C", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Purchase {
-        token_id: MOCK_TOKENS_FOR_SALE[4].to_owned(),
+        token_ids: vec![MOCK_TOKENS_FOR_SALE[4].to_owned()],
     };
     let info = mock_info("D", &coins(150, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
