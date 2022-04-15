@@ -16,8 +16,8 @@ use common::{
 };
 use cosmwasm_std::{
     coin, entry_point, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, Order, QueryRequest, ReplyOn, Response, SubMsg, SystemResult, Uint128,
-    WasmMsg, WasmQuery,
+    Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn, Response, StdError, SubMsg,
+    SystemResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 
