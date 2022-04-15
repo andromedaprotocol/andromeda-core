@@ -23,6 +23,7 @@ use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
 const MOCK_STAKING_TOKEN: &str = "staking_token";
 const MOCK_INCENTIVE_TOKEN: &str = "incentive_token";
+const MOCK_ALLOCATED_TOKEN: &str = "allocated_token";
 
 fn init(
     deps: DepsMut,
@@ -1072,6 +1073,7 @@ fn test_stake_rewards_update() {
 #[test]
 fn test_unstake_rewards_update() {
     let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
+    let current_timestamp = mock_env().block.time.seconds();
     init(
         deps.as_mut(),
         Some(vec![
@@ -1083,14 +1085,31 @@ fn test_unstake_rewards_update() {
                 asset_info: AssetInfoUnchecked::native("uusd"),
                 allocation_config: None,
             },
+            RewardTokenUnchecked {
+                asset_info: AssetInfoUnchecked::cw20(MOCK_ALLOCATED_TOKEN),
+                allocation_config: Some(AllocationConfig {
+                    init_timestamp: current_timestamp,
+                    till_timestamp: current_timestamp + 100,
+                    cycle_rewards: Uint128::new(100),
+                    cycle_duration: 100,
+                    reward_increase: None,
+                }),
+            },
         ]),
     )
     .unwrap();
 
-    deps.querier.with_token_balances(&[(
-        &MOCK_STAKING_TOKEN.to_string(),
-        &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
-    )]);
+    deps.querier.with_token_balances(&[
+        (
+            &MOCK_STAKING_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
+        (
+            // Add allocated token.
+            &MOCK_ALLOCATED_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
+    ]);
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user1".to_string(),
@@ -1111,7 +1130,21 @@ fn test_unstake_rewards_update() {
             &MOCK_INCENTIVE_TOKEN.to_string(),
             &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
         ),
+        (
+            &MOCK_ALLOCATED_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
     ]);
+
+    assert_eq!(
+        StakerRewardInfo {
+            index: Decimal256::zero(),
+            pending_rewards: Decimal256::zero()
+        },
+        STAKER_REWARD_INFOS
+            .load(deps.as_ref().storage, ("user1", "cw20:allocated_token"))
+            .unwrap()
+    );
 
     // Update global index.
     let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
@@ -1119,23 +1152,15 @@ fn test_unstake_rewards_update() {
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    deps.querier.with_token_balances(&[
-        (
-            &MOCK_STAKING_TOKEN.to_string(),
-            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
-        ),
-        (
-            // Deposit incentive token
-            &MOCK_INCENTIVE_TOKEN.to_string(),
-            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
-        ),
-    ]);
-
     // Unstake all.
     let msg = ExecuteMsg::UnstakeTokens { amount: None };
 
     let info = mock_info("user1", &[]);
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // Speed time up to halfway through cycle.
+    let mut env = mock_env();
+    env.block.time = env.block.time.plus_seconds(50);
+    let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(
         StakerRewardInfo {
@@ -1154,6 +1179,41 @@ fn test_unstake_rewards_update() {
         },
         STAKER_REWARD_INFOS
             .load(deps.as_ref().storage, ("user1", "native:uusd"))
+            .unwrap()
+    );
+
+    assert_eq!(
+        StakerRewardInfo {
+            // Halfway through cycle -> half of rewards available
+            index: Decimal256::from_ratio(Uint256::from(50u128), Uint256::from(100u128)),
+            pending_rewards: Decimal256::from_uint256(Uint256::from(50u128))
+        },
+        STAKER_REWARD_INFOS
+            .load(deps.as_ref().storage, ("user1", "cw20:allocated_token"))
+            .unwrap()
+    );
+
+    assert_eq!(
+        RewardToken {
+            index: Decimal256::from_ratio(Uint256::from(50u128), Uint256::from(100u128)),
+            asset_info: AssetInfo::cw20(Addr::unchecked(MOCK_ALLOCATED_TOKEN)),
+            reward_type: RewardType::Allocated {
+                allocation_config: AllocationConfig {
+                    init_timestamp: current_timestamp,
+                    till_timestamp: current_timestamp + 100,
+                    cycle_rewards: Uint128::new(100),
+                    cycle_duration: 100,
+                    reward_increase: None,
+                },
+                allocation_state: AllocationState {
+                    current_cycle: 0,
+                    current_cycle_rewards: Uint128::new(100),
+                    last_distributed: current_timestamp + 50,
+                },
+            },
+        },
+        REWARD_TOKENS
+            .load(deps.as_ref().storage, "cw20:allocated_token")
             .unwrap()
     );
 }
