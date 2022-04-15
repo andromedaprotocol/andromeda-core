@@ -8,6 +8,7 @@ use cw20::Cw20ReceiveMsg;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
@@ -22,9 +23,9 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     AndrReceive(AndromedaMsg),
-    /// Add `asset_info` as another reward token. Owner only.
+    /// Add `reward_token` as another reward token. Owner only.
     AddRewardToken {
-        asset_info: AssetInfoUnchecked,
+        reward_token: RewardTokenUnchecked,
     },
     /// Unstakes the specified amount of assets, or all if not specified. The user's pending
     /// rewards and indexes are updated for each additional reward token.
@@ -33,8 +34,8 @@ pub enum ExecuteMsg {
     },
     /// Claims any outstanding rewards from the addtional reward tokens.
     ClaimRewards {},
-    /// Updates the global reward index for the specified assets or all of the specified ones if
-    /// None. Funds may be sent along with this.
+    /// Updates the global reward index for the specified reward tokens or all of the specified ones if
+    /// None. Funds may be sent along with this. Can only be done for non-allocated reward tokens.
     UpdateGlobalIndexes {
         asset_infos: Option<Vec<AssetInfoUnchecked>>,
     },
@@ -91,6 +92,12 @@ impl RewardTokenUnchecked {
 pub struct RewardToken {
     pub asset_info: AssetInfo,
     pub allocation_info: Option<AllocationInfo>,
+}
+
+impl fmt::Display for RewardToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.asset_info.fmt(f)
+    }
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]

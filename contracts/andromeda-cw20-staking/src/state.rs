@@ -1,10 +1,9 @@
 use cosmwasm_bignumber::Decimal256;
 use cosmwasm_std::{Order, Storage, Uint128};
-use cw_asset::AssetInfo;
 use cw_storage_plus::{Bound, Item, Map};
 
 use crate::contract::get_pending_rewards;
-use andromeda_protocol::cw20_staking::StakerResponse;
+use andromeda_protocol::cw20_staking::{RewardToken, StakerResponse};
 use common::{error::ContractError, mission::AndrAddress};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -25,7 +24,7 @@ pub struct Config {
     /// The token accepted for staking.
     pub staking_token: AndrAddress,
     /// Any additional tokens used for rewards. Cannot include the staking token.
-    pub additional_reward_tokens: Vec<AssetInfo>,
+    pub additional_reward_tokens: Vec<RewardToken>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

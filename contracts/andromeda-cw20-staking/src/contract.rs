@@ -16,7 +16,8 @@ use crate::state::{
 };
 use ado_base::ADOContract;
 use andromeda_protocol::cw20_staking::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakerResponse,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardToken,
+    RewardTokenUnchecked, StakerResponse,
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
@@ -34,17 +35,18 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let additional_reward_tokens = if let Some(ref additional_rewards) = msg.additional_rewards {
+    let additional_reward_tokens = if let Some(additional_rewards) = msg.additional_rewards {
         let staking_token = AssetInfoUnchecked::cw20(msg.staking_token.identifier.to_lowercase());
-        let additional_rewards: Result<Vec<AssetInfo>, ContractError> = additional_rewards
-            .iter()
+        let staking_token_identifier = msg.staking_token.identifier.clone();
+        let additional_rewards: Result<Vec<RewardToken>, ContractError> = additional_rewards
+            .into_iter()
             .map(|r| {
                 // Staking token cannot be used as an additional reward as it is a reward by
                 // default.
                 require(
-                    &staking_token != r,
+                    staking_token != r.asset_info,
                     ContractError::InvalidAsset {
-                        asset: msg.staking_token.identifier.clone(),
+                        asset: staking_token_identifier.clone(),
                     },
                 )?;
                 Ok(r.check(deps.api)?)
@@ -100,8 +102,8 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
-        ExecuteMsg::AddRewardToken { asset_info } => {
-            execute_add_reward_token(deps, env, info, asset_info)
+        ExecuteMsg::AddRewardToken { reward_token } => {
+            execute_add_reward_token(deps, env, info, reward_token)
         }
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
             None => execute_update_global_indexes(deps, env, info.sender.to_string(), None),
@@ -153,7 +155,7 @@ fn execute_add_reward_token(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    asset_info: AssetInfoUnchecked,
+    reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     require(
@@ -161,11 +163,11 @@ fn execute_add_reward_token(
         ContractError::Unauthorized {},
     )?;
     let mut config = CONFIG.load(deps.storage)?;
-    let asset_info = asset_info.check(deps.api, None)?;
+    let reward_token = reward_token.check(deps.api)?;
     require(
-        !config.additional_reward_tokens.contains(&asset_info),
+        !config.additional_reward_tokens.contains(&reward_token),
         ContractError::InvalidAsset {
-            asset: asset_info.to_string(),
+            asset: reward_token.to_string(),
         },
     )?;
 
@@ -176,14 +178,14 @@ fn execute_add_reward_token(
     )?;
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
     require(
-        staking_token != asset_info,
+        staking_token != reward_token.asset_info,
         ContractError::InvalidAsset {
-            asset: asset_info.to_string(),
+            asset: reward_token.to_string(),
         },
     )?;
 
-    let asset_info_string = asset_info.to_string();
-    config.additional_reward_tokens.push(asset_info.clone());
+    let reward_token_string = reward_token.to_string();
+    config.additional_reward_tokens.push(reward_token.clone());
 
     CONFIG.save(deps.storage, &config)?;
 
@@ -193,15 +195,14 @@ fn execute_add_reward_token(
         &deps.querier,
         env.contract.address,
         &state,
-        &config,
-        asset_info,
+        reward_token.asset_info,
     )?;
 
     STATE.save(deps.storage, &state)?;
 
     Ok(Response::new()
         .add_attribute("action", "add_reward_token")
-        .add_attribute("added_token", asset_info_string))
+        .add_attribute("added_token", reward_token_string))
 }
 
 /// The foundation for this approach is inspired by Anchor's staking implementation:
@@ -232,7 +233,7 @@ fn execute_stake_tokens(
     let mut staker = STAKERS.may_load(deps.storage, &sender)?.unwrap_or_default();
 
     // Update the rewards for the user. This must be done before the new share is calculated.
-    update_rewards(deps.storage, &sender, &staker)?;
+    update_staker_rewards(deps.storage, &sender, &staker)?;
 
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
 
@@ -282,7 +283,7 @@ fn execute_unstake_tokens(
     let staker = STAKERS.may_load(deps.storage, sender)?;
     if let Some(mut staker) = staker {
         let mut state = STATE.load(deps.storage)?;
-        update_rewards(deps.storage, sender, &staker)?;
+        update_staker_rewards(deps.storage, sender, &staker)?;
 
         let withdraw_share = amount
             .map(|v| {
@@ -329,13 +330,13 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
     let sender = info.sender.as_str();
     let config = CONFIG.load(deps.storage)?;
     if let Some(staker) = STAKERS.may_load(deps.storage, sender)? {
-        update_rewards(deps.storage, sender, &staker)?;
+        update_staker_rewards(deps.storage, sender, &staker)?;
         let mut msgs: Vec<CosmosMsg> = vec![];
 
         for token in config.additional_reward_tokens {
             let token_string = token.to_string();
 
-            // Since we call `update_rewards` first, this entry will always exist.
+            // Since we call `update_staker_rewards` first, this entry will always exist.
             let mut staker_reward_info =
                 STAKER_REWARD_INFOS.load(deps.storage, (sender, &token_string))?;
             let rewards: Uint128 =
@@ -395,15 +396,31 @@ fn execute_update_global_indexes(
     )?;
     let state = STATE.load(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
-    let reward_tokens = asset_infos.unwrap_or_else(|| config.additional_reward_tokens.clone());
 
-    for token in reward_tokens {
+    // Filter reward tokens to only those that are non-allocated. Allocated tokens do not need to
+    // be updated this way.
+    let non_allocated_asset_infos: Vec<AssetInfo> = config
+        .additional_reward_tokens
+        .into_iter()
+        .filter(|r| r.allocation_info.is_none())
+        .map(|r| r.asset_info)
+        .collect();
+
+    // Only consider assets that are non allocated.
+    let asset_infos = match asset_infos {
+        None => non_allocated_asset_infos,
+        Some(asset_infos) => asset_infos
+            .into_iter()
+            .filter(|a| non_allocated_asset_infos.contains(&a))
+            .collect(),
+    };
+
+    for token in asset_infos {
         update_global_index(
             deps.storage,
             &deps.querier,
             env.contract.address.clone(),
             &state,
-            &config,
             token,
         )?;
     }
@@ -418,27 +435,19 @@ fn update_global_index(
     querier: &QuerierWrapper,
     contract_address: Addr,
     state: &State,
-    config: &Config,
-    token: AssetInfo,
+    asset_info: AssetInfo,
 ) -> Result<(), ContractError> {
-    require(
-        config.additional_reward_tokens.contains(&token),
-        ContractError::InvalidAsset {
-            asset: token.to_string(),
-        },
-    )?;
-
     // In this case there is no point updating the index if no one is staked.
     if state.total_share.is_zero() {
         return Ok(());
     }
 
-    let token_string = token.to_string();
+    let asset_info_string = asset_info.to_string();
     let mut global_reward_info = GLOBAL_REWARD_INFOS
-        .may_load(storage, &token_string)?
+        .may_load(storage, &asset_info_string)?
         .unwrap_or_default();
 
-    let reward_balance = token.query_balance(querier, contract_address)?;
+    let reward_balance = asset_info.query_balance(querier, contract_address)?;
     let deposited_amount =
         reward_balance.checked_sub(global_reward_info.previous_reward_balance)?;
 
@@ -447,12 +456,12 @@ fn update_global_index(
 
     global_reward_info.previous_reward_balance = reward_balance;
 
-    GLOBAL_REWARD_INFOS.save(storage, &token_string, &global_reward_info)?;
+    GLOBAL_REWARD_INFOS.save(storage, &asset_info_string, &global_reward_info)?;
 
     Ok(())
 }
 
-fn update_rewards(
+fn update_staker_rewards(
     storage: &mut dyn Storage,
     staker_address: &str,
     staker: &Staker,
