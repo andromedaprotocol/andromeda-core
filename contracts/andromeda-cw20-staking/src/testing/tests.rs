@@ -676,11 +676,11 @@ fn test_claim_rewards() {
     );
 
     let info = mock_info("user1", &[]);
-    /*let msg = ExecuteMsg::ClaimRewards {};
+    let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     // No rewards have been given yet.
-    assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());*/
+    assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
 
     deps.querier
         .base
