@@ -485,14 +485,10 @@ fn update_staker_rewards(
 ) -> Result<(), ContractError> {
     let reward_infos: Vec<(String, GlobalRewardInfo)> = get_global_reward_infos(storage)?;
     for (token, global_reward_info) in reward_infos {
-        let staker_reward_info = get_updated_staker_reward_info(
-            storage,
-            staker_address,
-            staker,
-            &token,
-            global_reward_info,
-        )?;
-
+        let mut staker_reward_info = STAKER_REWARD_INFOS
+            .may_load(storage, (staker_address, &token))?
+            .unwrap_or_default();
+        update_staker_reward_info(staker, &mut staker_reward_info, global_reward_info);
         STAKER_REWARD_INFOS.save(storage, (staker_address, &token), &staker_reward_info)?;
     }
     Ok(())
@@ -510,24 +506,16 @@ fn get_global_reward_infos(
         .collect()
 }
 
-fn get_updated_staker_reward_info(
-    storage: &dyn Storage,
-    staker_address: &str,
+fn update_staker_reward_info(
     staker: &Staker,
-    token: &str,
+    staker_reward_info: &mut StakerRewardInfo,
     global_reward_info: GlobalRewardInfo,
-) -> Result<StakerRewardInfo, ContractError> {
-    let mut staker_reward_info = STAKER_REWARD_INFOS
-        .may_load(storage, (staker_address, token))?
-        .unwrap_or_default();
-
+) {
     let staker_share = Uint256::from(staker.share);
     let rewards = (global_reward_info.index - staker_reward_info.index) * staker_share;
 
     staker_reward_info.index = global_reward_info.index;
     staker_reward_info.pending_rewards += Decimal256::from_uint256(rewards);
-
-    Ok(staker_reward_info)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -571,8 +559,11 @@ pub(crate) fn get_pending_rewards(
     let reward_infos: Vec<(String, GlobalRewardInfo)> = get_global_reward_infos(storage)?;
     let mut pending_rewards = vec![];
     for (token, global_reward_info) in reward_infos {
-        let staker_reward_info =
-            get_updated_staker_reward_info(storage, address, staker, &token, global_reward_info)?;
+        let mut staker_reward_info = STAKER_REWARD_INFOS
+            .may_load(storage, (address, &token))?
+            .unwrap_or_default();
+
+        update_staker_reward_info(staker, &mut staker_reward_info, global_reward_info);
         pending_rewards.push((
             token,
             Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128),
