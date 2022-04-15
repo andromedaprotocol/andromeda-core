@@ -1,6 +1,4 @@
 use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
-// To be used in the swapper contract.
-pub use astroport::querier::{query_balance, query_token_balance};
 use cosmwasm_std::Binary;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;

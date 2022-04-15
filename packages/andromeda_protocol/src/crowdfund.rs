@@ -13,7 +13,6 @@ pub struct InstantiateMsg {
     pub token_address: AndrAddress,
     pub can_mint_after_sale: bool,
     pub modules: Option<Vec<Module>>,
-    pub primitive_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -54,4 +53,11 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     State {},
     Config {},
+    AvailableTokens {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    IsTokenAvailable {
+        id: String,
+    },
 }

@@ -14,13 +14,10 @@ use crate::{
     primitive_keys::{MIRROR_GOV, MIRROR_LOCK, MIRROR_MINT, MIRROR_MIR, MIRROR_STAKING},
 };
 use ado_base::ADOContract;
-use andromeda_protocol::{
-    common::get_tax_deducted_funds,
-    mirror_wrapped_cdp::{
-        Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg, MirrorGovExecuteMsg,
-        MirrorLockExecuteMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg,
-        MirrorStakingCw20HookMsg, MirrorStakingExecuteMsg, QueryMsg,
-    },
+use andromeda_protocol::mirror_wrapped_cdp::{
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MirrorGovCw20HookMsg, MirrorGovExecuteMsg,
+    MirrorLockExecuteMsg, MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingCw20HookMsg,
+    MirrorStakingExecuteMsg, QueryMsg,
 };
 use common::{
     ado_base::{operators::OperatorsResponse, AndromedaMsg, AndromedaQuery},
@@ -133,11 +130,10 @@ fn assert_execute_msg(
     mirror_msg_binary: Binary,
     contract_addr: String,
 ) {
-    let tax_deducted_funds = get_tax_deducted_funds(&deps, info.funds.clone()).unwrap();
-    let res = execute(deps, mock_env(), info, msg).unwrap();
+    let res = execute(deps, mock_env(), info.clone(), msg).unwrap();
     let execute_msg = WasmMsg::Execute {
         contract_addr,
-        funds: tax_deducted_funds,
+        funds: info.funds,
         msg: mirror_msg_binary,
     };
     assert_eq!(
@@ -368,10 +364,6 @@ fn test_mirror_mint_open_position_short() {
 #[test]
 fn test_mirror_mint_deposit() {
     let mut deps = mock_dependencies_custom(&[]);
-    deps.querier.with_tax(
-        Decimal::percent(10),
-        &[(&"uusd".to_string(), &Uint128::from(1500000u128))],
-    );
     let info = mock_info("creator", &coins(10u128, "uusd"));
     assert_intantiate(deps.as_mut(), info.clone());
 
@@ -884,5 +876,28 @@ fn test_mirror_andr_receive() {
     assert_eq!(
         Response::new().add_messages(vec![CosmosMsg::Wasm(execute_msg)]),
         res
+    );
+}
+
+#[test]
+fn test_receive_cw20_zero_amount() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info("creator", &[]);
+    assert_intantiate(deps.as_mut(), info);
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "sender".to_string(),
+        amount: Uint128::zero(),
+        msg: to_binary(&"").unwrap(),
+    });
+
+    let info = mock_info(TEST_TOKEN, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string()
+        },
+        res.unwrap_err()
     );
 }

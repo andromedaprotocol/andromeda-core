@@ -4,7 +4,6 @@ use cosmwasm_std::{coin, DepsMut, Env, MessageInfo, Order, Response, StdError, S
 use cw20::Cw20Coin;
 
 use cw_asset::AssetInfo;
-use terraswap::querier::{query_balance, query_token_balance};
 
 impl<'a> ADOContract<'a> {
     pub fn add_withdrawable_token(
@@ -72,10 +71,10 @@ impl<'a> ADOContract<'a> {
             let asset_info: AssetInfo = self
                 .withdrawable_tokens
                 .load(deps.storage, &withdrawal.token)?;
-            let msg: Option<SubMsg> = match asset_info {
+            let msg: Option<SubMsg> = match &asset_info {
                 AssetInfo::Native(denom) => {
                     let balance =
-                        query_balance(&deps.querier, env.contract.address.clone(), denom.clone())?;
+                        asset_info.query_balance(&deps.querier, env.contract.address.clone())?;
                     if balance.is_zero() {
                         None
                     } else {
@@ -90,11 +89,8 @@ impl<'a> ADOContract<'a> {
                 }
                 AssetInfo::Cw20(contract_addr) => {
                     let contract_addr_str = contract_addr.to_string();
-                    let balance = query_token_balance(
-                        &deps.querier,
-                        contract_addr,
-                        env.contract.address.clone(),
-                    )?;
+                    let balance =
+                        asset_info.query_balance(&deps.querier, env.contract.address.clone())?;
                     if balance.is_zero() {
                         None
                     } else {

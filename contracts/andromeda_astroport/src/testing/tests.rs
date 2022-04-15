@@ -21,7 +21,7 @@ use common::error::ContractError;
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Response, SubMsg, WasmMsg,
+    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::{Asset, AssetInfo};
@@ -512,4 +512,26 @@ fn test_withdraw_liquidity_unauthorized() {
     let info = mock_info("anyone", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_receive_cw20_zero_amount() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "sender".to_string(),
+        amount: Uint128::zero(),
+        msg: to_binary(&"").unwrap(),
+    });
+
+    let info = mock_info(MOCK_LP_TOKEN_CONTRACT, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string()
+        },
+        res.unwrap_err()
+    );
 }

@@ -1,9 +1,8 @@
 use crate::state::SWAPPER_IMPL_ADDR;
 use ado_base::ADOContract;
 use andromeda_protocol::swapper::{
-    query_balance, query_token_balance, Cw20HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType,
-    MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg,
-    SwapperMsg,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, MigrateMsg, QueryMsg,
+    SwapperCw20HookMsg, SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
 };
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
@@ -168,19 +167,21 @@ fn execute_send(
         info.sender == env.contract.address,
         ContractError::Unauthorized {},
     )?;
-    let msg: SubMsg = match ask_asset_info {
+    let msg: SubMsg = match &ask_asset_info {
         AssetInfo::Native(denom) => {
-            let amount = query_balance(&deps.querier, env.contract.address, denom.clone())?;
+            let amount = ask_asset_info.query_balance(&deps.querier, env.contract.address)?;
             recipient.generate_msg_native(
                 deps.api,
                 &deps.querier,
                 ADOContract::default().get_mission_contract(deps.storage)?,
-                vec![Coin { denom, amount }],
+                vec![Coin {
+                    denom: denom.to_owned(),
+                    amount,
+                }],
             )?
         }
         AssetInfo::Cw20(contract_addr) => {
-            let amount =
-                query_token_balance(&deps.querier, contract_addr.clone(), env.contract.address)?;
+            let amount = ask_asset_info.query_balance(&deps.querier, env.contract.address)?;
             recipient.generate_msg_cw20(
                 deps.api,
                 &deps.querier,
@@ -203,6 +204,13 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
+    require(
+        !cw20_msg.amount.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string(),
+        },
+    )?;
+
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::Swap {
             ask_asset_info,

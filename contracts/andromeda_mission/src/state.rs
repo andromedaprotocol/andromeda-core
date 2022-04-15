@@ -1,5 +1,8 @@
 use andromeda_protocol::mission::MissionComponent;
-use common::{ado_base::AndromedaMsg, error::ContractError};
+use common::{
+    ado_base::{AndromedaMsg, ExecuteMsg},
+    error::ContractError,
+};
 use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Order, ReplyOn, Storage, SubMsg, WasmMsg};
 use cw_storage_plus::{Bound, Item, Map};
 
@@ -48,9 +51,9 @@ pub fn load_component_descriptors(
 }
 
 pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&AndromedaMsg::UpdateOwner {
+    let msg = to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOwner {
         address: owner.to_string(),
-    })?;
+    }))?;
     Ok(SubMsg {
         id: 101,
         reply_on: ReplyOn::Error,
@@ -67,9 +70,11 @@ pub fn generate_assign_mission_message(
     addr: &Addr,
     mission_addr: &str,
 ) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&AndromedaMsg::UpdateMissionContract {
-        address: mission_addr.to_string(),
-    })?;
+    let msg = to_binary(&ExecuteMsg::AndrReceive(
+        AndromedaMsg::UpdateMissionContract {
+            address: mission_addr.to_string(),
+        },
+    ))?;
     Ok(SubMsg {
         id: 103,
         reply_on: ReplyOn::Error,
