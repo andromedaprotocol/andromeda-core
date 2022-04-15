@@ -9,14 +9,14 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use crate::{
     contract::{execute, instantiate, query},
     state::{
-        Config, GlobalRewardInfo, Staker, StakerRewardInfo, State, CONFIG, GLOBAL_REWARD_INFOS,
-        STAKERS, STAKER_REWARD_INFOS, STATE,
+        Config, Staker, StakerRewardInfo, State, CONFIG, REWARD_TOKENS, STAKERS,
+        STAKER_REWARD_INFOS, STATE,
     },
     testing::mock_querier::mock_dependencies_custom,
 };
 use andromeda_protocol::cw20_staking::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RewardToken, RewardTokenUnchecked,
-    StakerResponse,
+    RewardType, StakerResponse,
 };
 use common::{error::ContractError, mission::AndrAddress};
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
@@ -49,11 +49,11 @@ fn test_instantiate() {
         Some(vec![
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::native("uusd"),
-                allocation_info: None,
+                allocation_config: None,
             },
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::cw20("incentive_token"),
-                allocation_info: None,
+                allocation_config: None,
             },
         ]),
     )
@@ -71,29 +71,32 @@ fn test_instantiate() {
             staking_token: AndrAddress {
                 identifier: MOCK_STAKING_TOKEN.to_owned()
             },
-            additional_reward_tokens: vec![
-                RewardToken {
-                    asset_info: AssetInfo::native("uusd"),
-                    allocation_info: None,
-                },
-                RewardToken {
-                    asset_info: AssetInfo::cw20(Addr::unchecked("incentive_token")),
-                    allocation_info: None,
-                },
-            ]
         },
         CONFIG.load(deps.as_ref().storage).unwrap()
     );
 
     assert_eq!(
-        GlobalRewardInfo::default(),
-        GLOBAL_REWARD_INFOS
+        RewardToken {
+            index: Decimal256::zero(),
+            asset_info: AssetInfo::native("uusd"),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::zero()
+            },
+        },
+        REWARD_TOKENS
             .load(deps.as_ref().storage, "native:uusd")
             .unwrap()
     );
+
     assert_eq!(
-        GlobalRewardInfo::default(),
-        GLOBAL_REWARD_INFOS
+        RewardToken {
+            index: Decimal256::zero(),
+            asset_info: AssetInfo::cw20(Addr::unchecked("incentive_token")),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::zero()
+            },
+        },
+        REWARD_TOKENS
             .load(deps.as_ref().storage, "cw20:incentive_token")
             .unwrap()
     );
@@ -114,7 +117,7 @@ fn test_instantiate_staking_token_as_addtional_reward() {
         deps.as_mut(),
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::cw20(MOCK_STAKING_TOKEN),
-            allocation_info: None,
+            allocation_config: None,
         }]),
     );
     assert_eq!(
@@ -353,11 +356,11 @@ fn test_update_global_indexes() {
         Some(vec![
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::native("uusd"),
-                allocation_info: None,
+                allocation_config: None,
             },
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
-                allocation_info: None,
+                allocation_config: None,
             },
         ]),
     )
@@ -394,21 +397,27 @@ fn test_update_global_indexes() {
     );
 
     assert_eq!(
-        GlobalRewardInfo {
+        RewardToken {
             index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
-            previous_reward_balance: Uint128::new(40)
+            asset_info: AssetInfo::native("uusd"),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::new(40)
+            },
         },
-        GLOBAL_REWARD_INFOS
+        REWARD_TOKENS
             .load(deps.as_ref().storage, "native:uusd")
             .unwrap()
     );
 
     assert_eq!(
-        GlobalRewardInfo {
+        RewardToken {
             index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
-            previous_reward_balance: Uint128::new(20)
+            asset_info: AssetInfo::cw20(Addr::unchecked(MOCK_INCENTIVE_TOKEN)),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::new(20)
+            },
         },
-        GLOBAL_REWARD_INFOS
+        REWARD_TOKENS
             .load(deps.as_ref().storage, "cw20:incentive_token")
             .unwrap()
     );
@@ -422,11 +431,11 @@ fn test_update_global_indexes_selective() {
         Some(vec![
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::native("uusd"),
-                allocation_info: None,
+                allocation_config: None,
             },
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
-                allocation_info: None,
+                allocation_config: None,
             },
         ]),
     )
@@ -465,28 +474,33 @@ fn test_update_global_indexes_selective() {
     );
 
     assert_eq!(
-        GlobalRewardInfo {
+        RewardToken {
             index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
-            previous_reward_balance: Uint128::new(40)
+            asset_info: AssetInfo::native("uusd"),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::new(40)
+            },
         },
-        GLOBAL_REWARD_INFOS
+        REWARD_TOKENS
             .load(deps.as_ref().storage, "native:uusd")
             .unwrap()
     );
 
     assert_eq!(
-        GlobalRewardInfo {
+        RewardToken {
             index: Decimal256::zero(),
-            previous_reward_balance: Uint128::zero()
+            asset_info: AssetInfo::cw20(Addr::unchecked(MOCK_INCENTIVE_TOKEN)),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::zero(),
+            },
         },
-        GLOBAL_REWARD_INFOS
+        REWARD_TOKENS
             .load(deps.as_ref().storage, "cw20:incentive_token")
             .unwrap()
     );
 }
 
-// TODO: Figure out if we are still going to have silent error or not.
-/*#[test]
+#[test]
 fn test_update_global_indexes_invalid_asset() {
     let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
     init(
@@ -494,11 +508,11 @@ fn test_update_global_indexes_invalid_asset() {
         Some(vec![
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::native("uusd"),
-                allocation_info: None,
+                allocation_config: None,
             },
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
-                allocation_info: None,
+                allocation_config: None,
             },
         ]),
     )
@@ -526,7 +540,7 @@ fn test_update_global_indexes_invalid_asset() {
         },
         res.unwrap_err()
     );
-}*/
+}
 
 #[test]
 fn test_update_global_indexes_cw20_deposit() {
@@ -536,11 +550,11 @@ fn test_update_global_indexes_cw20_deposit() {
         Some(vec![
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::native("uusd"),
-                allocation_info: None,
+                allocation_config: None,
             },
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
-                allocation_info: None,
+                allocation_config: None,
             },
         ]),
     )
@@ -581,70 +595,41 @@ fn test_update_global_indexes_cw20_deposit() {
     );
 
     assert_eq!(
-        GlobalRewardInfo {
-            index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
-            previous_reward_balance: Uint128::new(20)
+        RewardToken {
+            index: Decimal256::zero(),
+            asset_info: AssetInfo::native("uusd"),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::zero(),
+            },
         },
-        GLOBAL_REWARD_INFOS
-            .load(deps.as_ref().storage, "cw20:incentive_token")
+        REWARD_TOKENS
+            .load(deps.as_ref().storage, "native:uusd")
             .unwrap()
     );
 
     assert_eq!(
-        GlobalRewardInfo {
-            index: Decimal256::zero(),
-            previous_reward_balance: Uint128::zero()
+        RewardToken {
+            index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
+            asset_info: AssetInfo::cw20(Addr::unchecked(MOCK_INCENTIVE_TOKEN)),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::new(20)
+            },
         },
-        GLOBAL_REWARD_INFOS
-            .load(deps.as_ref().storage, "native:uusd")
+        REWARD_TOKENS
+            .load(deps.as_ref().storage, "cw20:incentive_token")
             .unwrap()
     );
-}
-
-#[test]
-fn test_update_global_indexes_unauthorized() {
-    let mut deps = mock_dependencies_custom(&coins(40, "uusd"));
-    init(
-        deps.as_mut(),
-        Some(vec![
-            RewardTokenUnchecked {
-                asset_info: AssetInfoUnchecked::native("uusd"),
-                allocation_info: None,
-            },
-            RewardTokenUnchecked {
-                asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
-                allocation_info: None,
-            },
-        ]),
-    )
-    .unwrap();
-
-    STATE
-        .save(
-            deps.as_mut().storage,
-            &State {
-                total_share: Uint128::new(100),
-            },
-        )
-        .unwrap();
-
-    let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
-
-    let info = mock_info("not_owner", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
-
-    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
 
 #[test]
 fn test_claim_rewards() {
     // uusd is for the reward.
-    let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
+    let mut deps = mock_dependencies_custom(&[]);
     init(
         deps.as_mut(),
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::native("uusd"),
-            allocation_info: None,
+            allocation_config: None,
         }]),
     )
     .unwrap();
@@ -691,11 +676,15 @@ fn test_claim_rewards() {
     );
 
     let info = mock_info("user1", &[]);
-    let msg = ExecuteMsg::ClaimRewards {};
+    /*let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     // No rewards have been given yet.
-    assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
+    assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());*/
+
+    deps.querier
+        .base
+        .update_balance(mock_env().contract.address, coins(100, "uusd"));
 
     // Update the global index for uusd by depositing 100 uusd
     let msg = ExecuteMsg::UpdateGlobalIndexes {
@@ -706,11 +695,14 @@ fn test_claim_rewards() {
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
-        GlobalRewardInfo {
+        RewardToken {
             index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
-            previous_reward_balance: Uint128::new(100)
+            asset_info: AssetInfo::native("uusd"),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::new(100)
+            },
         },
-        GLOBAL_REWARD_INFOS
+        REWARD_TOKENS
             .load(deps.as_ref().storage, "native:uusd")
             .unwrap()
     );
@@ -754,14 +746,18 @@ fn test_claim_rewards() {
     );
 
     assert_eq!(
-        GlobalRewardInfo {
+        RewardToken {
             index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
-            previous_reward_balance: Uint128::new(34)
+            asset_info: AssetInfo::native("uusd"),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::new(34)
+            },
         },
-        GLOBAL_REWARD_INFOS
+        REWARD_TOKENS
             .load(deps.as_ref().storage, "native:uusd")
             .unwrap()
     );
+
     assert_eq!(
         Response::new()
             .add_attribute("action", "claim_rewards")
@@ -771,6 +767,10 @@ fn test_claim_rewards() {
             }),
         res
     );
+
+    deps.querier
+        .base
+        .update_balance(mock_env().contract.address, coins(34, "uusd"));
 
     let info = mock_info("user2", &[]);
     let msg = ExecuteMsg::ClaimRewards {};
@@ -797,12 +797,15 @@ fn test_claim_rewards() {
     );
 
     assert_eq!(
-        GlobalRewardInfo {
+        RewardToken {
             index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
-            // Small rounding error, shouldn't really make a difference and is inevitable.
-            previous_reward_balance: Uint128::new(1),
+            asset_info: AssetInfo::native("uusd"),
+            reward_type: RewardType::NonAllocated {
+                // Small rounding error, shouldn't really make a difference and is inevitable.
+                previous_reward_balance: Uint128::new(1)
+            },
         },
-        GLOBAL_REWARD_INFOS
+        REWARD_TOKENS
             .load(deps.as_ref().storage, "native:uusd")
             .unwrap()
     );
@@ -840,11 +843,11 @@ fn test_stake_rewards_update() {
         Some(vec![
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
-                allocation_info: None,
+                allocation_config: None,
             },
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::native("uusd"),
-                allocation_info: None,
+                allocation_config: None,
             },
         ]),
     )
@@ -951,11 +954,11 @@ fn test_unstake_rewards_update() {
         Some(vec![
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
-                allocation_info: None,
+                allocation_config: None,
             },
             RewardTokenUnchecked {
                 asset_info: AssetInfoUnchecked::native("uusd"),
-                allocation_info: None,
+                allocation_config: None,
             },
         ]),
     )
@@ -1060,7 +1063,7 @@ fn test_add_reward_token() {
     let msg = ExecuteMsg::AddRewardToken {
         reward_token: RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
-            allocation_info: None,
+            allocation_config: None,
         },
     };
     let info = mock_info("owner", &[]);
@@ -1075,26 +1078,16 @@ fn test_add_reward_token() {
     );
 
     assert_eq!(
-        GlobalRewardInfo {
+        RewardToken {
             index: Decimal256::zero(),
-            previous_reward_balance: Uint128::zero(),
+            asset_info: AssetInfo::cw20(Addr::unchecked(MOCK_INCENTIVE_TOKEN)),
+            reward_type: RewardType::NonAllocated {
+                previous_reward_balance: Uint128::zero()
+            },
         },
-        GLOBAL_REWARD_INFOS
+        REWARD_TOKENS
             .load(deps.as_ref().storage, "cw20:incentive_token")
             .unwrap()
-    );
-
-    assert_eq!(
-        Config {
-            staking_token: AndrAddress {
-                identifier: MOCK_STAKING_TOKEN.to_owned()
-            },
-            additional_reward_tokens: vec![RewardToken {
-                asset_info: AssetInfo::cw20(Addr::unchecked(MOCK_INCENTIVE_TOKEN)),
-                allocation_info: None
-            }]
-        },
-        CONFIG.load(deps.as_ref().storage).unwrap()
     );
 }
 
@@ -1105,7 +1098,7 @@ fn test_add_reward_token_duplicate() {
         deps.as_mut(),
         Some(vec![RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::native("uusd"),
-            allocation_info: None,
+            allocation_config: None,
         }]),
     )
     .unwrap();
@@ -1113,7 +1106,7 @@ fn test_add_reward_token_duplicate() {
     let msg = ExecuteMsg::AddRewardToken {
         reward_token: RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::native("uusd"),
-            allocation_info: None,
+            allocation_config: None,
         },
     };
     let info = mock_info("owner", &[]);
@@ -1135,7 +1128,7 @@ fn test_add_reward_token_staking_token() {
     let msg = ExecuteMsg::AddRewardToken {
         reward_token: RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::cw20(MOCK_STAKING_TOKEN),
-            allocation_info: None,
+            allocation_config: None,
         },
     };
     let info = mock_info("owner", &[]);
@@ -1157,7 +1150,7 @@ fn test_add_reward_token_unauthorized() {
     let msg = ExecuteMsg::AddRewardToken {
         reward_token: RewardTokenUnchecked {
             asset_info: AssetInfoUnchecked::cw20(MOCK_STAKING_TOKEN),
-            allocation_info: None,
+            allocation_config: None,
         },
     };
     let info = mock_info("not_owner", &[]);

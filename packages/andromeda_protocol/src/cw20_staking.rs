@@ -3,6 +3,7 @@ use common::{
     error::ContractError,
     mission::AndrAddress,
 };
+use cosmwasm_bignumber::Decimal256;
 use cosmwasm_std::{Api, Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
@@ -75,23 +76,55 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct RewardTokenUnchecked {
     pub asset_info: AssetInfoUnchecked,
-    pub allocation_info: Option<AllocationInfo>,
+    pub allocation_config: Option<AllocationConfig>,
 }
 
 impl RewardTokenUnchecked {
     pub fn check(self, api: &dyn Api) -> Result<RewardToken, ContractError> {
         let checked_asset_info = self.asset_info.check(api, None)?;
+        let reward_type = match self.allocation_config {
+            None => RewardType::NonAllocated {
+                previous_reward_balance: Uint128::zero(),
+            },
+            Some(allocation_config) => {
+                // Copy here since allocation_config is moved.
+                let init_timestamp = allocation_config.init_timestamp;
+                let cycle_rewards = allocation_config.cycle_rewards;
+                RewardType::Allocated {
+                    allocation_config,
+                    allocation_state: AllocationState {
+                        current_cycle: 0,
+                        current_cycle_rewards: cycle_rewards,
+                        last_distributed: init_timestamp,
+                    },
+                }
+            }
+        };
+
         Ok(RewardToken {
             asset_info: checked_asset_info,
-            allocation_info: self.allocation_info,
+            reward_type,
+            index: Decimal256::zero(),
         })
     }
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub enum RewardType {
+    Allocated {
+        allocation_config: AllocationConfig,
+        allocation_state: AllocationState,
+    },
+    NonAllocated {
+        previous_reward_balance: Uint128,
+    },
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct RewardToken {
     pub asset_info: AssetInfo,
-    pub allocation_info: Option<AllocationInfo>,
+    pub index: Decimal256,
+    pub reward_type: RewardType,
 }
 
 impl fmt::Display for RewardToken {
@@ -106,7 +139,7 @@ pub struct AllocationInfo {
     pub state: AllocationState,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Copy, Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct AllocationConfig {
     /// Timestamp from which Rewards will start getting accrued against the staked LP tokens
     pub init_timestamp: u64,
@@ -120,7 +153,7 @@ pub struct AllocationConfig {
     pub reward_increase: Option<Decimal>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Copy, Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct AllocationState {
     /// Keeps track of the distribution cycle
     pub current_cycle: u64,

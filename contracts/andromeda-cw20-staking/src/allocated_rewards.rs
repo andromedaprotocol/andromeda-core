@@ -1,49 +1,18 @@
-use crate::state::{Config, GlobalRewardInfo, State, CONFIG, GLOBAL_REWARD_INFOS};
-use andromeda_protocol::cw20_staking::RewardToken;
-use common::{error::ContractError, require};
+use andromeda_protocol::cw20_staking::{
+    AllocationConfig, AllocationState, RewardToken, RewardType,
+};
+use common::error::ContractError;
 use cosmwasm_bignumber::Decimal256;
-use cosmwasm_std::{Decimal, Storage, Uint128};
-
-pub(crate) fn compute_allocated_rewards(
-    storage: &mut dyn Storage,
-    config: &mut Config,
-    current_timestamp: u64,
-    state: &State,
-) -> Result<(), ContractError> {
-    let allocated_reward_tokens: Vec<&mut RewardToken> = config
-        .additional_reward_tokens
-        .iter_mut()
-        .filter(|r| r.allocation_info.is_some())
-        .collect();
-    for token in allocated_reward_tokens {
-        let mut global_reward_info = GLOBAL_REWARD_INFOS.load(storage, &token.to_string())?;
-        compute_allocated_reward(
-            state.total_share,
-            token,
-            &mut global_reward_info,
-            current_timestamp,
-        )?;
-    }
-    CONFIG.save(storage, &config)?;
-    Ok(())
-}
+use cosmwasm_std::{Decimal, Uint128};
 
 /// @dev Computes total accrued rewards
-fn compute_allocated_reward(
+pub(crate) fn update_allocated_index(
     total_share: Uint128,
     reward_token: &mut RewardToken,
-    global_reward_info: &mut GlobalRewardInfo,
+    config: AllocationConfig,
+    mut state: AllocationState,
     cur_timestamp: u64,
 ) -> Result<(), ContractError> {
-    require(
-        reward_token.allocation_info.is_some(),
-        ContractError::InvalidAsset {
-            asset: reward_token.to_string(),
-        },
-    )?;
-    let allocation_info = reward_token.allocation_info.as_mut().unwrap();
-    let mut state = &mut allocation_info.state;
-    let config = &allocation_info.config;
     // If the reward distribution period is over
     if state.last_distributed == config.till_timestamp {
         return Ok(());
@@ -90,8 +59,11 @@ fn compute_allocated_reward(
         return Ok(());
     }
 
-    global_reward_info.index +=
-        Decimal256::from(Decimal::from_ratio(rewards_to_distribute, total_share));
+    reward_token.index += Decimal256::from(Decimal::from_ratio(rewards_to_distribute, total_share));
+    reward_token.reward_type = RewardType::Allocated {
+        allocation_config: config,
+        allocation_state: state,
+    };
 
     Ok(())
 }

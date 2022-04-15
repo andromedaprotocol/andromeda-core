@@ -6,6 +6,8 @@ use cosmwasm_std::{
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
 
+use cosmwasm_std::testing::mock_dependencies;
+
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
 pub fn mock_dependencies_custom(
@@ -22,7 +24,7 @@ pub fn mock_dependencies_custom(
 }
 
 pub struct WasmMockQuerier {
-    base: MockQuerier<Empty>,
+    pub base: MockQuerier<Empty>,
     token_querier: TokenQuerier,
 }
 

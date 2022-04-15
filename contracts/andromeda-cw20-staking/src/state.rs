@@ -13,7 +13,7 @@ pub const STATE: Item<State> = Item::new("state");
 pub const STAKERS: Map<&str, Staker> = Map::new("stakers");
 
 /// Maps asset -> reward_info
-pub const GLOBAL_REWARD_INFOS: Map<&str, GlobalRewardInfo> = Map::new("global_reward_infos");
+pub const REWARD_TOKENS: Map<&str, RewardToken> = Map::new("reward_tokens");
 
 /// Maps (staker, asset) -> reward_info
 pub const STAKER_REWARD_INFOS: Map<(&str, &str), StakerRewardInfo> =
@@ -23,22 +23,12 @@ pub const STAKER_REWARD_INFOS: Map<(&str, &str), StakerRewardInfo> =
 pub struct Config {
     /// The token accepted for staking.
     pub staking_token: AndrAddress,
-    /// Any additional tokens used for rewards. Cannot include the staking token.
-    pub additional_reward_tokens: Vec<RewardToken>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
     /// The total share of the staking token in the contract.
     pub total_share: Uint128,
-}
-
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GlobalRewardInfo {
-    /// The index of this particular reward.
-    pub index: Decimal256,
-    /// The reward balance to compare to when updating the index.
-    pub previous_reward_balance: Uint128,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
