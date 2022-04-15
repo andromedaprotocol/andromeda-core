@@ -1,5 +1,6 @@
 use crate::state::{
-    Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, SALE_CONDUCTED, STATE,
+    get_available_tokens, Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES,
+    SALE_CONDUCTED, STATE,
 };
 use ado_base::ADOContract;
 use andromeda_protocol::{
@@ -607,6 +608,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::State {} => encode_binary(&query_state(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+        QueryMsg::AvailableTokens { start_after, limit } => {
+            encode_binary(&query_available_tokens(deps, start_after, limit)?)
+        }
+        QueryMsg::IsTokenAvailable { id } => encode_binary(&query_is_token_available(deps, id)),
     }
 }
 
@@ -616,4 +621,16 @@ fn query_state(deps: Deps) -> Result<State, ContractError> {
 
 fn query_config(deps: Deps) -> Result<Config, ContractError> {
     Ok(CONFIG.load(deps.storage)?)
+}
+
+fn query_available_tokens(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<String>, ContractError> {
+    get_available_tokens(deps, start_after, limit)
+}
+
+fn query_is_token_available(deps: Deps, id: String) -> bool {
+    AVAILABLE_TOKENS.has(deps.storage, &id)
 }

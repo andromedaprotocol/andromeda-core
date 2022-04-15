@@ -54,4 +54,11 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     State {},
     Config {},
+    AvailableTokens {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    IsTokenAvailable {
+        id: String,
+    },
 }
