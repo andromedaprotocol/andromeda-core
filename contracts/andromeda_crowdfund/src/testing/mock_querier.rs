@@ -12,7 +12,6 @@ use cw721::{Cw721QueryMsg, TokensResponse};
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
-pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";

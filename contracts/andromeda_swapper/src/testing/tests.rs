@@ -10,7 +10,7 @@ use common::{ado_base::recipient::Recipient, error::ContractError};
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, ReplyOn, Response, SubMsg, WasmMsg,
+    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
@@ -406,5 +406,27 @@ fn test_swap_cw20_to_cw20() {
                 funds: vec![],
             })),
         res
+    );
+}
+
+#[test]
+fn test_receive_cw20_zero_amount() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "sender".to_string(),
+        amount: Uint128::zero(),
+        msg: to_binary(&"").unwrap(),
+    });
+
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string()
+        },
+        res.unwrap_err()
     );
 }

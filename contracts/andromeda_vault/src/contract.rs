@@ -16,8 +16,8 @@ use common::{
 };
 use cosmwasm_std::{
     coin, entry_point, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, Order, QueryRequest, ReplyOn, Response, SubMsg, SystemResult, Uint128,
-    WasmMsg, WasmQuery,
+    Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn, Response, StdError, SubMsg,
+    SystemResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -45,6 +45,17 @@ pub fn instantiate(
             primitive_contract: None,
         },
     )
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

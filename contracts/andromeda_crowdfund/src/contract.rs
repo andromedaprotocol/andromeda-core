@@ -18,7 +18,8 @@ use common::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw0::Expiration;
 use cw721::TokensResponse;
@@ -50,9 +51,20 @@ pub fn instantiate(
             ado_type: "crowdfund".to_string(),
             operators: None,
             modules: msg.modules,
-            primitive_contract: Some(msg.primitive_contract),
+            primitive_contract: None,
         },
     )
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
