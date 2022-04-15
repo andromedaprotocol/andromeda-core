@@ -102,6 +102,12 @@ impl fmt::Display for RewardToken {
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct AllocationInfo {
+    pub config: AllocationConfig,
+    pub state: AllocationState,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub struct AllocationConfig {
     /// Timestamp from which Rewards will start getting accrued against the staked LP tokens
     pub init_timestamp: u64,
     /// Timestamp till which Rewards will be accrued. No staking rewards are accrued beyond this timestamp
@@ -112,6 +118,16 @@ pub struct AllocationInfo {
     pub cycle_duration: u64,
     /// Percent increase in Rewards per cycle
     pub reward_increase: Option<Decimal>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub struct AllocationState {
+    /// Keeps track of the distribution cycle
+    pub current_cycle: u64,
+    /// Number of tokens to be distributed during the current cycle
+    pub current_cycle_rewards: Uint128,
+    /// Timestamp at which the global_reward_index was last updated
+    pub last_distributed: u64,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]

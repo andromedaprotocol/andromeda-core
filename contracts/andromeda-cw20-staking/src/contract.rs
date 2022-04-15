@@ -10,9 +10,12 @@ use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 use std::str::FromStr;
 
-use crate::state::{
-    get_stakers, Config, GlobalRewardInfo, Staker, StakerRewardInfo, State, CONFIG,
-    GLOBAL_REWARD_INFOS, STAKERS, STAKER_REWARD_INFOS, STATE,
+use crate::{
+    allocated_rewards::compute_allocated_rewards,
+    state::{
+        get_stakers, Config, GlobalRewardInfo, Staker, StakerRewardInfo, State, CONFIG,
+        GLOBAL_REWARD_INFOS, STAKERS, STAKER_REWARD_INFOS, STATE,
+    },
 };
 use ado_base::ADOContract;
 use andromeda_protocol::cw20_staking::{
@@ -121,7 +124,7 @@ pub fn execute(
             }
         },
         ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(deps, env, info, amount),
-        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, info),
+        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
     }
 }
 
@@ -190,13 +193,16 @@ fn execute_add_reward_token(
     CONFIG.save(deps.storage, &config)?;
 
     let state = STATE.load(deps.storage)?;
-    update_global_index(
-        deps.storage,
-        &deps.querier,
-        env.contract.address,
-        &state,
-        reward_token.asset_info,
-    )?;
+    // Only update index if it is non-allocated.
+    if reward_token.allocation_info.is_none() {
+        update_global_index(
+            deps.storage,
+            &deps.querier,
+            env.contract.address,
+            &state,
+            reward_token.asset_info,
+        )?;
+    }
 
     STATE.save(deps.storage, &state)?;
 
@@ -215,7 +221,7 @@ fn execute_stake_tokens(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    let config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
 
     let mission_contract = contract.get_mission_contract(deps.storage)?;
     let staking_token_address =
@@ -232,6 +238,8 @@ fn execute_stake_tokens(
     let mut state = STATE.load(deps.storage)?;
     let mut staker = STAKERS.may_load(deps.storage, &sender)?.unwrap_or_default();
 
+    // Update allocated rewards.
+    compute_allocated_rewards(deps.storage, &mut config, env.block.time.seconds(), &state)?;
     // Update the rewards for the user. This must be done before the new share is calculated.
     update_staker_rewards(deps.storage, &sender, &staker)?;
 
@@ -268,7 +276,7 @@ fn execute_unstake_tokens(
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    let config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
     let sender = info.sender.as_str();
 
     let mission_contract = contract.get_mission_contract(deps.storage)?;
@@ -283,6 +291,7 @@ fn execute_unstake_tokens(
     let staker = STAKERS.may_load(deps.storage, sender)?;
     if let Some(mut staker) = staker {
         let mut state = STATE.load(deps.storage)?;
+        compute_allocated_rewards(deps.storage, &mut config, env.block.time.seconds(), &state)?;
         update_staker_rewards(deps.storage, sender, &staker)?;
 
         let withdraw_share = amount
@@ -326,10 +335,16 @@ fn execute_unstake_tokens(
     }
 }
 
-fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+fn execute_claim_rewards(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
-    let config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     if let Some(staker) = STAKERS.may_load(deps.storage, sender)? {
+        compute_allocated_rewards(deps.storage, &mut config, env.block.time.seconds(), &state)?;
         update_staker_rewards(deps.storage, sender, &staker)?;
         let mut msgs: Vec<CosmosMsg> = vec![];
 
@@ -358,12 +373,14 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
                 let mut global_reward_info =
                     GLOBAL_REWARD_INFOS.load(deps.storage, &token_string)?;
 
-                // Reduce reward balance.
-                global_reward_info.previous_reward_balance = global_reward_info
-                    .previous_reward_balance
-                    .checked_sub(rewards)?;
+                // Reduce reward balance if is non-allocated token.
+                if token.allocation_info.is_none() {
+                    global_reward_info.previous_reward_balance = global_reward_info
+                        .previous_reward_balance
+                        .checked_sub(rewards)?;
 
-                GLOBAL_REWARD_INFOS.save(deps.storage, &token_string, &global_reward_info)?;
+                    GLOBAL_REWARD_INFOS.save(deps.storage, &token_string, &global_reward_info)?;
+                }
 
                 let asset = Asset {
                     info: AssetInfoUnchecked::from_str(&token_string)?.check(deps.api, None)?,
