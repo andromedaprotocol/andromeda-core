@@ -33,7 +33,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -52,7 +52,7 @@ pub fn instantiate(
                         asset: staking_token_identifier.clone(),
                     },
                 )?;
-                r.check(deps.api)
+                r.check(env.block.time.seconds(), deps.api)
             })
             .collect();
         additional_rewards?
@@ -169,7 +169,7 @@ fn execute_add_reward_token(
         ContractError::Unauthorized {},
     )?;
     let config = CONFIG.load(deps.storage)?;
-    let reward_token = reward_token.check(deps.api)?;
+    let reward_token = reward_token.check(env.block.time.seconds(), deps.api)?;
     let reward_token_string = reward_token.to_string();
     require(
         !REWARD_TOKENS.has(deps.storage, &reward_token_string),
@@ -446,8 +446,6 @@ fn update_global_indexes(
     Ok(Response::new().add_attribute("action", "update_global_indexes"))
 }
 
-/// This approach was inspired by Lido's bluna reward system.
-/// https://github.com/lidofinance/lido-terra-contracts/tree/d7026b9142d718f9b5b6be03b1af33040499553c/contracts/lido_terra_reward/src
 fn update_global_index(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
@@ -501,6 +499,8 @@ fn update_global_index(
     }
 }
 
+/// This approach was inspired by Lido's bluna reward system.
+/// https://github.com/lidofinance/lido-terra-contracts/tree/d7026b9142d718f9b5b6be03b1af33040499553c/contracts/lido_terra_reward/src
 fn update_nonallocated_index(
     state: &State,
     querier: &QuerierWrapper,

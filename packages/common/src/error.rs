@@ -304,6 +304,12 @@ pub enum ContractError {
 
     #[error("Invalid Asset: {asset}")]
     InvalidAsset { asset: String },
+
+    #[error("Invalid cycle duration")]
+    InvalidCycleDuration {},
+
+    #[error("Reward increase must be less than 1")]
+    InvalidRewardIncrease {},
 }
 
 impl From<Cw20ContractError> for ContractError {

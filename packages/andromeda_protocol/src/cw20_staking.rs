@@ -2,6 +2,7 @@ use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     error::ContractError,
     mission::AndrAddress,
+    require,
 };
 use cosmwasm_bignumber::Decimal256;
 use cosmwasm_std::{Api, Decimal, Uint128};
@@ -80,16 +81,44 @@ pub struct RewardTokenUnchecked {
 }
 
 impl RewardTokenUnchecked {
-    pub fn check(self, api: &dyn Api) -> Result<RewardToken, ContractError> {
+    /// Verifies that the specified asset_info is valid and returns a `RewardToken` with the
+    /// correct `RewardType`.
+    pub fn check(
+        self,
+        current_timestamp: u64,
+        api: &dyn Api,
+    ) -> Result<RewardToken, ContractError> {
         let checked_asset_info = self.asset_info.check(api, None)?;
         let reward_type = match self.allocation_config {
             None => RewardType::NonAllocated {
                 previous_reward_balance: Uint128::zero(),
             },
             Some(allocation_config) => {
-                // Copy here since allocation_config is moved.
                 let init_timestamp = allocation_config.init_timestamp;
+                let till_timestamp = allocation_config.till_timestamp;
+                let cycle_duration = allocation_config.cycle_duration;
                 let cycle_rewards = allocation_config.cycle_rewards;
+                let reward_increase = allocation_config.reward_increase;
+
+                require(
+                    init_timestamp >= current_timestamp,
+                    ContractError::StartTimeInThePast {},
+                )?;
+
+                require(
+                    init_timestamp < till_timestamp,
+                    ContractError::StartTimeAfterEndTime {},
+                )?;
+
+                require(cycle_duration > 0, ContractError::InvalidCycleDuration {})?;
+
+                if let Some(reward_increase) = reward_increase {
+                    require(
+                        reward_increase < Decimal::one(),
+                        ContractError::InvalidRewardIncrease {},
+                    )?;
+                }
+
                 RewardType::Allocated {
                     allocation_config,
                     allocation_state: AllocationState {
