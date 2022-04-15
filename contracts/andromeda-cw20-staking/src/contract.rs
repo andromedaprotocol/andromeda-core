@@ -52,7 +52,7 @@ pub fn instantiate(
                         asset: staking_token_identifier.clone(),
                     },
                 )?;
-                Ok(r.check(deps.api)?)
+                r.check(deps.api)
             })
             .collect();
         additional_rewards?
@@ -60,7 +60,7 @@ pub fn instantiate(
         vec![]
     };
     for token in additional_reward_tokens.iter() {
-        REWARD_TOKENS.save(deps.storage, &token.to_string(), &token)?;
+        REWARD_TOKENS.save(deps.storage, &token.to_string(), token)?;
     }
     CONFIG.save(
         deps.storage,
@@ -430,7 +430,7 @@ fn update_global_indexes(
         .map(|r| r.asset_info)
         .collect();
 
-    let asset_infos = asset_infos.unwrap_or_else(|| all_assets);
+    let asset_infos = asset_infos.unwrap_or(all_assets);
 
     for token in asset_infos {
         update_global_index(
@@ -474,8 +474,8 @@ fn update_global_index(
                     previous_reward_balance,
                 } => {
                     update_nonallocated_index(
-                        &state,
-                        &querier,
+                        state,
+                        querier,
                         &mut reward_token,
                         previous_reward_balance,
                         contract_address,

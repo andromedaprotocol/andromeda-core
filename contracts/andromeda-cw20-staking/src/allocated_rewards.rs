@@ -44,7 +44,7 @@ pub(crate) fn update_allocated_index(
         );
         state.current_cycle_rewards = calculate_cycle_rewards(
             state.current_cycle_rewards,
-            config.reward_increase.unwrap_or(Decimal::zero()),
+            config.reward_increase.unwrap_or_else(Decimal::zero),
             state.current_cycle == last_distribution_cycle,
         );
         state.last_distributed = std::cmp::min(cur_timestamp, last_distribution_next_timestamp);
