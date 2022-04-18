@@ -383,7 +383,9 @@ version = "0.1.0"
 dependencies = [
  "ado-base",
  "andromeda-protocol",
+ "base64",
  "common",
+ "convert-base",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
@@ -512,6 +514,12 @@ name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
+
+[[package]]
+name = "convert-base"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e56a404f2112d00ba80a516b60ca3744ef6bd776baa14126eb7d7c11b42cac8a"
 
 [[package]]
 name = "cosmwasm-bignumber"
