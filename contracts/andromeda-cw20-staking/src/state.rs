@@ -1,8 +1,8 @@
 use cosmwasm_bignumber::Decimal256;
-use cosmwasm_std::{Env, Order, QuerierWrapper, Storage, Uint128};
+use cosmwasm_std::{Api, Env, Order, QuerierWrapper, Storage, Uint128};
 use cw_storage_plus::{Bound, Item, Map};
 
-use crate::contract::get_pending_rewards;
+use crate::contract::{get_pending_rewards, get_staking_token};
 use andromeda_protocol::cw20_staking::{RewardToken, StakerResponse};
 use common::{error::ContractError, mission::AndrAddress};
 use schemars::JsonSchema;
@@ -50,6 +50,7 @@ const DEFAULT_LIMIT: u32 = 10;
 pub(crate) fn get_stakers(
     storage: &dyn Storage,
     querier: &QuerierWrapper,
+    api: &dyn Api,
     env: &Env,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -61,13 +62,21 @@ pub(crate) fn get_stakers(
         .range(storage, start, None, Order::Ascending)
         .take(limit)
         .map(|elem| {
-            let (k, v) = elem?;
+            let (k, staker) = elem?;
             let address: String = String::from_utf8(k)?;
-            let pending_rewards = get_pending_rewards(storage, querier, env, &address, &v)?;
+            let state = STATE.load(storage)?;
+            let pending_rewards = get_pending_rewards(storage, querier, env, &address, &staker)?;
+            let staking_token = get_staking_token(storage, api, &querier)?;
+            let total_balance =
+                staking_token.query_balance(&querier, env.contract.address.clone())?;
+            let balance = staker
+                .share
+                .multiply_ratio(total_balance, state.total_share);
             Ok(StakerResponse {
                 address,
-                share: v.share,
+                share: staker.share,
                 pending_rewards,
+                balance,
             })
         })
         .collect()

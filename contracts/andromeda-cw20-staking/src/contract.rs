@@ -2,7 +2,7 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
+    from_binary, Addr, Api, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
     QuerierWrapper, Response, Storage, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -281,17 +281,10 @@ fn execute_unstake_tokens(
     info: MessageInfo,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    let config = CONFIG.load(deps.storage)?;
     let sender = info.sender.as_str();
 
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
-    let staking_token_address =
-        config
-            .staking_token
-            .get_address(deps.api, &deps.querier, mission_contract)?;
+    let staking_token = get_staking_token(deps.storage, deps.api, &deps.querier)?;
 
-    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
     let total_balance = staking_token.query_balance(&deps.querier, env.contract.address.clone())?;
 
     let staker = STAKERS.may_load(deps.storage, sender)?;
@@ -566,6 +559,24 @@ fn update_staker_reward_info(
     staker_reward_info.pending_rewards += Decimal256::from_uint256(rewards);
 }
 
+pub(crate) fn get_staking_token(
+    storage: &dyn Storage,
+    api: &dyn Api,
+    querier: &QuerierWrapper,
+) -> Result<AssetInfo, ContractError> {
+    let contract = ADOContract::default();
+    let config = CONFIG.load(storage)?;
+
+    let mission_contract = contract.get_mission_contract(storage)?;
+    let staking_token_address = config
+        .staking_token
+        .get_address(api, querier, mission_contract)?;
+
+    let staking_token = AssetInfo::cw20(api.addr_validate(&staking_token_address)?);
+
+    Ok(staking_token)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
@@ -590,12 +601,19 @@ fn query_state(deps: Deps) -> Result<State, ContractError> {
 
 fn query_staker(deps: Deps, env: Env, address: String) -> Result<StakerResponse, ContractError> {
     let staker = STAKERS.load(deps.storage, &address)?;
+    let state = STATE.load(deps.storage)?;
     let pending_rewards =
         get_pending_rewards(deps.storage, &deps.querier, &env, &address, &staker)?;
+    let staking_token = get_staking_token(deps.storage, deps.api, &deps.querier)?;
+    let total_balance = staking_token.query_balance(&deps.querier, env.contract.address)?;
+    let balance = staker
+        .share
+        .multiply_ratio(total_balance, state.total_share);
     Ok(StakerResponse {
         address,
         share: staker.share,
         pending_rewards,
+        balance,
     })
 }
 
@@ -639,7 +657,14 @@ fn query_stakers(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<StakerResponse>, ContractError> {
-    get_stakers(deps.storage, &deps.querier, &env, start_after, limit)
+    get_stakers(
+        deps.storage,
+        &deps.querier,
+        deps.api,
+        &env,
+        start_after,
+        limit,
+    )
 }
 
 fn query_timestamp(env: Env) -> u64 {

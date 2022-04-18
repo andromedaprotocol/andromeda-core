@@ -196,8 +196,13 @@ pub struct AllocationState {
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct StakerResponse {
+    /// Address of the staker.
     pub address: String,
+    /// The staker's share of the tokens.
     pub share: Uint128,
+    /// The staker's balance of tokens.
+    pub balance: Uint128,
+    /// The staker's pending rewards represented as [(token_1, amount_1), ..., (token_n, amount_n)]
     pub pending_rewards: Vec<(String, Uint128)>,
 }
 

@@ -844,12 +844,14 @@ fn test_claim_rewards() {
             StakerResponse {
                 address: "user1".to_string(),
                 share: Uint128::new(100),
-                pending_rewards: vec![("native:uusd".to_string(), Uint128::new(66))]
+                pending_rewards: vec![("native:uusd".to_string(), Uint128::new(66))],
+                balance: Uint128::new(200),
             },
             StakerResponse {
                 address: "user2".to_string(),
                 share: Uint128::new(50),
-                pending_rewards: vec![("native:uusd".to_string(), Uint128::new(33))]
+                pending_rewards: vec![("native:uusd".to_string(), Uint128::new(33))],
+                balance: Uint128::new(100),
             },
         ],
         res
@@ -951,12 +953,14 @@ fn test_claim_rewards() {
             StakerResponse {
                 address: "user1".to_string(),
                 share: Uint128::new(100),
-                pending_rewards: vec![("native:uusd".to_string(), Uint128::zero())]
+                pending_rewards: vec![("native:uusd".to_string(), Uint128::zero())],
+                balance: Uint128::new(200),
             },
             StakerResponse {
                 address: "user2".to_string(),
                 share: Uint128::new(50),
-                pending_rewards: vec![("native:uusd".to_string(), Uint128::zero())]
+                pending_rewards: vec![("native:uusd".to_string(), Uint128::zero())],
+                balance: Uint128::new(100),
             },
         ],
         res
@@ -1201,23 +1205,6 @@ fn test_stake_rewards_update() {
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    deps.querier.with_token_balances(&[
-        (
-            &MOCK_STAKING_TOKEN.to_string(),
-            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100 + 50))],
-        ),
-        (
-            // Deposit incentive token
-            &MOCK_INCENTIVE_TOKEN.to_string(),
-            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
-        ),
-        (
-            // Add allocated token.
-            &MOCK_ALLOCATED_TOKEN.to_string(),
-            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
-        ),
-    ]);
-
     // Verify pending rewards updated with query.
     let msg = QueryMsg::Staker {
         address: "user1".to_string(),
@@ -1237,12 +1224,30 @@ fn test_stake_rewards_update() {
                 ("cw20:allocated_token".to_string(), Uint128::new(50)),
                 ("cw20:incentive_token".to_string(), Uint128::new(20)),
                 ("native:uusd".to_string(), Uint128::new(40))
-            ]
+            ],
+            balance: Uint128::new(100),
         },
         res
     );
 
     // Stake 50 more.
+    deps.querier.with_token_balances(&[
+        (
+            &MOCK_STAKING_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100 + 50))],
+        ),
+        (
+            // Deposit incentive token
+            &MOCK_INCENTIVE_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(20))],
+        ),
+        (
+            // Add allocated token.
+            &MOCK_ALLOCATED_TOKEN.to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::new(100))],
+        ),
+    ]);
+
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "user1".to_string(),
         amount: Uint128::new(50),
