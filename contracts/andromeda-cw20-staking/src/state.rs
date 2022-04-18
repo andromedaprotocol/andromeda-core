@@ -66,9 +66,9 @@ pub(crate) fn get_stakers(
             let address: String = String::from_utf8(k)?;
             let state = STATE.load(storage)?;
             let pending_rewards = get_pending_rewards(storage, querier, env, &address, &staker)?;
-            let staking_token = get_staking_token(storage, api, &querier)?;
+            let staking_token = get_staking_token(storage, api, querier)?;
             let total_balance =
-                staking_token.query_balance(&querier, env.contract.address.clone())?;
+                staking_token.query_balance(querier, env.contract.address.clone())?;
             let balance = staker
                 .share
                 .multiply_ratio(total_balance, state.total_share);
