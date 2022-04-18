@@ -9,7 +9,7 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use crate::{
     contract::{execute, instantiate, query},
     state::{
-        Config, Staker, StakerRewardInfo, State, CONFIG, REWARD_TOKENS, STAKERS,
+        Config, Staker, StakerRewardInfo, State, CONFIG, MAX_REWARD_TOKENS, REWARD_TOKENS, STAKERS,
         STAKER_REWARD_INFOS, STATE,
     },
     testing::mock_querier::mock_dependencies_custom,
@@ -83,6 +83,7 @@ fn test_instantiate() {
             staking_token: AndrAddress {
                 identifier: MOCK_STAKING_TOKEN.to_owned()
             },
+            number_of_reward_tokens: 3,
         },
         CONFIG.load(deps.as_ref().storage).unwrap()
     );
@@ -142,6 +143,29 @@ fn test_instantiate() {
             total_share: Uint128::zero(),
         },
         STATE.load(deps.as_ref().storage).unwrap()
+    );
+}
+
+#[test]
+fn test_instantiate_exceed_max() {
+    let mut deps = mock_dependencies(&[]);
+
+    let mut reward_tokens: Vec<RewardTokenUnchecked> = vec![];
+
+    for i in 0..MAX_REWARD_TOKENS + 1 {
+        reward_tokens.push(RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::cw20(format!("token{}", i)),
+            allocation_config: None,
+        });
+    }
+
+    let res = init(deps.as_mut(), Some(reward_tokens));
+
+    assert_eq!(
+        ContractError::MaxRewardTokensExceeded {
+            max: MAX_REWARD_TOKENS
+        },
+        res.unwrap_err()
     );
 }
 
@@ -1590,4 +1614,37 @@ fn test_add_reward_token_unauthorized() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_add_reward_token_exceeds_max() {
+    let mut deps = mock_dependencies(&[]);
+
+    let mut reward_tokens: Vec<RewardTokenUnchecked> = vec![];
+
+    for i in 0..MAX_REWARD_TOKENS {
+        reward_tokens.push(RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::cw20(format!("token{}", i)),
+            allocation_config: None,
+        });
+    }
+
+    let _res = init(deps.as_mut(), Some(reward_tokens)).unwrap();
+
+    let msg = ExecuteMsg::AddRewardToken {
+        reward_token: RewardTokenUnchecked {
+            asset_info: AssetInfoUnchecked::cw20(MOCK_INCENTIVE_TOKEN),
+            allocation_config: None,
+        },
+    };
+    let info = mock_info("owner", &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::MaxRewardTokensExceeded {
+            max: MAX_REWARD_TOKENS
+        },
+        res.unwrap_err()
+    );
 }

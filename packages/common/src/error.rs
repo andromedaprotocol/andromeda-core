@@ -310,6 +310,9 @@ pub enum ContractError {
 
     #[error("Reward increase must be less than 1")]
     InvalidRewardIncrease {},
+
+    #[error("Max of {max} for reward tokens is exceeded")]
+    MaxRewardTokensExceeded { max: u32 },
 }
 
 impl From<Cw20ContractError> for ContractError {

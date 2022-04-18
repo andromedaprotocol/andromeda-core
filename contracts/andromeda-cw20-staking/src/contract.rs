@@ -13,8 +13,8 @@ use std::str::FromStr;
 use crate::{
     allocated_rewards::update_allocated_index,
     state::{
-        get_stakers, Config, Staker, StakerRewardInfo, State, CONFIG, REWARD_TOKENS, STAKERS,
-        STAKER_REWARD_INFOS, STATE,
+        get_stakers, Config, Staker, StakerRewardInfo, State, CONFIG, MAX_REWARD_TOKENS,
+        REWARD_TOKENS, STAKERS, STAKER_REWARD_INFOS, STATE,
     },
 };
 use ado_base::ADOContract;
@@ -39,6 +39,12 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let additional_reward_tokens = if let Some(additional_rewards) = msg.additional_rewards {
+        require(
+            additional_rewards.len() <= MAX_REWARD_TOKENS as usize,
+            ContractError::MaxRewardTokensExceeded {
+                max: MAX_REWARD_TOKENS,
+            },
+        )?;
         let staking_token = AssetInfoUnchecked::cw20(msg.staking_token.identifier.to_lowercase());
         let staking_token_identifier = msg.staking_token.identifier.clone();
         let additional_rewards: Result<Vec<RewardToken>, ContractError> = additional_rewards
@@ -66,6 +72,7 @@ pub fn instantiate(
         deps.storage,
         &Config {
             staking_token: msg.staking_token,
+            number_of_reward_tokens: additional_reward_tokens.len() as u32,
         },
     )?;
     STATE.save(
@@ -168,7 +175,14 @@ fn execute_add_reward_token(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
-    let config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
+    config.number_of_reward_tokens += 1;
+    require(
+        config.number_of_reward_tokens <= MAX_REWARD_TOKENS,
+        ContractError::MaxRewardTokensExceeded {
+            max: MAX_REWARD_TOKENS,
+        },
+    )?;
     let mut reward_token = reward_token.check(env.block.time.seconds(), deps.api)?;
     let reward_token_string = reward_token.to_string();
     require(
@@ -193,8 +207,6 @@ fn execute_add_reward_token(
 
     let reward_token_string = reward_token.to_string();
 
-    REWARD_TOKENS.save(deps.storage, &reward_token_string, &reward_token)?;
-
     let state = STATE.load(deps.storage)?;
     update_global_index(
         &deps.querier,
@@ -205,6 +217,7 @@ fn execute_add_reward_token(
     )?;
 
     REWARD_TOKENS.save(deps.storage, &reward_token_string, &reward_token)?;
+    CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
         .add_attribute("action", "add_reward_token")

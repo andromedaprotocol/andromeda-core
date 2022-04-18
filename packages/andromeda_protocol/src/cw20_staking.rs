@@ -37,7 +37,7 @@ pub enum ExecuteMsg {
     /// Claims any outstanding rewards from the addtional reward tokens.
     ClaimRewards {},
     /// Updates the global reward index for the specified reward tokens or all of the specified ones if
-    /// None. Funds may be sent along with this. Can only be done for non-allocated reward tokens.
+    /// None. Funds may be sent along with this.
     UpdateGlobalIndexes {
         asset_infos: Option<Vec<AssetInfoUnchecked>>,
     },

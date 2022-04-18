@@ -8,6 +8,8 @@ use common::{error::ContractError, mission::AndrAddress};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub const MAX_REWARD_TOKENS: u32 = 10;
+
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const STATE: Item<State> = Item::new("state");
 pub const STAKERS: Map<&str, Staker> = Map::new("stakers");
@@ -23,6 +25,8 @@ pub const STAKER_REWARD_INFOS: Map<(&str, &str), StakerRewardInfo> =
 pub struct Config {
     /// The token accepted for staking.
     pub staking_token: AndrAddress,
+    /// The current number of reward tokens, cannot exceed `MAX_REWARD_TOKENS`.
+    pub number_of_reward_tokens: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
