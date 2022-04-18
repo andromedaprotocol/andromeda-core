@@ -576,6 +576,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::Stakers { start_after, limit } => {
             encode_binary(&query_stakers(deps, env, start_after, limit)?)
         }
+        QueryMsg::Timestamp {} => encode_binary(&query_timestamp(env)),
     }
 }
 
@@ -639,6 +640,10 @@ fn query_stakers(
     limit: Option<u32>,
 ) -> Result<Vec<StakerResponse>, ContractError> {
     get_stakers(deps.storage, &deps.querier, &env, start_after, limit)
+}
+
+fn query_timestamp(env: Env) -> u64 {
+    env.block.time.seconds()
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
