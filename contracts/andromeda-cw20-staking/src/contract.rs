@@ -2,8 +2,8 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, Addr, Api, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, Response, Storage, Uint128,
+    attr, from_binary, Addr, Api, Attribute, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Order, QuerierWrapper, Response, Storage, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -426,6 +426,7 @@ fn update_global_indexes(
 
     let asset_infos = asset_infos.unwrap_or(all_assets);
 
+    let mut attributes: Vec<Attribute> = vec![attr("action", "update_global_indexes")];
     for asset_info in asset_infos {
         let asset_info_string = asset_info.to_string();
         let reward_token = REWARD_TOKENS.may_load(storage, &asset_info_string)?;
@@ -443,12 +444,14 @@ fn update_global_indexes(
                     &state,
                     &mut reward_token,
                 )?;
-                REWARD_TOKENS.save(storage, &asset_info_string, &reward_token)?
+                REWARD_TOKENS.save(storage, &asset_info_string, &reward_token)?;
+
+                attributes.push(attr(asset_info_string, reward_token.index.to_string()));
             }
         }
     }
 
-    Ok(Response::new().add_attribute("action", "update_global_indexes"))
+    Ok(Response::new().add_attributes(attributes))
 }
 
 fn update_global_index(

@@ -517,7 +517,10 @@ fn test_update_global_indexes() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
-        Response::new().add_attribute("action", "update_global_indexes"),
+        Response::new()
+            .add_attribute("action", "update_global_indexes")
+            .add_attribute("cw20:incentive_token", "0.2")
+            .add_attribute("native:uusd", "0.4"),
         res
     );
 
@@ -594,7 +597,9 @@ fn test_update_global_indexes_selective() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
-        Response::new().add_attribute("action", "update_global_indexes"),
+        Response::new()
+            .add_attribute("action", "update_global_indexes")
+            .add_attribute("native:uusd", "0.4"),
         res
     );
 
@@ -715,7 +720,9 @@ fn test_update_global_indexes_cw20_deposit() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
-        Response::new().add_attribute("action", "update_global_indexes"),
+        Response::new()
+            .add_attribute("action", "update_global_indexes")
+            .add_attribute("cw20:incentive_token", "0.2"),
         res
     );
 
