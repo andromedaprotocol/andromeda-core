@@ -166,7 +166,9 @@ impl fmt::Display for RewardToken {
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct AllocationInfo {
+    /// The allocation config, this is immutable.
     pub config: AllocationConfig,
+    /// The allocation state, this is mutable and changes as time goes on.
     pub state: AllocationState,
 }
 
