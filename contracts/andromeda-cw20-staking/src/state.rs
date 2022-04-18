@@ -1,5 +1,5 @@
 use cosmwasm_bignumber::Decimal256;
-use cosmwasm_std::{Order, Storage, Uint128};
+use cosmwasm_std::{Env, Order, QuerierWrapper, Storage, Uint128};
 use cw_storage_plus::{Bound, Item, Map};
 
 use crate::contract::get_pending_rewards;
@@ -49,6 +49,8 @@ const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 pub(crate) fn get_stakers(
     storage: &dyn Storage,
+    querier: &QuerierWrapper,
+    env: &Env,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<StakerResponse>, ContractError> {
@@ -61,7 +63,7 @@ pub(crate) fn get_stakers(
         .map(|elem| {
             let (k, v) = elem?;
             let address: String = String::from_utf8(k)?;
-            let pending_rewards = get_pending_rewards(storage, &address, &v)?;
+            let pending_rewards = get_pending_rewards(storage, querier, env, &address, &v)?;
             Ok(StakerResponse {
                 address,
                 share: v.share,

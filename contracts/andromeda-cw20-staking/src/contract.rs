@@ -169,7 +169,7 @@ fn execute_add_reward_token(
         ContractError::Unauthorized {},
     )?;
     let config = CONFIG.load(deps.storage)?;
-    let reward_token = reward_token.check(env.block.time.seconds(), deps.api)?;
+    let mut reward_token = reward_token.check(env.block.time.seconds(), deps.api)?;
     let reward_token_string = reward_token.to_string();
     require(
         !REWARD_TOKENS.has(deps.storage, &reward_token_string),
@@ -197,13 +197,14 @@ fn execute_add_reward_token(
 
     let state = STATE.load(deps.storage)?;
     update_global_index(
-        deps.storage,
         &deps.querier,
         env.block.time.seconds(),
         env.contract.address,
         &state,
-        reward_token.asset_info,
+        &mut reward_token,
     )?;
+
+    REWARD_TOKENS.save(deps.storage, &reward_token_string, &reward_token)?;
 
     Ok(Response::new()
         .add_attribute("action", "add_reward_token")
@@ -432,71 +433,70 @@ fn update_global_indexes(
 
     let asset_infos = asset_infos.unwrap_or(all_assets);
 
-    for token in asset_infos {
-        update_global_index(
-            storage,
-            querier,
-            current_timestamp,
-            contract_address.clone(),
-            &state,
-            token,
-        )?;
+    for asset_info in asset_infos {
+        let asset_info_string = asset_info.to_string();
+        let reward_token = REWARD_TOKENS.may_load(storage, &asset_info_string)?;
+        match reward_token {
+            None => {
+                return Err(ContractError::InvalidAsset {
+                    asset: asset_info_string.clone(),
+                })
+            }
+            Some(mut reward_token) => {
+                update_global_index(
+                    querier,
+                    current_timestamp,
+                    contract_address.clone(),
+                    &state,
+                    &mut reward_token,
+                )?;
+                REWARD_TOKENS.save(storage, &asset_info_string, &reward_token)?
+            }
+        }
     }
 
     Ok(Response::new().add_attribute("action", "update_global_indexes"))
 }
 
 fn update_global_index(
-    storage: &mut dyn Storage,
     querier: &QuerierWrapper,
     current_timestamp: u64,
     contract_address: Addr,
     state: &State,
-    asset_info: AssetInfo,
+    reward_token: &mut RewardToken,
 ) -> Result<(), ContractError> {
     // In this case there is no point updating the index if no one is staked.
     if state.total_share.is_zero() {
         return Ok(());
     }
 
-    let asset_info_string = asset_info.to_string();
-
-    let reward_token = REWARD_TOKENS.may_load(storage, &asset_info_string)?;
-    match reward_token {
-        None => Err(ContractError::InvalidAsset {
-            asset: asset_info_string.clone(),
-        }),
-        Some(mut reward_token) => {
-            match reward_token.reward_type {
-                RewardType::NonAllocated {
-                    previous_reward_balance,
-                } => {
-                    update_nonallocated_index(
-                        state,
-                        querier,
-                        &mut reward_token,
-                        previous_reward_balance,
-                        contract_address,
-                    )?;
-                }
-                RewardType::Allocated {
-                    allocation_config,
-                    allocation_state,
-                } => {
-                    update_allocated_index(
-                        state.total_share,
-                        &mut reward_token,
-                        allocation_config,
-                        allocation_state,
-                        current_timestamp,
-                    )?;
-                }
-            }
-            REWARD_TOKENS.save(storage, &asset_info_string, &reward_token)?;
-
-            Ok(())
+    match reward_token.reward_type {
+        RewardType::NonAllocated {
+            previous_reward_balance,
+        } => {
+            update_nonallocated_index(
+                state,
+                querier,
+                reward_token,
+                previous_reward_balance,
+                contract_address,
+            )?;
+        }
+        RewardType::Allocated {
+            allocation_config,
+            allocation_state,
+        } => {
+            update_allocated_index(
+                state.total_share,
+                reward_token,
+                allocation_config,
+                allocation_state,
+                current_timestamp,
+            )?;
         }
     }
+
+    Ok(())
 }
 
 /// This approach was inspired by Lido's bluna reward system.
@@ -572,9 +572,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::State {} => encode_binary(&query_state(deps)?),
-        QueryMsg::Staker { address } => encode_binary(&query_staker(deps, address)?),
+        QueryMsg::Staker { address } => encode_binary(&query_staker(deps, env, address)?),
         QueryMsg::Stakers { start_after, limit } => {
-            encode_binary(&query_stakers(deps, start_after, limit)?)
+            encode_binary(&query_stakers(deps, env, start_after, limit)?)
         }
     }
 }
@@ -587,9 +587,10 @@ fn query_state(deps: Deps) -> Result<State, ContractError> {
     Ok(STATE.load(deps.storage)?)
 }
 
-fn query_staker(deps: Deps, address: String) -> Result<StakerResponse, ContractError> {
+fn query_staker(deps: Deps, env: Env, address: String) -> Result<StakerResponse, ContractError> {
     let staker = STAKERS.load(deps.storage, &address)?;
-    let pending_rewards = get_pending_rewards(deps.storage, &address, &staker)?;
+    let pending_rewards =
+        get_pending_rewards(deps.storage, &deps.querier, &env, &address, &staker)?;
     Ok(StakerResponse {
         address,
         share: staker.share,
@@ -601,17 +602,27 @@ fn query_staker(deps: Deps, address: String) -> Result<StakerResponse, ContractE
 /// tuples.
 pub(crate) fn get_pending_rewards(
     storage: &dyn Storage,
+    querier: &QuerierWrapper,
+    env: &Env,
     address: &str,
     staker: &Staker,
 ) -> Result<Vec<(String, Uint128)>, ContractError> {
     let reward_tokens: Vec<RewardToken> = get_reward_tokens(storage)?;
     let mut pending_rewards = vec![];
-    for token in reward_tokens {
+    let state = STATE.load(storage)?;
+    let current_timestamp = env.block.time.seconds();
+    for mut token in reward_tokens {
         let token_string = token.to_string();
         let mut staker_reward_info = STAKER_REWARD_INFOS
             .may_load(storage, (address, &token_string))?
             .unwrap_or_default();
-
+        update_global_index(
+            querier,
+            current_timestamp,
+            env.contract.address.to_owned(),
+            &state,
+            &mut token,
+        )?;
         update_staker_reward_info(staker, &mut staker_reward_info, token);
         pending_rewards.push((
             token_string,
@@ -623,10 +634,11 @@ pub(crate) fn get_pending_rewards(
 
 fn query_stakers(
     deps: Deps,
+    env: Env,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<StakerResponse>, ContractError> {
-    get_stakers(deps.storage, start_after, limit)
+    get_stakers(deps.storage, &deps.querier, &env, start_after, limit)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
