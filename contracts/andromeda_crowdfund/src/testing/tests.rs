@@ -310,7 +310,7 @@ fn test_mint_multiple_successful() {
         },
     ];
 
-    let msg = ExecuteMsg::Mint(mint_msgs.clone());
+    let msg = ExecuteMsg::Mint(mint_msgs);
     let res = execute(deps.as_mut(), mock_env(), mock_info("owner", &[]), msg).unwrap();
 
     assert_eq!(
