@@ -1,10 +1,10 @@
-use crate::mission::AndrAddress;
-use cosmwasm_std::{Coin, Decimal, StdError, Uint128};
+use crate::{ado_base::query_get, error::ContractError, mission::AndrAddress};
+use cosmwasm_std::{to_binary, Addr, Api, Coin, Decimal, QuerierWrapper, StdError, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub enum Value {
-    Raw(Primitive),
+pub enum Value<T> {
+    Raw(T),
     Pointer(PrimitivePointer),
 }
 
@@ -14,7 +14,95 @@ pub struct PrimitivePointer {
 }
 
 impl PrimitivePointer {
-    pub fn get_value(&self, mission_address: Option<String>) {}
+    pub(crate) fn get_value(
+        self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        mission_address: Option<Addr>,
+    ) -> Result<Option<Primitive>, ContractError> {
+        let primitive_address = self.address.get_address(api, querier, mission_address)?;
+        let key = self
+            .key
+            .map(|k| to_binary(&k))
+            // Flip Option<Result> to Result<Option>
+            .map_or(Ok(None), |v| v.map(Some));
+
+        let res: Result<GetValueResponse, ContractError> =
+            query_get(key?, primitive_address, querier);
+
+        match res {
+            Err(_) => Ok(None),
+            Ok(res) => Ok(Some(res.value)),
+        }
+    }
+}
+
+impl<T> Value<T> {
+    pub(crate) fn get_value(
+        self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        mission_address: Option<Addr>,
+        func: fn(Primitive) -> Result<T, StdError>,
+    ) -> Result<Option<T>, ContractError> {
+        match self {
+            Value::Raw(value) => Ok(Some(value)),
+            Value::Pointer(pointer) => {
+                let primitive = pointer.get_value(api, querier, mission_address)?;
+                if let Some(primitive) = primitive {
+                    Ok(Some(func(primitive)?))
+                } else {
+                    Ok(None)
+                }
+            }
+        }
+    }
+}
+
+// Idea: impl a 'get' funciton for each one that calls the requisite try_get_blah function. This
+// would abstract needing to deal with those functions and the primitive pointer.
+impl Value<String> {
+    pub fn get(
+        self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        mission_address: Option<Addr>,
+    ) -> Result<Option<String>, ContractError> {
+        self.get_value(api, querier, mission_address, |p| p.try_get_string())
+    }
+}
+
+impl Value<Uint128> {
+    pub fn get(
+        self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        mission_address: Option<Addr>,
+    ) -> Result<Option<Uint128>, ContractError> {
+        self.get_value(api, querier, mission_address, |p| p.try_get_uint128())
+    }
+}
+
+impl Value<Coin> {
+    pub fn get(
+        self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        mission_address: Option<Addr>,
+    ) -> Result<Option<Coin>, ContractError> {
+        self.get_value(api, querier, mission_address, |p| p.try_get_coin())
+    }
+}
+
+impl Value<Vec<Primitive>> {
+    pub fn get(
+        self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        mission_address: Option<Addr>,
+    ) -> Result<Option<Vec<Primitive>>, ContractError> {
+        self.get_value(api, querier, mission_address, |p| p.try_get_vec())
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
