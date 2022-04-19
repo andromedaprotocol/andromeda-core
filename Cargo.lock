@@ -95,6 +95,7 @@ dependencies = [
  "ado-base",
  "andromeda-protocol",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
