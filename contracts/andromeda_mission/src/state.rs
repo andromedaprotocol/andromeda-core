@@ -1,4 +1,4 @@
-use andromeda_protocol::mission::MissionComponent;
+use andromeda_protocol::mission::{ComponentAddress, MissionComponent};
 use common::{
     ado_base::{AndromedaMsg, ExecuteMsg},
     error::ContractError,
@@ -32,6 +32,28 @@ pub fn load_component_addresses(storage: &dyn Storage) -> Result<Vec<Addr>, Cont
         .range(storage, min, None, Order::Ascending)
         .flatten()
         .map(|(_vec, addr)| addr)
+        .collect();
+
+    Ok(addresses)
+}
+
+pub fn load_component_addresses_with_name(
+    storage: &dyn Storage,
+) -> Result<Vec<ComponentAddress>, ContractError> {
+    let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
+    let addresses: Vec<ComponentAddress> = ADO_ADDRESSES
+        .range(storage, min, None, Order::Ascending)
+        .flatten()
+        .map(|(vec, addr)| {
+            let name = match String::from_utf8(vec) {
+                Ok(v) => v,
+                Err(e) => panic!("Invalid Mission component name: {}", e),
+            };
+            ComponentAddress {
+                name,
+                address: addr.to_string(),
+            }
+        })
         .collect();
 
     Ok(addresses)

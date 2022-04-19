@@ -34,7 +34,7 @@ pub fn instantiate(
     let resp = contract.instantiate(
         deps.storage,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
             ado_type: "wrapped_cw721".to_string(),
             operators: None,
@@ -59,6 +59,7 @@ pub fn instantiate(
                 1,
                 encode_binary(&instantiate_msg)?,
                 "cw721".to_string(),
+                info.sender.to_string(),
             )?;
             msgs.push(msg);
         }
