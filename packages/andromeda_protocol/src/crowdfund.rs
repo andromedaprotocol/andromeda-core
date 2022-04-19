@@ -20,7 +20,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Mints a new token to be sold in a future sale. Only possible when the sale is not ongoing.
-    Mint(Box<MintMsg<TokenExtension>>),
+    Mint(Vec<MintMsg<TokenExtension>>),
     /// Starts the sale if one is not already ongoing.
     StartSale {
         /// When the sale ends.

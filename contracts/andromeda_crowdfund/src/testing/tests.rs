@@ -1,5 +1,5 @@
 use crate::{
-    contract::{execute, instantiate, query},
+    contract::{execute, instantiate, query, MAX_MINT_LIMIT},
     state::{Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, SALE_CONDUCTED, STATE},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_CONDITIONS_NOT_MET_CONTRACT,
@@ -135,7 +135,7 @@ fn test_mint_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
 
-    let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+    let msg = ExecuteMsg::Mint(vec![MintMsg {
         token_id: "token_id".to_string(),
         owner: mock_env().contract.address.to_string(),
         token_uri: None,
@@ -148,7 +148,7 @@ fn test_mint_unauthorized() {
             archived: false,
             pricing: None,
         },
-    }));
+    }]);
     let info = mock_info("not_owner", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -160,7 +160,7 @@ fn test_mint_owner_not_crowdfund() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
 
-    let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+    let msg = ExecuteMsg::Mint(vec![MintMsg {
         token_id: "token_id".to_string(),
         owner: "not_crowdfund".to_string(),
         token_uri: None,
@@ -173,7 +173,7 @@ fn test_mint_owner_not_crowdfund() {
             archived: false,
             pricing: None,
         },
-    }));
+    }]);
     let info = mock_info("owner", &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -272,6 +272,103 @@ fn test_mint_successful() {
     );
 
     assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, "token_id"));
+}
+
+#[test]
+fn test_mint_multiple_successful() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    let mint_msgs = vec![
+        MintMsg {
+            token_id: "token_id1".to_string(),
+            owner: mock_env().contract.address.to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                name: "name1".to_string(),
+                publisher: "publisher".to_string(),
+                description: None,
+                transfer_agreement: None,
+                metadata: None,
+                archived: false,
+                pricing: None,
+            },
+        },
+        MintMsg {
+            token_id: "token_id2".to_string(),
+            owner: mock_env().contract.address.to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                name: "name2".to_string(),
+                publisher: "publisher".to_string(),
+                description: None,
+                transfer_agreement: None,
+                metadata: None,
+                archived: false,
+                pricing: None,
+            },
+        },
+    ];
+
+    let msg = ExecuteMsg::Mint(mint_msgs.clone());
+    let res = execute(deps.as_mut(), mock_env(), mock_info("owner", &[]), msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "mint")
+            .add_attribute("action", "mint")
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
+                msg: encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msgs[0].clone()))).unwrap(),
+                funds: vec![],
+            })
+            .add_message(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
+                msg: encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msgs[1].clone()))).unwrap(),
+                funds: vec![],
+            }),
+        res
+    );
+
+    assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, "token_id1"));
+    assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, "token_id2"));
+}
+
+#[test]
+fn test_mint_multiple_exceeds_limit() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    let mint_msg = MintMsg {
+        token_id: "token_id1".to_string(),
+        owner: mock_env().contract.address.to_string(),
+        token_uri: None,
+        extension: TokenExtension {
+            name: "name1".to_string(),
+            publisher: "publisher".to_string(),
+            description: None,
+            transfer_agreement: None,
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    };
+
+    let mut mint_msgs: Vec<MintMsg<TokenExtension>> = vec![];
+
+    for _ in 0..MAX_MINT_LIMIT + 1 {
+        mint_msgs.push(mint_msg.clone());
+    }
+
+    let msg = ExecuteMsg::Mint(mint_msgs.clone());
+    let res = execute(deps.as_mut(), mock_env(), mock_info("owner", &[]), msg);
+
+    assert_eq!(
+        ContractError::TooManyMintMessages {
+            limit: MAX_MINT_LIMIT
+        },
+        res.unwrap_err()
+    );
 }
 
 #[test]
@@ -782,7 +879,7 @@ fn test_end_sale_not_expired() {
 }
 
 fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+    let msg = ExecuteMsg::Mint(vec![MintMsg {
         token_id: token_id.into(),
         owner: mock_env().contract.address.to_string(),
         token_uri: None,
@@ -795,7 +892,7 @@ fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, Contract
             archived: false,
             pricing: None,
         },
-    }));
+    }]);
     execute(deps, mock_env(), mock_info("owner", &[]), msg)
 }
 
