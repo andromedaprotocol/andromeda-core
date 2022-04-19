@@ -332,7 +332,7 @@ mod tests {
             id: 1,
             reply_on: ReplyOn::Always,
             msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                admin: None,
+                admin: Some("sender".to_string()),
                 code_id: 4,
                 msg: encode_binary(&cw721_insantiate_msg).unwrap(),
                 funds: vec![],
