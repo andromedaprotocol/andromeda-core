@@ -11,7 +11,6 @@ use andromeda_protocol::{
 };
 use base64::decode;
 use common::parse_message;
-use convert_base::Convert;
 use cw2::{get_contract_version, set_contract_version};
 use std::{collections::btree_set::Union, convert::TryFrom};
 use terrand;
@@ -22,7 +21,7 @@ use common::{
     error::ContractError,
     merge_sub_msgs, require, Funds,
 };
-use cosmwasm_std::{attr, entry_point, from_binary, to_binary};
+use cosmwasm_std::{attr, entry_point, from_binary, to_binary, StdError};
 use cosmwasm_std::{
     has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
     QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
@@ -34,7 +33,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const TERRAND_ADDRESS_MAINNET: &str = "terra1s90fm6hmh5n9drvucvv076ldemlqhe032qtjdq";
 const TERRAND_ADDRESS_TESTNET: &str = "terra1a62jxn3hh54fa5slan4dkd7u6v4nzgz3pjhygm";
 
-pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
+pub const MOCK_TOKEN_CONTRACT: &str = "cw721_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 
@@ -51,6 +50,8 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CW721_CONTRACT.save(deps.storage, &msg.andromeda_cw721_contract)?;
     // Set initial status to false since there's nothing to buy upon instantiation
+    let new_list: Vec<String> = Vec::new();
+    LIST.save(deps.storage, &new_list)?;
     STATUS.save(deps.storage, &false)?;
     ADOContract::default().instantiate(
         deps.storage,
@@ -165,9 +166,11 @@ fn execute_mint(
     info: MessageInfo,
     mint_msg: Box<MintMsg<TokenExtension>>,
 ) -> Result<Response, ContractError> {
-    let mut list = LIST.load(deps.storage)?;
     let status = STATUS.load(deps.storage)?;
+    let mut list = LIST.load(deps.storage)?;
+
     let contract = ADOContract::default();
+
     // check authority
     require(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -176,9 +179,10 @@ fn execute_mint(
     // Can only mint when in "refill" mode, and that's when status is set to false.
     require(status == false, ContractError::NotInRefillMode {})?;
     let config = CW721_CONTRACT.load(deps.storage)?;
-    println!("1");
     // Add to list of NFTs
     list.push(mint_msg.clone().token_id);
+
+    LIST.save(deps.storage, &list).unwrap();
 
     let mission_contract = contract.get_mission_contract(deps.storage)?;
     let contract_addr = config.get_address(deps.api, &deps.querier, mission_contract)?;
@@ -233,7 +237,11 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
     let ran_vec: Vec<u64> = random_vector.iter().map(|x| *x as u64).collect();
     // Concatinating the elements of the random number would yield an unworkably large number
     // So I opted for the sum. Still random and large enough to work with modulus of list's length
-    let random_number: u64 = ran_vec.iter().sum();
+    let mut random_number: u64 = ran_vec.iter().sum();
+    // In case the random number is smaller than the number of NFTs
+    while random_number < n_of_nfts as u64 {
+        random_number *= 2;
+    }
     // Use modulus to get a random index of the NFTs list
     let index = random_number as usize % n_of_nfts;
     // Select NFT using index
@@ -321,50 +329,6 @@ mod tests {
             },
         }));
         execute(deps, mock_env(), mock_info("owner", &[]), msg)
-    }
-
-    #[test]
-    fn test_mint_successful() {
-        let mut deps = mock_dependencies_custom(&[]);
-        let env = mock_env();
-        let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
-        };
-        instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        let res = mint(deps.as_mut(), "token_id").unwrap();
-
-        let mint_msg = Box::new(MintMsg {
-            token_id: "token_id".to_string(),
-            owner: mock_env().contract.address.to_string(),
-            token_uri: None,
-            extension: TokenExtension {
-                name: "name".to_string(),
-                publisher: "publisher".to_string(),
-                description: None,
-                transfer_agreement: None,
-                metadata: None,
-                archived: false,
-                pricing: None,
-            },
-        });
-
-        assert_eq!(
-            Response::new()
-                .add_attribute("action", "mint")
-                .add_message(WasmMsg::Execute {
-                    contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
-                    msg: encode_binary(&Cw721ExecuteMsg::Mint(mint_msg)).unwrap(),
-                    funds: vec![],
-                }),
-            res
-        );
-        let list = LIST.load(&deps.storage).unwrap();
-
-        assert_eq!(list.contains(&"token_id".to_string()), true);
     }
 
     #[test]
@@ -521,6 +485,50 @@ mod tests {
         assert_eq!(err, ContractError::Unauthorized {});
     }
     #[test]
+    fn test_mint_successful() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            andromeda_cw721_contract: AndrAddress {
+                identifier: "cw721_contract".to_string(),
+            },
+        };
+        instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let res = mint(deps.as_mut(), "token_id").unwrap();
+
+        let mint_msg = Box::new(MintMsg {
+            token_id: "token_id".to_string(),
+            owner: mock_env().contract.address.to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                name: "name".to_string(),
+                publisher: "publisher".to_string(),
+                description: None,
+                transfer_agreement: None,
+                metadata: None,
+                archived: false,
+                pricing: None,
+            },
+        });
+
+        assert_eq!(
+            Response::new()
+                .add_attribute("action", "mint")
+                .add_message(WasmMsg::Execute {
+                    contract_addr: MOCK_TOKEN_CONTRACT.to_owned(),
+                    msg: encode_binary(&Cw721ExecuteMsg::Mint(mint_msg)).unwrap(),
+                    funds: vec![],
+                }),
+            res
+        );
+        let list = LIST.load(&deps.storage).unwrap();
+
+        assert_eq!(list.contains(&"token_id".to_string()), true);
+    }
+
+    #[test]
     fn test_mint_unauthorized() {
         let mut deps = mock_dependencies(&[]);
         let env = mock_env();
@@ -551,6 +559,38 @@ mod tests {
 
         assert_eq!(ContractError::Unauthorized {}, res);
     }
+    #[test]
+    fn test_mint_wrong_status() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            andromeda_cw721_contract: AndrAddress {
+                identifier: "cw721_contract".to_string(),
+            },
+        };
+        instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let info = mock_info("owner", &[]);
+        execute_switch_status(deps.as_mut(), info).unwrap();
+        let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+            token_id: "token_id".to_string(),
+            owner: mock_env().contract.address.to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                name: "name".to_string(),
+                publisher: "publisher".to_string(),
+                description: None,
+                transfer_agreement: None,
+                metadata: None,
+                archived: false,
+                pricing: None,
+            },
+        }));
+        let info = mock_info("owner", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+
+        assert_eq!(ContractError::NotInRefillMode {}, res);
+    }
 
     #[test]
     fn test_buy_refill() {
@@ -570,8 +610,7 @@ mod tests {
             recipient: Recipient::Addr("me".to_string()),
         };
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        println!("works here");
-        let info = mock_info("buyer", &[]);
+        let info = mock_info("owner", &[]);
 
         let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
             token_id: "token_id".to_string(),
@@ -593,5 +632,126 @@ mod tests {
         let msg = ExecuteMsg::Buy {};
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(err, ContractError::Refilling {});
+    }
+    #[test]
+    fn test_buy_insufficient_funds() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            andromeda_cw721_contract: AndrAddress {
+                identifier: "cw721_contract".to_string(),
+            },
+        };
+        instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let info = mock_info("owner", &[]);
+        let msg = ExecuteMsg::SaleDetails {
+            price: coin(10, "uusd"),
+            max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+            recipient: Recipient::Addr("me".to_string()),
+        };
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let info = mock_info("owner", &[]);
+
+        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
+            token_id: "token_id".to_string(),
+            owner: "not_crowdfund".to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                name: "name".to_string(),
+                publisher: "publisher".to_string(),
+                description: None,
+                transfer_agreement: None,
+                metadata: None,
+                archived: false,
+                pricing: None,
+            },
+        }));
+        execute(deps.as_mut(), mock_env(), info, mint_msg).unwrap();
+        // Sets status to true, allowing purchasing
+        let info = mock_info("owner", &[]);
+        execute_switch_status(deps.as_mut(), info).unwrap();
+
+        let info = mock_info("anyone", &[coin(9, "uusd")]);
+        let msg = ExecuteMsg::Buy {};
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(err, ContractError::InsufficientFunds {});
+    }
+    #[test]
+    fn test_buy_wrong_denom() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            andromeda_cw721_contract: AndrAddress {
+                identifier: "cw721_contract".to_string(),
+            },
+        };
+        instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let info = mock_info("owner", &[]);
+        let msg = ExecuteMsg::SaleDetails {
+            price: coin(10, "uusd"),
+            max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+            recipient: Recipient::Addr("me".to_string()),
+        };
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let info = mock_info("owner", &[]);
+
+        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
+            token_id: "token_id".to_string(),
+            owner: "not_crowdfund".to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                name: "name".to_string(),
+                publisher: "publisher".to_string(),
+                description: None,
+                transfer_agreement: None,
+                metadata: None,
+                archived: false,
+                pricing: None,
+            },
+        }));
+        execute(deps.as_mut(), mock_env(), info, mint_msg).unwrap();
+        // Sets status to true, allowing purchasing
+        let info = mock_info("owner", &[]);
+        execute_switch_status(deps.as_mut(), info).unwrap();
+
+        let info = mock_info("anyone", &[coin(10, "euro")]);
+        let msg = ExecuteMsg::Buy {};
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::InvalidFunds {
+                msg: "Only uusd is accepted".to_string(),
+            }
+        );
+    }
+    #[test]
+    fn test_buy_no_nfts() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            andromeda_cw721_contract: AndrAddress {
+                identifier: "cw721_contract".to_string(),
+            },
+        };
+        instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let info = mock_info("owner", &[]);
+        let msg = ExecuteMsg::SaleDetails {
+            price: coin(10, "uusd"),
+            max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+            recipient: Recipient::Addr("me".to_string()),
+        };
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        // Sets status to true, allowing purchasing
+        let info = mock_info("owner", &[]);
+        execute_switch_status(deps.as_mut(), info).unwrap();
+
+        let info = mock_info("anyone", &[coin(10, "euro")]);
+        let msg = ExecuteMsg::Buy {};
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(err, ContractError::OutOfNFTs {});
     }
 }
