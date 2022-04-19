@@ -192,12 +192,7 @@ fn execute_deposit(
         Some(strategy) => {
             let mut deposit_msgs: Vec<SubMsg> = Vec::new();
             for funds in deposited_funds {
-                let recipient_addr = recipient.get_addr(
-                    deps.api,
-                    &deps.querier,
-                    ADOContract::default().get_mission_contract(deps.storage)?,
-                )?;
-                let deposit_msg = strategy.deposit(deps.storage, funds, &recipient_addr)?;
+                let deposit_msg = strategy.deposit(deps.storage, funds, recipient.clone())?;
                 deposit_msgs.push(deposit_msg);
             }
             resp = resp.add_submessages(deposit_msgs)

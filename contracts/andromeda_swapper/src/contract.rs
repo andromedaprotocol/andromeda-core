@@ -35,7 +35,7 @@ pub fn instantiate(
     let resp = contract.instantiate(
         deps.storage,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
             ado_type: "swapper".to_string(),
             operators: None,
@@ -53,6 +53,7 @@ pub fn instantiate(
                 1,
                 instantiate_msg,
                 msg.swapper_impl.name,
+                info.sender.to_string(),
             )?;
             msgs.push(msg);
         }

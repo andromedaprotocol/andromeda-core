@@ -304,6 +304,9 @@ pub enum ContractError {
 
     #[error("Token not available")]
     TokenNotAvailable {},
+
+    #[error("Too many mint messages, limit is {limit}")]
+    TooManyMintMessages { limit: u32 },
 }
 
 impl From<Cw20ContractError> for ContractError {
