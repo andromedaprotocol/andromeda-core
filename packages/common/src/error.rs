@@ -301,6 +301,9 @@ pub enum ContractError {
 
     #[error("All tokens purchased")]
     AllTokensPurchased {},
+
+    #[error("Token not available")]
+    TokenNotAvailable {},
 }
 
 impl From<Cw20ContractError> for ContractError {

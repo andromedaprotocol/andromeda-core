@@ -98,6 +98,9 @@ pub fn execute(
         ExecuteMsg::Purchase { number_of_tokens } => {
             execute_purchase(deps, env, info, number_of_tokens)
         }
+        ExecuteMsg::PurchaseByTokenId { token_id } => {
+            execute_purchase_by_token_id(deps, env, info, token_id)
+        }
         ExecuteMsg::ClaimRefund {} => execute_claim_refund(deps, env, info),
         ExecuteMsg::EndSale { limit } => execute_end_sale(deps, env, limit),
     }
@@ -200,6 +203,56 @@ fn execute_start_sale(
         .add_attribute("max_amount_per_wallet", max_amount_per_wallet.to_string()))
 }
 
+fn execute_purchase_by_token_id(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
+    let state = STATE.may_load(deps.storage)?;
+
+    // CHECK :: That there is an ongoing sale.
+    require(state.is_some(), ContractError::NoOngoingSale {})?;
+
+    let mut state = state.unwrap();
+    require(
+        !state.expiration.is_expired(&env.block),
+        ContractError::NoOngoingSale {},
+    )?;
+
+    let mut purchases = PURCHASES
+        .may_load(deps.storage, &sender)?
+        .unwrap_or_default();
+
+    require(
+        AVAILABLE_TOKENS.has(deps.storage, &token_id),
+        ContractError::TokenNotAvailable {},
+    )?;
+
+    let max_possible = state.max_amount_per_wallet - purchases.len() as u32;
+
+    // CHECK :: The user is able to purchase these without going over the limit.
+    require(max_possible > 0, ContractError::PurchaseLimitReached {})?;
+
+    purchase_tokens(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        vec![token_id.clone()],
+        &info,
+        &mut state,
+        &mut purchases,
+    )?;
+
+    STATE.save(deps.storage, &state)?;
+    PURCHASES.save(deps.storage, &sender, &purchases)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "purchase")
+        .add_attribute("token_id", token_id))
+}
+
 fn execute_purchase(
     deps: DepsMut,
     env: Env,
@@ -233,64 +286,16 @@ fn execute_purchase(
     // The number of token ids here is equal to min(number_of_tokens_wanted, num_tokens_left).
     let token_ids = get_available_tokens(deps.storage, None, Some(number_of_tokens_wanted))?;
 
-    // CHECK :: There are any tokens left to purchase.
-    require(!token_ids.is_empty(), ContractError::AllTokensPurchased {})?;
-
     let number_of_tokens_purchased = token_ids.len();
 
-    // CHECK :: The user has sent enough funds to cover the base fee (without any taxes).
-    let total_cost = Coin::new(
-        state.price.amount.u128() * number_of_tokens_purchased as u128,
-        state.price.denom.clone(),
-    );
-    require(
-        has_coins(&info.funds, &total_cost),
-        ContractError::InsufficientFunds {},
-    )?;
-
-    let mut total_tax_amount = Uint128::zero();
-
-    // This is the same for each token, so we only need to do it once.
-    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
+    let required_payment = purchase_tokens(
         deps.storage,
         deps.api,
         &deps.querier,
-        sender.to_owned(),
-        Funds::Native(state.price.clone()),
-        encode_binary(&"")?,
-    )?;
-
-    for token_id in token_ids {
-        let remaining_amount = remainder.try_get_coin()?;
-
-        let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
-
-        let purchase = Purchase {
-            token_id: token_id.clone(),
-            tax_amount,
-            msgs: msgs.clone(),
-            purchaser: sender.to_owned(),
-        };
-
-        total_tax_amount += tax_amount;
-
-        state.amount_to_send += remaining_amount.amount;
-        state.amount_sold += Uint128::new(1);
-
-        purchases.push(purchase);
-
-        AVAILABLE_TOKENS.remove(deps.storage, &token_id);
-    }
-
-    // CHECK :: User has sent enough to cover taxes.
-    let required_payment = Coin {
-        denom: state.price.denom.clone(),
-        amount: state.price.amount * Uint128::from(number_of_tokens_purchased as u128)
-            + total_tax_amount,
-    };
-    require(
-        has_coins(&info.funds, &required_payment),
-        ContractError::InsufficientFunds {},
+        token_ids,
+        &info,
+        &mut state,
+        &mut purchases,
     )?;
 
     PURCHASES.save(deps.storage, &sender, &purchases)?;
@@ -321,6 +326,77 @@ fn execute_purchase(
             "number_of_tokens_purchased",
             number_of_tokens_purchased.to_string(),
         ))
+}
+
+fn purchase_tokens(
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    querier: &QuerierWrapper,
+    token_ids: Vec<String>,
+    info: &MessageInfo,
+    state: &mut State,
+    purchases: &mut Vec<Purchase>,
+) -> Result<Coin, ContractError> {
+    // CHECK :: There are any tokens left to purchase.
+    require(!token_ids.is_empty(), ContractError::AllTokensPurchased {})?;
+
+    let number_of_tokens_purchased = token_ids.len();
+
+    // CHECK :: The user has sent enough funds to cover the base fee (without any taxes).
+    let total_cost = Coin::new(
+        state.price.amount.u128() * number_of_tokens_purchased as u128,
+        state.price.denom.clone(),
+    );
+    require(
+        has_coins(&info.funds, &total_cost),
+        ContractError::InsufficientFunds {},
+    )?;
+
+    let mut total_tax_amount = Uint128::zero();
+
+    // This is the same for each token, so we only need to do it once.
+    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
+        storage,
+        api,
+        querier,
+        info.sender.to_string(),
+        Funds::Native(state.price.clone()),
+        encode_binary(&"")?,
+    )?;
+
+    for token_id in token_ids {
+        let remaining_amount = remainder.try_get_coin()?;
+
+        let tax_amount = get_tax_amount(&msgs, state.price.amount, remaining_amount.amount);
+
+        let purchase = Purchase {
+            token_id: token_id.clone(),
+            tax_amount,
+            msgs: msgs.clone(),
+            purchaser: info.sender.to_string(),
+        };
+
+        total_tax_amount += tax_amount;
+
+        state.amount_to_send += remaining_amount.amount;
+        state.amount_sold += Uint128::new(1);
+
+        purchases.push(purchase);
+
+        AVAILABLE_TOKENS.remove(storage, &token_id);
+    }
+
+    // CHECK :: User has sent enough to cover taxes.
+    let required_payment = Coin {
+        denom: state.price.denom.clone(),
+        amount: state.price.amount * Uint128::from(number_of_tokens_purchased as u128)
+            + total_tax_amount,
+    };
+    require(
+        has_coins(&info.funds, &required_payment),
+        ContractError::InsufficientFunds {},
+    )?;
+    Ok(required_payment)
 }
 
 fn execute_claim_refund(

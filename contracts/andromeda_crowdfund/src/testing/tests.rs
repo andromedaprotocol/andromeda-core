@@ -423,6 +423,13 @@ fn test_purchase_sale_not_started() {
     };
 
     let info = mock_info("sender", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    assert_eq!(ContractError::NoOngoingSale {}, res.unwrap_err());
+
+    let msg = ExecuteMsg::PurchaseByTokenId {
+        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+    };
+
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::NoOngoingSale {}, res.unwrap_err());
 }
@@ -431,10 +438,6 @@ fn test_purchase_sale_not_started() {
 fn test_purchase_sale_not_ended() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
-
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: None,
-    };
 
     STATE
         .save(
@@ -453,6 +456,18 @@ fn test_purchase_sale_not_ended() {
         .unwrap();
 
     let info = mock_info("sender", &[]);
+
+    let msg = ExecuteMsg::Purchase {
+        number_of_tokens: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    assert_eq!(ContractError::NoOngoingSale {}, res.unwrap_err());
+
+    let msg = ExecuteMsg::PurchaseByTokenId {
+        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+    };
+
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::NoOngoingSale {}, res.unwrap_err());
 }
@@ -463,10 +478,6 @@ fn test_purchase_no_funds() {
     init(deps.as_mut(), None);
 
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
-
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: None,
-    };
 
     STATE
         .save(
@@ -485,6 +496,16 @@ fn test_purchase_no_funds() {
         .unwrap();
 
     let info = mock_info("sender", &[]);
+
+    let msg = ExecuteMsg::Purchase {
+        number_of_tokens: None,
+    };
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+
+    let msg = ExecuteMsg::PurchaseByTokenId {
+        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+    };
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
 }
@@ -495,10 +516,6 @@ fn test_purchase_wrong_denom() {
     init(deps.as_mut(), None);
 
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
-
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: None,
-    };
 
     STATE
         .save(
@@ -517,6 +534,16 @@ fn test_purchase_wrong_denom() {
         .unwrap();
 
     let info = mock_info("sender", &coins(100, "uluna"));
+
+    let msg = ExecuteMsg::Purchase {
+        number_of_tokens: None,
+    };
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+
+    let msg = ExecuteMsg::PurchaseByTokenId {
+        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+    };
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
 }
@@ -535,10 +562,6 @@ fn test_purchase_not_enough_for_price() {
 
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: None,
-    };
-
     STATE
         .save(
             deps.as_mut().storage,
@@ -556,6 +579,16 @@ fn test_purchase_not_enough_for_price() {
         .unwrap();
 
     let info = mock_info("sender", &coins(50u128, "uusd"));
+
+    let msg = ExecuteMsg::Purchase {
+        number_of_tokens: None,
+    };
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+
+    let msg = ExecuteMsg::PurchaseByTokenId {
+        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+    };
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
 }
@@ -574,10 +607,6 @@ fn test_purchase_not_enough_for_tax() {
 
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
-    let msg = ExecuteMsg::Purchase {
-        number_of_tokens: None,
-    };
-
     STATE
         .save(
             deps.as_mut().storage,
@@ -595,8 +624,118 @@ fn test_purchase_not_enough_for_tax() {
         .unwrap();
 
     let info = mock_info("sender", &coins(100u128, "uusd"));
+
+    let msg = ExecuteMsg::Purchase {
+        number_of_tokens: None,
+    };
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+
+    // Reset the state since state does not roll back on failure in tests like it does in prod.
+    AVAILABLE_TOKENS
+        .save(deps.as_mut().storage, MOCK_TOKENS_FOR_SALE[0], &true)
+        .unwrap();
+    let msg = ExecuteMsg::PurchaseByTokenId {
+        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+    };
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
+}
+
+#[test]
+fn test_purchase_by_token_id_not_available() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let modules = vec![Module {
+        module_type: RATES.to_owned(),
+        address: AndrAddress {
+            identifier: MOCK_RATES_CONTRACT.to_owned(),
+        },
+        is_mutable: false,
+    }];
+    init(deps.as_mut(), Some(modules));
+
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                expiration: Expiration::AtHeight(mock_env().block.height + 1),
+                price: coin(100, "uusd"),
+                min_tokens_sold: Uint128::from(1u128),
+                max_amount_per_wallet: 5,
+                amount_sold: Uint128::zero(),
+                amount_to_send: Uint128::zero(),
+                amount_transferred: Uint128::zero(),
+                recipient: Recipient::Addr("recipient".to_string()),
+            },
+        )
+        .unwrap();
+
+    let info = mock_info("sender", &coins(150, "uusd"));
+
+    let msg = ExecuteMsg::PurchaseByTokenId {
+        token_id: MOCK_TOKENS_FOR_SALE[1].to_owned(),
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::TokenNotAvailable {}, res.unwrap_err());
+}
+
+#[test]
+fn test_purchase_by_token_id() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let modules = vec![Module {
+        module_type: RATES.to_owned(),
+        address: AndrAddress {
+            identifier: MOCK_RATES_CONTRACT.to_owned(),
+        },
+        is_mutable: false,
+    }];
+    init(deps.as_mut(), Some(modules));
+
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
+    mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[1]).unwrap();
+
+    let mut state = State {
+        expiration: Expiration::AtHeight(mock_env().block.height + 1),
+        price: coin(100, "uusd"),
+        min_tokens_sold: Uint128::from(1u128),
+        max_amount_per_wallet: 1,
+        amount_sold: Uint128::zero(),
+        amount_to_send: Uint128::zero(),
+        amount_transferred: Uint128::zero(),
+        recipient: Recipient::Addr("recipient".to_string()),
+    };
+
+    STATE.save(deps.as_mut().storage, &state).unwrap();
+
+    let info = mock_info("sender", &coins(150, "uusd"));
+
+    // Purchase a token.
+    let msg = ExecuteMsg::PurchaseByTokenId {
+        token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+    };
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "purchase")
+            .add_attribute("token_id", MOCK_TOKENS_FOR_SALE[0]),
+        res
+    );
+
+    state.amount_to_send += Uint128::from(90u128);
+    state.amount_sold += Uint128::from(1u128);
+    assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
+
+    assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+
+    // Purchase a second one.
+    let msg = ExecuteMsg::PurchaseByTokenId {
+        token_id: MOCK_TOKENS_FOR_SALE[1].to_owned(),
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::PurchaseLimitReached {}, res.unwrap_err());
 }
 
 #[test]

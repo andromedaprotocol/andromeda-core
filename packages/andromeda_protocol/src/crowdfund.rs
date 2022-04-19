@@ -38,6 +38,10 @@ pub enum ExecuteMsg {
     Purchase {
         number_of_tokens: Option<u32>,
     },
+    /// Purchases the token with the given id.
+    PurchaseByTokenId {
+        token_id: String,
+    },
     /// Allow a user to claim their own refund if the minimum number of tokens are not sold.
     ClaimRefund {},
     /// Ends the ongoing sale by completing `limit` number of operations depending on if the minimum number
