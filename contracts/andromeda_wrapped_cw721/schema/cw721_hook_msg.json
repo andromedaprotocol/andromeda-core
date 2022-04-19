@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cw721HookMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "wrap"
+      ],
+      "properties": {
+        "wrap": {
+          "type": "object",
+          "properties": {
+            "wrapped_token_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "unwrap"
+      ],
+      "properties": {
+        "unwrap": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

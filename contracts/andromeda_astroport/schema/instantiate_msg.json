@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "astroport_factory_contract",
+    "astroport_router_contract",
+    "astroport_staking_contract",
+    "astroport_token_contract"
+  ],
+  "properties": {
+    "astroport_factory_contract": {
+      "type": "string"
+    },
+    "astroport_router_contract": {
+      "type": "string"
+    },
+    "astroport_staking_contract": {
+      "type": "string"
+    },
+    "astroport_token_contract": {
+      "type": "string"
+    }
+  }
+}
