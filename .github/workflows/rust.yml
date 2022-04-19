@@ -48,6 +48,10 @@ jobs:
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
           "${GITHUB_WORKSPACE}/build.sh"
+      - name: Build Schema
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
+          "${GITHUB_WORKSPACE}/build_schema.sh"
       - name: Check contract sizes
         run: |
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
