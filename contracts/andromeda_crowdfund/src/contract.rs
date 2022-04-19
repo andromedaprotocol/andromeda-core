@@ -4,7 +4,7 @@ use crate::state::{
 };
 use ado_base::ADOContract;
 use andromeda_protocol::{
-    crowdfund::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
     rates::get_tax_amount,
 };
@@ -105,7 +105,7 @@ fn execute_mint(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    mint_msgs: Vec<MintMsg<TokenExtension>>,
+    mint_msgs: Vec<CrowdfundMintMsg>,
 ) -> Result<Response, ContractError> {
     require(
         mint_msgs.len() <= MAX_MINT_LIMIT as usize,
@@ -157,8 +157,16 @@ fn mint(
     storage: &mut dyn Storage,
     crowdfund_contract: &str,
     token_contract: String,
-    mint_msg: MintMsg<TokenExtension>,
+    mint_msg: CrowdfundMintMsg,
 ) -> Result<Response, ContractError> {
+    let mint_msg: MintMsg<TokenExtension> = MintMsg {
+        token_id: mint_msg.token_id,
+        owner: mint_msg
+            .owner
+            .unwrap_or_else(|| crowdfund_contract.to_owned()),
+        token_uri: mint_msg.token_uri,
+        extension: mint_msg.extension,
+    };
     // We allow for owners other than the contract, incase the creator wants to set aside a few
     // tokens for some other use, say airdrop, team allocation, etc.  Only those which have the
     // contract as the owner will be available to sell.
