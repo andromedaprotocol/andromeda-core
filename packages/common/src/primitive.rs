@@ -1,6 +1,21 @@
+use crate::mission::AndrAddress;
 use cosmwasm_std::{Coin, Decimal, StdError, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+pub enum Value {
+    Raw(Primitive),
+    Pointer(PrimitivePointer),
+}
+
+pub struct PrimitivePointer {
+    pub address: AndrAddress,
+    pub key: Option<String>,
+}
+
+impl PrimitivePointer {
+    pub fn get_value(&self, mission_address: Option<String>) {}
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
