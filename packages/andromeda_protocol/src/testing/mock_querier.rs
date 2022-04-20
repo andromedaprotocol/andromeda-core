@@ -4,7 +4,7 @@ use common::{
         ownership::ContractOwnerResponse,
         AndromedaQuery,
     },
-    primitive::{GetValueResponse, Primitive},
+    primitive::{GetValueResponse, Primitive, Value},
     Funds,
 };
 
@@ -320,7 +320,7 @@ impl WasmMockQuerier {
             Cw721QueryMsg::NftInfo { token_id } => {
                 let transfer_agreement = if token_id == MOCK_TOKEN_TRANSFER_AGREEMENT {
                     Some(TransferAgreement {
-                        amount: coin(100, "uusd"),
+                        amount: Value::Raw(coin(100, "uusd")),
                         purchaser: "purchaser".to_string(),
                     })
                 } else {

@@ -13,6 +13,7 @@ use common::{
     },
     error::ContractError,
     mission::AndrAddress,
+    primitive::Value,
     Funds,
 };
 
@@ -270,7 +271,7 @@ fn test_agreed_transfer_nft() {
             name: String::default(),
             publisher: creator,
             transfer_agreement: Some(TransferAgreement {
-                amount: agreed_amount.clone(),
+                amount: Value::Raw(agreed_amount.clone()),
                 purchaser: purchaser.to_string(),
             }),
             metadata: None,
@@ -330,7 +331,7 @@ fn test_agreed_transfer_nft_wildcard() {
             name: String::default(),
             publisher: creator,
             transfer_agreement: Some(TransferAgreement {
-                amount: agreed_amount.clone(),
+                amount: Value::Raw(agreed_amount.clone()),
                 purchaser: purchaser.to_string(),
             }),
             metadata: None,
@@ -495,10 +496,10 @@ fn test_transfer_agreement() {
     let env = mock_env();
     let agreement = TransferAgreement {
         purchaser: String::from("purchaser"),
-        amount: Coin {
+        amount: Value::Raw(Coin {
             amount: Uint128::from(100u64),
             denom: "uluna".to_string(),
-        },
+        }),
     };
     init_setup(deps.as_mut(), env.clone(), None);
     mint_token(
@@ -570,10 +571,10 @@ fn test_modules() {
     let env = mock_env();
     let agreement = TransferAgreement {
         purchaser: String::from("purchaser"),
-        amount: Coin {
+        amount: Value::Raw(Coin {
             amount: Uint128::from(100u64),
             denom: "uusd".to_string(),
-        },
+        }),
     };
     init_setup(deps.as_mut(), env.clone(), Some(modules));
     mint_token(
