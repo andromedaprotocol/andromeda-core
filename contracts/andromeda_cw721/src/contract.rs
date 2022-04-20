@@ -167,7 +167,7 @@ fn execute_transfer(
         let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
             deps.storage,
             deps.api,
-            deps.querier,
+            &deps.querier,
             info.sender.to_string(),
             Funds::Native(agreement_amount.clone()),
             encode_binary(&ExecuteMsg::TransferNft {
@@ -191,7 +191,6 @@ fn execute_transfer(
     token.owner = deps.api.addr_validate(&recipient)?;
     token.approvals.clear();
     token.extension.transfer_agreement = None;
-    token.extension.pricing = None;
     contract.tokens.save(deps.storage, &token_id, &token)?;
     Ok(resp
         .add_attribute("action", "transfer")
@@ -359,7 +358,7 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
                 deps.storage,
                 deps.api,
-                deps.querier,
+                &deps.querier,
                 sender,
                 amount,
                 encode_binary(&String::default())?,

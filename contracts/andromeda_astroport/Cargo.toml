@@ -35,3 +35,4 @@ cw-asset = { version = "1.0.2", features = ["legacy"] }
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }
+cosmwasm-schema = "0.16.0"

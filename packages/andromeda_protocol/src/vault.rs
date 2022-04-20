@@ -33,7 +33,7 @@ impl StrategyType {
         &self,
         storage: &dyn Storage,
         funds: Coin,
-        recipient: &str,
+        recipient: Recipient,
     ) -> Result<SubMsg, ContractError> {
         let address = STRATEGY_CONTRACT_ADDRESSES.load(storage, self.to_string());
         match address {
@@ -43,7 +43,7 @@ impl StrategyType {
             Ok(addr) => {
                 let msg = wasm_execute(
                     addr,
-                    &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(to_binary(recipient)?))),
+                    &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(to_binary(&recipient)?))),
                     vec![funds],
                 )?;
                 let sub_msg = SubMsg {

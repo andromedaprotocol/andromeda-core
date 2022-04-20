@@ -173,15 +173,14 @@ fn test_deposit_strategy() {
         strategy: Some(yield_strategy.clone().strategy_type),
     };
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let recipient = Recipient::Addr("depositor".to_string());
 
     let msg = wasm_execute(
         yield_strategy
             .address
             .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
             .unwrap(),
-        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-            to_binary(&"depositor".to_string()).unwrap(),
-        ))),
+        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(to_binary(&recipient).unwrap()))),
         vec![sent_funds],
     )
     .unwrap();
@@ -190,9 +189,7 @@ fn test_deposit_strategy() {
             .address
             .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
             .unwrap(),
-        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-            to_binary(&"depositor".to_string()).unwrap(),
-        ))),
+        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(to_binary(&recipient).unwrap()))),
         vec![extra_sent_funds],
     )
     .unwrap();
@@ -263,7 +260,7 @@ fn test_deposit_strategy_partial_amount() {
             .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
             .unwrap(),
         &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-            to_binary(&"depositor".to_string()).unwrap(),
+            to_binary(&Recipient::Addr("depositor".to_string())).unwrap(),
         ))),
         vec![coin(100, sent_funds.denom.clone())],
     )

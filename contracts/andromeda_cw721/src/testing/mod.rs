@@ -208,7 +208,6 @@ fn test_transfer_nft() {
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     );
 
@@ -276,7 +275,6 @@ fn test_agreed_transfer_nft() {
             }),
             metadata: None,
             archived: false,
-            pricing: None,
         },
     );
 
@@ -412,7 +410,6 @@ fn test_agreed_transfer_nft_wildcard() {
             }),
             metadata: None,
             archived: false,
-            pricing: None,
         },
     );
 
@@ -452,7 +449,6 @@ fn test_archive() {
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     );
 
@@ -494,7 +490,6 @@ fn test_burn() {
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     );
 
@@ -551,7 +546,6 @@ fn test_archived_check() {
             transfer_agreement: None,
             metadata: None,
             archived: true,
-            pricing: None,
         },
     );
 
@@ -590,7 +584,6 @@ fn test_transfer_agreement() {
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     );
 
@@ -665,7 +658,6 @@ fn test_modules() {
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     );
 
@@ -781,7 +773,6 @@ fn test_transfer_with_offer() {
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     );
 

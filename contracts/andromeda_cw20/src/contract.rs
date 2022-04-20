@@ -93,7 +93,7 @@ fn execute_transfer(
     let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
         deps.storage,
         deps.api,
-        deps.querier,
+        &deps.querier,
         info.sender.to_string(),
         Funds::Cw20(Cw20Coin {
             address: env.contract.address.to_string(),
@@ -171,7 +171,7 @@ fn execute_send(
     let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
         deps.storage,
         deps.api,
-        deps.querier,
+        &deps.querier,
         info.sender.to_string(),
         Funds::Cw20(Cw20Coin {
             address: env.contract.address.to_string(),

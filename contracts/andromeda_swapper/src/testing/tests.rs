@@ -63,7 +63,7 @@ fn test_instantiate_swapper_impl_new() {
                 id: 1,
                 reply_on: ReplyOn::Always,
                 msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                    admin: None,
+                    admin: Some("sender".to_string()),
                     code_id: 5,
                     msg: to_binary(&"mock_instantiate_msg").unwrap(),
                     funds: vec![],

@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContractInfoResponse",
+  "type": "object",
+  "required": [
+    "config"
+  ],
+  "properties": {
+    "config": {
+      "$ref": "#/definitions/Config"
+    }
+  },
+  "definitions": {
+    "Config": {
+      "type": "object",
+      "required": [
+        "minter"
+      ],
+      "properties": {
+        "minter": {
+          "description": "The address authorized to mint new receipts",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -95,8 +95,6 @@ pub struct TokenExtension {
     pub metadata: Option<TokenMetadata>,
     /// Whether the token is archived or not
     pub archived: bool,
-    /// The current price listing for the token
-    pub pricing: Option<Coin>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

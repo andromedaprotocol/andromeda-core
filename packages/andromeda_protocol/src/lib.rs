@@ -9,6 +9,7 @@ pub mod cw20;
 pub mod cw721;
 pub mod cw721_offers;
 pub mod factory;
+pub mod lockdrop;
 pub mod mirror_wrapped_cdp;
 pub mod mission;
 pub mod primitive;

@@ -1,4 +1,4 @@
-use crate::cw721::{MintMsg, TokenExtension};
+use crate::cw721::TokenExtension;
 use common::{
     ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     mission::AndrAddress,
@@ -20,7 +20,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Mints a new token to be sold in a future sale. Only possible when the sale is not ongoing.
-    Mint(Box<MintMsg<TokenExtension>>),
+    Mint(Vec<CrowdfundMintMsg>),
     /// Starts the sale if one is not already ongoing.
     StartSale {
         /// When the sale ends.
@@ -30,12 +30,16 @@ pub enum ExecuteMsg {
         /// The minimum amount of tokens sold to go through with the sale.
         min_tokens_sold: Uint128,
         /// The amount of tokens a wallet can purchase, default is 1.
-        max_amount_per_wallet: Option<Uint128>,
+        max_amount_per_wallet: Option<u32>,
         /// The recipient of the funds if the sale met the minimum sold.
         recipient: Recipient,
     },
-    /// Puchases a token in an ongoing sale.
+    /// Puchases tokens in an ongoing sale.
     Purchase {
+        number_of_tokens: Option<u32>,
+    },
+    /// Purchases the token with the given id.
+    PurchaseByTokenId {
         token_id: String,
     },
     /// Allow a user to claim their own refund if the minimum number of tokens are not sold.
@@ -60,4 +64,18 @@ pub enum QueryMsg {
     IsTokenAvailable {
         id: String,
     },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CrowdfundMintMsg {
+    /// Unique ID of the NFT
+    pub token_id: String,
+    /// The owner of the newly minter NFT
+    pub owner: Option<String>,
+    /// Universal resource identifier for this NFT
+    /// Should point to a JSON file that conforms to the ERC721
+    /// Metadata JSON Schema
+    pub token_uri: Option<String>,
+    /// Any custom extension used by this contract
+    pub extension: TokenExtension,
 }
