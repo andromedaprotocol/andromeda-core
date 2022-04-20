@@ -402,16 +402,24 @@ fn test_agreed_transfer_nft_wildcard() {
         TokenExtension {
             description: None,
             name: String::default(),
-            publisher: creator,
-            transfer_agreement: Some(TransferAgreement {
-                amount: Value::Raw(agreed_amount.clone()),
-                purchaser: purchaser.to_string(),
-            }),
+            publisher: creator.clone(),
+            transfer_agreement: None,
             metadata: None,
             archived: false,
         },
     );
 
+    // Update transfer agreement.
+    let msg = ExecuteMsg::TransferAgreement {
+        token_id: token_id.clone(),
+        agreement: Some(TransferAgreement {
+            amount: Value::Raw(agreed_amount.clone()),
+            purchaser: purchaser.to_string(),
+        }),
+    };
+    let _res = execute(deps.as_mut(), mock_env(), mock_info(&creator, &[]), msg).unwrap();
+
+    // Transfer the nft
     let transfer_msg = ExecuteMsg::TransferNft {
         recipient: Addr::unchecked("recipient").to_string(),
         token_id: token_id.clone(),

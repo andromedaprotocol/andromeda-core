@@ -286,8 +286,10 @@ fn execute_update_transfer_agreement(
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
     require(token.owner == info.sender, ContractError::Unauthorized {})?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
-    if let Some(xfer_agreement) = agreement.clone() {
-        deps.api.addr_validate(&xfer_agreement.purchaser)?;
+    if let Some(xfer_agreement) = &agreement {
+        if xfer_agreement.purchaser != "*" {
+            deps.api.addr_validate(&xfer_agreement.purchaser)?;
+        }
     }
 
     token.extension.transfer_agreement = agreement;
