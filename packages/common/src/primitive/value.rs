@@ -177,6 +177,24 @@ mod tests {
     }
 
     #[test]
+    fn test_primitive_pointer_into_value_with_key() {
+        let deps = mock_dependencies_custom(&[]);
+
+        let pointer = PrimitivePointer {
+            address: AndrAddress {
+                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+            },
+            key: Some("String".to_string()),
+        };
+
+        let res = pointer
+            .into_value(deps.as_ref().api, &deps.as_ref().querier, None)
+            .unwrap();
+
+        assert_eq!(Some(Primitive::String("Value".to_string())), res);
+    }
+
+    #[test]
     fn test_primitive_pointer_into_value_non_existing() {
         let deps = mock_dependencies_custom(&[]);
 
