@@ -1,3 +1,4 @@
+use crate::contract::RandQueryMsg::LatestDrand;
 use crate::state::{CW721_CONTRACT, LIST, STATE, STATUS};
 use ado_base::ADOContract;
 use andromeda_protocol::gumball::{LatestRandomResponse, State};
@@ -5,28 +6,24 @@ use andromeda_protocol::{
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
     gumball::{
         ExecuteMsg, InstantiateMsg, NumberOfNFTsResponse, QueryMsg, RandQueryMsg, StateResponse,
+        StatusResponse,
     },
-    rates::get_tax_amount,
-    receipt::Receipt,
 };
 use base64::decode;
 use common::parse_message;
-use cw2::{get_contract_version, set_contract_version};
-use std::{collections::btree_set::Union, convert::TryFrom};
-use terrand;
-
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
-    merge_sub_msgs, require, Funds,
+    require,
 };
-use cosmwasm_std::{attr, entry_point, from_binary, to_binary, StdError};
+use cosmwasm_std::{attr, entry_point, from_binary, StdError};
 use cosmwasm_std::{
     has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Response, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    QuerierWrapper, QueryRequest, Response, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
+use cw2::set_contract_version;
 use cw721::{OwnerOfResponse, TokensResponse};
 const CONTRACT_NAME: &str = "crates.io:andromeda_gumball";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -227,10 +224,15 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
         ContractError::InsufficientFunds {},
     )?;
     // get random number, current form: Binary
-    let rand_res =
-        terrand::contract::query(deps.as_ref(), env, terrand::msg::QueryMsg::LatestDrand {})?;
+    println!("test 1");
+    let random_response = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: TERRAND_ADDRESS_TESTNET.to_string(),
+        msg: encode_binary(&LatestDrand {})?,
+    }))?;
+    println!("test 2");
+
     // Binary --> Base64
-    let random_hex: LatestRandomResponse = from_binary(&rand_res)?;
+    let random_hex: LatestRandomResponse = from_binary(&random_response)?;
     // Base64 --> Vec<u8> using the base64 decode function
     let random_vector = decode(random_hex.randomness).unwrap();
     // Vec<u8> --> Vec<u64> to be able to fit the sum of all the elements
@@ -269,9 +271,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::NumberOfNFTs {} => encode_binary(&query_number_of_nfts(deps)?),
-        QueryMsg::State {} => encode_binary(&query_state(deps)?),
+        QueryMsg::SaleDetails {} => encode_binary(&query_state(deps)?),
+        QueryMsg::Status {} => encode_binary(&query_status(deps)?),
     }
 }
+fn query_status(deps: Deps) -> Result<StatusResponse, ContractError> {
+    let status = STATUS.load(deps.storage)?;
+    Ok(StatusResponse { status })
+}
+
 fn query_number_of_nfts(deps: Deps) -> Result<NumberOfNFTsResponse, ContractError> {
     let list = LIST.load(deps.storage)?;
     let number = list.len();
@@ -288,30 +296,8 @@ mod tests {
     use andromeda_protocol::testing::mock_querier::mock_dependencies_custom;
     use common::ado_base::recipient::Recipient;
     use common::mission::AndrAddress;
+    use cosmwasm_std::coin;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coin, from_binary, Coin, Decimal, Timestamp};
-
-    fn get_rand(deps: Deps, env: Env) -> Result<Response, ContractError> {
-        // CosmWasm 0.16
-        let timestamp_now = env.block.time.seconds() + 100000000;
-
-        // Get the current block time from genesis time
-        let from_genesis = timestamp_now - GENESIS_TIME;
-
-        // Get the current round
-        let current_round = from_genesis / PERIOD;
-        // Get the next round
-        let next_round = current_round + 1;
-        // get random number
-        let rand_res = terrand::contract::query(
-            deps,
-            env,
-            terrand::msg::QueryMsg::GetRandomness { round: next_round },
-        )?;
-        let random_hex: String = from_binary(&rand_res)?;
-        println!("{}", random_hex);
-        Ok(Response::new().add_attribute("action", "fetched random number"))
-    }
 
     fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, ContractError> {
         let msg = ExecuteMsg::Mint(Box::new(MintMsg {
@@ -754,4 +740,64 @@ mod tests {
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(err, ContractError::OutOfNFTs {});
     }
+    // #[test]
+    // fn test_buy_successful() {
+    //     let mut deps = mock_dependencies(&[]);
+    //     let env = mock_env();
+    //     let info = mock_info("owner", &[]);
+    //     let msg = InstantiateMsg {
+    //         andromeda_cw721_contract: AndrAddress {
+    //             identifier: "cw721_contract".to_string(),
+    //         },
+    //     };
+    //     instantiate(deps.as_mut(), env, info, msg).unwrap();
+    //     let info = mock_info("owner", &[]);
+    //     let msg = ExecuteMsg::SaleDetails {
+    //         price: coin(10, "uusd"),
+    //         max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+    //         recipient: Recipient::Addr("me".to_string()),
+    //     };
+    //     execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    //     let info = mock_info("owner", &[]);
+
+    //     let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
+    //         token_id: "token_id".to_string(),
+    //         owner: "not_crowdfund".to_string(),
+    //         token_uri: None,
+    //         extension: TokenExtension {
+    //             name: "name".to_string(),
+    //             publisher: "publisher".to_string(),
+    //             description: None,
+    //             transfer_agreement: None,
+    //             metadata: None,
+    //             archived: false,
+    //             pricing: None,
+    //         },
+    //     }));
+    //     execute(deps.as_mut(), mock_env(), info, mint_msg).unwrap();
+    //     // Sets status to true, allowing purchasing
+    //     let info = mock_info("owner", &[]);
+    //     execute_switch_status(deps.as_mut(), info).unwrap();
+
+    //     let info = mock_info("anyone", &[coin(10, "uusd")]);
+    //     let msg = ExecuteMsg::Buy {};
+    //     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    //     assert_eq!(
+    //         res,
+    //         Response::new()
+    //             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+    //                 contract_addr: MOCK_TOKEN_CONTRACT.to_string(),
+    //                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+    //                     recipient: info.sender.to_string(),
+    //                     token_id: "token_id".to_string(),
+    //                 })
+    //                 .unwrap(),
+    //                 funds: vec![],
+    //             }))
+    //             .add_attribute("action", "claim")
+    //             .add_attribute("token_id", "token_id")
+    //             .add_attribute("token_contract", MOCK_TOKEN_CONTRACT.to_string())
+    //             .add_attribute("recipient", info.sender.to_string().clone())
+    //     );
+    // }
 }
