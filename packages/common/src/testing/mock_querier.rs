@@ -1,13 +1,17 @@
-use crate::ado_base::{AndromedaQuery, QueryMsg};
+use crate::{
+    ado_base::{AndromedaQuery, QueryMsg},
+    primitive::{GetValueResponse, Primitive},
+};
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SystemError, SystemResult, WasmQuery,
+    to_binary, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult,
+    QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_MISSION_CONTRACT: &str = "mission_contract";
+pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 
 pub struct WasmMockQuerier {
     pub base: MockQuerier<TerraQueryWrapper>,
@@ -48,6 +52,7 @@ impl WasmMockQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_MISSION_CONTRACT => self.handle_mission_query(msg),
+                    MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     _ => panic!("Unsupported query for contract: {}", contract_addr),
                 }
             }
@@ -61,6 +66,40 @@ impl WasmMockQuerier {
                 SystemResult::Ok(ContractResult::Ok(to_binary(&"actual_address").unwrap()))
             }
             _ => SystemResult::Ok(ContractResult::Err("Error".to_string())),
+        }
+    }
+
+    fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            QueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
+                let res = match data {
+                    None => GetValueResponse {
+                        key: "default".to_string(),
+                        value: Primitive::Decimal(Decimal::zero()),
+                    },
+                    Some(data) => {
+                        let key: String = from_binary(&data).unwrap();
+                        match key.as_str() {
+                            "String" => GetValueResponse {
+                                key,
+                                value: Primitive::String("Value".to_string()),
+                            },
+                            "Uint128" => GetValueResponse {
+                                key,
+                                value: Primitive::Uint128(Uint128::new(10)),
+                            },
+                            _ => {
+                                return SystemResult::Ok(ContractResult::Err(
+                                    "Not Found".to_string(),
+                                ))
+                            }
+                        }
+                    }
+                };
+
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
         }
     }
 

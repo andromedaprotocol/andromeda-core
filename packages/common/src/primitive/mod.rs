@@ -1,132 +1,10 @@
-use crate::{ado_base::query_get, error::ContractError, mission::AndrAddress};
-use cosmwasm_std::{to_binary, Addr, Api, Coin, Decimal, QuerierWrapper, StdError, Uint128};
+use cosmwasm_std::{Coin, Decimal, StdError, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum Value<T>
-where
-    T: Into<Primitive>,
-{
-    /// The raw value.
-    Raw(T),
-    /// The pointer to the primitive. This SHOULD be of the same underlying type as `T`. For
-    /// example, if T is String, then PrimitivePointer should point to a Primitive::String(..).
-    /// This cannot be enforced at compile time though, so it is up to the discretion of the user.
-    Pointer(PrimitivePointer),
-}
+pub use value::{PrimitivePointer, Value};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct PrimitivePointer {
-    /// The address of the primitive contract.
-    pub address: AndrAddress,
-    /// The optional key for the stored data.
-    pub key: Option<String>,
-}
-
-impl PrimitivePointer {
-    pub fn into_value(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
-    ) -> Result<Option<Primitive>, ContractError> {
-        let primitive_address = self.address.get_address(api, querier, mission_address)?;
-        let key = self
-            .key
-            .map(|k| to_binary(&k))
-            // Flip Option<Result> to Result<Option>
-            .map_or(Ok(None), |v| v.map(Some));
-
-        let res: Result<GetValueResponse, ContractError> =
-            query_get(key?, primitive_address, querier);
-
-        match res {
-            Err(_) => Ok(None),
-            Ok(res) => Ok(Some(res.value)),
-        }
-    }
-}
-
-impl<T: Into<Primitive>> Value<T> {
-    /// Consumes the instance to return the underlying value. If it is a pointer, it queries the
-    /// primitive contract and attempts to get the underlying type according to the value of `T`.
-    fn try_into_value(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
-        func: fn(Primitive) -> Result<T, StdError>,
-    ) -> Result<Option<T>, ContractError> {
-        match self {
-            Value::Raw(value) => Ok(Some(value)),
-            Value::Pointer(pointer) => {
-                let primitive = pointer.into_value(api, querier, mission_address)?;
-                if let Some(primitive) = primitive {
-                    Ok(Some(func(primitive)?))
-                } else {
-                    Ok(None)
-                }
-            }
-        }
-    }
-}
-
-impl Value<String> {
-    pub fn try_into_string(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
-    ) -> Result<Option<String>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_string())
-    }
-}
-
-impl Value<Uint128> {
-    pub fn try_into_uint128(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
-    ) -> Result<Option<Uint128>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_uint128())
-    }
-}
-
-impl Value<Decimal> {
-    pub fn try_into_vec(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
-    ) -> Result<Option<Decimal>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_decimal())
-    }
-}
-
-impl Value<Coin> {
-    pub fn try_into_coin(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
-    ) -> Result<Option<Coin>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_coin())
-    }
-}
-
-impl Value<Vec<Primitive>> {
-    pub fn try_into_vec(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
-    ) -> Result<Option<Vec<Primitive>>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_vec())
-    }
-}
+mod value;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -307,6 +185,18 @@ mod tests {
         assert_eq!(
             parse_error("Vec".to_string()),
             primitive.try_get_vec().unwrap_err()
+        );
+    }
+
+    #[test]
+    fn try_get_decimal() {
+        let primitive = Primitive::Decimal(Decimal::zero());
+        assert_eq!(Decimal::zero(), primitive.try_get_decimal().unwrap());
+
+        let primitive = Primitive::String("String".to_string());
+        assert_eq!(
+            parse_error("Decimal".to_string()),
+            primitive.try_get_decimal().unwrap_err()
         );
     }
 
