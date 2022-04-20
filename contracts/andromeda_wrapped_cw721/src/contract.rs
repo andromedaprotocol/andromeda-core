@@ -34,7 +34,7 @@ pub fn instantiate(
     let resp = contract.instantiate(
         deps.storage,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
             ado_type: "wrapped_cw721".to_string(),
             operators: None,
@@ -59,6 +59,7 @@ pub fn instantiate(
                 1,
                 encode_binary(&instantiate_msg)?,
                 "cw721".to_string(),
+                info.sender.to_string(),
             )?;
             msgs.push(msg);
         }
@@ -331,7 +332,7 @@ mod tests {
             id: 1,
             reply_on: ReplyOn::Always,
             msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                admin: None,
+                admin: Some("sender".to_string()),
                 code_id: 4,
                 msg: encode_binary(&cw721_insantiate_msg).unwrap(),
                 funds: vec![],

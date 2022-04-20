@@ -10,6 +10,7 @@ impl<'a> ADOContract<'a> {
         msg_id: u64,
         msg: Binary,
         ado_type: String,
+        sender: String,
     ) -> Result<SubMsg, ContractError> {
         match self.get_code_id(storage, querier, &ado_type) {
             Err(_) => Err(ContractError::InvalidModule {
@@ -21,7 +22,7 @@ impl<'a> ADOContract<'a> {
                 id: msg_id,
                 reply_on: ReplyOn::Always,
                 msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                    admin: None,
+                    admin: Some(sender),
                     code_id,
                     msg,
                     funds: vec![],

@@ -29,7 +29,7 @@ impl<'a> ADOContract<'a> {
         let addresses: Vec<String> = self.load_module_addresses(storage, api, &querier)?;
         let mut resp: Vec<T> = Vec::new();
         for addr in addresses {
-            let mod_resp: Option<T> = hook_query(querier, hook_msg.clone(), addr)?;
+            let mod_resp: Option<T> = hook_query(&querier, hook_msg.clone(), addr)?;
             if let Some(mod_resp) = mod_resp {
                 resp.push(mod_resp);
             }
@@ -43,7 +43,7 @@ impl<'a> ADOContract<'a> {
         &self,
         storage: &dyn Storage,
         api: &dyn Api,
-        querier: QuerierWrapper,
+        querier: &QuerierWrapper,
         sender: String,
         amount: Funds,
         msg: Binary,
@@ -55,9 +55,7 @@ impl<'a> ADOContract<'a> {
         let mut receipt_module_address: Option<String> = None;
         for module in modules {
             let mission_contract = self.get_mission_contract(storage)?;
-            let module_address = module
-                .address
-                .get_address(api, &querier, mission_contract)?;
+            let module_address = module.address.get_address(api, querier, mission_contract)?;
             if module.module_type == RECEIPT {
                 // If receipt module exists we want to make sure we do it last.
                 receipt_module_address = Some(module_address);
@@ -117,7 +115,7 @@ fn process_module_response<T>(mod_resp: Result<T, StdError>) -> Result<Option<T>
 
 /// Queriers the given address with the given hook message and returns the processed result.
 fn hook_query<T>(
-    querier: QuerierWrapper,
+    querier: &QuerierWrapper,
     hook_msg: AndromedaHook,
     addr: String,
 ) -> Result<Option<T>, ContractError>
