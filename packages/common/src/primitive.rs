@@ -3,18 +3,30 @@ use cosmwasm_std::{to_binary, Addr, Api, Coin, Decimal, QuerierWrapper, StdError
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub enum Value<T> {
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Value<T>
+where
+    T: Into<Primitive>,
+{
+    /// The raw value.
     Raw(T),
+    /// The pointer to the primitive. This SHOULD be of the same underlying type as `T`. For
+    /// example, if T is String, then PrimitivePointer should point to a Primitive::String(..).
+    /// This cannot be enforced at compile time though, so it is up to the discretion of the user.
     Pointer(PrimitivePointer),
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PrimitivePointer {
+    /// The address of the primitive contract.
     pub address: AndrAddress,
+    /// The optional key for the stored data.
     pub key: Option<String>,
 }
 
 impl PrimitivePointer {
-    pub(crate) fn get_value(
+    pub fn into_value(
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
@@ -37,8 +49,10 @@ impl PrimitivePointer {
     }
 }
 
-impl<T> Value<T> {
-    pub(crate) fn get_value(
+impl<T: Into<Primitive>> Value<T> {
+    /// Consumes the instance to return the underlying value. If it is a pointer, it queries the
+    /// primitive contract and attempts to get the underlying type according to the value of `T`.
+    fn try_into_value(
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
@@ -48,7 +62,7 @@ impl<T> Value<T> {
         match self {
             Value::Raw(value) => Ok(Some(value)),
             Value::Pointer(pointer) => {
-                let primitive = pointer.get_value(api, querier, mission_address)?;
+                let primitive = pointer.into_value(api, querier, mission_address)?;
                 if let Some(primitive) = primitive {
                     Ok(Some(func(primitive)?))
                 } else {
@@ -59,49 +73,58 @@ impl<T> Value<T> {
     }
 }
 
-// Idea: impl a 'get' funciton for each one that calls the requisite try_get_blah function. This
-// would abstract needing to deal with those functions and the primitive pointer.
 impl Value<String> {
-    pub fn get(
+    pub fn try_into_string(
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
         mission_address: Option<Addr>,
     ) -> Result<Option<String>, ContractError> {
-        self.get_value(api, querier, mission_address, |p| p.try_get_string())
+        self.try_into_value(api, querier, mission_address, |p| p.try_get_string())
     }
 }
 
 impl Value<Uint128> {
-    pub fn get(
+    pub fn try_into_uint128(
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
         mission_address: Option<Addr>,
     ) -> Result<Option<Uint128>, ContractError> {
-        self.get_value(api, querier, mission_address, |p| p.try_get_uint128())
+        self.try_into_value(api, querier, mission_address, |p| p.try_get_uint128())
+    }
+}
+
+impl Value<Decimal> {
+    pub fn try_into_vec(
+        self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        mission_address: Option<Addr>,
+    ) -> Result<Option<Decimal>, ContractError> {
+        self.try_into_value(api, querier, mission_address, |p| p.try_get_decimal())
     }
 }
 
 impl Value<Coin> {
-    pub fn get(
+    pub fn try_into_coin(
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
         mission_address: Option<Addr>,
     ) -> Result<Option<Coin>, ContractError> {
-        self.get_value(api, querier, mission_address, |p| p.try_get_coin())
+        self.try_into_value(api, querier, mission_address, |p| p.try_get_coin())
     }
 }
 
 impl Value<Vec<Primitive>> {
-    pub fn get(
+    pub fn try_into_vec(
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
         mission_address: Option<Addr>,
     ) -> Result<Option<Vec<Primitive>>, ContractError> {
-        self.get_value(api, querier, mission_address, |p| p.try_get_vec())
+        self.try_into_value(api, querier, mission_address, |p| p.try_get_vec())
     }
 }
 
@@ -123,6 +146,42 @@ fn parse_error(type_name: String) -> StdError {
     }
 }
 
+impl From<String> for Primitive {
+    fn from(value: String) -> Self {
+        Primitive::String(value)
+    }
+}
+
+impl From<Uint128> for Primitive {
+    fn from(value: Uint128) -> Self {
+        Primitive::Uint128(value)
+    }
+}
+
+impl From<Decimal> for Primitive {
+    fn from(value: Decimal) -> Self {
+        Primitive::Decimal(value)
+    }
+}
+
+impl From<bool> for Primitive {
+    fn from(value: bool) -> Self {
+        Primitive::Bool(value)
+    }
+}
+
+impl From<Coin> for Primitive {
+    fn from(value: Coin) -> Self {
+        Primitive::Coin(value)
+    }
+}
+
+impl From<Vec<Primitive>> for Primitive {
+    fn from(value: Vec<Primitive>) -> Self {
+        Primitive::Vec(value)
+    }
+}
+
 // These are methods to help the calling user quickly retreive the data in the Primitive as they
 // often already know what the type should be.
 impl Primitive {
@@ -140,6 +199,13 @@ impl Primitive {
         match self {
             Primitive::Uint128(value) => Ok(*value),
             _ => Err(parse_error(String::from("Uint128"))),
+        }
+    }
+
+    pub fn try_get_decimal(&self) -> Result<Decimal, StdError> {
+        match self {
+            Primitive::Decimal(value) => Ok(*value),
+            _ => Err(parse_error(String::from("Decimal"))),
         }
     }
 
