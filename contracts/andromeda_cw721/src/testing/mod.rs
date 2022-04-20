@@ -339,7 +339,6 @@ fn test_agreed_transfer_nft_primitive_pointer() {
             }),
             metadata: None,
             archived: false,
-            pricing: None,
         },
     );
 

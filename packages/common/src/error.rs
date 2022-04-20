@@ -341,7 +341,6 @@ pub enum ContractError {
 
     #[error("Too many mint messages, limit is {limit}")]
     TooManyMintMessages { limit: u32 },
->>>>>>> 1ea8920103e1eb8f35dd375f577fe5c6e4a0badc
 }
 
 impl From<Cw20ContractError> for ContractError {
