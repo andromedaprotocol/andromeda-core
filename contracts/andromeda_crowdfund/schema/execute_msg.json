@@ -22,7 +22,10 @@
       ],
       "properties": {
         "mint": {
-          "$ref": "#/definitions/MintMsg_for_TokenExtension"
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CrowdfundMintMsg"
+          }
         }
       },
       "additionalProperties": false
@@ -53,14 +56,12 @@
             },
             "max_amount_per_wallet": {
               "description": "The amount of tokens a wallet can purchase, default is 1.",
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Uint128"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
             },
             "min_tokens_sold": {
               "description": "The minimum amount of tokens sold to go through with the sale.",
@@ -92,13 +93,36 @@
       "additionalProperties": false
     },
     {
-      "description": "Puchases a token in an ongoing sale.",
+      "description": "Puchases tokens in an ongoing sale.",
       "type": "object",
       "required": [
         "purchase"
       ],
       "properties": {
         "purchase": {
+          "type": "object",
+          "properties": {
+            "number_of_tokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Purchases the token with the given id.",
+      "type": "object",
+      "required": [
+        "purchase_by_token_id"
+      ],
+      "properties": {
+        "purchase_by_token_id": {
           "type": "object",
           "required": [
             "token_id"
@@ -440,6 +464,41 @@
         }
       }
     },
+    "CrowdfundMintMsg": {
+      "type": "object",
+      "required": [
+        "extension",
+        "token_id"
+      ],
+      "properties": {
+        "extension": {
+          "description": "Any custom extension used by this contract",
+          "allOf": [
+            {
+              "$ref": "#/definitions/TokenExtension"
+            }
+          ]
+        },
+        "owner": {
+          "description": "The owner of the newly minter NFT",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "token_id": {
+          "description": "Unique ID of the NFT",
+          "type": "string"
+        },
+        "token_uri": {
+          "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
     "Expiration": {
       "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
       "oneOf": [
@@ -521,39 +580,6 @@
         "json",
         "other"
       ]
-    },
-    "MintMsg_for_TokenExtension": {
-      "type": "object",
-      "required": [
-        "extension",
-        "owner",
-        "token_id"
-      ],
-      "properties": {
-        "extension": {
-          "description": "Any custom extension used by this contract",
-          "allOf": [
-            {
-              "$ref": "#/definitions/TokenExtension"
-            }
-          ]
-        },
-        "owner": {
-          "description": "The owner of the newly minter NFT",
-          "type": "string"
-        },
-        "token_id": {
-          "description": "Unique ID of the NFT",
-          "type": "string"
-        },
-        "token_uri": {
-          "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      }
     },
     "Module": {
       "description": "Modules can be instantiated in two different ways New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded Address - Provide an address for an already instantiated module contract A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
@@ -645,17 +671,6 @@
         "name": {
           "description": "The name of the token",
           "type": "string"
-        },
-        "pricing": {
-          "description": "The current price listing for the token",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Coin"
-            },
-            {
-              "type": "null"
-            }
-          ]
         },
         "publisher": {
           "description": "The original publisher of the token (immutable)",
