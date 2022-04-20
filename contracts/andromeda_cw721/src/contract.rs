@@ -163,7 +163,7 @@ fn execute_transfer(
     let tax_amount = if let Some(agreement) = &token.extension.transfer_agreement {
         let mission_contract = base_contract.get_mission_contract(deps.storage)?;
         let agreement_amount =
-            get_transfer_agreement_amount(deps.api, &deps.querier, mission_contract, &agreement)?;
+            get_transfer_agreement_amount(deps.api, &deps.querier, mission_contract, agreement)?;
         let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
             deps.storage,
             deps.api,
@@ -208,7 +208,7 @@ fn get_transfer_agreement_amount(
         agreement
             .amount
             .clone()
-            .try_into_coin(api, &querier, mission_contract)?;
+            .try_into_coin(api, querier, mission_contract)?;
     match agreement_amount {
         Some(amount) => Ok(amount),
         None => Err(ContractError::PrimitiveDoesNotExist {
@@ -234,7 +234,7 @@ fn check_can_send(
     if let Some(agreement) = &token.extension.transfer_agreement {
         let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
         let agreement_amount =
-            get_transfer_agreement_amount(deps.api, &deps.querier, mission_contract, &agreement)?;
+            get_transfer_agreement_amount(deps.api, &deps.querier, mission_contract, agreement)?;
         require(
             has_coins(
                 &info.funds,
