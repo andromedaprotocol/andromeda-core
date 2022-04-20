@@ -1,8 +1,8 @@
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, Coin, CosmosMsg, DepsMut, Env, Event, Response, StdError, SubMsg, Uint128,
-    WasmMsg,
+    to_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, Event, Response, StdError, SubMsg,
+    Uint128, WasmMsg,
 };
 
 use common::{
@@ -13,7 +13,7 @@ use common::{
     },
     error::ContractError,
     mission::AndrAddress,
-    primitive::Value,
+    primitive::{PrimitivePointer, Value},
     Funds,
 };
 
@@ -24,7 +24,7 @@ use andromeda_protocol::{
     receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
         bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
-        MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
+        MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
     },
 };
 use cw721::{NftInfoResponse, OwnerOfResponse};
@@ -299,6 +299,82 @@ fn test_agreed_transfer_nft() {
 
     let info = mock_info(purchaser, &[agreed_amount]);
     assert!(execute(deps.as_mut(), env.clone(), info, transfer_msg).is_ok());
+
+    let query_msg = QueryMsg::OwnerOf {
+        token_id,
+        include_expired: None,
+    };
+    let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
+    let resp: OwnerOfResponse = from_binary(&query_resp).unwrap();
+    assert_eq!(resp.owner, String::from("recipient"))
+}
+
+#[test]
+fn test_agreed_transfer_nft_primitive_pointer() {
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let agreed_amount = Coin {
+        denom: "uusd".to_string(),
+        amount: Uint128::from(100u64),
+    };
+    let purchaser = "purchaser";
+    init_setup(deps.as_mut(), env.clone(), None);
+    mint_token(
+        deps.as_mut(),
+        env.clone(),
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            description: None,
+            name: String::default(),
+            publisher: creator,
+            transfer_agreement: Some(TransferAgreement {
+                amount: Value::Pointer(PrimitivePointer {
+                    address: AndrAddress {
+                        identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+                    },
+                    key: Some("sell_amount".to_string()),
+                }),
+                purchaser: purchaser.to_string(),
+            }),
+            metadata: None,
+            archived: false,
+            pricing: None,
+        },
+    );
+
+    let transfer_msg = ExecuteMsg::TransferNft {
+        recipient: Addr::unchecked("recipient").to_string(),
+        token_id: token_id.clone(),
+    };
+
+    let invalid_info = mock_info(purchaser, &[]);
+    assert_eq!(
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            invalid_info,
+            transfer_msg.clone()
+        )
+        .unwrap_err(),
+        ContractError::InsufficientFunds {}
+    );
+
+    let info = mock_info(purchaser, &[agreed_amount.clone()]);
+    let res = execute(deps.as_mut(), env.clone(), info, transfer_msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(BankMsg::Send {
+                to_address: "creator".to_string(),
+                amount: vec![agreed_amount]
+            })
+            .add_attribute("action", "transfer")
+            .add_attribute("recipient", "recipient"),
+        res
+    );
 
     let query_msg = QueryMsg::OwnerOf {
         token_id,

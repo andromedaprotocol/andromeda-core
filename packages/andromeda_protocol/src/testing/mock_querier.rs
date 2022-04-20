@@ -426,6 +426,10 @@ impl WasmMockQuerier {
                         key,
                         value: Primitive::Coin(coin(1u128, "address")),
                     },
+                    "sell_amount" => GetValueResponse {
+                        key,
+                        value: Primitive::Coin(coin(100, "uusd")),
+                    },
                     "factory" => GetValueResponse {
                         key,
                         value: Primitive::String(MOCK_FACTORY_CONTRACT.to_owned()),
