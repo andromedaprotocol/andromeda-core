@@ -764,17 +764,6 @@
           "description": "The name of the token",
           "type": "string"
         },
-        "pricing": {
-          "description": "The current price listing for the token",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Coin"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "publisher": {
           "description": "The original publisher of the token (immutable)",
           "type": "string"

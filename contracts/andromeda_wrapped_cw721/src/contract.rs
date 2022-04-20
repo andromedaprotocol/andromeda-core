@@ -156,7 +156,6 @@ fn execute_wrap(
             ]),
         }),
         archived: false,
-        pricing: None,
     };
     let mint_msg = MintMsg {
         token_id: wrapped_token_id.to_string(),
@@ -410,7 +409,6 @@ mod tests {
                 ]),
             }),
             archived: false,
-            pricing: None,
         };
         let mint_msg = MintMsg {
             token_id: token_id.clone(),
@@ -483,7 +481,6 @@ mod tests {
                 ]),
             }),
             archived: false,
-            pricing: None,
         };
         let mint_msg = MintMsg {
             token_id: wrapped_token_id.to_owned(),

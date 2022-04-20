@@ -188,7 +188,6 @@ fn execute_transfer(
     token.owner = deps.api.addr_validate(&recipient)?;
     token.approvals.clear();
     token.extension.transfer_agreement = None;
-    token.extension.pricing = None;
     contract.tokens.save(deps.storage, &token_id, &token)?;
     Ok(resp
         .add_attribute("action", "transfer")
