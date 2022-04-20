@@ -88,6 +88,22 @@ impl WasmMockQuerier {
                                 key,
                                 value: Primitive::Uint128(Uint128::new(10)),
                             },
+                            "Decimal" => GetValueResponse {
+                                key,
+                                value: Primitive::Decimal(Decimal::percent(1)),
+                            },
+                            "Coin" => GetValueResponse {
+                                key,
+                                value: Primitive::Coin(Coin::new(100, "uusd")),
+                            },
+                            "Bool" => GetValueResponse {
+                                key,
+                                value: Primitive::Bool(true),
+                            },
+                            "Vec" => GetValueResponse {
+                                key,
+                                value: Primitive::Vec(vec![Primitive::from("String".to_string())]),
+                            },
                             _ => {
                                 return SystemResult::Ok(ContractResult::Err(
                                     "Not Found".to_string(),
