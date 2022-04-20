@@ -350,7 +350,6 @@ impl WasmMockQuerier {
                             ]),
                         }),
                         archived: false,
-                        pricing: None,
                     }
                 } else {
                     TokenExtension {
@@ -360,7 +359,6 @@ impl WasmMockQuerier {
                         transfer_agreement,
                         metadata: None,
                         archived: false,
-                        pricing: None,
                     }
                 };
                 let response = NftInfoResponse {

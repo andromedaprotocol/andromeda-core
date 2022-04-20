@@ -146,7 +146,6 @@ fn test_mint_unauthorized() {
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     }]);
     let info = mock_info("not_owner", &[]);
@@ -171,7 +170,6 @@ fn test_mint_owner_not_crowdfund() {
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     }]);
     let info = mock_info("owner", &[]);
@@ -256,7 +254,6 @@ fn test_mint_successful() {
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     });
 
@@ -291,7 +288,6 @@ fn test_mint_multiple_successful() {
                 transfer_agreement: None,
                 metadata: None,
                 archived: false,
-                pricing: None,
             },
         },
         CrowdfundMintMsg {
@@ -305,7 +301,6 @@ fn test_mint_multiple_successful() {
                 transfer_agreement: None,
                 metadata: None,
                 archived: false,
-                pricing: None,
             },
         },
     ];
@@ -330,7 +325,6 @@ fn test_mint_multiple_successful() {
                         transfer_agreement: None,
                         metadata: None,
                         archived: false,
-                        pricing: None,
                     },
                 },)))
                 .unwrap(),
@@ -349,7 +343,6 @@ fn test_mint_multiple_successful() {
                         transfer_agreement: None,
                         metadata: None,
                         archived: false,
-                        pricing: None,
                     },
                 },)))
                 .unwrap(),
@@ -378,7 +371,6 @@ fn test_mint_multiple_exceeds_limit() {
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     };
 
@@ -1126,7 +1118,6 @@ fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, Contract
             transfer_agreement: None,
             metadata: None,
             archived: false,
-            pricing: None,
         },
     }]);
     execute(deps, mock_env(), mock_info("owner", &[]), msg)
