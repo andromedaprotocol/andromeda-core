@@ -9,7 +9,11 @@ use andromeda_protocol::{
     testing::mock_querier::{mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT},
     timelock::{ExecuteMsg, InstantiateMsg},
 };
-use common::{ado_base::modules::Module, error::ContractError, mission::AndrAddress};
+use common::{
+    ado_base::{modules::Module, AndromedaMsg},
+    error::ContractError,
+    mission::AndrAddress,
+};
 
 #[test]
 fn test_modules() {
@@ -58,6 +62,38 @@ fn test_modules() {
             .add_attribute("sender", "sender")
             .add_attribute("recipient", "Addr(\"sender\")")
             .add_attribute("condition", "None"),
+        res
+    );
+}
+
+#[test]
+fn test_update_mission_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let modules: Vec<Module> = vec![Module {
+        module_type: "address_list".to_string(),
+        address: AndrAddress {
+            identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+        },
+        is_mutable: false,
+    }];
+
+    let info = mock_info("mission_contract", &[]);
+    let msg = InstantiateMsg {
+        modules: Some(modules),
+    };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
+        address: "mission_contract".to_string(),
+    });
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "update_mission_contract")
+            .add_attribute("address", "mission_contract"),
         res
     );
 }

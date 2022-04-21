@@ -14,7 +14,7 @@ use andromeda_protocol::{
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        InstantiateMsg as BaseInstantiateMsg,
+        AndromedaMsg, InstantiateMsg as BaseInstantiateMsg,
     },
     encode_binary,
     error::ContractError,
@@ -65,6 +65,12 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+
+    // Do this before the hooks get fired off to ensure that there is no conflict with the mission
+    // contract not being whitelisted.
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
+        return contract.execute_update_mission_contract(deps, info, address);
+    };
 
     contract.module_hook::<Response>(
         deps.storage,
