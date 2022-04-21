@@ -30,16 +30,20 @@ impl<'a> ADOContract<'a> {
         )?;
         let mission_contract = mission_contract.unwrap();
         for address in addresses {
-            require(
-                self.component_exists(
-                    &deps.querier,
-                    address.identifier.clone(),
-                    mission_contract.clone(),
-                )?,
-                ContractError::InvalidComponent {
-                    name: address.identifier.clone(),
-                },
-            )?;
+            // If the address passes this check then it doesn't refer to a mission component by
+            // name.
+            if deps.api.addr_validate(&address.identifier).is_err() {
+                require(
+                    self.component_exists(
+                        &deps.querier,
+                        address.identifier.clone(),
+                        mission_contract.clone(),
+                    )?,
+                    ContractError::InvalidComponent {
+                        name: address.identifier.clone(),
+                    },
+                )?;
+            }
         }
         Ok(Response::new())
     }

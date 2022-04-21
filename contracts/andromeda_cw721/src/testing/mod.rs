@@ -731,7 +731,7 @@ fn test_validate_andr_addresses_existing() {
         symbol: SYMBOL.to_owned(),
         name: NAME.to_owned(),
         minter: AndrAddress {
-            identifier: "existing_component".to_owned(),
+            identifier: "e".to_owned(),
         },
         modules: None,
     };
@@ -763,7 +763,7 @@ fn test_validate_andr_addresses_nonexisting() {
         symbol: SYMBOL.to_owned(),
         name: NAME.to_owned(),
         minter: AndrAddress {
-            identifier: "nonexisting_component".to_owned(),
+            identifier: "b".to_owned(),
         },
         modules: None,
     };
@@ -787,7 +787,7 @@ fn test_validate_andr_addresses_nonexisting() {
 
     assert_eq!(
         ContractError::InvalidComponent {
-            name: "nonexisting_component".to_string()
+            name: "b".to_string()
         },
         res.unwrap_err()
     );

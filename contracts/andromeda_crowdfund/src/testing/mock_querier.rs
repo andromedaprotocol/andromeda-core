@@ -78,7 +78,7 @@ impl WasmMockQuerier {
     fn handle_mission_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             MissionQueryMsg::ComponentExists { name } => {
-                let value = name == "existing_component";
+                let value = name == "e";
                 SystemResult::Ok(ContractResult::Ok(to_binary(&value).unwrap()))
             }
             _ => panic!("Unsupported Query"),
