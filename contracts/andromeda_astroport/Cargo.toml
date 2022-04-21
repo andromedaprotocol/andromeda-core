@@ -35,3 +35,4 @@ ado-base = { path = "../../packages/ado_base", version = "0.1.0", features = ["w
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }
+cosmwasm-schema = "0.16.0"

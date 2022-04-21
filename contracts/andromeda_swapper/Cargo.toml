@@ -34,3 +34,4 @@ common = { version = "0.1.0", path = "../../packages/common" }
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }
+cosmwasm-schema = "0.16.0"

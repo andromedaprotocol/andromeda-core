@@ -10,13 +10,14 @@ use common::{
     },
     encode_binary,
     error::ContractError,
+    mission::AndrAddress,
     parse_message, require,
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{
     coin, entry_point, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, Order, QueryRequest, ReplyOn, Response, SubMsg, SystemResult, Uint128,
-    WasmMsg, WasmQuery,
+    Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn, Response, StdError, SubMsg,
+    SystemResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -31,16 +32,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    msg.validate()?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    for strategy in msg.strategies {
-        STRATEGY_CONTRACT_ADDRESSES.save(
-            deps.storage,
-            strategy.strategy_type.to_string(),
-            &strategy.address,
-        )?;
-    }
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -52,6 +45,17 @@ pub fn instantiate(
             primitive_contract: None,
         },
     )
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -73,6 +77,9 @@ pub fn execute(
             withdrawals,
             strategy,
         } => execute_withdraw(deps, env, info, recipient, withdrawals, strategy),
+        ExecuteMsg::UpdateStrategy { strategy, address } => {
+            execute_update_strategy(deps, env, info, strategy, address)
+        }
     }
 }
 
@@ -83,17 +90,9 @@ fn execute_andr_receive(
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        AndromedaMsg::Receive(data) => {
-            let strategy: Option<StrategyType> = parse_message(&data)?;
+        AndromedaMsg::Receive(None) => {
             let sender = info.sender.to_string();
-            execute_deposit(
-                deps,
-                env,
-                info,
-                None,
-                Some(Recipient::Addr(sender)),
-                strategy,
-            )
+            execute_deposit(deps, env, info, None, Some(Recipient::Addr(sender)), None)
         }
         _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
@@ -193,12 +192,7 @@ fn execute_deposit(
         Some(strategy) => {
             let mut deposit_msgs: Vec<SubMsg> = Vec::new();
             for funds in deposited_funds {
-                let recipient_addr = recipient.get_addr(
-                    deps.api,
-                    &deps.querier,
-                    ADOContract::default().get_mission_contract(deps.storage)?,
-                )?;
-                let deposit_msg = strategy.deposit(deps.storage, funds, &recipient_addr)?;
+                let deposit_msg = strategy.deposit(deps.storage, funds, recipient.clone())?;
                 deposit_msgs.push(deposit_msg);
             }
             resp = resp.add_submessages(deposit_msgs)
@@ -334,6 +328,27 @@ pub fn withdraw_strategy(
     };
 
     Ok(res.add_submessage(withdraw_submsg))
+}
+
+fn execute_update_strategy(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    strategy: StrategyType,
+    address: AndrAddress,
+) -> Result<Response, ContractError> {
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, &info.sender.to_string())?,
+        ContractError::Unauthorized {},
+    )?;
+    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
+    let strategy_addr = address.get_address(deps.api, &deps.querier, mission_contract)?;
+    STRATEGY_CONTRACT_ADDRESSES.save(deps.storage, strategy.to_string(), &strategy_addr)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "update_strategy")
+        .add_attribute("strategy_type", strategy.to_string())
+        .add_attribute("addr", strategy_addr))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

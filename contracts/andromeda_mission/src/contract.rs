@@ -1,11 +1,12 @@
 use crate::state::{
     add_mission_component, generate_assign_mission_message, generate_ownership_message,
-    load_component_addresses, load_component_descriptors, ADO_ADDRESSES, ADO_DESCRIPTORS,
-    MISSION_NAME,
+    load_component_addresses, load_component_addresses_with_name, load_component_descriptors,
+    ADO_ADDRESSES, ADO_DESCRIPTORS, MISSION_NAME,
 };
 use ado_base::ADOContract;
 use andromeda_protocol::mission::{
-    ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent, QueryMsg,
+    ComponentAddress, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent,
+    QueryMsg,
 };
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
@@ -17,8 +18,8 @@ use common::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, ReplyOn,
-    Response, StdError, Storage, SubMsg, WasmMsg,
+    Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, ReplyOn, Response,
+    StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -75,14 +76,11 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     }
 
     let id = msg.id.to_string();
-    require(
-        ADO_DESCRIPTORS.load(deps.storage, &id).is_ok(),
-        ContractError::InvalidReplyId {},
-    )?;
+    let descriptor = ADO_DESCRIPTORS.load(deps.storage, &id)?;
 
     let addr_str = get_reply_address(&msg)?;
     let addr = &deps.api.addr_validate(&addr_str)?;
-    ADO_ADDRESSES.save(deps.storage, &id, addr)?;
+    ADO_ADDRESSES.save(deps.storage, &descriptor.name, addr)?;
     let assign_mission = generate_assign_mission_message(addr, &env.contract.address.to_string())?;
     Ok(Response::default().add_submessage(assign_mission))
 }
@@ -134,6 +132,7 @@ fn execute_add_mission_component(
         idx,
         component.instantiate_msg,
         component.ado_type.clone(),
+        sender.to_string(),
     )?;
 
     Ok(Response::new()
@@ -280,8 +279,8 @@ fn query_component_descriptors(deps: Deps) -> Result<Vec<MissionComponent>, Cont
     Ok(value)
 }
 
-fn query_component_addresses(deps: Deps) -> Result<Vec<Addr>, ContractError> {
-    let value = load_component_addresses(deps.storage)?;
+fn query_component_addresses(deps: Deps) -> Result<Vec<ComponentAddress>, ContractError> {
+    let value = load_component_addresses_with_name(deps.storage)?;
     Ok(value)
 }
 

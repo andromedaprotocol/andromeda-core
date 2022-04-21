@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "description": "Instantiate Message for Swapper contract.",
+  "type": "object",
+  "required": [
+    "primitive_contract",
+    "swapper_impl"
+  ],
+  "properties": {
+    "primitive_contract": {
+      "type": "string"
+    },
+    "swapper_impl": {
+      "$ref": "#/definitions/SwapperImpl"
+    }
+  },
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "InstantiateType": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "new"
+          ],
+          "properties": {
+            "new": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "SwapperImpl": {
+      "type": "object",
+      "required": [
+        "instantiate_type",
+        "name"
+      ],
+      "properties": {
+        "instantiate_type": {
+          "$ref": "#/definitions/InstantiateType"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

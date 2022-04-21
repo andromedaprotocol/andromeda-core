@@ -35,7 +35,7 @@ pub fn instantiate(
     let resp = contract.instantiate(
         deps.storage,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
             ado_type: "swapper".to_string(),
             operators: None,
@@ -53,6 +53,7 @@ pub fn instantiate(
                 1,
                 instantiate_msg,
                 msg.swapper_impl.name,
+                info.sender.to_string(),
             )?;
             msgs.push(msg);
         }
@@ -204,6 +205,13 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
+    require(
+        !cw20_msg.amount.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string(),
+        },
+    )?;
+
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::Swap {
             ask_asset_info,

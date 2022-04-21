@@ -118,8 +118,13 @@ pub enum ContractError {
     #[error("StartTimeAfterEndTime")]
     StartTimeAfterEndTime {},
 
-    #[error("StartTimeInThePast")]
-    StartTimeInThePast {},
+    #[error(
+        "Start time in past. Current seconds: {current_seconds}. Current block: {current_block}"
+    )]
+    StartTimeInThePast {
+        current_seconds: u64,
+        current_block: u64,
+    },
 
     #[error("HighestBidderCannotOutBid")]
     HighestBidderCannotOutBid {},
@@ -254,12 +259,6 @@ pub enum ContractError {
     #[error("No Ongoing Sale")]
     NoOngoingSale {},
 
-    #[error("Token not for sale")]
-    TokenNotForSale {},
-
-    #[error("Token already purchased")]
-    TokenAlreadyPurchased {},
-
     #[error("Purchase limit reached")]
     PurchaseLimitReached {},
 
@@ -304,6 +303,44 @@ pub enum ContractError {
 
     #[error("Verification Failed")]
     VerificationFailed {},
+
+    #[error("Token already being distributed")]
+    TokenAlreadyBeingDistributed {},
+
+    #[error("Deposit window closed")]
+    DepositWindowClosed {},
+
+    #[error("No saved auction contract")]
+    NoSavedBootstrapContract {},
+
+    #[error("Phase ongoing")]
+    PhaseOngoing {},
+
+    #[error("Claims already allowed")]
+    ClaimsAlreadyAllowed {},
+
+    #[error("ClaimsNotAllowed")]
+    ClaimsNotAllowed {},
+
+    #[error("Lockdrop already claimed")]
+    LockdropAlreadyClaimed {},
+
+    #[error("No lockup to claim rewards for")]
+    NoLockup {},
+
+    #[error("Invalid deposit/withdraw window")]
+    InvalidWindow {},
+    #[error("Duplicate tokens")]
+    DuplicateTokens {},
+
+    #[error("All tokens purchased")]
+    AllTokensPurchased {},
+
+    #[error("Token not available")]
+    TokenNotAvailable {},
+
+    #[error("Too many mint messages, limit is {limit}")]
+    TooManyMintMessages { limit: u32 },
 }
 
 impl From<Cw20ContractError> for ContractError {
