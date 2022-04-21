@@ -36,7 +36,9 @@ impl<'a> ADOContract<'a> {
                     address.identifier.clone(),
                     mission_contract.clone(),
                 )?,
-                ContractError::Unauthorized {},
+                ContractError::InvalidComponent {
+                    name: address.identifier.clone(),
+                },
             )?;
         }
         Ok(Response::new())

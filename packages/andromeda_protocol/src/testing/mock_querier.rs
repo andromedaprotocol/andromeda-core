@@ -16,6 +16,7 @@ use crate::{
     },
     cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
     factory::QueryMsg as FactoryQueryMsg,
+    mission::QueryMsg as MissionQueryMsg,
     primitive::QueryMsg as PrimitiveQueryMsg,
     rates::QueryMsg as RatesQueryMsg,
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
@@ -42,6 +43,7 @@ pub const MOCK_CW20_CONTRACT2: &str = "cw20_contract2";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_RECEIPT_CONTRACT: &str = "receipt_contract";
+pub const MOCK_MISSION_CONTRACT: &str = "mission_contract";
 pub const MOCK_OFFERS_CONTRACT: &str = "offers_contract";
 
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
@@ -161,6 +163,7 @@ impl WasmMockQuerier {
                     MOCK_OFFERS_CONTRACT => self.handle_offers_query(msg),
                     MOCK_RECEIPT_CONTRACT => self.handle_receipt_query(msg),
                     MOCK_FACTORY_CONTRACT => self.handle_factory_query(msg),
+                    MOCK_MISSION_CONTRACT => self.handle_mission_query(msg),
                     _ => {
                         let msg_response = IncludesAddressResponse { included: false };
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
@@ -168,6 +171,16 @@ impl WasmMockQuerier {
                 }
             }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_mission_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            MissionQueryMsg::ComponentExists { name } => {
+                let value = name == "existing_component";
+                SystemResult::Ok(ContractResult::Ok(to_binary(&value).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
         }
     }
 

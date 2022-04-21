@@ -344,6 +344,9 @@ pub enum ContractError {
 
     #[error("Mission contract not specified")]
     MissionContractNotSpecified {},
+
+    #[error("Invalid component: {name}")]
+    InvalidComponent { name: String },
 }
 
 impl From<Cw20ContractError> for ContractError {

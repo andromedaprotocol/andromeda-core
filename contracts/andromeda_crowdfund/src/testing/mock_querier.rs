@@ -1,3 +1,4 @@
+use andromeda_protocol::mission::QueryMsg as MissionQueryMsg;
 use common::{
     ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
     Funds,
@@ -13,6 +14,7 @@ use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
+pub const MOCK_MISSION_CONTRACT: &str = "mission_contract";
 
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
@@ -65,10 +67,21 @@ impl WasmMockQuerier {
                 match contract_addr.as_str() {
                     MOCK_TOKEN_CONTRACT => self.handle_token_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
+                    MOCK_MISSION_CONTRACT => self.handle_mission_query(msg),
                     _ => panic!("Unknown Contract Address {}", contract_addr),
                 }
             }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_mission_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            MissionQueryMsg::ComponentExists { name } => {
+                let value = name == "existing_component";
+                SystemResult::Ok(ContractResult::Ok(to_binary(&value).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
         }
     }
 

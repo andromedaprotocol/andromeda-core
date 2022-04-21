@@ -172,3 +172,65 @@ impl<'a> ADOContract<'a> {
             .add_attribute("address", address))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+
+    fn dummy_function(
+        _deps: DepsMut,
+        _env: Env,
+        _info: MessageInfo,
+        _msg: AndromedaMsg,
+    ) -> Result<Response, ContractError> {
+        Ok(Response::new())
+    }
+
+    #[test]
+    fn test_update_mission_contract() {
+        let contract = ADOContract::default();
+        let mut deps = mock_dependencies(&[]);
+
+        let info = mock_info("owner", &[]);
+        let deps_mut = deps.as_mut();
+        contract
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                info.clone(),
+                InstantiateMsg {
+                    ado_type: "type".to_string(),
+                    modules: None,
+                    primitive_contract: None,
+                    operators: None,
+                },
+            )
+            .unwrap();
+
+        let address = String::from("address");
+
+        let msg = AndromedaMsg::UpdateMissionContract {
+            address: address.clone(),
+        };
+
+        let res = contract
+            .execute(deps_mut, mock_env(), info, msg, dummy_function)
+            .unwrap();
+
+        assert_eq!(
+            Response::new()
+                .add_message(WasmMsg::Execute {
+                    contract_addr: mock_env().contract.address.to_string(),
+                    funds: vec![],
+                    msg: encode_binary(&ExecuteMsg::AndrReceive(
+                        AndromedaMsg::ValidateAndrAddresses {},
+                    ))
+                    .unwrap(),
+                })
+                .add_attribute("action", "update_mission_contract")
+                .add_attribute("address", address),
+            res
+        );
+    }
+}

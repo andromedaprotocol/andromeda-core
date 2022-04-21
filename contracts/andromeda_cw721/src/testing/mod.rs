@@ -5,11 +5,12 @@ use cosmwasm_std::{
     WasmMsg,
 };
 
+use ado_base::ADOContract;
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::{Module, ADDRESS_LIST, OFFERS, RATES, RECEIPT},
-        AndromedaQuery,
+        AndromedaMsg, AndromedaQuery,
     },
     error::ContractError,
     mission::AndrAddress,
@@ -22,8 +23,8 @@ use andromeda_protocol::{
     cw721_offers::ExecuteMsg as OffersExecuteMsg,
     receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
-        bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
-        MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
+        bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_MISSION_CONTRACT,
+        MOCK_OFFERS_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
     },
 };
 use cw721::{NftInfoResponse, OwnerOfResponse};
@@ -720,5 +721,74 @@ fn test_transfer_with_offer() {
             .add_attribute("action", "transfer")
             .add_attribute("recipient", "purchaser"),
         res
+    );
+}
+
+#[test]
+fn test_validate_andr_addresses_existing() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        symbol: SYMBOL.to_owned(),
+        name: NAME.to_owned(),
+        minter: AndrAddress {
+            identifier: "existing_component".to_owned(),
+        },
+        modules: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    ADOContract::default()
+        .execute_update_mission_contract(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            MOCK_MISSION_CONTRACT.to_owned(),
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::ValidateAndrAddresses {});
+    let info = mock_info(mock_env().contract.address.as_str(), &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(Response::new(), res);
+}
+
+#[test]
+fn test_validate_andr_addresses_nonexisting() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        symbol: SYMBOL.to_owned(),
+        name: NAME.to_owned(),
+        minter: AndrAddress {
+            identifier: "nonexisting_component".to_owned(),
+        },
+        modules: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    ADOContract::default()
+        .execute_update_mission_contract(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            MOCK_MISSION_CONTRACT.to_owned(),
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::ValidateAndrAddresses {});
+    let info = mock_info(mock_env().contract.address.as_str(), &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidComponent {
+            name: "nonexisting_component".to_string()
+        },
+        res.unwrap_err()
     );
 }
