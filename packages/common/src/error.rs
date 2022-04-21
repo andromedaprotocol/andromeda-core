@@ -341,6 +341,9 @@ pub enum ContractError {
 
     #[error("Too many mint messages, limit is {limit}")]
     TooManyMintMessages { limit: u32 },
+
+    #[error("Mission contract not specified")]
+    MissionContractNotSpecified {},
 }
 
 impl From<Cw20ContractError> for ContractError {

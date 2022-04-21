@@ -65,8 +65,7 @@ impl<'a> ADOContract<'a> {
                 self.execute_update_mission_contract(deps, env, info, address)
             }
             AndromedaMsg::ValidateAndrAddresses {} => {
-                self.validate_andr_addresses(deps.as_ref(), env, info, vec![])?;
-                Ok(Response::new())
+                self.validate_andr_addresses(deps.as_ref(), env, info, vec![])
             }
             #[cfg(feature = "withdraw")]
             AndromedaMsg::Withdraw {

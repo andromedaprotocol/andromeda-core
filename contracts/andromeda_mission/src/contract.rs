@@ -246,6 +246,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::GetAddresses {} => encode_binary(&query_component_addresses(deps)?),
         QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+        QueryMsg::ComponentExists { name } => encode_binary(&query_component_exists(deps, name)),
     }
 }
 
@@ -277,6 +278,10 @@ fn query_component_address(deps: Deps, name: String) -> Result<String, ContractE
 fn query_component_descriptors(deps: Deps) -> Result<Vec<MissionComponent>, ContractError> {
     let value = load_component_descriptors(deps.storage)?;
     Ok(value)
+}
+
+fn query_component_exists(deps: Deps, name: String) -> bool {
+    ADO_DESCRIPTORS.has(deps.storage, &name)
 }
 
 fn query_component_addresses(deps: Deps) -> Result<Vec<ComponentAddress>, ContractError> {

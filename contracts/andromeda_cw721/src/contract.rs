@@ -107,15 +107,7 @@ fn execute_andr_receive(
     match msg {
         AndromedaMsg::ValidateAndrAddresses {} => {
             let andr_minter = ANDR_MINTER.load(deps.storage)?;
-            let true_addresses =
-                contract.validate_andr_addresses(deps.as_ref(), env, info, vec![&andr_minter])?;
-
-            let cw721_contract = AndrCW721Contract::default();
-            // Only allow minter to be set once to maintain immutability.
-            if cw721_contract.minter.may_load(deps.storage)?.is_none() {
-                save_minter(&cw721_contract, deps.storage, &true_addresses[0])?;
-            }
-            Ok(Response::new())
+            contract.validate_andr_addresses(deps.as_ref(), env, info, vec![&andr_minter])
         }
         _ => contract.execute(deps, env, info, msg, execute),
     }
