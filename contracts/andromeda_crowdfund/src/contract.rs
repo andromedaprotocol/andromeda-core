@@ -9,7 +9,7 @@ use andromeda_protocol::{
     rates::get_tax_amount,
 };
 use common::{
-    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{recipient::Recipient, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     deduct_funds, encode_binary,
     error::ContractError,
     merge_sub_msgs, require, Funds,
@@ -76,9 +76,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AndrReceive(msg) => {
-            ADOContract::default().execute(deps, env, info, msg, execute)
-        }
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Mint(mint_msgs) => execute_mint(deps, env, info, mint_msgs),
         ExecuteMsg::StartSale {
             expiration,
@@ -104,6 +102,28 @@ pub fn execute(
         }
         ExecuteMsg::ClaimRefund {} => execute_claim_refund(deps, env, info),
         ExecuteMsg::EndSale { limit } => execute_end_sale(deps, env, limit),
+    }
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    match msg {
+        AndromedaMsg::ValidateAndrAddresses {} => {
+            let config = CONFIG.load(deps.storage)?;
+            contract.validate_andr_addresses(
+                deps.as_ref(),
+                env,
+                info,
+                vec![&config.token_address],
+            )?;
+            Ok(Response::new())
+        }
+        _ => contract.execute(deps, env, info, msg, execute),
     }
 }
 

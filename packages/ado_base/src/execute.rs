@@ -1,10 +1,11 @@
 use crate::state::ADOContract;
 use common::{
     ado_base::{AndromedaMsg, ExecuteMsg, InstantiateMsg},
+    encode_binary,
     error::ContractError,
     parse_message, require,
 };
-use cosmwasm_std::{attr, Api, DepsMut, Env, MessageInfo, Order, Response, Storage};
+use cosmwasm_std::{attr, Api, DepsMut, Env, MessageInfo, Order, Response, Storage, WasmMsg};
 use serde::de::DeserializeOwned;
 
 type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
@@ -61,7 +62,11 @@ impl<'a> ADOContract<'a> {
                 self.execute_update_operators(deps, info, operators)
             }
             AndromedaMsg::UpdateMissionContract { address } => {
-                self.execute_update_mission_contract(deps, info, address)
+                self.execute_update_mission_contract(deps, env, info, address)
+            }
+            AndromedaMsg::ValidateAndrAddresses {} => {
+                self.validate_andr_addresses(deps.as_ref(), env, info, vec![])?;
+                Ok(Response::new())
             }
             #[cfg(feature = "withdraw")]
             AndromedaMsg::Withdraw {
@@ -144,6 +149,7 @@ impl<'a> ADOContract<'a> {
     pub fn execute_update_mission_contract(
         &self,
         deps: DepsMut,
+        env: Env,
         info: MessageInfo,
         address: String,
     ) -> Result<Response, ContractError> {
@@ -154,6 +160,15 @@ impl<'a> ADOContract<'a> {
         self.mission_contract
             .save(deps.storage, &deps.api.addr_validate(&address)?)?;
         Ok(Response::new()
+            // Now that the mission contract is linked up we can validated any AndrAddress
+            // instances.
+            .add_message(WasmMsg::Execute {
+                contract_addr: env.contract.address.to_string(),
+                funds: vec![],
+                msg: encode_binary(&ExecuteMsg::AndrReceive(
+                    AndromedaMsg::ValidateAndrAddresses {},
+                ))?,
+            })
             .add_attribute("action", "update_mission_contract")
             .add_attribute("address", address))
     }

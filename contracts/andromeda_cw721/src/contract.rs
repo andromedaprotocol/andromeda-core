@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Response, Storage, SubMsg, Uint128,
+    attr, has_coins, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, Response, Storage, SubMsg, Uint128,
 };
 
 use crate::state::ANDR_MINTER;
@@ -14,7 +14,7 @@ use andromeda_protocol::{
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        InstantiateMsg as BaseInstantiateMsg,
+        AndromedaMsg, InstantiateMsg as BaseInstantiateMsg,
     },
     encode_binary,
     error::ContractError,
@@ -92,8 +92,32 @@ pub fn execute(
         } => execute_update_transfer_agreement(deps, env, info, token_id, agreement),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, info, token_id),
-        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
+    }
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    match msg {
+        AndromedaMsg::ValidateAndrAddresses {} => {
+            let andr_minter = ANDR_MINTER.load(deps.storage)?;
+            let true_addresses =
+                contract.validate_andr_addresses(deps.as_ref(), env, info, vec![&andr_minter])?;
+
+            let cw721_contract = AndrCW721Contract::default();
+            // Only allow minter to be set once to maintain immutability.
+            if cw721_contract.minter.may_load(deps.storage)?.is_none() {
+                save_minter(&cw721_contract, deps.storage, &true_addresses[0])?;
+            }
+            Ok(Response::new())
+        }
+        _ => contract.execute(deps, env, info, msg, execute),
     }
 }
 
@@ -114,18 +138,23 @@ fn execute_mint(
     let cw721_contract = AndrCW721Contract::default();
     let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
     let andr_minter = ANDR_MINTER.load(deps.storage)?;
-    // Only allow minter to be set once to maintain immutability.
     if cw721_contract.minter.may_load(deps.storage)?.is_none() {
-        cw721_contract.minter.save(
-            deps.storage,
-            &deps.api.addr_validate(&andr_minter.get_address(
-                deps.api,
-                &deps.querier,
-                mission_contract,
-            )?)?,
-        )?;
+        let addr = deps.api.addr_validate(&andr_minter.get_address(
+            deps.api,
+            &deps.querier,
+            mission_contract,
+        )?)?;
+        save_minter(&cw721_contract, deps.storage, &addr)?;
     }
     Ok(cw721_contract.execute(deps, env, info, msg.into())?)
+}
+
+fn save_minter(
+    cw721_contract: &AndrCW721Contract,
+    storage: &mut dyn Storage,
+    minter: &Addr,
+) -> Result<(), ContractError> {
+    Ok(cw721_contract.minter.save(storage, minter)?)
 }
 
 fn execute_transfer(
