@@ -244,6 +244,9 @@ pub enum ContractError {
     #[error("ModuleImmutable")]
     ModuleImmutable {},
 
+    #[error("GeneratorNotSpecified")]
+    GeneratorNotSpecified {},
+
     #[error("TooManyMissionComponents")]
     TooManyMissionComponents {},
 

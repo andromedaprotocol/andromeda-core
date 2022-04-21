@@ -72,7 +72,6 @@ dependencies = [
  "schemars",
  "serde",
  "terra-cosmwasm",
- "terraswap",
 ]
 
 [[package]]
