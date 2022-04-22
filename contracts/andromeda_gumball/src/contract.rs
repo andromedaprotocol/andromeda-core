@@ -1,6 +1,8 @@
 use crate::state::{CW721_CONTRACT, LIST, STATE, STATUS};
 use ado_base::ADOContract;
-use andromeda_protocol::gumball::{LatestRandomResponse, LatestRoundResponse, State};
+use andromeda_protocol::gumball::{
+    BeaconInfoState, GetRandomResponse, LatestRandomResponse, LatestRoundResponse, State, BEACONS,
+};
 use andromeda_protocol::{
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
     gumball::{
@@ -249,7 +251,7 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
     // Get the current round
     let current_round = from_genesis / PERIOD;
     // get random number, current form: Binary
-    let random_response: LatestRoundResponse =
+    let random_response: GetRandomResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: TERRAND_ADDRESS_TESTNET.to_string(),
             msg: encode_binary(&RandQueryMsg::GetRandomness {
@@ -257,8 +259,7 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
             })?,
         }))?;
     // Binary --> Base64
-    let random_hex: Vec<u8> = from_binary(&random_response.result.randomness)?;
-    // decode randomness
+    let random_hex: Vec<u8> = from_binary(&random_response.randomness)?;
     // Base64 --> Vec<u8> using the base64 decode function
     let random_vector = decode(random_hex).unwrap();
     // Vec<u8> --> Vec<u64> to be able to fit the sum of all the elements
