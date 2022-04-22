@@ -261,7 +261,8 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
     // Binary --> Base64
     let random_hex: Vec<u8> = from_binary(&random_response.randomness)?;
     // Base64 --> Vec<u8> using the base64 decode function
-    let random_vector = decode(random_hex).unwrap();
+    let random_vector = decode(random_hex).unwrap_or(vec![]);
+    require(!random_vector.is_empty(), ContractError::DecodingError {})?;
     // Vec<u8> --> Vec<u64> to be able to fit the sum of all the elements
     let ran_vec: Vec<u64> = random_vector.iter().map(|x| *x as u64).collect();
     // Concatinating the elements of the random number would yield an unworkably large number

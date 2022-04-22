@@ -25,6 +25,9 @@ pub enum ContractError {
     #[error("IllegalTokenName")]
     IllegalTokenName {},
 
+    #[error("Decoding Error")]
+    DecodingError {},
+
     #[error("IllegalTokenSymbol")]
     IllegalTokenSymbol {},
 
