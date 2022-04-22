@@ -1,17 +1,19 @@
-use crate::contract::{execute, instantiate};
+use cosmwasm_std::{
+    coins, from_binary,
+    testing::{mock_env, mock_info},
+    to_binary, Addr, BankMsg, ContractResult, CosmosMsg, DepsMut, Event, Reply, ReplyOn, Response,
+    SubMsg, SubMsgExecutionResponse, Uint128, WasmMsg,
+};
+
+use crate::contract::{execute, instantiate, query, reply};
 use andromeda_protocol::{
     swapper::{
-        Cw20HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, SwapperCw20HookMsg, SwapperImpl,
-        SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
+        Cw20HookMsg, ExecuteMsg, InstantiateInfo, InstantiateMsg, QueryMsg, SwapperCw20HookMsg,
+        SwapperImpl, SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
     },
     testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2},
 };
-use common::{ado_base::recipient::Recipient, error::ContractError};
-use cosmwasm_std::{
-    coins,
-    testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
-};
+use common::{ado_base::recipient::Recipient, error::ContractError, mission::AndrAddress};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 
@@ -19,10 +21,9 @@ const MOCK_ASTROPORT_WRAPPER_CONTRACT: &str = "astroport_wrapper";
 
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
-        swapper_impl: SwapperImpl {
-            instantiate_type: InstantiateType::Address(MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned()),
-            name: "swapper_impl".to_string(),
-        },
+        swapper_impl: SwapperImpl::Reference(AndrAddress {
+            identifier: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
+        }),
         primitive_contract: "primitive_contract".to_string(),
     };
 
@@ -40,16 +41,26 @@ fn test_instantiate_swapper_impl_address() {
             .add_attribute("type", "swapper"),
         res
     );
+
+    let msg = QueryMsg::SwapperImpl {};
+    let res: AndrAddress = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    assert_eq!(
+        AndrAddress {
+            identifier: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned()
+        },
+        res
+    )
 }
 
 #[test]
 fn test_instantiate_swapper_impl_new() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        swapper_impl: SwapperImpl {
-            instantiate_type: InstantiateType::New(to_binary(&"mock_instantiate_msg").unwrap()),
-            name: "swapper_impl".to_string(),
-        },
+        swapper_impl: SwapperImpl::New(InstantiateInfo {
+            msg: to_binary(&"mock_instantiate_msg").unwrap(),
+            ado_type: "swapper_impl".to_string(),
+        }),
         primitive_contract: "primitive_contract".to_string(),
     };
 
@@ -73,6 +84,28 @@ fn test_instantiate_swapper_impl_new() {
             }),
         res
     );
+
+    let reply_msg = Reply {
+        id: 1,
+        result: ContractResult::Ok(SubMsgExecutionResponse {
+            data: None,
+            events: vec![
+                Event::new("Type").add_attribute("contract_address", "swapper_impl_address")
+            ],
+        }),
+    };
+
+    reply(deps.as_mut(), mock_env(), reply_msg).unwrap();
+
+    let msg = QueryMsg::SwapperImpl {};
+    let res: AndrAddress = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    assert_eq!(
+        AndrAddress {
+            identifier: "swapper_impl_address".to_string()
+        },
+        res
+    )
 }
 
 #[test]
