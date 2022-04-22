@@ -2,9 +2,9 @@ use crate::{
     contract::{execute, instantiate, query, MAX_MINT_LIMIT},
     state::{Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, SALE_CONDUCTED, STATE},
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_CONDITIONS_MET_CONTRACT, MOCK_CONDITIONS_NOT_MET_CONTRACT,
-        MOCK_RATES_CONTRACT, MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT, MOCK_TOKENS_FOR_SALE,
-        MOCK_TOKEN_CONTRACT,
+        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_CONDITIONS_MET_CONTRACT,
+        MOCK_CONDITIONS_NOT_MET_CONTRACT, MOCK_RATES_CONTRACT, MOCK_ROYALTY_RECIPIENT,
+        MOCK_TAX_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
     },
 };
 use andromeda_protocol::{
@@ -13,8 +13,9 @@ use andromeda_protocol::{
 };
 use common::{
     ado_base::{
-        modules::{Module, RATES},
+        modules::{Module, ADDRESS_LIST, RATES},
         recipient::Recipient,
+        AndromedaMsg,
     },
     encode_binary,
     error::ContractError,
@@ -23,7 +24,7 @@ use common::{
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_env, mock_info},
-    Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, SubMsg, Uint128, WasmMsg,
+    Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw0::Expiration;
 
@@ -1587,4 +1588,53 @@ fn test_end_sale_limit_zero() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::LimitMustNotBeZero {}, res.unwrap_err());
+}
+
+#[test]
+fn test_addresslist() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let modules = vec![Module {
+        module_type: ADDRESS_LIST.to_owned(),
+        address: AndrAddress {
+            identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+        },
+        is_mutable: false,
+    }];
+    let msg = InstantiateMsg {
+        token_address: AndrAddress {
+            identifier: MOCK_TOKEN_CONTRACT.to_owned(),
+        },
+        modules: Some(modules),
+        can_mint_after_sale: true,
+    };
+
+    let info = mock_info("mission_contract", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    // Update mission contract
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
+        address: "mission_contract".to_string(),
+    });
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "update_mission_contract")
+            .add_attribute("address", "mission_contract"),
+        res
+    );
+
+    // Not whitelisted user
+    let msg = ExecuteMsg::Purchase {
+        number_of_tokens: None,
+    };
+    let info = mock_info("not_whitelisted", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::Std(StdError::generic_err(
+            "Querier contract error: InvalidAddress"
+        )),
+        res.unwrap_err()
+    );
 }

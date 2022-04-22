@@ -9,7 +9,7 @@ use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         modules::{Module, ADDRESS_LIST, OFFERS, RATES, RECEIPT},
-        AndromedaQuery,
+        AndromedaMsg, AndromedaQuery,
     },
     error::ContractError,
     mission::AndrAddress,
@@ -803,6 +803,44 @@ fn test_transfer_with_offer() {
             .add_submessage(msg)
             .add_attribute("action", "transfer")
             .add_attribute("recipient", "purchaser"),
+        res
+    );
+}
+
+#[test]
+fn test_update_mission_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let modules: Vec<Module> = vec![Module {
+        module_type: ADDRESS_LIST.to_owned(),
+        address: AndrAddress {
+            identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+        },
+        is_mutable: false,
+    }];
+
+    let info = mock_info("mission_contract", &[]);
+    let inst_msg = InstantiateMsg {
+        name: NAME.to_string(),
+        symbol: SYMBOL.to_string(),
+        minter: AndrAddress {
+            identifier: MINTER.to_string(),
+        },
+        modules: Some(modules),
+    };
+
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
+        address: "mission_contract".to_string(),
+    });
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "update_mission_contract")
+            .add_attribute("address", "mission_contract"),
         res
     );
 }
