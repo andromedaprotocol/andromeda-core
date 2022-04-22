@@ -1657,3 +1657,34 @@ fn test_validate_andr_addresses_nonexisting() {
         res.unwrap_err()
     );
 }
+
+#[test]
+fn test_validate_andr_addresses_regular_address() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        token_address: AndrAddress {
+            identifier: "terra1asdf1ssdfadf".to_owned(),
+        },
+        modules: None,
+        can_mint_after_sale: true,
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    ADOContract::default()
+        .execute_update_mission_contract(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            MOCK_MISSION_CONTRACT.to_owned(),
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::ValidateAndrAddresses {});
+    let info = mock_info(mock_env().contract.address.as_str(), &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(Response::new(), res);
+}
