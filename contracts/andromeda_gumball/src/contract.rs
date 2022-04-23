@@ -1,7 +1,7 @@
 use crate::state::{CW721_CONTRACT, LIST, STATE, STATUS};
 use ado_base::ADOContract;
 use andromeda_protocol::gumball::{
-    BeaconInfoState, GetRandomResponse, LatestRandomResponse, LatestRoundResponse, State, BEACONS,
+    GetRandomResponse, LatestRandomResponse, LatestRoundResponse, State,
 };
 use andromeda_protocol::{
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
@@ -212,24 +212,13 @@ fn execute_mint(
         }))
 }
 fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
-    let mut list = LIST.load(deps.storage)?;
-    let n_of_nfts = list.len();
-    let sent_funds = &info.funds[0];
-    let state = STATE.load(deps.storage)?;
-    let contract = CW721_CONTRACT.load(deps.storage)?;
     let status = STATUS.load(deps.storage)?;
     // check gumball's status
     require(status == true, ContractError::Refilling {})?;
+    let mut list = LIST.load(deps.storage)?;
+    let n_of_nfts = list.len();
     // check if we still have any NFTs left
     require(n_of_nfts > 0, ContractError::OutOfNFTs {})?;
-    // check for correct denomination
-    require(
-        sent_funds.denom == "uusd".to_string(),
-        ContractError::InvalidFunds {
-            msg: "Only uusd is accepted".to_string(),
-        },
-    )?;
-
     // check if more than one type of coin was sent
     require(
         info.funds.len() == 1,
@@ -237,12 +226,23 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
             msg: "Only one type of coin is required (uusd).".to_string(),
         },
     )?;
+    let sent_funds = &info.funds[0];
+    // check for correct denomination
+    require(
+        sent_funds.denom == "uusd".to_string(),
+        ContractError::InvalidFunds {
+            msg: "Only uusd is accepted".to_string(),
+        },
+    )?;
+    let state = STATE.load(deps.storage)?;
 
     // check for correct amount of funds
     require(
         sent_funds.amount == state.price.amount,
         ContractError::InsufficientFunds {},
     )?;
+    let contract = CW721_CONTRACT.load(deps.storage)?;
+
     let timestamp_now = env.block.time.seconds();
 
     // Get the current block time from genesis time
@@ -251,20 +251,27 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
     // Get the current round
     let current_round = from_genesis / PERIOD;
     // get random number, current form: Binary
-    let random_response: GetRandomResponse =
+    // let random_response: GetRandomResponse =
+    //     deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+    //         contract_addr: TERRAND_ADDRESS_TESTNET.to_string(),
+    //         msg: encode_binary(&RandQueryMsg::GetRandomness {
+    //             round: current_round,
+    //         })?,
+    //     }))?;
+    let random_response: LatestRandomResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: TERRAND_ADDRESS_TESTNET.to_string(),
-            msg: encode_binary(&RandQueryMsg::GetRandomness {
-                round: current_round,
-            })?,
+            msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
         }))?;
+
     // Binary --> Base64
     let random_hex: Vec<u8> = from_binary(&random_response.randomness)?;
     // Base64 --> Vec<u8> using the base64 decode function
-    let random_vector = decode(random_hex).unwrap_or(vec![]);
-    require(!random_vector.is_empty(), ContractError::DecodingError {})?;
+    // let randomness = random_response.randomness;
+    // let random_vector = decode(randomness).unwrap_or(vec![]);
+    // require(!random_vector.is_empty(), ContractError::DecodingError {})?;
     // Vec<u8> --> Vec<u64> to be able to fit the sum of all the elements
-    let ran_vec: Vec<u64> = random_vector.iter().map(|x| *x as u64).collect();
+    let ran_vec: Vec<u64> = random_hex.iter().map(|x| *x as u64).collect();
     // Concatinating the elements of the random number would yield an unworkably large number
     // So I opted for the sum, which is still random and large enough to work with modulus of list's length
     let mut random_number: u64 = ran_vec.iter().sum();
@@ -318,32 +325,33 @@ fn query_state(deps: Deps) -> Result<StateResponse, ContractError> {
     Ok(StateResponse { state })
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use andromeda_protocol::testing::mock_querier::mock_dependencies_custom;
-//     use common::ado_base::recipient::Recipient;
-//     use common::mission::AndrAddress;
-//     use cosmwasm_std::coin;
-//     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use andromeda_protocol::testing::mock_querier::mock_dependencies_custom;
+    use common::ado_base::recipient::Recipient;
+    use common::mission::AndrAddress;
+    use cosmwasm_std::coin;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
-//     fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, ContractError> {
-//         let msg = ExecuteMsg::Mint(Box::new(MintMsg {
-//             token_id: token_id.into(),
-//             owner: mock_env().contract.address.to_string(),
-//             token_uri: None,
-//             extension: TokenExtension {
-//                 name: "name".to_string(),
-//                 publisher: "publisher".to_string(),
-//                 description: None,
-//                 transfer_agreement: None,
-//                 metadata: None,
-//                 archived: false,
-//                 pricing: None,
-//             },
-//         }));
-//         execute(deps, mock_env(), mock_info("owner", &[]), msg)
-//     }
+    fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, ContractError> {
+        let msg = ExecuteMsg::Mint(Box::new(MintMsg {
+            token_id: token_id.into(),
+            owner: mock_env().contract.address.to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                name: "name".to_string(),
+                publisher: "publisher".to_string(),
+                description: None,
+                transfer_agreement: None,
+                metadata: None,
+                archived: false,
+                pricing: None,
+            },
+        }));
+        execute(deps, mock_env(), mock_info("owner", &[]), msg)
+    }
+}
 
 // #[test]
 // fn test_instantiate() {

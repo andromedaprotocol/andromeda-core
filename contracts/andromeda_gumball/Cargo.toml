@@ -25,6 +25,7 @@ cw0 = "0.9.1"
 cw721 = "0.9.1"
 cw2 = "0.9.1"
 base64 = "0.13.0"
+terrand = { version = "3.2.2", features = ["library"] }
 andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
 common = { version = "0.1.0", path = "../../packages/common" }
 ado-base = { path = "../../packages/ado_base", version = "0.1.0", features = ["modules"] }
