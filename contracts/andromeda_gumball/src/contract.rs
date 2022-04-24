@@ -19,9 +19,9 @@ use common::{
     error::ContractError,
     require,
 };
-use cosmwasm_std::{attr, entry_point, from_binary, StdError};
+use cosmwasm_std::{attr, entry_point, from_binary, Binary, StdError};
 use cosmwasm_std::{
-    has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    has_coins, Api, BankMsg, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
     QuerierWrapper, QueryRequest, Response, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw0::Expiration;
@@ -263,15 +263,17 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
             contract_addr: TERRAND_ADDRESS_TESTNET.to_string(),
             msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
         }))?;
-
+    let randomness = Binary::to_base64(&random_response.randomness);
+    let vec = randomness.into_bytes();
     // Binary --> Base64
-    let random_hex: Vec<u8> = from_binary(&random_response.randomness)?;
+    // let random_hex: Vec<u8> = from_binary(&random_response.randomness)?;
+
     // Base64 --> Vec<u8> using the base64 decode function
     // let randomness = random_response.randomness;
     // let random_vector = decode(randomness).unwrap_or(vec![]);
     // require(!random_vector.is_empty(), ContractError::DecodingError {})?;
     // Vec<u8> --> Vec<u64> to be able to fit the sum of all the elements
-    let ran_vec: Vec<u64> = random_hex.iter().map(|x| *x as u64).collect();
+    let ran_vec: Vec<u64> = vec.iter().map(|x| *x as u64).collect();
     // Concatinating the elements of the random number would yield an unworkably large number
     // So I opted for the sum, which is still random and large enough to work with modulus of list's length
     let mut random_number: u64 = ran_vec.iter().sum();
@@ -281,10 +283,9 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
     }
     // Use modulus to get a random index of the NFTs list
     let index = random_number as usize % n_of_nfts;
-    // Select NFT using index
-    let random_nft = list[index].clone();
-    // Remove NFT from list using index
-    list.remove(index);
+    // Select NFT & remove it from list at the same time. Used swap_remove since it's more efficient and the ordering doesn't matter
+    let random_nft = list.swap_remove(index);
+    LIST.save(deps.storage, &list)?;
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -331,8 +332,8 @@ mod tests {
     use andromeda_protocol::testing::mock_querier::mock_dependencies_custom;
     use common::ado_base::recipient::Recipient;
     use common::mission::AndrAddress;
-    use cosmwasm_std::coin;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{coin, to_binary};
 
     fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, ContractError> {
         let msg = ExecuteMsg::Mint(Box::new(MintMsg {
@@ -350,6 +351,53 @@ mod tests {
             },
         }));
         execute(deps, mock_env(), mock_info("owner", &[]), msg)
+    }
+    #[test]
+    fn swap_rem() {
+        let mut v: Vec<u8> = vec![
+            12, 4, 1, 84, 179, 120, 223, 73, 87, 30, 84, 218, 109, 137, 198, 191, 55, 238, 215,
+            158, 129, 164, 35, 40, 96, 219, 56, 72, 174, 106, 132, 143,
+        ];
+
+        let removed_element = v.swap_remove(1);
+        assert_eq!(removed_element, 4);
+    }
+    #[test]
+    fn binary() {
+        let v: Vec<u8> = vec![
+            12, 4, 1, 84, 179, 120, 223, 73, 87, 30, 84, 218, 109, 137, 198, 191, 55, 238, 215,
+            158, 129, 164, 35, 40, 96, 219, 56, 72, 174, 106, 132, 143,
+        ];
+
+        let bin = to_binary(&v).unwrap();
+        println!("{:?}", bin);
+
+        let random_hex: Vec<u8> = from_binary(&bin).unwrap();
+        println!("{:?}", random_hex);
+    }
+    #[test]
+    fn bytes() {
+        let v: Vec<u8> = vec![
+            12, 4, 1, 84, 179, 120, 223, 73, 87, 30, 84, 218, 109, 137, 198, 191, 55, 238, 215,
+            158, 129, 164, 35, 40, 96, 219, 56, 72, 174, 106, 132, 143,
+        ];
+        let n = "2b51af9c2bc12b262e2fc955bcb9fab4c89375efee6210385c40f59948e539d6".to_string();
+        let tbin = Binary::from_base64(&n).unwrap();
+        println!("from base64: {:?}", tbin);
+        let bin = to_binary(&n).unwrap();
+        println!(" to binary: {:?}", bin);
+        let trandom = Binary::to_base64(&tbin);
+        println!(" to_base64{:?}", trandom);
+        let random_hex: String = from_binary(&bin).unwrap();
+        println!(" from_binary{:?}", random_hex);
+
+        let vec = trandom.into_bytes();
+        println!("trandom into bytes{:?}", vec);
+        let ran_vec: Vec<u64> = vec.iter().map(|x| *x as u64).collect();
+        let mut random_number: u64 = ran_vec.iter().sum();
+        println!("{:?}", random_number);
+        let index = random_number % 3;
+        println!("{:?}", index);
     }
 }
 
