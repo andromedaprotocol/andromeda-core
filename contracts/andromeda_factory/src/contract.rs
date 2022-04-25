@@ -195,10 +195,10 @@ pub fn add_update_code_id(
     code_id: u64,
 ) -> Result<Response, ContractError> {
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
-    store_code_id(deps.storage, code_id_key.clone(), code_id)?;
+    store_code_id(deps.storage, &code_id_key, code_id)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "add_update_code_id"),
@@ -247,7 +247,7 @@ fn query_address(deps: Deps, symbol: String) -> Result<AddressResponse, Contract
 }
 
 fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
-    let code_id = read_code_id(deps.storage, key)?;
+    let code_id = read_code_id(deps.storage, &key)?;
     Ok(code_id)
 }
 
@@ -436,11 +436,73 @@ mod tests {
     }
 
     #[test]
+    fn test_update_code_id_operator() {
+        let owner = String::from("owner");
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(owner.as_str(), &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(&owner, &[]),
+            InstantiateMsg {},
+        )
+        .unwrap();
+
+        let operator = String::from("operator");
+        ADOContract::default()
+            .execute_update_operators(deps.as_mut(), info, vec![operator.clone()])
+            .unwrap();
+
+        let msg = ExecuteMsg::UpdateCodeId {
+            code_id_key: "address_list".to_string(),
+            code_id: 1u64,
+        };
+
+        let info = mock_info(&operator, &[]);
+        let resp = execute(deps.as_mut(), env, info, msg).unwrap();
+
+        let expected = Response::new().add_attributes(vec![
+            attr("action", "add_update_code_id"),
+            attr("code_id_key", "address_list"),
+            attr("code_id", "1"),
+        ]);
+
+        assert_eq!(resp, expected);
+    }
+
+    #[test]
+    fn test_update_code_id_unauthorized() {
+        let owner = String::from("owner");
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(&owner, &[]),
+            InstantiateMsg {},
+        )
+        .unwrap();
+
+        let msg = ExecuteMsg::UpdateCodeId {
+            code_id_key: "address_list".to_string(),
+            code_id: 1u64,
+        };
+
+        let info = mock_info("not_owner", &[]);
+        let resp = execute(deps.as_mut(), env, info, msg);
+
+        assert_eq!(ContractError::Unauthorized {}, resp.unwrap_err());
+    }
+
+    #[test]
     fn test_andr_get_query() {
         let mut deps = mock_dependencies_custom(&[]);
 
         CODE_ID
-            .save(deps.as_mut().storage, "code_id".to_string(), &1u64)
+            .save(deps.as_mut().storage, "code_id", &1u64)
             .unwrap();
 
         let msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
