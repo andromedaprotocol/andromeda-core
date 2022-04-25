@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use ado_base::ADOContract;
 use andromeda_protocol::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     error::ContractError,
     Funds,
 };
@@ -58,6 +58,13 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+
+    // Do this before the hooks get fired off to ensure that there is no conflict with the mission
+    // contract not being whitelisted.
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
+        return contract.execute_update_mission_contract(deps, env, info, address);
+    };
+
     contract.module_hook::<Response>(
         deps.storage,
         deps.api,

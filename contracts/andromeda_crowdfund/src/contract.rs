@@ -9,7 +9,10 @@ use andromeda_protocol::{
     rates::get_tax_amount,
 };
 use common::{
-    ado_base::{recipient::Recipient, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{
+        hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
+        InstantiateMsg as BaseInstantiateMsg,
+    },
     deduct_funds, encode_binary,
     error::ContractError,
     merge_sub_msgs, require, Funds,
@@ -75,6 +78,24 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    // Do this before the hooks get fired off to ensure that there is no conflict with the mission
+    // contract not being whitelisted.
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
+        return contract.execute_update_mission_contract(deps, env, info, address);
+    };
+
+    contract.module_hook::<Response>(
+        deps.storage,
+        deps.api,
+        deps.querier,
+        AndromedaHook::OnExecute {
+            sender: info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+
     match msg {
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::Mint(mint_msgs) => execute_mint(deps, env, info, mint_msgs),

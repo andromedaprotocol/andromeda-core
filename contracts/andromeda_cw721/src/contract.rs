@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, Storage, SubMsg, Uint128,
+    attr, has_coins, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, QuerierWrapper, Response, Storage, SubMsg, Uint128,
 };
 
 use crate::state::ANDR_MINTER;
@@ -65,6 +65,12 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+
+    // Do this before the hooks get fired off to ensure that there is no conflict with the mission
+    // contract not being whitelisted.
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
+        return contract.execute_update_mission_contract(deps, env, info, address);
+    };
 
     contract.module_hook::<Response>(
         deps.storage,
@@ -182,19 +188,22 @@ fn execute_transfer(
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     let tax_amount = if let Some(agreement) = &token.extension.transfer_agreement {
+        let mission_contract = base_contract.get_mission_contract(deps.storage)?;
+        let agreement_amount =
+            get_transfer_agreement_amount(deps.api, &deps.querier, mission_contract, agreement)?;
         let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
             deps.storage,
             deps.api,
             &deps.querier,
             info.sender.to_string(),
-            Funds::Native(agreement.amount.clone()),
+            Funds::Native(agreement_amount.clone()),
             encode_binary(&ExecuteMsg::TransferNft {
                 token_id: token_id.clone(),
                 recipient: recipient.clone(),
             })?,
         )?;
         let remaining_amount = remainder.try_get_coin()?;
-        let tax_amount = get_tax_amount(&msgs, agreement.amount.amount, remaining_amount.amount);
+        let tax_amount = get_tax_amount(&msgs, agreement_amount.amount, remaining_amount.amount);
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: token.owner.to_string(),
             amount: vec![remaining_amount],
@@ -215,6 +224,25 @@ fn execute_transfer(
         .add_attribute("recipient", recipient))
 }
 
+fn get_transfer_agreement_amount(
+    api: &dyn Api,
+    querier: &QuerierWrapper,
+    mission_contract: Option<Addr>,
+    agreement: &TransferAgreement,
+) -> Result<Coin, ContractError> {
+    let agreement_amount =
+        agreement
+            .amount
+            .clone()
+            .try_into_coin(api, querier, mission_contract)?;
+    match agreement_amount {
+        Some(amount) => Ok(amount),
+        None => Err(ContractError::PrimitiveDoesNotExist {
+            msg: "TransferAgreement price is None".to_string(),
+        }),
+    }
+}
+
 fn check_can_send(
     deps: Deps,
     env: Env,
@@ -230,13 +258,16 @@ fn check_can_send(
 
     // token purchaser can send if correct funds are sent
     if let Some(agreement) = &token.extension.transfer_agreement {
+        let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
+        let agreement_amount =
+            get_transfer_agreement_amount(deps.api, &deps.querier, mission_contract, agreement)?;
         require(
             has_coins(
                 &info.funds,
                 &Coin {
-                    denom: agreement.amount.denom.to_owned(),
+                    denom: agreement_amount.denom.to_owned(),
                     // Ensure that the taxes came from the sender.
-                    amount: agreement.amount.amount + tax_amount,
+                    amount: agreement_amount.amount + tax_amount,
                 },
             ),
             ContractError::InsufficientFunds {},
@@ -282,8 +313,10 @@ fn execute_update_transfer_agreement(
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
     require(token.owner == info.sender, ContractError::Unauthorized {})?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
-    if let Some(xfer_agreement) = agreement.clone() {
-        deps.api.addr_validate(&xfer_agreement.purchaser)?;
+    if let Some(xfer_agreement) = &agreement {
+        if xfer_agreement.purchaser != "*" {
+            deps.api.addr_validate(&xfer_agreement.purchaser)?;
+        }
     }
 
     token.extension.transfer_agreement = agreement;

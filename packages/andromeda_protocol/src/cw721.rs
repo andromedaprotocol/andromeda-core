@@ -1,8 +1,9 @@
 use common::{
     ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
     mission::AndrAddress,
+    primitive::Value,
 };
-use cosmwasm_std::{attr, BankMsg, Binary, Coin, Event};
+use cosmwasm_std::{Binary, Coin};
 use cw721::Expiration;
 pub use cw721_base::MintMsg;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
@@ -28,26 +29,9 @@ pub struct InstantiateMsg {
 /// A struct used to represent an agreed transfer of a token. The `purchaser` may use the `Transfer` message for this token as long as funds are provided equalling the `amount` defined in the agreement.
 pub struct TransferAgreement {
     /// The amount required for the purchaser to transfer ownership of the token
-    pub amount: Coin,
+    pub amount: Value<Coin>,
     /// The address of the purchaser
     pub purchaser: String,
-}
-
-impl TransferAgreement {
-    /// Generates a `BankMsg` for the amount defined in the transfer agreement to the provided address
-    pub fn generate_payment(&self, to_address: String) -> BankMsg {
-        BankMsg::Send {
-            to_address,
-            amount: vec![self.amount.clone()],
-        }
-    }
-    /// Generates an event related to the agreed transfer of a token
-    pub fn generate_event(self) -> Event {
-        Event::new("agreed_transfer").add_attributes(vec![
-            attr("amount", self.amount.to_string()),
-            attr("purchaser", self.purchaser),
-        ])
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
-    BankMsg, Decimal, Response, StdError,
+    to_binary, BankMsg, Decimal, Response, StdError, WasmMsg,
 };
 
 use crate::contract::{execute, instantiate};
@@ -10,7 +10,8 @@ use andromeda_protocol::{
     testing::mock_querier::{mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT},
 };
 use common::{
-    ado_base::modules::Module, ado_base::recipient::Recipient, error::ContractError,
+    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg},
+    error::ContractError,
     mission::AndrAddress,
 };
 
@@ -63,6 +64,51 @@ fn test_modules() {
             })
             .add_attribute("action", "send")
             .add_attribute("sender", "sender"),
+        res
+    );
+}
+
+#[test]
+fn test_update_mission_contract() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let modules: Vec<Module> = vec![Module {
+        module_type: "address_list".to_string(),
+        address: AndrAddress {
+            identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+        },
+        is_mutable: false,
+    }];
+
+    let info = mock_info("mission_contract", &[]);
+    let msg = InstantiateMsg {
+        modules: Some(modules),
+        recipients: vec![AddressPercent {
+            recipient: Recipient::from_string(String::from("Some Address")),
+            percent: Decimal::percent(100),
+        }],
+    };
+
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
+        address: "mission_contract".to_string(),
+    });
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(WasmMsg::Execute {
+                contract_addr: mock_env().contract.address.to_string(),
+                funds: vec![],
+                msg: to_binary(&ExecuteMsg::AndrReceive(
+                    AndromedaMsg::ValidateAndrAddresses {}
+                ))
+                .unwrap()
+            })
+            .add_attribute("action", "update_mission_contract")
+            .add_attribute("address", "mission_contract"),
         res
     );
 }

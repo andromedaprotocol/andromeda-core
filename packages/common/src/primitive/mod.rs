@@ -2,6 +2,10 @@ use cosmwasm_std::{Coin, Decimal, StdError, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub use value::{PrimitivePointer, Value};
+
+mod value;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Primitive {
@@ -17,6 +21,42 @@ fn parse_error(type_name: String) -> StdError {
     StdError::ParseErr {
         target_type: type_name.clone(),
         msg: format!("Primitive is not a {}", type_name),
+    }
+}
+
+impl From<String> for Primitive {
+    fn from(value: String) -> Self {
+        Primitive::String(value)
+    }
+}
+
+impl From<Uint128> for Primitive {
+    fn from(value: Uint128) -> Self {
+        Primitive::Uint128(value)
+    }
+}
+
+impl From<Decimal> for Primitive {
+    fn from(value: Decimal) -> Self {
+        Primitive::Decimal(value)
+    }
+}
+
+impl From<bool> for Primitive {
+    fn from(value: bool) -> Self {
+        Primitive::Bool(value)
+    }
+}
+
+impl From<Coin> for Primitive {
+    fn from(value: Coin) -> Self {
+        Primitive::Coin(value)
+    }
+}
+
+impl From<Vec<Primitive>> for Primitive {
+    fn from(value: Vec<Primitive>) -> Self {
+        Primitive::Vec(value)
     }
 }
 
@@ -37,6 +77,13 @@ impl Primitive {
         match self {
             Primitive::Uint128(value) => Ok(*value),
             _ => Err(parse_error(String::from("Uint128"))),
+        }
+    }
+
+    pub fn try_get_decimal(&self) -> Result<Decimal, StdError> {
+        match self {
+            Primitive::Decimal(value) => Ok(*value),
+            _ => Err(parse_error(String::from("Decimal"))),
         }
     }
 
@@ -138,6 +185,18 @@ mod tests {
         assert_eq!(
             parse_error("Vec".to_string()),
             primitive.try_get_vec().unwrap_err()
+        );
+    }
+
+    #[test]
+    fn try_get_decimal() {
+        let primitive = Primitive::Decimal(Decimal::zero());
+        assert_eq!(Decimal::zero(), primitive.try_get_decimal().unwrap());
+
+        let primitive = Primitive::String("String".to_string());
+        assert_eq!(
+            parse_error("Decimal".to_string()),
+            primitive.try_get_decimal().unwrap_err()
         );
     }
 

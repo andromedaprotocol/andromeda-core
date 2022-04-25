@@ -304,6 +304,9 @@ pub enum ContractError {
     #[error("Verification Failed")]
     VerificationFailed {},
 
+    #[error("Primitive Does Not Exist: {msg}")]
+    PrimitiveDoesNotExist { msg: String },
+
     #[error("Token already being distributed")]
     TokenAlreadyBeingDistributed {},
 
