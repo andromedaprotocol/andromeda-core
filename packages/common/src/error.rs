@@ -196,7 +196,7 @@ pub enum ContractError {
     #[error("Invalid png header")]
     InvalidPngHeader {},
     // END CW20 ERRORS
-    #[error("Invalid Module")]
+    #[error("Invalid Module, {msg:?}")]
     InvalidModule { msg: Option<String> },
 
     #[error("UnsupportedOperation")]
@@ -280,16 +280,16 @@ pub enum ContractError {
     #[error("Cannot mint after sale conducted")]
     CannotMintAfterSaleConducted {},
 
-    #[error("Not implemented")]
+    #[error("Not implemented: {msg:?}")]
     NotImplemented { msg: Option<String> },
 
-    #[error("Invalid Strategy")]
+    #[error("Invalid Strategy: {strategy}")]
     InvalidStrategy { strategy: String },
 
     #[error("Invalid Query")]
     InvalidQuery {},
 
-    #[error("Invalid Withdrawal")]
+    #[error("Invalid Withdrawal: {msg:?}")]
     InvalidWithdrawal { msg: Option<String> },
 
     #[error("Airdrop stage {stage} expired at {expiration}")]
@@ -333,6 +333,7 @@ pub enum ContractError {
 
     #[error("Invalid deposit/withdraw window")]
     InvalidWindow {},
+
     #[error("Duplicate tokens")]
     DuplicateTokens {},
 
