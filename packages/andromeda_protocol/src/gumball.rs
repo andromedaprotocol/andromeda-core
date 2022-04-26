@@ -1,10 +1,9 @@
 use common::{
-    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     mission::AndrAddress,
 };
-use cosmwasm_std::{attr, Addr, BankMsg, Binary, CanonicalAddr, Coin, Event, Uint128};
+use cosmwasm_std::{Addr, Binary, Coin, Uint128};
 use cw721_base::MintMsg;
-use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +11,7 @@ use crate::cw721::TokenExtension;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    // pub andromeda_cw721_contract: AndrAddress,
+    pub andromeda_cw721_contract: AndrAddress,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -33,9 +32,9 @@ pub enum ExecuteMsg {
     // Automatically switches to opposite status.
     // True means buying is allowed and minting is halted. False means the opposite.
     SwitchStatus {},
-    SetContractAddress {
-        andromeda_cw721_contract: AndrAddress,
-    },
+    // SetContractAddress {
+    //     andromeda_cw721_contract: AndrAddress,
+    // },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

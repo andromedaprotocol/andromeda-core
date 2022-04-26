@@ -1,9 +1,6 @@
 use andromeda_protocol::gumball::State;
-use common::{ado_base::recipient::Recipient, mission::AndrAddress};
-use cosmwasm_std::{Coin, Uint128};
-use cw_storage_plus::{Item, Map};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use common::mission::AndrAddress;
+use cw_storage_plus::Item;
 
 // Decided to put the token IDs in a vector
 // We'll use the length on the vector to determine the number of available NFTs
