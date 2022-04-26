@@ -21,7 +21,6 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 const CONTRACT_NAME: &str = "crates.io:andromeda_gumball";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const TERRAND_ADDRESS_MAINNET: &str = "terra1s90fm6hmh5n9drvucvv076ldemlqhe032qtjdq";
 const TERRAND_ADDRESS_TESTNET: &str = "terra1a62jxn3hh54fa5slan4dkd7u6v4nzgz3pjhygm";
 
 pub const MOCK_TOKEN_CONTRACT: &str = "cw721_contract";
@@ -101,7 +100,7 @@ fn execute_switch_status(deps: DepsMut, info: MessageInfo) -> Result<Response, C
         ContractError::Unauthorized {},
     )?;
     // Automatically switch to opposite status
-    if status == true {
+    if status {
         status = false;
     } else {
         status = true;
@@ -120,7 +119,7 @@ fn execute_sale_details(
     let contract = ADOContract::default();
     let status = STATUS.load(deps.storage)?;
     // Check status, can't change sale details while buying is allowed
-    require(status == false, ContractError::Refilling {})?;
+    require(!status, ContractError::Refilling {})?;
     // Check authority
     require(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -128,12 +127,12 @@ fn execute_sale_details(
     )?;
     // Check valid amount
     require(
-        price.amount > Uint128::from(0 as u64),
+        price.amount > Uint128::from(0_u64),
         ContractError::InvalidZeroAmount {},
     )?;
     // Check valid denomination
     require(
-        price.denom == "uusd".to_string(),
+        price.denom == *"uusd",
         ContractError::InvalidFunds {
             msg: "Only uusd is allowed".to_string(),
         },
@@ -142,7 +141,7 @@ fn execute_sale_details(
     let max_amount_per_wallet = max_amount_per_wallet.unwrap_or_else(|| Uint128::from(1u128));
 
     require(
-        max_amount_per_wallet > Uint128::from(0 as u64),
+        max_amount_per_wallet > Uint128::from(0_u64),
         ContractError::InvalidZeroAmount {},
     )?;
     // This is to prevent cloning price.
@@ -177,7 +176,7 @@ fn execute_mint(
 ) -> Result<Response, ContractError> {
     let status = STATUS.load(deps.storage)?;
     // Can only mint when in "refill" mode, and that's when status is set to false.
-    require(status == false, ContractError::NotInRefillMode {})?;
+    require(!status, ContractError::NotInRefillMode {})?;
     let contract = ADOContract::default();
     // check authority
     require(
@@ -191,12 +190,9 @@ fn execute_mint(
     list.push(mint_msg.clone().token_id);
 
     LIST.save(deps.storage, &list).unwrap();
-    println!("check 1");
     let mission_contract = contract.get_mission_contract(deps.storage)?;
-    println!("check 2");
 
     let contract_addr = config.get_address(deps.api, &deps.querier, mission_contract)?;
-    println!("check 3");
 
     Ok(Response::new()
         .add_attribute("action", "mint")
@@ -209,7 +205,7 @@ fn execute_mint(
 fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let status = STATUS.load(deps.storage)?;
     // check gumball's status
-    require(status == true, ContractError::Refilling {})?;
+    require(status, ContractError::Refilling {})?;
     let mut list = LIST.load(deps.storage)?;
     let n_of_nfts = list.len();
     // check if we still have any NFTs left
@@ -224,7 +220,7 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
     let sent_funds = &info.funds[0];
     // check for correct denomination
     require(
-        sent_funds.denom == "uusd".to_string(),
+        sent_funds.denom == *"uusd",
         ContractError::InvalidFunds {
             msg: "Only uusd is accepted".to_string(),
         },
@@ -245,16 +241,8 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
 
     // Get the current round
     let _current_round = from_genesis / PERIOD;
+    // const TERRAND_ADDRESS_MAINNET: &str = "terra1s90fm6hmh5n9drvucvv076ldemlqhe032qtjdq";
 
-    // let order_randomness = CosmosMsg::Wasm(WasmMsg::Execute {
-    //     contract_addr: TERRAND_ADDRESS_TESTNET.to_string(),
-    //     msg: encode_binary(&terrand::msg::ExecuteMsg::Drand {
-    //         round: current_round,
-    //         previous_signature: (),
-    //         signature: (),
-    //     })?,
-    //     funds: (&[]).to_vec(),
-    // });
     let random_response: LatestRandomResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: TERRAND_ADDRESS_TESTNET.to_string(),
@@ -288,7 +276,7 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
         .add_attribute("action", "claim")
         .add_attribute("token_id", random_nft)
         .add_attribute("token_contract", contract.identifier)
-        .add_attribute("recipient", info.sender.to_string().clone()))
+        .add_attribute("recipient", info.sender.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -403,7 +391,7 @@ mod tests {
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
         let status = STATUS.load(&deps.storage).unwrap();
-        assert_eq!(status, false);
+        assert!(!status);
     }
     #[test]
     fn test_sale_details_unauthorized() {
@@ -419,7 +407,7 @@ mod tests {
         let info = mock_info("anyone", &[]);
         let msg = ExecuteMsg::SaleDetails {
             price: coin(5, "uusd"),
-            max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+            max_amount_per_wallet: Some(Uint128::from(1_u64)),
             recipient: Recipient::Addr("me".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
@@ -439,7 +427,7 @@ mod tests {
         let info = mock_info("owner", &[]);
         let msg = ExecuteMsg::SaleDetails {
             price: coin(0, "uusd"),
-            max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+            max_amount_per_wallet: Some(Uint128::from(1_u64)),
             recipient: Recipient::Addr("me".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
@@ -459,7 +447,7 @@ mod tests {
         let info = mock_info("owner", &[]);
         let msg = ExecuteMsg::SaleDetails {
             price: coin(10, "LUNA"),
-            max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+            max_amount_per_wallet: Some(Uint128::from(1_u64)),
             recipient: Recipient::Addr("me".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
@@ -484,7 +472,7 @@ mod tests {
         let info = mock_info("owner", &[]);
         let msg = ExecuteMsg::SaleDetails {
             price: coin(10, "uusd"),
-            max_amount_per_wallet: Some(Uint128::from(0 as u64)),
+            max_amount_per_wallet: Some(Uint128::from(0_u64)),
             recipient: Recipient::Addr("me".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
@@ -504,7 +492,7 @@ mod tests {
         let info = mock_info("owner", &[]);
         let msg = ExecuteMsg::SaleDetails {
             price: coin(10, "uusd"),
-            max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+            max_amount_per_wallet: Some(Uint128::from(1_u64)),
             recipient: Recipient::Addr("me".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -513,7 +501,7 @@ mod tests {
             Response::new().add_attributes(vec![
                 attr("action", "switch status"),
                 attr("price", coin(10, "uusd").to_string()),
-                attr("max_amount_per_wallet", Uint128::from(1 as u64)),
+                attr("max_amount_per_wallet", Uint128::from(1_u64)),
                 attr("recipient", "me".to_string(),),
             ])
         );
@@ -530,15 +518,15 @@ mod tests {
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let status = STATUS.load(&deps.storage).unwrap();
-        assert_eq!(status, false);
+        assert!(!status);
         let info = mock_info("owner", &[]);
         execute_switch_status(deps.as_mut(), info).unwrap();
         let status = STATUS.load(&deps.storage).unwrap();
-        assert_eq!(status, true);
+        assert!(status);
         let info = mock_info("owner", &[]);
         execute_switch_status(deps.as_mut(), info).unwrap();
         let status = STATUS.load(&deps.storage).unwrap();
-        assert_eq!(status, false);
+        assert!(!status);
         let info = mock_info("anyone", &[]);
         let err = execute_switch_status(deps.as_mut(), info).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized {});
@@ -665,7 +653,7 @@ mod tests {
     //     let info = mock_info("owner", &[]);
     //     let msg = ExecuteMsg::SaleDetails {
     //         price: coin(10, "uusd"),
-    //         max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+    //         max_amount_per_wallet: Some(Uint128::from(1_u64)),
     //         recipient: Recipient::Addr("me".to_string()),
     //     };
     //     execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -706,7 +694,7 @@ mod tests {
     //     let info = mock_info("owner", &[]);
     //     let msg = ExecuteMsg::SaleDetails {
     //         price: coin(10, "uusd"),
-    //         max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+    //         max_amount_per_wallet: Some(Uint128::from(1_u64)),
     //         recipient: Recipient::Addr("me".to_string()),
     //     };
     //     execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -750,7 +738,7 @@ mod tests {
     //     let info = mock_info("owner", &[]);
     //     let msg = ExecuteMsg::SaleDetails {
     //         price: coin(10, "uusd"),
-    //         max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+    //         max_amount_per_wallet: Some(Uint128::from(1_u64)),
     //         recipient: Recipient::Addr("me".to_string()),
     //     };
     //     execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -799,7 +787,7 @@ mod tests {
         let info = mock_info("owner", &[]);
         let msg = ExecuteMsg::SaleDetails {
             price: coin(10, "uusd"),
-            max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+            max_amount_per_wallet: Some(Uint128::from(1_u64)),
             recipient: Recipient::Addr("me".to_string()),
         };
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -827,7 +815,7 @@ mod tests {
     //     let info = mock_info("owner", &[]);
     //     let msg = ExecuteMsg::SaleDetails {
     //         price: coin(10, "uusd"),
-    //         max_amount_per_wallet: Some(Uint128::from(1 as u64)),
+    //         max_amount_per_wallet: Some(Uint128::from(1_u64)),
     //         recipient: Recipient::Addr("me".to_string()),
     //     };
     //     execute(deps.as_mut(), mock_env(), info, msg).unwrap();
