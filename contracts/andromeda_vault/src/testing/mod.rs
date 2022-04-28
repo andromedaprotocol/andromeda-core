@@ -12,26 +12,21 @@ use andromeda_protocol::{
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg},
     error::ContractError,
+    mission::AndrAddress,
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{
     coin, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, wasm_execute, BankMsg, Coin, CosmosMsg, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
+    to_binary, wasm_execute, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, ReplyOn,
+    Response, SubMsg, Uint128, WasmMsg,
 };
 
 use self::mock_querier::MOCK_ANCHOR_CONTRACT;
 
 #[test]
 fn test_instantiate() {
-    let yield_strategy = YieldStrategy {
-        strategy_type: StrategyType::Anchor,
-        address: "terra1anchoraddress".to_string(),
-    };
-    let inst_msg = InstantiateMsg {
-        operators: None,
-        strategies: vec![yield_strategy],
-    };
+    let inst_msg = InstantiateMsg { operators: None };
     let env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies(&[]);
@@ -64,6 +59,49 @@ fn test_deposit() {
         .load(deps.as_ref().storage, (&depositor, "uluna"))
         .unwrap();
     assert_eq!(uluna_balance, extra_sent_funds.amount)
+}
+
+fn add_strategy(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    strategy: StrategyType,
+    address: AndrAddress,
+) -> Response {
+    let msg = ExecuteMsg::UpdateStrategy { strategy, address };
+    execute(deps, env, info, msg).unwrap()
+}
+
+#[test]
+fn test_execute_update_strategy() {
+    let env = mock_env();
+    let depositor = "depositor".to_string();
+    let mut deps = mock_dependencies(&[]);
+    let inst_msg = InstantiateMsg { operators: None };
+    let info = mock_info(&depositor, &[]);
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+
+    let resp = add_strategy(
+        deps.as_mut(),
+        env,
+        info,
+        StrategyType::Anchor,
+        AndrAddress {
+            identifier: "terra1anchoraddress".to_string(),
+        },
+    );
+
+    let expected = Response::default()
+        .add_attribute("action", "update_strategy")
+        .add_attribute("strategy_type", StrategyType::Anchor.to_string())
+        .add_attribute("addr", "terra1anchoraddress".to_string());
+
+    assert_eq!(resp, expected);
+
+    let addr = STRATEGY_CONTRACT_ADDRESSES
+        .load(deps.as_mut().storage, StrategyType::Anchor.to_string())
+        .unwrap();
+    assert_eq!(addr, "terra1anchoraddress".to_string());
 }
 
 #[test]
@@ -106,17 +144,23 @@ fn test_deposit_insufficient_funds() {
 fn test_deposit_strategy() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: "terra1anchoraddress".to_string(),
+        address: AndrAddress {
+            identifier: "terra1anchoraddress".to_string(),
+        },
     };
-    let inst_msg = InstantiateMsg {
-        operators: None,
-        strategies: vec![yield_strategy.clone()],
-    };
+    let inst_msg = InstantiateMsg { operators: None };
     let env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies(&[]);
 
-    instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    add_strategy(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        yield_strategy.clone().strategy_type,
+        yield_strategy.clone().address,
+    );
 
     let sent_funds = coin(100, "uusd");
     let extra_sent_funds = coin(100, "uluna");
@@ -126,24 +170,26 @@ fn test_deposit_strategy() {
     let msg = ExecuteMsg::Deposit {
         recipient: None,
         amount: None,
-        strategy: Some(yield_strategy.strategy_type),
+        strategy: Some(yield_strategy.clone().strategy_type),
     };
-
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let recipient = Recipient::Addr("depositor".to_string());
 
     let msg = wasm_execute(
-        yield_strategy.address.clone(),
-        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-            to_binary(&"depositor".to_string()).unwrap(),
-        ))),
+        yield_strategy
+            .address
+            .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
+            .unwrap(),
+        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(to_binary(&recipient).unwrap()))),
         vec![sent_funds],
     )
     .unwrap();
     let msg_two = wasm_execute(
-        yield_strategy.address,
-        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-            to_binary(&"depositor".to_string()).unwrap(),
-        ))),
+        yield_strategy
+            .address
+            .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
+            .unwrap(),
+        &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(to_binary(&recipient).unwrap()))),
         vec![extra_sent_funds],
     )
     .unwrap();
@@ -170,17 +216,23 @@ fn test_deposit_strategy() {
 fn test_deposit_strategy_partial_amount() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: "terra1anchoraddress".to_string(),
+        address: AndrAddress {
+            identifier: "terra1anchoraddress".to_string(),
+        },
     };
-    let inst_msg = InstantiateMsg {
-        operators: None,
-        strategies: vec![yield_strategy.clone()],
-    };
+    let inst_msg = InstantiateMsg { operators: None };
     let env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies(&[]);
 
-    instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    add_strategy(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        yield_strategy.clone().strategy_type,
+        yield_strategy.clone().address,
+    );
 
     let sent_funds = coin(90, "uusd");
     let funds = vec![sent_funds.clone()];
@@ -197,15 +249,18 @@ fn test_deposit_strategy_partial_amount() {
     let msg = ExecuteMsg::Deposit {
         recipient: None,
         amount: Some(coin(100, sent_funds.denom.clone())),
-        strategy: Some(yield_strategy.strategy_type),
+        strategy: Some(yield_strategy.clone().strategy_type),
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let msg = wasm_execute(
-        yield_strategy.address,
+        yield_strategy
+            .address
+            .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
+            .unwrap(),
         &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-            to_binary(&"depositor".to_string()).unwrap(),
+            to_binary(&Recipient::Addr("depositor".to_string())).unwrap(),
         ))),
         vec![coin(100, sent_funds.denom.clone())],
     )
@@ -249,12 +304,11 @@ fn test_deposit_strategy_empty_funds_non_empty_amount() {
 fn test_deposit_strategy_insufficient_partial_amount() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: "terra1anchoraddress".to_string(),
+        address: AndrAddress {
+            identifier: "terra1anchoraddress".to_string(),
+        },
     };
-    let inst_msg = InstantiateMsg {
-        operators: None,
-        strategies: vec![yield_strategy.clone()],
-    };
+    let inst_msg = InstantiateMsg { operators: None };
     let env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies(&[]);
@@ -346,7 +400,7 @@ fn test_withdraw_invalid_withdrawals() {
         recipient: None,
         withdrawals: vec![Withdrawal {
             token: "uusd".to_string(),
-            withdrawal_type: Some(WithdrawalType::Percentage(Uint128::zero())),
+            withdrawal_type: Some(WithdrawalType::Percentage(Decimal::zero())),
         }],
         strategy: None,
     };
@@ -455,7 +509,7 @@ fn test_withdraw_single_no_strategy_percentage() {
         recipient: None,
         withdrawals: vec![Withdrawal {
             token: "uusd".to_string(),
-            withdrawal_type: Some(WithdrawalType::Percentage(Uint128::from(50u128))),
+            withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(50))),
         }],
         strategy: None,
     };
@@ -542,7 +596,7 @@ fn test_withdraw_multi_no_strategy_mixed() {
             },
             Withdrawal {
                 token: "uluna".to_string(),
-                withdrawal_type: Some(WithdrawalType::Percentage(Uint128::from(100u128))),
+                withdrawal_type: Some(WithdrawalType::Percentage(Decimal::one())),
             },
         ],
         strategy: None,
@@ -596,11 +650,11 @@ fn test_withdraw_multi_no_strategy_recipient() {
             },
             Withdrawal {
                 token: "uusd".to_string(),
-                withdrawal_type: Some(WithdrawalType::Percentage(Uint128::from(100u128))),
+                withdrawal_type: Some(WithdrawalType::Percentage(Decimal::one())),
             },
             Withdrawal {
                 token: "uluna".to_string(),
-                withdrawal_type: Some(WithdrawalType::Percentage(Uint128::from(100u128))),
+                withdrawal_type: Some(WithdrawalType::Percentage(Decimal::one())),
             },
         ],
         strategy: None,

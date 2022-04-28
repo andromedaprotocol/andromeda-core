@@ -58,7 +58,7 @@ pub fn instantiate(
                         asset: staking_token_identifier.clone(),
                     },
                 )?;
-                r.check(env.block.time.seconds(), deps.api)
+                r.check(&env.block, deps.api)
             })
             .collect();
         additional_rewards?
@@ -183,7 +183,7 @@ fn execute_add_reward_token(
             max: MAX_REWARD_TOKENS,
         },
     )?;
-    let mut reward_token = reward_token.check(env.block.time.seconds(), deps.api)?;
+    let mut reward_token = reward_token.check(&env.block, deps.api)?;
     let reward_token_string = reward_token.to_string();
     require(
         !REWARD_TOKENS.has(deps.storage, &reward_token_string),

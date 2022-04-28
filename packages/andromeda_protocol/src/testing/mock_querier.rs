@@ -4,7 +4,7 @@ use common::{
         ownership::ContractOwnerResponse,
         AndromedaQuery,
     },
-    primitive::{GetValueResponse, Primitive},
+    primitive::{GetValueResponse, Primitive, Value},
     Funds,
 };
 
@@ -20,15 +20,10 @@ use crate::{
     rates::QueryMsg as RatesQueryMsg,
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };
-use astroport::{
-    asset::{AssetInfo, PairInfo},
-    factory::{PairType, QueryMsg as AstroportFactoryQueryMsg},
-    router::{QueryMsg as AstroportRouterQueryMsg, SimulateSwapOperationsResponse},
-};
 use cosmwasm_std::{
     coin, coins, from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Decimal, Event, OwnedDeps,
+    to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Decimal, Event, OwnedDeps,
     Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128,
     WasmMsg, WasmQuery,
 };
@@ -40,9 +35,7 @@ use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrap
 
 pub const MOCK_FACTORY_CONTRACT: &str = "factory_contract";
 pub const MOCK_CW721_CONTRACT: &str = "cw721_contract";
-pub const MOCK_ASTROPORT_WRAPPER_CONTRACT: &str = "astroport_wrapper_contract";
-pub const MOCK_ASTROPORT_FACTORY_CONTRACT: &str = "astroport_factory_contract";
-pub const MOCK_ASTROPORT_ROUTER_CONTRACT: &str = "astroport_router_contract";
+pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 pub const MOCK_CW20_CONTRACT2: &str = "cw20_contract2";
@@ -163,8 +156,6 @@ impl WasmMockQuerier {
                     MOCK_CW20_CONTRACT2 => self.handle_cw20_query(msg),
                     MOCK_CW721_CONTRACT => self.handle_cw721_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
-                    MOCK_ASTROPORT_FACTORY_CONTRACT => self.handle_astroport_factory_query(msg),
-                    MOCK_ASTROPORT_ROUTER_CONTRACT => self.handle_astroport_router_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
                     MOCK_OFFERS_CONTRACT => self.handle_offers_query(msg),
@@ -193,18 +184,6 @@ impl WasmMockQuerier {
                     _ => 0,
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&code_id).unwrap()))
-            }
-            _ => panic!("Unsupported Query"),
-        }
-    }
-
-    fn handle_astroport_router_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            AstroportRouterQueryMsg::SimulateSwapOperations { .. } => {
-                let res = SimulateSwapOperationsResponse {
-                    amount: Uint128::zero(),
-                };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }
             _ => panic!("Unsupported Query"),
         }
@@ -250,46 +229,6 @@ impl WasmMockQuerier {
                 _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
             },
 
-            _ => panic!("Unsupported Query"),
-        }
-    }
-
-    fn handle_astroport_factory_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            AstroportFactoryQueryMsg::Pair { asset_infos } => {
-                if matches!(
-                    asset_infos,
-                    [AssetInfo::NativeToken { .. }, AssetInfo::NativeToken { .. }]
-                ) {
-                    SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
-                } else if let AssetInfo::NativeToken { denom } = asset_infos[0].clone() {
-                    if denom == "uusd" {
-                        let res = PairInfo {
-                            asset_infos,
-                            contract_addr: Addr::unchecked("addr"),
-                            liquidity_token: Addr::unchecked("addr"),
-                            pair_type: PairType::Xyk {},
-                        };
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-                    } else {
-                        SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
-                    }
-                } else if let AssetInfo::NativeToken { denom } = asset_infos[1].clone() {
-                    if denom == "uusd" {
-                        let res = PairInfo {
-                            asset_infos,
-                            contract_addr: Addr::unchecked("addr"),
-                            liquidity_token: Addr::unchecked("addr"),
-                            pair_type: PairType::Xyk {},
-                        };
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-                    } else {
-                        SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
-                    }
-                } else {
-                    SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
-                }
-            }
             _ => panic!("Unsupported Query"),
         }
     }
@@ -381,7 +320,7 @@ impl WasmMockQuerier {
             Cw721QueryMsg::NftInfo { token_id } => {
                 let transfer_agreement = if token_id == MOCK_TOKEN_TRANSFER_AGREEMENT {
                     Some(TransferAgreement {
-                        amount: coin(100, "uusd"),
+                        amount: Value::Raw(coin(100, "uusd")),
                         purchaser: "purchaser".to_string(),
                     })
                 } else {
@@ -411,7 +350,6 @@ impl WasmMockQuerier {
                             ]),
                         }),
                         archived: false,
-                        pricing: None,
                     }
                 } else {
                     TokenExtension {
@@ -421,7 +359,6 @@ impl WasmMockQuerier {
                         transfer_agreement,
                         metadata: None,
                         archived: false,
-                        pricing: None,
                     }
                 };
                 let response = NftInfoResponse {
@@ -473,25 +410,29 @@ impl WasmMockQuerier {
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             PrimitiveQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
-                let name: String = from_binary(&data.unwrap()).unwrap();
-                let msg_response = match name.as_str() {
+                let key: String = from_binary(&data.unwrap()).unwrap();
+                let msg_response = match key.as_str() {
                     "percent" => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::Decimal(Decimal::percent(1)),
                     },
                     "flat" => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::Coin(coin(1u128, "uusd")),
                     },
                     "flat_cw20" => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::Coin(coin(1u128, "address")),
                     },
+                    "sell_amount" => GetValueResponse {
+                        key,
+                        value: Primitive::Coin(coin(100, "uusd")),
+                    },
                     "factory" => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_FACTORY_CONTRACT.to_owned()),
                     },
-                    _ => panic!("Unsupported primitive name"),
+                    _ => panic!("Unsupported primitive key"),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
             }

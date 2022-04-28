@@ -1,20 +1,33 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "QueryMsg",
-  "anyOf": [
+  "oneOf": [
     {
       "type": "object",
       "required": [
-        "owner_of"
+        "andr_query"
       ],
       "properties": {
-        "owner_of": {
+        "andr_query": {
+          "$ref": "#/definitions/AndromedaQuery"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Query token contract address by its symbol",
+      "type": "object",
+      "required": [
+        "get_address"
+      ],
+      "properties": {
+        "get_address": {
           "type": "object",
           "required": [
-            "token_id"
+            "symbol"
           ],
           "properties": {
-            "token_id": {
+            "symbol": {
               "type": "string"
             }
           }
@@ -23,128 +36,134 @@
       "additionalProperties": false
     },
     {
+      "description": "All code IDs for Andromeda contracts",
       "type": "object",
       "required": [
-        "approved_for_all"
+        "code_id"
       ],
       "properties": {
-        "approved_for_all": {
+        "code_id": {
+          "type": "object",
+          "required": [
+            "key"
+          ],
+          "properties": {
+            "key": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "AndromedaQuery": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "get"
+          ],
+          "properties": {
+            "get": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
           "type": "object",
           "required": [
             "owner"
           ],
           "properties": {
-            "include_expired": {
-              "type": [
-                "boolean",
-                "null"
-              ]
-            },
-            "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint32",
-              "minimum": 0.0
-            },
             "owner": {
-              "type": "string"
-            },
-            "start_after": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "object"
             }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "num_tokens"
-      ],
-      "properties": {
-        "num_tokens": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "nft_info"
-      ],
-      "properties": {
-        "nft_info": {
+          },
+          "additionalProperties": false
+        },
+        {
           "type": "object",
           "required": [
-            "token_id"
+            "operators"
           ],
           "properties": {
-            "token_id": {
-              "type": "string"
+            "operators": {
+              "type": "object"
             }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "all_nft_info"
-      ],
-      "properties": {
-        "all_nft_info": {
+          },
+          "additionalProperties": false
+        },
+        {
           "type": "object",
           "required": [
-            "token_id"
+            "is_operator"
           ],
           "properties": {
-            "token_id": {
-              "type": "string"
+            "is_operator": {
+              "type": "object",
+              "required": [
+                "address"
+              ],
+              "properties": {
+                "address": {
+                  "type": "string"
+                }
+              }
             }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "nft_transfer_agreement_info"
-      ],
-      "properties": {
-        "nft_transfer_agreement_info": {
+          },
+          "additionalProperties": false
+        },
+        {
           "type": "object",
           "required": [
-            "token_id"
+            "module"
           ],
           "properties": {
-            "token_id": {
-              "type": "string"
+            "module": {
+              "type": "object",
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "$ref": "#/definitions/Uint64"
+                }
+              }
             }
-          }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "module_ids"
+          ],
+          "properties": {
+            "module_ids": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
         }
-      },
-      "additionalProperties": false
+      ]
     },
-    {
-      "type": "object",
-      "required": [
-        "contract_info"
-      ],
-      "properties": {
-        "contract_info": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "Uint64": {
+      "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+      "type": "string"
     }
-  ]
+  }
 }

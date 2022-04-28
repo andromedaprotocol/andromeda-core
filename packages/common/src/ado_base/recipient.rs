@@ -6,6 +6,7 @@ use crate::{
 };
 use cosmwasm_std::{Addr, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
+use cw_asset::{Asset, AssetInfo};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -98,6 +99,35 @@ impl Recipient {
                 funds: vec![],
             }),
         })
+    }
+
+    pub fn generate_msg_from_asset(
+        &self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        mission_contract: Option<Addr>,
+        asset: Asset,
+    ) -> Result<SubMsg, ContractError> {
+        match asset.info {
+            AssetInfo::Cw20(contract_addr) => self.generate_msg_cw20(
+                api,
+                querier,
+                mission_contract,
+                Cw20Coin {
+                    address: contract_addr.to_string(),
+                    amount: asset.amount,
+                },
+            ),
+            AssetInfo::Native(denom) => self.generate_msg_native(
+                api,
+                querier,
+                mission_contract,
+                vec![Coin {
+                    denom,
+                    amount: asset.amount,
+                }],
+            ),
+        }
     }
 }
 

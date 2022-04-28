@@ -56,7 +56,7 @@ fn test_instantiation() {
             msg: to_binary(&true).unwrap(),
             funds: vec![],
             label: "Instantiate: cw721".to_string(),
-            admin: None,
+            admin: Some("creator".to_string()),
         }),
         reply_on: ReplyOn::Always,
         gas_limit: None,
@@ -168,7 +168,7 @@ fn test_add_mission_component() {
             msg: to_binary(&true).unwrap(),
             funds: vec![],
             label: "Instantiate: cw721".to_string(),
-            admin: None,
+            admin: Some("creator".to_string()),
         }),
         reply_on: ReplyOn::Always,
         gas_limit: None,
@@ -289,9 +289,9 @@ fn test_claim_ownership_all() {
         id: 101,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "anchoraddress".to_string(),
-            msg: to_binary(&AndromedaMsg::UpdateOwner {
+            msg: to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOwner {
                 address: "creator".to_string(),
-            })
+            }))
             .unwrap(),
             funds: vec![],
         }),
@@ -302,9 +302,9 @@ fn test_claim_ownership_all() {
         id: 101,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
-            msg: to_binary(&AndromedaMsg::UpdateOwner {
+            msg: to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOwner {
                 address: "creator".to_string(),
-            })
+            }))
             .unwrap(),
             funds: vec![],
         }),
@@ -357,9 +357,9 @@ fn test_claim_ownership() {
         id: 101,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
-            msg: to_binary(&AndromedaMsg::UpdateOwner {
+            msg: to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOwner {
                 address: "creator".to_string(),
-            })
+            }))
             .unwrap(),
             funds: vec![],
         }),
@@ -599,9 +599,11 @@ fn test_reply_assign_mission() {
         id: 103,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
-            msg: to_binary(&AndromedaMsg::UpdateMissionContract {
-                address: env.contract.address.to_string(),
-            })
+            msg: to_binary(&ExecuteMsg::AndrReceive(
+                AndromedaMsg::UpdateMissionContract {
+                    address: env.contract.address.to_string(),
+                },
+            ))
             .unwrap(),
             funds: vec![],
         }),

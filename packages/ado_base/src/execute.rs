@@ -1,4 +1,4 @@
-use crate::state::ADOContract;
+use crate::ADOContract;
 use common::{
     ado_base::{AndromedaMsg, ExecuteMsg, InstantiateMsg},
     error::ContractError,

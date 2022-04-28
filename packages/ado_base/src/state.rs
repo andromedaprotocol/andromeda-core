@@ -2,10 +2,10 @@
 use common::ado_base::modules::Module;
 use common::{error::ContractError, parse_message};
 use cosmwasm_std::{Addr, Binary, Storage};
+#[cfg(feature = "withdraw")]
+use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
 use serde::de::DeserializeOwned;
-#[cfg(feature = "withdraw")]
-use terraswap::asset::AssetInfo;
 
 pub struct ADOContract<'a> {
     pub(crate) owner: Item<'a, Addr>,

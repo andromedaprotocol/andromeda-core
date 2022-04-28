@@ -5,7 +5,7 @@ use common::{
     require,
 };
 use cosmwasm_bignumber::Decimal256;
-use cosmwasm_std::{Api, Decimal, Uint128};
+use cosmwasm_std::{Api, BlockInfo, Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use schemars::JsonSchema;
@@ -87,7 +87,7 @@ impl RewardTokenUnchecked {
     /// correct `RewardType`.
     pub fn check(
         self,
-        current_timestamp: u64,
+        block_info: &BlockInfo,
         api: &dyn Api,
     ) -> Result<RewardToken, ContractError> {
         let checked_asset_info = self.asset_info.check(api, None)?;
@@ -103,8 +103,11 @@ impl RewardTokenUnchecked {
                 let reward_increase = allocation_config.reward_increase;
 
                 require(
-                    init_timestamp >= current_timestamp,
-                    ContractError::StartTimeInThePast {},
+                    init_timestamp >= block_info.time.seconds(),
+                    ContractError::StartTimeInThePast {
+                        current_block: block_info.height,
+                        current_seconds: block_info.time.seconds(),
+                    },
                 )?;
 
                 require(

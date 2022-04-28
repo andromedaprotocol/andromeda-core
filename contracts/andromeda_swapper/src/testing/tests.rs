@@ -1,28 +1,29 @@
-use crate::contract::{execute, instantiate};
+use cosmwasm_std::{
+    coins, from_binary,
+    testing::{mock_env, mock_info},
+    to_binary, Addr, BankMsg, ContractResult, CosmosMsg, DepsMut, Event, Reply, ReplyOn, Response,
+    SubMsg, SubMsgExecutionResponse, Uint128, WasmMsg,
+};
+
+use crate::contract::{execute, instantiate, query, reply};
 use andromeda_protocol::{
     swapper::{
-        AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, SwapperCw20HookMsg,
+        Cw20HookMsg, ExecuteMsg, InstantiateInfo, InstantiateMsg, QueryMsg, SwapperCw20HookMsg,
         SwapperImpl, SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
     },
-    testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ASTROPORT_WRAPPER_CONTRACT, MOCK_CW20_CONTRACT,
-        MOCK_CW20_CONTRACT2,
-    },
+    testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2},
 };
-use common::{ado_base::recipient::Recipient, error::ContractError};
-use cosmwasm_std::{
-    coins,
-    testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, ReplyOn, Response, SubMsg, WasmMsg,
-};
+use common::{ado_base::recipient::Recipient, error::ContractError, mission::AndrAddress};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_asset::AssetInfo;
+
+const MOCK_ASTROPORT_WRAPPER_CONTRACT: &str = "astroport_wrapper";
 
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
-        swapper_impl: SwapperImpl {
-            instantiate_type: InstantiateType::Address(MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned()),
-            name: "swapper_impl".to_string(),
-        },
+        swapper_impl: SwapperImpl::Reference(AndrAddress {
+            identifier: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
+        }),
         primitive_contract: "primitive_contract".to_string(),
     };
 
@@ -40,16 +41,26 @@ fn test_instantiate_swapper_impl_address() {
             .add_attribute("type", "swapper"),
         res
     );
+
+    let msg = QueryMsg::SwapperImpl {};
+    let res: AndrAddress = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    assert_eq!(
+        AndrAddress {
+            identifier: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned()
+        },
+        res
+    )
 }
 
 #[test]
 fn test_instantiate_swapper_impl_new() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        swapper_impl: SwapperImpl {
-            instantiate_type: InstantiateType::New(to_binary(&"mock_instantiate_msg").unwrap()),
-            name: "swapper_impl".to_string(),
-        },
+        swapper_impl: SwapperImpl::New(InstantiateInfo {
+            msg: to_binary(&"mock_instantiate_msg").unwrap(),
+            ado_type: "swapper_impl".to_string(),
+        }),
         primitive_contract: "primitive_contract".to_string(),
     };
 
@@ -63,7 +74,7 @@ fn test_instantiate_swapper_impl_new() {
                 id: 1,
                 reply_on: ReplyOn::Always,
                 msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                    admin: None,
+                    admin: Some("sender".to_string()),
                     code_id: 5,
                     msg: to_binary(&"mock_instantiate_msg").unwrap(),
                     funds: vec![],
@@ -73,6 +84,28 @@ fn test_instantiate_swapper_impl_new() {
             }),
         res
     );
+
+    let reply_msg = Reply {
+        id: 1,
+        result: ContractResult::Ok(SubMsgExecutionResponse {
+            data: None,
+            events: vec![
+                Event::new("Type").add_attribute("contract_address", "swapper_impl_address")
+            ],
+        }),
+    };
+
+    reply(deps.as_mut(), mock_env(), reply_msg).unwrap();
+
+    let msg = QueryMsg::SwapperImpl {};
+    let res: AndrAddress = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+
+    assert_eq!(
+        AndrAddress {
+            identifier: "swapper_impl_address".to_string()
+        },
+        res
+    )
 }
 
 #[test]
@@ -82,9 +115,7 @@ fn test_swap_native_same_asset() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Swap {
-        ask_asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
+        ask_asset_info: AssetInfo::native("uusd"),
         recipient: None,
     };
 
@@ -109,9 +140,7 @@ fn test_swap_native_to_native() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Swap {
-        ask_asset_info: AssetInfo::NativeToken {
-            denom: "uluna".to_string(),
-        },
+        ask_asset_info: AssetInfo::native("uluna"),
         recipient: None,
     };
 
@@ -122,20 +151,14 @@ fn test_swap_native_to_native() {
         contract_addr: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
         funds: info.funds.clone(),
         msg: to_binary(&SwapperImplExecuteMsg::Swapper(SwapperMsg::Swap {
-            offer_asset_info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
-            ask_asset_info: AssetInfo::NativeToken {
-                denom: "uluna".to_string(),
-            },
+            offer_asset_info: AssetInfo::native("uusd"),
+            ask_asset_info: AssetInfo::native("uluna"),
         }))
         .unwrap(),
     });
 
     let send_execute_msg = ExecuteMsg::Send {
-        ask_asset_info: AssetInfo::NativeToken {
-            denom: "uluna".to_string(),
-        },
+        ask_asset_info: AssetInfo::native("uluna"),
         recipient: Recipient::Addr("sender".to_string()),
     };
 
@@ -184,9 +207,7 @@ fn test_swap_native_to_cw20() {
     init(deps.as_mut());
 
     let msg = ExecuteMsg::Swap {
-        ask_asset_info: AssetInfo::Token {
-            contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT),
-        },
+        ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT)),
         recipient: None,
     };
 
@@ -197,20 +218,14 @@ fn test_swap_native_to_cw20() {
         contract_addr: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
         funds: info.funds,
         msg: to_binary(&SwapperImplExecuteMsg::Swapper(SwapperMsg::Swap {
-            offer_asset_info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
-            ask_asset_info: AssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT),
-            },
+            offer_asset_info: AssetInfo::native("uusd"),
+            ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT)),
         }))
         .unwrap(),
     });
 
     let send_execute_msg = ExecuteMsg::Send {
-        ask_asset_info: AssetInfo::Token {
-            contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT),
-        },
+        ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT)),
         recipient: Recipient::Addr("sender".to_string()),
     };
 
@@ -258,9 +273,7 @@ fn test_swap_cw20_to_native() {
         sender: "sender".to_string(),
         amount: 10u128.into(),
         msg: to_binary(&Cw20HookMsg::Swap {
-            ask_asset_info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
+            ask_asset_info: AssetInfo::native("uusd"),
             recipient: None,
         })
         .unwrap(),
@@ -276,18 +289,14 @@ fn test_swap_cw20_to_native() {
             contract: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
             amount: 10u128.into(),
             msg: to_binary(&SwapperImplCw20HookMsg::Swapper(SwapperCw20HookMsg::Swap {
-                ask_asset_info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                },
+                ask_asset_info: AssetInfo::native("uusd"),
             }))
             .unwrap(),
         })
         .unwrap(),
     });
     let send_execute_msg = ExecuteMsg::Send {
-        ask_asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
+        ask_asset_info: AssetInfo::native("uusd"),
         recipient: Recipient::Addr("sender".to_string()),
     };
 
@@ -338,9 +347,7 @@ fn test_swap_cw20_same_asset() {
         sender: "sender".to_string(),
         amount: 10u128.into(),
         msg: to_binary(&Cw20HookMsg::Swap {
-            ask_asset_info: AssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT),
-            },
+            ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT)),
             recipient: None,
         })
         .unwrap(),
@@ -375,9 +382,7 @@ fn test_swap_cw20_to_cw20() {
         sender: "sender".to_string(),
         amount: 10u128.into(),
         msg: to_binary(&Cw20HookMsg::Swap {
-            ask_asset_info: AssetInfo::Token {
-                contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT2),
-            },
+            ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT2)),
             recipient: None,
         })
         .unwrap(),
@@ -393,18 +398,14 @@ fn test_swap_cw20_to_cw20() {
             contract: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
             amount: 10u128.into(),
             msg: to_binary(&SwapperImplCw20HookMsg::Swapper(SwapperCw20HookMsg::Swap {
-                ask_asset_info: AssetInfo::Token {
-                    contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT2),
-                },
+                ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT2)),
             }))
             .unwrap(),
         })
         .unwrap(),
     });
     let send_execute_msg = ExecuteMsg::Send {
-        ask_asset_info: AssetInfo::Token {
-            contract_addr: Addr::unchecked(MOCK_CW20_CONTRACT2),
-        },
+        ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT2)),
         recipient: Recipient::Addr("sender".to_string()),
     };
 
@@ -438,5 +439,27 @@ fn test_swap_cw20_to_cw20() {
                 funds: vec![],
             })),
         res
+    );
+}
+
+#[test]
+fn test_receive_cw20_zero_amount() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "sender".to_string(),
+        amount: Uint128::zero(),
+        msg: to_binary(&"").unwrap(),
+    });
+
+    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string()
+        },
+        res.unwrap_err()
     );
 }
