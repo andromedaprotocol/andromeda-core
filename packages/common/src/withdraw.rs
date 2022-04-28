@@ -21,21 +21,28 @@ impl Withdrawal {
     pub fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
         match self.withdrawal_type.clone() {
             None => Ok(balance),
-            Some(withdrawal_type) => match withdrawal_type {
-                WithdrawalType::Percentage(percent) => {
-                    require(percent <= Decimal::one(), ContractError::InvalidRate {})?;
-                    Ok(balance * percent)
-                }
-                WithdrawalType::Amount(amount) => {
-                    require(
-                        amount <= balance,
-                        ContractError::InvalidFunds {
-                            msg: "Requested withdrawal amount exceeds token balance".to_string(),
-                        },
-                    )?;
-                    Ok(amount)
-                }
-            },
+            Some(withdrawal_type) => withdrawal_type.get_amount(balance),
+        }
+    }
+}
+
+impl WithdrawalType {
+    /// Calculates the amount to withdraw given the withdrawal type and passed in `balance`.
+    pub fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
+        match self {
+            WithdrawalType::Percentage(percent) => {
+                require(*percent <= Decimal::one(), ContractError::InvalidRate {})?;
+                Ok(balance * *percent)
+            }
+            WithdrawalType::Amount(amount) => {
+                require(
+                    amount <= &balance,
+                    ContractError::InvalidFunds {
+                        msg: "Requested withdrawal amount exceeds token balance".to_string(),
+                    },
+                )?;
+                Ok(*amount)
+            }
         }
     }
 }
