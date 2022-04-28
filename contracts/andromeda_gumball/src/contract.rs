@@ -520,6 +520,13 @@ mod tests {
             },
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let info = mock_info("owner", &[]);
+        let msg = ExecuteMsg::SaleDetails {
+            price: coin(10, "uusd"),
+            max_amount_per_wallet: Some(Uint128::from(1_u64)),
+            recipient: Recipient::Addr("me".to_string()),
+        };
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let status = STATUS.load(&deps.storage).unwrap();
         assert!(!status);
         let info = mock_info("owner", &[]);
@@ -620,6 +627,13 @@ mod tests {
             },
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let info = mock_info("owner", &[]);
+        let msg = ExecuteMsg::SaleDetails {
+            price: coin(10, "uusd"),
+            max_amount_per_wallet: Some(Uint128::from(1_u64)),
+            recipient: Recipient::Addr("me".to_string()),
+        };
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let info = mock_info("owner", &[]);
         execute_switch_status(deps.as_mut(), info).unwrap();
         let msg = ExecuteMsg::Mint(Box::new(MintMsg {
