@@ -99,6 +99,9 @@ fn execute_switch_status(deps: DepsMut, info: MessageInfo) -> Result<Response, C
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
+    // in case owner forgot to set the state, can't allow purchasing without the sale details set
+    let state = STATE.may_load(deps.storage)?;
+    require(state.is_some(), ContractError::PriceNotSet {})?;
     // Automatically switch to opposite status
     if status {
         status = false;
@@ -225,8 +228,8 @@ fn execute_buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
             msg: "Only uusd is accepted".to_string(),
         },
     )?;
-    let state = STATE.load(deps.storage)?;
 
+    let state = STATE.load(deps.storage)?;
     // check for correct amount of funds
     require(
         sent_funds.amount == state.price.amount,
