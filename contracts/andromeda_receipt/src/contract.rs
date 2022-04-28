@@ -7,7 +7,7 @@ use andromeda_protocol::{
         Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, Receipt,
         ReceiptResponse,
     },
-    require::require,
+    require,
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
@@ -132,7 +132,7 @@ mod tests {
             minter: owner.to_string(),
             moderators: None,
         };
-        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
 
@@ -166,7 +166,7 @@ mod tests {
         );
 
         //add address for registered moderator
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             Response::new().add_attributes(vec![
                 attr("action", "mint_receipt"),
@@ -212,12 +212,11 @@ mod tests {
             events: vec![Event::new("new")],
         };
         let msg = ExecuteMsg::EditReceipt {
-            receipt_id: Uint128::from(1 as u128),
+            receipt_id: Uint128::from(1_u128),
             receipt: new_receipt.clone(),
         };
 
-        let res_unauth =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        let res_unauth = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
         assert_eq!(
             res_unauth,
             StdError::generic_err(
@@ -225,7 +224,7 @@ mod tests {
             )
         );
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let expected = Response::default().add_attributes(vec![
             attr("action", "edit_receipt"),
             attr("receipt_id", "1"),
@@ -235,9 +234,9 @@ mod tests {
         assert_eq!(res, expected);
 
         let query_msg = QueryMsg::Receipt {
-            receipt_id: Uint128::from(1 as u128),
+            receipt_id: Uint128::from(1_u128),
         };
-        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let res = query(deps.as_ref(), env, query_msg).unwrap();
         let val: ReceiptResponse = from_binary(&res).unwrap();
 
         assert_eq!(val.receipt, new_receipt)

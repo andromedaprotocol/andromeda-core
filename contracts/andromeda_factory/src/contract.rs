@@ -2,7 +2,7 @@ use andromeda_protocol::{
     factory::{AddressResponse, CodeIdsResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     modules::ModuleDefinition,
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
-    require::require,
+    require,
     token::InstantiateMsg as TokenInstantiateMsg,
 };
 use cosmwasm_std::{
@@ -106,7 +106,7 @@ pub fn create(
             } => ModuleDefinition::Whitelist {
                 address: address.clone(),
                 moderators: moderators.clone(),
-                code_id: Some(config.address_list_code_id.clone()),
+                code_id: Some(config.address_list_code_id),
             },
             ModuleDefinition::Blacklist {
                 address,
@@ -115,7 +115,7 @@ pub fn create(
             } => ModuleDefinition::Blacklist {
                 address: address.clone(),
                 moderators: moderators.clone(),
-                code_id: Some(config.address_list_code_id.clone()),
+                code_id: Some(config.address_list_code_id),
             },
             ModuleDefinition::Receipt {
                 address,
@@ -124,7 +124,7 @@ pub fn create(
             } => ModuleDefinition::Receipt {
                 address: address.clone(),
                 moderators: moderators.clone(),
-                code_id: Some(config.receipt_code_id.clone()),
+                code_id: Some(config.receipt_code_id),
             },
             _ => m.clone(),
         })
@@ -135,6 +135,13 @@ pub fn create(
         symbol: symbol.to_string(),
         minter: info.sender.to_string(),
         modules: updated_modules,
+    };
+    // [TOK-01 Validation Process]
+    let validation = token_inst_msg.validate();
+    match validation {
+        Ok(true) => {}
+        Err(error) => panic!("{:?}", error),
+        _ => {}
     };
 
     let inst_msg = WasmMsg::Instantiate {
@@ -172,7 +179,7 @@ pub fn update_address(
         StdError::generic_err("Cannot update address for ADO that you did not create"),
     )?;
 
-    store_address(deps.storage, symbol.clone(), &new_address.clone())?;
+    store_address(deps.storage, symbol, &new_address)?;
 
     Ok(Response::default())
 }
@@ -192,16 +199,19 @@ pub fn update_code_id(
     )?;
     let mut config = read_config(deps.storage)?;
 
-    if receipt_code_id.is_some() {
-        config.receipt_code_id = receipt_code_id.unwrap();
+    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+    if let Some(receipt_code_id) = receipt_code_id {
+        config.receipt_code_id = receipt_code_id;
     }
 
-    if address_list_code_id.is_some() {
-        config.address_list_code_id = address_list_code_id.unwrap();
+    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+    if let Some(address_list_code_id) = address_list_code_id {
+        config.address_list_code_id = address_list_code_id;
     }
 
-    if token_code_id.is_some() {
-        config.token_code_id = token_code_id.unwrap();
+    // [GLOBAL-02] Changing is_some() + .unwrap() to if let Some()
+    if let Some(token_code_id) = token_code_id {
+        config.token_code_id = token_code_id;
     }
 
     store_config(deps.storage, &config)?;
@@ -228,9 +238,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 fn query_address(deps: Deps, symbol: String) -> StdResult<AddressResponse> {
     let address = read_address(deps.storage, symbol)?;
-    Ok(AddressResponse {
-        address: address.clone(),
-    })
+    Ok(AddressResponse { address })
 }
 
 fn query_code_ids(deps: Deps) -> StdResult<CodeIdsResponse> {
@@ -259,7 +267,7 @@ mod tests {
 
     static ADDRESS_LIST_CODE_ID: u64 = 2;
     const TOKEN_NAME: &str = "test";
-    const TOKEN_SYMBOL: &str = "T";
+    const TOKEN_SYMBOL: &str = "TT";
 
     #[test]
     fn proper_initialization() {
@@ -303,6 +311,13 @@ mod tests {
             minter: info.sender.to_string(),
             modules: vec![],
         };
+        // [TOK-01 Validation Process]
+        let validation = token_inst_msg.validate();
+        match validation {
+            Ok(true) => {}
+            Err(error) => panic!("{:?}", error),
+            _ => {}
+        };
 
         let inst_msg = WasmMsg::Instantiate {
             admin: Some(info.sender.to_string()),
@@ -338,11 +353,9 @@ mod tests {
         let owner = String::from("owner");
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
-        let info = mock_info(creator.clone().as_str(), &[]);
+        let info = mock_info(creator.as_str(), &[]);
 
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.clone())
-            .unwrap();
+        CONTRACT_OWNER.save(deps.as_mut().storage, &owner).unwrap();
         SYM_ADDRESS
             .save(
                 deps.as_mut().storage,
@@ -359,21 +372,15 @@ mod tests {
 
         let unauth_env = mock_env();
         let unauth_info = mock_info("anyone", &[]);
-        let unauth_res = execute(
-            deps.as_mut(),
-            unauth_env.clone(),
-            unauth_info.clone(),
-            update_msg.clone(),
-        )
-        .unwrap_err();
+        let unauth_res =
+            execute(deps.as_mut(), unauth_env, unauth_info, update_msg.clone()).unwrap_err();
 
         assert_eq!(
             unauth_res,
             StdError::generic_err("Cannot update address for ADO that you did not create"),
         );
 
-        let update_res =
-            execute(deps.as_mut(), env.clone(), info.clone(), update_msg.clone()).unwrap();
+        let update_res = execute(deps.as_mut(), env.clone(), info, update_msg).unwrap();
 
         assert_eq!(update_res, Response::default());
 
@@ -381,10 +388,10 @@ mod tests {
             symbol: TOKEN_SYMBOL.to_string(),
         };
 
-        let addr_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let addr_res = query(deps.as_ref(), env, query_msg).unwrap();
         let addr_val: AddressResponse = from_binary(&addr_res).unwrap();
 
-        assert_eq!(new_address.clone(), addr_val.address);
+        assert_eq!(new_address, addr_val.address);
     }
 
     #[test]
@@ -401,9 +408,7 @@ mod tests {
         };
         store_config(deps.as_mut().storage, &config).unwrap();
 
-        CONTRACT_OWNER
-            .save(deps.as_mut().storage, &owner.clone())
-            .unwrap();
+        CONTRACT_OWNER.save(deps.as_mut().storage, &owner).unwrap();
 
         let invalid_msg = ExecuteMsg::UpdateCodeId {
             receipt_code_id: None,
@@ -411,13 +416,7 @@ mod tests {
             address_list_code_id: None,
         };
 
-        let resp = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            invalid_msg.clone(),
-        )
-        .unwrap_err();
+        let resp = execute(deps.as_mut(), env.clone(), info.clone(), invalid_msg).unwrap_err();
         let expected = StdError::generic_err("Must provide one of the following: \"receipt_code_id\", \"token_code_id\", \"address_list_code_id\"");
 
         assert_eq!(resp, expected);
@@ -429,13 +428,12 @@ mod tests {
             address_list_code_id: None,
         };
 
-        let resp =
-            execute(deps.as_mut(), env.clone(), unauth_info.clone(), msg.clone()).unwrap_err();
+        let resp = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
         let expected = StdError::generic_err("Can only be used by the contract owner");
 
         assert_eq!(resp, expected);
 
-        let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        let resp = execute(deps.as_mut(), env, info, msg).unwrap();
         let expected = Response::default().add_attributes(vec![
             attr("action", "update_code_id"),
             attr("receipt_code_id", new_receipt_code_id.to_string()),

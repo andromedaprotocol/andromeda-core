@@ -1,22 +1,43 @@
 use crate::{
-    modules::{Module, ModuleDefinition},
-    require::require,
+    modules::{Module, ModuleDefinition, Rate},
+    require,
 };
 
 use cosmwasm_std::{coin, BankMsg, Coin, StdError, StdResult, Uint128};
 
-use super::Rate;
-
+/// Calculates a fee amount given a `Rate` and payment amount.
+///
+/// ## Arguments
+/// * `fee_rate` - The `Rate` of the fee to be paid
+/// * `payment` - The amount used to calculate the fee
+///
+/// Returns the fee amount in a `Coin` struct.
 pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
+    if payment.amount > Uint128::MAX.checked_div(Uint128::from(100u128)).unwrap() {
+        panic!("Payment amount exceeds maximum value")
+    }
+
     match fee_rate {
         Rate::Flat(rate) => coin(Uint128::from(rate.amount).u128(), rate.denom),
         Rate::Percent(rate) => {
-            let mut fee_amount = payment.amount.multiply_ratio(rate, 100 as u128).u128();
+            // [COM-03] Make sure that fee_rate between 0 and 100.
+            require(
+                // No need for rate >=0 due to type limits (Question: Should add or remove?)
+                rate <= 100,
+                StdError::generic_err("Rate must be between 0 and 100%"),
+            )
+            .unwrap();
+            let mut fee_amount = payment.amount.multiply_ratio(rate, 100_u128).u128();
 
             //Always round any remainder up and prioritise the fee receiver
             let reversed_fee = (fee_amount * 100) / Uint128::from(rate).u128();
             if payment.amount.u128() > reversed_fee {
-                fee_amount += 1
+                // [COM-1] Added checked add to fee_amount rather than direct increment
+                let res = fee_amount.checked_add(1);
+                let _res = match res {
+                    None => panic!("Problem adding: Overflow in addition"),
+                    _ => fee_amount = res.unwrap(),
+                };
             }
 
             coin(fee_amount, payment.denom)
@@ -24,7 +45,15 @@ pub fn calculate_fee(fee_rate: Rate, payment: Coin) -> Coin {
     }
 }
 
-pub fn is_unique<M: Module>(module: &M, all_modules: &Vec<ModuleDefinition>) -> bool {
+// [COM-02] Changed parameter all_modules type from Vec to a reference of a slice.
+/// Determines if a `ModuleDefinition` is unique within the context of a vector of `ModuleDefinition`
+///
+/// ## Arguments
+/// * `module` - The module to check for uniqueness
+/// * `all_modules` - The vector of modules containing the provided module
+///
+/// Returns a `boolean` representing whether the module is unique or not
+pub fn is_unique<M: Module>(module: &M, all_modules: &[ModuleDefinition]) -> bool {
     let definition = module.as_definition();
     let mut total = 0;
     all_modules.into_iter().for_each(|d| {
@@ -39,6 +68,11 @@ pub fn is_unique<M: Module>(module: &M, all_modules: &Vec<ModuleDefinition>) -> 
     total <= 1
 }
 
+/// Deducts a given amount from a vector of `Coin` structs. Alters the given vector, does not return a new vector.
+///
+/// ## Arguments
+/// * `coins` - The vector of `Coin` structs from which to deduct the given funds
+/// * `funds` - The amount to deduct
 pub fn deduct_funds(coins: &mut Vec<Coin>, funds: Coin) -> StdResult<bool> {
     let coin_amount = coins.iter_mut().find(|c| c.denom.eq(&funds.denom));
 
@@ -55,6 +89,12 @@ pub fn deduct_funds(coins: &mut Vec<Coin>, funds: Coin) -> StdResult<bool> {
     }
 }
 
+/// Adds a new payment message to a vector of `BankMsg` structs. Alters the provided vector, does not return a new vector.
+///
+/// ## Arguments
+/// * `payments` - The vector of `BankMsg` structs for which to attach the new `BankMsg`
+/// * `to` - The recipient of the payment
+/// * `amount` - The amount to be sent
 pub fn add_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) {
     let payment = BankMsg::Send {
         to_address: to,
@@ -64,9 +104,17 @@ pub fn add_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) {
     payments.push(payment);
 }
 
+/// Deducts a given amount from a vector of `BankMsg` structs. Alters the provided vector, does not return a new vector.
+///
+/// ## Arguments
+/// * `payments` - The vector of `BankMsg` structs for which to deduct the amount
+/// * `to` - The recipient of the payment
+/// * `amount` - The amount to be deducted
+///
+/// Errors if there is no payment from which to deduct the funds
 pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> StdResult<bool> {
     let payment = payments.iter_mut().find(|m| match m {
-        BankMsg::Send { to_address, .. } => to_address.clone().eq(&to),
+        BankMsg::Send { to_address, .. } => to_address.eq(&to),
         _ => false,
     });
 
@@ -80,8 +128,9 @@ pub fn deduct_payment(payments: &mut Vec<BankMsg>, to: String, amount: Coin) -> 
             }
             Ok(true)
         }
+        // [COM-05] Misleading error message since it should check whether there is pending deductions and not if it has enough funds.
         None => Err(StdError::generic_err(
-            "Not enough funds to deduct required payment!",
+            "No pending payments for the given address!",
         )),
     }
 }
@@ -209,15 +258,26 @@ mod tests {
 
         assert_eq!(expected, received);
 
+        assert_eq!(expected, received);
+
         let payment = coin(125, "uluna");
         let expected = coin(5, "uluna");
         let fee = Rate::Flat(FlatRate {
-            amount: Uint128::from(5 as u128),
+            amount: Uint128::from(5_u128),
             denom: "uluna".to_string(),
         });
 
         let received = calculate_fee(fee, payment);
 
         assert_eq!(expected, received);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_calculate_fee_max() {
+        let payment = coin(Uint128::MAX.u128(), "uluna");
+        let fee = Rate::Percent(4);
+
+        calculate_fee(fee, payment);
     }
 }
