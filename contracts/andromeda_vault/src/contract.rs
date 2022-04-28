@@ -269,7 +269,7 @@ pub fn withdraw_vault(
                             msg: Some("Percent must be non-zero".to_string()),
                         },
                     )?;
-                    let amount = balance.multiply_ratio(percent, 100u128);
+                    let amount = balance * percent;
                     withdrawal_amount.push(coin(amount.u128(), denom.clone()));
                     BALANCES.save(
                         deps.storage,

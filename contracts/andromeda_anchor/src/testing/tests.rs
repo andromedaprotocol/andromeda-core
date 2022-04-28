@@ -2,7 +2,7 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_env, mock_info},
-    to_binary, BankMsg, Coin, ContractResult, CosmosMsg, DepsMut, Reply, Response, SubMsg,
+    to_binary, BankMsg, Coin, ContractResult, CosmosMsg, Decimal, DepsMut, Reply, Response, SubMsg,
     SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 
@@ -487,7 +487,7 @@ fn test_withdraw_percent() {
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
         recipient: Some(Recipient::Addr(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![Withdrawal {
-            withdrawal_type: Some(WithdrawalType::Percentage(50u128.into())),
+            withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(50))),
             token: "uusd".to_string(),
         }]),
     });
@@ -531,7 +531,7 @@ fn test_withdraw_invalid_percent() {
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
         recipient: Some(Recipient::Addr(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![Withdrawal {
-            withdrawal_type: Some(WithdrawalType::Percentage(101u128.into())),
+            withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(101))),
             token: "uusd".to_string(),
         }]),
     });

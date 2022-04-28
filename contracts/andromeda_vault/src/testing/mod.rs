@@ -18,7 +18,7 @@ use common::{
 use cosmwasm_std::{
     coin, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, wasm_execute, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, ReplyOn,
+    to_binary, wasm_execute, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, ReplyOn,
     Response, SubMsg, Uint128, WasmMsg,
 };
 
@@ -400,7 +400,7 @@ fn test_withdraw_invalid_withdrawals() {
         recipient: None,
         withdrawals: vec![Withdrawal {
             token: "uusd".to_string(),
-            withdrawal_type: Some(WithdrawalType::Percentage(Uint128::zero())),
+            withdrawal_type: Some(WithdrawalType::Percentage(Decimal::zero())),
         }],
         strategy: None,
     };
@@ -509,7 +509,7 @@ fn test_withdraw_single_no_strategy_percentage() {
         recipient: None,
         withdrawals: vec![Withdrawal {
             token: "uusd".to_string(),
-            withdrawal_type: Some(WithdrawalType::Percentage(Uint128::from(50u128))),
+            withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(50))),
         }],
         strategy: None,
     };
@@ -596,7 +596,7 @@ fn test_withdraw_multi_no_strategy_mixed() {
             },
             Withdrawal {
                 token: "uluna".to_string(),
-                withdrawal_type: Some(WithdrawalType::Percentage(Uint128::from(100u128))),
+                withdrawal_type: Some(WithdrawalType::Percentage(Decimal::one())),
             },
         ],
         strategy: None,
@@ -650,11 +650,11 @@ fn test_withdraw_multi_no_strategy_recipient() {
             },
             Withdrawal {
                 token: "uusd".to_string(),
-                withdrawal_type: Some(WithdrawalType::Percentage(Uint128::from(100u128))),
+                withdrawal_type: Some(WithdrawalType::Percentage(Decimal::one())),
             },
             Withdrawal {
                 token: "uluna".to_string(),
-                withdrawal_type: Some(WithdrawalType::Percentage(Uint128::from(100u128))),
+                withdrawal_type: Some(WithdrawalType::Percentage(Decimal::one())),
             },
         ],
         strategy: None,
