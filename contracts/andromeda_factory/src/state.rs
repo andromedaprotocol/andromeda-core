@@ -6,7 +6,7 @@ use cw_storage_plus::Map;
 
 // pub const CONFIG: Item<Config> = Item::new("config");
 pub const SYM_ADDRESS: Map<String, String> = Map::new("address");
-pub const CODE_ID: Map<String, u64> = Map::new("code_id");
+pub const CODE_ID: Map<&str, u64> = Map::new("code_id");
 
 // #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 // pub struct Config {
@@ -14,15 +14,11 @@ pub const CODE_ID: Map<String, u64> = Map::new("code_id");
 //     pub receipt_code_id: u64,
 //     pub address_list_code_id: u64,
 // }
-pub fn store_code_id(
-    storage: &mut dyn Storage,
-    code_id_key: String,
-    code_id: u64,
-) -> StdResult<()> {
+pub fn store_code_id(storage: &mut dyn Storage, code_id_key: &str, code_id: u64) -> StdResult<()> {
     CODE_ID.save(storage, code_id_key, &code_id)
 }
 
-pub fn read_code_id(storage: &dyn Storage, code_id_key: String) -> StdResult<u64> {
+pub fn read_code_id(storage: &dyn Storage, code_id_key: &str) -> StdResult<u64> {
     CODE_ID.load(storage, code_id_key)
 }
 //

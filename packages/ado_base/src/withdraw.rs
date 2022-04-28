@@ -3,10 +3,7 @@ use common::{ado_base::recipient::Recipient, error::ContractError, require, with
 use cosmwasm_std::{coin, DepsMut, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg};
 use cw20::Cw20Coin;
 
-use terraswap::{
-    asset::AssetInfo,
-    querier::{query_balance, query_token_balance},
-};
+use cw_asset::AssetInfo;
 
 impl<'a> ADOContract<'a> {
     pub fn add_withdrawable_token(
@@ -74,10 +71,10 @@ impl<'a> ADOContract<'a> {
             let asset_info: AssetInfo = self
                 .withdrawable_tokens
                 .load(deps.storage, &withdrawal.token)?;
-            let msg: Option<SubMsg> = match asset_info {
-                AssetInfo::NativeToken { denom } => {
+            let msg: Option<SubMsg> = match &asset_info {
+                AssetInfo::Native(denom) => {
                     let balance =
-                        query_balance(&deps.querier, env.contract.address.clone(), denom.clone())?;
+                        asset_info.query_balance(&deps.querier, env.contract.address.clone())?;
                     if balance.is_zero() {
                         None
                     } else {
@@ -90,17 +87,15 @@ impl<'a> ADOContract<'a> {
                         )?)
                     }
                 }
-                AssetInfo::Token { contract_addr } => {
-                    let balance = query_token_balance(
-                        &deps.querier,
-                        deps.api.addr_validate(&contract_addr)?,
-                        env.contract.address.clone(),
-                    )?;
+                AssetInfo::Cw20(contract_addr) => {
+                    let contract_addr_str = contract_addr.to_string();
+                    let balance =
+                        asset_info.query_balance(&deps.querier, env.contract.address.clone())?;
                     if balance.is_zero() {
                         None
                     } else {
                         let cw20_coin = Cw20Coin {
-                            address: contract_addr,
+                            address: contract_addr_str,
                             amount: withdrawal.get_amount(balance)?,
                         };
                         Some(recipient.generate_msg_cw20(
@@ -196,9 +191,7 @@ mod tests {
             .save(
                 deps.as_mut().storage,
                 "uusd",
-                &AssetInfo::NativeToken {
-                    denom: "uusd".into(),
-                },
+                &AssetInfo::Native("uusd".into()),
             )
             .unwrap();
         let res = ADOContract::default()
@@ -241,9 +234,7 @@ mod tests {
             .save(
                 deps.as_mut().storage,
                 MOCK_CW20_CONTRACT,
-                &AssetInfo::Token {
-                    contract_addr: MOCK_CW20_CONTRACT.into(),
-                },
+                &AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT)),
             )
             .unwrap();
         let res = ADOContract::default()
@@ -287,9 +278,7 @@ mod tests {
             .save(
                 deps.as_mut().storage,
                 "uusd",
-                &AssetInfo::NativeToken {
-                    denom: "uusd".into(),
-                },
+                &AssetInfo::Native("uusd".into()),
             )
             .unwrap();
         ADOContract::default()
@@ -297,9 +286,7 @@ mod tests {
             .save(
                 deps.as_mut().storage,
                 "uluna",
-                &AssetInfo::NativeToken {
-                    denom: "uluna".into(),
-                },
+                &AssetInfo::Native("uluna".into()),
             )
             .unwrap();
         let res = ADOContract::default()

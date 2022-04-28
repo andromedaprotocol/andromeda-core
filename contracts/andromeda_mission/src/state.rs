@@ -1,5 +1,8 @@
-use andromeda_protocol::mission::MissionComponent;
-use common::{ado_base::AndromedaMsg, error::ContractError};
+use andromeda_protocol::mission::{ComponentAddress, MissionComponent};
+use common::{
+    ado_base::{AndromedaMsg, ExecuteMsg},
+    error::ContractError,
+};
 use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Order, ReplyOn, Storage, SubMsg, WasmMsg};
 use cw_storage_plus::{Bound, Item, Map};
 
@@ -34,6 +37,28 @@ pub fn load_component_addresses(storage: &dyn Storage) -> Result<Vec<Addr>, Cont
     Ok(addresses)
 }
 
+pub fn load_component_addresses_with_name(
+    storage: &dyn Storage,
+) -> Result<Vec<ComponentAddress>, ContractError> {
+    let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
+    let addresses: Vec<ComponentAddress> = ADO_ADDRESSES
+        .range(storage, min, None, Order::Ascending)
+        .flatten()
+        .map(|(vec, addr)| {
+            let name = match String::from_utf8(vec) {
+                Ok(v) => v,
+                Err(e) => panic!("Invalid Mission component name: {}", e),
+            };
+            ComponentAddress {
+                name,
+                address: addr.to_string(),
+            }
+        })
+        .collect();
+
+    Ok(addresses)
+}
+
 pub fn load_component_descriptors(
     storage: &dyn Storage,
 ) -> Result<Vec<MissionComponent>, ContractError> {
@@ -48,9 +73,9 @@ pub fn load_component_descriptors(
 }
 
 pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&AndromedaMsg::UpdateOwner {
+    let msg = to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateOwner {
         address: owner.to_string(),
-    })?;
+    }))?;
     Ok(SubMsg {
         id: 101,
         reply_on: ReplyOn::Error,
@@ -67,9 +92,11 @@ pub fn generate_assign_mission_message(
     addr: &Addr,
     mission_addr: &str,
 ) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&AndromedaMsg::UpdateMissionContract {
-        address: mission_addr.to_string(),
-    })?;
+    let msg = to_binary(&ExecuteMsg::AndrReceive(
+        AndromedaMsg::UpdateMissionContract {
+            address: mission_addr.to_string(),
+        },
+    ))?;
     Ok(SubMsg {
         id: 103,
         reply_on: ReplyOn::Error,

@@ -154,37 +154,37 @@ impl WasmMockQuerier {
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             PrimitiveQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
-                let name: String = from_binary(&data.unwrap()).unwrap();
-                let msg_response = match name.as_str() {
+                let key: String = from_binary(&data.unwrap()).unwrap();
+                let msg_response = match key.as_str() {
                     ANCHOR_MARKET => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_MARKET_CONTRACT.to_owned()),
                     },
                     ANCHOR_OVERSEER => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_OVERSEER_CONTRACT.to_owned()),
                     },
                     ANCHOR_BLUNA_HUB => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_BLUNA_HUB_CONTRACT.to_owned()),
                     },
                     ANCHOR_BLUNA_CUSTODY => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_CUSTODY_CONTRACT.to_owned()),
                     },
                     ANCHOR_ORACLE => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_ORACLE_CONTRACT.to_owned()),
                     },
                     ANCHOR_AUST => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_AUST_TOKEN.to_owned()),
                     },
                     ANCHOR_BLUNA => GetValueResponse {
-                        name,
+                        key,
                         value: Primitive::String(MOCK_BLUNA_TOKEN.to_owned()),
                     },
-                    _ => panic!("Unsupported primitive name"),
+                    _ => panic!("Unsupported primitive key"),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
             }

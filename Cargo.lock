@@ -9,13 +9,13 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-storage-plus 0.8.1",
  "cw2 0.8.1",
  "cw20 0.9.1",
  "schemars",
  "serde",
  "terra-cosmwasm",
- "terraswap",
 ]
 
 [[package]]
@@ -27,12 +27,10 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
  "schemars",
  "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -43,6 +41,7 @@ dependencies = [
  "andromeda-protocol",
  "common",
  "cosmwasm-bignumber",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
@@ -62,14 +61,15 @@ dependencies = [
  "andromeda-protocol",
  "astroport",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
  "cw20 0.9.1",
  "schemars",
  "serde",
  "terra-cosmwasm",
- "terraswap",
 ]
 
 [[package]]
@@ -79,6 +79,7 @@ dependencies = [
  "ado-base",
  "andromeda-protocol",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw721",
@@ -94,6 +95,7 @@ dependencies = [
  "ado-base",
  "andromeda-protocol",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
@@ -101,7 +103,6 @@ dependencies = [
  "schemars",
  "serde",
  "terra-cosmwasm",
- "thiserror",
 ]
 
 [[package]]
@@ -164,13 +165,12 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.8.1",
- "cw2 0.8.1",
+ "cw-storage-plus 0.9.1",
+ "cw2 0.9.1",
  "cw721",
  "cw721-base",
  "schemars",
  "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -191,6 +191,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-lockdrop"
+version = "1.0.0"
+dependencies = [
+ "ado-base",
+ "andromeda-protocol",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 0.9.1",
+ "cw2 0.9.1",
+ "cw20 0.9.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-merkle-airdrop"
 version = "0.1.0"
 dependencies = [
@@ -208,7 +225,6 @@ dependencies = [
  "schemars",
  "serde",
  "sha2",
- "thiserror",
 ]
 
 [[package]]
@@ -220,15 +236,15 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.8.1",
- "cw2 0.8.1",
+ "cw-asset",
+ "cw-storage-plus 0.9.1",
+ "cw2 0.9.1",
  "cw20 0.9.1",
  "mirror-protocol",
  "schemars",
  "serde",
  "terra-cosmwasm",
  "terraswap",
- "thiserror",
 ]
 
 [[package]]
@@ -240,12 +256,10 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
- "cw-storage-plus 0.8.1",
- "cw2 0.8.1",
+ "cw-storage-plus 0.9.1",
+ "cw2 0.9.1",
  "schemars",
  "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -257,11 +271,10 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.8.1",
- "cw2 0.8.1",
+ "cw-storage-plus 0.9.1",
+ "cw2 0.9.1",
  "schemars",
  "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -283,7 +296,6 @@ dependencies = [
  "schemars",
  "serde",
  "terra-cosmwasm",
- "terraswap",
  "thiserror",
 ]
 
@@ -294,6 +306,7 @@ dependencies = [
  "ado-base",
  "andromeda-protocol",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
@@ -309,6 +322,7 @@ dependencies = [
  "ado-base",
  "andromeda-protocol",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
@@ -323,6 +337,7 @@ dependencies = [
  "ado-base",
  "andromeda-protocol",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
@@ -337,7 +352,9 @@ dependencies = [
  "ado-base",
  "andromeda-protocol",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
  "cw20 0.9.1",
@@ -353,6 +370,7 @@ dependencies = [
  "ado-base",
  "andromeda-protocol",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
@@ -368,6 +386,7 @@ dependencies = [
  "ado-base",
  "andromeda-protocol",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw2 0.9.1",
@@ -384,6 +403,7 @@ dependencies = [
  "ado-base",
  "andromeda-protocol",
  "common",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
  "cw721",
@@ -450,6 +470,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
+ "cw-asset",
  "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
  "cw20 0.9.1",
@@ -482,9 +503,9 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-crypto"
-version = "0.16.2"
+version = "0.16.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ec9bdd1f4da5fc0d085251b0322661c5aaf773ab299e3e205fb18130b7f6ba3"
+checksum = "79b110e31d47bd265e17ec88dd7328fcf40e1ee67a6131c1ab492f77fef8cd83"
 dependencies = [
  "digest",
  "ed25519-zebra",
@@ -495,9 +516,9 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-derive"
-version = "0.16.2"
+version = "0.16.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ac17a14b4ab09a5d89b5301218067acca33d9311376e5c34c9877f09e562395"
+checksum = "0faf9bad5eb0a43a00406e64f8d33407a06bd1826fa976195a69db70e6c18d9d"
 dependencies = [
  "syn",
 ]
@@ -514,13 +535,14 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-std"
-version = "0.16.2"
+version = "0.16.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e47306c113f4d964c35a74a87ceb8ccfb5811e9810a9dc427101148b5b9134ca"
+checksum = "4a0d4e46ab20939af6366a71783324ae4babdedb111f0dd797d063a2e68718bc"
 dependencies = [
  "base64",
  "cosmwasm-crypto",
  "cosmwasm-derive",
+ "forward_ref",
  "schemars",
  "serde",
  "serde-json-wasm",
@@ -600,6 +622,7 @@ version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4dda12c2ab733255cc606d638b3d893429c6da17ec96a330337fb236e7b0ca48"
 dependencies = [
+ "astroport",
  "cosmwasm-std",
  "cw20 0.9.1",
  "schemars",
@@ -819,6 +842,12 @@ dependencies = [
  "rand_core 0.6.3",
  "subtle",
 ]
+
+[[package]]
+name = "forward_ref"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8cbd1169bd7b4a0a20d92b9af7a7e0422888bd38a6f5ec29c1fd8c1558a272e"
 
 [[package]]
 name = "generic-array"
@@ -1173,9 +1202,9 @@ checksum = "b63708a265f51345575b27fe43f9500ad611579e764c79edbc2037b1121959ec"
 
 [[package]]
 name = "uint"
-version = "0.9.1"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6470ab50f482bde894a037a57064480a246dbfdd5960bd65a44824693f08da5f"
+checksum = "12f03af7ccf01dd611cc450a0d10dbc9b745770d096473e2faf0ca6e2d66d1e0"
 dependencies = [
  "byteorder",
  "crunchy 0.2.2",
