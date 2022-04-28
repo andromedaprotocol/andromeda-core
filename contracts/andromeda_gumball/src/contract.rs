@@ -582,7 +582,7 @@ mod tests {
         );
         let list = LIST.load(&deps.storage).unwrap();
 
-        assert_eq!(list.contains(&"token_id".to_string()), true);
+        assert!(list.contains(&"token_id".to_string()));
     }
 
     #[test]
