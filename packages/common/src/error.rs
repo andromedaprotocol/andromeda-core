@@ -304,6 +304,9 @@ pub enum ContractError {
     #[error("Verification Failed")]
     VerificationFailed {},
 
+    #[error("Invalid Asset: {asset}")]
+    InvalidAsset { asset: String },
+
     #[error("Primitive Does Not Exist: {msg}")]
     PrimitiveDoesNotExist { msg: String },
 
