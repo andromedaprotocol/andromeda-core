@@ -130,6 +130,7 @@ dependencies = [
  "andromeda-protocol",
  "common",
  "cosmwasm-bignumber",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
  "cw-storage-plus 0.9.1",
