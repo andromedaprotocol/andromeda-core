@@ -4,7 +4,7 @@ use common::{
         ownership::ContractOwnerResponse,
         AndromedaQuery,
     },
-    primitive::{GetValueResponse, Primitive},
+    primitive::{GetValueResponse, Primitive, Value},
     Funds,
 };
 
@@ -320,7 +320,7 @@ impl WasmMockQuerier {
             Cw721QueryMsg::NftInfo { token_id } => {
                 let transfer_agreement = if token_id == MOCK_TOKEN_TRANSFER_AGREEMENT {
                     Some(TransferAgreement {
-                        amount: coin(100, "uusd"),
+                        amount: Value::Raw(coin(100, "uusd")),
                         purchaser: "purchaser".to_string(),
                     })
                 } else {
@@ -350,7 +350,6 @@ impl WasmMockQuerier {
                             ]),
                         }),
                         archived: false,
-                        pricing: None,
                     }
                 } else {
                     TokenExtension {
@@ -360,7 +359,6 @@ impl WasmMockQuerier {
                         transfer_agreement,
                         metadata: None,
                         archived: false,
-                        pricing: None,
                     }
                 };
                 let response = NftInfoResponse {
@@ -425,6 +423,10 @@ impl WasmMockQuerier {
                     "flat_cw20" => GetValueResponse {
                         key,
                         value: Primitive::Coin(coin(1u128, "address")),
+                    },
+                    "sell_amount" => GetValueResponse {
+                        key,
+                        value: Primitive::Coin(coin(100, "uusd")),
                     },
                     "factory" => GetValueResponse {
                         key,

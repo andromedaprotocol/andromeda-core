@@ -1,5 +1,5 @@
 use crate::{error::ContractError, require};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ pub struct Withdrawal {
 #[serde(rename_all = "snake_case")]
 pub enum WithdrawalType {
     Amount(Uint128),
-    Percentage(Uint128),
+    Percentage(Decimal),
 }
 
 impl Withdrawal {
@@ -29,19 +29,19 @@ impl Withdrawal {
 impl WithdrawalType {
     /// Calculates the amount to withdraw given the withdrawal type and passed in `balance`.
     pub fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
-        match self.clone() {
+        match self {
             WithdrawalType::Percentage(percent) => {
-                require(percent <= Uint128::new(100), ContractError::InvalidRate {})?;
-                Ok(balance.multiply_ratio(percent, 100u128))
+                require(*percent <= Decimal::one(), ContractError::InvalidRate {})?;
+                Ok(balance * *percent)
             }
             WithdrawalType::Amount(amount) => {
                 require(
-                    amount <= balance,
+                    amount <= &balance,
                     ContractError::InvalidFunds {
                         msg: "Requested withdrawal amount exceeds token balance".to_string(),
                     },
                 )?;
-                Ok(amount)
+                Ok(*amount)
             }
         }
     }
@@ -65,7 +65,7 @@ mod tests {
     fn test_get_amount_percentage() {
         let withdrawal = Withdrawal {
             token: "token".to_string(),
-            withdrawal_type: Some(WithdrawalType::Percentage(10u128.into())),
+            withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(10))),
         };
         let balance = Uint128::from(100u128);
         assert_eq!(10u128, withdrawal.get_amount(balance).unwrap().u128());
@@ -75,7 +75,7 @@ mod tests {
     fn test_get_amount_invalid_percentage() {
         let withdrawal = Withdrawal {
             token: "token".to_string(),
-            withdrawal_type: Some(WithdrawalType::Percentage(101u128.into())),
+            withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(101))),
         };
         let balance = Uint128::from(100u128);
         assert_eq!(

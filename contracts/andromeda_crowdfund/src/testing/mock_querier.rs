@@ -6,18 +6,17 @@ use cosmwasm_std::{
     from_binary, from_slice,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps, Querier, QuerierResult,
-    QueryRequest, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
+    QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
 };
-use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
+use cw721::{Cw721QueryMsg, TokensResponse};
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
-pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
+pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
-pub const MOCK_NON_EXISTING_TOKEN: &str = "non_existing_token";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
     "token1", "token2", "token3", "token4", "token5", "token6", "token7",
 ];
@@ -67,6 +66,7 @@ impl WasmMockQuerier {
                 match contract_addr.as_str() {
                     MOCK_TOKEN_CONTRACT => self.handle_token_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
+                    MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
                     _ => panic!("Unknown Contract Address {}", contract_addr),
                 }
             }
@@ -99,23 +99,6 @@ impl WasmMockQuerier {
                 };
 
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-            }
-            Cw721QueryMsg::OwnerOf { token_id, .. } => {
-                if token_id == MOCK_NON_EXISTING_TOKEN {
-                    SystemResult::Ok(ContractResult::Err("error".to_string()))
-                } else if MOCK_TOKENS_FOR_SALE.contains(&token_id.as_str()) {
-                    let res = OwnerOfResponse {
-                        owner: self.contract_address.clone(),
-                        approvals: vec![],
-                    };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-                } else {
-                    let res = OwnerOfResponse {
-                        owner: "not_contract".to_string(),
-                        approvals: vec![],
-                    };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-                }
             }
 
             _ => panic!("Unsupported Query"),
@@ -168,6 +151,23 @@ impl WasmMockQuerier {
                         leftover_funds: new_funds,
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                }
+                _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+            },
+        }
+    }
+
+    fn handle_addresslist_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            HookMsg::AndrHook(hook_msg) => match hook_msg {
+                AndromedaHook::OnExecute { sender, payload: _ } => {
+                    let whitelisted_addresses = ["sender"];
+                    let response: Response = Response::default();
+                    if whitelisted_addresses.contains(&sender.as_str()) {
+                        SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                    } else {
+                        SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
+                    }
                 }
                 _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
             },

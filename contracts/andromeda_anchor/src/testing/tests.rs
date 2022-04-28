@@ -2,8 +2,8 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, Coin, ContractResult, CosmosMsg, DepsMut, Reply, Response, SubMsg,
-    SubMsgExecutionResponse, Uint128, WasmMsg,
+    to_binary, Addr, BankMsg, Coin, ContractResult, CosmosMsg, Decimal, DepsMut, Reply, Response,
+    SubMsg, SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 
 use crate::contract::{execute, instantiate, query, reply, DEPOSIT_ID, WITHDRAW_ID};
@@ -499,7 +499,7 @@ fn test_withdraw_percent() {
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
         recipient: Some(Recipient::Addr(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![Withdrawal {
-            withdrawal_type: Some(WithdrawalType::Percentage(50u128.into())),
+            withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(50))),
             token: "uusd".to_string(),
         }]),
     });
@@ -543,7 +543,7 @@ fn test_withdraw_invalid_percent() {
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
         recipient: Some(Recipient::Addr(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![Withdrawal {
-            withdrawal_type: Some(WithdrawalType::Percentage(101u128.into())),
+            withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(101))),
             token: "uusd".to_string(),
         }]),
     });
@@ -1478,4 +1478,26 @@ fn test_unstake_anc_unauthorized() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_receive_cw20_zero_amount() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut());
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "sender".to_string(),
+        amount: Uint128::zero(),
+        msg: to_binary(&"").unwrap(),
+    });
+
+    let info = mock_info(MOCK_BLUNA_TOKEN, &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string()
+        },
+        res.unwrap_err()
+    );
 }
