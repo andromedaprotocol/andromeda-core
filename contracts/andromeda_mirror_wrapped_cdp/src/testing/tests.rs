@@ -31,7 +31,7 @@ use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use terraswap::asset::{Asset, AssetInfo};
 
-const TEST_TOKEN: &str = "TEST_TOKEN";
+const TEST_TOKEN: &str = "test_token";
 const TEST_AMOUNT: u128 = 100u128;
 
 fn assert_mint_execute_msg(deps: DepsMut, info: MessageInfo, mirror_msg: MirrorMintExecuteMsg) {

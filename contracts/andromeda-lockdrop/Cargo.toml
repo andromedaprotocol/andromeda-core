@@ -9,22 +9,9 @@ exclude = [
   "hash.txt",
 ]
 
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 crate-type = ["cdylib", "rlib"]
-
-
-[profile.release]
-opt-level = 3
-debug = false
-rpath = false
-lto = true
-debug-assertions = false
-codegen-units = 1
-panic = 'abort'
-incremental = false
-overflow-checks = true
 
 [features]
 # for more explicit tests, cargo test --features=backtraces
@@ -33,10 +20,10 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = "0.16.0"
-cw-storage-plus = "0.9"
-cw2 = "0.9"
-cw20 = { version = "0.9" }
+cosmwasm-std = "0.16.7"
+cw-storage-plus = "0.9.1"
+cw2 = "0.9.1"
+cw20 = "0.9.1"
 cw-asset = "1.0.2"
 
 schemars = "0.8.3"
