@@ -2,7 +2,7 @@ use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     mission::AndrAddress,
 };
-use cosmwasm_std::{Addr, Binary, Coin, Uint128};
+use cosmwasm_std::{Binary, Coin, Uint128};
 use cw721_base::MintMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,7 @@ use crate::cw721::TokenExtension;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub andromeda_cw721_contract: AndrAddress,
+    pub randomness_source: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -20,8 +21,8 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     Mint(Box<MintMsg<TokenExtension>>),
     Buy {},
-    // Sets price, max amount per wallet, and recipient
-    SaleDetails {
+    /// Sets price, max amount per wallet, and recipient
+    SetSaleDetails {
         /// The price per token.
         price: Coin,
         /// The amount of tokens a wallet can purchase, default is 1.
@@ -29,13 +30,11 @@ pub enum ExecuteMsg {
         /// The recipient of the funds if the sale met the minimum sold.
         recipient: Recipient,
     },
-    // Automatically switches to opposite status.
-    // True means buying is allowed and minting is halted. False means the opposite.
+    /// Automatically switches to opposite status.
+    /// True means buying is allowed and minting is halted. False means the opposite.
     SwitchStatus {},
-    // SetContractAddress {
-    //     andromeda_cw721_contract: AndrAddress,
-    // },
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
@@ -51,59 +50,22 @@ pub enum RandQueryMsg {
     LatestDrand {},
     GetRandomness { round: u64 },
 }
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// pub struct BeaconInfoState {
-//     pub round: u64,
-//     pub randomness: Binary,
-//     pub worker: CanonicalAddr,
-// }
-// pub const BEACONS: Map<&[u8], BeaconInfoState> = Map::new("beacons");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct NumberOfNFTsResponse {
     pub number: usize,
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct State {
-    /// The price of each token.
-    pub price: Coin,
-    /// The max number of tokens allowed per wallet.
-    pub max_amount_per_wallet: Uint128,
-    /// The recipient of the funds upon a sale.
-    /// Most likely the contract, but could also be the splitter contract for example.
-    pub recipient: Recipient,
-}
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct StateResponse {
-    pub state: State,
-}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct StatusResponse {
     pub status: bool,
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct RandomResult {
-    pub randomness: Binary,
-    pub worker: Addr,
-}
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Default)]
-pub struct GetRandomResponse {
-    pub randomness: Binary,
-    pub worker: String,
-}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LatestRandomResponse {
     pub round: u64,
     pub randomness: Binary,
     pub worker: String,
-}
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct LatestRoundResponse {
-    pub height: String,
-    pub result: RandomResult,
 }
