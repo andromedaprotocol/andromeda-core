@@ -348,6 +348,12 @@ pub enum ContractError {
 
     #[error("Too many mint messages, limit is {limit}")]
     TooManyMintMessages { limit: u32 },
+
+    #[error("Mission contract not specified")]
+    MissionContractNotSpecified {},
+
+    #[error("Invalid component: {name}")]
+    InvalidComponent { name: String },
 }
 
 impl From<Cw20ContractError> for ContractError {

@@ -38,6 +38,7 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     GetAddress { name: String },
     GetComponents {},
+    ComponentExists { name: String },
     GetAddresses {},
     Config {},
 }

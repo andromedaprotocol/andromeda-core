@@ -70,7 +70,39 @@ fn test_instantiation() {
             attr("andr_mission", "Some Mission"),
         ]);
 
-    assert_eq!(expected, res)
+    assert_eq!(expected, res);
+
+    assert_eq!(
+        Addr::unchecked(""),
+        ADO_ADDRESSES.load(deps.as_ref().storage, "token").unwrap()
+    );
+}
+
+#[test]
+fn test_instantiation_duplicate_components() {
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let msg = InstantiateMsg {
+        operators: vec![],
+        mission: vec![
+            MissionComponent {
+                name: "component".to_string(),
+                ado_type: "cw721".to_string(),
+                instantiate_msg: to_binary(&true).unwrap(),
+            },
+            MissionComponent {
+                name: "component".to_string(),
+                ado_type: "cw20".to_string(),
+                instantiate_msg: to_binary(&true).unwrap(),
+            },
+        ],
+        name: String::from("Some Mission"),
+        primitive_contract: String::from("primitive_contract"),
+    };
+    let info = mock_info("creator", &[]);
+
+    let res = instantiate(deps.as_mut(), mock_env(), info, msg);
+    assert_eq!(ContractError::NameAlreadyTaken {}, res.unwrap_err());
 }
 
 #[test]
@@ -181,7 +213,12 @@ fn test_add_mission_component() {
             attr("type", "cw721"),
         ]);
 
-    assert_eq!(expected, res)
+    assert_eq!(expected, res);
+
+    assert_eq!(
+        Addr::unchecked(""),
+        ADO_ADDRESSES.load(deps.as_ref().storage, "token").unwrap()
+    );
 }
 
 #[test]
@@ -612,5 +649,10 @@ fn test_reply_assign_mission() {
     };
     let expected = Response::new().add_submessage(exec_submsg);
 
-    assert_eq!(expected, res)
+    assert_eq!(expected, res);
+
+    assert_eq!(
+        Addr::unchecked("tokenaddress"),
+        ADO_ADDRESSES.load(deps.as_ref().storage, "token").unwrap()
+    );
 }
