@@ -208,7 +208,6 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
         sent_funds.amount == state.price.amount,
         ContractError::InsufficientFunds {},
     )?;
-    let contract = CW721_CONTRACT.load(deps.storage)?;
     let randomness_source = RANDOMNESS_PROVIDER.load(deps.storage)?;
     let random_response: LatestRandomResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
@@ -230,11 +229,13 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
     // Select NFT & remove it from list at the same time. Used swap_remove since it's more efficient and the ordering doesn't matter
     let random_nft = list.swap_remove(index);
     LIST.save(deps.storage, &list)?;
-    let contract_address = contract.identifier;
+    let token_contract = CW721_CONTRACT.load(deps.storage)?;
+    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
+    let contract_addr = token_contract.get_address(deps.api, &deps.querier, mission_contract)?;
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract_address.clone(),
+            contract_addr: contract_addr.clone(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: info.sender.to_string(),
                 token_id: random_nft.clone(),
@@ -243,7 +244,7 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
         }))
         .add_attribute("action", "claim")
         .add_attribute("token_id", random_nft)
-        .add_attribute("token_contract", contract_address)
+        .add_attribute("token_contract", contract_addr)
         .add_attribute("recipient", info.sender.to_string()))
 }
 
