@@ -107,7 +107,7 @@ impl<'a> ADOContract<'a> {
         if let Some(mission_contract) = self.get_mission_contract(storage)? {
             self.validate_andr_address(
                 api,
-                &querier,
+                querier,
                 module.address.identifier.to_owned(),
                 mission_contract,
             )?;
