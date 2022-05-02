@@ -1,7 +1,6 @@
 use cosmwasm_std::{
     coins,
-    testing::{mock_env, mock_info},
-    to_binary, Response, StdError, WasmMsg,
+    testing::{mock_env, mock_info}, Response, StdError,
 };
 
 use crate::contract::{execute, instantiate};

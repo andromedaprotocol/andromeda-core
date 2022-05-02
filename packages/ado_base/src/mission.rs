@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Api, Deps, Env, MessageInfo, QuerierWrapper, Response, Storage};
+use cosmwasm_std::{Addr, Api, Deps, QuerierWrapper, Response, Storage};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -71,7 +71,7 @@ impl<'a> ADOContract<'a> {
         // name.
         if api.addr_validate(&identifier).is_err() {
             require(
-                self.component_exists(&querier, identifier.clone(), mission_contract.clone())?,
+                self.component_exists(querier, identifier.clone(), mission_contract)?,
                 ContractError::InvalidComponent { name: identifier },
             )?;
         }

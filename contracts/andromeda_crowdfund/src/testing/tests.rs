@@ -10,7 +10,7 @@ use crate::{
         MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
     },
 };
-use ado_base::ADOContract;
+
 use andromeda_protocol::{
     crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
