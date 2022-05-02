@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, Env, MessageInfo, QuerierWrapper, Response, Storage};
+use cosmwasm_std::{Addr, Api, Deps, Env, MessageInfo, QuerierWrapper, Response, Storage};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ impl<'a> ADOContract<'a> {
         deps: Deps,
         env: Env,
         info: MessageInfo,
-        addresses: Vec<&AndrAddress>,
+        mut addresses: Vec<AndrAddress>,
     ) -> Result<Response, ContractError> {
         require(
             info.sender == env.contract.address,
@@ -28,22 +28,23 @@ impl<'a> ADOContract<'a> {
             mission_contract.is_some(),
             ContractError::MissionContractNotSpecified {},
         )?;
+        #[cfg(feature = "modules")]
+        {
+            let modules = self.load_modules(deps.storage)?;
+            if !modules.is_empty() {
+                let andr_addresses: Vec<AndrAddress> =
+                    modules.into_iter().map(|m| m.address).collect();
+                addresses.extend(andr_addresses);
+            }
+        }
         let mission_contract = mission_contract.unwrap();
         for address in addresses {
-            // If the address passes this check then it doesn't refer to a mission component by
-            // name.
-            if deps.api.addr_validate(&address.identifier).is_err() {
-                require(
-                    self.component_exists(
-                        &deps.querier,
-                        address.identifier.clone(),
-                        mission_contract.clone(),
-                    )?,
-                    ContractError::InvalidComponent {
-                        name: address.identifier.clone(),
-                    },
-                )?;
-            }
+            self.validate_andr_address(
+                deps.api,
+                &deps.querier,
+                address.identifier,
+                mission_contract.clone(),
+            )?;
         }
         Ok(Response::new())
     }
@@ -63,5 +64,23 @@ impl<'a> ADOContract<'a> {
     ) -> Result<bool, ContractError> {
         Ok(querier
             .query_wasm_smart(mission_contract, &MissionQueryMsg::ComponentExists { name })?)
+    }
+
+    pub(crate) fn validate_andr_address(
+        &self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        identifier: String,
+        mission_contract: Addr,
+    ) -> Result<(), ContractError> {
+        // If the address passes this check then it doesn't refer to a mission component by
+        // name.
+        if api.addr_validate(&identifier).is_err() {
+            require(
+                self.component_exists(&querier, identifier.clone(), mission_contract.clone())?,
+                ContractError::InvalidComponent { name: identifier },
+            )?;
+        }
+        Ok(())
     }
 }
