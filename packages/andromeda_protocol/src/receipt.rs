@@ -1,4 +1,8 @@
-use cosmwasm_std::{Event, Uint128};
+use common::{
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery},
+    error::ContractError,
+};
+use cosmwasm_std::{to_binary, CosmosMsg, Event, SubMsg, Uint128, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +13,8 @@ pub struct Config {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-/// A struct representation of a receipt. Contains a vector of CosmWasm [Event](https://docs.rs/cosmwasm-std/0.16.0/cosmwasm_std/struct.Event.html) structs.
+/// A struct representation of a receipt. Contains a vector of CosmWasm
+/// [Event](https://docs.rs/cosmwasm-std/0.16.0/cosmwasm_std/struct.Event.html) structs.
 pub struct Receipt {
     /// A vector of CosmWasm [Event](https://docs.rs/cosmwasm-std/0.16.0/cosmwasm_std/struct.Event.html) structs related to the receipt
     pub events: Vec<Event>,
@@ -26,6 +31,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     /// Mint a new receipt. Only executable by the assigned `minter` address. Generates a receipt ID.
     StoreReceipt {
         receipt: Receipt,
@@ -34,14 +40,6 @@ pub enum ExecuteMsg {
     EditReceipt {
         receipt_id: Uint128,
         receipt: Receipt,
-    },
-    /// Update ownership of the contract. Only executable by the current contract owner.
-    UpdateOwner {
-        /// The address of the new contract owner.
-        address: String,
-    },
-    UpdateOperator {
-        operators: Vec<String>,
     },
 }
 
@@ -52,17 +50,14 @@ pub struct MigrateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// Query receipt by its generated ID.
     Receipt {
         receipt_id: Uint128,
     },
     /// The current contract config.
     ContractInfo {},
-    /// The current contract owner.
-    ContractOwner {},
-    IsOperator {
-        address: String,
-    },
+    AndrHook(AndromedaHook),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -74,4 +69,17 @@ pub struct ContractInfoResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ReceiptResponse {
     pub receipt: Receipt,
+}
+
+pub fn generate_receipt_message(
+    contract_addr: String,
+    events: Vec<Event>,
+) -> Result<SubMsg, ContractError> {
+    let receipt = Receipt { events };
+
+    Ok(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr,
+        msg: to_binary(&ExecuteMsg::StoreReceipt { receipt })?,
+        funds: vec![],
+    })))
 }

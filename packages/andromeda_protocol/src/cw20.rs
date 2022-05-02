@@ -1,17 +1,51 @@
 use cosmwasm_std::{Binary, Uint128};
 use cw0::Expiration;
-use cw20::Logo;
-use cw20_base::msg::{ExecuteMsg as Cw20ExecuteMsg, QueryMsg as Cw20QueryMsg};
+use cw20::{Cw20Coin, Logo, MinterResponse};
+use cw20_base::msg::{
+    ExecuteMsg as Cw20ExecuteMsg, InstantiateMarketingInfo, InstantiateMsg as Cw20InstantiateMsg,
+    QueryMsg as Cw20QueryMsg,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub struct InstantiateMsg {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u8,
+    pub initial_balances: Vec<Cw20Coin>,
+    pub mint: Option<MinterResponse>,
+    pub marketing: Option<InstantiateMarketingInfo>,
+    pub modules: Option<Vec<Module>>,
+}
+
+impl From<InstantiateMsg> for Cw20InstantiateMsg {
+    fn from(msg: InstantiateMsg) -> Self {
+        Cw20InstantiateMsg {
+            name: msg.name,
+            symbol: msg.symbol,
+            decimals: msg.decimals,
+            initial_balances: msg.initial_balances,
+            mint: msg.mint,
+            marketing: msg.marketing,
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Transfer is a base message to move tokens to another account without triggering actions
-    Transfer { recipient: String, amount: Uint128 },
+    Transfer {
+        recipient: String,
+        amount: Uint128,
+    },
     /// Burn is a base message to destroy tokens forever
-    Burn { amount: Uint128 },
+    Burn {
+        amount: Uint128,
+    },
     /// Send is a base message to transfer tokens to a contract and trigger an action
     /// on the receiving contract.
     Send {
@@ -51,10 +85,16 @@ pub enum ExecuteMsg {
         msg: Binary,
     },
     /// Only with "approval" extension. Destroys tokens forever
-    BurnFrom { owner: String, amount: Uint128 },
+    BurnFrom {
+        owner: String,
+        amount: Uint128,
+    },
     /// Only with the "mintable" extension. If authorized, creates amount new tokens
     /// and adds to the recipient balance.
-    Mint { recipient: String, amount: Uint128 },
+    Mint {
+        recipient: String,
+        amount: Uint128,
+    },
     /// Only with the "marketing" extension. If authorized, updates marketing metadata.
     /// Setting None/null for any of these will leave it unchanged.
     /// Setting Some("") will clear this field on the contract storage
@@ -68,6 +108,7 @@ pub enum ExecuteMsg {
     },
     /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
     UploadLogo(Logo),
+    AndrReceive(AndromedaMsg),
 }
 
 impl From<ExecuteMsg> for Cw20ExecuteMsg {
@@ -136,6 +177,7 @@ impl From<ExecuteMsg> for Cw20ExecuteMsg {
                 marketing,
             },
             ExecuteMsg::UploadLogo(logo) => Cw20ExecuteMsg::UploadLogo(logo),
+            _ => panic!("Unsupported message"),
         }
     }
 }
@@ -147,9 +189,12 @@ pub struct MigrateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// Returns the current balance of the given address, 0 if unset.
     /// Return type: BalanceResponse.
-    Balance { address: String },
+    Balance {
+        address: String,
+    },
     /// Returns metadata on the contract - name, decimals, supply, etc.
     /// Return type: TokenInfoResponse.
     TokenInfo {},
@@ -160,7 +205,10 @@ pub enum QueryMsg {
     /// Only with "allowance" extension.
     /// Returns how much spender can use from owner account, 0 if unset.
     /// Return type: AllowanceResponse.
-    Allowance { owner: String, spender: String },
+    Allowance {
+        owner: String,
+        spender: String,
+    },
     /// Only with "enumerable" extension (and "allowances")
     /// Returns all allowances this owner has approved. Supports pagination.
     /// Return type: AllAllowancesResponse.
@@ -209,6 +257,7 @@ impl From<QueryMsg> for Cw20QueryMsg {
             }
             QueryMsg::MarketingInfo {} => Cw20QueryMsg::DownloadLogo {},
             QueryMsg::DownloadLogo {} => Cw20QueryMsg::DownloadLogo {},
+            _ => panic!("Unsupported Msg"),
         }
     }
 }

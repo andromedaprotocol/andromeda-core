@@ -1,4 +1,4 @@
-use crate::modules::ModuleDefinition;
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -8,11 +8,11 @@ pub struct InstantiateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     /// Create new token
     Create {
         name: String,
         symbol: String,
-        modules: Vec<ModuleDefinition>,
     },
     UpdateCodeId {
         code_id_key: String,
@@ -23,13 +23,6 @@ pub enum ExecuteMsg {
         symbol: String,
         new_address: String,
     },
-    /// Update current contract owner
-    UpdateOwner {
-        address: String,
-    },
-    UpdateOperator {
-        operators: Vec<String>,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -39,6 +32,7 @@ pub struct MigrateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// Query token contract address by its symbol
     GetAddress {
         symbol: String,
@@ -47,19 +41,9 @@ pub enum QueryMsg {
     CodeId {
         key: String,
     },
-    /// The current contract owner
-    ContractOwner {},
-    IsOperator {
-        address: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AddressResponse {
     pub address: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CodeIdResponse {
-    pub code_id: u64,
 }

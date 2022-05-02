@@ -2,13 +2,34 @@
 members = ["packages/*", "contracts/*"]
 
 [profile.release.package.andromeda-protocol]
-opt-level = 3
-debug = false
-debug-assertions = false
 codegen-units = 1
 incremental = false
 
+[profile.release.package.common]
+codegen-units = 1
+incremental = false
+
+[profile.release.package.ado-base]
+codegen-units = 1
+incremental = false
+
+[profile.release.package.andromeda-cw721]
+codegen-units = 1
+
+[profile.release.package.andromeda-cw20]
+codegen-units = 1
+
+[profile.release.package.andromeda-anchor]
+codegen-units = 1
+
+[profile.release.package.andromeda-crowdfund]
+codegen-units = 1
+
 [profile.release]
+debug = false
+debug-assertions = false
+opt-level = 3
 rpath = false
 lto = true
 overflow-checks = true
+panic='abort'

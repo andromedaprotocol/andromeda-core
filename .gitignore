@@ -1,3 +1,5 @@
 node_modules/
 artifacts/
 target/
+.DS_Store
+artifacts*
