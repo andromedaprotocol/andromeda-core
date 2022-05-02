@@ -49,6 +49,26 @@
     {
       "type": "object",
       "required": [
+        "component_exists"
+      ],
+      "properties": {
+        "component_exists": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "get_addresses"
       ],
       "properties": {

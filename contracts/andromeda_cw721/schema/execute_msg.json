@@ -393,6 +393,19 @@
           "additionalProperties": false
         },
         {
+          "description": "Called after `UpdateMissionContract` to ensure that all `AndrAddress` instances are valid.",
+          "type": "object",
+          "required": [
+            "validate_andr_addresses"
+          ],
+          "properties": {
+            "validate_andr_addresses": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
           "type": "object",
           "required": [
             "withdraw"
@@ -558,6 +571,10 @@
         }
       }
     },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
     "Expiration": {
       "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
       "oneOf": [
@@ -690,6 +707,29 @@
         },
         "module_type": {
           "type": "string"
+        }
+      }
+    },
+    "PrimitivePointer": {
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "description": "The address of the primitive contract.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AndrAddress"
+            }
+          ]
+        },
+        "key": {
+          "description": "The optional key for the stored data.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },
@@ -833,7 +873,7 @@
           "description": "The amount required for the purchaser to transfer ownership of the token",
           "allOf": [
             {
-              "$ref": "#/definitions/Coin"
+              "$ref": "#/definitions/Value_for_Coin"
             }
           ]
         },
@@ -850,6 +890,36 @@
     "Uint64": {
       "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
       "type": "string"
+    },
+    "Value_for_Coin": {
+      "oneOf": [
+        {
+          "description": "The raw value.",
+          "type": "object",
+          "required": [
+            "raw"
+          ],
+          "properties": {
+            "raw": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The pointer to the primitive. This SHOULD be of the same underlying type as `T`. For example, if `T` is `String`, then `PrimitivePointer` should point to a Primitive::String(..). This cannot be enforced at compile time though, so it is up to the discretion of the user.",
+          "type": "object",
+          "required": [
+            "pointer"
+          ],
+          "properties": {
+            "pointer": {
+              "$ref": "#/definitions/PrimitivePointer"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "Withdrawal": {
       "type": "object",
@@ -893,7 +963,7 @@
           ],
           "properties": {
             "percentage": {
-              "$ref": "#/definitions/Uint128"
+              "$ref": "#/definitions/Decimal"
             }
           },
           "additionalProperties": false
