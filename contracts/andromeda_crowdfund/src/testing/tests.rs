@@ -1757,7 +1757,6 @@ fn test_update_mission_contract_nonexisting_address() {
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
         address: MOCK_MISSION_CONTRACT.to_owned(),
     });
-
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(

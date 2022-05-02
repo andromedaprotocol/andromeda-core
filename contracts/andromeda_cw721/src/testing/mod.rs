@@ -5,7 +5,6 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 
-
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
@@ -24,9 +23,8 @@ use andromeda_protocol::{
     cw721_offers::ExecuteMsg as OffersExecuteMsg,
     receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{
-        bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT,
-        MOCK_OFFERS_CONTRACT, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT,
-        MOCK_RECEIPT_CONTRACT,
+        bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
+        MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
     },
 };
 use cw721::{NftInfoResponse, OwnerOfResponse};

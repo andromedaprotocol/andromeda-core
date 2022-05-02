@@ -1,6 +1,7 @@
 use cosmwasm_std::{
     coins,
-    testing::{mock_env, mock_info}, BankMsg, Decimal, Response, StdError,
+    testing::{mock_env, mock_info},
+    BankMsg, Decimal, Response, StdError,
 };
 
 use crate::contract::{execute, instantiate};
