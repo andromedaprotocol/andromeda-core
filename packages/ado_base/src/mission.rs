@@ -12,17 +12,11 @@ enum MissionQueryMsg {
 }
 
 impl<'a> ADOContract<'a> {
-    pub fn validate_andr_addresses(
+    pub(crate) fn validate_andr_addresses(
         &self,
         deps: Deps,
-        env: Env,
-        info: MessageInfo,
         mut addresses: Vec<AndrAddress>,
     ) -> Result<Response, ContractError> {
-        require(
-            info.sender == env.contract.address,
-            ContractError::Unauthorized {},
-        )?;
         let mission_contract = self.get_mission_contract(deps.storage)?;
         require(
             mission_contract.is_some(),
