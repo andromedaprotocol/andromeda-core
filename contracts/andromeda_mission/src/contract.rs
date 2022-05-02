@@ -18,8 +18,8 @@ use common::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, ReplyOn, Response,
-    StdError, Storage, SubMsg, WasmMsg,
+    Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, ReplyOn,
+    Response, StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -124,6 +124,9 @@ fn execute_add_mission_component(
 
     let current_addr = ADO_ADDRESSES.may_load(storage, &component.name)?;
     require(current_addr.is_none(), ContractError::NameAlreadyTaken {})?;
+
+    // This is a default value that will be overridden on `reply`.
+    ADO_ADDRESSES.save(storage, &component.name, &Addr::unchecked(""))?;
 
     let idx = add_mission_component(storage, &component)?;
     let inst_msg = contract.generate_instantiate_msg(
@@ -246,6 +249,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::GetAddresses {} => encode_binary(&query_component_addresses(deps)?),
         QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+        QueryMsg::ComponentExists { name } => encode_binary(&query_component_exists(deps, name)),
     }
 }
 
@@ -277,6 +281,10 @@ fn query_component_address(deps: Deps, name: String) -> Result<String, ContractE
 fn query_component_descriptors(deps: Deps) -> Result<Vec<MissionComponent>, ContractError> {
     let value = load_component_descriptors(deps.storage)?;
     Ok(value)
+}
+
+fn query_component_exists(deps: Deps, name: String) -> bool {
+    ADO_ADDRESSES.has(deps.storage, &name)
 }
 
 fn query_component_addresses(deps: Deps) -> Result<Vec<ComponentAddress>, ContractError> {

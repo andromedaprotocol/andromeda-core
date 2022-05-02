@@ -22,6 +22,9 @@ codegen-units = 1
 [profile.release.package.andromeda-anchor]
 codegen-units = 1
 
+[profile.release.package.andromeda-crowdfund]
+codegen-units = 1
+
 [profile.release]
 debug = false
 debug-assertions = false

@@ -252,6 +252,19 @@
           "additionalProperties": false
         },
         {
+          "description": "Called after `UpdateMissionContract` to ensure that all `AndrAddress` instances are valid.",
+          "type": "object",
+          "required": [
+            "validate_andr_addresses"
+          ],
+          "properties": {
+            "validate_andr_addresses": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
           "type": "object",
           "required": [
             "withdraw"
@@ -417,6 +430,10 @@
         }
       }
     },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
     "Module": {
       "description": "Modules can be instantiated in two different ways New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded Address - Provide an address for an already instantiated module contract A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
       "type": "object",
@@ -522,7 +539,7 @@
           ],
           "properties": {
             "percentage": {
-              "$ref": "#/definitions/Uint128"
+              "$ref": "#/definitions/Decimal"
             }
           },
           "additionalProperties": false

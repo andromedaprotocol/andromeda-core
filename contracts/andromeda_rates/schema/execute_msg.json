@@ -39,25 +39,6 @@
     }
   ],
   "definitions": {
-    "ADORate": {
-      "type": "object",
-      "required": [
-        "address"
-      ],
-      "properties": {
-        "address": {
-          "description": "The address of the primitive contract.",
-          "type": "string"
-        },
-        "key": {
-          "description": "The key of the primitive in the primitive contract.",
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      }
-    },
     "ADORecipient": {
       "description": "ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message",
       "type": "object",
@@ -178,6 +159,19 @@
                   "type": "string"
                 }
               }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Called after `UpdateMissionContract` to ensure that all `AndrAddress` instances are valid.",
+          "type": "object",
+          "required": [
+            "validate_andr_addresses"
+          ],
+          "properties": {
+            "validate_andr_addresses": {
+              "type": "object"
             }
           },
           "additionalProperties": false
@@ -383,6 +377,29 @@
         }
       }
     },
+    "PrimitivePointer": {
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "description": "The address of the primitive contract.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AndrAddress"
+            }
+          ]
+        },
+        "key": {
+          "description": "The optional key for the stored data.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
     "Rate": {
       "description": "An enum used to define various types of fees",
       "oneOf": [
@@ -419,7 +436,7 @@
           ],
           "properties": {
             "external": {
-              "$ref": "#/definitions/ADORate"
+              "$ref": "#/definitions/PrimitivePointer"
             }
           },
           "additionalProperties": false
@@ -533,7 +550,7 @@
           ],
           "properties": {
             "percentage": {
-              "$ref": "#/definitions/Uint128"
+              "$ref": "#/definitions/Decimal"
             }
           },
           "additionalProperties": false

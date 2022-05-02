@@ -1,12 +1,16 @@
 use crate::{
     contract::{execute, instantiate, query, MAX_MINT_LIMIT},
-    state::{Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES, SALE_CONDUCTED, STATE},
+    state::{
+        Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, NUMBER_OF_TOKENS_AVAILABLE, PURCHASES,
+        SALE_CONDUCTED, STATE,
+    },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_CONDITIONS_MET_CONTRACT,
-        MOCK_CONDITIONS_NOT_MET_CONTRACT, MOCK_RATES_CONTRACT, MOCK_ROYALTY_RECIPIENT,
-        MOCK_TAX_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
+        MOCK_CONDITIONS_NOT_MET_CONTRACT, MOCK_MISSION_CONTRACT, MOCK_RATES_CONTRACT,
+        MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
     },
 };
+use ado_base::ADOContract;
 use andromeda_protocol::{
     crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
@@ -354,6 +358,13 @@ fn test_mint_multiple_successful() {
 
     assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, "token_id1"));
     assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, "token_id2"));
+
+    assert_eq!(
+        NUMBER_OF_TOKENS_AVAILABLE
+            .load(deps.as_ref().storage)
+            .unwrap(),
+        Uint128::new(2)
+    );
 }
 
 #[test]
@@ -725,6 +736,10 @@ fn test_purchase_not_enough_for_tax() {
 
     mint(deps.as_mut(), MOCK_TOKENS_FOR_SALE[0]).unwrap();
 
+    NUMBER_OF_TOKENS_AVAILABLE
+        .save(deps.as_mut().storage, &Uint128::new(1))
+        .unwrap();
+
     STATE
         .save(
             deps.as_mut().storage,
@@ -753,6 +768,10 @@ fn test_purchase_not_enough_for_tax() {
     AVAILABLE_TOKENS
         .save(deps.as_mut().storage, MOCK_TOKENS_FOR_SALE[0], &true)
         .unwrap();
+    NUMBER_OF_TOKENS_AVAILABLE
+        .save(deps.as_mut().storage, &Uint128::new(1))
+        .unwrap();
+
     let msg = ExecuteMsg::PurchaseByTokenId {
         token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
     };
@@ -846,6 +865,12 @@ fn test_purchase_by_token_id() {
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[0]));
+    assert_eq!(
+        NUMBER_OF_TOKENS_AVAILABLE
+            .load(deps.as_ref().storage)
+            .unwrap(),
+        Uint128::new(1)
+    );
 
     // Purchase a second one.
     let msg = ExecuteMsg::PurchaseByTokenId {
@@ -1021,6 +1046,13 @@ fn test_multiple_purchases() {
     state.amount_sold += Uint128::from(1u128);
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
+    assert_eq!(
+        NUMBER_OF_TOKENS_AVAILABLE
+            .load(deps.as_ref().storage)
+            .unwrap(),
+        Uint128::zero()
+    );
+
     // User 2 tries to purchase again.
     let msg = ExecuteMsg::Purchase {
         number_of_tokens: None,
@@ -1100,6 +1132,9 @@ fn test_end_sale_not_expired() {
         recipient: Recipient::Addr("recipient".to_string()),
     };
     STATE.save(deps.as_mut().storage, &state).unwrap();
+    NUMBER_OF_TOKENS_AVAILABLE
+        .save(deps.as_mut().storage, &Uint128::new(1))
+        .unwrap();
 
     let msg = ExecuteMsg::EndSale { limit: None };
     let info = mock_info("anyone", &[]);
@@ -1141,6 +1176,13 @@ fn test_integration_conditions_not_met() {
         let _res = mint(deps.as_mut(), token_id).unwrap();
         assert!(AVAILABLE_TOKENS.has(deps.as_ref().storage, token_id));
     }
+
+    assert_eq!(
+        NUMBER_OF_TOKENS_AVAILABLE
+            .load(deps.as_ref().storage)
+            .unwrap(),
+        Uint128::new(7)
+    );
 
     let msg = ExecuteMsg::StartSale {
         expiration: Expiration::AtHeight(mock_env().block.height + 1),
@@ -1214,6 +1256,13 @@ fn test_integration_conditions_not_met() {
     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[2]));
     assert!(!AVAILABLE_TOKENS.has(deps.as_ref().storage, MOCK_TOKENS_FOR_SALE[3]));
 
+    assert_eq!(
+        NUMBER_OF_TOKENS_AVAILABLE
+            .load(deps.as_ref().storage)
+            .unwrap(),
+        Uint128::new(3)
+    );
+
     let mut env = mock_env();
     env.block.height += 1;
 
@@ -1279,6 +1328,12 @@ fn test_integration_conditions_not_met() {
     deps.querier.tokens_left_to_burn = 0;
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert!(STATE.may_load(deps.as_mut().storage).unwrap().is_none());
+    assert_eq!(
+        NUMBER_OF_TOKENS_AVAILABLE
+            .load(deps.as_ref().storage)
+            .unwrap(),
+        Uint128::zero()
+    );
 }
 
 #[test]
@@ -1500,6 +1555,12 @@ fn test_integration_conditions_met() {
     deps.querier.tokens_left_to_burn = 0;
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert!(STATE.may_load(deps.as_mut().storage).unwrap().is_none());
+    assert_eq!(
+        NUMBER_OF_TOKENS_AVAILABLE
+            .load(deps.as_ref().storage)
+            .unwrap(),
+        Uint128::zero()
+    );
 }
 
 #[test]
@@ -1550,7 +1611,7 @@ fn test_end_sale_single_purchase() {
 }
 
 #[test]
-fn test_end_sale_limit_zero() {
+fn test_end_sale_all_tokens_sold() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut(), None);
 
@@ -1558,7 +1619,8 @@ fn test_end_sale_limit_zero() {
         .save(
             deps.as_mut().storage,
             &State {
-                expiration: Expiration::AtHeight(mock_env().block.height - 1),
+                // Sale has not expired yet.
+                expiration: Expiration::AtHeight(mock_env().block.height + 1),
                 price: coin(100, "uusd"),
                 min_tokens_sold: Uint128::from(1u128),
                 max_amount_per_wallet: 5,
@@ -1583,11 +1645,163 @@ fn test_end_sale_limit_zero() {
         )
         .unwrap();
 
+    NUMBER_OF_TOKENS_AVAILABLE
+        .save(deps.as_mut().storage, &Uint128::zero())
+        .unwrap();
+
+    let msg = ExecuteMsg::EndSale { limit: None };
+    let info = mock_info("anyone", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "transfer_tokens_and_send_funds")
+            // Burn tokens that were not purchased
+            .add_message(get_transfer_message(MOCK_TOKENS_FOR_SALE[0], "A")),
+        res
+    );
+}
+
+#[test]
+fn test_end_sale_limit_zero() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(deps.as_mut(), None);
+
+    STATE
+        .save(
+            deps.as_mut().storage,
+            &State {
+                expiration: Expiration::AtHeight(mock_env().block.height - 1),
+                price: coin(100, "uusd"),
+                min_tokens_sold: Uint128::from(1u128),
+                max_amount_per_wallet: 5,
+                amount_sold: Uint128::from(1u128),
+                amount_to_send: Uint128::from(100u128),
+                amount_transferred: Uint128::zero(),
+                recipient: Recipient::Addr("recipient".to_string()),
+            },
+        )
+        .unwrap();
+    NUMBER_OF_TOKENS_AVAILABLE
+        .save(deps.as_mut().storage, &Uint128::new(1))
+        .unwrap();
+
+    PURCHASES
+        .save(
+            deps.as_mut().storage,
+            "A",
+            &vec![Purchase {
+                token_id: MOCK_TOKENS_FOR_SALE[0].to_owned(),
+                purchaser: "A".to_string(),
+                tax_amount: Uint128::zero(),
+                msgs: vec![],
+            }],
+        )
+        .unwrap();
+
     let msg = ExecuteMsg::EndSale { limit: Some(0) };
     let info = mock_info("anyone", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::LimitMustNotBeZero {}, res.unwrap_err());
+}
+
+#[test]
+fn test_validate_andr_addresses_existing() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        token_address: AndrAddress {
+            identifier: "e".to_owned(),
+        },
+        modules: None,
+        can_mint_after_sale: true,
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    ADOContract::default()
+        .execute_update_mission_contract(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            MOCK_MISSION_CONTRACT.to_owned(),
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::ValidateAndrAddresses {});
+    let info = mock_info(mock_env().contract.address.as_str(), &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(Response::new(), res);
+}
+
+#[test]
+fn test_validate_andr_addresses_nonexisting() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        token_address: AndrAddress {
+            identifier: "b".to_owned(),
+        },
+        modules: None,
+        can_mint_after_sale: true,
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    ADOContract::default()
+        .execute_update_mission_contract(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            MOCK_MISSION_CONTRACT.to_owned(),
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::ValidateAndrAddresses {});
+    let info = mock_info(mock_env().contract.address.as_str(), &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::InvalidComponent {
+            name: "b".to_string()
+        },
+        res.unwrap_err()
+    );
+}
+
+#[test]
+fn test_validate_andr_addresses_regular_address() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        token_address: AndrAddress {
+            identifier: "terra1asdf1ssdfadf".to_owned(),
+        },
+        modules: None,
+        can_mint_after_sale: true,
+    };
+
+    let info = mock_info("owner", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    ADOContract::default()
+        .execute_update_mission_contract(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            MOCK_MISSION_CONTRACT.to_owned(),
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::ValidateAndrAddresses {});
+    let info = mock_info(mock_env().contract.address.as_str(), &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(Response::new(), res);
 }
 
 #[test]
@@ -1619,6 +1833,14 @@ fn test_addresslist() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         Response::new()
+            .add_message(WasmMsg::Execute {
+                contract_addr: mock_env().contract.address.to_string(),
+                funds: vec![],
+                msg: encode_binary(&ExecuteMsg::AndrReceive(
+                    AndromedaMsg::ValidateAndrAddresses {}
+                ))
+                .unwrap()
+            })
             .add_attribute("action", "update_mission_contract")
             .add_attribute("address", "mission_contract"),
         res
