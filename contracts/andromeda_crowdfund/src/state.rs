@@ -8,6 +8,9 @@ use serde::{Deserialize, Serialize};
 /// The config.
 pub const CONFIG: Item<Config> = Item::new("config");
 
+/// The number of tokens available for sale.
+pub const NUMBER_OF_TOKENS_AVAILABLE: Item<Uint128> = Item::new("number_of_tokens_available");
+
 /// Sale started if and only if STATE.may_load is Some and !duration.is_expired()
 pub const STATE: Item<State> = Item::new("state");
 

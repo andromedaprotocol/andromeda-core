@@ -1,6 +1,6 @@
 use crate::state::{
-    get_available_tokens, Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, PURCHASES,
-    SALE_CONDUCTED, STATE,
+    get_available_tokens, Config, Purchase, State, AVAILABLE_TOKENS, CONFIG,
+    NUMBER_OF_TOKENS_AVAILABLE, PURCHASES, SALE_CONDUCTED, STATE,
 };
 use ado_base::ADOContract;
 use andromeda_protocol::{
@@ -47,6 +47,7 @@ pub fn instantiate(
         },
     )?;
     SALE_CONDUCTED.save(deps.storage, &false)?;
+    NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &Uint128::zero())?;
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -214,6 +215,8 @@ fn mint(
     if mint_msg.owner == crowdfund_contract {
         // Mark token as available to purchase in next sale.
         AVAILABLE_TOKENS.save(storage, &mint_msg.token_id, &true)?;
+        let current_number = NUMBER_OF_TOKENS_AVAILABLE.load(storage)?;
+        NUMBER_OF_TOKENS_AVAILABLE.save(storage, &(current_number + Uint128::new(1)))?;
     }
     Ok(Response::new()
         .add_attribute("action", "mint")
@@ -439,6 +442,7 @@ fn purchase_tokens(
         encode_binary(&"")?,
     )?;
 
+    let mut current_number = NUMBER_OF_TOKENS_AVAILABLE.load(storage)?;
     for token_id in token_ids {
         let remaining_amount = remainder.try_get_coin()?;
 
@@ -459,7 +463,9 @@ fn purchase_tokens(
         purchases.push(purchase);
 
         AVAILABLE_TOKENS.remove(storage, &token_id);
+        current_number -= Uint128::new(1);
     }
+    NUMBER_OF_TOKENS_AVAILABLE.save(storage, &current_number)?;
 
     // CHECK :: User has sent enough to cover taxes.
     let required_payment = Coin {
@@ -511,8 +517,10 @@ fn execute_end_sale(
     let state = STATE.may_load(deps.storage)?;
     require(state.is_some(), ContractError::NoOngoingSale {})?;
     let state = state.unwrap();
+    let number_of_tokens_available = NUMBER_OF_TOKENS_AVAILABLE.load(deps.storage)?;
     require(
-        state.expiration.is_expired(&env.block),
+        // If all tokens have been sold the sale can be ended too.
+        state.expiration.is_expired(&env.block) || number_of_tokens_available.is_zero(),
         ContractError::SaleNotEnded {},
     )?;
     if state.amount_sold < state.min_tokens_sold {
@@ -556,7 +564,7 @@ fn issue_refunds_and_burn_tokens(
 
     if burn_msgs.is_empty() && purchases.is_empty() {
         // When all tokens have been burned and all purchases have been refunded, the sale is over.
-        STATE.remove(deps.storage);
+        clear_state(deps.storage)?;
     }
 
     Ok(Response::new()
@@ -604,7 +612,7 @@ fn transfer_tokens_and_send_funds(
         if burn_msgs.is_empty() {
             // When burn messages are empty, we have finished the sale, which is represented by
             // having no State.
-            STATE.remove(deps.storage);
+            clear_state(deps.storage)?;
         } else {
             resp = resp.add_messages(burn_msgs);
         }
@@ -755,6 +763,13 @@ fn get_burn_messages(
             }))
         })
         .collect()
+}
+
+fn clear_state(storage: &mut dyn Storage) -> Result<(), ContractError> {
+    STATE.remove(storage);
+    NUMBER_OF_TOKENS_AVAILABLE.save(storage, &Uint128::zero())?;
+
+    Ok(())
 }
 
 fn query_tokens(
