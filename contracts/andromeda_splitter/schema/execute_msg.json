@@ -214,6 +214,19 @@
           "additionalProperties": false
         },
         {
+          "description": "Called after `UpdateMissionContract` to ensure that all `AndrAddress` instances are valid.",
+          "type": "object",
+          "required": [
+            "validate_andr_addresses"
+          ],
+          "properties": {
+            "validate_andr_addresses": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
           "type": "object",
           "required": [
             "withdraw"
@@ -467,7 +480,7 @@
           ],
           "properties": {
             "percentage": {
-              "$ref": "#/definitions/Uint128"
+              "$ref": "#/definitions/Decimal"
             }
           },
           "additionalProperties": false

@@ -131,6 +131,102 @@
       "additionalProperties": false
     },
     {
+      "description": "Withdraws any unbonded bLuna from the hub contract.",
+      "type": "object",
+      "required": [
+        "withdraw_unbonded"
+      ],
+      "properties": {
+        "withdraw_unbonded": {
+          "type": "object",
+          "properties": {
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Recipient"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Claims any outstanding ANC rewards with an option to stake them in governance.",
+      "type": "object",
+      "required": [
+        "claim_anc_rewards"
+      ],
+      "properties": {
+        "claim_anc_rewards": {
+          "type": "object",
+          "properties": {
+            "auto_stake": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Stakes all or the specified amount of ANC tokens in the contract in governance.",
+      "type": "object",
+      "required": [
+        "stake_anc"
+      ],
+      "properties": {
+        "stake_anc": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Unstakes all or the specified amount of ANC tokens in the contract in governance.",
+      "type": "object",
+      "required": [
+        "unstake_anc"
+      ],
+      "properties": {
+        "unstake_anc": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "INTERNAL",
       "type": "object",
       "required": [
@@ -273,6 +369,19 @@
                   "type": "string"
                 }
               }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Called after `UpdateMissionContract` to ensure that all `AndrAddress` instances are valid.",
+          "type": "object",
+          "required": [
+            "validate_andr_addresses"
+          ],
+          "properties": {
+            "validate_andr_addresses": {
+              "type": "object"
             }
           },
           "additionalProperties": false

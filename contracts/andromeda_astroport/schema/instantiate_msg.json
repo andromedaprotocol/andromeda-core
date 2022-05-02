@@ -3,22 +3,10 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "astroport_factory_contract",
-    "astroport_router_contract",
-    "astroport_staking_contract",
-    "astroport_token_contract"
+    "primitive_contract"
   ],
   "properties": {
-    "astroport_factory_contract": {
-      "type": "string"
-    },
-    "astroport_router_contract": {
-      "type": "string"
-    },
-    "astroport_staking_contract": {
-      "type": "string"
-    },
-    "astroport_token_contract": {
+    "primitive_contract": {
       "type": "string"
     }
   }
