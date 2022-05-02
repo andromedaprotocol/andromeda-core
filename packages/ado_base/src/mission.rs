@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Api, Deps, QuerierWrapper, Response, Storage};
+use cosmwasm_std::{Addr, Api, Deps, QuerierWrapper, Storage};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -12,11 +12,18 @@ enum MissionQueryMsg {
 }
 
 impl<'a> ADOContract<'a> {
+    pub fn get_mission_contract(
+        &self,
+        storage: &dyn Storage,
+    ) -> Result<Option<Addr>, ContractError> {
+        Ok(self.mission_contract.may_load(storage)?)
+    }
+
     pub(crate) fn validate_andr_addresses(
         &self,
         deps: Deps,
         mut addresses: Vec<AndrAddress>,
-    ) -> Result<Response, ContractError> {
+    ) -> Result<(), ContractError> {
         let mission_contract = self.get_mission_contract(deps.storage)?;
         require(
             mission_contract.is_some(),
@@ -40,24 +47,7 @@ impl<'a> ADOContract<'a> {
                 mission_contract.clone(),
             )?;
         }
-        Ok(Response::new())
-    }
-
-    pub fn get_mission_contract(
-        &self,
-        storage: &dyn Storage,
-    ) -> Result<Option<Addr>, ContractError> {
-        Ok(self.mission_contract.may_load(storage)?)
-    }
-
-    fn component_exists(
-        &self,
-        querier: &QuerierWrapper,
-        name: String,
-        mission_contract: Addr,
-    ) -> Result<bool, ContractError> {
-        Ok(querier
-            .query_wasm_smart(mission_contract, &MissionQueryMsg::ComponentExists { name })?)
+        Ok(())
     }
 
     pub(crate) fn validate_andr_address(
@@ -76,5 +66,15 @@ impl<'a> ADOContract<'a> {
             )?;
         }
         Ok(())
+    }
+
+    fn component_exists(
+        &self,
+        querier: &QuerierWrapper,
+        name: String,
+        mission_contract: Addr,
+    ) -> Result<bool, ContractError> {
+        Ok(querier
+            .query_wasm_smart(mission_contract, &MissionQueryMsg::ComponentExists { name })?)
     }
 }
