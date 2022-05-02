@@ -1,5 +1,5 @@
 [package]
-name = "andromeda-cw721"
+name = "andromeda-ics721"
 version = "0.1.0"
 edition = "2018"
 description = "IBC Enabled contracts that receives CW721 tokens and sends them to a remote chain"
