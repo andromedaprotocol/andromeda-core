@@ -97,6 +97,7 @@ impl<'a> ADOContract<'a> {
         }
     }
 
+    #[cfg(feature = "modules")]
     fn validate_module_address(
         &self,
         storage: &dyn Storage,
