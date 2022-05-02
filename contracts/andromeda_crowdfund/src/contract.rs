@@ -137,7 +137,7 @@ fn execute_andr_receive(
     match msg {
         AndromedaMsg::ValidateAndrAddresses {} => {
             let config = CONFIG.load(deps.storage)?;
-            contract.validate_andr_addresses(deps.as_ref(), env, info, vec![&config.token_address])
+            contract.validate_andr_addresses(deps.as_ref(), env, info, vec![config.token_address])
         }
         _ => contract.execute(deps, env, info, msg, execute),
     }

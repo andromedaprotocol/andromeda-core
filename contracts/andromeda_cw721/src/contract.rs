@@ -113,7 +113,7 @@ fn execute_andr_receive(
     match msg {
         AndromedaMsg::ValidateAndrAddresses {} => {
             let andr_minter = ANDR_MINTER.load(deps.storage)?;
-            contract.validate_andr_addresses(deps.as_ref(), env, info, vec![&andr_minter])
+            contract.validate_andr_addresses(deps.as_ref(), env, info, vec![andr_minter])
         }
         _ => contract.execute(deps, env, info, msg, execute),
     }
