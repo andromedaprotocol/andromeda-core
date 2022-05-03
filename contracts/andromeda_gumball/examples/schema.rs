@@ -1,7 +1,10 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use andromeda_protocol::gumball::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_gumball::state::State;
+use andromeda_protocol::gumball::{
+    ExecuteMsg, InstantiateMsg, NumberOfNftsResponse, QueryMsg, StatusResponse,
+};
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 fn main() {
@@ -13,4 +16,8 @@ fn main() {
     export_schema(&schema_for!(InstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
+
+    export_schema(&schema_for!(StatusResponse), &out_dir);
+    export_schema(&schema_for!(NumberOfNftsResponse), &out_dir);
+    export_schema(&schema_for!(State), &out_dir);
 }

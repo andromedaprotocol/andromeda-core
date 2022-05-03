@@ -3,7 +3,7 @@ use ado_base::ADOContract;
 use andromeda_protocol::gumball::LatestRandomResponse;
 use andromeda_protocol::{
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
-    gumball::{ExecuteMsg, InstantiateMsg, NumberOfNFTsResponse, QueryMsg, StatusResponse},
+    gumball::{ExecuteMsg, InstantiateMsg, NumberOfNftsResponse, QueryMsg, StatusResponse},
 };
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
@@ -264,10 +264,10 @@ fn query_status(deps: Deps) -> Result<StatusResponse, ContractError> {
     Ok(StatusResponse { status })
 }
 
-fn query_number_of_nfts(deps: Deps) -> Result<NumberOfNFTsResponse, ContractError> {
+fn query_number_of_nfts(deps: Deps) -> Result<NumberOfNftsResponse, ContractError> {
     let list = LIST.load(deps.storage)?;
     let number = list.len();
-    Ok(NumberOfNFTsResponse { number })
+    Ok(NumberOfNftsResponse { number })
 }
 
 fn query_state(deps: Deps) -> Result<State, ContractError> {
