@@ -27,7 +27,7 @@ pub enum ExecuteMsg {
         price: Coin,
         /// The amount of tokens a wallet can purchase, default is 1.
         max_amount_per_wallet: Option<Uint128>,
-        /// The recipient of the funds if the sale met the minimum sold.
+        /// The recipient of the funds.
         recipient: Recipient,
     },
     /// Automatically switches to opposite status.
@@ -39,7 +39,7 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
-    NumberOfNFTs {},
+    NumberOfNfts {},
     SaleDetails {},
     Status {},
 }

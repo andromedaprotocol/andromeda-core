@@ -161,6 +161,7 @@ fn execute_mint(
     let mut list = LIST.load(deps.storage)?;
 
     let token_contract = CW721_CONTRACT.load(deps.storage)?;
+
     // Add to list of NFTs
     list.push(mint_msg.token_id.clone());
 
@@ -252,7 +253,7 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
-        QueryMsg::NumberOfNFTs {} => encode_binary(&query_number_of_nfts(deps)?),
+        QueryMsg::NumberOfNfts {} => encode_binary(&query_number_of_nfts(deps)?),
         QueryMsg::SaleDetails {} => encode_binary(&query_state(deps)?),
         QueryMsg::Status {} => encode_binary(&query_status(deps)?),
     }
