@@ -35,6 +35,8 @@ pub enum AndromedaMsg {
     UpdateMissionContract {
         address: String,
     },
+    /// Called after `UpdateMissionContract` to ensure that all `AndrAddress` instances are valid.
+    ValidateAndrAddresses {},
     Withdraw {
         recipient: Option<Recipient>,
         tokens_to_withdraw: Option<Vec<Withdrawal>>,

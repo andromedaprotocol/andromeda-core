@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "mission",
+    "name",
+    "operators",
+    "primitive_contract"
+  ],
+  "properties": {
+    "mission": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MissionComponent"
+      }
+    },
+    "name": {
+      "type": "string"
+    },
+    "operators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "primitive_contract": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "MissionComponent": {
+      "type": "object",
+      "required": [
+        "ado_type",
+        "instantiate_msg",
+        "name"
+      ],
+      "properties": {
+        "ado_type": {
+          "type": "string"
+        },
+        "instantiate_msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

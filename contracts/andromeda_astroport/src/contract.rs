@@ -1,15 +1,26 @@
-use crate::state::{Config, CONFIG};
+use cosmwasm_std::{
+    entry_point, from_binary, Addr, Api, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    MessageInfo, QuerierWrapper, Response, SubMsg, Uint128, WasmMsg,
+};
+
+use crate::{
+    primitive_keys::{
+        ADDRESSES_TO_CACHE, ASTROPORT_ASTRO, ASTROPORT_FACTORY, ASTROPORT_ROUTER, ASTROPORT_XASTRO,
+    },
+    querier::{query_pair_given_address, query_pair_share},
+    staking::{
+        execute_claim_lp_staking_rewards, execute_stake_astro, execute_stake_lp,
+        execute_unstake_astro, execute_unstake_lp,
+    },
+};
 use ado_base::state::ADOContract;
 use andromeda_protocol::{
-    astroport::{ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    astroport::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     swapper::{SwapperCw20HookMsg, SwapperMsg},
 };
 use astroport::{
-    asset::{Asset as AstroportAsset, AssetInfo as AstroportAssetInfo, PairInfo},
-    pair::{
-        Cw20HookMsg as PairCw20HookMsg, ExecuteMsg as AstroportPairExecuteMsg,
-        QueryMsg as PairQueryMsg,
-    },
+    asset::AssetInfo as AstroportAssetInfo,
+    pair::{Cw20HookMsg as PairCw20HookMsg, ExecuteMsg as AstroportPairExecuteMsg},
     querier::query_pair_info,
     router::{
         Cw20HookMsg as AstroportRouterCw20HookMsg, ExecuteMsg as AstroportRouterExecuteMsg,
@@ -22,14 +33,10 @@ use common::{
     error::ContractError,
     require,
 };
-use cosmwasm_std::{
-    entry_point, from_binary, Addr, Api, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, SubMsg, Uint128, WasmMsg,
-    WasmQuery,
-};
+
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use cw_asset::{Asset, AssetInfo};
+use cw_asset::{Asset, AssetInfo, AssetUnchecked};
 use std::cmp;
 
 // version info for migration info
@@ -44,20 +51,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let config = Config {
-        astroport_factory_contract: deps.api.addr_validate(&msg.astroport_factory_contract)?,
-        astroport_router_contract: deps.api.addr_validate(&msg.astroport_router_contract)?,
-        astroport_staking_contract: deps.api.addr_validate(&msg.astroport_staking_contract)?,
-    };
     let contract = ADOContract::default();
-    // Astro token is obtained from staking LP tokens.
-    contract.add_withdrawable_token(
-        deps.storage,
-        &msg.astroport_token_contract,
-        &AssetInfo::Cw20(deps.api.addr_validate(&msg.astroport_token_contract)?),
-    )?;
-    CONFIG.save(deps.storage, &config)?;
-    contract.instantiate(
+    let resp = contract.instantiate(
         deps.storage,
         deps.api,
         info,
@@ -65,9 +60,27 @@ pub fn instantiate(
             ado_type: "astroport".to_string(),
             operators: None,
             modules: None,
-            primitive_contract: None,
+            primitive_contract: Some(msg.primitive_contract),
         },
-    )
+    )?;
+    for address in ADDRESSES_TO_CACHE {
+        contract.cache_address(deps.storage, &deps.querier, address)?;
+    }
+    // Astro token is obtained from staking LP tokens.
+    let astroport_astro = contract.get_cached_address(deps.storage, ASTROPORT_ASTRO)?;
+    contract.add_withdrawable_token(
+        deps.storage,
+        &astroport_astro,
+        &AssetInfo::Cw20(deps.api.addr_validate(&astroport_astro)?),
+    )?;
+    // xAstro is obtained from staking Astro.
+    let astroport_xastro = contract.get_cached_address(deps.storage, ASTROPORT_XASTRO)?;
+    contract.add_withdrawable_token(
+        deps.storage,
+        &astroport_xastro,
+        &AssetInfo::Cw20(deps.api.addr_validate(&astroport_xastro)?),
+    )?;
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -77,11 +90,10 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
+    let astroport_factory = contract.get_cached_address(deps.storage, ASTROPORT_FACTORY)?;
     match msg {
-        ExecuteMsg::AndrReceive(msg) => {
-            ADOContract::default().execute(deps, env, info, msg, execute)
-        }
+        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::Swapper(msg) => handle_swapper_msg(deps, info, msg),
         ExecuteMsg::Receive(msg) => receive_cw20(deps, info, msg),
         ExecuteMsg::ProvideLiquidity {
@@ -94,32 +106,23 @@ pub fn execute(
             amount,
             recipient,
         } => execute_withdraw_liquidity(deps, env, info, pair_address, amount, recipient),
-        ExecuteMsg::AstroportFactoryExecuteMsg(msg) => execute_astroport_msg(
-            info.funds,
-            config.astroport_factory_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
-        ExecuteMsg::AstroportRouterExecuteMsg(msg) => execute_astroport_msg(
-            info.funds,
-            config.astroport_router_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
-        ExecuteMsg::AstroportStakingExecuteMsg(msg) => execute_astroport_msg(
-            info.funds,
-            config.astroport_staking_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
-        ExecuteMsg::UpdateConfig {
-            astroport_factory_contract,
-            astroport_router_contract,
-            astroport_staking_contract,
-        } => execute_update_config(
-            deps,
-            info,
-            astroport_factory_contract,
-            astroport_router_contract,
-            astroport_staking_contract,
-        ),
+        ExecuteMsg::StakeLp {
+            lp_token_contract,
+            amount,
+        } => execute_stake_lp(deps, env, info, lp_token_contract, amount),
+        ExecuteMsg::UnstakeLp {
+            lp_token_contract,
+            amount,
+        } => execute_unstake_lp(deps, env, info, lp_token_contract, amount),
+        ExecuteMsg::ClaimLpStakingRewards {
+            lp_token_contract,
+            auto_stake,
+        } => execute_claim_lp_staking_rewards(deps, env, info, lp_token_contract, auto_stake),
+        ExecuteMsg::StakeAstro { amount } => execute_stake_astro(deps, env, info, amount),
+        ExecuteMsg::UnstakeAstro { amount } => execute_unstake_astro(deps, env, info, amount),
+        ExecuteMsg::AstroportFactoryExecuteMsg(msg) => {
+            execute_astroport_msg(info.funds, astroport_factory, encode_binary(&msg)?)
+        }
     }
 }
 
@@ -127,20 +130,26 @@ fn execute_provide_liquidity(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    assets: [Asset; 2],
+    assets: [AssetUnchecked; 2],
     slippage_tolerance: Option<Decimal>,
     auto_stake: Option<bool>,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
     let contract = ADOContract::default();
+    let astroport_factory = contract.get_cached_address(deps.storage, ASTROPORT_FACTORY)?;
     require(
         contract.is_owner_or_operator(deps.storage, sender)?,
         ContractError::Unauthorized {},
     )?;
-    let config = CONFIG.load(deps.storage)?;
+
+    let assets = [
+        assets[0].check(deps.api, None)?,
+        assets[1].check(deps.api, None)?,
+    ];
+
     let pair = query_pair_info(
         &deps.querier,
-        config.astroport_factory_contract,
+        deps.api.addr_validate(&astroport_factory)?,
         &[assets[0].info.clone().into(), assets[1].info.clone().into()],
     )?;
 
@@ -261,59 +270,20 @@ fn execute_withdraw_liquidity(
         .add_attribute("action", "withdraw_liquidity"))
 }
 
-fn query_pair_given_address(
-    querier: &QuerierWrapper,
-    pair_address: String,
-) -> Result<PairInfo, ContractError> {
-    query_pair_contract(querier, pair_address, PairQueryMsg::Pair {})
-}
-
-fn query_pair_share(
-    querier: &QuerierWrapper,
-    pair_address: String,
-    amount: Uint128,
-) -> Result<Vec<Asset>, ContractError> {
-    Ok(query_pair_contract::<Vec<AstroportAsset>>(
-        querier,
-        pair_address,
-        PairQueryMsg::Share { amount },
-    )?
-    .iter()
-    .map(|a| a.into())
-    .collect())
-}
-
-fn query_pair_contract<T: serde::de::DeserializeOwned>(
-    querier: &QuerierWrapper,
-    pair_address: String,
-    msg: PairQueryMsg,
-) -> Result<T, ContractError> {
-    Ok(querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: pair_address,
-        msg: encode_binary(&msg)?,
-    }))?)
-}
-
 pub fn receive_cw20(
     deps: DepsMut,
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    require(
+        !cw20_msg.amount.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string(),
+        },
+    )?;
+
     let token_address = info.sender;
     match from_binary(&cw20_msg.msg)? {
-        Cw20HookMsg::AstroportRouterCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            token_address.to_string(),
-            cw20_msg.amount,
-            config.astroport_router_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
-        Cw20HookMsg::AstroportStakingCw20HookMsg(msg) => execute_astroport_cw20_msg(
-            token_address.to_string(),
-            cw20_msg.amount,
-            config.astroport_staking_contract.to_string(),
-            encode_binary(&msg)?,
-        ),
         Cw20HookMsg::Swapper(msg) => {
             handle_swapper_msg_cw20(deps, cw20_msg.sender, msg, token_address, cw20_msg.amount)
         }
@@ -358,13 +328,15 @@ fn execute_swap(
     offer_asset_info: AssetInfo,
     ask_asset_info: AssetInfo,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
+    let astroport_factory = contract.get_cached_address(deps.storage, ASTROPORT_FACTORY)?;
+    let astroport_router = contract.get_cached_address(deps.storage, ASTROPORT_ROUTER)?;
 
     let operations: Vec<SwapOperation> = get_swap_operations(
         &deps.querier,
         offer_asset_info,
         ask_asset_info,
-        config.astroport_factory_contract,
+        deps.api.addr_validate(&astroport_factory)?,
     )?;
     let swap_msg = AstroportRouterExecuteMsg::ExecuteSwapOperations {
         operations,
@@ -372,11 +344,7 @@ fn execute_swap(
         to: Some(info.sender.clone()),
     };
 
-    execute_astroport_msg(
-        info.funds,
-        config.astroport_router_contract.to_string(),
-        encode_binary(&swap_msg)?,
-    )
+    execute_astroport_msg(info.funds, astroport_router, encode_binary(&swap_msg)?)
 }
 
 fn execute_swap_cw20(
@@ -387,13 +355,15 @@ fn execute_swap_cw20(
     offer_asset_info: AssetInfo,
     ask_asset_info: AssetInfo,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let contract = ADOContract::default();
+    let astroport_factory = contract.get_cached_address(deps.storage, ASTROPORT_FACTORY)?;
+    let astroport_router = contract.get_cached_address(deps.storage, ASTROPORT_ROUTER)?;
 
     let operations: Vec<SwapOperation> = get_swap_operations(
         &deps.querier,
         offer_asset_info,
         ask_asset_info,
-        config.astroport_factory_contract,
+        deps.api.addr_validate(&astroport_factory)?,
     )?;
     let swap_msg = AstroportRouterCw20HookMsg::ExecuteSwapOperations {
         operations,
@@ -404,7 +374,7 @@ fn execute_swap_cw20(
     execute_astroport_cw20_msg(
         token_addr,
         amount,
-        config.astroport_router_contract.to_string(),
+        astroport_router,
         encode_binary(&swap_msg)?,
     )
 }
@@ -496,31 +466,6 @@ pub fn execute_astroport_msg(
     Ok(Response::new().add_message(CosmosMsg::Wasm(execute_msg)))
 }
 
-pub fn execute_update_config(
-    deps: DepsMut,
-    info: MessageInfo,
-    astroport_factory_contract: Option<String>,
-    astroport_router_contract: Option<String>,
-    astroport_staking_contract: Option<String>,
-) -> Result<Response, ContractError> {
-    require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-    let mut config = CONFIG.load(deps.storage)?;
-    if let Some(astroport_factory_contract) = astroport_factory_contract {
-        config.astroport_factory_contract = deps.api.addr_validate(&astroport_factory_contract)?;
-    }
-    if let Some(astroport_router_contract) = astroport_router_contract {
-        config.astroport_router_contract = deps.api.addr_validate(&astroport_router_contract)?;
-    }
-    if let Some(astroport_staking_contract) = astroport_staking_contract {
-        config.astroport_staking_contract = deps.api.addr_validate(&astroport_staking_contract)?;
-    }
-    CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attribute("action", "update_config"))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version = get_contract_version(deps.storage)?;
@@ -536,17 +481,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
-        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
     }
-}
-
-pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse {
-        astroport_factory_contract: config.astroport_factory_contract.to_string(),
-        astroport_router_contract: config.astroport_router_contract.to_string(),
-        astroport_staking_contract: config.astroport_staking_contract.to_string(),
-    })
 }
 
 /// Removes excess assets to avoid over/under contributing to the LP. This can't be done perfectly

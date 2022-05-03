@@ -1,9 +1,3 @@
-use astroport::{
-    asset::{Asset, AssetInfo, PairInfo},
-    factory::{PairType, QueryMsg as AstroportFactoryQueryMsg},
-    pair::QueryMsg as AstroportPairQueryMsg,
-    router::{QueryMsg as AstroportRouterQueryMsg, SimulateSwapOperationsResponse},
-};
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
@@ -11,13 +5,34 @@ use cosmwasm_std::{
     ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult,
     Uint128, WasmQuery,
 };
+
+use crate::primitive_keys::{
+    ASTROPORT_ASTRO, ASTROPORT_FACTORY, ASTROPORT_GENERATOR, ASTROPORT_ROUTER, ASTROPORT_STAKING,
+    ASTROPORT_XASTRO,
+};
+use astroport::{
+    asset::{Asset, AssetInfo, PairInfo},
+    factory::{PairType, QueryMsg as AstroportFactoryQueryMsg},
+    generator::{PendingTokenResponse, QueryMsg as GeneratorQueryMsg},
+    pair::QueryMsg as AstroportPairQueryMsg,
+    router::{QueryMsg as AstroportRouterQueryMsg, SimulateSwapOperationsResponse},
+};
+use common::{
+    ado_base::{AndromedaQuery, QueryMsg as BaseQueryMsg},
+    primitive::{GetValueResponse, Primitive},
+};
 use cw20::{BalanceResponse, Cw20QueryMsg};
 
 use terra_cosmwasm::TerraQueryWrapper;
 
+pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_ASTROPORT_PAIR_CONTRACT: &str = "astroport_pair_contract";
+pub const MOCK_ASTROPORT_STAKING_CONTRACT: &str = "astroport_staking_contract";
 pub const MOCK_ASTROPORT_FACTORY_CONTRACT: &str = "astroport_factory_contract";
+pub const MOCK_ASTROPORT_GENERATOR_CONTRACT: &str = "astroport_generator_contract";
 pub const MOCK_ASTROPORT_ROUTER_CONTRACT: &str = "astroport_router_contract";
+pub const MOCK_ASTRO_TOKEN: &str = "astro_token";
+pub const MOCK_XASTRO_TOKEN: &str = "xastro_token";
 pub const MOCK_LP_ASSET1: &str = "token1";
 pub const MOCK_LP_ASSET2: &str = "token2";
 pub const MOCK_LP_TOKEN_CONTRACT: &str = "lp_token_contract";
@@ -73,18 +88,75 @@ impl WasmMockQuerier {
             }
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
+                    MOCK_ASTRO_TOKEN => self.handle_astro_token_query(msg),
+                    MOCK_XASTRO_TOKEN => self.handle_xastro_token_query(msg),
                     MOCK_LP_ASSET1 => self.handle_lp_asset1_query(msg),
                     MOCK_LP_ASSET2 => self.handle_lp_asset2_query(msg),
                     MOCK_LP_TOKEN_CONTRACT => self.handle_lp_token_query(msg),
                     MOCK_ASTROPORT_FACTORY_CONTRACT => self.handle_astroport_factory_query(msg),
+                    MOCK_ASTROPORT_GENERATOR_CONTRACT => self.handle_astroport_generator_query(msg),
                     MOCK_ASTROPORT_PAIR_CONTRACT => self.handle_astroport_pair_query(msg),
                     MOCK_ASTROPORT_ROUTER_CONTRACT => self.handle_astroport_router_query(msg),
+                    MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     _ => {
                         panic!("Unsupported Query for  {}", contract_addr)
                     }
                 }
             }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            BaseQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
+                let key: String = from_binary(&data.unwrap()).unwrap();
+                let msg_response = match key.as_str() {
+                    ASTROPORT_ASTRO => GetValueResponse {
+                        key,
+                        value: Primitive::String(MOCK_ASTRO_TOKEN.to_owned()),
+                    },
+                    ASTROPORT_ROUTER => GetValueResponse {
+                        key,
+                        value: Primitive::String(MOCK_ASTROPORT_ROUTER_CONTRACT.to_owned()),
+                    },
+                    ASTROPORT_STAKING => GetValueResponse {
+                        key,
+                        value: Primitive::String(MOCK_ASTROPORT_STAKING_CONTRACT.to_owned()),
+                    },
+                    ASTROPORT_FACTORY => GetValueResponse {
+                        key,
+                        value: Primitive::String(MOCK_ASTROPORT_FACTORY_CONTRACT.to_owned()),
+                    },
+                    ASTROPORT_GENERATOR => GetValueResponse {
+                        key,
+                        value: Primitive::String(MOCK_ASTROPORT_GENERATOR_CONTRACT.to_owned()),
+                    },
+                    ASTROPORT_XASTRO => GetValueResponse {
+                        key,
+                        value: Primitive::String(MOCK_XASTRO_TOKEN.to_owned()),
+                    },
+                    _ => panic!("Unsupported primitive key"),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_astroport_generator_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            GeneratorQueryMsg::PendingToken { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&PendingTokenResponse {
+                    pending: 110u128.into(),
+                    pending_on_proxy: None,
+                })
+                .unwrap(),
+            )),
+            GeneratorQueryMsg::Deposit { .. } => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&Uint128::from(10u128)).unwrap(),
+            )),
+            _ => panic!("Unsupported query"),
         }
     }
 
@@ -191,6 +263,30 @@ impl WasmMockQuerier {
                 } else {
                     SystemResult::Ok(ContractResult::Err("Does not exist".to_string()))
                 }
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_astro_token_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            Cw20QueryMsg::Balance { .. } => {
+                let balance_response = BalanceResponse {
+                    balance: 10u128.into(),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&balance_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_xastro_token_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            Cw20QueryMsg::Balance { .. } => {
+                let balance_response = BalanceResponse {
+                    balance: 10u128.into(),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&balance_response).unwrap()))
             }
             _ => panic!("Unsupported Query"),
         }

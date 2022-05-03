@@ -1,11 +1,12 @@
 use crate::state::{
     add_mission_component, generate_assign_mission_message, generate_ownership_message,
-    load_component_addresses, load_component_descriptors, ADO_ADDRESSES, ADO_DESCRIPTORS,
-    MISSION_NAME,
+    load_component_addresses, load_component_addresses_with_name, load_component_descriptors,
+    ADO_ADDRESSES, ADO_DESCRIPTORS, MISSION_NAME,
 };
 use ado_base::ADOContract;
 use andromeda_protocol::mission::{
-    ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent, QueryMsg,
+    ComponentAddress, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent,
+    QueryMsg,
 };
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
@@ -124,6 +125,9 @@ fn execute_add_mission_component(
     let current_addr = ADO_ADDRESSES.may_load(storage, &component.name)?;
     require(current_addr.is_none(), ContractError::NameAlreadyTaken {})?;
 
+    // This is a default value that will be overridden on `reply`.
+    ADO_ADDRESSES.save(storage, &component.name, &Addr::unchecked(""))?;
+
     let idx = add_mission_component(storage, &component)?;
     let inst_msg = contract.generate_instantiate_msg(
         storage,
@@ -131,6 +135,7 @@ fn execute_add_mission_component(
         idx,
         component.instantiate_msg,
         component.ado_type.clone(),
+        sender.to_string(),
     )?;
 
     Ok(Response::new()
@@ -244,6 +249,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::GetAddresses {} => encode_binary(&query_component_addresses(deps)?),
         QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+        QueryMsg::ComponentExists { name } => encode_binary(&query_component_exists(deps, name)),
     }
 }
 
@@ -277,8 +283,12 @@ fn query_component_descriptors(deps: Deps) -> Result<Vec<MissionComponent>, Cont
     Ok(value)
 }
 
-fn query_component_addresses(deps: Deps) -> Result<Vec<Addr>, ContractError> {
-    let value = load_component_addresses(deps.storage)?;
+fn query_component_exists(deps: Deps, name: String) -> bool {
+    ADO_ADDRESSES.has(deps.storage, &name)
+}
+
+fn query_component_addresses(deps: Deps) -> Result<Vec<ComponentAddress>, ContractError> {
+    let value = load_component_addresses_with_name(deps.storage)?;
     Ok(value)
 }
 

@@ -38,6 +38,7 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     GetAddress { name: String },
     GetComponents {},
+    ComponentExists { name: String },
     GetAddresses {},
     Config {},
 }
@@ -46,6 +47,12 @@ pub enum QueryMsg {
 pub struct ConfigResponse {
     pub owner: String,
     pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ComponentAddress {
+    pub name: String,
+    pub address: String,
 }
 
 #[cfg(test)]

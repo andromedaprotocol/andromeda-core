@@ -22,7 +22,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = { version = "0.16.2" }
+cosmwasm-std = "0.16.7"
 cw-storage-plus = "0.9.1"
 cw0 = "0.9.1"
 cw2 = "0.9.1"
@@ -30,7 +30,6 @@ cw20 = "0.9.1"
 
 schemars = "0.8.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.26" }
 hex = "0.4"
 sha2 = { version = "0.9.5", default-features = false }
 cw-asset = { version = "1.0.2" }

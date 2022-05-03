@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Response, Storage, SubMsg, Uint128,
+    attr, has_coins, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, QuerierWrapper, Response, Storage, SubMsg, Uint128,
 };
 
 use crate::state::ANDR_MINTER;
@@ -14,7 +14,7 @@ use andromeda_protocol::{
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        InstantiateMsg as BaseInstantiateMsg,
+        AndromedaMsg, InstantiateMsg as BaseInstantiateMsg,
     },
     encode_binary,
     error::ContractError,
@@ -66,6 +66,12 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
+    // Do this before the hooks get fired off to ensure that there is no conflict with the mission
+    // contract not being whitelisted.
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
+        return contract.execute_update_mission_contract(deps, env, info, address);
+    };
+
     contract.module_hook::<Response>(
         deps.storage,
         deps.api,
@@ -92,8 +98,24 @@ pub fn execute(
         } => execute_update_transfer_agreement(deps, env, info, token_id, agreement),
         ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, info, token_id),
-        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
+        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
+    }
+}
+
+fn execute_andr_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: AndromedaMsg,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    match msg {
+        AndromedaMsg::ValidateAndrAddresses {} => {
+            let andr_minter = ANDR_MINTER.load(deps.storage)?;
+            contract.validate_andr_addresses(deps.as_ref(), env, info, vec![&andr_minter])
+        }
+        _ => contract.execute(deps, env, info, msg, execute),
     }
 }
 
@@ -114,18 +136,23 @@ fn execute_mint(
     let cw721_contract = AndrCW721Contract::default();
     let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
     let andr_minter = ANDR_MINTER.load(deps.storage)?;
-    // Only allow minter to be set once to maintain immutability.
     if cw721_contract.minter.may_load(deps.storage)?.is_none() {
-        cw721_contract.minter.save(
-            deps.storage,
-            &deps.api.addr_validate(&andr_minter.get_address(
-                deps.api,
-                &deps.querier,
-                mission_contract,
-            )?)?,
-        )?;
+        let addr = deps.api.addr_validate(&andr_minter.get_address(
+            deps.api,
+            &deps.querier,
+            mission_contract,
+        )?)?;
+        save_minter(&cw721_contract, deps.storage, &addr)?;
     }
     Ok(cw721_contract.execute(deps, env, info, msg.into())?)
+}
+
+fn save_minter(
+    cw721_contract: &AndrCW721Contract,
+    storage: &mut dyn Storage,
+    minter: &Addr,
+) -> Result<(), ContractError> {
+    Ok(cw721_contract.minter.save(storage, minter)?)
 }
 
 fn execute_transfer(
@@ -161,19 +188,22 @@ fn execute_transfer(
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     let tax_amount = if let Some(agreement) = &token.extension.transfer_agreement {
+        let mission_contract = base_contract.get_mission_contract(deps.storage)?;
+        let agreement_amount =
+            get_transfer_agreement_amount(deps.api, &deps.querier, mission_contract, agreement)?;
         let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
             deps.storage,
             deps.api,
-            deps.querier,
+            &deps.querier,
             info.sender.to_string(),
-            Funds::Native(agreement.amount.clone()),
+            Funds::Native(agreement_amount.clone()),
             encode_binary(&ExecuteMsg::TransferNft {
                 token_id: token_id.clone(),
                 recipient: recipient.clone(),
             })?,
         )?;
         let remaining_amount = remainder.try_get_coin()?;
-        let tax_amount = get_tax_amount(&msgs, agreement.amount.amount, remaining_amount.amount);
+        let tax_amount = get_tax_amount(&msgs, agreement_amount.amount, remaining_amount.amount);
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: token.owner.to_string(),
             amount: vec![remaining_amount],
@@ -188,11 +218,29 @@ fn execute_transfer(
     token.owner = deps.api.addr_validate(&recipient)?;
     token.approvals.clear();
     token.extension.transfer_agreement = None;
-    token.extension.pricing = None;
     contract.tokens.save(deps.storage, &token_id, &token)?;
     Ok(resp
         .add_attribute("action", "transfer")
         .add_attribute("recipient", recipient))
+}
+
+fn get_transfer_agreement_amount(
+    api: &dyn Api,
+    querier: &QuerierWrapper,
+    mission_contract: Option<Addr>,
+    agreement: &TransferAgreement,
+) -> Result<Coin, ContractError> {
+    let agreement_amount =
+        agreement
+            .amount
+            .clone()
+            .try_into_coin(api, querier, mission_contract)?;
+    match agreement_amount {
+        Some(amount) => Ok(amount),
+        None => Err(ContractError::PrimitiveDoesNotExist {
+            msg: "TransferAgreement price is None".to_string(),
+        }),
+    }
 }
 
 fn check_can_send(
@@ -210,13 +258,16 @@ fn check_can_send(
 
     // token purchaser can send if correct funds are sent
     if let Some(agreement) = &token.extension.transfer_agreement {
+        let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
+        let agreement_amount =
+            get_transfer_agreement_amount(deps.api, &deps.querier, mission_contract, agreement)?;
         require(
             has_coins(
                 &info.funds,
                 &Coin {
-                    denom: agreement.amount.denom.to_owned(),
+                    denom: agreement_amount.denom.to_owned(),
                     // Ensure that the taxes came from the sender.
-                    amount: agreement.amount.amount + tax_amount,
+                    amount: agreement_amount.amount + tax_amount,
                 },
             ),
             ContractError::InsufficientFunds {},
@@ -262,8 +313,10 @@ fn execute_update_transfer_agreement(
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
     require(token.owner == info.sender, ContractError::Unauthorized {})?;
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
-    if let Some(xfer_agreement) = agreement.clone() {
-        deps.api.addr_validate(&xfer_agreement.purchaser)?;
+    if let Some(xfer_agreement) = &agreement {
+        if xfer_agreement.purchaser != "*" {
+            deps.api.addr_validate(&xfer_agreement.purchaser)?;
+        }
     }
 
     token.extension.transfer_agreement = agreement;
@@ -334,7 +387,7 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
                 deps.storage,
                 deps.api,
-                deps.querier,
+                &deps.querier,
                 sender,
                 amount,
                 encode_binary(&String::default())?,

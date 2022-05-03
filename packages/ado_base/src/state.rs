@@ -46,13 +46,6 @@ impl<'a> Default for ADOContract<'a> {
 }
 
 impl<'a> ADOContract<'a> {
-    pub fn get_mission_contract(
-        &self,
-        storage: &dyn Storage,
-    ) -> Result<Option<Addr>, ContractError> {
-        Ok(self.mission_contract.may_load(storage)?)
-    }
-
     pub(crate) fn initialize_operators(
         &self,
         storage: &mut dyn Storage,

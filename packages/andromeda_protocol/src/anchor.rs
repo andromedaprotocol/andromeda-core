@@ -6,13 +6,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum WithdrawalType {
-    Amount(Uint128),
-    Percentage(Uint128),
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub primitive_contract: String,
 }
@@ -40,6 +33,22 @@ pub enum ExecuteMsg {
     },
     /// Repays any existing loan with sent stable coins.
     RepayLoan {},
+    /// Withdraws any unbonded bLuna from the hub contract.
+    WithdrawUnbonded {
+        recipient: Option<Recipient>,
+    },
+    /// Claims any outstanding ANC rewards with an option to stake them in governance.
+    ClaimAncRewards {
+        auto_stake: Option<bool>,
+    },
+    /// Stakes all or the specified amount of ANC tokens in the contract in governance.
+    StakeAnc {
+        amount: Option<Uint128>,
+    },
+    /// Unstakes all or the specified amount of ANC tokens in the contract in governance.
+    UnstakeAnc {
+        amount: Option<Uint128>,
+    },
 
     /// INTERNAL
     DepositCollateralToAnchor {
@@ -76,6 +85,18 @@ pub struct PositionResponse {
 #[serde(rename_all = "snake_case")]
 pub enum BLunaHubExecuteMsg {
     Bond {},
+    WithdrawUnbonded {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum BLunaHubQueryMsg {
+    WithdrawableUnbonded { address: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct WithdrawableUnbondedResponse {
+    pub withdrawable: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

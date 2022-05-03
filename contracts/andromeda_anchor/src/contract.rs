@@ -1,15 +1,27 @@
+use cosmwasm_bignumber::{Decimal256, Uint256};
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{
+    attr, coins, from_binary, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, SubMsg, Uint128, WasmMsg,
+};
+
 use crate::{
     primitive_keys::{
-        ADDRESSES_TO_CACHE, ANCHOR_AUST, ANCHOR_BLUNA, ANCHOR_BLUNA_CUSTODY, ANCHOR_BLUNA_HUB,
-        ANCHOR_MARKET, ANCHOR_ORACLE, ANCHOR_OVERSEER,
+        ADDRESSES_TO_CACHE, ANCHOR_ANC, ANCHOR_AUST, ANCHOR_BLUNA, ANCHOR_BLUNA_CUSTODY,
+        ANCHOR_BLUNA_HUB, ANCHOR_GOV, ANCHOR_MARKET, ANCHOR_ORACLE, ANCHOR_OVERSEER,
     },
     querier::{query_borrower_info, query_collaterals},
     state::{Position, POSITION, PREV_AUST_BALANCE, PREV_UUSD_BALANCE, RECIPIENT_ADDR},
 };
 use ado_base::ADOContract;
+use anchor_token::gov::{
+    Cw20HookMsg as GovCw20HookMsg, ExecuteMsg as GovExecuteMsg, QueryMsg as GovQueryMsg,
+    StakerResponse,
+};
 use andromeda_protocol::anchor::{
-    BLunaHubCw20HookMsg, BLunaHubExecuteMsg, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg,
-    PositionResponse, QueryMsg,
+    BLunaHubCw20HookMsg, BLunaHubExecuteMsg, BLunaHubQueryMsg, Cw20HookMsg, ExecuteMsg,
+    InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg, WithdrawableUnbondedResponse,
 };
 use common::{
     ado_base::{
@@ -20,23 +32,17 @@ use common::{
     parse_message, require,
     withdraw::Withdrawal,
 };
-use cosmwasm_bignumber::{Decimal256, Uint256};
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    attr, coins, from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, SubMsg, Uint128, WasmMsg,
-};
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
+use cw_asset::AssetInfo;
 use moneymarket::{
     custody::{Cw20HookMsg as CustodyCw20HookMsg, ExecuteMsg as CustodyExecuteMsg},
     market::{Cw20HookMsg as MarketCw20HookMsg, ExecuteMsg as MarketExecuteMsg},
     overseer::ExecuteMsg as OverseerExecuteMsg,
     querier::query_price,
 };
-use terraswap::querier::{query_balance, query_token_balance};
+use std::cmp;
 
 const UUSD_DENOM: &str = "uusd";
 pub const DEPOSIT_ID: u64 = 1;
@@ -75,6 +81,13 @@ pub fn instantiate(
         contract.cache_address(deps.storage, &deps.querier, address)?;
     }
 
+    let anchor_anc = contract.get_cached_address(deps.storage, ANCHOR_ANC)?;
+    contract.add_withdrawable_token(
+        deps.storage,
+        &anchor_anc,
+        &AssetInfo::Cw20(deps.api.addr_validate(&anchor_anc)?),
+    )?;
+
     Ok(resp)
 }
 
@@ -94,11 +107,8 @@ pub fn execute(
                 info.sender == env.contract.address,
                 ContractError::Unauthorized {},
             )?;
-            let amount = query_token_balance(
-                &deps.querier,
-                deps.api.addr_validate(&collateral_addr)?,
-                env.contract.address.clone(),
-            )?;
+            let collateral = AssetInfo::cw20(deps.api.addr_validate(&collateral_addr)?);
+            let amount = collateral.query_balance(&deps.querier, env.contract.address.clone())?;
             execute_deposit_collateral_to_anchor(
                 deps,
                 env,
@@ -111,7 +121,21 @@ pub fn execute(
             desired_ltv_ratio,
             recipient,
         } => execute_borrow(deps, env, info, desired_ltv_ratio, recipient),
-        ExecuteMsg::RepayLoan {} => execute_repay_loan(deps, info),
+        ExecuteMsg::ClaimAncRewards { auto_stake } => {
+            execute_claim_anc(deps, env, info, auto_stake)
+        }
+        ExecuteMsg::StakeAnc { amount } => {
+            // All of this is done here and not within the function because it would otherwise
+            // break the `auto_stake` feature for ClaimAncRewards.
+            let anchor_anc = ADOContract::default().get_cached_address(deps.storage, ANCHOR_ANC)?;
+            let anc = AssetInfo::cw20(deps.api.addr_validate(&anchor_anc)?);
+            let total_amount = anc.query_balance(&deps.querier, env.contract.address)?;
+            let amount = cmp::min(total_amount, amount.unwrap_or(total_amount));
+
+            execute_stake_anc(deps, info, amount)
+        }
+        ExecuteMsg::UnstakeAnc { amount } => execute_unstake_anc(deps, env, info, amount),
+        ExecuteMsg::RepayLoan {} => execute_repay_loan(deps, env, info),
         ExecuteMsg::WithdrawCollateral {
             collateral_addr,
             amount,
@@ -119,6 +143,9 @@ pub fn execute(
             recipient,
         } => {
             execute_withdraw_collateral(deps, env, info, collateral_addr, amount, unbond, recipient)
+        }
+        ExecuteMsg::WithdrawUnbonded { recipient } => {
+            execute_withdraw_unbonded(deps, env, info, recipient)
         }
     }
 }
@@ -129,6 +156,13 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
+    require(
+        !cw20_msg.amount.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Amount must be non-zero".to_string(),
+        },
+    )?;
+
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::DepositCollateral {} => execute_deposit_collateral_to_anchor(
             deps,
@@ -157,12 +191,12 @@ fn execute_andr_receive(
         AndromedaMsg::Withdraw {
             recipient,
             tokens_to_withdraw,
-        } => handle_withdraw(deps, env, info, recipient, tokens_to_withdraw),
+        } => execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
         _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
 }
 
-pub fn handle_withdraw(
+pub fn execute_withdraw(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -170,52 +204,59 @@ pub fn handle_withdraw(
     tokens_to_withdraw: Option<Vec<Withdrawal>>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+
+    let aust_address = contract.get_cached_address(deps.storage, ANCHOR_AUST)?;
+    match tokens_to_withdraw {
+        None => return contract.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
+        Some(ref tokens) => {
+            if tokens.len() != 1 {
+                return contract.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw);
+            } else {
+                let token = tokens[0].token.to_lowercase();
+                if token != "aust" && token != aust_address && token != UUSD_DENOM {
+                    return contract.execute_withdraw(
+                        deps,
+                        env,
+                        info,
+                        recipient,
+                        tokens_to_withdraw,
+                    );
+                }
+            }
+        }
+    }
+
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+
     let recipient_addr = recipient.get_addr(
         deps.api,
         &deps.querier,
         ADOContract::default().get_mission_contract(deps.storage)?,
     )?;
+
     let authorized = recipient_addr == info.sender
         || ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?;
     require(authorized, ContractError::Unauthorized {})?;
+
     require(
         matches!(recipient, Recipient::Addr(_)),
         ContractError::InvalidRecipientType {
             msg: "Only recipients of type Addr are allowed as it only specifies the owner of the position to withdraw from".to_string()
         },
     )?;
-    require(
-        tokens_to_withdraw.is_some(),
-        ContractError::InvalidTokensToWithdraw {
-            msg: "Must specify tokens to withdraw".to_string(),
-        },
-    )?;
-    let tokens_to_withdraw = tokens_to_withdraw.unwrap();
 
-    let aust_address = contract.get_cached_address(deps.storage, ANCHOR_AUST)?;
+    // If we are here then there is always exactly a single token to withdraw.
+    let token_to_withdraw = &tokens_to_withdraw.unwrap()[0];
 
-    let uusd_withdrawal: Option<&Withdrawal> = tokens_to_withdraw
-        .iter()
-        .find(|w| w.token.to_lowercase() == UUSD_DENOM);
-
-    let aust_withdrawal: Option<&Withdrawal> = tokens_to_withdraw
-        .iter()
-        .find(|w| w.token.to_lowercase() == "aust" || w.token.to_lowercase() == aust_address);
-
-    require(
-        uusd_withdrawal.is_some() != aust_withdrawal.is_some(),
-        ContractError::InvalidTokensToWithdraw {
-            msg: "Must specify exactly one of uusd or aust to withdraw".to_string(),
-        },
-    )?;
-
-    if let Some(uusd_withdrawal) = uusd_withdrawal {
-        withdraw_uusd(deps, env, info, uusd_withdrawal, Some(recipient_addr))
-    } else if let Some(aust_withdrawal) = aust_withdrawal {
-        withdraw_aust(deps, info, aust_withdrawal, Some(recipient_addr))
+    let token = token_to_withdraw.token.to_lowercase();
+    if token == UUSD_DENOM {
+        withdraw_uusd(deps, env, info, token_to_withdraw, recipient_addr)
+    } else if token == "aust" || token == aust_address {
+        withdraw_aust(deps, info, token_to_withdraw, recipient_addr)
     } else {
-        Ok(Response::default())
+        Err(ContractError::InvalidTokensToWithdraw {
+            msg: "Can only withdraw uusd or aUST".to_string(),
+        })
     }
 }
 
@@ -478,7 +519,11 @@ fn execute_borrow(
         )?))
 }
 
-fn execute_repay_loan(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+fn execute_repay_loan(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let anchor_market = contract.get_cached_address(deps.storage, ANCHOR_MARKET)?;
 
@@ -486,13 +531,170 @@ fn execute_repay_loan(deps: DepsMut, info: MessageInfo) -> Result<Response, Cont
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
+    let borrower_info = query_borrower_info(
+        &deps.querier,
+        anchor_market.clone(),
+        env.contract.address.to_string(),
+    )?;
+    let coin = info.funds.iter().find(|c| c.denom == "uusd");
+    require(
+        coin.is_some(),
+        ContractError::InvalidFunds {
+            msg: "Must send uusd".to_string(),
+        },
+    )?;
+    let coin = coin.unwrap();
+    let mut msgs: Vec<CosmosMsg> = vec![];
+    let loan_amount = Uint128::from(borrower_info.loan_amount);
+    if coin.amount > loan_amount {
+        msgs.push(CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: coins(coin.amount.u128() - loan_amount.u128(), coin.denom.clone()),
+        }))
+    }
     Ok(Response::new()
         .add_attribute("action", "repay_loan")
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+        .add_message(WasmMsg::Execute {
             contract_addr: anchor_market,
             msg: encode_binary(&MarketExecuteMsg::RepayStable {})?,
             funds: info.funds,
-        })))
+        })
+        .add_messages(msgs))
+}
+
+fn execute_withdraw_unbonded(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let anchor_bluna_hub = contract.get_cached_address(deps.storage, ANCHOR_BLUNA_HUB)?;
+
+    let withdrawable_response: WithdrawableUnbondedResponse = deps.querier.query_wasm_smart(
+        anchor_bluna_hub.clone(),
+        &BLunaHubQueryMsg::WithdrawableUnbonded {
+            address: env.contract.address.to_string(),
+        },
+    )?;
+    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    Ok(Response::new()
+        .add_message(WasmMsg::Execute {
+            contract_addr: anchor_bluna_hub,
+            msg: encode_binary(&BLunaHubExecuteMsg::WithdrawUnbonded {})?,
+            funds: vec![],
+        })
+        .add_submessage(recipient.generate_msg_native(
+            deps.api,
+            &deps.querier,
+            mission_contract,
+            coins(withdrawable_response.withdrawable.u128(), "uluna"),
+        )?))
+}
+
+fn execute_claim_anc(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    auto_stake: Option<bool>,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let anchor_market = contract.get_cached_address(deps.storage, ANCHOR_MARKET)?;
+    let res = Response::new()
+        .add_attribute("action", "claim_anc_rewards")
+        .add_message(WasmMsg::Execute {
+            contract_addr: anchor_market.clone(),
+            msg: encode_binary(&MarketExecuteMsg::ClaimRewards { to: None })?,
+            funds: vec![],
+        });
+    if auto_stake.unwrap_or(false) {
+        let borrower_info = query_borrower_info(
+            &deps.querier,
+            anchor_market,
+            env.contract.address.to_string(),
+        )?;
+        let amount = borrower_info.pending_rewards * Uint256::one();
+        let stake_resp = execute_stake_anc(deps, info, amount.into())?;
+        Ok(res
+            .add_attributes(stake_resp.attributes)
+            .add_submessages(stake_resp.messages))
+    } else {
+        Ok(res)
+    }
+}
+
+fn execute_stake_anc(
+    deps: DepsMut,
+    info: MessageInfo,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let anchor_gov = contract.get_cached_address(deps.storage, ANCHOR_GOV)?;
+    let anchor_anc = contract.get_cached_address(deps.storage, ANCHOR_ANC)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "stake_anc")
+        .add_attribute("amount", amount)
+        .add_message(WasmMsg::Execute {
+            contract_addr: anchor_anc,
+            msg: encode_binary(&Cw20ExecuteMsg::Send {
+                contract: anchor_gov,
+                msg: encode_binary(&GovCw20HookMsg::StakeVotingTokens {})?,
+                amount,
+            })?,
+            funds: vec![],
+        }))
+}
+
+fn execute_unstake_anc(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Option<Uint128>,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let anchor_gov = contract.get_cached_address(deps.storage, ANCHOR_GOV)?;
+    let staker_response: StakerResponse = deps.querier.query_wasm_smart(
+        anchor_gov.clone(),
+        &GovQueryMsg::Staker {
+            address: env.contract.address.to_string(),
+        },
+    )?;
+
+    // If we ever support voting in polls, need to take into account
+    // staker_response.locked_balance (if balance has deductions made to it).
+    let amount = cmp::min(
+        staker_response.balance,
+        amount.unwrap_or(staker_response.balance),
+    );
+
+    Ok(Response::new()
+        .add_attribute("action", "unstake_anc")
+        .add_attribute("amount", amount)
+        .add_message(WasmMsg::Execute {
+            contract_addr: anchor_gov,
+            msg: encode_binary(&GovExecuteMsg::WithdrawVotingTokens {
+                amount: Some(amount),
+            })?,
+            funds: vec![],
+        }))
 }
 
 pub fn execute_deposit(
@@ -524,12 +726,8 @@ pub fn execute_deposit(
             msg: "Must deposit a non-zero quantity of uusd".to_string(),
         },
     )?;
-
-    let aust_balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_validate(&anchor_aust_token)?,
-        env.contract.address,
-    )?;
+    let aust = AssetInfo::cw20(deps.api.addr_validate(&anchor_aust_token)?);
+    let aust_balance = aust.query_balance(&deps.querier, env.contract.address)?;
     let recipient_addr = recipient.get_addr(
         deps.api,
         &deps.querier,
@@ -573,13 +771,12 @@ fn withdraw_uusd(
     env: Env,
     info: MessageInfo,
     withdrawal: &Withdrawal,
-    recipient_addr: Option<String>,
+    recipient_addr: String,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let anchor_aust_token = contract.get_cached_address(deps.storage, ANCHOR_AUST)?;
     let anchor_market = contract.get_cached_address(deps.storage, ANCHOR_MARKET)?;
 
-    let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
     let mut position = POSITION.load(deps.storage, &recipient_addr)?;
 
     let authorized = recipient_addr == info.sender
@@ -587,8 +784,9 @@ fn withdraw_uusd(
 
     require(authorized, ContractError::Unauthorized {})?;
 
-    let contract_balance =
-        query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
+    let uusd = AssetInfo::native(UUSD_DENOM);
+    let contract_balance = uusd.query_balance(&deps.querier, env.contract.address)?;
+
     PREV_UUSD_BALANCE.save(deps.storage, &contract_balance)?;
     RECIPIENT_ADDR.save(deps.storage, &recipient_addr)?;
 
@@ -620,12 +818,11 @@ fn withdraw_aust(
     deps: DepsMut,
     info: MessageInfo,
     withdrawal: &Withdrawal,
-    recipient_addr: Option<String>,
+    recipient_addr: String,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let anchor_aust_token = contract.get_cached_address(deps.storage, ANCHOR_AUST)?;
 
-    let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
     let mut position = POSITION.load(deps.storage, &recipient_addr)?;
 
     let authorized = recipient_addr == info.sender
@@ -668,11 +865,8 @@ fn reply_update_position(deps: DepsMut, env: Env) -> Result<Response, ContractEr
     let contract = ADOContract::default();
     let anchor_aust_token = contract.get_cached_address(deps.storage, ANCHOR_AUST)?;
 
-    let aust_balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_validate(&anchor_aust_token)?,
-        env.contract.address,
-    )?;
+    let aust = AssetInfo::cw20(deps.api.addr_validate(&anchor_aust_token)?);
+    let aust_balance = aust.query_balance(&deps.querier, env.contract.address)?;
 
     let prev_aust_balance = PREV_AUST_BALANCE.load(deps.storage)?;
     let new_aust_balance = aust_balance.checked_sub(prev_aust_balance)?;
@@ -695,8 +889,9 @@ fn reply_update_position(deps: DepsMut, env: Env) -> Result<Response, ContractEr
 }
 
 fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
-    let current_balance =
-        query_balance(&deps.querier, env.contract.address, UUSD_DENOM.to_owned())?;
+    let uusd = AssetInfo::native(UUSD_DENOM);
+    let current_balance = uusd.query_balance(&deps.querier, env.contract.address)?;
+
     let prev_balance = PREV_UUSD_BALANCE.load(deps.storage)?;
     let transfer_amount = current_balance - prev_balance;
 

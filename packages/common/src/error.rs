@@ -127,8 +127,13 @@ pub enum ContractError {
     #[error("StartTimeAfterEndTime")]
     StartTimeAfterEndTime {},
 
-    #[error("StartTimeInThePast")]
-    StartTimeInThePast {},
+    #[error(
+        "Start time in past. Current seconds: {current_seconds}. Current block: {current_block}"
+    )]
+    StartTimeInThePast {
+        current_seconds: u64,
+        current_block: u64,
+    },
 
     #[error("OutOfNFTs")]
     OutOfNFTs {},
@@ -203,7 +208,7 @@ pub enum ContractError {
     #[error("Invalid png header")]
     InvalidPngHeader {},
     // END CW20 ERRORS
-    #[error("Invalid Module")]
+    #[error("Invalid Module, {msg:?}")]
     InvalidModule { msg: Option<String> },
 
     #[error("UnsupportedOperation")]
@@ -251,6 +256,9 @@ pub enum ContractError {
     #[error("ModuleImmutable")]
     ModuleImmutable {},
 
+    #[error("GeneratorNotSpecified")]
+    GeneratorNotSpecified {},
+
     #[error("TooManyMissionComponents")]
     TooManyMissionComponents {},
 
@@ -262,12 +270,6 @@ pub enum ContractError {
 
     #[error("No Ongoing Sale")]
     NoOngoingSale {},
-
-    #[error("Token not for sale")]
-    TokenNotForSale {},
-
-    #[error("Token already purchased")]
-    TokenAlreadyPurchased {},
 
     #[error("Purchase limit reached")]
     PurchaseLimitReached {},
@@ -290,16 +292,16 @@ pub enum ContractError {
     #[error("Cannot mint after sale conducted")]
     CannotMintAfterSaleConducted {},
 
-    #[error("Not implemented")]
+    #[error("Not implemented: {msg:?}")]
     NotImplemented { msg: Option<String> },
 
-    #[error("Invalid Strategy")]
+    #[error("Invalid Strategy: {strategy}")]
     InvalidStrategy { strategy: String },
 
     #[error("Invalid Query")]
     InvalidQuery {},
 
-    #[error("Invalid Withdrawal")]
+    #[error("Invalid Withdrawal: {msg:?}")]
     InvalidWithdrawal { msg: Option<String> },
 
     #[error("Airdrop stage {stage} expired at {expiration}")]
@@ -313,6 +315,57 @@ pub enum ContractError {
 
     #[error("Verification Failed")]
     VerificationFailed {},
+
+    #[error("Invalid Asset: {asset}")]
+    InvalidAsset { asset: String },
+
+    #[error("Primitive Does Not Exist: {msg}")]
+    PrimitiveDoesNotExist { msg: String },
+
+    #[error("Token already being distributed")]
+    TokenAlreadyBeingDistributed {},
+
+    #[error("Deposit window closed")]
+    DepositWindowClosed {},
+
+    #[error("No saved auction contract")]
+    NoSavedBootstrapContract {},
+
+    #[error("Phase ongoing")]
+    PhaseOngoing {},
+
+    #[error("Claims already allowed")]
+    ClaimsAlreadyAllowed {},
+
+    #[error("ClaimsNotAllowed")]
+    ClaimsNotAllowed {},
+
+    #[error("Lockdrop already claimed")]
+    LockdropAlreadyClaimed {},
+
+    #[error("No lockup to claim rewards for")]
+    NoLockup {},
+
+    #[error("Invalid deposit/withdraw window")]
+    InvalidWindow {},
+
+    #[error("Duplicate tokens")]
+    DuplicateTokens {},
+
+    #[error("All tokens purchased")]
+    AllTokensPurchased {},
+
+    #[error("Token not available")]
+    TokenNotAvailable {},
+
+    #[error("Too many mint messages, limit is {limit}")]
+    TooManyMintMessages { limit: u32 },
+
+    #[error("Mission contract not specified")]
+    MissionContractNotSpecified {},
+
+    #[error("Invalid component: {name}")]
+    InvalidComponent { name: String },
 }
 
 impl From<Cw20ContractError> for ContractError {

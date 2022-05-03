@@ -162,7 +162,10 @@ fn query_deducted_funds(
         if let Some(desc) = &rate_info.description {
             event = event.add_attribute("description", desc);
         }
-        let rate = rate_info.rate.validate(&deps.querier)?;
+        let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
+        let rate = rate_info
+            .rate
+            .validate(deps.api, &deps.querier, mission_contract)?;
         let fee = calculate_fee(rate, &coin)?;
         for reciever in rate_info.receivers.iter() {
             if !rate_info.is_additive {
@@ -222,10 +225,11 @@ mod tests {
     use super::*;
     use crate::contract::{execute, instantiate, query};
     use andromeda_protocol::{
-        rates::{ADORate, InstantiateMsg, PaymentsResponse, QueryMsg, Rate, RateInfo},
+        rates::{InstantiateMsg, PaymentsResponse, QueryMsg, Rate, RateInfo},
         testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT},
     };
     use common::{ado_base::recipient::Recipient, encode_binary};
+    use common::{mission::AndrAddress, primitive::PrimitivePointer};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{
         coin, coins, from_binary, BankMsg, Coin, CosmosMsg, Decimal, Uint128, WasmMsg,
@@ -333,8 +337,10 @@ mod tests {
                 receivers: vec![Recipient::Addr("2".into())],
             },
             RateInfo {
-                rate: Rate::External(ADORate {
-                    address: MOCK_PRIMITIVE_CONTRACT.into(),
+                rate: Rate::External(PrimitivePointer {
+                    address: AndrAddress {
+                        identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+                    },
                     key: Some("flat".into()),
                 }),
                 is_additive: false,
@@ -419,9 +425,11 @@ mod tests {
                 receivers: vec![Recipient::Addr("2".into())],
             },
             RateInfo {
-                rate: Rate::External(ADORate {
-                    address: MOCK_PRIMITIVE_CONTRACT.into(),
-                    key: Some("flat_cw20".into()),
+                rate: Rate::External(PrimitivePointer {
+                    address: AndrAddress {
+                        identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+                    },
+                    key: Some("flat_cw20".to_string()),
                 }),
                 is_additive: false,
                 description: Some("desc3".to_string()),
