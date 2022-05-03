@@ -296,7 +296,6 @@ mod tests {
                 transfer_agreement: None,
                 metadata: None,
                 archived: false,
-                pricing: None,
             },
         }));
         println!("check 4");
@@ -504,7 +503,6 @@ mod tests {
                 transfer_agreement: None,
                 metadata: None,
                 archived: false,
-                pricing: None,
             },
         });
 
@@ -547,7 +545,6 @@ mod tests {
                 transfer_agreement: None,
                 metadata: None,
                 archived: false,
-                pricing: None,
             },
         }));
         let info = mock_info("not_owner", &[]);
@@ -588,7 +585,6 @@ mod tests {
                 transfer_agreement: None,
                 metadata: None,
                 archived: false,
-                pricing: None,
             },
         }));
         let info = mock_info("owner", &[]);
@@ -629,7 +625,6 @@ mod tests {
                 transfer_agreement: None,
                 metadata: None,
                 archived: false,
-                pricing: None,
             },
         }));
         execute(deps.as_mut(), mock_env(), info, mint_msg).unwrap();
@@ -672,7 +667,6 @@ mod tests {
                 transfer_agreement: None,
                 metadata: None,
                 archived: false,
-                pricing: None,
             },
         }));
 
@@ -721,7 +715,6 @@ mod tests {
                 transfer_agreement: None,
                 metadata: None,
                 archived: false,
-                pricing: None,
             },
         }));
 

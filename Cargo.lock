@@ -956,6 +956,8 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
 name = "forward_ref"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
