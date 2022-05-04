@@ -9,10 +9,7 @@ use common::{
     primitive::{Primitive, PrimitivePointer},
     require, Funds,
 };
-use cosmwasm_std::{
-    Addr, Api, BankMsg, Coin, CosmosMsg, Decimal, Fraction, QuerierWrapper, QueryRequest, SubMsg,
-    Uint128, WasmQuery,
-};
+use cosmwasm_std::{Addr, Api, Coin, Decimal, Fraction, QuerierWrapper, QueryRequest, WasmQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -150,38 +147,6 @@ impl ToString for PaymentAttribute {
     }
 }
 
-/// Gets the amount of tax paid by iterating over the `msgs` and comparing it to the
-/// difference between the base amount and the amount left over after royalties.
-/// It is assumed that each bank message has a single Coin to send as transfer
-/// agreements only accept a single Coin. It is also assumed that the result will always be
-/// non-negative.
-///
-/// # Arguments
-///
-/// * `msgs` - The vector of submessages containing fund transfers
-/// * `base_amount` - The amount paid before tax.
-/// * `remaining_amount_after_royalties` - The amount remaining of the base_amount after royalties
-///                                        are applied
-/// Returns the amount of tax necessary to be paid on top of the `base_amount`.
-pub fn get_tax_amount(
-    msgs: &[SubMsg],
-    base_amount: Uint128,
-    remaining_amount_after_royalties: Uint128,
-) -> Uint128 {
-    let deducted_amount = base_amount - remaining_amount_after_royalties;
-    msgs.iter()
-        .map(|msg| {
-            if let CosmosMsg::Bank(BankMsg::Send { amount, .. }) = &msg.msg {
-                amount[0].amount
-            } else {
-                Uint128::zero()
-            }
-        })
-        .reduce(|total, amount| total + amount)
-        .unwrap_or_else(Uint128::zero)
-        - deducted_amount
-}
-
 pub fn on_required_payments(
     querier: QuerierWrapper,
     addr: String,
@@ -234,7 +199,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractErr
 mod tests {
     use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT};
     use common::mission::AndrAddress;
-    use cosmwasm_std::coin;
+    use cosmwasm_std::{coin, Uint128};
 
     use super::*;
 
