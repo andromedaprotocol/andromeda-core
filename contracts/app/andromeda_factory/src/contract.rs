@@ -254,7 +254,7 @@ mod tests {
     use crate::state::{CODE_ID, SYM_ADDRESS};
 
     use super::*;
-    use andromeda_protocol::testing::mock_querier::mock_dependencies_custom;
+    use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
     use cosmwasm_std::{
         from_binary,
         testing::{mock_dependencies, mock_env, mock_info},

@@ -1,6 +1,6 @@
 use crate::state::{Config, CONFIG};
 use ado_base::ADOContract;
-use andromeda_protocol::rates::{
+use andromeda_modules::rates::{
     calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
     QueryMsg, RateInfo,
 };
@@ -224,9 +224,9 @@ fn query_deducted_funds(
 mod tests {
     use super::*;
     use crate::contract::{execute, instantiate, query};
-    use andromeda_protocol::{
-        rates::{InstantiateMsg, PaymentsResponse, QueryMsg, Rate, RateInfo},
-        testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT},
+    use andromeda_modules::rates::{InstantiateMsg, PaymentsResponse, QueryMsg, Rate, RateInfo};
+    use andromeda_testing::testing::mock_querier::{
+        mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT,
     };
     use common::{ado_base::recipient::Recipient, encode_binary};
     use common::{mission::AndrAddress, primitive::PrimitivePointer};

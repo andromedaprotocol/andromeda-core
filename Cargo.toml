@@ -1,14 +1,13 @@
 [workspace]
 members = [
     "packages/*",
-    # TODO: Remove this one once all of the contracts have been moved to a sub-folder.
-    "contracts/andromeda_*",
     "contracts/fungible-tokens/*",
     "contracts/non-fungible-tokens/*",
     "contracts/ecosystem/*",
     "contracts/data-storage/*",
     "contracts/app/*",
-    "contracts/finance/*"
+    "contracts/finance/*",
+    "contracts/modules/*"
 ]
 
 [profile.release.package.andromeda-protocol]

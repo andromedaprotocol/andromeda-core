@@ -1,11 +1,8 @@
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_protocol::{
-    receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
-    testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_CONTRACT,
-        MOCK_RECEIPT_CONTRACT,
-    },
+use andromeda_modules::receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt};
+use andromeda_testing::testing::mock_querier::{
+    mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RECEIPT_CONTRACT,
 };
 use common::{
     ado_base::{

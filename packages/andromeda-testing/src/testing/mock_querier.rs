@@ -8,12 +8,12 @@ use common::{
     Funds,
 };
 
-use crate::{
+use andromeda_app::{factory::QueryMsg as FactoryQueryMsg, mission::QueryMsg as MissionQueryMsg};
+use andromeda_modules::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     rates::QueryMsg as RatesQueryMsg,
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };
-use andromeda_app::{factory::QueryMsg as FactoryQueryMsg, mission::QueryMsg as MissionQueryMsg};
 use andromeda_non_fungible_tokens::{
     cw721::{
         MetadataAttribute, MetadataType, QueryMsg as Cw721QueryMsg, TokenExtension, TokenMetadata,

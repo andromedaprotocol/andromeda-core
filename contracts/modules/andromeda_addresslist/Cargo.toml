@@ -19,9 +19,9 @@ schemars = "0.8.3"
 cw-storage-plus = "0.9.1"
 cw2 = "0.9.1"
 
-andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
-common = { version = "0.1.0", path = "../../packages/common" }
-ado-base = { path = "../../packages/ado_base", version = "0.1.0"}
+andromeda-modules = { version = "0.1.0", path = "../../../packages/andromeda-modules" }
+common = { version = "0.1.0", path = "../../../packages/common" }
+ado-base = { path = "../../../packages/ado_base", version = "0.1.0"}
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16.0" }
