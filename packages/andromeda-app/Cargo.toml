@@ -1,0 +1,22 @@
+[package]
+name = "andromeda-app"
+version = "0.1.0"
+edition = "2018"
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = { version = "0.16.7" }
+serde = { version = "1.0.127", default-features = false, features = ["derive"] }
+schemars = "0.8.3"
+cw-storage-plus = "0.9.1"
+thiserror = { version = "1.0.21" }
+cw0 = "0.9.1"
+
+common = { path = "../common", version = "0.1.0" }
+cw-asset = { version = "1.0.2" }

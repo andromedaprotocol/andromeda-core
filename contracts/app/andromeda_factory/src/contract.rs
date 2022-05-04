@@ -5,7 +5,7 @@ use crate::{
     },
 };
 use ado_base::state::ADOContract;
-use andromeda_protocol::factory::{
+use andromeda_app::factory::{
     AddressResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{

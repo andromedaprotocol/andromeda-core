@@ -32,3 +32,4 @@ cw-asset = { version = "1.0.2" }
 
 # TODO: REMOVE when we have an isolated testing package.
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../andromeda-non-fungible-tokens" }
+andromeda-app = { version = "0.1.0", path = "../andromeda-app" }

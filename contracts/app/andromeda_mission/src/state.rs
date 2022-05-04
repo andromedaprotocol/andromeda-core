@@ -1,4 +1,4 @@
-use andromeda_protocol::mission::{ComponentAddress, MissionComponent};
+use andromeda_app::mission::{ComponentAddress, MissionComponent};
 use common::{
     ado_base::{AndromedaMsg, ExecuteMsg},
     error::ContractError,
