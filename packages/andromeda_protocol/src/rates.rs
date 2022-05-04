@@ -9,10 +9,7 @@ use common::{
     primitive::{Primitive, PrimitivePointer},
     require, Funds,
 };
-use cosmwasm_std::{
-    Addr, Api, BankMsg, Coin, CosmosMsg, Decimal, Fraction, QuerierWrapper, QueryRequest, SubMsg,
-    Uint128, WasmQuery,
-};
+use cosmwasm_std::{Addr, Api, Coin, Decimal, Fraction, QuerierWrapper, QueryRequest, WasmQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -202,7 +199,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractErr
 mod tests {
     use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT};
     use common::mission::AndrAddress;
-    use cosmwasm_std::coin;
+    use cosmwasm_std::{coin, Uint128};
 
     use super::*;
 
