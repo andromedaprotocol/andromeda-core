@@ -5,7 +5,7 @@ use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
 use ado_base::ADOContract;
-use andromeda_protocol::address_list::{
+use andromeda_modules::address_list::{
     ExecuteMsg, IncludesAddressResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{

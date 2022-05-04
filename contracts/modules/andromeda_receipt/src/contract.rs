@@ -2,7 +2,7 @@ use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
 use ado_base::state::ADOContract;
-use andromeda_protocol::receipt::{
+use andromeda_modules::receipt::{
     generate_receipt_message, Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
     QueryMsg, Receipt, ReceiptResponse,
 };

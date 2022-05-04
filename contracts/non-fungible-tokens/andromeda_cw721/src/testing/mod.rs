@@ -19,17 +19,15 @@ use common::{
 };
 
 use crate::{contract::*, state::ANDR_MINTER};
+use andromeda_modules::receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt};
 use andromeda_non_fungible_tokens::{
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
     cw721_offers::ExecuteMsg as OffersExecuteMsg,
 };
-use andromeda_protocol::{
-    receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
-    testing::mock_querier::{
-        bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_MISSION_CONTRACT,
-        MOCK_OFFERS_CONTRACT, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT,
-        MOCK_RECEIPT_CONTRACT,
-    },
+use andromeda_testing::testing::mock_querier::{
+    bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_MISSION_CONTRACT,
+    MOCK_OFFERS_CONTRACT, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT,
+    MOCK_RECEIPT_CONTRACT,
 };
 use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw721_base::MintMsg;

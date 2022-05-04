@@ -3,7 +3,7 @@ use crate::{
     state::{offers, CW721_CONTRACT},
 };
 use andromeda_non_fungible_tokens::cw721_offers::{ExecuteMsg, InstantiateMsg, Offer, QueryMsg};
-use andromeda_protocol::testing::mock_querier::{
+use andromeda_testing::testing::mock_querier::{
     bank_sub_msg, mock_dependencies_custom, MOCK_CW721_CONTRACT, MOCK_RATES_RECIPIENT,
     MOCK_TOKEN_TRANSFER_AGREEMENT,
 };

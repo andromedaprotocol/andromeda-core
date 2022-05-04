@@ -1,5 +1,5 @@
 [package]
-name = "andromeda-protocol"
+name = "andromeda-testing"
 version = "0.1.0"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2018"
@@ -30,6 +30,6 @@ cosmwasm-bignumber = "2.2.0"
 common = { path = "../common", version = "0.1.0" }
 cw-asset = { version = "1.0.2" }
 
-# TODO: REMOVE when we have an isolated testing package.
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../andromeda-non-fungible-tokens" }
 andromeda-app = { version = "0.1.0", path = "../andromeda-app" }
+andromeda-modules = { version = "0.1.0", path = "../andromeda-modules" }

@@ -6,7 +6,7 @@ use cosmwasm_std::{
 
 use crate::contract::{execute, instantiate};
 use andromeda_finance::timelock::{ExecuteMsg, InstantiateMsg};
-use andromeda_protocol::testing::mock_querier::{
+use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT,
 };
 use common::{

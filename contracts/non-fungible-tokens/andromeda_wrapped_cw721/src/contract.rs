@@ -251,7 +251,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 mod tests {
     use super::*;
     use andromeda_non_fungible_tokens::wrapped_cw721::Cw721Specification;
-    use andromeda_protocol::testing::mock_querier::{
+    use andromeda_testing::testing::mock_querier::{
         mock_dependencies_custom, MOCK_CW721_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
     };
     use cosmwasm_std::{

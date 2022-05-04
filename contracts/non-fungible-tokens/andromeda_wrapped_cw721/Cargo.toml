@@ -23,4 +23,4 @@ ado-base = { path = "../../../packages/ado_base", version = "0.1.0", features = 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }
 cosmwasm-schema = "0.16.0"
-andromeda-protocol = { version = "0.1.0", path = "../../../packages/andromeda_protocol" }
+andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }

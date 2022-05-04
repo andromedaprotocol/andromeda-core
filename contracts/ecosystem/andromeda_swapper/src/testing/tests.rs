@@ -10,7 +10,7 @@ use andromeda_ecosystem::swapper::{
     Cw20HookMsg, ExecuteMsg, InstantiateInfo, InstantiateMsg, QueryMsg, SwapperCw20HookMsg,
     SwapperImpl, SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
 };
-use andromeda_protocol::testing::mock_querier::{
+use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2,
 };
 use common::{ado_base::recipient::Recipient, error::ContractError, mission::AndrAddress};

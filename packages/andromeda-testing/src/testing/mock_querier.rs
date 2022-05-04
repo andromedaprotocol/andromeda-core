@@ -8,7 +8,7 @@ use common::{
     Funds,
 };
 
-use crate::{
+use andromeda_modules::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     rates::QueryMsg as RatesQueryMsg,
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
