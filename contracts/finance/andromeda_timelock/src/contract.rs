@@ -2,7 +2,7 @@ use cosmwasm_std::{attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, R
 
 use crate::state::{escrows, get_key, get_keys_for_recipient};
 use ado_base::ADOContract;
-use andromeda_protocol::timelock::{
+use andromeda_finance::timelock::{
     Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
     GetLockedFundsResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };

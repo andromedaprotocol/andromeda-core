@@ -1,6 +1,6 @@
 use crate::state::SPLITTER;
 use ado_base::ADOContract;
-use andromeda_protocol::splitter::{
+use andromeda_finance::splitter::{
     validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
     MigrateMsg, QueryMsg, Splitter,
 };

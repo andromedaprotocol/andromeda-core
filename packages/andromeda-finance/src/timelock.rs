@@ -1,5 +1,5 @@
 use cosmwasm_std::{Api, BlockInfo, Coin};
-use cw721::Expiration;
+use cw0::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

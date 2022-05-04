@@ -1,4 +1,4 @@
-use andromeda_protocol::timelock::Escrow;
+use andromeda_finance::timelock::Escrow;
 use cosmwasm_std::{Order, Storage};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 

@@ -5,9 +5,9 @@ use cosmwasm_std::{
 };
 
 use crate::contract::{execute, instantiate};
-use andromeda_protocol::{
-    splitter::{AddressPercent, ExecuteMsg, InstantiateMsg},
-    testing::mock_querier::{mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT},
+use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg};
+use andromeda_protocol::testing::mock_querier::{
+    mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT,
 };
 use common::{
     ado_base::{modules::Module, recipient::Recipient, AndromedaMsg},
