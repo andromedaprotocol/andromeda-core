@@ -1,5 +1,10 @@
 [workspace]
-members = ["packages/*", "contracts/*"]
+members = [
+    "packages/*",
+    # TODO: Remove this one once all of the contracts have been moved to a sub-folder.
+    "contracts/andromeda_*",
+    "contracts/fungible-tokens/*"
+]
 
 [profile.release.package.andromeda-protocol]
 codegen-units = 1
