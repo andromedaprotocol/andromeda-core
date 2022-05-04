@@ -5,9 +5,9 @@ use cosmwasm_std::{
 };
 
 use crate::contract::{execute, instantiate};
-use andromeda_protocol::{
-    testing::mock_querier::{mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT},
-    timelock::{ExecuteMsg, InstantiateMsg},
+use andromeda_finance::timelock::{ExecuteMsg, InstantiateMsg};
+use andromeda_protocol::testing::mock_querier::{
+    mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT,
 };
 use common::{
     ado_base::{modules::Module, AndromedaMsg},

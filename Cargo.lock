@@ -282,6 +282,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-finance"
+version = "0.1.0"
+dependencies = [
+ "astroport",
+ "common",
+ "cosmwasm-bignumber",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "cw20 0.9.1",
+ "cw20-base",
+ "mirror-protocol",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-fungible-tokens"
 version = "0.1.0"
 dependencies = [
@@ -469,6 +489,7 @@ name = "andromeda-splitter"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-finance",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",
@@ -503,6 +524,7 @@ name = "andromeda-timelock"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-finance",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",
