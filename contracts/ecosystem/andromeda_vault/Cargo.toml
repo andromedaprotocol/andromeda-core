@@ -16,9 +16,9 @@ cw-storage-plus = "0.9.1"
 cw2 = "0.9.1"
 cw20 = "0.9.1"
 
-andromeda-ecosystem = { version = "0.1.0", path = "../../packages/andromeda-ecosystem" }
-ado-base = { path = "../../packages/ado_base", version = "0.1.0" }
-common = { version = "0.1.0", path = "../../packages/common" }
+andromeda-ecosystem = { version = "0.1.0", path = "../../../packages/andromeda-ecosystem" }
+common = { version = "0.1.0", path = "../../../packages/common" }
+ado-base = { path = "../../../packages/ado_base", version = "0.1.0" }
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }

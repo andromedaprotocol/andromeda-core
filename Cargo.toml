@@ -3,7 +3,8 @@ members = [
     "packages/*",
     # TODO: Remove this one once all of the contracts have been moved to a sub-folder.
     "contracts/andromeda_*",
-    "contracts/fungible-tokens/*"
+    "contracts/fungible-tokens/*",
+    "contracts/ecosystem/*"
 ]
 
 [profile.release.package.andromeda-protocol]
