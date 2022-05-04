@@ -49,14 +49,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-anchor"
+name = "andromeda-anchor-earn"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "anchor-token",
  "andromeda-protocol",
  "common",
- "cosmwasm-bignumber",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
@@ -70,12 +68,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-anchor-earn"
+name = "andromeda-anchor-lend"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "anchor-token",
  "andromeda-protocol",
  "common",
+ "cosmwasm-bignumber",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",

@@ -11,7 +11,7 @@ use crate::primitive_keys::{
 };
 use anchor_token::gov::{QueryMsg as GovQueryMsg, StakerResponse};
 use andromeda_protocol::{
-    anchor::{BLunaHubQueryMsg, WithdrawableUnbondedResponse},
+    anchor_lend::{BLunaHubQueryMsg, WithdrawableUnbondedResponse},
     primitive::QueryMsg as PrimitiveQueryMsg,
 };
 use common::{

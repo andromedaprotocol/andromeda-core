@@ -2,8 +2,8 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, from_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, SubMsg, Uint128, WasmMsg,
+    coins, from_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
+    SubMsg, Uint128, WasmMsg,
 };
 
 use crate::{
@@ -18,7 +18,7 @@ use anchor_token::gov::{
     Cw20HookMsg as GovCw20HookMsg, ExecuteMsg as GovExecuteMsg, QueryMsg as GovQueryMsg,
     StakerResponse,
 };
-use andromeda_protocol::anchor::{
+use andromeda_protocol::anchor_lend::{
     BLunaHubCw20HookMsg, BLunaHubExecuteMsg, BLunaHubQueryMsg, Cw20HookMsg, ExecuteMsg,
     InstantiateMsg, MigrateMsg, QueryMsg, WithdrawableUnbondedResponse,
 };
@@ -41,7 +41,7 @@ use moneymarket::{
 use std::cmp;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-anchor";
+const CONTRACT_NAME: &str = "crates.io:andromeda-anchor-lend";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
