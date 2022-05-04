@@ -5,9 +5,7 @@ use crate::{
     },
 };
 use ado_base::state::ADOContract;
-use andromeda_app::factory::{
-    AddressResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-};
+use andromeda_app::factory::{AddressResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
