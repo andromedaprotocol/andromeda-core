@@ -10,6 +10,7 @@ pub mod cw20_staking;
 pub mod cw721;
 pub mod cw721_offers;
 pub mod factory;
+pub mod gumball;
 pub mod lockdrop;
 pub mod mirror_wrapped_cdp;
 pub mod mission;
