@@ -19,7 +19,7 @@ cw-asset = "1.0.2"
 
 andromeda-ecosystem = { version = "0.1.0", path = "../../../packages/andromeda-ecosystem" }
 common = { version = "0.1.0", path = "../../../packages/common" }
-ado-base = { path = "../../../packages/ado_base", version = "0.1.0" }
+ado-base = { path = "../../../packages/ado_base", version = "0.1.0", features = ["instantiate"] }
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }
