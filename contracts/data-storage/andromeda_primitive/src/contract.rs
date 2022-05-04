@@ -5,7 +5,7 @@ use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{DATA, DEFAULT_KEY};
 use ado_base::state::ADOContract;
-use andromeda_protocol::primitive::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_data_storage::primitive::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,

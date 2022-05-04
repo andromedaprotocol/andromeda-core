@@ -2,7 +2,7 @@ use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         ownership::ContractOwnerResponse,
-        AndromedaQuery,
+        AndromedaQuery, QueryMsg,
     },
     primitive::{GetValueResponse, Primitive, Value},
     Funds,
@@ -12,7 +12,6 @@ use crate::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     factory::QueryMsg as FactoryQueryMsg,
     mission::QueryMsg as MissionQueryMsg,
-    primitive::QueryMsg as PrimitiveQueryMsg,
     rates::QueryMsg as RatesQueryMsg,
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };
@@ -424,7 +423,7 @@ impl WasmMockQuerier {
 
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            PrimitiveQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
+            QueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
                 let key: String = from_binary(&data.unwrap()).unwrap();
                 let msg_response = match key.as_str() {
                     "percent" => GetValueResponse {

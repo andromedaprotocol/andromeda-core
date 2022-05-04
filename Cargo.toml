@@ -5,7 +5,8 @@ members = [
     "contracts/andromeda_*",
     "contracts/fungible-tokens/*",
     "contracts/non-fungible-tokens/*",
-    "contracts/ecosystem/*"
+    "contracts/ecosystem/*",
+    "contracts/data-storage/*"
 ]
 
 [profile.release.package.andromeda-protocol]

@@ -11,9 +11,8 @@ use crate::primitive_keys::{
 };
 use anchor_token::gov::{QueryMsg as GovQueryMsg, StakerResponse};
 use andromeda_ecosystem::anchor_lend::{BLunaHubQueryMsg, WithdrawableUnbondedResponse};
-use andromeda_protocol::primitive::QueryMsg as PrimitiveQueryMsg;
 use common::{
-    ado_base::AndromedaQuery,
+    ado_base::{AndromedaQuery, QueryMsg},
     primitive::{GetValueResponse, Primitive},
 };
 use cw20::{BalanceResponse, Cw20QueryMsg};
@@ -182,7 +181,7 @@ impl WasmMockQuerier {
 
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            PrimitiveQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
+            QueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
                 let key: String = from_binary(&data.unwrap()).unwrap();
                 let msg_response = match key.as_str() {
                     ANCHOR_MARKET => GetValueResponse {
