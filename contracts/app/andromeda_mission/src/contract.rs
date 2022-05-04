@@ -4,7 +4,7 @@ use crate::state::{
     ADO_ADDRESSES, ADO_DESCRIPTORS, MISSION_NAME,
 };
 use ado_base::ADOContract;
-use andromeda_protocol::mission::{
+use andromeda_app::mission::{
     ComponentAddress, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent,
     QueryMsg,
 };

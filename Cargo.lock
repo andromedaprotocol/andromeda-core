@@ -90,6 +90,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-app"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-astroport"
 version = "0.1.0"
 dependencies = [
@@ -129,6 +143,7 @@ name = "andromeda-crowdfund"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-app",
  "andromeda-non-fungible-tokens",
  "andromeda-protocol",
  "common",
@@ -253,6 +268,7 @@ name = "andromeda-factory"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-app",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",
@@ -347,6 +363,7 @@ name = "andromeda-mission"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-app",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",
@@ -396,6 +413,7 @@ dependencies = [
 name = "andromeda-protocol"
 version = "0.1.0"
 dependencies = [
+ "andromeda-app",
  "andromeda-non-fungible-tokens",
  "astroport",
  "common",

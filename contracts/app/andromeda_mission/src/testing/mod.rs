@@ -2,10 +2,8 @@ use crate::{
     contract::*,
     state::{ADO_ADDRESSES, ADO_DESCRIPTORS},
 };
-use andromeda_protocol::{
-    mission::{ExecuteMsg, InstantiateMsg, MissionComponent},
-    testing::mock_querier::mock_dependencies_custom,
-};
+use andromeda_app::mission::{ExecuteMsg, InstantiateMsg, MissionComponent};
+use andromeda_protocol::testing::mock_querier::mock_dependencies_custom;
 use common::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{
     attr,

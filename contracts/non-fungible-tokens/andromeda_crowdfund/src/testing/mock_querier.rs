@@ -1,4 +1,4 @@
-use andromeda_protocol::mission::QueryMsg as MissionQueryMsg;
+use andromeda_app::mission::QueryMsg as MissionQueryMsg;
 use common::{
     ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
     Funds,
