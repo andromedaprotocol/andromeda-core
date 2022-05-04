@@ -19,21 +19,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anchor-token"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60b9797dde35c72e6283c6a41211f02d6726d9b8bcec15c850378651f75dea14"
-dependencies = [
- "cosmwasm-bignumber",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw20 0.8.1",
- "schemars",
- "serde",
- "terra-cosmwasm",
-]
-
-[[package]]
 name = "andromeda-addresslist"
 version = "0.1.0"
 dependencies = [
@@ -46,27 +31,6 @@ dependencies = [
  "cw2 0.9.1",
  "schemars",
  "serde",
-]
-
-[[package]]
-name = "andromeda-anchor"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "anchor-token",
- "andromeda-protocol",
- "common",
- "cosmwasm-bignumber",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 0.9.1",
- "cw2 0.9.1",
- "cw20 0.9.1",
- "moneymarket",
- "schemars",
- "serde",
- "terra-cosmwasm",
 ]
 
 [[package]]
@@ -982,21 +946,6 @@ dependencies = [
  "schemars",
  "serde",
  "terraswap",
-]
-
-[[package]]
-name = "moneymarket"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a80abe43dc97b79401c5c028b8a609e6be81f1d61218578c2372541dcfdbb1f"
-dependencies = [
- "cosmwasm-bignumber",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw20 0.8.1",
- "schemars",
- "serde",
- "terra-cosmwasm",
 ]
 
 [[package]]
