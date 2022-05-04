@@ -3,7 +3,7 @@ mod mock_querier;
 use crate::contract::*;
 use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_protocol::{
-    anchor::PositionResponse,
+    anchor_earn::PositionResponse,
     vault::{
         ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType, YieldStrategy,
         BALANCES, STRATEGY_CONTRACT_ADDRESSES,

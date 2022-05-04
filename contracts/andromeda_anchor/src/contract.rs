@@ -2,7 +2,7 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, from_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    coins, from_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, SubMsg, Uint128, WasmMsg,
 };
 
