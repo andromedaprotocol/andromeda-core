@@ -113,7 +113,7 @@ name = "andromeda-auction"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "andromeda-protocol",
+ "andromeda-non-fungible-tokens",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -129,6 +129,7 @@ name = "andromeda-crowdfund"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-non-fungible-tokens",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",
@@ -183,6 +184,7 @@ name = "andromeda-cw721"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-non-fungible-tokens",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",
@@ -199,6 +201,7 @@ name = "andromeda-cw721-offers"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-non-fungible-tokens",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",
@@ -341,6 +344,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-non-fungible-tokens"
+version = "0.1.0"
+dependencies = [
+ "astroport",
+ "common",
+ "cosmwasm-bignumber",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "cw721",
+ "cw721-base",
+ "mirror-protocol",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-primitive"
 version = "0.1.0"
 dependencies = [
@@ -359,6 +382,7 @@ dependencies = [
 name = "andromeda-protocol"
 version = "0.1.0"
 dependencies = [
+ "andromeda-non-fungible-tokens",
  "astroport",
  "common",
  "cosmwasm-bignumber",
@@ -480,6 +504,7 @@ name = "andromeda-wrapped-cw721"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-non-fungible-tokens",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",

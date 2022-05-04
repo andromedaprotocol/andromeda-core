@@ -1,0 +1,26 @@
+[package]
+name = "andromeda-wrapped-cw721"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = "0.16.7"
+serde = { version = "1.0.127", default-features = false, features = ["derive"] }
+schemars = "0.8.3"
+cw-storage-plus = "0.9.1"
+cw721 = "0.9.1"
+cw721-base = { version = "0.9.1", features = ["library"] }
+
+andromeda-non-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-non-fungible-tokens" }
+common = { version = "0.1.0", path = "../../../packages/common" }
+ado-base = { path = "../../../packages/ado_base", version = "0.1.0", features = ["instantiate"] }
+
+[dev-dependencies]
+terra-cosmwasm = { version = "2.2.0" }
+cosmwasm-schema = "0.16.0"
+andromeda-protocol = { version = "0.1.0", path = "../../../packages/andromeda_protocol" }

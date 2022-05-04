@@ -10,16 +10,18 @@ use common::{
 
 use crate::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
-    cw721::TransferAgreement,
-    cw721::{
-        MetadataAttribute, MetadataType, QueryMsg as Cw721QueryMsg, TokenExtension, TokenMetadata,
-    },
-    cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
     factory::QueryMsg as FactoryQueryMsg,
     mission::QueryMsg as MissionQueryMsg,
     primitive::QueryMsg as PrimitiveQueryMsg,
     rates::QueryMsg as RatesQueryMsg,
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
+};
+use andromeda_non_fungible_tokens::{
+    cw721::{
+        MetadataAttribute, MetadataType, QueryMsg as Cw721QueryMsg, TokenExtension, TokenMetadata,
+        TransferAgreement,
+    },
+    cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
 };
 use cosmwasm_std::{
     coin, coins, from_binary, from_slice,
