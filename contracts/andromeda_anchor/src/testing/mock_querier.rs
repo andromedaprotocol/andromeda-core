@@ -6,8 +6,8 @@ use cosmwasm_std::{
 };
 
 use crate::primitive_keys::{
-    ANCHOR_ANC, ANCHOR_AUST, ANCHOR_BLUNA, ANCHOR_BLUNA_CUSTODY, ANCHOR_BLUNA_HUB, ANCHOR_GOV,
-    ANCHOR_MARKET, ANCHOR_ORACLE, ANCHOR_OVERSEER,
+    ANCHOR_ANC, ANCHOR_BLUNA, ANCHOR_BLUNA_CUSTODY, ANCHOR_BLUNA_HUB, ANCHOR_GOV, ANCHOR_MARKET,
+    ANCHOR_ORACLE, ANCHOR_OVERSEER,
 };
 use anchor_token::gov::{QueryMsg as GovQueryMsg, StakerResponse};
 use andromeda_protocol::{
@@ -29,7 +29,6 @@ use terra_cosmwasm::TerraQueryWrapper;
 pub const MOCK_MARKET_CONTRACT: &str = "anchor_market";
 pub const MOCK_CUSTODY_CONTRACT: &str = "anchor_custody";
 pub const MOCK_OVERSEER_CONTRACT: &str = "anchor_overseer";
-pub const MOCK_AUST_TOKEN: &str = "aust_token";
 pub const MOCK_BLUNA_TOKEN: &str = "bluna_token";
 pub const MOCK_ANC_TOKEN: &str = "anc_token";
 pub const MOCK_GOV_CONTRACT: &str = "anchor_gov";
@@ -40,7 +39,6 @@ pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 
 pub struct WasmMockQuerier {
     pub base: MockQuerier<TerraQueryWrapper>,
-    pub token_balance: Uint128,
     pub loan_amount: Uint256,
 }
 
@@ -82,7 +80,6 @@ impl WasmMockQuerier {
                     MOCK_ORACLE_CONTRACT => self.handle_oracle_query(msg),
                     MOCK_BLUNA_HUB_CONTRACT => self.handle_bluna_hub_query(msg),
                     MOCK_GOV_CONTRACT => self.handle_gov_query(msg),
-                    MOCK_AUST_TOKEN => self.handle_aust_query(msg),
                     MOCK_BLUNA_TOKEN => self.handle_bluna_query(msg),
                     MOCK_ANC_TOKEN => self.handle_anc_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
@@ -171,18 +168,6 @@ impl WasmMockQuerier {
         }
     }
 
-    fn handle_aust_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            Cw20QueryMsg::Balance { .. } => {
-                let res = BalanceResponse {
-                    balance: self.token_balance,
-                };
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-            }
-            _ => panic!("Unsupported Query"),
-        }
-    }
-
     fn handle_gov_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             GovQueryMsg::Staker { .. } => {
@@ -226,10 +211,6 @@ impl WasmMockQuerier {
                         key,
                         value: Primitive::String(MOCK_GOV_CONTRACT.to_owned()),
                     },
-                    ANCHOR_AUST => GetValueResponse {
-                        key,
-                        value: Primitive::String(MOCK_AUST_TOKEN.to_owned()),
-                    },
                     ANCHOR_BLUNA => GetValueResponse {
                         key,
                         value: Primitive::String(MOCK_BLUNA_TOKEN.to_owned()),
@@ -249,7 +230,6 @@ impl WasmMockQuerier {
     pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
         WasmMockQuerier {
             base,
-            token_balance: Uint128::zero(),
             loan_amount: Uint256::zero(),
         }
     }
