@@ -14,7 +14,7 @@ use crate::{
     },
 };
 use ado_base::state::ADOContract;
-use andromeda_protocol::{
+use andromeda_ecosystem::{
     astroport::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     swapper::{SwapperCw20HookMsg, SwapperMsg},
 };

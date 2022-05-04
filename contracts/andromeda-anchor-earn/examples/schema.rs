@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use andromeda_protocol::anchor_earn::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg};
+use andromeda_ecosystem::anchor_earn::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

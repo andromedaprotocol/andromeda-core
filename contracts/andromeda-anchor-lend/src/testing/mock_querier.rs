@@ -10,10 +10,8 @@ use crate::primitive_keys::{
     ANCHOR_ORACLE, ANCHOR_OVERSEER,
 };
 use anchor_token::gov::{QueryMsg as GovQueryMsg, StakerResponse};
-use andromeda_protocol::{
-    anchor_lend::{BLunaHubQueryMsg, WithdrawableUnbondedResponse},
-    primitive::QueryMsg as PrimitiveQueryMsg,
-};
+use andromeda_ecosystem::anchor_lend::{BLunaHubQueryMsg, WithdrawableUnbondedResponse};
+use andromeda_protocol::primitive::QueryMsg as PrimitiveQueryMsg;
 use common::{
     ado_base::AndromedaQuery,
     primitive::{GetValueResponse, Primitive},

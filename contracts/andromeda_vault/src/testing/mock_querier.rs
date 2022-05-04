@@ -1,4 +1,4 @@
-use andromeda_protocol::anchor_earn::PositionResponse;
+use andromeda_ecosystem::anchor_earn::PositionResponse;
 use common::ado_base::{recipient::Recipient, AndromedaQuery, QueryMsg};
 use cosmwasm_std::{
     from_binary, from_slice,

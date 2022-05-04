@@ -18,7 +18,7 @@ cw2 = "0.9.1"
 astroport = "1.0.1"
 cw-asset = { version = "1.0.2", features = ["legacy"] }
 
-andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
+andromeda-ecosystem = { version = "0.1.0", path = "../../packages/andromeda-ecosystem" }
 common = { version = "0.1.0", path = "../../packages/common" }
 ado-base = { path = "../../packages/ado_base", version = "0.1.0", features = ["withdraw", "primitive"] }
 

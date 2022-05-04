@@ -1,6 +1,6 @@
 use crate::state::SWAPPER_IMPL_ADDR;
 use ado_base::ADOContract;
-use andromeda_protocol::swapper::{
+use andromeda_ecosystem::swapper::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, SwapperCw20HookMsg, SwapperImpl,
     SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
 };

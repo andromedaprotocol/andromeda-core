@@ -1,5 +1,5 @@
 use ado_base::state::ADOContract;
-use andromeda_protocol::vault::{
+use andromeda_ecosystem::vault::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
     BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };

@@ -17,7 +17,7 @@ use crate::testing::mock_querier::{
 };
 use ado_base::ADOContract;
 use anchor_token::gov::{Cw20HookMsg as GovCw20HookMsg, ExecuteMsg as GovExecuteMsg};
-use andromeda_protocol::anchor_lend::{
+use andromeda_ecosystem::anchor_lend::{
     BLunaHubCw20HookMsg, BLunaHubExecuteMsg, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
 };
 use common::{

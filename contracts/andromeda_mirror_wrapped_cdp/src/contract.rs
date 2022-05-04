@@ -10,7 +10,7 @@ use crate::primitive_keys::{
     ADDRESSES_TO_CACHE, MIRROR_GOV, MIRROR_LOCK, MIRROR_MINT, MIRROR_MIR, MIRROR_STAKING,
 };
 use ado_base::state::ADOContract;
-use andromeda_protocol::mirror_wrapped_cdp::{
+use andromeda_ecosystem::mirror_wrapped_cdp::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, MirrorLockExecuteMsg,
     MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
 };

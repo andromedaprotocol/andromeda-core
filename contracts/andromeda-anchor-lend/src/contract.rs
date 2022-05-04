@@ -18,7 +18,7 @@ use anchor_token::gov::{
     Cw20HookMsg as GovCw20HookMsg, ExecuteMsg as GovExecuteMsg, QueryMsg as GovQueryMsg,
     StakerResponse,
 };
-use andromeda_protocol::anchor_lend::{
+use andromeda_ecosystem::anchor_lend::{
     BLunaHubCw20HookMsg, BLunaHubExecuteMsg, BLunaHubQueryMsg, Cw20HookMsg, ExecuteMsg,
     InstantiateMsg, MigrateMsg, QueryMsg, WithdrawableUnbondedResponse,
 };

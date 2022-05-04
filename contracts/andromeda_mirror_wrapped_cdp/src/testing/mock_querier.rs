@@ -6,9 +6,8 @@ use cosmwasm_std::{
 };
 
 use crate::primitive_keys::{MIRROR_GOV, MIRROR_LOCK, MIRROR_MINT, MIRROR_MIR, MIRROR_STAKING};
-use andromeda_protocol::primitive::QueryMsg as PrimitiveQueryMsg;
 use common::{
-    ado_base::AndromedaQuery,
+    ado_base::{AndromedaQuery, QueryMsg},
     primitive::{GetValueResponse, Primitive},
 };
 pub use mirror_protocol::{
@@ -79,7 +78,7 @@ impl WasmMockQuerier {
 
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            PrimitiveQueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
+            QueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
                 let key: String = from_binary(&data.unwrap()).unwrap();
                 let msg_response = match key.as_str() {
                     MIRROR_MINT => GetValueResponse {

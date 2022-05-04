@@ -38,7 +38,7 @@ name = "andromeda-astroport"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "andromeda-protocol",
+ "andromeda-ecosystem",
  "astroport",
  "common",
  "cosmwasm-schema",
@@ -156,6 +156,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-ecosystem"
+version = "0.1.0"
+dependencies = [
+ "astroport",
+ "common",
+ "cosmwasm-bignumber",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "cw20 0.9.1",
+ "cw20-base",
+ "mirror-protocol",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-factory"
 version = "0.1.0"
 dependencies = [
@@ -234,7 +254,7 @@ name = "andromeda-mirror-wrapped-cdp"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "andromeda-protocol",
+ "andromeda-ecosystem",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -352,6 +372,7 @@ name = "andromeda-swapper"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-ecosystem",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",
@@ -386,7 +407,7 @@ name = "andromeda-vault"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "andromeda-protocol",
+ "andromeda-ecosystem",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",

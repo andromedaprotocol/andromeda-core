@@ -12,7 +12,7 @@ use crate::testing::mock_querier::{
     mock_dependencies_custom, MOCK_AUST_TOKEN, MOCK_MARKET_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
 };
 use ado_base::ADOContract;
-use andromeda_protocol::anchor_earn::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg};
+use andromeda_ecosystem::anchor_earn::{ExecuteMsg, InstantiateMsg, PositionResponse, QueryMsg};
 use common::{
     ado_base::{
         recipient::{ADORecipient, Recipient},

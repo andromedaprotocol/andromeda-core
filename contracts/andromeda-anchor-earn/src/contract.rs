@@ -14,7 +14,7 @@ use crate::{
 };
 
 use ado_base::ADOContract;
-use andromeda_protocol::anchor_earn::{
+use andromeda_ecosystem::anchor_earn::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, PositionResponse, QueryMsg,
 };
 use common::{
