@@ -90,7 +90,7 @@ name = "andromeda-cw20"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "andromeda-ft",
+ "andromeda-fungible-tokens",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",
@@ -108,7 +108,7 @@ name = "andromeda-cw20-staking"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "andromeda-ft",
+ "andromeda-fungible-tokens",
  "common",
  "cosmwasm-bignumber",
  "cosmwasm-schema",
@@ -173,7 +173,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-ft"
+name = "andromeda-fungible-tokens"
 version = "0.1.0"
 dependencies = [
  "astroport",
@@ -197,7 +197,7 @@ name = "andromeda-lockdrop"
 version = "1.0.0"
 dependencies = [
  "ado-base",
- "andromeda-ft",
+ "andromeda-fungible-tokens",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -214,7 +214,7 @@ name = "andromeda-merkle-airdrop"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "andromeda-ft",
+ "andromeda-fungible-tokens",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",

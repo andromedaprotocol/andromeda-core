@@ -1,5 +1,5 @@
 use crate::contract::{execute, instantiate, query};
-use andromeda_ft::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_protocol::{
     receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt},
     testing::mock_querier::{

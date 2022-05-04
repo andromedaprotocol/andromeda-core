@@ -34,7 +34,7 @@ hex = "0.4"
 sha2 = { version = "0.9.5", default-features = false }
 cw-asset = { version = "1.0.2" }
 
-andromeda-ft = { version = "0.1.0", path = "../../../packages/andromeda-ft" }
+andromeda-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-fungible-tokens" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado_base", version = "0.1.0" }
 

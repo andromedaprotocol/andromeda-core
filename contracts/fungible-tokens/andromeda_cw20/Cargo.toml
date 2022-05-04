@@ -30,7 +30,7 @@ cw20 = "0.9.1"
 cw2 = "0.9.1"
 cw20-base = { version = "0.9.1", features = ["library"] }
 
-andromeda-ft = { version = "0.1.0", path = "../../../packages/andromeda-ft" }
+andromeda-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-fungible-tokens" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado_base", version = "0.1.0", features = ["modules"]}
 

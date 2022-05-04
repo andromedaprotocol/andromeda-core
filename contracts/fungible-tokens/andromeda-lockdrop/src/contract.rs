@@ -10,7 +10,7 @@ use cw20::Cw20ReceiveMsg;
 use cw_asset::Asset;
 
 use ado_base::ADOContract;
-use andromeda_ft::lockdrop::{
+use andromeda_fungible_tokens::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };

@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use andromeda_ft::cw20_staking::{
+use andromeda_fungible_tokens::cw20_staking::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StakerResponse,
 };
 

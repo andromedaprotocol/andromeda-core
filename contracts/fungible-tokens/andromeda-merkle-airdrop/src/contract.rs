@@ -19,7 +19,7 @@ use crate::state::{
     STAGE_EXPIRATION,
 };
 use ado_base::ADOContract;
-use andromeda_ft::airdrop::{
+use andromeda_fungible_tokens::airdrop::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, IsClaimedResponse, LatestStageResponse,
     MerkleRootResponse, MigrateMsg, QueryMsg, TotalClaimedResponse,
 };
