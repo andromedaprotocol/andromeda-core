@@ -215,6 +215,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-data-storage"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-ecosystem"
 version = "0.1.0"
 dependencies = [
@@ -368,7 +382,7 @@ name = "andromeda-primitive"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "andromeda-protocol",
+ "andromeda-data-storage",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",

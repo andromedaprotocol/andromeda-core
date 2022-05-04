@@ -1,7 +1,7 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use andromeda_protocol::primitive::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_data_storage::primitive::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use common::primitive::GetValueResponse;
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
