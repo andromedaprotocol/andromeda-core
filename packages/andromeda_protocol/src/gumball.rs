@@ -3,7 +3,6 @@ use common::{
     mission::AndrAddress,
 };
 use cosmwasm_std::{Binary, Coin, Uint128};
-use cw721_base::MintMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +18,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    Mint(Box<MintMsg<TokenExtension>>),
+    Mint(Vec<GumballMintMsg>),
     Buy {},
     /// Sets price, max amount per wallet, and recipient
     SetSaleDetails {
@@ -68,4 +67,17 @@ pub struct LatestRandomResponse {
     pub round: u64,
     pub randomness: Binary,
     pub worker: String,
+}
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct GumballMintMsg {
+    /// Unique ID of the NFT
+    pub token_id: String,
+    /// The owner of the newly minted NFT
+    pub owner: Option<String>,
+    /// Universal resource identifier for this NFT
+    /// Should point to a JSON file that conforms to the ERC721
+    /// Metadata JSON Schema
+    pub token_uri: Option<String>,
+    /// Any custom extension used by this contract
+    pub extension: TokenExtension,
 }

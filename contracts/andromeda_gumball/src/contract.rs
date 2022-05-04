@@ -1,6 +1,6 @@
 use crate::state::{State, CW721_CONTRACT, LIST, RANDOMNESS_PROVIDER, STATE, STATUS};
 use ado_base::ADOContract;
-use andromeda_protocol::gumball::LatestRandomResponse;
+use andromeda_protocol::gumball::{GumballMintMsg, LatestRandomResponse};
 use andromeda_protocol::{
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
     gumball::{ExecuteMsg, InstantiateMsg, NumberOfNftsResponse, QueryMsg, StatusResponse},
@@ -11,7 +11,7 @@ use common::{
     error::ContractError,
     require,
 };
-use cosmwasm_std::{attr, entry_point, Binary};
+use cosmwasm_std::{attr, entry_point, Binary, Storage};
 use cosmwasm_std::{
     Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response, Uint128, WasmMsg,
     WasmQuery,
@@ -20,7 +20,9 @@ use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda_gumball";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const DENOM: &str = "uusd";
+const UUSD_DENOM: &str = "uusd";
+
+pub(crate) const MAX_MINT_LIMIT: u32 = 100;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -107,7 +109,7 @@ fn execute_sale_details(
     require(!price.amount.is_zero(), ContractError::InvalidZeroAmount {})?;
     // Check valid denomination
     require(
-        price.denom == DENOM,
+        price.denom == UUSD_DENOM,
         ContractError::InvalidFunds {
             msg: "Only uusd is allowed".to_string(),
         },
@@ -145,10 +147,16 @@ fn execute_sale_details(
 
 fn execute_mint(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
-    mint_msg: Box<MintMsg<TokenExtension>>,
+    mint_msgs: Vec<GumballMintMsg>,
 ) -> Result<Response, ContractError> {
+    require(
+        mint_msgs.len() <= MAX_MINT_LIMIT as usize,
+        ContractError::TooManyMintMessages {
+            limit: MAX_MINT_LIMIT,
+        },
+    )?;
     let status = STATUS.load(deps.storage)?;
     // Can only mint when in "refill" mode, and that's when status is set to false.
     require(!status, ContractError::NotInRefillMode {})?;
@@ -158,23 +166,58 @@ fn execute_mint(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
-    let mut list = LIST.load(deps.storage)?;
 
-    let token_contract = CW721_CONTRACT.load(deps.storage)?;
-
-    // Add to list of NFTs
-    list.push(mint_msg.token_id.clone());
-
-    LIST.save(deps.storage, &list)?;
     let mission_contract = contract.get_mission_contract(deps.storage)?;
 
-    let contract_addr = token_contract.get_address(deps.api, &deps.querier, mission_contract)?;
+    let token_contract_andr = CW721_CONTRACT.load(deps.storage)?;
+    let token_contract =
+        token_contract_andr.get_address(deps.api, &deps.querier, mission_contract)?;
+    let gumball_contract = env.contract.address.to_string();
 
+    let mut resp = Response::new();
+    for mint_msg in mint_msgs {
+        let mint_resp = mint(
+            deps.storage,
+            &gumball_contract,
+            token_contract.clone(),
+            mint_msg,
+        )?;
+        resp = resp
+            .add_attributes(mint_resp.attributes)
+            .add_submessages(mint_resp.messages);
+    }
+
+    Ok(resp)
+}
+
+fn mint(
+    storage: &mut dyn Storage,
+    gumball_contract: &str,
+    token_contract: String,
+    mint_msg: GumballMintMsg,
+) -> Result<Response, ContractError> {
+    let mint_msg: MintMsg<TokenExtension> = MintMsg {
+        token_id: mint_msg.token_id,
+        owner: mint_msg
+            .owner
+            .unwrap_or_else(|| gumball_contract.to_owned()),
+        token_uri: mint_msg.token_uri,
+        extension: mint_msg.extension,
+    };
+    // We allow for owners other than the contract, incase the creator wants to set aside a few
+    // tokens for some other use, say airdrop, team allocation, etc.  Only those which have the
+    // contract as the owner will be available to sell.
+    if mint_msg.owner == gumball_contract {
+        // Mark token as available to purchase in next sale.
+        let mut list = LIST.load(storage)?;
+        list.push(mint_msg.token_id.clone());
+        LIST.save(storage, &list)?;
+    }
     Ok(Response::new()
         .add_attribute("action", "mint")
         .add_message(WasmMsg::Execute {
-            contract_addr,
-            msg: encode_binary(&Cw721ExecuteMsg::Mint(mint_msg))?,
+            contract_addr: token_contract,
+            msg: encode_binary(&Cw721ExecuteMsg::Mint(Box::new(mint_msg)))?,
             funds: vec![],
         }))
 }
@@ -197,7 +240,7 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
     let sent_funds = &info.funds[0];
     // check for correct denomination
     require(
-        sent_funds.denom == DENOM,
+        sent_funds.denom == UUSD_DENOM,
         ContractError::InvalidFunds {
             msg: "Only uusd is accepted".to_string(),
         },
@@ -286,20 +329,21 @@ mod tests {
     pub const MOCK_TOKEN_CONTRACT: &str = "cw721_contract";
 
     fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, ContractError> {
-        let msg = ExecuteMsg::Mint(Box::new(MintMsg {
-            token_id: token_id.into(),
-            owner: mock_env().contract.address.to_string(),
-            token_uri: None,
-            extension: TokenExtension {
-                name: "name".to_string(),
-                publisher: "publisher".to_string(),
-                description: None,
-                transfer_agreement: None,
-                metadata: None,
-                archived: false,
-            },
-        }));
-        println!("check 4");
+        let msg = ExecuteMsg::Mint(vec![
+            (GumballMintMsg {
+                token_id: token_id.into(),
+                owner: None,
+                token_uri: None,
+                extension: TokenExtension {
+                    name: "name".to_string(),
+                    publisher: "publisher".to_string(),
+                    description: None,
+                    transfer_agreement: None,
+                    metadata: None,
+                    archived: false,
+                },
+            }),
+        ]);
 
         execute(deps, mock_env(), mock_info("owner", &[]), msg)
     }
@@ -535,19 +579,21 @@ mod tests {
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::Mint(Box::new(MintMsg {
-            token_id: "token_id".to_string(),
-            owner: mock_env().contract.address.to_string(),
-            token_uri: None,
-            extension: TokenExtension {
-                name: "name".to_string(),
-                publisher: "publisher".to_string(),
-                description: None,
-                transfer_agreement: None,
-                metadata: None,
-                archived: false,
-            },
-        }));
+        let msg = ExecuteMsg::Mint(vec![
+            (GumballMintMsg {
+                token_id: "token_id".to_string(),
+                owner: None,
+                token_uri: None,
+                extension: TokenExtension {
+                    name: "name".to_string(),
+                    publisher: "publisher".to_string(),
+                    description: None,
+                    transfer_agreement: None,
+                    metadata: None,
+                    archived: false,
+                },
+            }),
+        ]);
         let info = mock_info("not_owner", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
@@ -575,19 +621,21 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let info = mock_info("owner", &[]);
         execute_switch_status(deps.as_mut(), info).unwrap();
-        let msg = ExecuteMsg::Mint(Box::new(MintMsg {
-            token_id: "token_id".to_string(),
-            owner: mock_env().contract.address.to_string(),
-            token_uri: None,
-            extension: TokenExtension {
-                name: "name".to_string(),
-                publisher: "publisher".to_string(),
-                description: None,
-                transfer_agreement: None,
-                metadata: None,
-                archived: false,
-            },
-        }));
+        let msg = ExecuteMsg::Mint(vec![
+            (GumballMintMsg {
+                token_id: "token_id".to_string(),
+                owner: None,
+                token_uri: None,
+                extension: TokenExtension {
+                    name: "name".to_string(),
+                    publisher: "publisher".to_string(),
+                    description: None,
+                    transfer_agreement: None,
+                    metadata: None,
+                    archived: false,
+                },
+            }),
+        ]);
         let info = mock_info("owner", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
@@ -615,20 +663,22 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let info = mock_info("owner", &[]);
 
-        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
-            token_id: "token_id".to_string(),
-            owner: "not_crowdfund".to_string(),
-            token_uri: None,
-            extension: TokenExtension {
-                name: "name".to_string(),
-                publisher: "publisher".to_string(),
-                description: None,
-                transfer_agreement: None,
-                metadata: None,
-                archived: false,
-            },
-        }));
-        execute(deps.as_mut(), mock_env(), info, mint_msg).unwrap();
+        let msg = ExecuteMsg::Mint(vec![
+            (GumballMintMsg {
+                token_id: "token_id".to_string(),
+                owner: None,
+                token_uri: None,
+                extension: TokenExtension {
+                    name: "name".to_string(),
+                    publisher: "publisher".to_string(),
+                    description: None,
+                    transfer_agreement: None,
+                    metadata: None,
+                    archived: false,
+                },
+            }),
+        ]);
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let info = mock_info("anyone", &[coin(10, "uusd")]);
         let msg = ExecuteMsg::Buy {};
@@ -657,21 +707,23 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let info = mock_info("owner", &[]);
 
-        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
-            token_id: "token_id".to_string(),
-            owner: "not_crowdfund".to_string(),
-            token_uri: None,
-            extension: TokenExtension {
-                name: "name".to_string(),
-                publisher: "publisher".to_string(),
-                description: None,
-                transfer_agreement: None,
-                metadata: None,
-                archived: false,
-            },
-        }));
+        let msg = ExecuteMsg::Mint(vec![
+            (GumballMintMsg {
+                token_id: "token_id".to_string(),
+                owner: None,
+                token_uri: None,
+                extension: TokenExtension {
+                    name: "name".to_string(),
+                    publisher: "publisher".to_string(),
+                    description: None,
+                    transfer_agreement: None,
+                    metadata: None,
+                    archived: false,
+                },
+            }),
+        ]);
 
-        execute(deps.as_mut(), mock_env(), info, mint_msg).unwrap();
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         // Sets status to true, allowing purchasing
         let info = mock_info("owner", &[]);
         execute_switch_status(deps.as_mut(), info).unwrap();
@@ -705,21 +757,23 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let info = mock_info("owner", &[]);
 
-        let mint_msg = ExecuteMsg::Mint(Box::new(MintMsg {
-            token_id: "token_id".to_string(),
-            owner: "not_crowdfund".to_string(),
-            token_uri: None,
-            extension: TokenExtension {
-                name: "name".to_string(),
-                publisher: "publisher".to_string(),
-                description: None,
-                transfer_agreement: None,
-                metadata: None,
-                archived: false,
-            },
-        }));
+        let msg = ExecuteMsg::Mint(vec![
+            (GumballMintMsg {
+                token_id: "token_id".to_string(),
+                owner: None,
+                token_uri: None,
+                extension: TokenExtension {
+                    name: "name".to_string(),
+                    publisher: "publisher".to_string(),
+                    description: None,
+                    transfer_agreement: None,
+                    metadata: None,
+                    archived: false,
+                },
+            }),
+        ]);
 
-        execute(deps.as_mut(), mock_env(), info, mint_msg).unwrap();
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         // Sets status to true, allowing purchasing
         let info = mock_info("owner", &[]);
         execute_switch_status(deps.as_mut(), info).unwrap();
