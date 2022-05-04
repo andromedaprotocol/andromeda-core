@@ -78,9 +78,14 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-storage-plus 0.9.1",
+ "cw2 0.9.1",
+ "cw20 0.9.1",
+ "moneymarket",
  "schemars",
  "serde",
+ "terra-cosmwasm",
 ]
 
 [[package]]
