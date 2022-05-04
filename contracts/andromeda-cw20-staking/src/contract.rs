@@ -15,7 +15,7 @@ use crate::state::{
     GLOBAL_REWARD_INFOS, STAKERS, STAKER_REWARD_INFOS, STATE,
 };
 use ado_base::ADOContract;
-use andromeda_protocol::cw20_staking::{
+use andromeda_ft::cw20_staking::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakerResponse,
 };
 use common::{

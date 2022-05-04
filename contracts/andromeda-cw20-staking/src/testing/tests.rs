@@ -14,7 +14,7 @@ use crate::{
     },
     testing::mock_querier::mock_dependencies_custom,
 };
-use andromeda_protocol::cw20_staking::{
+use andromeda_ft::cw20_staking::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StakerResponse,
 };
 use common::{error::ContractError, mission::AndrAddress};

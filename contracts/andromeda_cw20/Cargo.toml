@@ -30,9 +30,11 @@ cw20 = "0.9.1"
 cw2 = "0.9.1"
 cw20-base = { version = "0.9.1", features = ["library"] }
 
-andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
+andromeda-ft = { version = "0.1.0", path = "../../packages/andromeda-ft" }
 common = { version = "0.1.0", path = "../../packages/common" }
 ado-base = { path = "../../packages/ado_base", version = "0.1.0", features = ["modules"]}
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16.0" }
+# TODO: Remove this once we have it split up further.
+andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }

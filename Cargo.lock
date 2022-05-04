@@ -126,6 +126,7 @@ name = "andromeda-cw20"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-ft",
  "andromeda-protocol",
  "common",
  "cosmwasm-schema",
@@ -143,7 +144,7 @@ name = "andromeda-cw20-staking"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "andromeda-protocol",
+ "andromeda-ft",
  "common",
  "cosmwasm-bignumber",
  "cosmwasm-schema",
@@ -208,11 +209,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-ft"
+version = "0.1.0"
+dependencies = [
+ "astroport",
+ "common",
+ "cosmwasm-bignumber",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "cw20 0.9.1",
+ "cw20-base",
+ "mirror-protocol",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-lockdrop"
 version = "1.0.0"
 dependencies = [
  "ado-base",
- "andromeda-protocol",
+ "andromeda-ft",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -229,7 +250,7 @@ name = "andromeda-merkle-airdrop"
 version = "0.1.0"
 dependencies = [
  "ado-base",
- "andromeda-protocol",
+ "andromeda-ft",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",

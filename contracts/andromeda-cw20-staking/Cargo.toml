@@ -31,7 +31,7 @@ serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 cosmwasm-bignumber = "2.2.0"
 cw-asset = "1.0.2"
 
-andromeda-protocol = { version = "0.1.0", path = "../../packages/andromeda_protocol" }
+andromeda-ft = { version = "0.1.0", path = "../../packages/andromeda-ft" }
 common = { version = "0.1.0", path = "../../packages/common" }
 ado-base = { path = "../../packages/ado_base", version = "0.1.0" }
 

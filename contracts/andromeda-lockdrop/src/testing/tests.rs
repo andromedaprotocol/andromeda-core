@@ -8,7 +8,7 @@ use crate::{
     contract::{execute, instantiate, query},
     state::{State, UserInfo, CONFIG, STATE, USER_INFO},
 };
-use andromeda_protocol::lockdrop::{
+use andromeda_ft::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };

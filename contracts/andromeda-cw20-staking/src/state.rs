@@ -4,7 +4,7 @@ use cw_asset::AssetInfo;
 use cw_storage_plus::{Bound, Item, Map};
 
 use crate::contract::get_pending_rewards;
-use andromeda_protocol::cw20_staking::StakerResponse;
+use andromeda_ft::cw20_staking::StakerResponse;
 use common::{error::ContractError, mission::AndrAddress};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

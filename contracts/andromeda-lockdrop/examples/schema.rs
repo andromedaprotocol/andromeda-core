@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use andromeda_protocol::lockdrop::{
+use andromeda_ft::lockdrop::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse, UserInfoResponse,
 };
 

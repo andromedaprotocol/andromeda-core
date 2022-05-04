@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 
 use ado_base::ADOContract;
-use andromeda_protocol::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_ft::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     error::ContractError,
