@@ -521,6 +521,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-vesting"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-finance",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw2",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-wrapped-cw721"
 version = "0.1.0"
 dependencies = [
