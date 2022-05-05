@@ -28,18 +28,20 @@ pub struct Config {
 pub struct Batch {
     /// The amount of tokens in the batch
     pub amount: Uint128,
-    /// When the lockup ends. None indicates no lock up period and funds start vesting right away.
-    pub lockup_end: Option<Expiration>,
+    /// The amount of tokens that have been claimed.
+    pub amount_claimed: Uint128,
+    /// When the lockup ends.
+    pub lockup_end: Expiration,
     /// How often releases occur.
-    pub release_unit: Duration,
+    pub release_unit: u64,
     /// Specifies how much is to be released after each `release_unit`. If
     /// it is a percentage, it would be the percentage of the original amount.
     pub release_amount: WithdrawalType,
-    /// The time at which the last claim took place. Either height or seconds.
-    pub last_claim_time: Expiration,
+    /// The time at which the last claim took place in seconds.
+    pub last_claim_time: u64,
 }
 
-pub(crate) fn save_batch(storage: &mut dyn Storage, batch: Batch) -> Result<(), ContractError> {
+pub(crate) fn save_new_batch(storage: &mut dyn Storage, batch: Batch) -> Result<(), ContractError> {
     let next_id = NEXT_ID
         .may_load(storage)?
         .unwrap_or_else(|| Uint128::new(1));

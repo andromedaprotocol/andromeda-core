@@ -20,7 +20,7 @@ pub enum ExecuteMsg {
     /// Claim the number of batches specified starting from the beginning. If not
     /// specified then the max will be claimed.
     Claim {
-        number_of_claims: Option<u32>,
+        number_of_claims: Option<u64>,
         batch_id: String,
     },
     /// Claims tokens from all batches using a paginated approach. If `up_to_time`
@@ -34,9 +34,9 @@ pub enum ExecuteMsg {
     /// Creates a new batch
     CreateBatch {
         /// Specifying None would mean no lock up period and funds start vesting right away.
-        lockup_duration: Option<Duration>,
-        /// How often releases occur.
-        release_unit: Duration,
+        lockup_duration: Option<u64>,
+        /// How often releases occur in seconds.
+        release_unit: u64,
         /// Specifies how much is to be released after each `release_unit`. If
         /// it is a percentage, it would be the percentage of the original amount.
         release_amount: WithdrawalType,
