@@ -68,10 +68,10 @@ jobs:
       - uses: actions/checkout@v2
         with:
           required-permission: write
-#      - name: Build Schema
-#       run: |
-#         chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
-#         "${GITHUB_WORKSPACE}/build_schema.sh"
+      - name: Build Schema
+       run: |
+         chmod +x "${GITHUB_WORKSPACE}/build_schema.sh"
+         "${GITHUB_WORKSPACE}/build_schema.sh"
       - name: Build
         run: |
           chmod +x "${GITHUB_WORKSPACE}/build.sh"
