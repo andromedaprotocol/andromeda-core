@@ -12,24 +12,12 @@ backtraces = ["cosmwasm-std/backtraces"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = { version = "0.16.0" }
-serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-schemars = "0.8.3"
+cosmwasm-std = { version = "0.16.7" }
 cw721 = "0.9.1"
-cw-storage-plus = "0.9.1"
-terra-cosmwasm = { version = "2.2.0" }
-thiserror = { version = "1.0.21" }
-mirror-protocol = "2.1.1"
-astroport = "1.0.1"
 cw20 = { version = "0.9.1" }
-cw0 = "0.9.1"
-cw20-base = { version = "0.9.1", features=["library"]}
-cw721-base = { version = "0.9.1", features=["library"]}
-cosmwasm-bignumber = "2.2.0"
+terra-cosmwasm = { version = "2.2.0" }
 
 common = { path = "../common", version = "0.1.0" }
-cw-asset = { version = "1.0.2" }
-
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../andromeda-non-fungible-tokens" }
 andromeda-app = { version = "0.1.0", path = "../andromeda-app" }
 andromeda-modules = { version = "0.1.0", path = "../andromeda-modules" }
