@@ -1,14 +1,17 @@
 use common::{ado_base::recipient::Recipient, withdraw::WithdrawalType};
 use cosmwasm_std::Uint128;
+use cw0::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     /// The recipient of all funds locked in this contract.
-    recipient: Recipient,
+    pub recipient: Recipient,
     /// Whether or not multi-batching has been enabled.
-    is_multi_batch_enabled: bool,
+    pub is_multi_batch_enabled: bool,
+    /// The denom of the coin being vested.
+    pub denom: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -31,9 +34,9 @@ pub enum ExecuteMsg {
     /// Creates a new batch
     CreateBatch {
         /// Specifying None would mean no lock up period and funds start vesting right away.
-        lockup_end: Option<u64>,
+        lockup_duration: Option<Duration>,
         /// How often releases occur.
-        release_unit: u64,
+        release_unit: Duration,
         /// Specifies how much is to be released after each `release_unit`. If
         /// it is a percentage, it would be the percentage of the original amount.
         release_amount: WithdrawalType,

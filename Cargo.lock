@@ -530,6 +530,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
  "cw2",
  "schemars",
  "serde",
