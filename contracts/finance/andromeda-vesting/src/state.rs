@@ -1,7 +1,7 @@
 use common::{ado_base::recipient::Recipient, error::ContractError, withdraw::WithdrawalType};
-use cosmwasm_std::{Storage, Uint128};
-use cw0::{Duration, Expiration};
-use cw_storage_plus::{Item, Map};
+use cosmwasm_std::{Order, Storage, Uint128};
+use cw0::Expiration;
+use cw_storage_plus::{Bound, Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -50,4 +50,23 @@ pub(crate) fn save_new_batch(storage: &mut dyn Storage, batch: Batch) -> Result<
     NEXT_ID.save(storage, &(next_id + Uint128::new(1)))?;
 
     Ok(())
+}
+
+const DEFAULT_LIMIT: u32 = 10;
+const MAX_LIMIT: u32 = 30;
+pub(crate) fn get_batch_ids(
+    storage: &dyn Storage,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<String>, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let batch_ids: Result<Vec<String>, ContractError> = BATCHES
+        .keys(storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|k| Ok(String::from_utf8(k)?))
+        .collect();
+
+    batch_ids
 }
