@@ -369,6 +369,9 @@ pub enum ContractError {
 
     #[error("Multi-batch not supported")]
     MultiBatchNotSupported {},
+
+    #[error("Unexpected number of bytes. Expected: {expected}, actual: {actual}")]
+    UnexpectedNumberOfBytes { expected: u8, actual: usize },
 }
 
 impl From<Cw20ContractError> for ContractError {

@@ -697,7 +697,7 @@ fn test_claim_batch_too_high_of_claim() {
         Response::new()
             .add_message(BankMsg::Send {
                 to_address: "recipient".to_string(),
-                // Only one gets claimed
+                // Only one gets claim
                 amount: coins(10, "uusd")
             })
             .add_attribute("action", "claim")

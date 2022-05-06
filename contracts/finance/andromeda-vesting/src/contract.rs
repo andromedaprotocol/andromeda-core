@@ -15,7 +15,9 @@ use common::{
     withdraw::WithdrawalType,
 };
 
-use crate::state::{batches, get_claimable_batch_ids, save_new_batch, Batch, Config, CONFIG};
+use crate::state::{
+    batches, get_claimable_batch_ids, key_to_int, save_new_batch, Batch, Config, CONFIG,
+};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -221,11 +223,11 @@ fn execute_claim_all(
     let up_to_time = cmp::min(current_time, up_to_time.unwrap_or(current_time));
 
     let mut total_amount_to_send = Uint128::zero();
-    /*let last_batch_id = if !batch_ids.is_empty() {
-        batch_ids.last().unwrap()
+    let last_batch_id = if !batch_ids.is_empty() {
+        key_to_int(batch_ids.last().unwrap())?.to_string()
     } else {
-        "none"
-    };*/
+        "none".to_string()
+    };
     for batch_id in batch_ids {
         let key = batches().key(batch_id);
         let mut batch = key.load(deps.storage)?;
@@ -252,8 +254,8 @@ fn execute_claim_all(
     }
     Ok(Response::new()
         .add_submessages(msgs)
-        .add_attribute("action", "claim_all"))
-    //.add_attribute("last_batch_id_processed", last_batch_id))
+        .add_attribute("action", "claim_all")
+        .add_attribute("last_batch_id_processed", last_batch_id))
 }
 
 fn claim_batch(

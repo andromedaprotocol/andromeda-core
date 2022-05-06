@@ -114,8 +114,90 @@ pub(crate) fn get_claimable_batch_ids(
         .sub_prefix(0u8.into())
         .keys(storage, start, Some(bound), Order::Ascending)
         .take(limit)
-        .map(|k| U64Key::from(k))
+        // Since we are iterating over a joined key and a u64 only needs 8 bytes to represent it,
+        // we can obtain it like so. The need for 8 bytes comes from a byte containing 8 bits and
+        // since we need 64 bits of info, we need 8 bytes (8 * 8 == 64).
+        .map(|k| U64Key::from(k[k.len() - 8..].to_vec()))
         .collect();
 
     Ok(batch_ids)
+}
+
+pub(crate) fn key_to_int(key: &U64Key) -> Result<u64, ContractError> {
+    require(
+        key.wrapped.len() == 8,
+        ContractError::UnexpectedNumberOfBytes {
+            expected: 8u8,
+            actual: key.wrapped.len(),
+        },
+    )?;
+    let bytes = &key.wrapped;
+    let int = u64::from_be_bytes([
+        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+    ]);
+
+    Ok(int)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+
+    #[test]
+    fn test_get_claimable_batches() {
+        let current_time = mock_env().block.time.seconds();
+
+        let locked_batch = Batch {
+            amount: Uint128::new(100),
+            amount_claimed: Uint128::zero(),
+            lockup_end: current_time + 10,
+            release_unit: 10,
+            release_amount: WithdrawalType::Amount(Uint128::new(10)),
+            last_claimed_release_time: current_time - 1,
+        };
+
+        let unlocked_batch = Batch {
+            amount: Uint128::new(100),
+            amount_claimed: Uint128::zero(),
+            lockup_end: current_time - 1,
+            release_unit: 10,
+            release_amount: WithdrawalType::Amount(Uint128::new(10)),
+            last_claimed_release_time: current_time - 1,
+        };
+
+        let unlocked_but_empty_batch = Batch {
+            amount: Uint128::new(100),
+            amount_claimed: Uint128::new(100),
+            lockup_end: current_time - 1,
+            release_unit: 10,
+            release_amount: WithdrawalType::Amount(Uint128::new(10)),
+            last_claimed_release_time: current_time - 1,
+        };
+
+        let mut deps = mock_dependencies(&[]);
+
+        batches()
+            .save(deps.as_mut().storage, U64Key::new(1), &locked_batch)
+            .unwrap();
+
+        batches()
+            .save(deps.as_mut().storage, U64Key::new(2), &unlocked_batch)
+            .unwrap();
+
+        batches()
+            .save(
+                deps.as_mut().storage,
+                U64Key::new(3),
+                &unlocked_but_empty_batch,
+            )
+            .unwrap();
+
+        let batch_ids =
+            get_claimable_batch_ids(deps.as_ref().storage, current_time, None, None).unwrap();
+
+        // Only the unlocked batch is returned since the other two are invalid in the sense of
+        // withdrawing.
+        assert_eq!(vec![U64Key::new(2)], batch_ids);
+    }
 }
