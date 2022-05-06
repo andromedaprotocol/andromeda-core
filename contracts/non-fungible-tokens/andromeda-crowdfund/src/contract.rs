@@ -82,10 +82,16 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    // Do this before the hooks get fired off to ensure that there is no conflict with the mission
-    // contract not being whitelisted.
+    // Do this before the hooks get fired off to ensure that there are no errors from the mission
+    // address not being fully setup yet.
     if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
-        return contract.execute_update_mission_contract(deps, env, info, address);
+        let config = CONFIG.load(deps.storage)?;
+        return contract.execute_update_mission_contract(
+            deps,
+            info,
+            address,
+            Some(vec![config.token_address]),
+        );
     };
 
     contract.module_hook::<Response>(
@@ -99,7 +105,7 @@ pub fn execute(
     )?;
 
     match msg {
-        ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::Mint(mint_msgs) => execute_mint(deps, env, info, mint_msgs),
         ExecuteMsg::StartSale {
             expiration,
@@ -125,22 +131,6 @@ pub fn execute(
         }
         ExecuteMsg::ClaimRefund {} => execute_claim_refund(deps, env, info),
         ExecuteMsg::EndSale { limit } => execute_end_sale(deps, env, limit),
-    }
-}
-
-fn execute_andr_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: AndromedaMsg,
-) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    match msg {
-        AndromedaMsg::ValidateAndrAddresses {} => {
-            let config = CONFIG.load(deps.storage)?;
-            contract.validate_andr_addresses(deps.as_ref(), env, info, vec![&config.token_address])
-        }
-        _ => contract.execute(deps, env, info, msg, execute),
     }
 }
 

@@ -28,7 +28,7 @@ cw721 = "0.9.1"
 cw2 = "0.9.1"
 
 andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
-ado-base = { path = "../../../packages/ado_base", version = "0.1.0" }
+ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 
 [dev-dependencies]

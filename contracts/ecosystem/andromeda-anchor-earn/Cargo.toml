@@ -33,7 +33,7 @@ moneymarket = "0.3.0"
 
 andromeda-ecosystem = { version = "0.1.0", path = "../../../packages/andromeda-ecosystem" }
 common = { version = "0.1.0", path = "../../../packages/common" }
-ado-base = { path = "../../../packages/ado_base", version = "0.1.0", features = ["primitive"] }
+ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["primitive"] }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16.0" }

@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "State",
+  "type": "object",
+  "required": [
+    "max_amount_per_wallet",
+    "price",
+    "recipient"
+  ],
+  "properties": {
+    "max_amount_per_wallet": {
+      "description": "The max number of tokens allowed per wallet.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
+    },
+    "price": {
+      "description": "The price of each token.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Coin"
+        }
+      ]
+    },
+    "recipient": {
+      "description": "The recipient of the funds upon a sale. Most likely the contract, but could also be the splitter contract for example.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Recipient"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "ADORecipient": {
+      "description": "ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message",
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "description": "Addr can also be a human-readable identifier used in a mission contract.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AndrAddress"
+            }
+          ]
+        },
+        "msg": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "AndrAddress": {
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "Can be either an address or identifier of an ADO in a mission.",
+          "type": "string"
+        }
+      }
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
+    "Recipient": {
+      "oneOf": [
+        {
+          "description": "An address that is not another ADO. It is assumed that it is a valid address.",
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "a_d_o"
+          ],
+          "properties": {
+            "a_d_o": {
+              "$ref": "#/definitions/ADORecipient"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Uint128": {
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+      "type": "string"
+    }
+  }
+}

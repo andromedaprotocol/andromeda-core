@@ -17,7 +17,7 @@ cw721 = "0.9.1"
 
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-non-fungible-tokens" }
 common = { version = "0.1.0", path = "../../../packages/common" }
-ado-base = { path = "../../../packages/ado_base", version = "0.1.0"}
+ado-base = { path = "../../../packages/ado-base", version = "0.1.0"}
 
 [dev-dependencies]
 terra-cosmwasm = { version = "2.2.0" }

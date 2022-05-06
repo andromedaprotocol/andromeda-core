@@ -5,7 +5,6 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 
-use ado_base::ADOContract;
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
@@ -25,9 +24,8 @@ use andromeda_non_fungible_tokens::{
     cw721_offers::ExecuteMsg as OffersExecuteMsg,
 };
 use andromeda_testing::testing::mock_querier::{
-    bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_MISSION_CONTRACT,
-    MOCK_OFFERS_CONTRACT, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT,
-    MOCK_RECEIPT_CONTRACT,
+    bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
+    MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
 };
 use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw721_base::MintMsg;
@@ -810,85 +808,118 @@ fn test_transfer_with_offer() {
 }
 
 #[test]
-fn test_validate_andr_addresses_existing() {
+fn test_update_mission_contract() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        symbol: SYMBOL.to_owned(),
-        name: NAME.to_owned(),
-        minter: AndrAddress {
-            identifier: "e".to_owned(),
+
+    let modules: Vec<Module> = vec![
+        Module {
+            module_type: ADDRESS_LIST.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+            },
+            is_mutable: false,
         },
-        modules: None,
+        Module {
+            module_type: RATES.to_owned(),
+            address: AndrAddress {
+                identifier: "b".to_owned(),
+            },
+            is_mutable: false,
+        },
+    ];
+
+    let info = mock_info("mission_contract", &[]);
+    let inst_msg = InstantiateMsg {
+        name: NAME.to_string(),
+        symbol: SYMBOL.to_string(),
+        minter: AndrAddress {
+            identifier: "e".to_string(),
+        },
+        modules: Some(modules),
     };
 
-    let info = mock_info("owner", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
 
-    ADOContract::default()
-        .execute_update_mission_contract(
-            deps.as_mut(),
-            mock_env(),
-            info,
-            MOCK_MISSION_CONTRACT.to_owned(),
-        )
-        .unwrap();
-
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::ValidateAndrAddresses {});
-    let info = mock_info(mock_env().contract.address.as_str(), &[]);
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
+        address: "mission_contract".to_string(),
+    });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(Response::new(), res);
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "update_mission_contract")
+            .add_attribute("address", "mission_contract"),
+        res
+    );
 }
 
 #[test]
-fn test_validate_andr_addresses_nonexisting() {
+fn test_update_mission_contract_invalid_minter() {
     let mut deps = mock_dependencies_custom(&[]);
-    let msg = InstantiateMsg {
-        symbol: SYMBOL.to_owned(),
-        name: NAME.to_owned(),
-        minter: AndrAddress {
-            identifier: "b".to_owned(),
+
+    let modules: Vec<Module> = vec![
+        Module {
+            module_type: ADDRESS_LIST.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+            },
+            is_mutable: false,
         },
-        modules: None,
+        Module {
+            module_type: RATES.to_owned(),
+            address: AndrAddress {
+                identifier: "b".to_owned(),
+            },
+            is_mutable: false,
+        },
+    ];
+
+    let info = mock_info("mission_contract", &[]);
+    let inst_msg = InstantiateMsg {
+        name: NAME.to_string(),
+        symbol: SYMBOL.to_string(),
+        minter: AndrAddress {
+            identifier: "k".to_string(),
+        },
+        modules: Some(modules),
     };
 
-    let info = mock_info("owner", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
 
-    ADOContract::default()
-        .execute_update_mission_contract(
-            deps.as_mut(),
-            mock_env(),
-            info,
-            MOCK_MISSION_CONTRACT.to_owned(),
-        )
-        .unwrap();
-
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::ValidateAndrAddresses {});
-    let info = mock_info(mock_env().contract.address.as_str(), &[]);
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
+        address: "mission_contract".to_string(),
+    });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
-
     assert_eq!(
         ContractError::InvalidComponent {
-            name: "b".to_string()
+            name: "k".to_string()
         },
         res.unwrap_err()
     );
 }
 
 #[test]
-fn test_update_mission_contract() {
+fn test_update_mission_contract_invalid_module() {
     let mut deps = mock_dependencies_custom(&[]);
 
-    let modules: Vec<Module> = vec![Module {
-        module_type: ADDRESS_LIST.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+    let modules: Vec<Module> = vec![
+        Module {
+            module_type: ADDRESS_LIST.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+            },
+            is_mutable: false,
         },
-        is_mutable: false,
-    }];
+        Module {
+            module_type: RATES.to_owned(),
+            address: AndrAddress {
+                identifier: "k".to_owned(),
+            },
+            is_mutable: false,
+        },
+    ];
 
     let info = mock_info("mission_contract", &[]);
     let inst_msg = InstantiateMsg {
@@ -906,20 +937,11 @@ fn test_update_mission_contract() {
         address: "mission_contract".to_string(),
     });
 
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
-        Response::new()
-            .add_message(WasmMsg::Execute {
-                contract_addr: mock_env().contract.address.to_string(),
-                funds: vec![],
-                msg: to_binary(&ExecuteMsg::AndrReceive(
-                    AndromedaMsg::ValidateAndrAddresses {}
-                ))
-                .unwrap()
-            })
-            .add_attribute("action", "update_mission_contract")
-            .add_attribute("address", "mission_contract"),
-        res
+        ContractError::InvalidComponent {
+            name: "k".to_string()
+        },
+        res.unwrap_err()
     );
 }
