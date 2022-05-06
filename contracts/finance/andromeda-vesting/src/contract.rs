@@ -15,7 +15,7 @@ use common::{
     withdraw::WithdrawalType,
 };
 
-use crate::state::{get_batch_ids, save_new_batch, Batch, Config, BATCHES, CONFIG};
+use crate::state::{batches, get_claimable_batch_ids, save_new_batch, Batch, Config, CONFIG};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -99,6 +99,7 @@ fn execute_create_batch(
     )?;
 
     let config = CONFIG.load(deps.storage)?;
+    let current_time = env.block.time.seconds();
 
     require(
         info.funds.len() == 1,
@@ -125,10 +126,10 @@ fn execute_create_batch(
 
     require(release_unit > 0, ContractError::InvalidZeroAmount {})?;
 
-    let (lockup_end, last_claim_time) = if let Some(duration) = lockup_duration {
-        (Duration::Time(duration).after(&env.block), duration)
+    let lockup_end = if let Some(duration) = lockup_duration {
+        current_time + duration
     } else {
-        (Expiration::AtTime(env.block.time), env.block.time.seconds())
+        current_time
     };
 
     let release_amount_string = format!("{:?}", release_amount);
@@ -139,7 +140,7 @@ fn execute_create_batch(
         lockup_end,
         release_unit,
         release_amount,
-        last_claim_time,
+        last_claim_time: lockup_end,
     };
 
     save_new_batch(deps.storage, batch)?;
@@ -157,7 +158,7 @@ fn execute_claim(
     env: Env,
     info: MessageInfo,
     number_of_claims: Option<u64>,
-    batch_id: String,
+    batch_id: u64,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     // Should this be owner or recipient?
@@ -167,11 +168,10 @@ fn execute_claim(
     )?;
 
     // If it doesn't exist, error will be returned to user.
-    let mut batch = BATCHES.load(deps.storage, &batch_id)?;
-
+    let key = batches().key(batch_id.into());
+    let mut batch = key.load(deps.storage)?;
     let amount_to_send = claim_batch(deps.storage, &env.block, &mut batch, number_of_claims)?;
-
-    BATCHES.save(deps.storage, &batch_id, &batch)?;
+    key.save(deps.storage, &batch)?;
 
     let config = CONFIG.load(deps.storage)?;
     let mission_contract = contract.get_mission_contract(deps.storage)?;
@@ -186,7 +186,7 @@ fn execute_claim(
         .add_submessage(withdraw_msg)
         .add_attribute("action", "claim")
         .add_attribute("amount", amount_to_send)
-        .add_attribute("batch_id", batch_id)
+        .add_attribute("batch_id", batch_id.to_string())
         .add_attribute("amount_left", batch.amount - batch.amount_claimed))
 }
 
@@ -194,7 +194,7 @@ fn execute_claim_all(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    start_after: Option<String>,
+    start_after: Option<u64>,
     limit: Option<u32>,
     up_to_time: Option<u64>,
 ) -> Result<Response, ContractError> {
@@ -205,18 +205,19 @@ fn execute_claim_all(
         ContractError::Unauthorized {},
     )?;
 
-    let batch_ids = get_batch_ids(deps.storage, start_after, limit)?;
     let current_time = env.block.time.seconds();
+    let batch_ids = get_claimable_batch_ids(deps.storage, current_time, start_after, limit)?;
     let up_to_time = cmp::min(current_time, up_to_time.unwrap_or(current_time));
 
     let mut total_amount_to_send = Uint128::zero();
-    let last_batch_id = if !batch_ids.is_empty() {
+    /*let last_batch_id = if !batch_ids.is_empty() {
         batch_ids.last().unwrap()
     } else {
         "none"
-    };
+    };*/
     for batch_id in batch_ids {
-        let mut batch = BATCHES.load(deps.storage, &batch_id)?;
+        let key = batches().key(batch_id);
+        let mut batch = key.load(deps.storage)?;
 
         let elapsed_time = up_to_time - batch.last_claim_time;
         let num_available_claims = elapsed_time / batch.release_unit;
@@ -230,7 +231,7 @@ fn execute_claim_all(
 
         total_amount_to_send += amount_to_send;
 
-        BATCHES.save(deps.storage, &batch_id, &batch)?;
+        key.save(deps.storage, &batch)?;
     }
     let mut msgs = vec![];
     if !total_amount_to_send.is_zero() {
@@ -245,8 +246,8 @@ fn execute_claim_all(
     }
     Ok(Response::new()
         .add_submessages(msgs)
-        .add_attribute("action", "claim_all")
-        .add_attribute("last_batch_id_processed", last_batch_id))
+        .add_attribute("action", "claim_all"))
+    //.add_attribute("last_batch_id_processed", last_batch_id))
 }
 
 fn claim_batch(
@@ -255,12 +256,12 @@ fn claim_batch(
     batch: &mut Batch,
     number_of_claims: Option<u64>,
 ) -> Result<Uint128, ContractError> {
+    let current_time = block.time.seconds();
     require(
-        batch.lockup_end.is_expired(block),
+        batch.lockup_end >= current_time,
         ContractError::FundsAreLocked {},
     )?;
 
-    let current_time = block.time.seconds();
     let elapsed_time = current_time - batch.last_claim_time;
     let num_available_claims = elapsed_time / batch.release_unit;
 
