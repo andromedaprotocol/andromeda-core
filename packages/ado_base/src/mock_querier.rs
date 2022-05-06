@@ -9,11 +9,20 @@ use cosmwasm_std::{
     SystemError, SystemResult, WasmQuery,
 };
 use cw20::{BalanceResponse, Cw20QueryMsg};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_MISSION_CONTRACT: &str = "mission_contract";
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+enum MissionQuery {
+    AndrQuery(AndromedaQuery),
+    ComponentExists { name: String },
+}
 
 pub struct WasmMockQuerier {
     pub base: MockQuerier<TerraQueryWrapper>,
@@ -98,8 +107,12 @@ impl WasmMockQuerier {
 
     fn handle_mission_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            QueryMsg::AndrQuery(AndromedaQuery::Get(_)) => {
+            MissionQuery::AndrQuery(AndromedaQuery::Get(_)) => {
                 SystemResult::Ok(ContractResult::Ok(to_binary(&"actual_address").unwrap()))
+            }
+            MissionQuery::ComponentExists { name } => {
+                let value = name == "a";
+                SystemResult::Ok(ContractResult::Ok(to_binary(&value).unwrap()))
             }
             _ => SystemResult::Ok(ContractResult::Err("Error".to_string())),
         }

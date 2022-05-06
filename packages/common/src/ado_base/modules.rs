@@ -48,7 +48,10 @@ impl Module {
     /// Validates `self` by checking that it is unique, does not conflict with any other module,
     /// and does not conflict with the creating ADO.
     pub fn validate(&self, modules: &[Module], ado_type: &str) -> Result<(), ContractError> {
-        require(self.is_unique(modules), ContractError::ModuleNotUnique {})?;
+        // We allow multiple rates modules.
+        if self.module_type != RATES {
+            require(self.is_unique(modules), ContractError::ModuleNotUnique {})?;
+        }
 
         if ado_type == "cw20" && contains_module(modules, AUCTION) {
             return Err(ContractError::IncompatibleModules {
@@ -157,8 +160,9 @@ mod tests {
             is_mutable: false,
         };
 
-        let res = module.validate(&[module.clone(), module.clone()], "cw721");
-        assert_eq!(ContractError::ModuleNotUnique {}, res.unwrap_err());
+        module
+            .validate(&[module.clone(), module.clone()], "cw721")
+            .unwrap();
 
         let other_module = Module {
             module_type: ADDRESS_LIST.to_owned(),
