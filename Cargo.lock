@@ -294,6 +294,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-gumball"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-non-fungible-tokens",
+ "base64",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "cw2",
+ "cw721",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "terrand",
+]
+
+[[package]]
 name = "andromeda-lockdrop"
 version = "1.0.0"
 dependencies = [
@@ -536,26 +556,6 @@ dependencies = [
  "schemars",
  "serde",
  "terra-cosmwasm",
-]
-
-[[package]]
-name = "andromeda_gumball"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "base64",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.9.1",
- "cw0 0.9.1",
- "cw2",
- "cw721",
- "schemars",
- "serde",
- "terra-cosmwasm",
- "terrand",
 ]
 
 [[package]]
