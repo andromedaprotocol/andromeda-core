@@ -2,10 +2,9 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-    Storage, Timestamp, Uint128,
+    Storage, Uint128,
 };
 
-use cw0::{Duration, Expiration};
 use std::cmp;
 
 use ado_base::ADOContract;
@@ -91,7 +90,7 @@ fn execute_create_batch(
     lockup_duration: Option<u64>,
     release_unit: u64,
     release_amount: WithdrawalType,
-    stake: bool,
+    _stake: bool,
 ) -> Result<Response, ContractError> {
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
@@ -108,7 +107,7 @@ fn execute_create_batch(
         },
     )?;
 
-    let funds = info.funds[0];
+    let funds = &info.funds[0];
 
     require(
         funds.denom == config.denom,
@@ -170,7 +169,7 @@ fn execute_claim(
     // If it doesn't exist, error will be returned to user.
     let key = batches().key(batch_id.into());
     let mut batch = key.load(deps.storage)?;
-    let amount_to_send = claim_batch(deps.storage, &env.block, &mut batch, number_of_claims)?;
+    let amount_to_send = claim_batch(&env.block, &mut batch, number_of_claims)?;
     key.save(deps.storage, &batch)?;
 
     let config = CONFIG.load(deps.storage)?;
@@ -222,12 +221,7 @@ fn execute_claim_all(
         let elapsed_time = up_to_time - batch.last_claim_time;
         let num_available_claims = elapsed_time / batch.release_unit;
 
-        let amount_to_send = claim_batch(
-            deps.storage,
-            &env.block,
-            &mut batch,
-            Some(num_available_claims),
-        )?;
+        let amount_to_send = claim_batch(&env.block, &mut batch, Some(num_available_claims))?;
 
         total_amount_to_send += amount_to_send;
 
@@ -251,7 +245,6 @@ fn execute_claim_all(
 }
 
 fn claim_batch(
-    storage: &mut dyn Storage,
     block: &BlockInfo,
     batch: &mut Batch,
     number_of_claims: Option<u64>,

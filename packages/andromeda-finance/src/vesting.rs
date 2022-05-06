@@ -21,14 +21,14 @@ pub enum ExecuteMsg {
     /// specified then the max will be claimed.
     Claim {
         number_of_claims: Option<u64>,
-        batch_id: String,
+        batch_id: u64,
     },
     /// Claims tokens from all batches using a paginated approach. If `up_to_time`
     /// is specified then it will only claim up to a specific time, otherwise it
     /// it will claim to the most recent release.
     ClaimAll {
         up_to_time: Option<u64>,
-        start_after: Option<String>,
+        start_after: Option<u64>,
         limit: Option<u32>,
     },
     /// Creates a new batch
