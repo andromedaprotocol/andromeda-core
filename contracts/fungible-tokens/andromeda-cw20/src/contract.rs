@@ -59,10 +59,10 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    // Do this before the hooks get fired off to ensure that there is no conflict with the mission
-    // contract not being whitelisted.
+    // Do this before the hooks get fired off to ensure that there are no errors from the mission
+    // address not being fully setup yet.
     if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
-        return contract.execute_update_mission_contract(deps, env, info, address);
+        return contract.execute_update_mission_contract(deps, info, address, None);
     };
 
     contract.module_hook::<Response>(
@@ -74,6 +74,7 @@ pub fn execute(
             payload: to_binary(&msg)?,
         },
     )?;
+
     match msg {
         ExecuteMsg::Transfer { recipient, amount } => {
             execute_transfer(deps, env, info, recipient, amount)

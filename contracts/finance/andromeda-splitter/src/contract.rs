@@ -60,7 +60,7 @@ pub fn execute(
     // Do this before the hooks get fired off to ensure that there is no conflict with the mission
     // contract not being whitelisted.
     if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
-        return contract.execute_update_mission_contract(deps, env, info, address);
+        return contract.execute_update_mission_contract(deps, info, address, None);
     };
 
     contract.module_hook::<Response>(

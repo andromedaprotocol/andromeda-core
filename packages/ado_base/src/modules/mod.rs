@@ -92,7 +92,7 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Loads all registered modules in Vector form
-    fn load_modules(&self, storage: &dyn Storage) -> Result<Vec<Module>, ContractError> {
+    pub(crate) fn load_modules(&self, storage: &dyn Storage) -> Result<Vec<Module>, ContractError> {
         let module_idx = self.module_idx.may_load(storage)?.unwrap_or(1);
         let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
         let modules: Vec<Module> = self

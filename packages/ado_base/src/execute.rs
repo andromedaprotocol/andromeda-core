@@ -1,11 +1,13 @@
 use crate::ADOContract;
 use common::{
-    ado_base::{AndromedaMsg, ExecuteMsg, InstantiateMsg},
-    encode_binary,
+    ado_base::{modules::Module, AndromedaMsg, ExecuteMsg, InstantiateMsg},
     error::ContractError,
+    mission::AndrAddress,
     parse_message, require,
 };
-use cosmwasm_std::{attr, Api, DepsMut, Env, MessageInfo, Order, Response, Storage, WasmMsg};
+use cosmwasm_std::{
+    attr, Api, DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, Storage,
+};
 use serde::de::DeserializeOwned;
 
 type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
@@ -62,10 +64,7 @@ impl<'a> ADOContract<'a> {
                 self.execute_update_operators(deps, info, operators)
             }
             AndromedaMsg::UpdateMissionContract { address } => {
-                self.execute_update_mission_contract(deps, env, info, address)
-            }
-            AndromedaMsg::ValidateAndrAddresses {} => {
-                self.validate_andr_addresses(deps.as_ref(), env, info, vec![])
+                self.execute_update_mission_contract(deps, info, address, None)
             }
             #[cfg(feature = "withdraw")]
             AndromedaMsg::Withdraw {
@@ -74,6 +73,7 @@ impl<'a> ADOContract<'a> {
             } => self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
             #[cfg(feature = "modules")]
             AndromedaMsg::RegisterModule { module } => {
+                self.validate_module_address(deps.storage, deps.api, &deps.querier, &module)?;
                 self.execute_register_module(deps.storage, info.sender.as_str(), module, true)
             }
             #[cfg(feature = "modules")]
@@ -82,6 +82,7 @@ impl<'a> ADOContract<'a> {
             }
             #[cfg(feature = "modules")]
             AndromedaMsg::AlterModule { module_idx, module } => {
+                self.validate_module_address(deps.storage, deps.api, &deps.querier, &module)?;
                 self.execute_alter_module(deps, info, module_idx, module)
             }
             #[cfg(feature = "primitive")]
@@ -94,6 +95,25 @@ impl<'a> ADOContract<'a> {
             }
             _ => Err(ContractError::UnsupportedOperation {}),
         }
+    }
+
+    #[cfg(feature = "modules")]
+    fn validate_module_address(
+        &self,
+        storage: &dyn Storage,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        module: &Module,
+    ) -> Result<(), ContractError> {
+        if let Some(mission_contract) = self.get_mission_contract(storage)? {
+            self.validate_andr_address(
+                api,
+                querier,
+                module.address.identifier.to_owned(),
+                mission_contract,
+            )?;
+        }
+        Ok(())
     }
 }
 
@@ -148,9 +168,9 @@ impl<'a> ADOContract<'a> {
     pub fn execute_update_mission_contract(
         &self,
         deps: DepsMut,
-        env: Env,
         info: MessageInfo,
         address: String,
+        addresses: Option<Vec<AndrAddress>>,
     ) -> Result<Response, ContractError> {
         require(
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -158,16 +178,8 @@ impl<'a> ADOContract<'a> {
         )?;
         self.mission_contract
             .save(deps.storage, &deps.api.addr_validate(&address)?)?;
+        self.validate_andr_addresses(deps.as_ref(), addresses.unwrap_or_default())?;
         Ok(Response::new()
-            // Now that the mission contract is linked up we can validated any AndrAddress
-            // instances.
-            .add_message(WasmMsg::Execute {
-                contract_addr: env.contract.address.to_string(),
-                funds: vec![],
-                msg: encode_binary(&ExecuteMsg::AndrReceive(
-                    AndromedaMsg::ValidateAndrAddresses {},
-                ))?,
-            })
             .add_attribute("action", "update_mission_contract")
             .add_attribute("address", address))
     }
@@ -176,7 +188,12 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use crate::mock_querier::{mock_dependencies_custom, MOCK_MISSION_CONTRACT};
+    use common::ado_base::modules::Module;
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env, mock_info},
+        Addr, Uint64,
+    };
 
     fn dummy_function(
         _deps: DepsMut,
@@ -185,6 +202,107 @@ mod tests {
         _msg: AndromedaMsg,
     ) -> Result<Response, ContractError> {
         Ok(Response::new())
+    }
+
+    #[test]
+    fn test_register_module_invalid_identifier() {
+        let contract = ADOContract::default();
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let info = mock_info("owner", &[]);
+        let deps_mut = deps.as_mut();
+        contract
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                info.clone(),
+                InstantiateMsg {
+                    ado_type: "type".to_string(),
+                    modules: None,
+                    primitive_contract: None,
+                    operators: None,
+                },
+            )
+            .unwrap();
+
+        contract
+            .mission_contract
+            .save(deps_mut.storage, &Addr::unchecked(MOCK_MISSION_CONTRACT))
+            .unwrap();
+
+        let module = Module {
+            module_type: "module".to_owned(),
+            address: AndrAddress {
+                identifier: "z".to_string(),
+            },
+            is_mutable: false,
+        };
+
+        let msg = AndromedaMsg::RegisterModule { module };
+
+        let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
+
+        assert_eq!(
+            ContractError::InvalidComponent {
+                name: "z".to_string()
+            },
+            res.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn test_alter_module_invalid_identifier() {
+        let contract = ADOContract::default();
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let info = mock_info("owner", &[]);
+        let deps_mut = deps.as_mut();
+        contract
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                info.clone(),
+                InstantiateMsg {
+                    ado_type: "type".to_string(),
+                    modules: Some(vec![Module {
+                        module_type: "module".to_owned(),
+                        address: AndrAddress {
+                            identifier: "terra1...".to_string(),
+                        },
+                        is_mutable: true,
+                    }]),
+                    primitive_contract: None,
+                    operators: None,
+                },
+            )
+            .unwrap();
+
+        contract
+            .mission_contract
+            .save(deps_mut.storage, &Addr::unchecked(MOCK_MISSION_CONTRACT))
+            .unwrap();
+
+        let module = Module {
+            module_type: "module".to_owned(),
+            address: AndrAddress {
+                identifier: "z".to_string(),
+            },
+            is_mutable: false,
+        };
+
+        let msg = AndromedaMsg::AlterModule {
+            module_idx: Uint64::new(1),
+            module,
+        };
+
+        let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
+
+        assert_eq!(
+            ContractError::InvalidComponent {
+                name: "z".to_string()
+            },
+            res.unwrap_err()
+        );
     }
 
     #[test]
@@ -220,17 +338,50 @@ mod tests {
 
         assert_eq!(
             Response::new()
-                .add_message(WasmMsg::Execute {
-                    contract_addr: mock_env().contract.address.to_string(),
-                    funds: vec![],
-                    msg: encode_binary(&ExecuteMsg::AndrReceive(
-                        AndromedaMsg::ValidateAndrAddresses {},
-                    ))
-                    .unwrap(),
-                })
                 .add_attribute("action", "update_mission_contract")
                 .add_attribute("address", address),
             res
+        );
+    }
+
+    #[test]
+    fn test_update_mission_contract_invalid_module() {
+        let contract = ADOContract::default();
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let info = mock_info("owner", &[]);
+        let deps_mut = deps.as_mut();
+        contract
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                info.clone(),
+                InstantiateMsg {
+                    ado_type: "type".to_string(),
+                    modules: Some(vec![Module {
+                        module_type: "address_list".to_string(),
+                        is_mutable: true,
+                        address: AndrAddress {
+                            identifier: "z".to_string(),
+                        },
+                    }]),
+                    primitive_contract: None,
+                    operators: None,
+                },
+            )
+            .unwrap();
+
+        let msg = AndromedaMsg::UpdateMissionContract {
+            address: MOCK_MISSION_CONTRACT.to_owned(),
+        };
+
+        let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
+
+        assert_eq!(
+            ContractError::InvalidComponent {
+                name: "z".to_string()
+            },
+            res.unwrap_err()
         );
     }
 }

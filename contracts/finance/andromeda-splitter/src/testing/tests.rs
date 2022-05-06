@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
-    to_binary, BankMsg, Decimal, Response, StdError, WasmMsg,
+    BankMsg, Decimal, Response, StdError,
 };
 
 use crate::contract::{execute, instantiate};
@@ -99,14 +99,6 @@ fn test_update_mission_contract() {
 
     assert_eq!(
         Response::new()
-            .add_message(WasmMsg::Execute {
-                contract_addr: mock_env().contract.address.to_string(),
-                funds: vec![],
-                msg: to_binary(&ExecuteMsg::AndrReceive(
-                    AndromedaMsg::ValidateAndrAddresses {}
-                ))
-                .unwrap()
-            })
             .add_attribute("action", "update_mission_contract")
             .add_attribute("address", "mission_contract"),
         res
