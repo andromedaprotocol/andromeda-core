@@ -73,12 +73,6 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct PositionResponse {
-    pub recipient: Recipient,
-    pub aust_amount: Uint128,
-}
-
 /* Begin BLunaHub enums and structs */
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

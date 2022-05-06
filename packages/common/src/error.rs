@@ -19,6 +19,9 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("PriceNotSet")]
+    PriceNotSet {},
+
     #[error("InvalidPrimitive")]
     InvalidPrimitive {},
 
@@ -27,6 +30,12 @@ pub enum ContractError {
 
     #[error("IllegalTokenSymbol")]
     IllegalTokenSymbol {},
+
+    #[error("Refilling")]
+    Refilling {},
+
+    #[error("NotInRefillMode")]
+    NotInRefillMode {},
 
     #[error("MinterBlacklisted")]
     MinterBlacklisted {},
@@ -125,6 +134,9 @@ pub enum ContractError {
         current_seconds: u64,
         current_block: u64,
     },
+
+    #[error("OutOfNFTs")]
+    OutOfNFTs {},
 
     #[error("HighestBidderCannotOutBid")]
     HighestBidderCannotOutBid {},

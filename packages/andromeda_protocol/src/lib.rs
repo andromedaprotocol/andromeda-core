@@ -1,6 +1,7 @@
 pub mod address_list;
 pub mod airdrop;
-pub mod anchor;
+pub mod anchor_earn;
+pub mod anchor_lend;
 pub mod astroport;
 pub mod auction;
 pub mod common;
@@ -10,6 +11,7 @@ pub mod cw20_staking;
 pub mod cw721;
 pub mod cw721_offers;
 pub mod factory;
+pub mod gumball;
 pub mod lockdrop;
 pub mod mirror_wrapped_cdp;
 pub mod mission;
