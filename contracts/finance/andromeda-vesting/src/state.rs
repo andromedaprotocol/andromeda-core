@@ -38,7 +38,7 @@ pub struct Batch {
     /// it is a percentage, it would be the percentage of the original amount.
     pub release_amount: WithdrawalType,
     /// The time at which the last claim took place in seconds.
-    pub last_claim_time: u64,
+    pub last_claimed_release_time: u64,
 }
 
 // Inspired by https://docs.cosmwasm.com/tutorials/storage/indexes/#storage-plus-indexing

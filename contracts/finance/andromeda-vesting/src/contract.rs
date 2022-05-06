@@ -145,7 +145,7 @@ fn execute_create_batch(
         lockup_end,
         release_unit,
         release_amount,
-        last_claim_time: lockup_end,
+        last_claimed_release_time: lockup_end,
     };
 
     save_new_batch(deps.storage, batch, &config)?;
@@ -176,6 +176,12 @@ fn execute_claim(
     let key = batches().key(batch_id.into());
     let mut batch = key.load(deps.storage)?;
     let amount_to_send = claim_batch(&env.block, &mut batch, number_of_claims)?;
+
+    require(
+        !amount_to_send.is_zero(),
+        ContractError::WithdrawalIsEmpty {},
+    )?;
+
     key.save(deps.storage, &batch)?;
 
     let config = CONFIG.load(deps.storage)?;
@@ -224,7 +230,7 @@ fn execute_claim_all(
         let key = batches().key(batch_id);
         let mut batch = key.load(deps.storage)?;
 
-        let elapsed_time = up_to_time - batch.last_claim_time;
+        let elapsed_time = up_to_time - batch.last_claimed_release_time;
         let num_available_claims = elapsed_time / batch.release_unit;
 
         let amount_to_send = claim_batch(&env.block, &mut batch, Some(num_available_claims))?;
@@ -257,11 +263,11 @@ fn claim_batch(
 ) -> Result<Uint128, ContractError> {
     let current_time = block.time.seconds();
     require(
-        batch.lockup_end >= current_time,
+        batch.lockup_end <= current_time,
         ContractError::FundsAreLocked {},
     )?;
 
-    let elapsed_time = current_time - batch.last_claim_time;
+    let elapsed_time = current_time - batch.last_claimed_release_time;
     let num_available_claims = elapsed_time / batch.release_unit;
 
     let number_of_claims = cmp::min(
@@ -275,8 +281,11 @@ fn claim_batch(
 
     let amount_to_send = cmp::min(amount_to_send, amount_available);
 
-    batch.amount_claimed += amount_to_send;
-    batch.last_claim_time = current_time;
+    // We dont want to update the last_claim_time when there are no funds to claim.
+    if !amount_to_send.is_zero() {
+        batch.amount_claimed += amount_to_send;
+        batch.last_claimed_release_time += number_of_claims * batch.release_unit;
+    }
 
     Ok(amount_to_send)
 }
