@@ -2,8 +2,9 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-    Storage, Uint128,
+    Uint128,
 };
+use cw2::set_contract_version;
 
 use std::cmp;
 
@@ -26,6 +27,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     let config = Config {
         is_multi_batch_enabled: msg.is_multi_batch_enabled,
         recipient: msg.recipient,
@@ -123,7 +126,10 @@ fn execute_create_batch(
         },
     )?;
 
-    require(release_unit > 0, ContractError::InvalidZeroAmount {})?;
+    require(
+        release_unit > 0 && !release_amount.is_zero(),
+        ContractError::InvalidZeroAmount {},
+    )?;
 
     let lockup_end = if let Some(duration) = lockup_duration {
         current_time + duration
@@ -142,14 +148,14 @@ fn execute_create_batch(
         last_claim_time: lockup_end,
     };
 
-    save_new_batch(deps.storage, batch)?;
+    save_new_batch(deps.storage, batch, &config)?;
 
     Ok(Response::new()
         .add_attribute("action", "create_batch")
         .add_attribute("amount", funds.amount)
         .add_attribute("lockup_end", lockup_end.to_string())
         .add_attribute("release_unit", release_unit.to_string())
-        .add_attribute("releast_amount", release_amount_string))
+        .add_attribute("release_amount", release_amount_string))
 }
 
 fn execute_claim(

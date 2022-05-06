@@ -366,6 +366,9 @@ pub enum ContractError {
 
     #[error("Invalid component: {name}")]
     InvalidComponent { name: String },
+
+    #[error("Multi-batch not supported")]
+    MultiBatchNotSupported {},
 }
 
 impl From<Cw20ContractError> for ContractError {

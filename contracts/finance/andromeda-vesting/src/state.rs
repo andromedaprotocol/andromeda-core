@@ -1,7 +1,9 @@
-use common::{ado_base::recipient::Recipient, error::ContractError, withdraw::WithdrawalType};
+use common::{
+    ado_base::recipient::Recipient, error::ContractError, require, withdraw::WithdrawalType,
+};
 use cosmwasm_std::{Order, Storage, Uint128};
 use cw_storage_plus::{
-    Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex, PrimaryKey, U64Key, U8Key,
+    Bound, Index, IndexList, IndexedMap, Item, MultiIndex, PrimaryKey, U64Key, U8Key,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -10,7 +12,7 @@ use serde::{Deserialize, Serialize};
 pub const CONFIG: Item<Config> = Item::new("config");
 
 /// The next ID to use for a newly added batch.
-const NEXT_ID: Item<u64> = Item::new("next_id");
+pub const NEXT_ID: Item<u64> = Item::new("next_id");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
@@ -70,8 +72,16 @@ pub fn batches<'a>() -> IndexedMap<'a, U64Key, Batch, BatchIndexes<'a>> {
     IndexedMap::new("batch", indexes)
 }
 
-pub(crate) fn save_new_batch(storage: &mut dyn Storage, batch: Batch) -> Result<(), ContractError> {
+pub(crate) fn save_new_batch(
+    storage: &mut dyn Storage,
+    batch: Batch,
+    config: &Config,
+) -> Result<(), ContractError> {
     let next_id = NEXT_ID.may_load(storage)?.unwrap_or_else(|| 1);
+    require(
+        next_id == 1 || config.is_multi_batch_enabled,
+        ContractError::MultiBatchNotSupported {},
+    )?;
     batches().save(storage, next_id.into(), &batch)?;
     NEXT_ID.save(storage, &(next_id + 1))?;
 
