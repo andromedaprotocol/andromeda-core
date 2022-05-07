@@ -9,9 +9,9 @@ use cw2::set_contract_version;
 use std::cmp;
 
 use ado_base::ADOContract;
-use andromeda_finance::vesting::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_finance::vesting::{BatchResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, error::ContractError, require,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
     withdraw::WithdrawalType,
 };
 
@@ -60,6 +60,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
         ExecuteMsg::CreateBatch {
             lockup_duration,
             release_unit,
@@ -294,6 +297,37 @@ fn claim_batch(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    Ok(to_binary(&"")?)
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
+        QueryMsg::Config {} => encode_binary(&query_config(deps)?),
+        QueryMsg::Batch { id } => encode_binary(&query_batch(deps, env, id)?),
+        QueryMsg::Batches { start_after, limit } => panic!(),
+    }
+}
+
+fn query_config(deps: Deps) -> Result<Config, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    Ok(config)
+}
+
+fn query_batch(deps: Deps, env: Env, batch_id: u64) -> Result<BatchResponse, ContractError> {
+    let mut batch = batches().load(deps.storage, batch_id.into())?;
+
+    let amount_available_to_claim = claim_batch(&env.block, &mut batch, None)?;
+    let number_of_available_claims = amount_available_to_claim / Uint128::from(batch.release_unit);
+
+    let res = BatchResponse {
+        id: batch_id,
+        amount: batch.amount,
+        amount_claimed: batch.amount_claimed,
+        amount_available_to_claim,
+        number_of_available_claims,
+        lockup_end: batch.lockup_end,
+        release_amount: batch.release_amount,
+        release_unit: batch.release_unit,
+        last_claimed_release_time: batch.last_claimed_release_time,
+    };
+
+    Ok(res)
 }

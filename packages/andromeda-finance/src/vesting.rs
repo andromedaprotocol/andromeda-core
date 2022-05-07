@@ -1,6 +1,8 @@
-use common::{ado_base::recipient::Recipient, withdraw::WithdrawalType};
+use common::{
+    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    withdraw::WithdrawalType,
+};
 use cosmwasm_std::Uint128;
-use cw0::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +19,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     /// Claim the number of batches specified starting from the beginning. If not
     /// specified then the max will be claimed.
     Claim {
@@ -44,21 +47,51 @@ pub enum ExecuteMsg {
         stake: bool,
     },
     /// Stakes the given amount of tokens, or all if not specified.
-    Stake { amount: Option<Uint128> },
+    Stake {
+        amount: Option<Uint128>,
+    },
     /// Unstakes the given amount of tokens, or all if not specified.
-    Unstake { amount: Option<Uint128> },
+    Unstake {
+        amount: Option<Uint128>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
+    /// Queries the config.
+    Config {},
     /// Queries the batch with the given id.
-    Batch { id: String },
+    Batch {
+        id: u64,
+    },
     /// Queries the batches with pagination.
     Batches {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Gets the claimable amount for a batch.
-    ClaimableAmount { batch_id: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct BatchResponse {
+    /// The id.
+    pub id: u64,
+    /// The amount of tokens in the batch
+    pub amount: Uint128,
+    /// The amount of tokens that have been claimed.
+    pub amount_claimed: Uint128,
+    /// The amount of tokens available to claim right now.
+    pub amount_available_to_claim: Uint128,
+    /// The number of available claims.
+    pub number_of_available_claims: Uint128,
+    /// When the lockup ends.
+    pub lockup_end: u64,
+    /// How often releases occur.
+    pub release_unit: u64,
+    /// Specifies how much is to be released after each `release_unit`. If
+    /// it is a percentage, it would be the percentage of the original amount.
+    pub release_amount: WithdrawalType,
+    /// The time at which the last claim took place in seconds.
+    pub last_claimed_release_time: u64,
 }
