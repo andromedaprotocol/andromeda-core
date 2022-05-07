@@ -94,12 +94,12 @@ const MAX_LIMIT: u32 = 30;
 /// Limit to batches that have not yet been promoted (0), using sub_prefix.
 /// Iterate which have expired at or less than the current time (now), using a bound.
 /// These are all eligible for fund claiming.
-pub(crate) fn get_claimable_batch_ids(
+pub(crate) fn get_claimable_batches_with_ids(
     storage: &dyn Storage,
     current_time: u64,
     start_after: Option<u64>,
     limit: Option<u32>,
-) -> Result<Vec<U64Key>, ContractError> {
+) -> Result<Vec<(U64Key, Batch)>, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(|s| Bound::exclusive(U64Key::new(s)));
     // As we want to keep the last item (pk) unbounded, we increment time by 1 and use exclusive (below the next tick).
@@ -107,22 +107,29 @@ pub(crate) fn get_claimable_batch_ids(
     let max_key = (U64Key::from(current_time + 1), U64Key::from(0)).joined_key();
     let bound = Bound::Exclusive(max_key);
 
-    let batch_ids: Vec<U64Key> = batches()
+    let batches_with_ids: Result<Vec<(U64Key, Batch)>, ContractError> = batches()
         .idx
         .claim_time
         // Only consider batches that have funds left to withdraw.
         .sub_prefix(0u8.into())
-        .keys(storage, start, Some(bound), Order::Ascending)
+        .range(storage, start, Some(bound), Order::Ascending)
         .take(limit)
         // Since we are iterating over a joined key and a u64 only needs 8 bytes to represent it,
         // we can obtain it like so. The need for 8 bytes comes from a byte containing 8 bits and
         // since we need 64 bits of info, we need 8 bytes (8 * 8 == 64).
-        .map(|k| U64Key::from(k[k.len() - 8..].to_vec()))
+        .map(|k| {
+            let (k, b) = k?;
+
+            let k = U64Key::from(k[k.len() - 8..].to_vec());
+
+            Ok((k, b))
+        })
         .collect();
 
-    Ok(batch_ids)
+    batches_with_ids
 }
 
+/// Converts a U64Key containing an encoded u64 back to its original type.
 pub(crate) fn key_to_int(key: &U64Key) -> Result<u64, ContractError> {
     require(
         key.wrapped.len() == 8,
@@ -145,7 +152,7 @@ mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
 
     #[test]
-    fn test_get_claimable_batches() {
+    fn test_get_claimable_batches_with_ids() {
         let current_time = mock_env().block.time.seconds();
 
         let locked_batch = Batch {
@@ -194,10 +201,11 @@ mod tests {
             .unwrap();
 
         let batch_ids =
-            get_claimable_batch_ids(deps.as_ref().storage, current_time, None, None).unwrap();
+            get_claimable_batches_with_ids(deps.as_ref().storage, current_time, None, None)
+                .unwrap();
 
         // Only the unlocked batch is returned since the other two are invalid in the sense of
         // withdrawing.
-        assert_eq!(vec![U64Key::new(2)], batch_ids);
+        assert_eq!(vec![(U64Key::new(2), unlocked_batch)], batch_ids);
     }
 }

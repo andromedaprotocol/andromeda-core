@@ -24,6 +24,24 @@ fn init(deps: DepsMut) -> Response {
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
+fn create_batch(
+    deps: DepsMut,
+    lockup_duration: Option<u64>,
+    release_unit: u64,
+    release_amount: WithdrawalType,
+) -> Response {
+    // Create batch with half of the release_unit.
+    let msg = ExecuteMsg::CreateBatch {
+        lockup_duration,
+        release_unit,
+        release_amount,
+        stake: false,
+    };
+
+    let info = mock_info("owner", &coins(100, "uusd"));
+    execute(deps, mock_env(), info, msg).unwrap()
+}
+
 #[test]
 fn test_instantiate() {
     let mut deps = mock_dependencies(&[]);
@@ -718,5 +736,117 @@ fn test_claim_batch_too_high_of_claim() {
             last_claimed_release_time: lockup_end + release_unit,
         },
         batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+    );
+}
+
+#[test]
+fn test_claim_all_unauthorized() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    let info = mock_info("not_owner", &[]);
+
+    let msg = ExecuteMsg::ClaimAll {
+        up_to_time: None,
+        start_after: None,
+        limit: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_claim_all() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    let release_unit = 10;
+
+    let release_amount = WithdrawalType::Amount(Uint128::new(10));
+    // Create batch.
+    create_batch(deps.as_mut(), None, release_unit, release_amount.clone());
+
+    // Create batch with half of the release_unit.
+    create_batch(
+        deps.as_mut(),
+        None,
+        release_unit / 2,
+        release_amount.clone(),
+    );
+
+    // Create batch with a different release_unit scale (not a factor).
+    create_batch(deps.as_mut(), None, 12, release_amount.clone());
+
+    // Create batch that is still locked up.
+    create_batch(
+        deps.as_mut(),
+        Some(100),
+        release_unit,
+        release_amount.clone(),
+    );
+
+    // Speed up time.
+    let mut env = mock_env();
+    env.block.time = env.block.time.plus_seconds(release_unit * 2);
+
+    // Claim all
+    let msg = ExecuteMsg::ClaimAll {
+        up_to_time: None,
+        start_after: None,
+        limit: None,
+    };
+
+    let info = mock_info("owner", &[]);
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(BankMsg::Send {
+                to_address: "recipient".to_string(),
+                // 20 from the first, 40 from the second, 10 from the third.
+                amount: coins(20 + 40 + 10, "uusd")
+            })
+            .add_attribute("action", "claim_all")
+            .add_attribute("last_batch_id_processed", "3"),
+        res
+    );
+
+    let lockup_end = mock_env().block.time.seconds();
+    assert_eq!(
+        Batch {
+            amount: Uint128::new(100),
+            amount_claimed: Uint128::new(20),
+            lockup_end,
+            release_unit,
+            release_amount: release_amount.clone(),
+            last_claimed_release_time: lockup_end + release_unit * 2,
+        },
+        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+    );
+
+    assert_eq!(
+        Batch {
+            amount: Uint128::new(100),
+            amount_claimed: Uint128::new(40),
+            lockup_end,
+            release_unit: release_unit / 2,
+            release_amount: release_amount.clone(),
+            last_claimed_release_time: lockup_end + release_unit * 2,
+        },
+        batches().load(deps.as_ref().storage, 2u64.into()).unwrap()
+    );
+
+    assert_eq!(
+        Batch {
+            amount: Uint128::new(100),
+            amount_claimed: Uint128::new(10),
+            lockup_end,
+            release_unit: 12,
+            release_amount: release_amount.clone(),
+            last_claimed_release_time: lockup_end + 12,
+        },
+        batches().load(deps.as_ref().storage, 3u64.into()).unwrap()
     );
 }

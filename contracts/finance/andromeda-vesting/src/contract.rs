@@ -16,7 +16,7 @@ use common::{
 };
 
 use crate::state::{
-    batches, get_claimable_batch_ids, key_to_int, save_new_batch, Batch, Config, CONFIG,
+    batches, get_claimable_batches_with_ids, key_to_int, save_new_batch, Batch, Config, CONFIG,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
@@ -219,18 +219,18 @@ fn execute_claim_all(
     )?;
 
     let current_time = env.block.time.seconds();
-    let batch_ids = get_claimable_batch_ids(deps.storage, current_time, start_after, limit)?;
+    let batches_with_ids =
+        get_claimable_batches_with_ids(deps.storage, current_time, start_after, limit)?;
     let up_to_time = cmp::min(current_time, up_to_time.unwrap_or(current_time));
 
     let mut total_amount_to_send = Uint128::zero();
-    let last_batch_id = if !batch_ids.is_empty() {
-        key_to_int(batch_ids.last().unwrap())?.to_string()
+    let last_batch_id = if !batches_with_ids.is_empty() {
+        key_to_int(&batches_with_ids.last().unwrap().0)?.to_string()
     } else {
         "none".to_string()
     };
-    for batch_id in batch_ids {
+    for (batch_id, mut batch) in batches_with_ids {
         let key = batches().key(batch_id);
-        let mut batch = key.load(deps.storage)?;
 
         let elapsed_time = up_to_time - batch.last_claimed_release_time;
         let num_available_claims = elapsed_time / batch.release_unit;
@@ -242,6 +242,7 @@ fn execute_claim_all(
         key.save(deps.storage, &batch)?;
     }
     let mut msgs = vec![];
+
     if !total_amount_to_send.is_zero() {
         let config = CONFIG.load(deps.storage)?;
         let mission_contract = contract.get_mission_contract(deps.storage)?;
