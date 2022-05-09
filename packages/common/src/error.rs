@@ -366,6 +366,9 @@ pub enum ContractError {
 
     #[error("Invalid component: {name}")]
     InvalidComponent { name: String },
+
+    #[error("Not an assigned operator, {msg:?}")]
+    NotAssignedOperator { msg: Option<String> },
 }
 
 impl From<Cw20ContractError> for ContractError {

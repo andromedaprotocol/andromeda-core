@@ -5,8 +5,8 @@ use andromeda_ecosystem::vault::{
 };
 use common::{
     ado_base::{
-        recipient::Recipient, AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
-        QueryMsg as AndrQueryMsg,
+        operators::IsOperatorResponse, query_get, recipient::Recipient, AndromedaMsg,
+        AndromedaQuery, InstantiateMsg as BaseInstantiateMsg, QueryMsg as AndrQueryMsg,
     },
     encode_binary,
     error::ContractError,
@@ -218,7 +218,7 @@ pub fn execute_withdraw(
     )?;
     match strategy {
         None => withdraw_vault(deps, info, recipient, withdrawals),
-        Some(strategy) => withdraw_strategy(deps, info, strategy, recipient, withdrawals),
+        Some(strategy) => withdraw_strategy(deps, info, strategy, withdrawals),
     }
 }
 
@@ -299,11 +299,10 @@ pub fn withdraw_strategy(
     deps: DepsMut,
     info: MessageInfo,
     strategy: StrategyType,
-    recipient: Option<Recipient>,
     withdrawals: Vec<Withdrawal>,
 ) -> Result<Response, ContractError> {
     let res = Response::default();
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let recipient = Recipient::Addr(info.sender.to_string());
     let addr_opt = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
     if addr_opt.is_none() {
         return Err(ContractError::InvalidStrategy {
@@ -332,7 +331,7 @@ pub fn withdraw_strategy(
 
 fn execute_update_strategy(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     strategy: StrategyType,
     address: AndrAddress,
@@ -343,6 +342,21 @@ fn execute_update_strategy(
     )?;
     let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
     let strategy_addr = address.get_address(deps.api, &deps.querier, mission_contract)?;
+
+    let strategy_is_operator: IsOperatorResponse = query_get(
+        Some(to_binary(&AndromedaQuery::IsOperator {
+            address: env.contract.address.to_string(),
+        })?),
+        strategy_addr.clone(),
+        &deps.querier,
+    )?;
+
+    require(
+        strategy_is_operator.is_operator,
+        ContractError::NotAssignedOperator {
+            msg: Some("Vault contract is not an operator for the given address".to_string()),
+        },
+    )?;
     STRATEGY_CONTRACT_ADDRESSES.save(deps.storage, strategy.to_string(), &strategy_addr)?;
 
     Ok(Response::default()
