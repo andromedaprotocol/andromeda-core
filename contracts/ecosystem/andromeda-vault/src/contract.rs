@@ -5,8 +5,8 @@ use andromeda_ecosystem::vault::{
 };
 use common::{
     ado_base::{
-        operators::IsOperatorResponse, query_get, recipient::Recipient, AndromedaMsg,
-        AndromedaQuery, InstantiateMsg as BaseInstantiateMsg, QueryMsg as AndrQueryMsg,
+        operators::IsOperatorResponse, recipient::Recipient, AndromedaMsg, AndromedaQuery,
+        InstantiateMsg as BaseInstantiateMsg, QueryMsg as AndrQueryMsg,
     },
     encode_binary,
     error::ContractError,
@@ -345,12 +345,18 @@ fn execute_update_strategy(
 
     //The vault contract must be an operator for the given contract in order to enable withdrawals
     //DEV: with custom approval functionality this check can be removed
-    let strategy_is_operator: IsOperatorResponse = query_get(
-        Some(to_binary(&AndromedaQuery::IsOperator {
-            address: env.contract.address.to_string(),
-        })?),
+    // let strategy_is_operator: IsOperatorResponse = query_get(
+    //     Some(to_binary(&AndromedaQuery::IsOperator {
+    //         address: env.contract.address.to_string(),
+    //     })?),
+    //     strategy_addr.clone(),
+    //     &deps.querier,
+    // )?;
+    let strategy_is_operator: IsOperatorResponse = deps.querier.query_wasm_smart(
         strategy_addr.clone(),
-        &deps.querier,
+        &QueryMsg::AndrQuery(AndromedaQuery::IsOperator {
+            address: env.contract.address.to_string(),
+        }),
     )?;
     require(
         strategy_is_operator.is_operator,
