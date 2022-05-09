@@ -244,6 +244,8 @@ fn execute_claim_all(
     }
     let mut msgs = vec![];
 
+    // Don't want to error here since there will generally be other batches that will have
+    // claimable amounts. Erroring for one would make the whole transaction fai.
     if !total_amount_to_send.is_zero() {
         let config = CONFIG.load(deps.storage)?;
         let mission_contract = contract.get_mission_contract(deps.storage)?;
