@@ -68,7 +68,7 @@ pub enum QueryMsg {
     },
     /// Queries the batches with pagination.
     Batches {
-        start_after: Option<String>,
+        start_after: Option<u64>,
         limit: Option<u32>,
     },
 }

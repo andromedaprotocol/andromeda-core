@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    coins,
+    coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
     BankMsg, DepsMut, Response, Uint128,
 };
@@ -10,7 +10,7 @@ use crate::{
     state::{batches, Batch, Config, CONFIG, NEXT_ID},
 };
 
-use andromeda_finance::vesting::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_finance::vesting::{BatchResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use common::{ado_base::recipient::Recipient, error::ContractError, withdraw::WithdrawalType};
 
 fn init(deps: DepsMut) -> Response {
@@ -426,15 +426,36 @@ fn test_claim_batch_single_claim() {
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
+    // Skip time.
+    let mut env = mock_env();
+    // A single release is available.
+    env.block.time = env.block.time.plus_seconds(release_unit);
+
+    // Query created batch.
+    let msg = QueryMsg::Batch { id: 1 };
+    let res: BatchResponse = from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+
+    let lockup_end = mock_env().block.time.seconds();
+    assert_eq!(
+        BatchResponse {
+            id: 1,
+            amount: Uint128::new(100),
+            amount_claimed: Uint128::zero(),
+            amount_available_to_claim: Uint128::new(10),
+            number_of_available_claims: Uint128::new(1),
+            lockup_end,
+            release_unit,
+            release_amount: WithdrawalType::Amount(Uint128::new(10)),
+            last_claimed_release_time: lockup_end,
+        },
+        res
+    );
+
     // Claim batch.
     let msg = ExecuteMsg::Claim {
         number_of_claims: None,
         batch_id: 1,
     };
-
-    let mut env = mock_env();
-    // A single release is available.
-    env.block.time = env.block.time.plus_seconds(release_unit);
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -790,6 +811,65 @@ fn test_claim_all() {
     // Speed up time.
     let mut env = mock_env();
     env.block.time = env.block.time.plus_seconds(release_unit * 2);
+
+    // Query batches
+    let msg = QueryMsg::Batches {
+        start_after: None,
+        limit: None,
+    };
+    let res: Vec<BatchResponse> =
+        from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+
+    let lockup_end = mock_env().block.time.seconds();
+    assert_eq!(
+        vec![
+            BatchResponse {
+                id: 1,
+                amount: Uint128::new(100),
+                amount_claimed: Uint128::zero(),
+                amount_available_to_claim: Uint128::new(20),
+                number_of_available_claims: Uint128::new(2),
+                lockup_end,
+                release_unit,
+                release_amount: WithdrawalType::Amount(Uint128::new(10)),
+                last_claimed_release_time: lockup_end,
+            },
+            BatchResponse {
+                id: 2,
+                amount: Uint128::new(100),
+                amount_claimed: Uint128::zero(),
+                amount_available_to_claim: Uint128::new(40),
+                number_of_available_claims: Uint128::new(4),
+                lockup_end,
+                release_unit: release_unit / 2,
+                release_amount: WithdrawalType::Amount(Uint128::new(10)),
+                last_claimed_release_time: lockup_end,
+            },
+            BatchResponse {
+                id: 3,
+                amount: Uint128::new(100),
+                amount_claimed: Uint128::zero(),
+                amount_available_to_claim: Uint128::new(10),
+                number_of_available_claims: Uint128::new(1),
+                lockup_end,
+                release_unit: 12,
+                release_amount: WithdrawalType::Amount(Uint128::new(10)),
+                last_claimed_release_time: lockup_end,
+            },
+            BatchResponse {
+                id: 4,
+                amount: Uint128::new(100),
+                amount_claimed: Uint128::zero(),
+                amount_available_to_claim: Uint128::zero(),
+                number_of_available_claims: Uint128::zero(),
+                lockup_end: lockup_end + 100,
+                release_unit,
+                release_amount: WithdrawalType::Amount(Uint128::new(10)),
+                last_claimed_release_time: lockup_end + 100,
+            },
+        ],
+        res
+    );
 
     // Claim all
     let msg = ExecuteMsg::ClaimAll {

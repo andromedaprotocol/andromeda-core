@@ -129,6 +129,27 @@ pub(crate) fn get_claimable_batches_with_ids(
     batches_with_ids
 }
 
+pub(crate) fn get_all_batches_with_ids(
+    storage: &dyn Storage,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+) -> Result<Vec<(U64Key, Batch)>, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(|s| Bound::exclusive(U64Key::new(s)));
+
+    let batches_with_ids: Result<Vec<(U64Key, Batch)>, ContractError> = batches()
+        .range(storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|k| {
+            let (k, b) = k?;
+            let k = U64Key::from(k);
+            Ok((k, b))
+        })
+        .collect();
+
+    batches_with_ids
+}
+
 /// Converts a U64Key containing an encoded u64 back to its original type.
 pub(crate) fn key_to_int(key: &U64Key) -> Result<u64, ContractError> {
     require(

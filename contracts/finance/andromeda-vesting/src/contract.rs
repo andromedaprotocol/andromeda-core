@@ -1,9 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-    Uint128,
-};
+use cosmwasm_std::{Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 use cw2::set_contract_version;
 
 use std::cmp;
@@ -16,7 +13,8 @@ use common::{
 };
 
 use crate::state::{
-    batches, get_claimable_batches_with_ids, key_to_int, save_new_batch, Batch, Config, CONFIG,
+    batches, get_all_batches_with_ids, get_claimable_batches_with_ids, key_to_int, save_new_batch,
+    Batch, Config, CONFIG,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
@@ -302,7 +300,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::Batch { id } => encode_binary(&query_batch(deps, env, id)?),
-        QueryMsg::Batches { start_after, limit } => panic!(),
+        QueryMsg::Batches { start_after, limit } => {
+            encode_binary(&query_batches(deps, env, start_after, limit)?)
+        }
     }
 }
 
@@ -312,21 +312,52 @@ fn query_config(deps: Deps) -> Result<Config, ContractError> {
 }
 
 fn query_batch(deps: Deps, env: Env, batch_id: u64) -> Result<BatchResponse, ContractError> {
-    let mut batch = batches().load(deps.storage, batch_id.into())?;
+    let batch = batches().load(deps.storage, batch_id.into())?;
 
-    let amount_available_to_claim = claim_batch(&env.block, &mut batch, None)?;
-    let number_of_available_claims = amount_available_to_claim / Uint128::from(batch.release_unit);
+    get_batch_response(&env.block, batch, batch_id)
+}
 
+fn query_batches(
+    deps: Deps,
+    env: Env,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+) -> Result<Vec<BatchResponse>, ContractError> {
+    let batches_with_ids = get_all_batches_with_ids(deps.storage, start_after, limit)?;
+    let mut batches_response = vec![];
+    for (id, batch) in batches_with_ids {
+        let id = key_to_int(&id)?;
+        let batch_response = get_batch_response(&env.block, batch, id)?;
+
+        batches_response.push(batch_response);
+    }
+    Ok(batches_response)
+}
+
+fn get_batch_response(
+    block: &BlockInfo,
+    mut batch: Batch,
+    batch_id: u64,
+) -> Result<BatchResponse, ContractError> {
+    let previous_amount = batch.amount_claimed;
+    let previous_last_claimed_release_time = batch.last_claimed_release_time;
+    let amount_available_to_claim = if block.time.seconds() >= batch.lockup_end {
+        claim_batch(&block, &mut batch, None)?
+    } else {
+        Uint128::zero()
+    };
+    let amount_per_release = batch.release_amount.get_amount(batch.amount)?;
+    let number_of_available_claims = amount_available_to_claim / amount_per_release;
     let res = BatchResponse {
         id: batch_id,
         amount: batch.amount,
-        amount_claimed: batch.amount_claimed,
+        amount_claimed: previous_amount,
         amount_available_to_claim,
         number_of_available_claims,
         lockup_end: batch.lockup_end,
         release_amount: batch.release_amount,
         release_unit: batch.release_unit,
-        last_claimed_release_time: batch.last_claimed_release_time,
+        last_claimed_release_time: previous_last_claimed_release_time,
     };
 
     Ok(res)
