@@ -5,9 +5,13 @@ use andromeda_finance::splitter::{
     MigrateMsg, QueryMsg, Splitter,
 };
 use common::{
-    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{
+        hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
+        InstantiateMsg as BaseInstantiateMsg,
+    },
     encode_binary,
     error::ContractError,
+    mission::AndrAddress,
     require,
 };
 use cosmwasm_std::{
@@ -60,7 +64,14 @@ pub fn execute(
     // Do this before the hooks get fired off to ensure that there is no conflict with the mission
     // contract not being whitelisted.
     if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
-        return contract.execute_update_mission_contract(deps, info, address, None);
+        let splitter = SPLITTER.load(deps.storage)?;
+        let mut andr_addresses: Vec<AndrAddress> = vec![];
+        for recipient in splitter.recipients {
+            if let Recipient::ADO(ado_recipient) = recipient.recipient {
+                andr_addresses.push(ado_recipient.address);
+            }
+        }
+        return contract.execute_update_mission_contract(deps, info, address, Some(andr_addresses));
     };
 
     contract.module_hook::<Response>(
