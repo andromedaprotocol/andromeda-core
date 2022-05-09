@@ -1,4 +1,3 @@
-use cosmwasm_std::Decimal256;
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
