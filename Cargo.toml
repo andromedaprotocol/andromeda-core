@@ -1,5 +1,14 @@
 [workspace]
-members = ["packages/*", "contracts/*"]
+members = [
+    "packages/*",
+    "contracts/fungible-tokens/*",
+    "contracts/non-fungible-tokens/*",
+    "contracts/ecosystem/*",
+    "contracts/data-storage/*",
+    "contracts/app/*",
+    "contracts/finance/*",
+    "contracts/modules/*"
+]
 
 [profile.release.package.andromeda-protocol]
 codegen-units = 1

@@ -1,12 +1,10 @@
 name: Formatting Check & Test
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
-      - master
-      - "release/*"
+    paths: ["**.*"]
+  pull_request:
+    branches: [main, development]
 
 env:
   CARGO_TERM_COLOR: always
