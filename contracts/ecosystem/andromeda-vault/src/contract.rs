@@ -343,6 +343,8 @@ fn execute_update_strategy(
     let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
     let strategy_addr = address.get_address(deps.api, &deps.querier, mission_contract)?;
 
+    //The vault contract must be an operator for the given contract in order to enable withdrawals
+    //DEV: with custom approval functionality this check can be removed
     let strategy_is_operator: IsOperatorResponse = query_get(
         Some(to_binary(&AndromedaQuery::IsOperator {
             address: env.contract.address.to_string(),
@@ -350,13 +352,13 @@ fn execute_update_strategy(
         strategy_addr.clone(),
         &deps.querier,
     )?;
-
     require(
         strategy_is_operator.is_operator,
         ContractError::NotAssignedOperator {
             msg: Some("Vault contract is not an operator for the given address".to_string()),
         },
     )?;
+
     STRATEGY_CONTRACT_ADDRESSES.save(deps.storage, strategy.to_string(), &strategy_addr)?;
 
     Ok(Response::default()
