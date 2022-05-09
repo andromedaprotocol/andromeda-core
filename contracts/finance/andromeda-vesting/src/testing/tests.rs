@@ -520,7 +520,7 @@ fn test_claim_batch_middle_of_interval() {
 
     // First release available and halfway to second -> result is rounding down.
     env.block.time = env.block.time.plus_seconds(release_unit);
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -577,7 +577,7 @@ fn test_claim_batch_multiple_claims() {
         number_of_claims: Some(1),
         batch_id: 1,
     };
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -610,7 +610,7 @@ fn test_claim_batch_multiple_claims() {
         number_of_claims: None,
         batch_id: 1,
     };
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -697,7 +697,7 @@ fn test_claim_batch_all_releases() {
     );
 
     // Try to claim again.
-    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    let res = execute(deps.as_mut(), env, info, msg);
 
     assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
 }
@@ -924,7 +924,7 @@ fn test_claim_all() {
             amount_claimed: Uint128::new(10),
             lockup_end,
             release_unit: 12,
-            release_amount: release_amount.clone(),
+            release_amount,
             last_claimed_release_time: lockup_end + 12,
         },
         batches().load(deps.as_ref().storage, 3u64.into()).unwrap()

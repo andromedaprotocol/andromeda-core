@@ -77,7 +77,7 @@ pub(crate) fn save_new_batch(
     batch: Batch,
     config: &Config,
 ) -> Result<(), ContractError> {
-    let next_id = NEXT_ID.may_load(storage)?.unwrap_or_else(|| 1);
+    let next_id = NEXT_ID.may_load(storage)?.unwrap_or(1);
     require(
         next_id == 1 || config.is_multi_batch_enabled,
         ContractError::MultiBatchNotSupported {},

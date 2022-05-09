@@ -84,8 +84,8 @@ pub fn execute(
             limit,
             up_to_time,
         } => execute_claim_all(deps, env, info, start_after, limit, up_to_time),
-        ExecuteMsg::Stake { amount } => panic!(),
-        ExecuteMsg::Unstake { amount } => panic!(),
+        ExecuteMsg::Stake { .. } => panic!(),
+        ExecuteMsg::Unstake { .. } => panic!(),
     }
 }
 
@@ -342,7 +342,7 @@ fn get_batch_response(
     let previous_amount = batch.amount_claimed;
     let previous_last_claimed_release_time = batch.last_claimed_release_time;
     let amount_available_to_claim = if block.time.seconds() >= batch.lockup_end {
-        claim_batch(&block, &mut batch, None)?
+        claim_batch(block, &mut batch, None)?
     } else {
         Uint128::zero()
     };
