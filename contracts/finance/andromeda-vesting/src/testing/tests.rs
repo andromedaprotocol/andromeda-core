@@ -61,7 +61,8 @@ fn test_instantiate() {
         Config {
             recipient: Recipient::Addr("recipient".to_string()),
             is_multi_batch_enabled: true,
-            denom: "uusd".to_string()
+            denom: "uusd".to_string(),
+            unbonding_duration: Duration::Height(0)
         },
         CONFIG.load(deps.as_ref().storage).unwrap()
     );
