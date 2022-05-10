@@ -1,7 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{
+    Binary, BlockInfo, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response,
+    StakingMsg, Uint128,
+};
 use cw2::set_contract_version;
+use cw_asset::AssetInfo;
 
 use std::cmp;
 
@@ -14,7 +18,7 @@ use common::{
 
 use crate::state::{
     batches, get_all_batches_with_ids, get_claimable_batches_with_ids, key_to_int, save_new_batch,
-    Batch, Config, CONFIG,
+    Batch, Config, AMOUNT_STAKED, CLAIMS, CONFIG,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
@@ -36,6 +40,7 @@ pub fn instantiate(
     };
 
     CONFIG.save(deps.storage, &config)?;
+    AMOUNT_STAKED.save(deps.storage, &Uint128::zero())?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -84,8 +89,13 @@ pub fn execute(
             limit,
             up_to_time,
         } => execute_claim_all(deps, env, info, start_after, limit, up_to_time),
-        ExecuteMsg::Stake { .. } => panic!(),
-        ExecuteMsg::Unstake { .. } => panic!(),
+        ExecuteMsg::Stake { amount, validator } => {
+            execute_stake(deps, env, info, amount, validator)
+        }
+        ExecuteMsg::Unstake { amount, validator } => {
+            execute_unstake(deps, env, info, amount, validator)
+        }
+        ExecuteMsg::ClaimUndelegatedTokens {} => execute_claim_undelegated_tokens(deps, env, info),
     }
 }
 
@@ -262,6 +272,104 @@ fn execute_claim_all(
         .add_attribute("last_batch_id_processed", last_batch_id))
 }
 
+fn execute_stake(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Option<Uint128>,
+    validator: String,
+) -> Result<Response, ContractError> {
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let config = CONFIG.load(deps.storage)?;
+    let asset = AssetInfo::native(config.denom.clone());
+    let max_amount = asset.query_balance(&deps.querier, env.contract.address)?;
+    let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
+
+    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Delegate {
+        validator: validator.clone(),
+        amount: Coin {
+            denom: config.denom,
+            amount,
+        },
+    });
+
+    AMOUNT_STAKED.update(
+        deps.storage,
+        |mut staked_amount| -> Result<_, ContractError> {
+            staked_amount += amount;
+            Ok(staked_amount)
+        },
+    )?;
+
+    Ok(Response::new()
+        .add_message(msg)
+        .add_attribute("action", "stake")
+        .add_attribute("validator", validator)
+        .add_attribute("amount", amount))
+}
+
+fn execute_unstake(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Option<Uint128>,
+    validator: String,
+) -> Result<Response, ContractError> {
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let config = CONFIG.load(deps.storage)?;
+    let max_amount = get_amount_staked(
+        &deps.querier,
+        env.contract.address.to_string(),
+        validator.clone(),
+    )?;
+    let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
+
+    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Undelegate {
+        validator: validator.clone(),
+        amount: Coin {
+            denom: config.denom,
+            amount,
+        },
+    });
+
+    Ok(Response::new()
+        .add_message(msg)
+        .add_attribute("action", "stake")
+        .add_attribute("validator", validator)
+        .add_attribute("amount", amount))
+}
+
+fn execute_claim_undelegated_tokens(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let amount_claimed =
+        CLAIMS.claim_tokens(deps.storage, &env.contract.address, &env.block, None)?;
+
+    AMOUNT_STAKED.update(
+        deps.storage,
+        |mut staked_amount| -> Result<_, ContractError> {
+            staked_amount -= amount_claimed;
+            Ok(staked_amount)
+        },
+    )?;
+
+    Ok(Response::new()
+        .add_attribute("action", "claim_undelegated_tokens")
+        .add_attribute("amount", amount_claimed))
+}
+
 fn claim_batch(
     block: &BlockInfo,
     batch: &mut Batch,
@@ -294,6 +402,18 @@ fn claim_batch(
     }
 
     Ok(amount_to_send)
+}
+
+fn get_amount_staked(
+    querier: &QuerierWrapper,
+    delegator: String,
+    validator: String,
+) -> Result<Uint128, ContractError> {
+    let res = querier.query_delegation(delegator, validator)?;
+    match res {
+        None => Ok(Uint128::zero()),
+        Some(full_delegation) => Ok(full_delegation.amount.amount),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

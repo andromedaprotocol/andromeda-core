@@ -549,6 +549,8 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
+ "cw-controllers",
  "cw-storage-plus 0.9.1",
  "cw0 0.9.1",
  "cw2",
@@ -839,6 +841,20 @@ dependencies = [
  "cw20 0.9.1",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cw-controllers"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71bbd224e31c87615d2b9162190bc33fabb47056d03c6c06f254e3b5b9757318"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "schemars",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]

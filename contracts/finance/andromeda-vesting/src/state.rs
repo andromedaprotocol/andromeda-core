@@ -2,6 +2,7 @@ use common::{
     ado_base::recipient::Recipient, error::ContractError, require, withdraw::WithdrawalType,
 };
 use cosmwasm_std::{Order, Storage, Uint128};
+use cw_controllers::Claims;
 use cw_storage_plus::{
     Bound, Index, IndexList, IndexedMap, Item, MultiIndex, PrimaryKey, U64Key, U8Key,
 };
@@ -10,6 +11,12 @@ use serde::{Deserialize, Serialize};
 
 /// The config.
 pub const CONFIG: Item<Config> = Item::new("config");
+
+/// The amount that is staked.
+pub const AMOUNT_STAKED: Item<Uint128> = Item::new("amount_staked");
+
+/// Any pending claims from undelegating tokens.
+pub const CLAIMS: Claims = Claims::new("claims");
 
 /// The next ID to use for a newly added batch.
 pub const NEXT_ID: Item<u64> = Item::new("next_id");
