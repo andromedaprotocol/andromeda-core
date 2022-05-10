@@ -46,8 +46,8 @@ pub enum ExecuteMsg {
         /// Specifies how much is to be released after each `release_unit`. If
         /// it is a percentage, it would be the percentage of the original amount.
         release_amount: WithdrawalType,
-        /// Whether or not the funds should be delegated.
-        delegate: bool,
+        /// The validator to delegate to. If specified, funds will be delegated to it.
+        validator_to_delegate_to: Option<String>,
     },
     /// Delegates the given amount of tokens, or all if not specified.
     Delegate {

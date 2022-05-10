@@ -71,7 +71,7 @@ fn create_batch(
         lockup_duration,
         release_unit,
         release_amount,
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let info = mock_info("owner", &coins(100, "uusd"));
@@ -113,7 +113,7 @@ fn test_create_batch_unauthorized() {
         lockup_duration: None,
         release_unit: 1,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -132,7 +132,7 @@ fn test_create_batch_no_funds() {
         lockup_duration: None,
         release_unit: 1,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -156,7 +156,7 @@ fn test_create_batch_invalid_denom() {
         lockup_duration: None,
         release_unit: 1,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -180,7 +180,7 @@ fn test_create_batch_valid_denom_zero_amount() {
         lockup_duration: None,
         release_unit: 1,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -204,7 +204,7 @@ fn test_create_batch_release_unit_zero() {
         lockup_duration: None,
         release_unit: 0,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -223,7 +223,7 @@ fn test_create_batch_release_amount_zero() {
         lockup_duration: None,
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -242,7 +242,7 @@ fn test_create_batch() {
         lockup_duration: None,
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -281,7 +281,7 @@ fn test_create_batch() {
         lockup_duration: Some(100),
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -316,6 +316,44 @@ fn test_create_batch() {
 }
 
 #[test]
+fn test_create_batch_and_delegate() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &coins(100, "uusd"));
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
+
+    let msg = ExecuteMsg::CreateBatch {
+        lockup_duration: None,
+        release_unit: 10,
+        release_amount: WithdrawalType::Amount(Uint128::new(10)),
+        validator_to_delegate_to: Some(DEFAULT_VALIDATOR.to_owned()),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let current_time = mock_env().block.time.seconds();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Staking(StakingMsg::Delegate {
+                validator: DEFAULT_VALIDATOR.to_string(),
+                amount: coin(100, "uusd")
+            }))
+            .add_attribute("action", "create_batch")
+            .add_attribute("amount", "100")
+            .add_attribute("lockup_end", current_time.to_string())
+            .add_attribute("release_unit", "10")
+            .add_attribute("release_amount", "Amount(Uint128(10))")
+            .add_attribute("action", "delegate")
+            .add_attribute("validator", DEFAULT_VALIDATOR)
+            .add_attribute("amount", "100"),
+        res
+    );
+}
+
+#[test]
 fn test_create_batch_multi_batch_not_supported() {
     let mut deps = mock_dependencies(&[]);
     let msg = InstantiateMsg {
@@ -334,7 +372,7 @@ fn test_create_batch_multi_batch_not_supported() {
         lockup_duration: Some(100),
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
@@ -402,7 +440,7 @@ fn test_claim_batch_still_locked() {
         lockup_duration: Some(100),
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -429,7 +467,7 @@ fn test_claim_batch_no_funds_available() {
         lockup_duration: None,
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -457,7 +495,7 @@ fn test_claim_batch_all_funds_delegated() {
         lockup_duration: None,
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -500,7 +538,7 @@ fn test_claim_batch_some_funds_delegated() {
         lockup_duration: None,
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -556,7 +594,7 @@ fn test_claim_batch_single_claim() {
         lockup_duration: None,
         release_unit,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -637,7 +675,7 @@ fn test_claim_batch_middle_of_interval() {
         lockup_duration: None,
         release_unit,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -703,7 +741,7 @@ fn test_claim_batch_multiple_claims() {
         lockup_duration: None,
         release_unit,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -796,7 +834,7 @@ fn test_claim_batch_all_releases() {
         lockup_duration: None,
         release_unit,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -862,7 +900,7 @@ fn test_claim_batch_too_high_of_claim() {
         lockup_duration: None,
         release_unit,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        delegate: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
