@@ -309,6 +309,8 @@ fn execute_delegate(
     let max_amount = asset.query_balance(&deps.querier, env.contract.address)?;
     let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
 
+    require(!amount.is_zero(), ContractError::InvalidZeroAmount {})?;
+
     let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Delegate {
         validator: validator.clone(),
         amount: Coin {
@@ -350,6 +352,8 @@ fn execute_undelegate(
         validator.clone(),
     )?;
     let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
+
+    require(!amount.is_zero(), ContractError::InvalidZeroAmount {})?;
 
     CLAIMS.create_claim(
         deps.storage,
