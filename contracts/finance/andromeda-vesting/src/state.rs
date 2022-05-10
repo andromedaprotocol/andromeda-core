@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 /// The config.
 pub const CONFIG: Item<Config> = Item::new("config");
 
-/// The amount that is staked.
-pub const AMOUNT_STAKED: Item<Uint128> = Item::new("amount_staked");
+/// The amount that is delegated.
+pub const AMOUNT_DELEGATED: Item<Uint128> = Item::new("amount_delegated");
 
 /// Any pending claims from undelegating tokens.
 pub const CLAIMS: Claims = Claims::new("claims");

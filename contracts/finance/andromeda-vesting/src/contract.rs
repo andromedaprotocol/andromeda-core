@@ -18,7 +18,7 @@ use common::{
 
 use crate::state::{
     batches, get_all_batches_with_ids, get_claimable_batches_with_ids, key_to_int, save_new_batch,
-    Batch, Config, AMOUNT_STAKED, CLAIMS, CONFIG,
+    Batch, Config, AMOUNT_DELEGATED, CLAIMS, CONFIG,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
@@ -41,7 +41,7 @@ pub fn instantiate(
     };
 
     CONFIG.save(deps.storage, &config)?;
-    AMOUNT_STAKED.save(deps.storage, &Uint128::zero())?;
+    AMOUNT_DELEGATED.save(deps.storage, &Uint128::zero())?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -71,7 +71,7 @@ pub fn execute(
             lockup_duration,
             release_unit,
             release_amount,
-            stake,
+            delegate,
         } => execute_create_batch(
             deps,
             info,
@@ -79,7 +79,7 @@ pub fn execute(
             lockup_duration,
             release_unit,
             release_amount,
-            stake,
+            delegate,
         ),
         ExecuteMsg::Claim {
             number_of_claims,
@@ -90,11 +90,11 @@ pub fn execute(
             limit,
             up_to_time,
         } => execute_claim_all(deps, env, info, start_after, limit, up_to_time),
-        ExecuteMsg::Stake { amount, validator } => {
-            execute_stake(deps, env, info, amount, validator)
+        ExecuteMsg::Delegate { amount, validator } => {
+            execute_delegate(deps, env, info, amount, validator)
         }
-        ExecuteMsg::Unstake { amount, validator } => {
-            execute_unstake(deps, env, info, amount, validator)
+        ExecuteMsg::Undelegate { amount, validator } => {
+            execute_undelegate(deps, env, info, amount, validator)
         }
         ExecuteMsg::ClaimUndelegatedTokens {} => execute_claim_undelegated_tokens(deps, env, info),
     }
@@ -107,7 +107,7 @@ fn execute_create_batch(
     lockup_duration: Option<u64>,
     release_unit: u64,
     release_amount: WithdrawalType,
-    _stake: bool,
+    _delegate: bool,
 ) -> Result<Response, ContractError> {
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
@@ -187,7 +187,7 @@ fn execute_claim(
     )?;
 
     let config = CONFIG.load(deps.storage)?;
-    let amount_staked = AMOUNT_STAKED.load(deps.storage)?;
+    let amount_delegated = AMOUNT_DELEGATED.load(deps.storage)?;
 
     // If it doesn't exist, error will be returned to user.
     let key = batches().key(batch_id.into());
@@ -198,7 +198,7 @@ fn execute_claim(
         &mut batch,
         &config,
         number_of_claims,
-        amount_staked,
+        amount_delegated,
     )?;
 
     require(
@@ -241,7 +241,7 @@ fn execute_claim_all(
     )?;
 
     let config = CONFIG.load(deps.storage)?;
-    let amount_staked = AMOUNT_STAKED.load(deps.storage)?;
+    let amount_delegated = AMOUNT_DELEGATED.load(deps.storage)?;
 
     let current_time = env.block.time.seconds();
     let batches_with_ids =
@@ -266,7 +266,7 @@ fn execute_claim_all(
             &mut batch,
             &config,
             Some(num_available_claims),
-            amount_staked,
+            amount_delegated,
         )?;
 
         total_amount_to_send += amount_to_send;
@@ -293,7 +293,7 @@ fn execute_claim_all(
         .add_attribute("last_batch_id_processed", last_batch_id))
 }
 
-fn execute_stake(
+fn execute_delegate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -317,22 +317,22 @@ fn execute_stake(
         },
     });
 
-    AMOUNT_STAKED.update(
+    AMOUNT_DELEGATED.update(
         deps.storage,
-        |mut staked_amount| -> Result<_, ContractError> {
-            staked_amount += amount;
-            Ok(staked_amount)
+        |mut delegated_amount| -> Result<_, ContractError> {
+            delegated_amount += amount;
+            Ok(delegated_amount)
         },
     )?;
 
     Ok(Response::new()
         .add_message(msg)
-        .add_attribute("action", "stake")
+        .add_attribute("action", "delegate")
         .add_attribute("validator", validator)
         .add_attribute("amount", amount))
 }
 
-fn execute_unstake(
+fn execute_undelegate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -344,7 +344,7 @@ fn execute_unstake(
         ContractError::Unauthorized {},
     )?;
     let config = CONFIG.load(deps.storage)?;
-    let max_amount = get_amount_staked(
+    let max_amount = get_amount_delegated(
         &deps.querier,
         env.contract.address.to_string(),
         validator.clone(),
@@ -368,7 +368,7 @@ fn execute_unstake(
 
     Ok(Response::new()
         .add_message(msg)
-        .add_attribute("action", "stake")
+        .add_attribute("action", "undelegate")
         .add_attribute("validator", validator)
         .add_attribute("amount", amount))
 }
@@ -385,11 +385,11 @@ fn execute_claim_undelegated_tokens(
     let amount_claimed =
         CLAIMS.claim_tokens(deps.storage, &env.contract.address, &env.block, None)?;
 
-    AMOUNT_STAKED.update(
+    AMOUNT_DELEGATED.update(
         deps.storage,
-        |mut staked_amount| -> Result<_, ContractError> {
-            staked_amount -= amount_claimed;
-            Ok(staked_amount)
+        |mut delegated_amount| -> Result<_, ContractError> {
+            delegated_amount -= amount_claimed;
+            Ok(delegated_amount)
         },
     )?;
 
@@ -404,7 +404,7 @@ fn claim_batch(
     batch: &mut Batch,
     config: &Config,
     number_of_claims: Option<u64>,
-    amount_staked: Uint128,
+    amount_delegated: Uint128,
 ) -> Result<Uint128, ContractError> {
     let current_time = env.block.time.seconds();
     require(
@@ -415,7 +415,7 @@ fn claim_batch(
 
     let total_amount = AssetInfo::native(config.denom.to_owned())
         .query_balance(&querier, env.contract.address.to_owned())?;
-    let total_available_amount = total_amount - amount_staked;
+    let total_available_amount = total_amount - amount_delegated;
     let max_number_of_claims = total_available_amount / amount_per_claim;
 
     let elapsed_time = current_time - batch.last_claimed_release_time;
@@ -443,7 +443,7 @@ fn claim_batch(
     Ok(amount_to_send)
 }
 
-fn get_amount_staked(
+fn get_amount_delegated(
     querier: &QuerierWrapper,
     delegator: String,
     validator: String,
@@ -476,8 +476,15 @@ fn query_batch(deps: Deps, env: Env, batch_id: u64) -> Result<BatchResponse, Con
     let batch = batches().load(deps.storage, batch_id.into())?;
 
     let config = CONFIG.load(deps.storage)?;
-    let amount_staked = AMOUNT_STAKED.load(deps.storage)?;
-    get_batch_response(&deps.querier, &env, &config, amount_staked, batch, batch_id)
+    let amount_delegated = AMOUNT_DELEGATED.load(deps.storage)?;
+    get_batch_response(
+        &deps.querier,
+        &env,
+        &config,
+        amount_delegated,
+        batch,
+        batch_id,
+    )
 }
 
 fn query_batches(
@@ -489,11 +496,11 @@ fn query_batches(
     let batches_with_ids = get_all_batches_with_ids(deps.storage, start_after, limit)?;
     let mut batches_response = vec![];
     let config = CONFIG.load(deps.storage)?;
-    let amount_staked = AMOUNT_STAKED.load(deps.storage)?;
+    let amount_delegated = AMOUNT_DELEGATED.load(deps.storage)?;
     for (id, batch) in batches_with_ids {
         let id = key_to_int(&id)?;
         let batch_response =
-            get_batch_response(&deps.querier, &env, &config, amount_staked, batch, id)?;
+            get_batch_response(&deps.querier, &env, &config, amount_delegated, batch, id)?;
 
         batches_response.push(batch_response);
     }
@@ -504,14 +511,14 @@ fn get_batch_response(
     querier: &QuerierWrapper,
     env: &Env,
     config: &Config,
-    amount_staked: Uint128,
+    amount_delegated: Uint128,
     mut batch: Batch,
     batch_id: u64,
 ) -> Result<BatchResponse, ContractError> {
     let previous_amount = batch.amount_claimed;
     let previous_last_claimed_release_time = batch.last_claimed_release_time;
     let amount_available_to_claim = if env.block.time.seconds() >= batch.lockup_end {
-        claim_batch(querier, env, &mut batch, &config, None, amount_staked)?
+        claim_batch(querier, env, &mut batch, &config, None, amount_delegated)?
     } else {
         Uint128::zero()
     };
