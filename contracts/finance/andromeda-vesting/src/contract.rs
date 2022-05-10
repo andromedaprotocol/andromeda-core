@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response,
-    StakingMsg, Uint128,
+    Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StakingMsg,
+    Uint128,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;
