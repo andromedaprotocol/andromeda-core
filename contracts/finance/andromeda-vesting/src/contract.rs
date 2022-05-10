@@ -429,8 +429,6 @@ fn claim_batch(
 
     let total_amount = AssetInfo::native(config.denom.to_owned())
         .query_balance(querier, env.contract.address.to_owned())?;
-    let total_available_amount = total_amount - amount_delegated;
-    let max_number_of_claims = total_available_amount / amount_per_claim;
 
     let elapsed_time = current_time - batch.last_claimed_release_time;
     let num_available_claims = elapsed_time / batch.release_unit;
@@ -443,7 +441,7 @@ fn claim_batch(
     let amount_to_send = amount_per_claim * Uint128::from(number_of_claims);
     let amount_available = cmp::min(
         batch.amount - batch.amount_claimed,
-        max_number_of_claims * amount_per_claim,
+        total_amount - amount_delegated,
     );
 
     let amount_to_send = cmp::min(amount_to_send, amount_available);
