@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     Binary, BlockInfo, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response,
-    StakingMsg, Uint128,
+    StakingMsg, Storage, Uint128,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;
@@ -37,6 +37,7 @@ pub fn instantiate(
         is_multi_batch_enabled: msg.is_multi_batch_enabled,
         recipient: msg.recipient,
         denom: msg.denom,
+        unbonding_duration: msg.unbonding_duration,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -185,10 +186,20 @@ fn execute_claim(
         ContractError::Unauthorized {},
     )?;
 
+    let config = CONFIG.load(deps.storage)?;
+    let amount_staked = AMOUNT_STAKED.load(deps.storage)?;
+
     // If it doesn't exist, error will be returned to user.
     let key = batches().key(batch_id.into());
     let mut batch = key.load(deps.storage)?;
-    let amount_to_send = claim_batch(&env.block, &mut batch, number_of_claims)?;
+    let amount_to_send = claim_batch(
+        &deps.querier,
+        &env,
+        &mut batch,
+        &config,
+        number_of_claims,
+        amount_staked,
+    )?;
 
     require(
         !amount_to_send.is_zero(),
@@ -229,6 +240,9 @@ fn execute_claim_all(
         ContractError::Unauthorized {},
     )?;
 
+    let config = CONFIG.load(deps.storage)?;
+    let amount_staked = AMOUNT_STAKED.load(deps.storage)?;
+
     let current_time = env.block.time.seconds();
     let batches_with_ids =
         get_claimable_batches_with_ids(deps.storage, current_time, start_after, limit)?;
@@ -246,7 +260,14 @@ fn execute_claim_all(
         let elapsed_time = up_to_time - batch.last_claimed_release_time;
         let num_available_claims = elapsed_time / batch.release_unit;
 
-        let amount_to_send = claim_batch(&env.block, &mut batch, Some(num_available_claims))?;
+        let amount_to_send = claim_batch(
+            &deps.querier,
+            &env,
+            &mut batch,
+            &config,
+            Some(num_available_claims),
+            amount_staked,
+        )?;
 
         total_amount_to_send += amount_to_send;
 
@@ -330,6 +351,13 @@ fn execute_unstake(
     )?;
     let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
 
+    CLAIMS.create_claim(
+        deps.storage,
+        &env.contract.address,
+        amount,
+        config.unbonding_duration.after(&env.block),
+    )?;
+
     let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Undelegate {
         validator: validator.clone(),
         amount: Coin {
@@ -371,15 +399,24 @@ fn execute_claim_undelegated_tokens(
 }
 
 fn claim_batch(
-    block: &BlockInfo,
+    querier: &QuerierWrapper,
+    env: &Env,
     batch: &mut Batch,
+    config: &Config,
     number_of_claims: Option<u64>,
+    amount_staked: Uint128,
 ) -> Result<Uint128, ContractError> {
-    let current_time = block.time.seconds();
+    let current_time = env.block.time.seconds();
     require(
         batch.lockup_end <= current_time,
         ContractError::FundsAreLocked {},
     )?;
+    let amount_per_claim = batch.release_amount.get_amount(batch.amount)?;
+
+    let total_amount = AssetInfo::native(config.denom.to_owned())
+        .query_balance(&querier, env.contract.address.to_owned())?;
+    let total_available_amount = total_amount - amount_staked;
+    let max_number_of_claims = total_available_amount / amount_per_claim;
 
     let elapsed_time = current_time - batch.last_claimed_release_time;
     let num_available_claims = elapsed_time / batch.release_unit;
@@ -389,9 +426,11 @@ fn claim_batch(
         num_available_claims,
     );
 
-    let amount_per_claim = batch.release_amount.get_amount(batch.amount)?;
     let amount_to_send = amount_per_claim * Uint128::from(number_of_claims);
-    let amount_available = batch.amount - batch.amount_claimed;
+    let amount_available = cmp::min(
+        batch.amount - batch.amount_claimed,
+        max_number_of_claims * amount_per_claim,
+    );
 
     let amount_to_send = cmp::min(amount_to_send, amount_available);
 
@@ -436,7 +475,9 @@ fn query_config(deps: Deps) -> Result<Config, ContractError> {
 fn query_batch(deps: Deps, env: Env, batch_id: u64) -> Result<BatchResponse, ContractError> {
     let batch = batches().load(deps.storage, batch_id.into())?;
 
-    get_batch_response(&env.block, batch, batch_id)
+    let config = CONFIG.load(deps.storage)?;
+    let amount_staked = AMOUNT_STAKED.load(deps.storage)?;
+    get_batch_response(&deps.querier, &env, &config, amount_staked, batch, batch_id)
 }
 
 fn query_batches(
@@ -447,9 +488,12 @@ fn query_batches(
 ) -> Result<Vec<BatchResponse>, ContractError> {
     let batches_with_ids = get_all_batches_with_ids(deps.storage, start_after, limit)?;
     let mut batches_response = vec![];
+    let config = CONFIG.load(deps.storage)?;
+    let amount_staked = AMOUNT_STAKED.load(deps.storage)?;
     for (id, batch) in batches_with_ids {
         let id = key_to_int(&id)?;
-        let batch_response = get_batch_response(&env.block, batch, id)?;
+        let batch_response =
+            get_batch_response(&deps.querier, &env, &config, amount_staked, batch, id)?;
 
         batches_response.push(batch_response);
     }
@@ -457,14 +501,17 @@ fn query_batches(
 }
 
 fn get_batch_response(
-    block: &BlockInfo,
+    querier: &QuerierWrapper,
+    env: &Env,
+    config: &Config,
+    amount_staked: Uint128,
     mut batch: Batch,
     batch_id: u64,
 ) -> Result<BatchResponse, ContractError> {
     let previous_amount = batch.amount_claimed;
     let previous_last_claimed_release_time = batch.last_claimed_release_time;
-    let amount_available_to_claim = if block.time.seconds() >= batch.lockup_end {
-        claim_batch(block, &mut batch, None)?
+    let amount_available_to_claim = if env.block.time.seconds() >= batch.lockup_end {
+        claim_batch(querier, env, &mut batch, &config, None, amount_staked)?
     } else {
         Uint128::zero()
     };

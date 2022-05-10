@@ -2,6 +2,7 @@ use common::{
     ado_base::recipient::Recipient, error::ContractError, require, withdraw::WithdrawalType,
 };
 use cosmwasm_std::{Order, Storage, Uint128};
+use cw0::Duration;
 use cw_controllers::Claims;
 use cw_storage_plus::{
     Bound, Index, IndexList, IndexedMap, Item, MultiIndex, PrimaryKey, U64Key, U8Key,
@@ -29,6 +30,8 @@ pub struct Config {
     pub is_multi_batch_enabled: bool,
     /// The denom of the coin being vested.
     pub denom: String,
+    /// The unbonding duration of the native staking module.
+    pub unbonding_duration: Duration,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

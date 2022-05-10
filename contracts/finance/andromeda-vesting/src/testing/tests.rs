@@ -1,8 +1,9 @@
 use cosmwasm_std::{
     coins, from_binary,
-    testing::{mock_dependencies, mock_env, mock_info},
+    testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
     BankMsg, DepsMut, Response, Uint128,
 };
+use cw0::Duration;
 use cw_storage_plus::U64Key;
 
 use crate::{
@@ -18,6 +19,7 @@ fn init(deps: DepsMut) -> Response {
         recipient: Recipient::Addr("recipient".to_string()),
         is_multi_batch_enabled: true,
         denom: "uusd".to_string(),
+        unbonding_duration: Duration::Height(0u64),
     };
 
     let info = mock_info("owner", &[]);
@@ -285,6 +287,7 @@ fn test_create_batch_multi_batch_not_supported() {
         recipient: Recipient::Addr("recipient".to_string()),
         is_multi_batch_enabled: false,
         denom: "uusd".to_string(),
+        unbonding_duration: Duration::Height(0u64),
     };
 
     let info = mock_info("owner", &[]);
@@ -426,6 +429,9 @@ fn test_claim_batch_single_claim() {
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
+
     // Skip time.
     let mut env = mock_env();
     // A single release is available.
@@ -504,6 +510,9 @@ fn test_claim_batch_middle_of_interval() {
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
+
     // Claim batch.
     let msg = ExecuteMsg::Claim {
         number_of_claims: None,
@@ -566,6 +575,9 @@ fn test_claim_batch_multiple_claims() {
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
 
@@ -657,6 +669,9 @@ fn test_claim_batch_all_releases() {
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
+
     let mut env = mock_env();
 
     // All releases are available and then some (10 * release_unit would be when all releases
@@ -719,6 +734,9 @@ fn test_claim_batch_too_high_of_claim() {
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
     // A single release is available.
@@ -807,6 +825,9 @@ fn test_claim_all() {
         release_unit,
         release_amount.clone(),
     );
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(400, "uusd"));
 
     // Speed up time.
     let mut env = mock_env();
