@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, BlockInfo, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response,
-    StakingMsg, Storage, Uint128,
+    Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response,
+    StakingMsg, Uint128,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;
@@ -428,7 +428,7 @@ fn claim_batch(
     let amount_per_claim = batch.release_amount.get_amount(batch.amount)?;
 
     let total_amount = AssetInfo::native(config.denom.to_owned())
-        .query_balance(&querier, env.contract.address.to_owned())?;
+        .query_balance(querier, env.contract.address.to_owned())?;
     let total_available_amount = total_amount - amount_delegated;
     let max_number_of_claims = total_available_amount / amount_per_claim;
 
@@ -532,7 +532,7 @@ fn get_batch_response(
     let previous_amount = batch.amount_claimed;
     let previous_last_claimed_release_time = batch.last_claimed_release_time;
     let amount_available_to_claim = if env.block.time.seconds() >= batch.lockup_end {
-        claim_batch(querier, env, &mut batch, &config, None, amount_delegated)?
+        claim_batch(querier, env, &mut batch, config, None, amount_delegated)?
     } else {
         Uint128::zero()
     };

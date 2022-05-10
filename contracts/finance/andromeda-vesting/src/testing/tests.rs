@@ -332,7 +332,7 @@ fn test_create_batch_and_delegate() {
         validator_to_delegate_to: Some(DEFAULT_VALIDATOR.to_owned()),
     };
 
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let current_time = mock_env().block.time.seconds();
 
     assert_eq!(
