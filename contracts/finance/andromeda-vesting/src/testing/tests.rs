@@ -708,19 +708,19 @@ fn test_claim_batch_not_nice_numbers() {
             .add_attribute("amount_left", "0"),
         res
     );
-    /*let lockup_end = mock_env().block.time.seconds();
+    let lockup_end = mock_env().block.time.seconds();
 
     assert_eq!(
         Batch {
-            amount: Uint128::new(100),
-            amount_claimed: Uint128::new(10),
+            amount: Uint128::new(7),
+            amount_claimed: Uint128::new(7),
             lockup_end,
             release_unit: 10,
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: lockup_end + release_unit,
         },
         batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
-    );*/
+    );
 }
 
 #[test]
