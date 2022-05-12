@@ -28,7 +28,7 @@ codegen-units = 1
 [profile.release.package.andromeda-cw20]
 codegen-units = 1
 
-[profile.release.package.andromeda-anchor]
+[profile.release.package.andromeda-anchor-earn]
 codegen-units = 1
 
 [profile.release.package.andromeda-crowdfund]

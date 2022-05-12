@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-addresslist"
+name = "andromeda-address-list"
 version = "0.1.0"
 dependencies = [
  "ado-base",

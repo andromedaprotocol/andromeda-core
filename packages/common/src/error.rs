@@ -372,6 +372,9 @@ pub enum ContractError {
 
     #[error("Unexpected number of bytes. Expected: {expected}, actual: {actual}")]
     UnexpectedNumberOfBytes { expected: u8, actual: usize },
+
+    #[error("Not an assigned operator, {msg:?}")]
+    NotAssignedOperator { msg: Option<String> },
 }
 
 impl From<Cw20ContractError> for ContractError {
