@@ -4,7 +4,7 @@ use common::{
         ownership::ContractOwnerResponse,
         AndromedaQuery, QueryMsg,
     },
-    primitive::{GetValueResponse, Primitive},
+    primitive::{GetValueResponse, Primitive, Value},
     Funds,
 };
 
@@ -15,7 +15,7 @@ use andromeda_modules::{
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };
 use andromeda_non_fungible_tokens::{
-    cw721::{MetadataAttribute, QueryMsg as Cw721QueryMsg, TokenExtension},
+    cw721::{MetadataAttribute, QueryMsg as Cw721QueryMsg, TokenExtension, TransferAgreement},
     cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
 };
 use cosmwasm_std::{
@@ -45,6 +45,7 @@ pub const MOCK_OFFERS_CONTRACT: &str = "offers_contract";
 
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 pub const MOCK_TOKEN_TRANSFER_AGREEMENT: &str = "token_transfer_agreement";
+pub const MOCK_TOKEN_ARCHIVED: &str = "token_archived";
 
 pub fn bank_sub_msg(amount: u128, recipient: &str) -> SubMsg {
     SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -394,6 +395,30 @@ impl WasmMockQuerier {
                     ],
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+            }
+            Cw721QueryMsg::IsArchived { token_id } => {
+                if token_id == MOCK_TOKEN_ARCHIVED {
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&true).unwrap()))
+                } else {
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&false).unwrap()))
+                }
+            }
+            Cw721QueryMsg::TransferAgreement { token_id } => {
+                if token_id == MOCK_TOKEN_TRANSFER_AGREEMENT {
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_binary(&Some(TransferAgreement {
+                            amount: Value::Raw(Coin {
+                                denom: "uusd".to_string(),
+                                amount: Uint128::from(10u64),
+                            }),
+                            purchaser: "purchaser".to_string(),
+                        }))
+                        .unwrap(),
+                    ))
+                } else {
+                    let resp: Option<TransferAgreement> = None;
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()))
+                }
             }
             _ => panic!("Unsupported Query"),
         }

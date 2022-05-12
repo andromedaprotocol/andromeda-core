@@ -230,7 +230,7 @@ fn get_original_nft_data(
     require(attributes.len() == 2, ContractError::InvalidMetadata {})?;
     let original_token_id = attributes[0].value.clone();
     let original_token_address = attributes[1].value.clone();
-    return Ok((original_token_id, original_token_address));
+    Ok((original_token_id, original_token_address))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

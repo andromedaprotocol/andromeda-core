@@ -13,7 +13,7 @@ use common::{
     },
     error::ContractError,
     mission::AndrAddress,
-    primitive::Value,
+    primitive::{PrimitivePointer, Value},
     Funds,
 };
 
@@ -25,7 +25,7 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_testing::testing::mock_querier::{
     bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
-    MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
+    MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
 };
 use cw721::OwnerOfResponse;
 use cw721_base::MintMsg;
@@ -255,6 +255,7 @@ fn test_transfer_nft() {
 fn test_agreed_transfer_nft() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
+    let valid_info = mock_info(creator.as_str(), &[]);
     let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     let agreed_amount = Coin {
@@ -280,6 +281,21 @@ fn test_agreed_transfer_nft() {
             youtube_url: None,
         },
     );
+
+    let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
+        token_id: token_id.clone(),
+        agreement: Some(TransferAgreement {
+            amount: Value::Raw(agreed_amount.clone()),
+            purchaser: purchaser.to_string(),
+        }),
+    };
+    execute(
+        deps.as_mut(),
+        env.clone(),
+        valid_info,
+        transfer_agreement_msg,
+    )
+    .unwrap();
 
     let transfer_msg = ExecuteMsg::TransferNft {
         recipient: Addr::unchecked("recipient").to_string(),
@@ -311,6 +327,38 @@ fn test_agreed_transfer_nft() {
 }
 
 #[test]
+fn test_agreed_transfer_token_doesnt_exist() {
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let valid_info = mock_info(creator.as_str(), &[]);
+    let purchaser = "purchaser";
+    let agreement = TransferAgreement {
+        amount: Value::Pointer(PrimitivePointer {
+            address: AndrAddress {
+                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+            },
+            key: Some("sell_amount".to_string()),
+        }),
+        purchaser: purchaser.to_string(),
+    };
+    init_setup(deps.as_mut(), env.clone(), None);
+
+    let transfer_agreement = ExecuteMsg::TransferAgreement {
+        token_id,
+        agreement: Some(agreement),
+    };
+    let received = execute(deps.as_mut(), env, valid_info, transfer_agreement).unwrap_err();
+    let expected = ContractError::Std(StdError::NotFound {
+        kind: "cw721_base::state::TokenInfo<andromeda_non_fungible_tokens::cw721::TokenExtension>"
+            .to_string(),
+    });
+
+    assert_eq!(received, expected)
+}
+
+#[test]
 fn test_agreed_transfer_nft_primitive_pointer() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
@@ -320,7 +368,17 @@ fn test_agreed_transfer_nft_primitive_pointer() {
         denom: "uusd".to_string(),
         amount: Uint128::from(100u64),
     };
+    let valid_info = mock_info(creator.as_str(), &[]);
     let purchaser = "purchaser";
+    let agreement = TransferAgreement {
+        amount: Value::Pointer(PrimitivePointer {
+            address: AndrAddress {
+                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+            },
+            key: Some("sell_amount".to_string()),
+        }),
+        purchaser: purchaser.to_string(),
+    };
     init_setup(deps.as_mut(), env.clone(), None);
     mint_token(
         deps.as_mut(),
@@ -339,6 +397,12 @@ fn test_agreed_transfer_nft_primitive_pointer() {
             youtube_url: None,
         },
     );
+
+    let transfer_agreement = ExecuteMsg::TransferAgreement {
+        token_id: token_id.clone(),
+        agreement: Some(agreement),
+    };
+    execute(deps.as_mut(), env.clone(), valid_info, transfer_agreement).unwrap();
 
     let transfer_msg = ExecuteMsg::TransferNft {
         recipient: Addr::unchecked("recipient").to_string(),
@@ -545,6 +609,7 @@ fn test_burn() {
 fn test_archived_check() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
+    let valid_info = mock_info(creator.as_str(), &[]);
     let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
@@ -565,6 +630,11 @@ fn test_archived_check() {
             youtube_url: None,
         },
     );
+
+    let archive_msg = ExecuteMsg::Archive {
+        token_id: token_id.clone(),
+    };
+    execute(deps.as_mut(), env.clone(), valid_info, archive_msg).unwrap();
 
     let msg = ExecuteMsg::Burn { token_id };
 

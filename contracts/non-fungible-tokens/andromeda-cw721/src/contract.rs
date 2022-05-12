@@ -310,7 +310,7 @@ fn execute_update_transfer_agreement(
         ContractError::TokenIsArchived {},
     )?;
     if let Some(xfer_agreement) = &agreement {
-        TRANSFER_AGREEMENTS.save(deps.storage, token_id.to_string(), &xfer_agreement)?;
+        TRANSFER_AGREEMENTS.save(deps.storage, token_id.to_string(), xfer_agreement)?;
         if xfer_agreement.purchaser != "*" {
             deps.api.addr_validate(&xfer_agreement.purchaser)?;
         }
@@ -379,16 +379,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
-        QueryMsg::IsArchived { token_id } => Ok(to_binary(&query_archived(deps, token_id)?)?),
+        QueryMsg::IsArchived { token_id } => Ok(to_binary(&is_archived(deps.storage, &token_id)?)?),
         QueryMsg::TransferAgreement { token_id } => {
             Ok(to_binary(&query_transfer_agreement(deps, token_id)?)?)
         }
         _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
     }
-}
-
-pub fn query_archived(deps: Deps, token_id: String) -> Result<bool, ContractError> {
-    Ok(is_archived(deps.storage, &token_id)?)
 }
 
 pub fn query_transfer_agreement(
