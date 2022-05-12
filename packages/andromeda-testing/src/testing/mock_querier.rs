@@ -4,7 +4,7 @@ use common::{
         ownership::ContractOwnerResponse,
         AndromedaQuery, QueryMsg,
     },
-    primitive::{GetValueResponse, Primitive, Value},
+    primitive::{GetValueResponse, Primitive},
     Funds,
 };
 
@@ -15,10 +15,7 @@ use andromeda_modules::{
     receipt::{generate_receipt_message, QueryMsg as ReceiptQueryMsg},
 };
 use andromeda_non_fungible_tokens::{
-    cw721::{
-        MetadataAttribute, MetadataType, QueryMsg as Cw721QueryMsg, TokenExtension, TokenMetadata,
-        TransferAgreement,
-    },
+    cw721::{MetadataAttribute, QueryMsg as Cw721QueryMsg, TokenExtension},
     cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
 };
 use cosmwasm_std::{
@@ -332,47 +329,40 @@ impl WasmMockQuerier {
     fn handle_cw721_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             Cw721QueryMsg::NftInfo { token_id } => {
-                let transfer_agreement = if token_id == MOCK_TOKEN_TRANSFER_AGREEMENT {
-                    Some(TransferAgreement {
-                        amount: Value::Raw(coin(100, "uusd")),
-                        purchaser: "purchaser".to_string(),
-                    })
-                } else {
-                    None
-                };
                 let extension = if token_id == "original_token_id" {
                     TokenExtension {
                         name: "wrapped_token_id".to_owned(),
                         publisher: "sender".to_owned(),
                         description: None,
-                        transfer_agreement: None,
-                        metadata: Some(TokenMetadata {
-                            data_type: MetadataType::Other,
-                            external_url: None,
-                            data_url: None,
-                            attributes: Some(vec![
-                                MetadataAttribute {
-                                    key: "original_token_id".to_owned(),
-                                    value: "original_token_id".to_owned(),
-                                    display_label: None,
-                                },
-                                MetadataAttribute {
-                                    key: "original_token_address".to_owned(),
-                                    value: "original_token_address".to_owned(),
-                                    display_label: None,
-                                },
-                            ]),
-                        }),
-                        archived: false,
+                        attributes: vec![
+                            MetadataAttribute {
+                                trait_type: "original_token_id".to_owned(),
+                                value: "original_token_id".to_owned(),
+                                display_type: None,
+                            },
+                            MetadataAttribute {
+                                trait_type: "original_token_address".to_owned(),
+                                value: "original_token_address".to_owned(),
+                                display_type: None,
+                            },
+                        ],
+                        image: String::from(""),
+                        image_data: None,
+                        external_url: None,
+                        animation_url: None,
+                        youtube_url: None,
                     }
                 } else {
                     TokenExtension {
                         name: token_id,
                         publisher: "sender".to_owned(),
                         description: None,
-                        transfer_agreement,
-                        metadata: None,
-                        archived: false,
+                        attributes: vec![],
+                        image: String::from(""),
+                        image_data: None,
+                        external_url: None,
+                        animation_url: None,
+                        youtube_url: None,
                     }
                 };
                 let response = NftInfoResponse {

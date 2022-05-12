@@ -25,3 +25,5 @@ pub fn offers<'a>() -> IndexedMap<'a, &'a str, Offer, OfferIndexes<'a>> {
     };
     IndexedMap::new("ownership", indexes)
 }
+
+// pub fn query_cw721(storage: &dyn Storage, query: )
