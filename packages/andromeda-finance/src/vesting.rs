@@ -59,8 +59,6 @@ pub enum ExecuteMsg {
         amount: Option<Uint128>,
         validator: String,
     },
-    /// Claims all undelegated tokens that are ready to be claimed.
-    ClaimUndelegatedTokens {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

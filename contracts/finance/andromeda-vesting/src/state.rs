@@ -3,7 +3,6 @@ use common::{
 };
 use cosmwasm_std::{Order, Storage, Uint128};
 use cw0::Duration;
-use cw_controllers::Claims;
 use cw_storage_plus::{
     Bound, Index, IndexList, IndexedMap, Item, MultiIndex, PrimaryKey, U64Key, U8Key,
 };
@@ -12,12 +11,6 @@ use serde::{Deserialize, Serialize};
 
 /// The config.
 pub const CONFIG: Item<Config> = Item::new("config");
-
-/// The amount that is delegated.
-pub const AMOUNT_DELEGATED: Item<Uint128> = Item::new("amount_delegated");
-
-/// Any pending claims from undelegating tokens.
-pub const CLAIMS: Claims = Claims::new("claims");
 
 /// The next ID to use for a newly added batch.
 pub const NEXT_ID: Item<u64> = Item::new("next_id");

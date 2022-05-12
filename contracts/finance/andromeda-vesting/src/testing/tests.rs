@@ -5,12 +5,11 @@ use cosmwasm_std::{
     Uint128, Validator,
 };
 use cw0::{Duration, Expiration};
-use cw_controllers::{Claim, ClaimsResponse};
 use cw_storage_plus::U64Key;
 
 use crate::{
     contract::{execute, instantiate, query},
-    state::{batches, Batch, Config, AMOUNT_DELEGATED, CLAIMS, CONFIG, NEXT_ID},
+    state::{batches, Batch, Config, CONFIG, NEXT_ID},
 };
 
 use andromeda_finance::vesting::{BatchResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -556,7 +555,10 @@ fn test_claim_batch_some_funds_delegated() {
 
     // Skip time to where all funds available.
     let mut env = mock_env();
-    env.block.time = env.block.time.plus_seconds(100);
+    env.block.time = env.block.time.plus_seconds(1000);
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(30, "uusd"));
 
     // Claim batch.
     let msg = ExecuteMsg::Claim {
@@ -1306,11 +1308,6 @@ fn test_delegate() {
             .add_attribute("amount", "100"),
         res
     );
-
-    assert_eq!(
-        Uint128::new(100),
-        AMOUNT_DELEGATED.load(deps.as_ref().storage).unwrap()
-    );
 }
 
 #[test]
@@ -1340,11 +1337,6 @@ fn test_delegate_more_than_balance() {
             .add_attribute("validator", DEFAULT_VALIDATOR)
             .add_attribute("amount", "100"),
         res
-    );
-
-    assert_eq!(
-        Uint128::new(100),
-        AMOUNT_DELEGATED.load(deps.as_ref().storage).unwrap()
     );
 }
 
@@ -1409,19 +1401,6 @@ fn test_undelegate() {
             .add_attribute("amount", "100"),
         res
     );
-
-    let current_block = mock_env().block.height;
-    assert_eq!(
-        ClaimsResponse {
-            claims: vec![Claim {
-                amount: Uint128::new(100),
-                release_at: Expiration::AtHeight(current_block + UNBONDING_BLOCK_DURATION)
-            }]
-        },
-        CLAIMS
-            .query_claims(deps.as_ref(), &Addr::unchecked(MOCK_CONTRACT_ADDR))
-            .unwrap()
-    );
 }
 
 #[test]
@@ -1450,112 +1429,5 @@ fn test_undelegate_more_than_max() {
             .add_attribute("validator", DEFAULT_VALIDATOR)
             .add_attribute("amount", "100"),
         res
-    );
-
-    let current_block = mock_env().block.height;
-    assert_eq!(
-        ClaimsResponse {
-            claims: vec![Claim {
-                amount: Uint128::new(100),
-                release_at: Expiration::AtHeight(current_block + UNBONDING_BLOCK_DURATION)
-            }]
-        },
-        CLAIMS
-            .query_claims(deps.as_ref(), &Addr::unchecked(MOCK_CONTRACT_ADDR))
-            .unwrap()
-    );
-}
-
-#[test]
-fn test_claim_undelegated_tokens_unauthorized() {
-    let mut deps = mock_dependencies(&[]);
-    init(deps.as_mut());
-
-    let info = mock_info("not_owner", &[]);
-
-    let msg = ExecuteMsg::ClaimUndelegatedTokens {};
-
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
-
-    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
-}
-
-#[test]
-fn test_claim_undelegated_tokens_no_claims() {
-    let mut deps = mock_dependencies(&[]);
-    init(deps.as_mut());
-
-    let info = mock_info("owner", &[]);
-
-    let msg = ExecuteMsg::ClaimUndelegatedTokens {};
-
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_undelegated_tokens")
-            .add_attribute("amount", "0"),
-        res
-    );
-}
-
-#[test]
-fn test_claim_undelegated_tokens() {
-    let mut deps = mock_dependencies(&[]);
-    init(deps.as_mut());
-
-    let info = mock_info("owner", &[]);
-
-    // Delegate tokens
-    deps.querier
-        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
-    let msg = ExecuteMsg::Delegate {
-        amount: None,
-        validator: DEFAULT_VALIDATOR.to_string(),
-    };
-
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-    set_delegation(&mut deps.querier, 100, "uusd");
-
-    assert_eq!(
-        Uint128::new(100),
-        AMOUNT_DELEGATED.load(deps.as_ref().storage).unwrap()
-    );
-
-    // Undelegate all tokens.
-    let msg = ExecuteMsg::Undelegate {
-        amount: None,
-        validator: DEFAULT_VALIDATOR.to_string(),
-    };
-
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-    // The delegated amount has not been changed.
-    assert_eq!(
-        Uint128::new(100),
-        AMOUNT_DELEGATED.load(deps.as_ref().storage).unwrap()
-    );
-
-    // Skip time to after expiration.
-    let mut env = mock_env();
-    env.block.height += UNBONDING_BLOCK_DURATION;
-
-    // Claim undelegated tokens
-    let msg = ExecuteMsg::ClaimUndelegatedTokens {};
-
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
-
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_undelegated_tokens")
-            .add_attribute("amount", "100"),
-        res
-    );
-
-    // The delegated amount has been updated.
-    assert_eq!(
-        Uint128::zero(),
-        AMOUNT_DELEGATED.load(deps.as_ref().storage).unwrap()
     );
 }
