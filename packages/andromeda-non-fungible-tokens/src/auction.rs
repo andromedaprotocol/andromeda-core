@@ -1,4 +1,7 @@
-use common::OrderBy;
+use common::{
+    ado_base::{AndromedaMsg, AndromedaQuery},
+    OrderBy,
+};
 use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw721::{Cw721ReceiveMsg, Expiration};
 use schemars::JsonSchema;
@@ -10,6 +13,7 @@ pub struct InstantiateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     ReceiveNft(Cw721ReceiveMsg),
     /// Places a bid on the current auction for the given token_id. The previous largest bid gets
     /// automatically sent back to the bidder when they are outbid.
@@ -55,6 +59,7 @@ pub enum Cw721HookMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     /// Gets the latest auction state for the given token. This will either be the current auction
     /// if there is one in progress or the last completed one.
     LatestAuctionState {
