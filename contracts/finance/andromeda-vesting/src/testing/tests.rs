@@ -4,7 +4,7 @@ use cosmwasm_std::{
     Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, FullDelegation, Response, StakingMsg,
     Uint128, Validator,
 };
-use cw0::{Duration};
+use cw0::Duration;
 use cw_storage_plus::U64Key;
 
 use crate::{
