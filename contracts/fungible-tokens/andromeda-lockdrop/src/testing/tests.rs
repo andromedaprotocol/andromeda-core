@@ -12,7 +12,7 @@ use andromeda_fungible_tokens::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };
-use common::{error::ContractError, mission::AndrAddress};
+use common::{app::AndrAddress, error::ContractError};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 const MOCK_INCENTIVE_TOKEN: &str = "mock_incentive_token";

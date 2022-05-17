@@ -8,8 +8,8 @@ use andromeda_non_fungible_tokens::{
     wrapped_cw721::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, QueryMsg},
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
-    mission::AndrAddress, require, response::get_reply_address,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
+    error::ContractError, require, response::get_reply_address,
 };
 use cosmwasm_std::{
     entry_point, from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,

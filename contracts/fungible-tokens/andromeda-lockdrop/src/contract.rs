@@ -321,9 +321,9 @@ pub fn execute_enable_claims(
 
     // If bootstrap is specified then only it can enable claims.
     if let Some(bootstrap_contract_address) = &config.bootstrap_contract_address {
-        let mission_contract = contract.get_mission_contract(deps.storage)?;
+        let app_contract = contract.get_app_contract(deps.storage)?;
         let bootstrap_contract_address =
-            bootstrap_contract_address.get_address(deps.api, &deps.querier, mission_contract)?;
+            bootstrap_contract_address.get_address(deps.api, &deps.querier, app_contract)?;
 
         // CHECK :: ONLY BOOTSTRAP CONTRACT CAN CALL THIS FUNCTION
         require(
@@ -515,10 +515,10 @@ fn execute_withdraw_proceeds(
 pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let contract = ADOContract::default();
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let app_contract = contract.get_app_contract(deps.storage)?;
     let bootstrap_contract_address = config
         .bootstrap_contract_address
-        .map(|a| a.get_address(deps.api, &deps.querier, mission_contract))
+        .map(|a| a.get_address(deps.api, &deps.querier, app_contract))
         // Flip Option<Result> to Result<Option>
         .map_or(Ok(None), |v| v.map(Some));
 

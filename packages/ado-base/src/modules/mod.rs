@@ -113,14 +113,11 @@ impl<'a> ADOContract<'a> {
         api: &dyn Api,
         querier: &QuerierWrapper,
     ) -> Result<Vec<String>, ContractError> {
-        let mission_contract = self.get_mission_contract(storage)?;
+        let app_contract = self.get_app_contract(storage)?;
         let module_addresses: Result<Vec<String>, _> = self
             .load_modules(storage)?
             .iter()
-            .map(|m| {
-                m.address
-                    .get_address(api, querier, mission_contract.clone())
-            })
+            .map(|m| m.address.get_address(api, querier, app_contract.clone()))
             .collect();
 
         module_addresses
@@ -221,10 +218,10 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock_querier::{mock_dependencies_custom, MOCK_MISSION_CONTRACT};
+    use crate::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
     use common::{
         ado_base::modules::{ADDRESS_LIST, AUCTION, RECEIPT},
-        mission::AndrAddress,
+        app::AndrAddress,
     };
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_info},
@@ -630,11 +627,8 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let contract = ADOContract::default();
         contract
-            .mission_contract
-            .save(
-                deps.as_mut().storage,
-                &Addr::unchecked(MOCK_MISSION_CONTRACT),
-            )
+            .app_contract
+            .save(deps.as_mut().storage, &Addr::unchecked(MOCK_APP_CONTRACT))
             .unwrap();
         contract.module_idx.save(deps.as_mut().storage, &2).unwrap();
         contract

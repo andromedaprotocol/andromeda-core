@@ -135,7 +135,7 @@ pub fn execute_deposit(
     let recipient_addr = recipient.get_addr(
         deps.api,
         &deps.querier,
-        ADOContract::default().get_mission_contract(deps.storage)?,
+        ADOContract::default().get_app_contract(deps.storage)?,
     )?;
     PREV_AUST_BALANCE.save(deps.storage, &aust_balance)?;
     RECIPIENT_ADDR.save(deps.storage, &recipient_addr)?;
@@ -182,7 +182,7 @@ pub fn execute_withdraw(
     let recipient_addr = recipient.get_addr(
         deps.api,
         &deps.querier,
-        ADOContract::default().get_mission_contract(deps.storage)?,
+        ADOContract::default().get_app_contract(deps.storage)?,
     )?;
 
     let authorized = recipient_addr == info.sender
@@ -298,7 +298,7 @@ fn withdraw_aust(
     let msg = position.recipient.generate_msg_from_asset(
         deps.api,
         &deps.querier,
-        ADOContract::default().get_mission_contract(deps.storage)?,
+        ADOContract::default().get_app_contract(deps.storage)?,
         Asset::cw20(deps.api.addr_validate(&anchor_aust_token)?, amount),
     )?;
 
@@ -358,7 +358,7 @@ fn reply_withdraw_ust(deps: DepsMut, env: Env) -> Result<Response, ContractError
         msgs.push(recipient.generate_msg_from_asset(
             deps.api,
             &deps.querier,
-            ADOContract::default().get_mission_contract(deps.storage)?,
+            ADOContract::default().get_app_contract(deps.storage)?,
             Asset::native(UUSD_DENOM, transfer_amount.u128()),
         )?);
     }

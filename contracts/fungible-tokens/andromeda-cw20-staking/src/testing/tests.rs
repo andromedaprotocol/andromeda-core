@@ -17,7 +17,7 @@ use crate::{
 use andromeda_fungible_tokens::cw20_staking::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StakerResponse,
 };
-use common::{error::ContractError, mission::AndrAddress};
+use common::{app::AndrAddress, error::ContractError};
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
 const MOCK_STAKING_TOKEN: &str = "staking_token";

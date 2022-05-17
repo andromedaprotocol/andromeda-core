@@ -29,7 +29,7 @@ impl<'a> ADOContract<'a> {
 mod tests {
     use super::*;
     use crate::modules::Module;
-    use common::mission::AndrAddress;
+    use common::app::AndrAddress;
     use cosmwasm_std::{testing::mock_dependencies, Addr};
 
     #[test]

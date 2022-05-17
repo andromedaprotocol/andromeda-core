@@ -8,7 +8,7 @@ use common::{
     Funds,
 };
 
-use andromeda_app::{factory::QueryMsg as FactoryQueryMsg, mission::QueryMsg as MissionQueryMsg};
+use andromeda_app::{app::QueryMsg as MissionQueryMsg, factory::QueryMsg as FactoryQueryMsg};
 use andromeda_modules::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     rates::QueryMsg as RatesQueryMsg,
@@ -43,7 +43,7 @@ pub const MOCK_CW20_CONTRACT2: &str = "cw20_contract2";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_RECEIPT_CONTRACT: &str = "receipt_contract";
-pub const MOCK_MISSION_CONTRACT: &str = "mission_contract";
+pub const MOCK_APP_CONTRACT: &str = "app_contract";
 pub const MOCK_OFFERS_CONTRACT: &str = "offers_contract";
 
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
@@ -163,7 +163,7 @@ impl WasmMockQuerier {
                     MOCK_OFFERS_CONTRACT => self.handle_offers_query(msg),
                     MOCK_RECEIPT_CONTRACT => self.handle_receipt_query(msg),
                     MOCK_FACTORY_CONTRACT => self.handle_factory_query(msg),
-                    MOCK_MISSION_CONTRACT => self.handle_mission_query(msg),
+                    MOCK_APP_CONTRACT => self.handle_app_query(msg),
                     _ => {
                         let msg_response = IncludesAddressResponse { included: false };
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
@@ -174,7 +174,7 @@ impl WasmMockQuerier {
         }
     }
 
-    fn handle_mission_query(&self, msg: &Binary) -> QuerierResult {
+    fn handle_app_query(&self, msg: &Binary) -> QuerierResult {
         let valid_identifiers = ["e", "b"];
         match from_binary(msg).unwrap() {
             MissionQueryMsg::ComponentExists { name } => {

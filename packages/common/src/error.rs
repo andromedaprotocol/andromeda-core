@@ -259,8 +259,8 @@ pub enum ContractError {
     #[error("GeneratorNotSpecified")]
     GeneratorNotSpecified {},
 
-    #[error("TooManyMissionComponents")]
-    TooManyMissionComponents {},
+    #[error("TooManyAppComponents")]
+    TooManyAppComponents {},
 
     #[error("InvalidLtvRatio: {msg}")]
     InvalidLtvRatio { msg: String },
@@ -361,8 +361,8 @@ pub enum ContractError {
     #[error("Too many mint messages, limit is {limit}")]
     TooManyMintMessages { limit: u32 },
 
-    #[error("Mission contract not specified")]
-    MissionContractNotSpecified {},
+    #[error("App contract not specified")]
+    AppContractNotSpecified {},
 
     #[error("Invalid component: {name}")]
     InvalidComponent { name: String },
