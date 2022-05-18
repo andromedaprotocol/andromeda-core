@@ -5,12 +5,12 @@ use andromeda_ecosystem::vault::{
 };
 use common::{
     ado_base::{
-        recipient::Recipient, AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
-        QueryMsg as AndrQueryMsg,
+        operators::IsOperatorResponse, recipient::Recipient, AndromedaMsg, AndromedaQuery,
+        InstantiateMsg as BaseInstantiateMsg, QueryMsg as AndrQueryMsg,
     },
+    app::AndrAddress,
     encode_binary,
     error::ContractError,
-    mission::AndrAddress,
     parse_message, require,
     withdraw::{Withdrawal, WithdrawalType},
 };
@@ -131,7 +131,7 @@ fn execute_deposit(
             let recipient_addr = recipient.get_addr(
                 deps.api,
                 &deps.querier,
-                ADOContract::default().get_mission_contract(deps.storage)?,
+                ADOContract::default().get_app_contract(deps.storage)?,
             )?;
             let balance_key = (recipient_addr.as_str(), deposit_amount.denom.as_str());
             let vault_balance = BALANCES
@@ -176,7 +176,7 @@ fn execute_deposit(
                 let recipient_addr = recipient.get_addr(
                     deps.api,
                     &deps.querier,
-                    ADOContract::default().get_mission_contract(deps.storage)?,
+                    ADOContract::default().get_app_contract(deps.storage)?,
                 )?;
                 let balance_key = (recipient_addr.as_str(), funds.denom.as_str());
                 let curr_balance = BALANCES
@@ -218,7 +218,7 @@ pub fn execute_withdraw(
     )?;
     match strategy {
         None => withdraw_vault(deps, info, recipient, withdrawals),
-        Some(strategy) => withdraw_strategy(deps, info, strategy, recipient, withdrawals),
+        Some(strategy) => withdraw_strategy(deps, info, strategy, withdrawals),
     }
 }
 
@@ -236,7 +236,7 @@ pub fn withdraw_vault(
         .get_addr(
             deps.api,
             &deps.querier,
-            ADOContract::default().get_mission_contract(deps.storage)?,
+            ADOContract::default().get_app_contract(deps.storage)?,
         )?;
     for withdrawal in withdrawals {
         let denom = withdrawal.token;
@@ -299,11 +299,10 @@ pub fn withdraw_strategy(
     deps: DepsMut,
     info: MessageInfo,
     strategy: StrategyType,
-    recipient: Option<Recipient>,
     withdrawals: Vec<Withdrawal>,
 ) -> Result<Response, ContractError> {
     let res = Response::default();
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let recipient = Recipient::Addr(info.sender.to_string());
     let addr_opt = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
     if addr_opt.is_none() {
         return Err(ContractError::InvalidStrategy {
@@ -332,7 +331,7 @@ pub fn withdraw_strategy(
 
 fn execute_update_strategy(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     strategy: StrategyType,
     address: AndrAddress,
@@ -341,8 +340,31 @@ fn execute_update_strategy(
         ADOContract::default().is_contract_owner(deps.storage, &info.sender.to_string())?,
         ContractError::Unauthorized {},
     )?;
-    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
-    let strategy_addr = address.get_address(deps.api, &deps.querier, mission_contract)?;
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let strategy_addr = address.get_address(deps.api, &deps.querier, app_contract)?;
+
+    //The vault contract must be an operator for the given contract in order to enable withdrawals
+    //DEV: with custom approval functionality this check can be removed
+    // let strategy_is_operator: IsOperatorResponse = query_get(
+    //     Some(to_binary(&AndromedaQuery::IsOperator {
+    //         address: env.contract.address.to_string(),
+    //     })?),
+    //     strategy_addr.clone(),
+    //     &deps.querier,
+    // )?;
+    let strategy_is_operator: IsOperatorResponse = deps.querier.query_wasm_smart(
+        strategy_addr.clone(),
+        &QueryMsg::AndrQuery(AndromedaQuery::IsOperator {
+            address: env.contract.address.to_string(),
+        }),
+    )?;
+    require(
+        strategy_is_operator.is_operator,
+        ContractError::NotAssignedOperator {
+            msg: Some("Vault contract is not an operator for the given address".to_string()),
+        },
+    )?;
+
     STRATEGY_CONTRACT_ADDRESSES.save(deps.storage, strategy.to_string(), &strategy_addr)?;
 
     Ok(Response::default()

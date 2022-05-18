@@ -6,9 +6,9 @@ use andromeda_ecosystem::swapper::{
 };
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
+    app::AndrAddress,
     encode_binary,
     error::ContractError,
-    mission::AndrAddress,
     require,
     response::get_reply_address,
 };
@@ -129,7 +129,7 @@ fn execute_swap(
             let msg = recipient.generate_msg_native(
                 deps.api,
                 &deps.querier,
-                ADOContract::default().get_mission_contract(deps.storage)?,
+                ADOContract::default().get_app_contract(deps.storage)?,
                 info.funds,
             )?;
             return Ok(Response::new()
@@ -138,8 +138,8 @@ fn execute_swap(
         }
     }
     let andr_address = SWAPPER_IMPL_ADDR.load(deps.storage)?;
-    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
-    let contract_addr = andr_address.get_address(deps.api, &deps.querier, mission_contract)?;
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let contract_addr = andr_address.get_address(deps.api, &deps.querier, app_contract)?;
 
     let denom = coin.denom.clone();
     Ok(Response::new()
@@ -180,7 +180,7 @@ fn execute_send(
             recipient.generate_msg_native(
                 deps.api,
                 &deps.querier,
-                ADOContract::default().get_mission_contract(deps.storage)?,
+                ADOContract::default().get_app_contract(deps.storage)?,
                 vec![Coin {
                     denom: denom.to_owned(),
                     amount,
@@ -192,7 +192,7 @@ fn execute_send(
             recipient.generate_msg_cw20(
                 deps.api,
                 &deps.querier,
-                ADOContract::default().get_mission_contract(deps.storage)?,
+                ADOContract::default().get_app_contract(deps.storage)?,
                 Cw20Coin {
                     address: contract_addr.to_string(),
                     amount,
@@ -250,7 +250,7 @@ fn execute_swap_cw20(
             let msg = recipient.generate_msg_cw20(
                 deps.api,
                 &deps.querier,
-                ADOContract::default().get_mission_contract(deps.storage)?,
+                ADOContract::default().get_app_contract(deps.storage)?,
                 Cw20Coin {
                     address: offer_token,
                     amount: offer_amount,
@@ -262,8 +262,8 @@ fn execute_swap_cw20(
         }
     }
     let andr_address = SWAPPER_IMPL_ADDR.load(deps.storage)?;
-    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
-    let contract_addr = andr_address.get_address(deps.api, &deps.querier, mission_contract)?;
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let contract_addr = andr_address.get_address(deps.api, &deps.querier, app_contract)?;
 
     Ok(Response::new()
         .add_attribute("action", "swap")

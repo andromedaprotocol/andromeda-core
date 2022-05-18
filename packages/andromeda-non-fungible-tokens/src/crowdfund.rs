@@ -1,7 +1,7 @@
 use crate::cw721::TokenExtension;
 use common::{
     ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
-    mission::AndrAddress,
+    app::AndrAddress,
 };
 use cosmwasm_std::{Coin, Uint128};
 use cw0::Expiration;

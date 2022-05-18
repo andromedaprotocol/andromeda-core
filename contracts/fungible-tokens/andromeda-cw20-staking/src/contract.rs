@@ -172,7 +172,7 @@ fn execute_add_reward_token(
     let staking_token_address = config.staking_token.get_address(
         deps.api,
         &deps.querier,
-        contract.get_mission_contract(deps.storage)?,
+        contract.get_app_contract(deps.storage)?,
     )?;
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
     require(
@@ -216,11 +216,11 @@ fn execute_stake_tokens(
     let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
 
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let app_contract = contract.get_app_contract(deps.storage)?;
     let staking_token_address =
         config
             .staking_token
-            .get_address(deps.api, &deps.querier, mission_contract)?;
+            .get_address(deps.api, &deps.querier, app_contract)?;
     require(
         token_address == staking_token_address,
         ContractError::InvalidFunds {
@@ -270,11 +270,11 @@ fn execute_unstake_tokens(
     let config = CONFIG.load(deps.storage)?;
     let sender = info.sender.as_str();
 
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let app_contract = contract.get_app_contract(deps.storage)?;
     let staking_token_address =
         config
             .staking_token
-            .get_address(deps.api, &deps.querier, mission_contract)?;
+            .get_address(deps.api, &deps.querier, app_contract)?;
 
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
     let total_balance = staking_token.query_balance(&deps.querier, env.contract.address)?;

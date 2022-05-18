@@ -66,16 +66,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    // Do this before the hooks get fired off to ensure that there are no errors from the mission
+    // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
         let andr_minter = ANDR_MINTER.load(deps.storage)?;
-        return contract.execute_update_mission_contract(
-            deps,
-            info,
-            address,
-            Some(vec![andr_minter]),
-        );
+        return contract.execute_update_app_contract(deps, info, address, Some(vec![andr_minter]));
     };
 
     contract.module_hook::<Response>(
@@ -124,13 +119,13 @@ fn execute_mint(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let cw721_contract = AndrCW721Contract::default();
-    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     let andr_minter = ANDR_MINTER.load(deps.storage)?;
     if cw721_contract.minter.may_load(deps.storage)?.is_none() {
         let addr = deps.api.addr_validate(&andr_minter.get_address(
             deps.api,
             &deps.querier,
-            mission_contract,
+            app_contract,
         )?)?;
         save_minter(&cw721_contract, deps.storage, &addr)?;
     }
@@ -178,9 +173,9 @@ fn execute_transfer(
     require(!token.extension.archived, ContractError::TokenIsArchived {})?;
 
     let tax_amount = if let Some(agreement) = &token.extension.transfer_agreement {
-        let mission_contract = base_contract.get_mission_contract(deps.storage)?;
+        let app_contract = base_contract.get_app_contract(deps.storage)?;
         let agreement_amount =
-            get_transfer_agreement_amount(deps.api, &deps.querier, mission_contract, agreement)?;
+            get_transfer_agreement_amount(deps.api, &deps.querier, app_contract, agreement)?;
         let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
             deps.storage,
             deps.api,
@@ -217,14 +212,13 @@ fn execute_transfer(
 fn get_transfer_agreement_amount(
     api: &dyn Api,
     querier: &QuerierWrapper,
-    mission_contract: Option<Addr>,
+    app_contract: Option<Addr>,
     agreement: &TransferAgreement,
 ) -> Result<Coin, ContractError> {
-    let agreement_amount =
-        agreement
-            .amount
-            .clone()
-            .try_into_coin(api, querier, mission_contract)?;
+    let agreement_amount = agreement
+        .amount
+        .clone()
+        .try_into_coin(api, querier, app_contract)?;
     match agreement_amount {
         Some(amount) => Ok(amount),
         None => Err(ContractError::PrimitiveDoesNotExist {
@@ -248,9 +242,9 @@ fn check_can_send(
 
     // token purchaser can send if correct funds are sent
     if let Some(agreement) = &token.extension.transfer_agreement {
-        let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
+        let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
         let agreement_amount =
-            get_transfer_agreement_amount(deps.api, &deps.querier, mission_contract, agreement)?;
+            get_transfer_agreement_amount(deps.api, &deps.querier, app_contract, agreement)?;
         require(
             has_coins(
                 &info.funds,

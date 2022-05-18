@@ -13,7 +13,7 @@ use andromeda_ecosystem::swapper::{
 use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2,
 };
-use common::{ado_base::recipient::Recipient, error::ContractError, mission::AndrAddress};
+use common::{ado_base::recipient::Recipient, app::AndrAddress, error::ContractError};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 

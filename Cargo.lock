@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-addresslist"
+name = "andromeda-address-list"
 version = "0.1.0"
 dependencies = [
  "ado-base",
@@ -93,6 +93,22 @@ version = "0.1.0"
 dependencies = [
  "common",
  "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "andromeda-app-contract"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-app",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw2",
  "schemars",
  "serde",
 ]
@@ -368,22 +384,6 @@ dependencies = [
  "serde",
  "terra-cosmwasm",
  "terraswap",
-]
-
-[[package]]
-name = "andromeda-mission"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-app",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.9.1",
- "cw2",
- "schemars",
- "serde",
 ]
 
 [[package]]

@@ -11,18 +11,18 @@ use andromeda_ecosystem::{
 };
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg},
+    app::AndrAddress,
     error::ContractError,
-    mission::AndrAddress,
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{
     coin, from_binary,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, wasm_execute, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, ReplyOn,
-    Response, SubMsg, Uint128, WasmMsg,
+    to_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
+    ReplyOn, Response, SubMsg, Uint128, WasmMsg,
 };
 
-use self::mock_querier::MOCK_ANCHOR_CONTRACT;
+use self::mock_querier::{MOCK_ANCHOR_CONTRACT, MOCK_VAULT_CONTRACT};
 
 #[test]
 fn test_instantiate() {
@@ -74,34 +74,58 @@ fn add_strategy(
 
 #[test]
 fn test_execute_update_strategy() {
-    let env = mock_env();
+    let mut env = mock_env();
     let depositor = "depositor".to_string();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies_custom(&[]);
     let inst_msg = InstantiateMsg { operators: None };
     let info = mock_info(&depositor, &[]);
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
-
+    env.contract.address = Addr::unchecked(MOCK_VAULT_CONTRACT);
     let resp = add_strategy(
         deps.as_mut(),
         env,
         info,
         StrategyType::Anchor,
         AndrAddress {
-            identifier: "terra1anchoraddress".to_string(),
+            identifier: MOCK_ANCHOR_CONTRACT.to_string(),
         },
     );
 
     let expected = Response::default()
         .add_attribute("action", "update_strategy")
         .add_attribute("strategy_type", StrategyType::Anchor.to_string())
-        .add_attribute("addr", "terra1anchoraddress".to_string());
+        .add_attribute("addr", MOCK_ANCHOR_CONTRACT.to_string());
 
     assert_eq!(resp, expected);
 
     let addr = STRATEGY_CONTRACT_ADDRESSES
         .load(deps.as_mut().storage, StrategyType::Anchor.to_string())
         .unwrap();
-    assert_eq!(addr, "terra1anchoraddress".to_string());
+    assert_eq!(addr, MOCK_ANCHOR_CONTRACT.to_string());
+}
+
+#[test]
+fn test_execute_update_strategy_not_operator() {
+    let mut env = mock_env();
+    let depositor = "depositor".to_string();
+    let mut deps = mock_dependencies_custom(&[]);
+    let inst_msg = InstantiateMsg { operators: None };
+    let info = mock_info(&depositor, &[]);
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    env.contract.address = Addr::unchecked("someinvalidvaultaddress");
+    let msg = ExecuteMsg::UpdateStrategy {
+        strategy: StrategyType::Anchor,
+        address: AndrAddress {
+            identifier: MOCK_ANCHOR_CONTRACT.to_string(),
+        },
+    };
+    let resp = execute(deps.as_mut(), env, info, msg).unwrap_err();
+
+    let expected = ContractError::NotAssignedOperator {
+        msg: Some("Vault contract is not an operator for the given address".to_string()),
+    };
+
+    assert_eq!(resp, expected);
 }
 
 #[test]
@@ -145,15 +169,16 @@ fn test_deposit_strategy() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
         address: AndrAddress {
-            identifier: "terra1anchoraddress".to_string(),
+            identifier: MOCK_ANCHOR_CONTRACT.to_string(),
         },
     };
     let inst_msg = InstantiateMsg { operators: None };
-    let env = mock_env();
+    let mut env = mock_env();
     let info = mock_info("minter", &[]);
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies_custom(&[]);
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    env.contract.address = Addr::unchecked(MOCK_VAULT_CONTRACT);
     add_strategy(
         deps.as_mut(),
         env.clone(),
@@ -217,15 +242,16 @@ fn test_deposit_strategy_partial_amount() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
         address: AndrAddress {
-            identifier: "terra1anchoraddress".to_string(),
+            identifier: MOCK_ANCHOR_CONTRACT.to_string(),
         },
     };
     let inst_msg = InstantiateMsg { operators: None };
-    let env = mock_env();
+    let mut env = mock_env();
     let info = mock_info("minter", &[]);
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies_custom(&[]);
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    env.contract.address = Addr::unchecked(MOCK_VAULT_CONTRACT);
     add_strategy(
         deps.as_mut(),
         env.clone(),

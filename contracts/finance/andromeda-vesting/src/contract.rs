@@ -188,11 +188,11 @@ fn execute_claim(
     key.save(deps.storage, &batch)?;
 
     let config = CONFIG.load(deps.storage)?;
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let app_contract = contract.get_app_contract(deps.storage)?;
     let withdraw_msg = config.recipient.generate_msg_native(
         deps.api,
         &deps.querier,
-        mission_contract,
+        app_contract,
         vec![Coin::new(amount_to_send.u128(), config.denom)],
     )?;
 
@@ -248,11 +248,11 @@ fn execute_claim_all(
     // claimable amounts. Erroring for one would make the whole transaction fai.
     if !total_amount_to_send.is_zero() {
         let config = CONFIG.load(deps.storage)?;
-        let mission_contract = contract.get_mission_contract(deps.storage)?;
+        let app_contract = contract.get_app_contract(deps.storage)?;
         msgs.push(config.recipient.generate_msg_native(
             deps.api,
             &deps.querier,
-            mission_contract,
+            app_contract,
             vec![Coin::new(total_amount_to_send.u128(), config.denom)],
         )?)
     }

@@ -1,5 +1,7 @@
 use andromeda_ecosystem::anchor_earn::PositionResponse;
-use common::ado_base::{recipient::Recipient, AndromedaQuery, QueryMsg};
+use common::ado_base::{
+    operators::IsOperatorResponse, recipient::Recipient, AndromedaQuery, QueryMsg,
+};
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
@@ -10,6 +12,7 @@ use cosmwasm_std::{
 use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_ANCHOR_CONTRACT: &str = "anchor_contract";
+pub const MOCK_VAULT_CONTRACT: &str = "vault_contract";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -65,6 +68,12 @@ impl WasmMockQuerier {
                     let msg_response = PositionResponse {
                         recipient: Recipient::Addr(recipient),
                         aust_amount: Uint128::from(10u128),
+                    };
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+                }
+                AndromedaQuery::IsOperator { address } => {
+                    let msg_response = IsOperatorResponse {
+                        is_operator: address == MOCK_VAULT_CONTRACT,
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
                 }

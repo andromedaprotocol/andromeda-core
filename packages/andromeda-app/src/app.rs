@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct MissionComponent {
+pub struct AppComponent {
     pub name: String,
     pub ado_type: String,
     pub instantiate_msg: Binary,
@@ -13,7 +13,7 @@ pub struct MissionComponent {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub operators: Vec<String>,
-    pub mission: Vec<MissionComponent>,
+    pub app: Vec<AppComponent>,
     pub name: String,
     pub primitive_contract: String,
 }
@@ -22,7 +22,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    AddMissionComponent { component: MissionComponent },
+    AddAppComponent { component: AppComponent },
     ClaimOwnership { name: Option<String> },
     ProxyMessage { name: String, msg: Binary },
     UpdateAddress { name: String, addr: String },

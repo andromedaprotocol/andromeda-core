@@ -52,10 +52,10 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    // Do this before the hooks get fired off to ensure that there is no conflict with the mission
+    // Do this before the hooks get fired off to ensure that there is no conflict with the app
     // contract not being whitelisted.
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
-        return contract.execute_update_mission_contract(deps, info, address, None);
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
+        return contract.execute_update_app_contract(deps, info, address, None);
     };
 
     contract.module_hook::<Response>(
@@ -101,7 +101,7 @@ fn execute_hold_funds(
     let recipient_addr = rec.get_addr(
         deps.api,
         &deps.querier,
-        ADOContract::default().get_mission_contract(deps.storage)?,
+        ADOContract::default().get_app_contract(deps.storage)?,
     )?;
     deps.api.addr_validate(&recipient_addr)?;
     let key = get_key(info.sender.as_str(), &recipient_addr);
@@ -153,7 +153,7 @@ fn execute_release_funds(
             let msg = funds.recipient.generate_msg_native(
                 deps.api,
                 &deps.querier,
-                ADOContract::default().get_mission_contract(deps.storage)?,
+                ADOContract::default().get_app_contract(deps.storage)?,
                 funds.coins,
             )?;
             msgs.push(msg);
@@ -190,7 +190,7 @@ fn execute_release_specific_funds(
             let msg = escrow.recipient.generate_msg_native(
                 deps.api,
                 &deps.querier,
-                ADOContract::default().get_mission_contract(deps.storage)?,
+                ADOContract::default().get_app_contract(deps.storage)?,
                 escrow.coins,
             )?;
             Ok(Response::new().add_submessage(msg).add_attributes(vec![
