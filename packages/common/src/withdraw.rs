@@ -45,6 +45,14 @@ impl WithdrawalType {
             }
         }
     }
+
+    /// Checks if the underlying value is zero or not.
+    pub fn is_zero(&self) -> bool {
+        match self {
+            WithdrawalType::Percentage(percent) => percent.is_zero(),
+            WithdrawalType::Amount(amount) => amount.is_zero(),
+        }
+    }
 }
 
 #[cfg(test)]

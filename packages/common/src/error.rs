@@ -367,6 +367,12 @@ pub enum ContractError {
     #[error("Invalid component: {name}")]
     InvalidComponent { name: String },
 
+    #[error("Multi-batch not supported")]
+    MultiBatchNotSupported {},
+
+    #[error("Unexpected number of bytes. Expected: {expected}, actual: {actual}")]
+    UnexpectedNumberOfBytes { expected: u8, actual: usize },
+
     #[error("Not an assigned operator, {msg:?}")]
     NotAssignedOperator { msg: Option<String> },
 }
