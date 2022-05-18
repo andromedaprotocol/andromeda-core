@@ -2,7 +2,7 @@ use crate::{
     contract::*,
     state::{ADO_ADDRESSES, ADO_DESCRIPTORS},
 };
-use andromeda_app::mission::{ExecuteMsg, InstantiateMsg, MissionComponent};
+use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg};
 use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
 use common::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{
@@ -18,8 +18,8 @@ fn test_empty_instantiation() {
 
     let msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
     let info = mock_info("creator", &[]);
@@ -35,12 +35,12 @@ fn test_instantiation() {
 
     let msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![MissionComponent {
+        app: vec![AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
         }],
-        name: String::from("Some Mission"),
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
     let info = mock_info("creator", &[]);
@@ -63,9 +63,9 @@ fn test_instantiation() {
         .add_submessage(inst_submsg)
         .add_attributes(vec![
             attr("method", "instantiate"),
-            attr("type", "mission"),
+            attr("type", "app"),
             attr("owner", "creator"),
-            attr("andr_mission", "Some Mission"),
+            attr("andr_app", "Some App"),
         ]);
 
     assert_eq!(expected, res);
@@ -82,19 +82,19 @@ fn test_instantiation_duplicate_components() {
 
     let msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![
-            MissionComponent {
+        app: vec![
+            AppComponent {
                 name: "component".to_string(),
                 ado_type: "cw721".to_string(),
                 instantiate_msg: to_binary(&true).unwrap(),
             },
-            MissionComponent {
+            AppComponent {
                 name: "component".to_string(),
                 ado_type: "cw20".to_string(),
                 instantiate_msg: to_binary(&true).unwrap(),
             },
         ],
-        name: String::from("Some Mission"),
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
     let info = mock_info("creator", &[]);
@@ -104,22 +104,22 @@ fn test_instantiation_duplicate_components() {
 }
 
 #[test]
-fn test_add_mission_component_unauthorized() {
+fn test_add_app_component_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
     let unauth_info = mock_info("anyone", &[]);
-    let msg = ExecuteMsg::AddMissionComponent {
-        component: MissionComponent {
+    let msg = ExecuteMsg::AddAppComponent {
+        component: AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
@@ -131,18 +131,18 @@ fn test_add_mission_component_unauthorized() {
 }
 
 #[test]
-fn test_add_mission_component_duplicate_name() {
+fn test_add_app_component_duplicate_name() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![MissionComponent {
+        app: vec![AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
         }],
-        name: String::from("Some Mission"),
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -155,8 +155,8 @@ fn test_add_mission_component_duplicate_name() {
         )
         .unwrap();
 
-    let msg = ExecuteMsg::AddMissionComponent {
-        component: MissionComponent {
+    let msg = ExecuteMsg::AddAppComponent {
+        component: AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
@@ -168,21 +168,21 @@ fn test_add_mission_component_duplicate_name() {
 }
 
 #[test]
-fn test_add_mission_component() {
+fn test_add_app_component() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
 
-    let msg = ExecuteMsg::AddMissionComponent {
-        component: MissionComponent {
+    let msg = ExecuteMsg::AddAppComponent {
+        component: AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
@@ -206,7 +206,7 @@ fn test_add_mission_component() {
     let expected = Response::new()
         .add_submessage(inst_submsg)
         .add_attributes(vec![
-            attr("method", "add_mission_component"),
+            attr("method", "add_app_component"),
             attr("name", "token"),
             attr("type", "cw721"),
         ]);
@@ -226,8 +226,8 @@ fn test_claim_ownership_unauth() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -247,8 +247,8 @@ fn test_claim_ownership_not_found() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -274,8 +274,8 @@ fn test_claim_ownership_empty() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -294,8 +294,8 @@ fn test_claim_ownership_all() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -360,8 +360,8 @@ fn test_claim_ownership() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -415,8 +415,8 @@ fn test_proxy_message_unauth() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -439,8 +439,8 @@ fn test_proxy_message_not_found() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -467,8 +467,8 @@ fn test_proxy_message() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
     ADO_ADDRESSES
@@ -500,7 +500,7 @@ fn test_proxy_message() {
     let expected = Response::new()
         .add_submessage(exec_submsg)
         .add_attributes(vec![
-            attr("method", "mission_message"),
+            attr("method", "app_message"),
             attr("recipient", "token"),
         ]);
 
@@ -514,8 +514,8 @@ fn test_update_address_unauth() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -545,8 +545,8 @@ fn test_update_address_not_found() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -573,8 +573,8 @@ fn test_update_address() {
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
         operators: vec![],
-        mission: vec![],
-        name: String::from("Some Mission"),
+        app: vec![],
+        name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
 
@@ -599,10 +599,10 @@ fn test_update_address() {
 }
 
 #[test]
-fn test_reply_assign_mission() {
+fn test_reply_assign_app() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let mock_mission_component = MissionComponent {
+    let mock_app_component = AppComponent {
         ado_type: "cw721".to_string(),
         name: "token".to_string(),
         instantiate_msg: to_binary(&true).unwrap(),
@@ -612,7 +612,7 @@ fn test_reply_assign_mission() {
         .save(
             deps.as_mut().storage,
             &component_idx.to_string(),
-            &mock_mission_component,
+            &mock_app_component,
         )
         .unwrap();
 
@@ -634,11 +634,9 @@ fn test_reply_assign_mission() {
         id: 103,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
-            msg: to_binary(&ExecuteMsg::AndrReceive(
-                AndromedaMsg::UpdateMissionContract {
-                    address: env.contract.address.to_string(),
-                },
-            ))
+            msg: to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+                address: env.contract.address.to_string(),
+            }))
             .unwrap(),
             funds: vec![],
         }),

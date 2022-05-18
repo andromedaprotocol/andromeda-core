@@ -59,10 +59,10 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    // Do this before the hooks get fired off to ensure that there are no errors from the mission
+    // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
-        return contract.execute_update_mission_contract(deps, info, address, None);
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
+        return contract.execute_update_app_contract(deps, info, address, None);
     };
 
     contract.module_hook::<Response>(

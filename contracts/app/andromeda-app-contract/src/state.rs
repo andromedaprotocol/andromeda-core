@@ -1,4 +1,4 @@
-use andromeda_app::mission::{ComponentAddress, MissionComponent};
+use andromeda_app::app::{AppComponent, ComponentAddress};
 use common::{
     ado_base::{AndromedaMsg, ExecuteMsg},
     error::ContractError,
@@ -6,17 +6,17 @@ use common::{
 use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Order, ReplyOn, Storage, SubMsg, WasmMsg};
 use cw_storage_plus::{Bound, Item, Map};
 
-/// Used to store the addresses of each ADO within the mission
+/// Used to store the addresses of each ADO within the app
 pub const ADO_ADDRESSES: Map<&str, Addr> = Map::new("ado_addresses");
 /// Stores a record of the describing structs for each ADO
-pub const ADO_DESCRIPTORS: Map<&str, MissionComponent> = Map::new("ado_descriptors");
+pub const ADO_DESCRIPTORS: Map<&str, AppComponent> = Map::new("ado_descriptors");
 pub const ADO_IDX: Item<u64> = Item::new("ado_idx");
-pub const MISSION_NAME: Item<String> = Item::new("mission_name");
+pub const APP_NAME: Item<String> = Item::new("app_name");
 
 // DEV NOTE: Very similar to CW721 module instantiation, possibly merge both implementations?
-pub fn add_mission_component(
+pub fn add_app_component(
     storage: &mut dyn Storage,
-    component: &MissionComponent,
+    component: &AppComponent,
 ) -> Result<u64, ContractError> {
     let idx = ADO_IDX.may_load(storage)?.unwrap_or(1u64);
     let idx_str = idx.to_string();
@@ -47,7 +47,7 @@ pub fn load_component_addresses_with_name(
         .map(|(vec, addr)| {
             let name = match String::from_utf8(vec) {
                 Ok(v) => v,
-                Err(e) => panic!("Invalid Mission component name: {}", e),
+                Err(e) => panic!("Invalid App component name: {}", e),
             };
             ComponentAddress {
                 name,
@@ -61,9 +61,9 @@ pub fn load_component_addresses_with_name(
 
 pub fn load_component_descriptors(
     storage: &dyn Storage,
-) -> Result<Vec<MissionComponent>, ContractError> {
+) -> Result<Vec<AppComponent>, ContractError> {
     let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
-    let descriptors: Vec<MissionComponent> = ADO_DESCRIPTORS
+    let descriptors: Vec<AppComponent> = ADO_DESCRIPTORS
         .range(storage, min, None, Order::Ascending)
         .flatten()
         .map(|(_vec, component)| component)
@@ -88,15 +88,10 @@ pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, Con
     })
 }
 
-pub fn generate_assign_mission_message(
-    addr: &Addr,
-    mission_addr: &str,
-) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&ExecuteMsg::AndrReceive(
-        AndromedaMsg::UpdateMissionContract {
-            address: mission_addr.to_string(),
-        },
-    ))?;
+pub fn generate_assign_app_message(addr: &Addr, app_addr: &str) -> Result<SubMsg, ContractError> {
+    let msg = to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: app_addr.to_string(),
+    }))?;
     Ok(SubMsg {
         id: 103,
         reply_on: ReplyOn::Error,

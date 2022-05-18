@@ -1,4 +1,4 @@
-use common::{ado_base::recipient::Recipient, error::ContractError, mission::AndrAddress};
+use common::{ado_base::recipient::Recipient, app::AndrAddress, error::ContractError};
 use cosmwasm_std::{Coin, Order, Storage, SubMsg, Uint128};
 use cw0::Expiration;
 use cw_storage_plus::{Bound, Item, Map};

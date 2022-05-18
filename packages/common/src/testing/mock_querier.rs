@@ -10,7 +10,7 @@ use cosmwasm_std::{
 };
 use terra_cosmwasm::TerraQueryWrapper;
 
-pub const MOCK_MISSION_CONTRACT: &str = "mission_contract";
+pub const MOCK_APP_CONTRACT: &str = "app_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 
 pub struct WasmMockQuerier {
@@ -51,7 +51,7 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
-                    MOCK_MISSION_CONTRACT => self.handle_mission_query(msg),
+                    MOCK_APP_CONTRACT => self.handle_app_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     _ => panic!("Unsupported query for contract: {}", contract_addr),
                 }
@@ -60,7 +60,7 @@ impl WasmMockQuerier {
         }
     }
 
-    fn handle_mission_query(&self, msg: &Binary) -> QuerierResult {
+    fn handle_app_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             QueryMsg::AndrQuery(AndromedaQuery::Get(_)) => {
                 SystemResult::Ok(ContractResult::Ok(to_binary(&"actual_address").unwrap()))

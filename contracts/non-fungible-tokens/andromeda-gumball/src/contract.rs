@@ -127,7 +127,7 @@ fn execute_sale_details(
     let rec = recipient.get_addr(
         deps.api,
         &deps.querier,
-        contract.get_mission_contract(deps.storage)?,
+        contract.get_app_contract(deps.storage)?,
     )?;
 
     // Set the state
@@ -167,11 +167,10 @@ fn execute_mint(
         ContractError::Unauthorized {},
     )?;
 
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let app_contract = contract.get_app_contract(deps.storage)?;
 
     let token_contract_andr = CW721_CONTRACT.load(deps.storage)?;
-    let token_contract =
-        token_contract_andr.get_address(deps.api, &deps.querier, mission_contract)?;
+    let token_contract = token_contract_andr.get_address(deps.api, &deps.querier, app_contract)?;
     let gumball_contract = env.contract.address.to_string();
 
     let mut resp = Response::new();
@@ -274,8 +273,8 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
     let random_nft = list.swap_remove(index);
     LIST.save(deps.storage, &list)?;
     let token_contract = CW721_CONTRACT.load(deps.storage)?;
-    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
-    let contract_addr = token_contract.get_address(deps.api, &deps.querier, mission_contract)?;
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let contract_addr = token_contract.get_address(deps.api, &deps.querier, app_contract)?;
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -322,7 +321,7 @@ fn query_state(deps: Deps) -> Result<State, ContractError> {
 mod tests {
     use super::*;
     use common::ado_base::recipient::Recipient;
-    use common::mission::AndrAddress;
+    use common::app::AndrAddress;
     use cosmwasm_std::coin;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 

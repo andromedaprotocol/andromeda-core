@@ -11,7 +11,7 @@ pub struct ADOContract<'a> {
     pub(crate) owner: Item<'a, Addr>,
     pub(crate) operators: Map<'a, &'a str, bool>,
     pub(crate) ado_type: Item<'a, String>,
-    pub(crate) mission_contract: Item<'a, Addr>,
+    pub(crate) app_contract: Item<'a, Addr>,
     #[cfg(feature = "primitive")]
     pub(crate) primitive_contract: Item<'a, Addr>,
     #[cfg(feature = "primitive")]
@@ -30,7 +30,7 @@ impl<'a> Default for ADOContract<'a> {
             owner: Item::new("owner"),
             operators: Map::new("operators"),
             ado_type: Item::new("ado_type"),
-            mission_contract: Item::new("mission_contract"),
+            app_contract: Item::new("app_contract"),
             #[cfg(feature = "primitive")]
             primitive_contract: Item::new("primitive_contract"),
             #[cfg(feature = "primitive")]

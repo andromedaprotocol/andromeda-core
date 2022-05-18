@@ -1,8 +1,8 @@
+pub mod app;
 mod auth;
 mod execute;
 #[cfg(feature = "instantiate")]
 mod instantiate;
-pub mod mission;
 #[cfg(test)]
 mod mock_querier;
 #[cfg(feature = "modules")]

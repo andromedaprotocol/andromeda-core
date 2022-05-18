@@ -1,7 +1,7 @@
 use crate::{
     ado_base::query_get,
+    app::AndrAddress,
     error::ContractError,
-    mission::AndrAddress,
     primitive::{GetValueResponse, Primitive},
 };
 use cosmwasm_std::{to_binary, Addr, Api, Coin, Decimal, QuerierWrapper, StdError, Uint128};
@@ -41,9 +41,9 @@ impl PrimitivePointer {
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
+        app_address: Option<Addr>,
     ) -> Result<Option<Primitive>, ContractError> {
-        let primitive_address = self.address.get_address(api, querier, mission_address)?;
+        let primitive_address = self.address.get_address(api, querier, app_address)?;
         let key = self
             .key
             .map(|k| to_binary(&k))
@@ -70,13 +70,13 @@ impl<T: Into<Primitive>> Value<T> {
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
+        app_address: Option<Addr>,
         func: fn(Primitive) -> Result<T, StdError>,
     ) -> Result<Option<T>, ContractError> {
         match self {
             Value::Raw(value) => Ok(Some(value)),
             Value::Pointer(pointer) => {
-                let primitive = pointer.into_value(api, querier, mission_address)?;
+                let primitive = pointer.into_value(api, querier, app_address)?;
                 if let Some(primitive) = primitive {
                     Ok(Some(func(primitive)?))
                 } else {
@@ -92,9 +92,9 @@ impl Value<String> {
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
+        app_address: Option<Addr>,
     ) -> Result<Option<String>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_string())
+        self.try_into_value(api, querier, app_address, |p| p.try_get_string())
     }
 }
 
@@ -103,9 +103,9 @@ impl Value<Uint128> {
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
+        app_address: Option<Addr>,
     ) -> Result<Option<Uint128>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_uint128())
+        self.try_into_value(api, querier, app_address, |p| p.try_get_uint128())
     }
 }
 
@@ -114,9 +114,9 @@ impl Value<Decimal> {
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
+        app_address: Option<Addr>,
     ) -> Result<Option<Decimal>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_decimal())
+        self.try_into_value(api, querier, app_address, |p| p.try_get_decimal())
     }
 }
 
@@ -125,9 +125,9 @@ impl Value<Coin> {
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
+        app_address: Option<Addr>,
     ) -> Result<Option<Coin>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_coin())
+        self.try_into_value(api, querier, app_address, |p| p.try_get_coin())
     }
 }
 
@@ -136,9 +136,9 @@ impl Value<bool> {
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
+        app_address: Option<Addr>,
     ) -> Result<Option<bool>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_bool())
+        self.try_into_value(api, querier, app_address, |p| p.try_get_bool())
     }
 }
 
@@ -147,9 +147,9 @@ impl Value<Vec<Primitive>> {
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_address: Option<Addr>,
+        app_address: Option<Addr>,
     ) -> Result<Option<Vec<Primitive>>, ContractError> {
-        self.try_into_value(api, querier, mission_address, |p| p.try_get_vec())
+        self.try_into_value(api, querier, app_address, |p| p.try_get_vec())
     }
 }
 

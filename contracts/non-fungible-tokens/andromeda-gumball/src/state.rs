@@ -1,4 +1,4 @@
-use common::{ado_base::recipient::Recipient, mission::AndrAddress};
+use common::{ado_base::recipient::Recipient, app::AndrAddress};
 use cosmwasm_std::{Coin, Uint128};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;

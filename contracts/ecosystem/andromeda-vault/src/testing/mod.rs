@@ -11,8 +11,8 @@ use andromeda_ecosystem::{
 };
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg},
+    app::AndrAddress,
     error::ContractError,
-    mission::AndrAddress,
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{

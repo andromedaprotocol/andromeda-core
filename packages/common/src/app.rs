@@ -5,26 +5,26 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AndrAddress {
-    /// Can be either an address or identifier of an ADO in a mission.
+    /// Can be either an address or identifier of an ADO in a app.
     pub identifier: String,
 }
 
 impl AndrAddress {
     /// Gets the address from the given identifier by attempting to validate it into an [`Addr`] and
-    /// then querying the mission contract if it fails.
+    /// then querying the app contract if it fails.
     pub fn get_address(
         &self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_contract: Option<Addr>,
+        app_contract: Option<Addr>,
     ) -> Result<String, ContractError> {
         let addr = api.addr_validate(&self.identifier);
         match addr {
             Ok(addr) => Ok(addr.to_string()),
-            Err(_) => match mission_contract {
-                Some(mission_contract) => query_get::<String>(
+            Err(_) => match app_contract {
+                Some(app_contract) => query_get::<String>(
                     Some(encode_binary(&self.identifier)?),
-                    mission_contract.to_string(),
+                    app_contract.to_string(),
                     querier,
                 ),
                 // TODO: Make error more descriptive.
@@ -37,11 +37,11 @@ impl AndrAddress {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_MISSION_CONTRACT};
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
     use cosmwasm_std::testing::mock_dependencies;
 
     #[test]
-    fn test_get_address_not_mission() {
+    fn test_get_address_not_app() {
         let deps = mock_dependencies(&[]);
         let andr_address = AndrAddress {
             identifier: "address".to_string(),
@@ -55,7 +55,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_address_mission() {
+    fn test_get_address_app() {
         let deps = mock_dependencies_custom(&[]);
         let andr_address = AndrAddress {
             identifier: "ab".to_string(),
@@ -66,7 +66,7 @@ mod tests {
                 .get_address(
                     deps.as_ref().api,
                     &deps.as_ref().querier,
-                    Some(Addr::unchecked(MOCK_MISSION_CONTRACT)),
+                    Some(Addr::unchecked(MOCK_APP_CONTRACT)),
                 )
                 .unwrap()
         );

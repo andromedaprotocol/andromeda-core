@@ -154,11 +154,11 @@ fn execute_provide_liquidity(
     )?;
 
     let pooled_assets = pair.query_pools(&deps.querier, pair.contract_addr.clone())?;
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let app_contract = contract.get_app_contract(deps.storage)?;
     let (assets, overflow_messages) = verify_asset_ratio(
         deps.api,
         &deps.querier,
-        mission_contract,
+        app_contract,
         pooled_assets.map(|a| a.into()),
         assets,
         Recipient::Addr(info.sender.to_string()),
@@ -246,12 +246,12 @@ fn execute_withdraw_liquidity(
         withdraw_amount,
     )?;
     let mut withdraw_messages: Vec<SubMsg> = vec![];
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let app_contract = contract.get_app_contract(deps.storage)?;
     for asset in share.into_iter() {
         withdraw_messages.push(recipient.generate_msg_from_asset(
             deps.api,
             &deps.querier,
-            mission_contract.clone(),
+            app_contract.clone(),
             asset,
         )?);
     }
@@ -498,7 +498,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 fn verify_asset_ratio(
     api: &dyn Api,
     querier: &QuerierWrapper,
-    mission_contract: Option<Addr>,
+    app_contract: Option<Addr>,
     pooled_assets: [Asset; 2],
     sent_assets: [Asset; 2],
     overflow_recipient: Recipient,
@@ -542,7 +542,7 @@ fn verify_asset_ratio(
             messages.push(overflow_recipient.generate_msg_from_asset(
                 api,
                 querier,
-                mission_contract.clone(),
+                app_contract.clone(),
                 delta_asset,
             )?);
         }

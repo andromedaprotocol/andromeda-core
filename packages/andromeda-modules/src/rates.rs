@@ -91,9 +91,9 @@ impl Rate {
         &self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_contract: Option<Addr>,
+        app_contract: Option<Addr>,
     ) -> Result<Rate, ContractError> {
-        let rate = self.clone().get_rate(api, querier, mission_contract)?;
+        let rate = self.clone().get_rate(api, querier, app_contract)?;
         require(rate.is_non_zero()?, ContractError::InvalidRate {})?;
 
         if let Rate::Percent(PercentRate { percent }) = rate {
@@ -109,13 +109,13 @@ impl Rate {
         self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_contract: Option<Addr>,
+        app_contract: Option<Addr>,
     ) -> Result<Rate, ContractError> {
         match self {
             Rate::Flat(_) => Ok(self),
             Rate::Percent(_) => Ok(self),
             Rate::External(primitive_pointer) => {
-                let primitive = primitive_pointer.into_value(api, querier, mission_contract)?;
+                let primitive = primitive_pointer.into_value(api, querier, app_contract)?;
                 match primitive {
                     None => Err(ContractError::ParsingError {
                         err: "Stored primitive is None".to_string(),
@@ -200,7 +200,7 @@ mod tests {
     use andromeda_testing::testing::mock_querier::{
         mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT,
     };
-    use common::mission::AndrAddress;
+    use common::app::AndrAddress;
     use cosmwasm_std::{coin, Uint128};
 
     use super::*;
