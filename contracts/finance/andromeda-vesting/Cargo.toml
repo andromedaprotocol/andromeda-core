@@ -22,12 +22,13 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = { version = "0.16.7" }
+cosmwasm-std = { version = "0.16.7", features = ["staking"] }
 cw-storage-plus = "0.9.1"
 schemars = "0.8.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 cw2 = "0.9.1"
 cw0 = "0.9.1"
+cw-asset = "1.0.2"
 
 andromeda-finance = { version = "0.1.0", path = "../../../packages/andromeda-finance" }
 common = { version = "0.1.0", path = "../../../packages/common" }

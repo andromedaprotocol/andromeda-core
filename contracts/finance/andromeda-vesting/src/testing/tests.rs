@@ -1,8 +1,10 @@
 use cosmwasm_std::{
-    coins, from_binary,
-    testing::{mock_dependencies, mock_env, mock_info},
-    BankMsg, DepsMut, Response, Uint128,
+    coin, coins, from_binary,
+    testing::{mock_dependencies, mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR},
+    Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, FullDelegation, Response, StakingMsg,
+    Uint128, Validator,
 };
+use cw0::Duration;
 use cw_storage_plus::U64Key;
 
 use crate::{
@@ -13,15 +15,48 @@ use crate::{
 use andromeda_finance::vesting::{BatchResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use common::{ado_base::recipient::Recipient, error::ContractError, withdraw::WithdrawalType};
 
+const DEFAULT_VALIDATOR: &str = "validator";
+const UNBONDING_BLOCK_DURATION: u64 = 5;
+
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         recipient: Recipient::Addr("recipient".to_string()),
         is_multi_batch_enabled: true,
         denom: "uusd".to_string(),
+        unbonding_duration: Duration::Height(UNBONDING_BLOCK_DURATION),
     };
 
     let info = mock_info("owner", &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
+}
+
+fn sample_validator(addr: &str) -> Validator {
+    Validator {
+        address: addr.into(),
+        commission: Decimal::percent(3),
+        max_commission: Decimal::percent(10),
+        max_change_rate: Decimal::percent(1),
+    }
+}
+
+fn sample_delegation(addr: &str, amount: Coin) -> FullDelegation {
+    let can_redelegate = amount.clone();
+    let accumulated_rewards = coins(0, &amount.denom);
+    FullDelegation {
+        validator: addr.into(),
+        delegator: Addr::unchecked(MOCK_CONTRACT_ADDR),
+        amount,
+        can_redelegate,
+        accumulated_rewards,
+    }
+}
+
+fn set_delegation(querier: &mut MockQuerier, amount: u128, denom: &str) {
+    querier.update_staking(
+        "ustake",
+        &[sample_validator(DEFAULT_VALIDATOR)],
+        &[sample_delegation(DEFAULT_VALIDATOR, coin(amount, denom))],
+    );
 }
 
 fn create_batch(
@@ -35,7 +70,7 @@ fn create_batch(
         lockup_duration,
         release_unit,
         release_amount,
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let info = mock_info("owner", &coins(100, "uusd"));
@@ -59,7 +94,8 @@ fn test_instantiate() {
         Config {
             recipient: Recipient::Addr("recipient".to_string()),
             is_multi_batch_enabled: true,
-            denom: "uusd".to_string()
+            denom: "uusd".to_string(),
+            unbonding_duration: Duration::Height(UNBONDING_BLOCK_DURATION)
         },
         CONFIG.load(deps.as_ref().storage).unwrap()
     );
@@ -76,7 +112,7 @@ fn test_create_batch_unauthorized() {
         lockup_duration: None,
         release_unit: 1,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -95,7 +131,7 @@ fn test_create_batch_no_funds() {
         lockup_duration: None,
         release_unit: 1,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -119,7 +155,7 @@ fn test_create_batch_invalid_denom() {
         lockup_duration: None,
         release_unit: 1,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -143,7 +179,7 @@ fn test_create_batch_valid_denom_zero_amount() {
         lockup_duration: None,
         release_unit: 1,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -167,7 +203,7 @@ fn test_create_batch_release_unit_zero() {
         lockup_duration: None,
         release_unit: 0,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -186,7 +222,7 @@ fn test_create_batch_release_amount_zero() {
         lockup_duration: None,
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::zero()),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -205,7 +241,7 @@ fn test_create_batch() {
         lockup_duration: None,
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -244,7 +280,7 @@ fn test_create_batch() {
         lockup_duration: Some(100),
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -279,12 +315,51 @@ fn test_create_batch() {
 }
 
 #[test]
+fn test_create_batch_and_delegate() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &coins(100, "uusd"));
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
+
+    let msg = ExecuteMsg::CreateBatch {
+        lockup_duration: None,
+        release_unit: 10,
+        release_amount: WithdrawalType::Amount(Uint128::new(10)),
+        validator_to_delegate_to: Some(DEFAULT_VALIDATOR.to_owned()),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let current_time = mock_env().block.time.seconds();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Staking(StakingMsg::Delegate {
+                validator: DEFAULT_VALIDATOR.to_string(),
+                amount: coin(100, "uusd")
+            }))
+            .add_attribute("action", "create_batch")
+            .add_attribute("amount", "100")
+            .add_attribute("lockup_end", current_time.to_string())
+            .add_attribute("release_unit", "10")
+            .add_attribute("release_amount", "Amount(Uint128(10))")
+            .add_attribute("action", "delegate")
+            .add_attribute("validator", DEFAULT_VALIDATOR)
+            .add_attribute("amount", "100"),
+        res
+    );
+}
+
+#[test]
 fn test_create_batch_multi_batch_not_supported() {
     let mut deps = mock_dependencies(&[]);
     let msg = InstantiateMsg {
         recipient: Recipient::Addr("recipient".to_string()),
         is_multi_batch_enabled: false,
         denom: "uusd".to_string(),
+        unbonding_duration: Duration::Height(0u64),
     };
 
     let info = mock_info("owner", &[]);
@@ -296,7 +371,7 @@ fn test_create_batch_multi_batch_not_supported() {
         lockup_duration: Some(100),
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
@@ -364,7 +439,7 @@ fn test_claim_batch_still_locked() {
         lockup_duration: Some(100),
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -391,7 +466,7 @@ fn test_claim_batch_no_funds_available() {
         lockup_duration: None,
         release_unit: 10,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -409,6 +484,106 @@ fn test_claim_batch_no_funds_available() {
 }
 
 #[test]
+fn test_claim_batch_all_funds_delegated() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+    let info = mock_info("owner", &coins(100, "uusd"));
+
+    // Create batch.
+    let msg = ExecuteMsg::CreateBatch {
+        lockup_duration: None,
+        release_unit: 10,
+        release_amount: WithdrawalType::Amount(Uint128::new(10)),
+        validator_to_delegate_to: None,
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
+
+    // Delegate tokens
+    let msg = ExecuteMsg::Delegate {
+        amount: None,
+        validator: DEFAULT_VALIDATOR.to_owned(),
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    // Skip time to first release.
+    let mut env = mock_env();
+    env.block.time = env.block.time.plus_seconds(10);
+
+    // Claim batch.
+    let msg = ExecuteMsg::Claim {
+        number_of_claims: None,
+        batch_id: 1,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    // This is because, the first payment becomes available after 10 seconds.
+    assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
+}
+
+#[test]
+fn test_claim_batch_some_funds_delegated() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+    let info = mock_info("owner", &coins(100, "uusd"));
+
+    // Create batch.
+    let msg = ExecuteMsg::CreateBatch {
+        lockup_duration: None,
+        release_unit: 10,
+        release_amount: WithdrawalType::Amount(Uint128::new(10)),
+        validator_to_delegate_to: None,
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
+
+    // Delegate tokens
+    let msg = ExecuteMsg::Delegate {
+        amount: Some(Uint128::new(70)),
+        validator: DEFAULT_VALIDATOR.to_owned(),
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    // Skip time to where all funds available.
+    let mut env = mock_env();
+    env.block.time = env.block.time.plus_seconds(1000);
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(30, "uusd"));
+
+    // Claim batch.
+    let msg = ExecuteMsg::Claim {
+        number_of_claims: None,
+        batch_id: 1,
+    };
+
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(BankMsg::Send {
+                to_address: "recipient".to_string(),
+                // Only 30 are available
+                amount: coins(30, "uusd")
+            })
+            .add_attribute("action", "claim")
+            .add_attribute("amount", "30")
+            .add_attribute("batch_id", "1")
+            .add_attribute("amount_left", "70"),
+        res
+    );
+}
+
+#[test]
 fn test_claim_batch_single_claim() {
     let mut deps = mock_dependencies(&[]);
     init(deps.as_mut());
@@ -421,10 +596,13 @@ fn test_claim_batch_single_claim() {
         lockup_duration: None,
         release_unit,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     // Skip time.
     let mut env = mock_env();
@@ -487,6 +665,128 @@ fn test_claim_batch_single_claim() {
 }
 
 #[test]
+fn test_claim_batch_not_nice_numbers_single_release() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+    let info = mock_info("owner", &coins(7, "uusd"));
+
+    let release_unit = 10;
+
+    // Create batch.
+    let msg = ExecuteMsg::CreateBatch {
+        lockup_duration: None,
+        release_unit,
+        release_amount: WithdrawalType::Amount(Uint128::new(10)),
+        validator_to_delegate_to: None,
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(7, "uusd"));
+
+    // Skip time.
+    let mut env = mock_env();
+    // A single release is available.
+    env.block.time = env.block.time.plus_seconds(release_unit);
+
+    // Claim batch.
+    let msg = ExecuteMsg::Claim {
+        number_of_claims: None,
+        batch_id: 1,
+    };
+
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(BankMsg::Send {
+                to_address: "recipient".to_string(),
+                amount: coins(7, "uusd")
+            })
+            .add_attribute("action", "claim")
+            .add_attribute("amount", "7")
+            .add_attribute("batch_id", "1")
+            .add_attribute("amount_left", "0"),
+        res
+    );
+    let lockup_end = mock_env().block.time.seconds();
+
+    assert_eq!(
+        Batch {
+            amount: Uint128::new(7),
+            amount_claimed: Uint128::new(7),
+            lockup_end,
+            release_unit: 10,
+            release_amount: WithdrawalType::Amount(Uint128::new(10)),
+            last_claimed_release_time: lockup_end + release_unit,
+        },
+        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+    );
+}
+
+#[test]
+fn test_claim_batch_not_nice_numbers_multiple_releases() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+    let info = mock_info("owner", &coins(14, "uusd"));
+
+    let release_unit = 10;
+
+    // Create batch.
+    let msg = ExecuteMsg::CreateBatch {
+        lockup_duration: None,
+        release_unit,
+        release_amount: WithdrawalType::Amount(Uint128::new(10)),
+        validator_to_delegate_to: None,
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(14, "uusd"));
+
+    // Skip time.
+    let mut env = mock_env();
+    // Two releases are out.
+    env.block.time = env.block.time.plus_seconds(2 * release_unit);
+
+    // Claim batch.
+    let msg = ExecuteMsg::Claim {
+        number_of_claims: None,
+        batch_id: 1,
+    };
+
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(BankMsg::Send {
+                to_address: "recipient".to_string(),
+                amount: coins(14, "uusd")
+            })
+            .add_attribute("action", "claim")
+            .add_attribute("amount", "14")
+            .add_attribute("batch_id", "1")
+            .add_attribute("amount_left", "0"),
+        res
+    );
+    let lockup_end = mock_env().block.time.seconds();
+
+    assert_eq!(
+        Batch {
+            amount: Uint128::new(14),
+            amount_claimed: Uint128::new(14),
+            lockup_end,
+            release_unit: 10,
+            release_amount: WithdrawalType::Amount(Uint128::new(10)),
+            last_claimed_release_time: lockup_end + 2 * release_unit,
+        },
+        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+    );
+}
+
+#[test]
 fn test_claim_batch_middle_of_interval() {
     let mut deps = mock_dependencies(&[]);
     init(deps.as_mut());
@@ -499,10 +799,13 @@ fn test_claim_batch_middle_of_interval() {
         lockup_duration: None,
         release_unit,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     // Claim batch.
     let msg = ExecuteMsg::Claim {
@@ -562,10 +865,13 @@ fn test_claim_batch_multiple_claims() {
         lockup_duration: None,
         release_unit,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
 
@@ -652,10 +958,13 @@ fn test_claim_batch_all_releases() {
         lockup_duration: None,
         release_unit,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
 
@@ -715,10 +1024,13 @@ fn test_claim_batch_too_high_of_claim() {
         lockup_duration: None,
         release_unit,
         release_amount: WithdrawalType::Amount(Uint128::new(10)),
-        stake: false,
+        validator_to_delegate_to: None,
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
     // A single release is available.
@@ -807,6 +1119,9 @@ fn test_claim_all() {
         release_unit,
         release_amount.clone(),
     );
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(400, "uusd"));
 
     // Speed up time.
     let mut env = mock_env();
@@ -928,5 +1243,191 @@ fn test_claim_all() {
             last_claimed_release_time: lockup_end + 12,
         },
         batches().load(deps.as_ref().storage, 3u64.into()).unwrap()
+    );
+}
+
+#[test]
+fn test_delegate_unauthorized() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    let info = mock_info("not_owner", &[]);
+
+    let msg = ExecuteMsg::Delegate {
+        amount: None,
+        validator: DEFAULT_VALIDATOR.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_delegate_no_funds() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    let msg = ExecuteMsg::Delegate {
+        amount: None,
+        validator: DEFAULT_VALIDATOR.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::InvalidZeroAmount {}, res.unwrap_err());
+}
+
+#[test]
+fn test_delegate() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
+
+    let info = mock_info("owner", &[]);
+
+    let msg = ExecuteMsg::Delegate {
+        amount: None,
+        validator: DEFAULT_VALIDATOR.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Staking(StakingMsg::Delegate {
+                validator: DEFAULT_VALIDATOR.to_string(),
+                amount: coin(100, "uusd")
+            }))
+            .add_attribute("action", "delegate")
+            .add_attribute("validator", DEFAULT_VALIDATOR)
+            .add_attribute("amount", "100"),
+        res
+    );
+}
+
+#[test]
+fn test_delegate_more_than_balance() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    deps.querier
+        .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
+
+    let info = mock_info("owner", &[]);
+
+    let msg = ExecuteMsg::Delegate {
+        amount: Some(Uint128::new(200)),
+        validator: DEFAULT_VALIDATOR.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Staking(StakingMsg::Delegate {
+                validator: DEFAULT_VALIDATOR.to_string(),
+                amount: coin(100, "uusd")
+            }))
+            .add_attribute("action", "delegate")
+            .add_attribute("validator", DEFAULT_VALIDATOR)
+            .add_attribute("amount", "100"),
+        res
+    );
+}
+
+#[test]
+fn test_undelegate_unauthorized() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    let info = mock_info("not_owner", &[]);
+
+    let msg = ExecuteMsg::Undelegate {
+        amount: None,
+        validator: DEFAULT_VALIDATOR.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_undelegate_no_funds() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    let msg = ExecuteMsg::Undelegate {
+        amount: None,
+        validator: DEFAULT_VALIDATOR.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::InvalidZeroAmount {}, res.unwrap_err());
+}
+
+#[test]
+fn test_undelegate() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    set_delegation(&mut deps.querier, 100, "uusd");
+
+    let msg = ExecuteMsg::Undelegate {
+        amount: None,
+        validator: DEFAULT_VALIDATOR.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Staking(StakingMsg::Undelegate {
+                validator: DEFAULT_VALIDATOR.to_owned(),
+                amount: coin(100, "uusd")
+            }))
+            .add_attribute("action", "undelegate")
+            .add_attribute("validator", DEFAULT_VALIDATOR)
+            .add_attribute("amount", "100"),
+        res
+    );
+}
+
+#[test]
+fn test_undelegate_more_than_max() {
+    let mut deps = mock_dependencies(&[]);
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    set_delegation(&mut deps.querier, 100, "uusd");
+
+    let msg = ExecuteMsg::Undelegate {
+        amount: Some(Uint128::new(200)),
+        validator: DEFAULT_VALIDATOR.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Staking(StakingMsg::Undelegate {
+                validator: DEFAULT_VALIDATOR.to_owned(),
+                amount: coin(100, "uusd")
+            }))
+            .add_attribute("action", "undelegate")
+            .add_attribute("validator", DEFAULT_VALIDATOR)
+            .add_attribute("amount", "100"),
+        res
     );
 }

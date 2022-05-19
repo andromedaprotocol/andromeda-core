@@ -543,7 +543,7 @@ fn test_withdraw_amount() {
 }
 
 #[test]
-fn test_withdraw_invalid_amount() {
+fn test_withdraw_too_high_amount() {
     let mut deps = mock_dependencies_custom(&[]);
     init(deps.as_mut());
 
@@ -567,12 +567,21 @@ fn test_withdraw_invalid_amount() {
             token: "uusd".to_string(),
         }]),
     });
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let expected_res = Response::new()
+        .add_submessage(redeem_stable_msg(amount))
+        .add_attributes(vec![
+            attr("action", "withdraw_uusd"),
+            attr("recipient_addr", recipient),
+        ]);
+    assert_eq!(res, expected_res);
     assert_eq!(
-        ContractError::InvalidFunds {
-            msg: "Requested withdrawal amount exceeds token balance".to_string(),
-        },
-        res.unwrap_err()
+        0,
+        POSITION
+            .load(deps.as_mut().storage, recipient)
+            .unwrap()
+            .aust_amount
+            .u128()
     );
 }
 

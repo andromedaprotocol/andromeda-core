@@ -3,6 +3,7 @@ use common::{
     withdraw::WithdrawalType,
 };
 use cosmwasm_std::Uint128;
+use cw0::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +15,8 @@ pub struct InstantiateMsg {
     pub is_multi_batch_enabled: bool,
     /// The denom of the coin being vested.
     pub denom: String,
+    /// The unbonding duration of the native staking module.
+    pub unbonding_duration: Duration,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -43,16 +46,18 @@ pub enum ExecuteMsg {
         /// Specifies how much is to be released after each `release_unit`. If
         /// it is a percentage, it would be the percentage of the original amount.
         release_amount: WithdrawalType,
-        /// Whether or not the funds should be staked.
-        stake: bool,
+        /// The validator to delegate to. If specified, funds will be delegated to it.
+        validator_to_delegate_to: Option<String>,
     },
-    /// Stakes the given amount of tokens, or all if not specified.
-    Stake {
+    /// Delegates the given amount of tokens, or all if not specified.
+    Delegate {
         amount: Option<Uint128>,
+        validator: String,
     },
-    /// Unstakes the given amount of tokens, or all if not specified.
-    Unstake {
+    /// Undelegates the given amount of tokens, or all if not specified.
+    Undelegate {
         amount: Option<Uint128>,
+        validator: String,
     },
 }
 
