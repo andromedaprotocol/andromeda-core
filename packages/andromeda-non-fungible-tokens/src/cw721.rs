@@ -1,6 +1,6 @@
 use common::{
     ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
-    mission::AndrAddress,
+    app::AndrAddress,
     primitive::Value,
 };
 use cosmwasm_std::{Binary, Coin};

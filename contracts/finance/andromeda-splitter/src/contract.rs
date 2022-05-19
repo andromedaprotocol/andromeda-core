@@ -9,9 +9,9 @@ use common::{
         hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
         InstantiateMsg as BaseInstantiateMsg,
     },
+    app::AndrAddress,
     encode_binary,
     error::ContractError,
-    mission::AndrAddress,
     require,
 };
 use cosmwasm_std::{
@@ -61,9 +61,9 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    // Do this before the hooks get fired off to ensure that there is no conflict with the mission
+    // Do this before the hooks get fired off to ensure that there is no conflict with the app
     // contract not being whitelisted.
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
         let splitter = SPLITTER.load(deps.storage)?;
         let mut andr_addresses: Vec<AndrAddress> = vec![];
         for recipient in splitter.recipients {
@@ -71,7 +71,7 @@ pub fn execute(
                 andr_addresses.push(ado_recipient.address);
             }
         }
-        return contract.execute_update_mission_contract(deps, info, address, Some(andr_addresses));
+        return contract.execute_update_app_contract(deps, info, address, Some(andr_addresses));
     };
 
     contract.module_hook::<Response>(
@@ -141,7 +141,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         let msg = recipient_addr.recipient.generate_msg_native(
             deps.api,
             &deps.querier,
-            ADOContract::default().get_mission_contract(deps.storage)?,
+            ADOContract::default().get_app_contract(deps.storage)?,
             vec_coin,
         )?;
         msgs.push(msg);

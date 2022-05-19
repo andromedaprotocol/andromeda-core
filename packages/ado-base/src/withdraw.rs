@@ -82,7 +82,7 @@ impl<'a> ADOContract<'a> {
                         Some(recipient.generate_msg_native(
                             deps.api,
                             &deps.querier,
-                            self.mission_contract.may_load(deps.storage)?,
+                            self.app_contract.may_load(deps.storage)?,
                             vec![coin],
                         )?)
                     }
@@ -101,7 +101,7 @@ impl<'a> ADOContract<'a> {
                         Some(recipient.generate_msg_cw20(
                             deps.api,
                             &deps.querier,
-                            self.mission_contract.may_load(deps.storage)?,
+                            self.app_contract.may_load(deps.storage)?,
                             cw20_coin,
                         )?)
                     }

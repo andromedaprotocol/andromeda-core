@@ -316,7 +316,7 @@ fn execute_withdraw_collateral(
         recipient.generate_msg_cw20(
             deps.api,
             &deps.querier,
-            contract.get_mission_contract(deps.storage)?,
+            contract.get_app_contract(deps.storage)?,
             Cw20Coin {
                 address: collateral_addr.clone(),
                 amount: amount.into(),
@@ -420,7 +420,7 @@ fn execute_borrow(
         .add_submessage(recipient.generate_msg_native(
             deps.api,
             &deps.querier,
-            contract.get_mission_contract(deps.storage)?,
+            contract.get_app_contract(deps.storage)?,
             coins(borrow_amount.into(), "uusd"),
         )?))
 }
@@ -488,7 +488,7 @@ fn execute_withdraw_unbonded(
             address: env.contract.address.to_string(),
         },
     )?;
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let app_contract = contract.get_app_contract(deps.storage)?;
     Ok(Response::new()
         .add_message(WasmMsg::Execute {
             contract_addr: anchor_bluna_hub,
@@ -498,7 +498,7 @@ fn execute_withdraw_unbonded(
         .add_submessage(recipient.generate_msg_native(
             deps.api,
             &deps.querier,
-            mission_contract,
+            app_contract,
             coins(withdrawable_response.withdrawable.u128(), "uluna"),
         )?))
 }

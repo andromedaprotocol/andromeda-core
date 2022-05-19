@@ -1,7 +1,7 @@
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    app::AndrAddress,
     error::ContractError,
-    mission::AndrAddress,
     withdraw::Withdrawal,
 };
 use cosmwasm_std::{to_binary, wasm_execute, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, Uint128};

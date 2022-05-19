@@ -162,10 +162,10 @@ fn query_deducted_funds(
         if let Some(desc) = &rate_info.description {
             event = event.add_attribute("description", desc);
         }
-        let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
+        let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
         let rate = rate_info
             .rate
-            .validate(deps.api, &deps.querier, mission_contract)?;
+            .validate(deps.api, &deps.querier, app_contract)?;
         let fee = calculate_fee(rate, &coin)?;
         for reciever in rate_info.receivers.iter() {
             if !rate_info.is_additive {
@@ -178,7 +178,7 @@ fn query_deducted_funds(
                     receiver: reciever.get_addr(
                         deps.api,
                         &deps.querier,
-                        ADOContract::default().get_mission_contract(deps.storage)?,
+                        ADOContract::default().get_app_contract(deps.storage)?,
                     )?,
                     amount: fee.clone(),
                 }
@@ -188,14 +188,14 @@ fn query_deducted_funds(
                 reciever.generate_msg_native(
                     deps.api,
                     &deps.querier,
-                    ADOContract::default().get_mission_contract(deps.storage)?,
+                    ADOContract::default().get_app_contract(deps.storage)?,
                     vec![fee.clone()],
                 )?
             } else {
                 reciever.generate_msg_cw20(
                     deps.api,
                     &deps.querier,
-                    ADOContract::default().get_mission_contract(deps.storage)?,
+                    ADOContract::default().get_app_contract(deps.storage)?,
                     Cw20Coin {
                         amount: fee.amount,
                         address: fee.denom.to_string(),
@@ -229,7 +229,7 @@ mod tests {
         mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT,
     };
     use common::{ado_base::recipient::Recipient, encode_binary};
-    use common::{mission::AndrAddress, primitive::PrimitivePointer};
+    use common::{app::AndrAddress, primitive::PrimitivePointer};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{
         coin, coins, from_binary, BankMsg, Coin, CosmosMsg, Decimal, Uint128, WasmMsg,

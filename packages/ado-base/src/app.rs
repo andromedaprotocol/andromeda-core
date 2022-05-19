@@ -3,20 +3,17 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::ADOContract;
-use common::{error::ContractError, mission::AndrAddress, require};
+use common::{app::AndrAddress, error::ContractError, require};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-enum MissionQueryMsg {
+enum AppQueryMsg {
     ComponentExists { name: String },
 }
 
 impl<'a> ADOContract<'a> {
-    pub fn get_mission_contract(
-        &self,
-        storage: &dyn Storage,
-    ) -> Result<Option<Addr>, ContractError> {
-        Ok(self.mission_contract.may_load(storage)?)
+    pub fn get_app_contract(&self, storage: &dyn Storage) -> Result<Option<Addr>, ContractError> {
+        Ok(self.app_contract.may_load(storage)?)
     }
 
     pub(crate) fn validate_andr_addresses(
@@ -24,10 +21,10 @@ impl<'a> ADOContract<'a> {
         deps: Deps,
         mut addresses: Vec<AndrAddress>,
     ) -> Result<(), ContractError> {
-        let mission_contract = self.get_mission_contract(deps.storage)?;
+        let app_contract = self.get_app_contract(deps.storage)?;
         require(
-            mission_contract.is_some(),
-            ContractError::MissionContractNotSpecified {},
+            app_contract.is_some(),
+            ContractError::AppContractNotSpecified {},
         )?;
         #[cfg(feature = "modules")]
         {
@@ -38,13 +35,13 @@ impl<'a> ADOContract<'a> {
                 addresses.extend(andr_addresses);
             }
         }
-        let mission_contract = mission_contract.unwrap();
+        let app_contract = app_contract.unwrap();
         for address in addresses {
             self.validate_andr_address(
                 deps.api,
                 &deps.querier,
                 address.identifier,
-                mission_contract.clone(),
+                app_contract.clone(),
             )?;
         }
         Ok(())
@@ -55,13 +52,13 @@ impl<'a> ADOContract<'a> {
         api: &dyn Api,
         querier: &QuerierWrapper,
         identifier: String,
-        mission_contract: Addr,
+        app_contract: Addr,
     ) -> Result<(), ContractError> {
-        // If the address passes this check then it doesn't refer to a mission component by
+        // If the address passes this check then it doesn't refer to a app component by
         // name.
         if api.addr_validate(&identifier).is_err() {
             require(
-                self.component_exists(querier, identifier.clone(), mission_contract)?,
+                self.component_exists(querier, identifier.clone(), app_contract)?,
                 ContractError::InvalidComponent { name: identifier },
             )?;
         }
@@ -72,9 +69,8 @@ impl<'a> ADOContract<'a> {
         &self,
         querier: &QuerierWrapper,
         name: String,
-        mission_contract: Addr,
+        app_contract: Addr,
     ) -> Result<bool, ContractError> {
-        Ok(querier
-            .query_wasm_smart(mission_contract, &MissionQueryMsg::ComponentExists { name })?)
+        Ok(querier.query_wasm_smart(app_contract, &AppQueryMsg::ComponentExists { name })?)
     }
 }

@@ -1,11 +1,11 @@
 use crate::state::{
-    add_mission_component, generate_assign_mission_message, generate_ownership_message,
+    add_app_component, generate_assign_app_message, generate_ownership_message,
     load_component_addresses, load_component_addresses_with_name, load_component_descriptors,
-    ADO_ADDRESSES, ADO_DESCRIPTORS, MISSION_NAME,
+    ADO_ADDRESSES, ADO_DESCRIPTORS, APP_NAME,
 };
 use ado_base::ADOContract;
-use andromeda_app::mission::{
-    ComponentAddress, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, MissionComponent,
+use andromeda_app::app::{
+    AppComponent, ComponentAddress, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
     QueryMsg,
 };
 use common::{
@@ -24,7 +24,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_mission";
+const CONTRACT_NAME: &str = "crates.io:andromeda-app-contract";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -35,11 +35,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    MISSION_NAME.save(deps.storage, &msg.name)?;
-    require(
-        msg.mission.len() <= 50,
-        ContractError::TooManyMissionComponents {},
-    )?;
+    APP_NAME.save(deps.storage, &msg.name)?;
+    require(msg.app.len() <= 50, ContractError::TooManyAppComponents {})?;
 
     let sender = info.sender.to_string();
     let resp = ADOContract::default()
@@ -48,19 +45,18 @@ pub fn instantiate(
             deps.api,
             info,
             BaseInstantiateMsg {
-                ado_type: "mission".to_string(),
+                ado_type: "app".to_string(),
                 operators: Some(msg.operators),
                 modules: None,
                 primitive_contract: Some(msg.primitive_contract),
             },
         )?
         .add_attribute("owner", &sender)
-        .add_attribute("andr_mission", msg.name);
+        .add_attribute("andr_app", msg.name);
 
     let mut msgs: Vec<SubMsg> = vec![];
-    for component in msg.mission {
-        let comp_resp =
-            execute_add_mission_component(&deps.querier, deps.storage, &sender, component)?;
+    for component in msg.app {
+        let comp_resp = execute_add_app_component(&deps.querier, deps.storage, &sender, component)?;
         msgs.extend(comp_resp.messages);
     }
 
@@ -81,8 +77,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     let addr_str = get_reply_address(&msg)?;
     let addr = &deps.api.addr_validate(&addr_str)?;
     ADO_ADDRESSES.save(deps.storage, &descriptor.name, addr)?;
-    let assign_mission = generate_assign_mission_message(addr, &env.contract.address.to_string())?;
-    Ok(Response::default().add_submessage(assign_mission))
+    let assign_app = generate_assign_app_message(addr, &env.contract.address.to_string())?;
+    Ok(Response::default().add_submessage(assign_app))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -96,12 +92,9 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
-        ExecuteMsg::AddMissionComponent { component } => execute_add_mission_component(
-            &deps.querier,
-            deps.storage,
-            info.sender.as_str(),
-            component,
-        ),
+        ExecuteMsg::AddAppComponent { component } => {
+            execute_add_app_component(&deps.querier, deps.storage, info.sender.as_str(), component)
+        }
         ExecuteMsg::ClaimOwnership { name } => {
             execute_claim_ownership(deps.storage, info.sender.as_str(), name)
         }
@@ -110,11 +103,11 @@ pub fn execute(
     }
 }
 
-fn execute_add_mission_component(
+fn execute_add_app_component(
     querier: &QuerierWrapper,
     storage: &mut dyn Storage,
     sender: &str,
-    component: MissionComponent,
+    component: AppComponent,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     require(
@@ -128,7 +121,7 @@ fn execute_add_mission_component(
     // This is a default value that will be overridden on `reply`.
     ADO_ADDRESSES.save(storage, &component.name, &Addr::unchecked(""))?;
 
-    let idx = add_mission_component(storage, &component)?;
+    let idx = add_app_component(storage, &component)?;
     let inst_msg = contract.generate_instantiate_msg(
         storage,
         querier,
@@ -140,7 +133,7 @@ fn execute_add_mission_component(
 
     Ok(Response::new()
         .add_submessage(inst_msg)
-        .add_attribute("method", "add_mission_component")
+        .add_attribute("method", "add_app_component")
         .add_attribute("name", component.name)
         .add_attribute("type", component.ado_type))
 }
@@ -197,7 +190,7 @@ fn execute_message(
 
     Ok(Response::default()
         .add_submessage(proxy_msg)
-        .add_attribute("method", "mission_message")
+        .add_attribute("method", "app_message")
         .add_attribute("recipient", name))
 }
 
@@ -278,7 +271,7 @@ fn query_component_address(deps: Deps, name: String) -> Result<String, ContractE
     Ok(value.to_string())
 }
 
-fn query_component_descriptors(deps: Deps) -> Result<Vec<MissionComponent>, ContractError> {
+fn query_component_descriptors(deps: Deps) -> Result<Vec<AppComponent>, ContractError> {
     let value = load_component_descriptors(deps.storage)?;
     Ok(value)
 }
@@ -293,7 +286,7 @@ fn query_component_addresses(deps: Deps) -> Result<Vec<ComponentAddress>, Contra
 }
 
 fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
-    let name = MISSION_NAME.load(deps.storage)?;
+    let name = APP_NAME.load(deps.storage)?;
     let owner = ADOContract::default().query_contract_owner(deps)?.owner;
 
     Ok(ConfigResponse { name, owner })

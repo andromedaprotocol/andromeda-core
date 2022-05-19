@@ -1,4 +1,4 @@
-use crate::{error::ContractError, mission::AndrAddress, require};
+use crate::{app::AndrAddress, error::ContractError, require};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

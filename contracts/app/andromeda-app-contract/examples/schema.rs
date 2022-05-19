@@ -1,7 +1,7 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use andromeda_app::mission::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_app::app::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 fn main() {

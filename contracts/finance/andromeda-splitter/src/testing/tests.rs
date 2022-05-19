@@ -15,8 +15,8 @@ use common::{
         recipient::{ADORecipient, Recipient},
         AndromedaMsg,
     },
+    app::AndrAddress,
     error::ContractError,
-    mission::AndrAddress,
 };
 
 #[test]
@@ -73,7 +73,7 @@ fn test_modules() {
 }
 
 #[test]
-fn test_update_mission_contract() {
+fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules: Vec<Module> = vec![Module {
@@ -84,7 +84,7 @@ fn test_update_mission_contract() {
         is_mutable: false,
     }];
 
-    let info = mock_info("mission_contract", &[]);
+    let info = mock_info("app_contract", &[]);
     let msg = InstantiateMsg {
         modules: Some(modules),
         recipients: vec![
@@ -106,22 +106,22 @@ fn test_update_mission_contract() {
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
-        address: "mission_contract".to_string(),
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: "app_contract".to_string(),
     });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
-            .add_attribute("action", "update_mission_contract")
-            .add_attribute("address", "mission_contract"),
+            .add_attribute("action", "update_app_contract")
+            .add_attribute("address", "app_contract"),
         res
     );
 }
 
 #[test]
-fn test_update_mission_contract_invalid_recipient() {
+fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules: Vec<Module> = vec![Module {
@@ -132,7 +132,7 @@ fn test_update_mission_contract_invalid_recipient() {
         is_mutable: false,
     }];
 
-    let info = mock_info("mission_contract", &[]);
+    let info = mock_info("app_contract", &[]);
     let msg = InstantiateMsg {
         modules: Some(modules),
         recipients: vec![AddressPercent {
@@ -148,8 +148,8 @@ fn test_update_mission_contract_invalid_recipient() {
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
-        address: "mission_contract".to_string(),
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: "app_contract".to_string(),
     });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);

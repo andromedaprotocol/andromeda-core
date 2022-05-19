@@ -32,7 +32,7 @@ pub enum AndromedaMsg {
     UpdateOperators {
         operators: Vec<String>,
     },
-    UpdateMissionContract {
+    UpdateAppContract {
         address: String,
     },
     Withdraw {

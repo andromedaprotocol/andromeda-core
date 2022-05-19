@@ -18,8 +18,8 @@ use common::{
         recipient::{ADORecipient, Recipient},
         AndromedaMsg, AndromedaQuery,
     },
+    app::AndrAddress,
     error::ContractError,
-    mission::AndrAddress,
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cw20::Cw20ExecuteMsg;
