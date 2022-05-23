@@ -175,12 +175,12 @@ dependencies = [
  "andromeda-modules",
  "andromeda-testing",
  "common",
- "cosmwasm-schema 0.16.7",
- "cosmwasm-std 0.16.7",
- "cw-storage-plus 0.9.1",
- "cw2 0.9.1",
- "cw20 0.9.1",
- "cw20-base 0.9.1",
+ "cosmwasm-schema 1.0.0",
+ "cosmwasm-std 1.0.0",
+ "cw-storage-plus 0.13.2",
+ "cw2 0.13.2",
+ "cw20 0.13.2",
+ "cw20-base",
  "schemars",
  "serde",
 ]
@@ -303,7 +303,7 @@ dependencies = [
  "cw-asset 2.0.0",
  "cw-utils",
  "cw20 0.13.2",
- "cw20-base 0.13.2",
+ "cw20-base",
  "schemars",
  "serde",
 ]
@@ -679,7 +679,7 @@ dependencies = [
  "cw-storage-plus 0.13.2",
  "cw-utils",
  "cw20 0.13.2",
- "cw20-base 0.13.2",
+ "cw20-base",
  "cw721-base 0.13.2",
  "hex",
  "schemars",
@@ -1056,22 +1056,6 @@ dependencies = [
  "cw-utils",
  "schemars",
  "serde",
-]
-
-[[package]]
-name = "cw20-base"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b731a291b63cc26d484b159e8469f0965b0082a20e874616f869537b31d64bb"
-dependencies = [
- "cosmwasm-std 0.16.7",
- "cw-storage-plus 0.9.1",
- "cw0 0.9.1",
- "cw2 0.9.1",
- "cw20 0.9.1",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]
