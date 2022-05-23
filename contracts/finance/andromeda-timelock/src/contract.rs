@@ -142,7 +142,7 @@ fn execute_release_funds(
 ) -> Result<Response, ContractError> {
     let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
 
-    let keys = get_keys_for_recipient(deps.storage, &recipient_addr, start_after, limit);
+    let keys = get_keys_for_recipient(deps.storage, &recipient_addr, start_after, limit)?;
 
     require(!keys.is_empty(), ContractError::NoLockedFunds {})?;
 
@@ -238,7 +238,7 @@ fn query_funds_for_recipient(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<GetLockedFundsForRecipientResponse, ContractError> {
-    let keys = get_keys_for_recipient(deps.storage, &recipient, start_after, limit);
+    let keys = get_keys_for_recipient(deps.storage, &recipient, start_after, limit)?;
     let mut recipient_escrows: Vec<Escrow> = vec![];
     for key in keys.iter() {
         recipient_escrows.push(escrows().load(deps.storage, key.to_vec())?);
@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_instantiate() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = "owner";
         let info = mock_info(owner, &[]);
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn test_execute_hold_funds() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let mut env = mock_env();
         let owner = "owner";
         let funds = vec![Coin::new(1000, "uusd")];
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_execute_hold_funds_escrow_updated() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let mut env = mock_env();
 
         let owner = "owner";
@@ -372,7 +372,7 @@ mod tests {
 
     #[test]
     fn test_execute_release_funds_block_condition() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let mut env = mock_env();
         let owner = "owner";
 
@@ -406,7 +406,7 @@ mod tests {
 
     #[test]
     fn test_execute_release_funds_no_condition() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = "owner";
 
@@ -438,7 +438,7 @@ mod tests {
 
     #[test]
     fn test_execute_release_multiple_escrows() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let recipient = Recipient::Addr("recipient".into());
 
@@ -481,7 +481,7 @@ mod tests {
 
     #[test]
     fn test_execute_release_funds_time_condition() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let mut env = mock_env();
         let owner = "owner";
 
@@ -518,7 +518,7 @@ mod tests {
 
     #[test]
     fn test_execute_release_funds_locked() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let mut env = mock_env();
         let owner = "owner";
 
@@ -544,7 +544,7 @@ mod tests {
 
     #[test]
     fn test_execute_release_funds_min_funds_condition() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = "owner";
 
@@ -599,7 +599,7 @@ mod tests {
 
     #[test]
     fn test_execute_release_specific_funds_no_funds_locked() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = "owner";
 
@@ -614,7 +614,7 @@ mod tests {
 
     #[test]
     fn test_execute_release_specific_funds_no_condition() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = "owner";
 
@@ -645,7 +645,7 @@ mod tests {
 
     #[test]
     fn test_execute_release_specific_funds_time_condition() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let mut env = mock_env();
         let owner = "owner";
 
@@ -681,7 +681,7 @@ mod tests {
 
     #[test]
     fn test_execute_release_specific_funds_min_funds_condition() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = "owner";
 
@@ -734,7 +734,7 @@ mod tests {
 
     #[test]
     fn test_execute_receive() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = "owner";
         let funds = vec![Coin::new(1000, "uusd")];
