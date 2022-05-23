@@ -29,7 +29,7 @@ fn test_instantiate() {
     let inst_msg = InstantiateMsg { operators: None };
     let env = mock_env();
     let info = mock_info("minter", &[]);
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
 
     instantiate(deps.as_mut(), env, info, inst_msg).unwrap();
 }
@@ -40,7 +40,7 @@ fn test_deposit() {
     let sent_funds = coin(100, "uusd");
     let extra_sent_funds = coin(100, "uluna");
     let depositor = "depositor".to_string();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
 
     let info = mock_info(&depositor, &[sent_funds.clone(), extra_sent_funds.clone()]);
     let msg = ExecuteMsg::Deposit {
@@ -132,7 +132,7 @@ fn test_execute_update_strategy_not_operator() {
 fn test_deposit_insufficient_funds() {
     let env = mock_env();
     let depositor = "depositor".to_string();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
 
     let info = mock_info(&depositor, &[]);
     let msg = ExecuteMsg::Deposit {
@@ -311,7 +311,7 @@ fn test_deposit_strategy_partial_amount() {
 #[test]
 fn test_deposit_strategy_empty_funds_non_empty_amount() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
 
     let depositor = "depositor".to_string();
     let info = mock_info(&depositor, &[]);
@@ -337,7 +337,7 @@ fn test_deposit_strategy_insufficient_partial_amount() {
     let inst_msg = InstantiateMsg { operators: None };
     let env = mock_env();
     let info = mock_info("minter", &[]);
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
@@ -372,7 +372,7 @@ fn test_deposit_strategy_insufficient_partial_amount() {
 #[test]
 fn test_withdraw_empty() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
 
     let depositor = "depositor".to_string();
     let info = mock_info(&depositor, &[]);
@@ -394,7 +394,7 @@ fn test_withdraw_empty() {
 #[test]
 fn test_withdraw_invalid_withdrawals() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
 
     let depositor = "depositor".to_string();
     BALANCES
@@ -443,7 +443,7 @@ fn test_withdraw_invalid_withdrawals() {
 #[test]
 fn test_withdraw_single_no_strategy_insufficientfunds() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
 
     let depositor = "depositor".to_string();
     let info = mock_info(&depositor, &[]);
@@ -483,7 +483,7 @@ fn test_withdraw_single_no_strategy_insufficientfunds() {
 #[test]
 fn test_withdraw_single_no_strategy_amount() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let depositor = "depositor".to_string();
     BALANCES
         .save(
@@ -520,7 +520,7 @@ fn test_withdraw_single_no_strategy_amount() {
 #[test]
 fn test_withdraw_single_no_strategy_percentage() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let depositor = "depositor".to_string();
     BALANCES
         .save(
@@ -557,7 +557,7 @@ fn test_withdraw_single_no_strategy_percentage() {
 #[test]
 fn test_withdraw_multi_no_strategy_insufficientfunds() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let depositor = "depositor".to_string();
     BALANCES
         .save(
@@ -591,7 +591,7 @@ fn test_withdraw_multi_no_strategy_insufficientfunds() {
 #[test]
 fn test_withdraw_multi_no_strategy_mixed() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let depositor = "depositor".to_string();
     BALANCES
         .save(
@@ -649,7 +649,7 @@ fn test_withdraw_multi_no_strategy_mixed() {
 #[test]
 fn test_withdraw_multi_no_strategy_recipient() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let depositor = "depositor".to_string();
     BALANCES
         .save(
@@ -707,7 +707,7 @@ fn test_withdraw_multi_no_strategy_recipient() {
 #[test]
 fn test_withdraw_single_strategy() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let depositor = "depositor".to_string();
     STRATEGY_CONTRACT_ADDRESSES
         .save(
@@ -752,7 +752,7 @@ fn test_withdraw_single_strategy() {
 #[test]
 fn test_withdraw_invalid_strategy() {
     let env = mock_env();
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let depositor = "depositor".to_string();
     let withdrawals = vec![Withdrawal {
         token: "aust".to_string(),
@@ -777,7 +777,7 @@ fn test_withdraw_invalid_strategy() {
 
 #[test]
 fn test_query_local_balance() {
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let env = mock_env();
     let depositor = "depositor";
     let balance_one = coin(100, "uluna");
