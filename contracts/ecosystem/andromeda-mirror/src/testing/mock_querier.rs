@@ -21,7 +21,6 @@ pub use mirror_protocol::{
     oracle::{ConfigResponse as OracleConfigResponse, QueryMsg as MirrorOracleQueryMsg},
     staking::{ConfigResponse as StakingConfigResponse, QueryMsg as MirrorStakingQueryMsg},
 };
-use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_MIRROR_TOKEN_ADDR: &str = "mirror_token";
@@ -40,17 +39,18 @@ pub fn mock_dependencies_custom(
         storage: MockStorage::default(),
         api: MockApi::default(),
         querier: custom_querier,
+        custom_query_type: std::marker::PhantomData,
     }
 }
 
 pub struct WasmMockQuerier {
-    base: MockQuerier<TerraQueryWrapper>,
+    base: MockQuerier,
 }
 
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<TerraQueryWrapper> = match from_slice(bin_request) {
+        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -64,7 +64,7 @@ impl Querier for WasmMockQuerier {
 }
 
 impl WasmMockQuerier {
-    pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
+    pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
@@ -109,7 +109,7 @@ impl WasmMockQuerier {
         }
     }
 
-    pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
+    pub fn new(base: MockQuerier) -> Self {
         WasmMockQuerier { base }
     }
 }
