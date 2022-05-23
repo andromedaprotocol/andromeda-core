@@ -155,14 +155,13 @@ dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
  "common",
- "cosmwasm-schema 0.16.7",
- "cosmwasm-std 0.16.7",
- "cw-storage-plus 0.9.1",
- "cw0 0.9.1",
- "cw721 0.9.2",
+ "cosmwasm-schema 1.0.0",
+ "cosmwasm-std 1.0.0",
+ "cw-storage-plus 0.13.2",
+ "cw-utils",
+ "cw721 0.13.2",
  "schemars",
  "serde",
- "terra-cosmwasm",
 ]
 
 [[package]]

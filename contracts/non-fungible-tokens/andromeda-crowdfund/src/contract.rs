@@ -25,8 +25,8 @@ use cosmwasm_std::{
     QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
     WasmQuery,
 };
-use cw0::Expiration;
 use cw721::TokensResponse;
+use cw_utils::Expiration;
 use std::cmp;
 
 const MAX_LIMIT: u32 = 100;
