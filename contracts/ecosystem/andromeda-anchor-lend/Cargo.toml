@@ -9,21 +9,20 @@ edition = "2018"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = "0.16.7"
+cosmwasm-std = "1.0.0"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 schemars = "0.8.3"
-cw-storage-plus = "0.9.1"
-cw20 = "0.9.1"
-cw2 = "0.9.1"
+cw-storage-plus = "0.13.2"
+cw20 = "0.13.2"
+cw2 = "0.13.2"
 moneymarket = "0.3.0"
 anchor-token = "0.3.0"
 cosmwasm-bignumber = "2.2.0"
-cw-asset = { version = "1.0.2" }
+cw-asset = "2.0.0"
 
 andromeda-ecosystem = { version = "0.1.0", path = "../../../packages/andromeda-ecosystem" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["primitive", "withdraw"] }
 
 [dev-dependencies]
-terra-cosmwasm = { version = "2.2.0" }
-cosmwasm-schema = "0.16.0"
+cosmwasm-schema = "1.0.0"
