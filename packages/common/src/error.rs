@@ -1,7 +1,7 @@
 use cosmwasm_std::{OverflowError, StdError};
-use cw0::Expiration;
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
+use cw_utils::Expiration;
 use std::convert::From;
 use std::string::FromUtf8Error;
 use thiserror::Error;
@@ -207,6 +207,10 @@ pub enum ContractError {
 
     #[error("Invalid png header")]
     InvalidPngHeader {},
+
+    #[error("Duplicate initial balance addresses")]
+    DuplicateInitialBalanceAddresses {},
+
     // END CW20 ERRORS
     #[error("Invalid Module, {msg:?}")]
     InvalidModule { msg: Option<String> },
@@ -222,6 +226,9 @@ pub enum ContractError {
 
     #[error("token_id already claimed")]
     Claimed {},
+
+    #[error("Approval not found for: {spender}")]
+    ApprovalNotFound { spender: String },
 
     #[error("OfferAlreadyPlaced")]
     OfferAlreadyPlaced {},
@@ -390,6 +397,9 @@ impl From<Cw20ContractError> for ContractError {
             Cw20ContractError::InvalidZeroAmount {} => ContractError::InvalidZeroAmount {},
             Cw20ContractError::InvalidXmlPreamble {} => ContractError::InvalidXmlPreamble {},
             Cw20ContractError::CannotSetOwnAccount {} => ContractError::CannotSetOwnAccount {},
+            Cw20ContractError::DuplicateInitialBalanceAddresses {} => {
+                ContractError::DuplicateInitialBalanceAddresses {}
+            }
         }
     }
 }
@@ -401,6 +411,9 @@ impl From<Cw721ContractError> for ContractError {
             Cw721ContractError::Expired {} => ContractError::Expired {},
             Cw721ContractError::Unauthorized {} => ContractError::Unauthorized {},
             Cw721ContractError::Claimed {} => ContractError::Claimed {},
+            Cw721ContractError::ApprovalNotFound { spender } => {
+                ContractError::ApprovalNotFound { spender }
+            }
         }
     }
 }

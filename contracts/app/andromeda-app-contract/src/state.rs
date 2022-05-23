@@ -27,7 +27,7 @@ pub fn add_app_component(
 }
 
 pub fn load_component_addresses(storage: &dyn Storage) -> Result<Vec<Addr>, ContractError> {
-    let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
+    let min = Some(Bound::inclusive("1"));
     let addresses: Vec<Addr> = ADO_ADDRESSES
         .range(storage, min, None, Order::Ascending)
         .flatten()
@@ -40,19 +40,13 @@ pub fn load_component_addresses(storage: &dyn Storage) -> Result<Vec<Addr>, Cont
 pub fn load_component_addresses_with_name(
     storage: &dyn Storage,
 ) -> Result<Vec<ComponentAddress>, ContractError> {
-    let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
+    let min = Some(Bound::inclusive("1"));
     let addresses: Vec<ComponentAddress> = ADO_ADDRESSES
         .range(storage, min, None, Order::Ascending)
         .flatten()
-        .map(|(vec, addr)| {
-            let name = match String::from_utf8(vec) {
-                Ok(v) => v,
-                Err(e) => panic!("Invalid App component name: {}", e),
-            };
-            ComponentAddress {
-                name,
-                address: addr.to_string(),
-            }
+        .map(|(name, addr)| ComponentAddress {
+            name,
+            address: addr.to_string(),
         })
         .collect();
 
@@ -62,7 +56,7 @@ pub fn load_component_addresses_with_name(
 pub fn load_component_descriptors(
     storage: &dyn Storage,
 ) -> Result<Vec<AppComponent>, ContractError> {
-    let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
+    let min = Some(Bound::inclusive("1"));
     let descriptors: Vec<AppComponent> = ADO_DESCRIPTORS
         .range(storage, min, None, Order::Ascending)
         .flatten()

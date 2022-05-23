@@ -65,14 +65,9 @@ impl<'a> ADOContract<'a> {
     }
 
     pub fn query_operators(&self, deps: Deps) -> Result<OperatorsResponse, ContractError> {
-        let operators: Result<Vec<String>, ContractError> = self
+        let operators: Result<Vec<String>, _> = self
             .operators
             .keys(deps.storage, None, None, Order::Ascending)
-            .map(|k| {
-                String::from_utf8(k).map_err(|_| ContractError::ParsingError {
-                    err: "parsing escrow key".to_string(),
-                })
-            })
             .collect();
         Ok(OperatorsResponse {
             operators: operators?,

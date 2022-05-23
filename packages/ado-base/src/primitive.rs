@@ -65,14 +65,15 @@ impl<'a> ADOContract<'a> {
         limit: Option<u32>,
     ) -> Result<Response, ContractError> {
         let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-        let start = start_after.map(Bound::exclusive);
-        let keys: Vec<String> = self
+        // as_deref does Option<String> to Option<&str>
+        let start = start_after.as_deref().map(Bound::exclusive);
+        let keys: Result<Vec<String>, _> = self
             .cached_addresses
             .keys(deps.storage, start, None, Order::Ascending)
             .take(limit)
-            .map(String::from_utf8)
-            .collect::<Result<Vec<String>, _>>()?;
+            .collect();
 
+        let keys = keys?;
         for key in keys.iter() {
             self.cache_address(deps.storage, &deps.querier, key)?;
         }
