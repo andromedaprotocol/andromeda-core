@@ -2,7 +2,7 @@ use andromeda_non_fungible_tokens::auction::{AuctionStateResponse, Bid};
 use common::{error::ContractError, OrderBy};
 use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage, Uint128};
 use cw721::Expiration;
-use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex, U128Key};
+use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::cmp;
@@ -59,13 +59,14 @@ impl From<TokenAuctionState> for AuctionStateResponse {
 
 pub const NEXT_AUCTION_ID: Item<Uint128> = Item::new("next_auction_id");
 
-pub const BIDS: Map<U128Key, Vec<Bid>> = Map::new("bids"); // auction_id -> [bids]
+pub const BIDS: Map<u128, Vec<Bid>> = Map::new("bids"); // auction_id -> [bids]
 
-pub const TOKEN_AUCTION_STATE: Map<U128Key, TokenAuctionState> = Map::new("auction_token_state");
+pub const TOKEN_AUCTION_STATE: Map<u128, TokenAuctionState> = Map::new("auction_token_state");
 
 pub struct AuctionIdIndices<'a> {
-    /// (token_address, token_id + token_address)
-    pub token: MultiIndex<'a, (String, Vec<u8>), AuctionInfo>,
+    /// PK: token_id + token_address
+    /// Secondary key: token_address
+    pub token: MultiIndex<'a, String, AuctionInfo, String>,
 }
 
 impl<'a> IndexList<AuctionInfo> for AuctionIdIndices<'a> {
@@ -77,18 +78,14 @@ impl<'a> IndexList<AuctionInfo> for AuctionIdIndices<'a> {
 
 pub fn auction_infos<'a>() -> IndexedMap<'a, &'a str, AuctionInfo, AuctionIdIndices<'a>> {
     let indexes = AuctionIdIndices {
-        token: MultiIndex::new(
-            |r, k| (r.token_address.clone(), k),
-            "ownership",
-            "token_index",
-        ),
+        token: MultiIndex::new(|r| r.token_address.clone(), "ownership", "token_index"),
     };
     IndexedMap::new("ownership", indexes)
 }
 
 pub fn read_bids(
     storage: &dyn Storage,
-    auction_id: U128Key,
+    auction_id: u128,
     start_after: Option<u64>,
     limit: Option<u64>,
     order_by: Option<OrderBy>,
@@ -140,9 +137,7 @@ pub fn read_auction_infos(
         .prefix(token_address)
         .keys(storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|v| String::from_utf8(v.to_vec()))
-        .collect::<Result<Vec<String>, _>>()
-        .map_err(StdError::invalid_utf8)?;
+        .collect::<Result<Vec<String>, _>>()?;
 
     let mut res: Vec<AuctionInfo> = vec![];
     for key in keys.iter() {
@@ -189,30 +184,23 @@ mod tests {
 
     #[test]
     fn read_bids_no_params() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
-        BIDS.save(deps.as_mut().storage, U128Key::new(0), &get_mock_bids())
+        BIDS.save(deps.as_mut().storage, 0, &get_mock_bids())
             .unwrap();
 
-        let bids = read_bids(deps.as_ref().storage, U128Key::new(0), None, None, None).unwrap();
+        let bids = read_bids(deps.as_ref().storage, 0, None, None, None).unwrap();
         assert_eq!(get_mock_bids(), bids);
     }
 
     #[test]
     fn read_bids_no_params_desc() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
-        BIDS.save(deps.as_mut().storage, U128Key::new(0), &get_mock_bids())
+        BIDS.save(deps.as_mut().storage, 0, &get_mock_bids())
             .unwrap();
 
-        let bids = read_bids(
-            deps.as_ref().storage,
-            U128Key::new(0),
-            None,
-            None,
-            Some(OrderBy::Desc),
-        )
-        .unwrap();
+        let bids = read_bids(deps.as_ref().storage, 0, None, None, Some(OrderBy::Desc)).unwrap();
         let mut expected_bids = get_mock_bids();
         expected_bids.reverse();
         assert_eq!(expected_bids, bids);
@@ -220,21 +208,12 @@ mod tests {
 
     #[test]
     fn read_bids_start_after() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
-        BIDS.save(deps.as_mut().storage, U128Key::new(0), &get_mock_bids())
+        BIDS.save(deps.as_mut().storage, 0, &get_mock_bids())
             .unwrap();
 
-        let func = |order| {
-            read_bids(
-                deps.as_ref().storage,
-                U128Key::new(0),
-                Some(2),
-                None,
-                Some(order),
-            )
-            .unwrap()
-        };
+        let func = |order| read_bids(deps.as_ref().storage, 0, Some(2), None, Some(order)).unwrap();
 
         let bids = func(OrderBy::Asc);
         assert_eq!(get_mock_bids()[3..], bids);
@@ -247,21 +226,12 @@ mod tests {
 
     #[test]
     fn read_bids_limit() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
-        BIDS.save(deps.as_mut().storage, U128Key::new(0), &get_mock_bids())
+        BIDS.save(deps.as_mut().storage, 0, &get_mock_bids())
             .unwrap();
 
-        let func = |order| {
-            read_bids(
-                deps.as_ref().storage,
-                U128Key::new(0),
-                None,
-                Some(2),
-                Some(order),
-            )
-            .unwrap()
-        };
+        let func = |order| read_bids(deps.as_ref().storage, 0, None, Some(2), Some(order)).unwrap();
 
         let bids = func(OrderBy::Asc);
         assert_eq!(get_mock_bids()[0..2], bids);
@@ -274,21 +244,13 @@ mod tests {
 
     #[test]
     fn read_bids_start_after_limit() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
-        BIDS.save(deps.as_mut().storage, U128Key::new(0), &get_mock_bids())
+        BIDS.save(deps.as_mut().storage, 0, &get_mock_bids())
             .unwrap();
 
-        let func = |order| {
-            read_bids(
-                deps.as_ref().storage,
-                U128Key::new(0),
-                Some(2),
-                Some(1),
-                Some(order),
-            )
-            .unwrap()
-        };
+        let func =
+            |order| read_bids(deps.as_ref().storage, 0, Some(2), Some(1), Some(order)).unwrap();
 
         let bids = func(OrderBy::Asc);
         assert_eq!(get_mock_bids()[3..4], bids);
@@ -301,21 +263,13 @@ mod tests {
 
     #[test]
     fn read_bids_start_after_limit_too_high() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
-        BIDS.save(deps.as_mut().storage, U128Key::new(0), &get_mock_bids())
+        BIDS.save(deps.as_mut().storage, 0, &get_mock_bids())
             .unwrap();
 
-        let func = |order| {
-            read_bids(
-                deps.as_ref().storage,
-                U128Key::new(0),
-                Some(2),
-                Some(100),
-                Some(order),
-            )
-            .unwrap()
-        };
+        let func =
+            |order| read_bids(deps.as_ref().storage, 0, Some(2), Some(100), Some(order)).unwrap();
 
         let bids = func(OrderBy::Asc);
         assert_eq!(get_mock_bids()[3..], bids);
@@ -328,21 +282,13 @@ mod tests {
 
     #[test]
     fn read_bids_start_after_too_high() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
-        BIDS.save(deps.as_mut().storage, U128Key::new(0), &get_mock_bids())
+        BIDS.save(deps.as_mut().storage, 0, &get_mock_bids())
             .unwrap();
 
-        let func = |order| {
-            read_bids(
-                deps.as_ref().storage,
-                U128Key::new(0),
-                Some(100),
-                None,
-                Some(order),
-            )
-            .unwrap()
-        };
+        let func =
+            |order| read_bids(deps.as_ref().storage, 0, Some(100), None, Some(order)).unwrap();
 
         let bids = func(OrderBy::Asc);
         assert!(bids.is_empty());
@@ -353,21 +299,13 @@ mod tests {
 
     #[test]
     fn read_bids_start_after_and_limit_too_high() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
-        BIDS.save(deps.as_mut().storage, U128Key::new(0), &get_mock_bids())
+        BIDS.save(deps.as_mut().storage, 0, &get_mock_bids())
             .unwrap();
 
-        let func = |order| {
-            read_bids(
-                deps.as_ref().storage,
-                U128Key::new(0),
-                Some(100),
-                Some(100),
-                Some(order),
-            )
-            .unwrap()
-        };
+        let func =
+            |order| read_bids(deps.as_ref().storage, 0, Some(100), Some(100), Some(order)).unwrap();
 
         let bids = func(OrderBy::Asc);
         assert!(bids.is_empty());
