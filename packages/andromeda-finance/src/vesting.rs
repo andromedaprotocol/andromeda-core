@@ -3,7 +3,7 @@ use common::{
     withdraw::WithdrawalType,
 };
 use cosmwasm_std::Uint128;
-use cw0::Duration;
+use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
