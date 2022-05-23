@@ -349,7 +349,7 @@ mod tests {
 
     #[test]
     fn test_instantiate() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -366,7 +366,7 @@ mod tests {
 
     #[test]
     fn test_sale_details_unauthorized() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn test_sale_details_invalid_price() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -410,7 +410,7 @@ mod tests {
 
     #[test]
     fn test_sale_details_invalid_denomination() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -437,7 +437,7 @@ mod tests {
 
     #[test]
     fn test_sale_details_max_amount_per_wallet() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -459,7 +459,7 @@ mod tests {
 
     #[test]
     fn test_sale_details() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -489,7 +489,7 @@ mod tests {
 
     #[test]
     fn test_switch_status() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -523,7 +523,7 @@ mod tests {
 
     #[test]
     fn test_mint_successful() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -567,7 +567,7 @@ mod tests {
 
     #[test]
     fn test_mint_unauthorized() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -601,7 +601,7 @@ mod tests {
 
     #[test]
     fn test_mint_wrong_status() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -643,7 +643,7 @@ mod tests {
 
     #[test]
     fn test_buy_refill() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -687,7 +687,7 @@ mod tests {
 
     #[test]
     fn test_buy_insufficient_funds() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -735,7 +735,7 @@ mod tests {
 
     #[test]
     fn test_buy_wrong_denom() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -790,7 +790,7 @@ mod tests {
 
     #[test]
     fn test_buy_no_nfts() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
