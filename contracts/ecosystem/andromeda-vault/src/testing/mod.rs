@@ -1,13 +1,10 @@
 mod mock_querier;
 
 use crate::contract::*;
-use crate::testing::mock_querier::mock_dependencies_custom;
-use andromeda_ecosystem::{
-    anchor_earn::PositionResponse,
-    vault::{
-        ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType, YieldStrategy,
-        BALANCES, STRATEGY_CONTRACT_ADDRESSES,
-    },
+use crate::testing::mock_querier::{mock_dependencies_custom, PositionResponse};
+use andromeda_ecosystem::vault::{
+    ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType, YieldStrategy,
+    BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg},

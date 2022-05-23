@@ -1,4 +1,4 @@
-use andromeda_ecosystem::anchor_earn::PositionResponse;
+//use andromeda_ecosystem::anchor_earn::PositionResponse;
 use common::ado_base::{
     operators::IsOperatorResponse, recipient::Recipient, AndromedaQuery, QueryMsg,
 };
@@ -8,6 +8,15 @@ use cosmwasm_std::{
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, Uint128, WasmQuery,
 };
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+// This is here since anchor_earn is defunct now.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct PositionResponse {
+    pub recipient: Recipient,
+    pub aust_amount: Uint128,
+}
 
 pub const MOCK_ANCHOR_CONTRACT: &str = "anchor_contract";
 pub const MOCK_VAULT_CONTRACT: &str = "vault_contract";
