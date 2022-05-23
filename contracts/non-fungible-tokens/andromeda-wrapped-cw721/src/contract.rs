@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn test_instantiate_address() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let info = mock_info("sender", &[]);
 
         let msg = InstantiateMsg {
@@ -352,7 +352,7 @@ mod tests {
 
     #[test]
     fn test_wrap() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let token_id = String::from("token_id");
         let owner = String::from("owner");
@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_wrap_new_wrapped_token_id() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let token_id = String::from("token_id");
         let wrapped_token_id = String::from("wrapped_token_id");
@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     fn test_wrap_operator() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let token_id = String::from("token_id");
         let operator = String::from("operator");
@@ -539,7 +539,7 @@ mod tests {
 
     #[test]
     fn test_unwrap_unwrap_disabled() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let token_id = String::from("token_id");
         let owner = String::from("owner");
@@ -562,7 +562,7 @@ mod tests {
 
     #[test]
     fn test_unwrap_invalid_token_address() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let token_id = String::from("token_id");
         let owner = String::from("owner");

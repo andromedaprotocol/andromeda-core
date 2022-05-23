@@ -142,7 +142,7 @@ dependencies = [
  "cosmwasm-schema 1.0.0",
  "cosmwasm-std 1.0.0",
  "cw-storage-plus 0.13.2",
- "cw721 0.13.2",
+ "cw721",
  "schemars",
  "serde",
 ]
@@ -159,7 +159,7 @@ dependencies = [
  "cosmwasm-std 1.0.0",
  "cw-storage-plus 0.13.2",
  "cw-utils",
- "cw721 0.13.2",
+ "cw721",
  "schemars",
  "serde",
 ]
@@ -212,8 +212,8 @@ dependencies = [
  "cosmwasm-schema 1.0.0",
  "cosmwasm-std 1.0.0",
  "cw-storage-plus 0.13.2",
- "cw721 0.13.2",
- "cw721-base 0.13.2",
+ "cw721",
+ "cw721-base",
  "schemars",
  "serde",
 ]
@@ -230,8 +230,8 @@ dependencies = [
  "cosmwasm-std 1.0.0",
  "cw-storage-plus 0.13.2",
  "cw2 0.13.2",
- "cw721 0.13.2",
- "cw721-base 0.13.2",
+ "cw721",
+ "cw721-base",
  "schemars",
  "serde",
 ]
@@ -274,7 +274,7 @@ dependencies = [
  "cosmwasm-std 1.0.0",
  "cw-storage-plus 0.13.2",
  "cw2 0.13.2",
- "cw721 0.13.2",
+ "cw721",
  "schemars",
  "serde",
 ]
@@ -317,7 +317,7 @@ dependencies = [
  "cw-storage-plus 0.13.2",
  "cw-utils",
  "cw2 0.13.2",
- "cw721 0.13.2",
+ "cw721",
  "schemars",
  "serde",
  "terrand",
@@ -398,8 +398,8 @@ dependencies = [
  "common",
  "cosmwasm-std 1.0.0",
  "cw-utils",
- "cw721 0.13.2",
- "cw721-base 0.13.2",
+ "cw721",
+ "cw721-base",
  "schemars",
  "serde",
 ]
@@ -495,7 +495,7 @@ dependencies = [
  "common",
  "cosmwasm-std 1.0.0",
  "cw20 0.13.2",
- "cw721 0.13.2",
+ "cw721",
 ]
 
 [[package]]
@@ -510,7 +510,7 @@ dependencies = [
  "cosmwasm-std 1.0.0",
  "cw-storage-plus 0.13.2",
  "cw2 0.13.2",
- "cw721 0.13.2",
+ "cw721",
  "schemars",
  "serde",
 ]
@@ -556,14 +556,13 @@ dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-testing",
  "common",
- "cosmwasm-schema 0.16.7",
- "cosmwasm-std 0.16.7",
- "cw-storage-plus 0.9.1",
- "cw721 0.9.2",
- "cw721-base 0.9.2",
+ "cosmwasm-schema 1.0.0",
+ "cosmwasm-std 1.0.0",
+ "cw-storage-plus 0.13.2",
+ "cw721",
+ "cw721-base",
  "schemars",
  "serde",
- "terra-cosmwasm",
 ]
 
 [[package]]
@@ -675,7 +674,7 @@ dependencies = [
  "cw-utils",
  "cw20 0.13.2",
  "cw20-base",
- "cw721-base 0.13.2",
+ "cw721-base",
  "hex",
  "schemars",
  "serde",
@@ -1071,18 +1070,6 @@ dependencies = [
 
 [[package]]
 name = "cw721"
-version = "0.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44a81e5d775c056f5c1dd5eaaf68b82599cbc21d21c9a38eca0b74808d934806"
-dependencies = [
- "cosmwasm-std 0.16.7",
- "cw0 0.9.1",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "cw721"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b9fd71276795554c35899bb3a378561ed0c288d231113e9915f6ee1f42b7b5"
@@ -1095,22 +1082,6 @@ dependencies = [
 
 [[package]]
 name = "cw721-base"
-version = "0.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "239bdfcae1ba72cfcdd3e4eb6300eea2673b63f74425ece5b6bc45cf964fbc1a"
-dependencies = [
- "cosmwasm-std 0.16.7",
- "cw-storage-plus 0.9.1",
- "cw0 0.9.1",
- "cw2 0.9.1",
- "cw721 0.9.2",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cw721-base"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b61200af4e027af2d7485dbdc37c2a9c4093b6b2f2b811732329ef456076f97e"
@@ -1119,7 +1090,7 @@ dependencies = [
  "cw-storage-plus 0.13.2",
  "cw-utils",
  "cw2 0.13.2",
- "cw721 0.13.2",
+ "cw721",
  "schemars",
  "serde",
  "thiserror",
