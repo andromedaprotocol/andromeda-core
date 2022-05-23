@@ -1,5 +1,4 @@
-use cosmwasm_bignumber::Decimal256;
-use cosmwasm_std::{Order, Storage, Uint128};
+use cosmwasm_std::{Decimal, Order, Storage, Uint128};
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Bound, Item, Map};
 
@@ -37,7 +36,7 @@ pub struct State {
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GlobalRewardInfo {
     /// The index of this particular reward.
-    pub index: Decimal256,
+    pub index: Decimal,
     /// The reward balance to compare to when updating the index.
     pub previous_reward_balance: Uint128,
 }
@@ -51,9 +50,9 @@ pub struct Staker {
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StakerRewardInfo {
     /// The index of this particular reward.
-    pub index: Decimal256,
+    pub index: Decimal,
     /// The pending rewards for this particular reward.
-    pub pending_rewards: Decimal256,
+    pub pending_rewards: Decimal,
 }
 
 const MAX_LIMIT: u32 = 30;
@@ -64,14 +63,13 @@ pub(crate) fn get_stakers(
     limit: Option<u32>,
 ) -> Result<Vec<StakerResponse>, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
+    let start = start_after.as_deref().map(Bound::exclusive);
 
     STAKERS
         .range(storage, start, None, Order::Ascending)
         .take(limit)
         .map(|elem| {
-            let (k, v) = elem?;
-            let address: String = String::from_utf8(k)?;
+            let (address, v) = elem?;
             let pending_rewards = get_pending_rewards(storage, &address, &v)?;
             Ok(StakerResponse {
                 address,
