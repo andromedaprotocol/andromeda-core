@@ -307,7 +307,7 @@ mod tests {
     #[test]
     fn test_update_app_contract() {
         let contract = ADOContract::default();
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let info = mock_info("owner", &[]);
         let deps_mut = deps.as_mut();

@@ -9,7 +9,7 @@ use cosmwasm_std::{
     attr,
     testing::{mock_dependencies, mock_env, mock_info},
     to_binary, Addr, CosmosMsg, Empty, Event, Reply, ReplyOn, Response, StdError, SubMsg,
-    SubMsgExecutionResponse, SubMsgResult, WasmMsg,
+    SubMsgResponse, SubMsgResult, WasmMsg,
 };
 
 #[test]
@@ -621,7 +621,7 @@ fn test_reply_assign_app() {
 
     let mock_reply = Reply {
         id: component_idx,
-        result: SubMsgResult::Ok(SubMsgExecutionResponse {
+        result: SubMsgResult::Ok(SubMsgResponse {
             data: None,
             events: vec![mock_reply_event],
         }),

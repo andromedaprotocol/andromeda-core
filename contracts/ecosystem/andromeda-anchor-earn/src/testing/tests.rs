@@ -1,8 +1,8 @@
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
     testing::{mock_env, mock_info},
-    to_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Reply, Response, SubMsg,
-    SubMsgExecutionResponse, SubMsgResult, Uint128, WasmMsg,
+    to_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Reply, Response, SubMsg, SubMsgResponse,
+    SubMsgResult, Uint128, WasmMsg,
 };
 
 use crate::contract::{execute, instantiate, query, reply, DEPOSIT_ID, WITHDRAW_ID};
@@ -134,7 +134,7 @@ fn test_deposit_and_withdraw_ust() {
 
     let my_reply = Reply {
         id: DEPOSIT_ID,
-        result: SubMsgResult::Ok(SubMsgExecutionResponse {
+        result: SubMsgResult::Ok(SubMsgResponse {
             events: vec![],
             data: None,
         }),
@@ -206,7 +206,7 @@ fn test_deposit_and_withdraw_ust() {
 
     let my_reply = Reply {
         id: WITHDRAW_ID,
-        result: SubMsgResult::Ok(SubMsgExecutionResponse {
+        result: SubMsgResult::Ok(SubMsgResponse {
             events: vec![],
             data: None,
         }),
@@ -267,7 +267,7 @@ fn test_deposit_and_withdraw_aust() {
 
     let my_reply = Reply {
         id: DEPOSIT_ID,
-        result: SubMsgResult::Ok(SubMsgExecutionResponse {
+        result: SubMsgResult::Ok(SubMsgResponse {
             events: vec![],
             data: None,
         }),
@@ -338,7 +338,7 @@ fn test_deposit_existing_position() {
 
     let my_reply = Reply {
         id: DEPOSIT_ID,
-        result: SubMsgResult::Ok(SubMsgExecutionResponse {
+        result: SubMsgResult::Ok(SubMsgResponse {
             events: vec![],
             data: None,
         }),
@@ -398,7 +398,7 @@ fn test_deposit_other_recipient() {
 
     let my_reply = Reply {
         id: DEPOSIT_ID,
-        result: SubMsgResult::Ok(SubMsgExecutionResponse {
+        result: SubMsgResult::Ok(SubMsgResponse {
             events: vec![],
             data: None,
         }),
