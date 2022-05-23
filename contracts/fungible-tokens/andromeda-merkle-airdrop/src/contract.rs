@@ -6,11 +6,10 @@ use cosmwasm_std::{
     attr, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdResult, Uint128, WasmMsg,
 };
-use cw0::Expiration;
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
 use cw_asset::AssetInfo;
-use cw_storage_plus::U8Key;
+use cw_utils::Expiration;
 use sha2::Digest;
 use std::convert::TryInto;
 
@@ -310,7 +309,7 @@ pub fn query_is_claimed(
     stage: u8,
     address: String,
 ) -> Result<IsClaimedResponse, ContractError> {
-    let key: (&Addr, U8Key) = (&deps.api.addr_validate(&address)?, U8Key::from(stage));
+    let key: (&Addr, u8) = (&deps.api.addr_validate(&address)?, stage);
     let is_claimed = CLAIM.may_load(deps.storage, key)?.unwrap_or(false);
     let resp = IsClaimedResponse { is_claimed };
 
@@ -318,7 +317,7 @@ pub fn query_is_claimed(
 }
 
 pub fn query_total_claimed(deps: Deps, stage: u8) -> Result<TotalClaimedResponse, ContractError> {
-    let total_claimed = STAGE_AMOUNT_CLAIMED.load(deps.storage, U8Key::from(stage))?;
+    let total_claimed = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
     let resp = TotalClaimedResponse { total_claimed };
 
     Ok(resp)
@@ -345,7 +344,7 @@ mod tests {
 
     #[test]
     fn proper_instantiation() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("anchor0000"),
@@ -375,7 +374,7 @@ mod tests {
 
     #[test]
     fn register_merkle_root() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("anchor0000"),
@@ -443,7 +442,7 @@ mod tests {
     #[test]
     fn claim() {
         // Run test 1
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
@@ -605,7 +604,7 @@ mod tests {
 
     #[test]
     fn claim_native() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
@@ -689,7 +688,7 @@ mod tests {
     #[test]
     fn multiple_claim() {
         // Run test 1
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let test_data: MultipleData = from_slice(TEST_DATA_1_MULTI).unwrap();
 
         let msg = InstantiateMsg {
@@ -758,7 +757,7 @@ mod tests {
     // Check expiration. Chain height in tests is 12345
     #[test]
     fn stage_expires() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("anchor0000"),
@@ -799,7 +798,7 @@ mod tests {
 
     #[test]
     fn cant_burn() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("token0000"),
@@ -836,7 +835,7 @@ mod tests {
 
     #[test]
     fn can_burn() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
@@ -918,7 +917,7 @@ mod tests {
 
     #[test]
     fn can_burn_native() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
