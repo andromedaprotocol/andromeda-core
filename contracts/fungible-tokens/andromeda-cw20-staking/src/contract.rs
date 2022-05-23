@@ -337,8 +337,7 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
             // Since we call `update_rewards` first, this entry will always exist.
             let mut staker_reward_info =
                 STAKER_REWARD_INFOS.load(deps.storage, (sender, &token_string))?;
-            let rewards: Uint128 =
-                staker_reward_info.pending_rewards * Uint128::from(1u128);
+            let rewards: Uint128 = staker_reward_info.pending_rewards * Uint128::from(1u128);
 
             if !rewards.is_zero() {
                 staker_reward_info.pending_rewards = Decimal::zero();
