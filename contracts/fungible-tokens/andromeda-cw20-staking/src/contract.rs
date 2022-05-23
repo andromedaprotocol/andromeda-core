@@ -338,7 +338,7 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
             let mut staker_reward_info =
                 STAKER_REWARD_INFOS.load(deps.storage, (sender, &token_string))?;
             let rewards: Uint128 =
-                Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128);
+                staker_reward_info.pending_rewards * Uint128::from(1u128);
 
             if !rewards.is_zero() {
                 staker_reward_info.pending_rewards = Decimal::zero();
@@ -543,7 +543,7 @@ pub(crate) fn get_pending_rewards(
             get_updated_staker_reward_info(storage, address, staker, &token, global_reward_info)?;
         pending_rewards.push((
             token,
-            Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128),
+            staker_reward_info.pending_rewards * Uint128::from(1u128),
         ))
     }
     Ok(pending_rewards)

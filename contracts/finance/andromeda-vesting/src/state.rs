@@ -2,7 +2,7 @@ use common::{
     ado_base::recipient::Recipient, error::ContractError, require, withdraw::WithdrawalType,
 };
 use cosmwasm_std::{Order, Storage, Uint128};
-use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, MultiIndex, PrimaryKey};
+use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, MultiIndex};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -64,7 +64,7 @@ pub fn batches<'a>() -> IndexedMap<'a, u64, Batch, BatchIndexes<'a>> {
                 let all_claimed = b.amount - b.amount_claimed == Uint128::zero();
                 // Allows us to skip batches that have been already fully claimed.
                 let all_claimed = if all_claimed { 1u8 } else { 0u8 };
-                (all_claimed.into(), b.lockup_end.into())
+                (all_claimed, b.lockup_end)
             },
             "batch",
             "batch__promotion",
@@ -83,7 +83,7 @@ pub(crate) fn save_new_batch(
         next_id == 1 || config.is_multi_batch_enabled,
         ContractError::MultiBatchNotSupported {},
     )?;
-    batches().save(storage, next_id.into(), &batch)?;
+    batches().save(storage, next_id, &batch)?;
     NEXT_ID.save(storage, &(next_id + 1))?;
 
     Ok(())
@@ -110,7 +110,7 @@ pub(crate) fn get_claimable_batches_with_ids(
         .idx
         .claim_time
         // Only consider batches that have funds left to withdraw.
-        .sub_prefix(0u8.into())
+        .sub_prefix(0u8)
         .range(storage, None, Some(bound), Order::Ascending)
         .take(limit)
         // Since we are iterating over a joined key and a u64 only needs 8 bytes to represent it,
@@ -132,7 +132,7 @@ pub(crate) fn get_all_batches_with_ids(
     limit: Option<u32>,
 ) -> Result<Vec<(u64, Batch)>, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(|s| Bound::exclusive(s));
+    let start = start_after.map(Bound::exclusive);
 
     let batches_with_ids: Result<Vec<(u64, Batch)>, ContractError> = batches()
         .range(storage, start, None, Order::Ascending)

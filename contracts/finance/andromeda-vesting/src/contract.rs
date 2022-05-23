@@ -195,7 +195,7 @@ fn execute_claim(
     let config = CONFIG.load(deps.storage)?;
 
     // If it doesn't exist, error will be returned to user.
-    let key = batches().key(batch_id.into());
+    let key = batches().key(batch_id);
     let mut batch = key.load(deps.storage)?;
     let amount_to_send = claim_batch(&deps.querier, &env, &mut batch, &config, number_of_claims)?;
 
@@ -425,7 +425,7 @@ fn query_config(deps: Deps) -> Result<Config, ContractError> {
 }
 
 fn query_batch(deps: Deps, env: Env, batch_id: u64) -> Result<BatchResponse, ContractError> {
-    let batch = batches().load(deps.storage, batch_id.into())?;
+    let batch = batches().load(deps.storage, batch_id)?;
 
     let config = CONFIG.load(deps.storage)?;
     get_batch_response(&deps.querier, &env, &config, batch, batch_id)

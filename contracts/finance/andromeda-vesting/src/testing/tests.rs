@@ -653,7 +653,7 @@ fn test_claim_batch_single_claim() {
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: lockup_end + release_unit,
         },
-        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
 }
 
@@ -714,7 +714,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: lockup_end + release_unit,
         },
-        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
 }
 
@@ -775,7 +775,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: lockup_end + 2 * release_unit,
         },
-        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
 }
 
@@ -841,7 +841,7 @@ fn test_claim_batch_middle_of_interval() {
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: lockup_end + release_unit,
         },
-        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
 }
 
@@ -901,7 +901,7 @@ fn test_claim_batch_multiple_claims() {
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: lockup_end + release_unit,
         },
-        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
 
     // Claim the rest of the releases.
@@ -934,7 +934,7 @@ fn test_claim_batch_multiple_claims() {
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: lockup_end + 4 * release_unit,
         },
-        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
 }
 
@@ -995,7 +995,7 @@ fn test_claim_batch_all_releases() {
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: lockup_end + 15 * release_unit,
         },
-        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
 
     // Try to claim again.
@@ -1061,7 +1061,7 @@ fn test_claim_batch_too_high_of_claim() {
             release_amount: WithdrawalType::Amount(Uint128::new(10)),
             last_claimed_release_time: lockup_end + release_unit,
         },
-        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
 }
 
@@ -1209,7 +1209,7 @@ fn test_claim_all() {
             release_amount: release_amount.clone(),
             last_claimed_release_time: lockup_end + release_unit * 2,
         },
-        batches().load(deps.as_ref().storage, 1u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 1u64).unwrap()
     );
 
     assert_eq!(
@@ -1221,7 +1221,7 @@ fn test_claim_all() {
             release_amount: release_amount.clone(),
             last_claimed_release_time: lockup_end + release_unit * 2,
         },
-        batches().load(deps.as_ref().storage, 2u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 2u64).unwrap()
     );
 
     assert_eq!(
@@ -1233,7 +1233,7 @@ fn test_claim_all() {
             release_amount,
             last_claimed_release_time: lockup_end + 12,
         },
-        batches().load(deps.as_ref().storage, 3u64.into()).unwrap()
+        batches().load(deps.as_ref().storage, 3u64).unwrap()
     );
 }
 

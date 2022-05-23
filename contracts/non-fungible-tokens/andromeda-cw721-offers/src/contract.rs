@@ -359,7 +359,6 @@ fn query_all_offers(
         .prefix(purchaser)
         .keys(deps.storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|k| Ok(k?))
         .collect::<Result<Vec<String>, StdError>>()?;
     let mut offer_responses: Vec<OfferResponse> = vec![];
     for key in keys.iter() {

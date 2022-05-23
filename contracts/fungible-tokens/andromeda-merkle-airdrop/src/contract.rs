@@ -104,17 +104,17 @@ pub fn execute_register_merkle_root(
 
     let stage = LATEST_STAGE.update(deps.storage, |stage| -> StdResult<_> { Ok(stage + 1) })?;
 
-    MERKLE_ROOT.save(deps.storage, stage.into(), &merkle_root)?;
+    MERKLE_ROOT.save(deps.storage, stage, &merkle_root)?;
     LATEST_STAGE.save(deps.storage, &stage)?;
 
     // save expiration
     let exp = expiration.unwrap_or(Expiration::Never {});
-    STAGE_EXPIRATION.save(deps.storage, stage.into(), &exp)?;
+    STAGE_EXPIRATION.save(deps.storage, stage, &exp)?;
 
     // save total airdropped amount
     let amount = total_amount.unwrap_or_else(Uint128::zero);
-    STAGE_AMOUNT.save(deps.storage, stage.into(), &amount)?;
-    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage.into(), &Uint128::zero())?;
+    STAGE_AMOUNT.save(deps.storage, stage, &amount)?;
+    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &Uint128::zero())?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "register_merkle_root"),
@@ -133,7 +133,7 @@ pub fn execute_claim(
     proof: Vec<String>,
 ) -> Result<Response, ContractError> {
     // not expired
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
+    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
     require(
         !expiration.is_expired(&env.block),
         ContractError::StageExpired { stage, expiration },
@@ -141,12 +141,12 @@ pub fn execute_claim(
 
     // verify not claimed
     require(
-        !CLAIM.has(deps.storage, (&info.sender, stage.into())),
+        !CLAIM.has(deps.storage, (&info.sender, stage)),
         ContractError::Claimed {},
     )?;
 
     let config = CONFIG.load(deps.storage)?;
-    let merkle_root = MERKLE_ROOT.load(deps.storage, stage.into())?;
+    let merkle_root = MERKLE_ROOT.load(deps.storage, stage)?;
 
     let user_input = format!("{}{}", info.sender, amount);
     let hash = sha2::Sha256::digest(user_input.as_bytes())
@@ -170,12 +170,12 @@ pub fn execute_claim(
     require(root_buf == hash, ContractError::VerificationFailed {})?;
 
     // Update claim index to the current stage
-    CLAIM.save(deps.storage, (&info.sender, stage.into()), &true)?;
+    CLAIM.save(deps.storage, (&info.sender, stage), &true)?;
 
     // Update total claimed to reflect
-    let mut claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage.into())?;
+    let mut claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
     claimed_amount += amount;
-    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage.into(), &claimed_amount)?;
+    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &claimed_amount)?;
 
     let transfer_msg: CosmosMsg = match config.asset_info {
         AssetInfo::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
@@ -215,15 +215,15 @@ pub fn execute_burn(
     )?;
 
     // make sure is expired
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
+    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
     require(
         expiration.is_expired(&env.block),
         ContractError::StageNotExpired { stage, expiration },
     )?;
 
     // Get total amount per stage and total claimed
-    let total_amount = STAGE_AMOUNT.load(deps.storage, stage.into())?;
-    let claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage.into())?;
+    let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
+    let claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
 
     // impossible but who knows
     require(
@@ -283,9 +283,9 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
 }
 
 pub fn query_merkle_root(deps: Deps, stage: u8) -> Result<MerkleRootResponse, ContractError> {
-    let merkle_root = MERKLE_ROOT.load(deps.storage, stage.into())?;
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
-    let total_amount = STAGE_AMOUNT.load(deps.storage, stage.into())?;
+    let merkle_root = MERKLE_ROOT.load(deps.storage, stage)?;
+    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
 
     let resp = MerkleRootResponse {
         stage,

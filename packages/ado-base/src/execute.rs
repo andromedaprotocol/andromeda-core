@@ -154,7 +154,7 @@ impl<'a> ADOContract<'a> {
             .keys(deps.storage, None, None, Order::Ascending)
             .collect::<Result<Vec<String>, _>>()?;
         for key in keys.iter() {
-            self.operators.remove(deps.storage, &key);
+            self.operators.remove(deps.storage, key);
         }
 
         for op in operators.iter() {

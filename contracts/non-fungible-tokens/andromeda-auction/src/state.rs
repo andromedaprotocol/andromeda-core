@@ -1,6 +1,6 @@
 use andromeda_non_fungible_tokens::auction::{AuctionStateResponse, Bid};
 use common::{error::ContractError, OrderBy};
-use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, Order, StdResult, Storage, Uint128};
 use cw721::Expiration;
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use schemars::JsonSchema;
