@@ -24,7 +24,7 @@ cw-utils = "0.13.2"
 cw721 = "0.13.2"
 cw2 = "0.13.2"
 base64 = "0.13.0"
-terrand = { version = "3.2.2", features = ["library"] }
+#terrand = { version = "3.2.2", features = ["library"] }
 
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-non-fungible-tokens" }
 common = { version = "0.1.0", path = "../../../packages/common" }
