@@ -34,7 +34,6 @@ pub enum ExecuteMsg {
     /// it will claim to the most recent release.
     ClaimAll {
         up_to_time: Option<u64>,
-        start_after: Option<u64>,
         limit: Option<u32>,
     },
     /// Creates a new batch
