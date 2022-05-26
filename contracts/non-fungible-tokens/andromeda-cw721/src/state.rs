@@ -1,5 +1,5 @@
 use andromeda_non_fungible_tokens::cw721::TransferAgreement;
-use common::{error::ContractError, mission::AndrAddress};
+use common::{error::ContractError, app::AndrAddress};
 use cosmwasm_std::Storage;
 use cw_storage_plus::{Item, Map};
 

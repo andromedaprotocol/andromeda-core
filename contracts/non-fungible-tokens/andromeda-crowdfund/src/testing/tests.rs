@@ -5,8 +5,8 @@ use crate::{
         SALE_CONDUCTED, STATE,
     },
     testing::mock_querier::{
-        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_CONDITIONS_MET_CONTRACT,
-        MOCK_CONDITIONS_NOT_MET_CONTRACT, MOCK_MISSION_CONTRACT, MOCK_RATES_CONTRACT,
+        mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_APP_CONTRACT,
+        MOCK_CONDITIONS_MET_CONTRACT, MOCK_CONDITIONS_NOT_MET_CONTRACT, MOCK_RATES_CONTRACT,
         MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
     },
 };
@@ -20,16 +20,16 @@ use common::{
         recipient::Recipient,
         AndromedaMsg,
     },
+    app::AndrAddress,
     encode_binary,
     error::ContractError,
-    mission::AndrAddress,
 };
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_env, mock_info},
     Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
-use cw0::Expiration;
+use cw_utils::Expiration;
 
 fn get_purchase(token_id: impl Into<String>, purchaser: impl Into<String>) -> Purchase {
     Purchase {
@@ -1752,8 +1752,8 @@ fn test_validate_andr_addresses_nonexisting_module() {
     let info = mock_info("owner", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
-        address: MOCK_MISSION_CONTRACT.to_owned(),
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: MOCK_APP_CONTRACT.to_owned(),
     });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -1767,7 +1767,7 @@ fn test_validate_andr_addresses_nonexisting_module() {
 }
 
 #[test]
-fn test_update_mission_contract_nonexisting_address() {
+fn test_update_app_contract_nonexisting_address() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
         token_address: AndrAddress {
@@ -1780,8 +1780,8 @@ fn test_update_mission_contract_nonexisting_address() {
     let info = mock_info("owner", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
-        address: MOCK_MISSION_CONTRACT.to_owned(),
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: MOCK_APP_CONTRACT.to_owned(),
     });
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -1807,16 +1807,16 @@ fn test_validate_andr_addresses_regular_address() {
     let info = mock_info("owner", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
-        address: MOCK_MISSION_CONTRACT.to_owned(),
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: MOCK_APP_CONTRACT.to_owned(),
     });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
-            .add_attribute("action", "update_mission_contract")
-            .add_attribute("address", MOCK_MISSION_CONTRACT),
+            .add_attribute("action", "update_app_contract")
+            .add_attribute("address", MOCK_APP_CONTRACT),
         res
     );
 }
@@ -1839,19 +1839,19 @@ fn test_addresslist() {
         can_mint_after_sale: true,
     };
 
-    let info = mock_info("mission_contract", &[]);
+    let info = mock_info("app_contract", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    // Update mission contract
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
-        address: "mission_contract".to_string(),
+    // Update app contract
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: "app_contract".to_string(),
     });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         Response::new()
-            .add_attribute("action", "update_mission_contract")
-            .add_attribute("address", "mission_contract"),
+            .add_attribute("action", "update_app_contract")
+            .add_attribute("address", "app_contract"),
         res
     );
 

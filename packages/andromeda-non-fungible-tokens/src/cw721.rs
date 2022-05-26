@@ -1,6 +1,6 @@
 use common::{
     ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
-    mission::AndrAddress,
+    app::AndrAddress,
     primitive::Value,
 };
 use cosmwasm_std::{Binary, Coin};
@@ -173,7 +173,7 @@ pub enum QueryMsg {
         include_expired: Option<bool>,
     },
     /// Approvals for a given address (paginated)
-    ApprovedForAll {
+    AllOperators {
         owner: String,
         include_expired: Option<bool>,
         start_after: Option<String>,
@@ -225,12 +225,12 @@ impl From<QueryMsg> for Cw721QueryMsg {
                 token_id,
                 include_expired,
             },
-            QueryMsg::ApprovedForAll {
+            QueryMsg::AllOperators {
                 owner,
                 include_expired,
                 start_after,
                 limit,
-            } => Cw721QueryMsg::ApprovedForAll {
+            } => Cw721QueryMsg::AllOperators {
                 owner,
                 include_expired,
                 start_after,

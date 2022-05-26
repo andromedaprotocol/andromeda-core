@@ -8,7 +8,7 @@ use common::{
     Funds,
 };
 
-use andromeda_app::{factory::QueryMsg as FactoryQueryMsg, mission::QueryMsg as MissionQueryMsg};
+use andromeda_app::{app::QueryMsg as MissionQueryMsg, factory::QueryMsg as FactoryQueryMsg};
 use andromeda_modules::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     rates::QueryMsg as RatesQueryMsg,
@@ -28,8 +28,6 @@ use cosmwasm_std::{
 use cw20::{BalanceResponse, Cw20Coin, Cw20ExecuteMsg, Cw20QueryMsg};
 
 use cw721::{Expiration, NftInfoResponse, OwnerOfResponse};
-use std::collections::HashMap;
-use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
 
 pub const MOCK_FACTORY_CONTRACT: &str = "factory_contract";
 pub const MOCK_CW721_CONTRACT: &str = "cw721_contract";
@@ -40,7 +38,7 @@ pub const MOCK_CW20_CONTRACT2: &str = "cw20_contract2";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_RECEIPT_CONTRACT: &str = "receipt_contract";
-pub const MOCK_MISSION_CONTRACT: &str = "mission_contract";
+pub const MOCK_APP_CONTRACT: &str = "app_contract";
 pub const MOCK_OFFERS_CONTRACT: &str = "offers_contract";
 
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
@@ -64,42 +62,18 @@ pub fn mock_dependencies_custom(
         storage: MockStorage::default(),
         api: MockApi::default(),
         querier: custom_querier,
+        custom_query_type: std::marker::PhantomData,
     }
 }
 
 pub struct WasmMockQuerier {
-    pub base: MockQuerier<TerraQueryWrapper>,
-    tax_querier: TaxQuerier,
-}
-
-#[derive(Clone, Default)]
-pub struct TaxQuerier {
-    rate: Decimal,
-    // this lets us iterate over all pairs that match the first string
-    caps: HashMap<String, Uint128>,
-}
-
-impl TaxQuerier {
-    pub fn new(rate: Decimal, caps: &[(&String, &Uint128)]) -> Self {
-        TaxQuerier {
-            rate,
-            caps: caps_to_map(caps),
-        }
-    }
-}
-
-fn caps_to_map(caps: &[(&String, &Uint128)]) -> HashMap<String, Uint128> {
-    let mut owner_map: HashMap<String, Uint128> = HashMap::new();
-    for (denom, cap) in caps.iter() {
-        owner_map.insert(denom.to_string(), **cap);
-    }
-    owner_map
+    pub base: MockQuerier,
 }
 
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<TerraQueryWrapper> = match from_slice(bin_request) {
+        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -113,33 +87,8 @@ impl Querier for WasmMockQuerier {
 }
 
 impl WasmMockQuerier {
-    pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
+    pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
-            QueryRequest::Custom(TerraQueryWrapper { route, query_data }) => {
-                if &TerraRoute::Treasury == route {
-                    match query_data {
-                        TerraQuery::TaxRate {} => {
-                            let res = TaxRateResponse {
-                                rate: self.tax_querier.rate,
-                            };
-                            SystemResult::Ok(ContractResult::from(to_binary(&res)))
-                        }
-                        TerraQuery::TaxCap { denom } => {
-                            let cap = self
-                                .tax_querier
-                                .caps
-                                .get(denom)
-                                .copied()
-                                .unwrap_or_default();
-                            let res = TaxCapResponse { cap };
-                            SystemResult::Ok(ContractResult::from(to_binary(&res)))
-                        }
-                        _ => panic!("DO NOT ENTER HERE"),
-                    }
-                } else {
-                    panic!("DO NOT ENTER HERE")
-                }
-            }
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     "addresslist_contract_address1" => {
@@ -161,7 +110,7 @@ impl WasmMockQuerier {
                     MOCK_OFFERS_CONTRACT => self.handle_offers_query(msg),
                     MOCK_RECEIPT_CONTRACT => self.handle_receipt_query(msg),
                     MOCK_FACTORY_CONTRACT => self.handle_factory_query(msg),
-                    MOCK_MISSION_CONTRACT => self.handle_mission_query(msg),
+                    MOCK_APP_CONTRACT => self.handle_app_query(msg),
                     _ => {
                         let msg_response = IncludesAddressResponse { included: false };
                         SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
@@ -172,7 +121,7 @@ impl WasmMockQuerier {
         }
     }
 
-    fn handle_mission_query(&self, msg: &Binary) -> QuerierResult {
+    fn handle_app_query(&self, msg: &Binary) -> QuerierResult {
         let valid_identifiers = ["e", "b"];
         match from_binary(msg).unwrap() {
             MissionQueryMsg::ComponentExists { name } => {
@@ -497,14 +446,7 @@ impl WasmMockQuerier {
         })
     }
 
-    pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
-        WasmMockQuerier {
-            base,
-            tax_querier: TaxQuerier::default(),
-        }
-    }
-
-    pub fn with_tax(&mut self, rate: Decimal, caps: &[(&String, &Uint128)]) {
-        self.tax_querier = TaxQuerier::new(rate, caps);
+    pub fn new(base: MockQuerier<cosmwasm_std::Empty>) -> Self {
+        WasmMockQuerier { base }
     }
 }

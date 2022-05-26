@@ -1,6 +1,6 @@
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
-    mission::AndrAddress,
+    app::AndrAddress,
 };
 use cosmwasm_std::{Binary, Coin, Uint128};
 use schemars::JsonSchema;

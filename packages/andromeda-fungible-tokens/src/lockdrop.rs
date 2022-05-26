@@ -1,6 +1,6 @@
 use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
-    mission::AndrAddress,
+    app::AndrAddress,
 };
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;

@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
-use common::mission::AndrAddress;
+use common::app::AndrAddress;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

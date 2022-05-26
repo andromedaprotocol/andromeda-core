@@ -127,7 +127,7 @@ fn execute_sale_details(
     let rec = recipient.get_addr(
         deps.api,
         &deps.querier,
-        contract.get_mission_contract(deps.storage)?,
+        contract.get_app_contract(deps.storage)?,
     )?;
 
     // Set the state
@@ -167,11 +167,10 @@ fn execute_mint(
         ContractError::Unauthorized {},
     )?;
 
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
+    let app_contract = contract.get_app_contract(deps.storage)?;
 
     let token_contract_andr = CW721_CONTRACT.load(deps.storage)?;
-    let token_contract =
-        token_contract_andr.get_address(deps.api, &deps.querier, mission_contract)?;
+    let token_contract = token_contract_andr.get_address(deps.api, &deps.querier, app_contract)?;
     let gumball_contract = env.contract.address.to_string();
 
     let mut resp = Response::new();
@@ -256,7 +255,8 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
     let random_response: LatestRandomResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: randomness_source,
-            msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
+            //msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
+            msg: encode_binary(&"TODO")?,
         }))?;
     let randomness = Binary::to_base64(&random_response.randomness);
     let vec = randomness.into_bytes();
@@ -274,8 +274,8 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
     let random_nft = list.swap_remove(index);
     LIST.save(deps.storage, &list)?;
     let token_contract = CW721_CONTRACT.load(deps.storage)?;
-    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
-    let contract_addr = token_contract.get_address(deps.api, &deps.querier, mission_contract)?;
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let contract_addr = token_contract.get_address(deps.api, &deps.querier, app_contract)?;
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -322,7 +322,7 @@ fn query_state(deps: Deps) -> Result<State, ContractError> {
 mod tests {
     use super::*;
     use common::ado_base::recipient::Recipient;
-    use common::mission::AndrAddress;
+    use common::app::AndrAddress;
     use cosmwasm_std::coin;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
@@ -353,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_instantiate() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -370,7 +370,7 @@ mod tests {
 
     #[test]
     fn test_sale_details_unauthorized() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn test_sale_details_invalid_price() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -414,7 +414,7 @@ mod tests {
 
     #[test]
     fn test_sale_details_invalid_denomination() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -441,7 +441,7 @@ mod tests {
 
     #[test]
     fn test_sale_details_max_amount_per_wallet() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -463,7 +463,7 @@ mod tests {
 
     #[test]
     fn test_sale_details() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -493,7 +493,7 @@ mod tests {
 
     #[test]
     fn test_switch_status() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -527,7 +527,7 @@ mod tests {
 
     #[test]
     fn test_mint_successful() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -574,7 +574,7 @@ mod tests {
 
     #[test]
     fn test_mint_unauthorized() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -611,7 +611,7 @@ mod tests {
 
     #[test]
     fn test_mint_wrong_status() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -656,7 +656,7 @@ mod tests {
 
     #[test]
     fn test_buy_refill() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -703,7 +703,7 @@ mod tests {
 
     #[test]
     fn test_buy_insufficient_funds() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -754,7 +754,7 @@ mod tests {
 
     #[test]
     fn test_buy_wrong_denom() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
@@ -812,7 +812,7 @@ mod tests {
 
     #[test]
     fn test_buy_no_nfts() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {

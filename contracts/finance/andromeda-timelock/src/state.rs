@@ -1,4 +1,5 @@
 use andromeda_finance::timelock::Escrow;
+use common::error::ContractError;
 use cosmwasm_std::{Order, Storage};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 
@@ -7,7 +8,7 @@ const MAX_LIMIT: u32 = 30u32;
 
 pub struct EscrowIndexes<'a> {
     /// (recipient, encoded(vec![owner, recipient]))
-    pub owner: MultiIndex<'a, (String, Vec<u8>), Escrow>,
+    pub owner: MultiIndex<'a, String, Escrow, Vec<u8>>,
 }
 
 impl<'a> IndexList<Escrow> for EscrowIndexes<'a> {
@@ -19,11 +20,7 @@ impl<'a> IndexList<Escrow> for EscrowIndexes<'a> {
 
 pub fn escrows<'a>() -> IndexedMap<'a, Vec<u8>, Escrow, EscrowIndexes<'a>> {
     let indexes = EscrowIndexes {
-        owner: MultiIndex::new(
-            |e, k| (e.recipient_addr.clone(), k),
-            "ownership",
-            "escrow_owner",
-        ),
+        owner: MultiIndex::new(|e| e.recipient_addr.clone(), "ownership", "escrow_owner"),
     };
     IndexedMap::new("ownership", indexes)
 }
@@ -33,18 +30,18 @@ pub fn get_keys_for_recipient(
     recipient_addr: &str,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> Vec<Vec<u8>> {
+) -> Result<Vec<Vec<u8>>, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 
-    let pks: Vec<_> = escrows()
+    let keys: Result<Vec<Vec<u8>>, ContractError> = escrows()
         .idx
         .owner
         .prefix(recipient_addr.to_string())
         .keys(storage, start, None, Order::Ascending)
         .take(limit)
+        .map(|k| Ok(k?))
         .collect();
-    let keys: Vec<Vec<u8>> = pks.iter().map(|v| v.to_vec()).collect();
     keys
 }
 

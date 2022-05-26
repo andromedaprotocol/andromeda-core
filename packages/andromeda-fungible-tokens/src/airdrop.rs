@@ -1,7 +1,7 @@
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::Uint128;
-use cw0::Expiration;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
+use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

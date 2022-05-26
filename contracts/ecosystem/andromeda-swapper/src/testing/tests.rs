@@ -1,8 +1,8 @@
 use cosmwasm_std::{
     coins, from_binary,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, ContractResult, CosmosMsg, DepsMut, Event, Reply, ReplyOn, Response,
-    SubMsg, SubMsgExecutionResponse, Uint128, WasmMsg,
+    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Event, Reply, ReplyOn, Response, SubMsg,
+    SubMsgResponse, SubMsgResult, Uint128, WasmMsg,
 };
 
 use crate::contract::{execute, instantiate, query, reply};
@@ -13,7 +13,7 @@ use andromeda_ecosystem::swapper::{
 use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2,
 };
-use common::{ado_base::recipient::Recipient, error::ContractError, mission::AndrAddress};
+use common::{ado_base::recipient::Recipient, app::AndrAddress, error::ContractError};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 
@@ -87,7 +87,7 @@ fn test_instantiate_swapper_impl_new() {
 
     let reply_msg = Reply {
         id: 1,
-        result: ContractResult::Ok(SubMsgExecutionResponse {
+        result: SubMsgResult::Ok(SubMsgResponse {
             data: None,
             events: vec![
                 Event::new("Type").add_attribute("contract_address", "swapper_impl_address")

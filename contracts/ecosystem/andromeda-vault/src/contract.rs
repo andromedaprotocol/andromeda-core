@@ -8,9 +8,9 @@ use common::{
         operators::IsOperatorResponse, recipient::Recipient, AndromedaMsg, AndromedaQuery,
         InstantiateMsg as BaseInstantiateMsg, QueryMsg as AndrQueryMsg,
     },
+    app::AndrAddress,
     encode_binary,
     error::ContractError,
-    mission::AndrAddress,
     parse_message, require,
     withdraw::{Withdrawal, WithdrawalType},
 };
@@ -131,7 +131,7 @@ fn execute_deposit(
             let recipient_addr = recipient.get_addr(
                 deps.api,
                 &deps.querier,
-                ADOContract::default().get_mission_contract(deps.storage)?,
+                ADOContract::default().get_app_contract(deps.storage)?,
             )?;
             let balance_key = (recipient_addr.as_str(), deposit_amount.denom.as_str());
             let vault_balance = BALANCES
@@ -176,7 +176,7 @@ fn execute_deposit(
                 let recipient_addr = recipient.get_addr(
                     deps.api,
                     &deps.querier,
-                    ADOContract::default().get_mission_contract(deps.storage)?,
+                    ADOContract::default().get_app_contract(deps.storage)?,
                 )?;
                 let balance_key = (recipient_addr.as_str(), funds.denom.as_str());
                 let curr_balance = BALANCES
@@ -236,7 +236,7 @@ pub fn withdraw_vault(
         .get_addr(
             deps.api,
             &deps.querier,
-            ADOContract::default().get_mission_contract(deps.storage)?,
+            ADOContract::default().get_app_contract(deps.storage)?,
         )?;
     for withdrawal in withdrawals {
         let denom = withdrawal.token;
@@ -340,8 +340,8 @@ fn execute_update_strategy(
         ADOContract::default().is_contract_owner(deps.storage, &info.sender.to_string())?,
         ContractError::Unauthorized {},
     )?;
-    let mission_contract = ADOContract::default().get_mission_contract(deps.storage)?;
-    let strategy_addr = address.get_address(deps.api, &deps.querier, mission_contract)?;
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let strategy_addr = address.get_address(deps.api, &deps.querier, app_contract)?;
 
     //The vault contract must be an operator for the given contract in order to enable withdrawals
     //DEV: with custom approval functionality this check can be removed
@@ -442,8 +442,7 @@ fn query_balance(
             .prefix(&address)
             .range(deps.storage, None, None, Order::Ascending)
             .map(|v| {
-                let (denom_vec, balance) = v?;
-                let denom = String::from_utf8(denom_vec)?;
+                let (denom, balance) = v?;
                 Ok(Coin {
                     denom,
                     amount: balance,

@@ -1,8 +1,8 @@
 use crate::ADOContract;
 use common::{
     ado_base::{modules::Module, AndromedaMsg, ExecuteMsg, InstantiateMsg},
+    app::AndrAddress,
     error::ContractError,
-    mission::AndrAddress,
     parse_message, require,
 };
 use cosmwasm_std::{
@@ -63,8 +63,8 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::UpdateOperators { operators } => {
                 self.execute_update_operators(deps, info, operators)
             }
-            AndromedaMsg::UpdateMissionContract { address } => {
-                self.execute_update_mission_contract(deps, info, address, None)
+            AndromedaMsg::UpdateAppContract { address } => {
+                self.execute_update_app_contract(deps, info, address, None)
             }
             #[cfg(feature = "withdraw")]
             AndromedaMsg::Withdraw {
@@ -105,12 +105,12 @@ impl<'a> ADOContract<'a> {
         querier: &QuerierWrapper,
         module: &Module,
     ) -> Result<(), ContractError> {
-        if let Some(mission_contract) = self.get_mission_contract(storage)? {
+        if let Some(app_contract) = self.get_app_contract(storage)? {
             self.validate_andr_address(
                 api,
                 querier,
                 module.address.identifier.to_owned(),
-                mission_contract,
+                app_contract,
             )?;
         }
         Ok(())
@@ -149,13 +149,12 @@ impl<'a> ADOContract<'a> {
             ContractError::Unauthorized {},
         )?;
 
-        let keys: Vec<Vec<u8>> = self
+        let keys: Vec<String> = self
             .operators
             .keys(deps.storage, None, None, Order::Ascending)
-            .collect();
+            .collect::<Result<Vec<String>, _>>()?;
         for key in keys.iter() {
-            self.operators
-                .remove(deps.storage, &String::from_utf8(key.clone())?);
+            self.operators.remove(deps.storage, key);
         }
 
         for op in operators.iter() {
@@ -165,7 +164,7 @@ impl<'a> ADOContract<'a> {
         Ok(Response::new().add_attributes(vec![attr("action", "update_operators")]))
     }
 
-    pub fn execute_update_mission_contract(
+    pub fn execute_update_app_contract(
         &self,
         deps: DepsMut,
         info: MessageInfo,
@@ -176,11 +175,11 @@ impl<'a> ADOContract<'a> {
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
             ContractError::Unauthorized {},
         )?;
-        self.mission_contract
+        self.app_contract
             .save(deps.storage, &deps.api.addr_validate(&address)?)?;
         self.validate_andr_addresses(deps.as_ref(), addresses.unwrap_or_default())?;
         Ok(Response::new()
-            .add_attribute("action", "update_mission_contract")
+            .add_attribute("action", "update_app_contract")
             .add_attribute("address", address))
     }
 }
@@ -188,7 +187,7 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock_querier::{mock_dependencies_custom, MOCK_MISSION_CONTRACT};
+    use crate::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
     use common::ado_base::modules::Module;
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
@@ -226,8 +225,8 @@ mod tests {
             .unwrap();
 
         contract
-            .mission_contract
-            .save(deps_mut.storage, &Addr::unchecked(MOCK_MISSION_CONTRACT))
+            .app_contract
+            .save(deps_mut.storage, &Addr::unchecked(MOCK_APP_CONTRACT))
             .unwrap();
 
         let module = Module {
@@ -278,8 +277,8 @@ mod tests {
             .unwrap();
 
         contract
-            .mission_contract
-            .save(deps_mut.storage, &Addr::unchecked(MOCK_MISSION_CONTRACT))
+            .app_contract
+            .save(deps_mut.storage, &Addr::unchecked(MOCK_APP_CONTRACT))
             .unwrap();
 
         let module = Module {
@@ -306,9 +305,9 @@ mod tests {
     }
 
     #[test]
-    fn test_update_mission_contract() {
+    fn test_update_app_contract() {
         let contract = ADOContract::default();
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let info = mock_info("owner", &[]);
         let deps_mut = deps.as_mut();
@@ -328,7 +327,7 @@ mod tests {
 
         let address = String::from("address");
 
-        let msg = AndromedaMsg::UpdateMissionContract {
+        let msg = AndromedaMsg::UpdateAppContract {
             address: address.clone(),
         };
 
@@ -338,14 +337,14 @@ mod tests {
 
         assert_eq!(
             Response::new()
-                .add_attribute("action", "update_mission_contract")
+                .add_attribute("action", "update_app_contract")
                 .add_attribute("address", address),
             res
         );
     }
 
     #[test]
-    fn test_update_mission_contract_invalid_module() {
+    fn test_update_app_contract_invalid_module() {
         let contract = ADOContract::default();
         let mut deps = mock_dependencies_custom(&[]);
 
@@ -371,8 +370,8 @@ mod tests {
             )
             .unwrap();
 
-        let msg = AndromedaMsg::UpdateMissionContract {
-            address: MOCK_MISSION_CONTRACT.to_owned(),
+        let msg = AndromedaMsg::UpdateAppContract {
+            address: MOCK_APP_CONTRACT.to_owned(),
         };
 
         let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);

@@ -1,4 +1,4 @@
-use andromeda_app::mission::QueryMsg as MissionQueryMsg;
+use andromeda_app::app::QueryMsg as AppQueryMsg;
 use common::{
     ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
     Funds,
@@ -10,11 +10,10 @@ use cosmwasm_std::{
     QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
 };
 use cw721::{Cw721QueryMsg, TokensResponse};
-use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
-pub const MOCK_MISSION_CONTRACT: &str = "mission_contract";
+pub const MOCK_APP_CONTRACT: &str = "app_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
@@ -36,11 +35,12 @@ pub fn mock_dependencies_custom(
         storage: MockStorage::default(),
         api: MockApi::default(),
         querier: custom_querier,
+        custom_query_type: std::marker::PhantomData,
     }
 }
 
 pub struct WasmMockQuerier {
-    base: MockQuerier<TerraQueryWrapper>,
+    base: MockQuerier,
     pub contract_address: String,
     pub tokens_left_to_burn: usize,
 }
@@ -48,7 +48,7 @@ pub struct WasmMockQuerier {
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<TerraQueryWrapper> = match from_slice(bin_request) {
+        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -62,13 +62,13 @@ impl Querier for WasmMockQuerier {
 }
 
 impl WasmMockQuerier {
-    pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
+    pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_TOKEN_CONTRACT => self.handle_token_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
-                    MOCK_MISSION_CONTRACT => self.handle_mission_query(msg),
+                    MOCK_APP_CONTRACT => self.handle_app_query(msg),
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
                     _ => panic!("Unknown Contract Address {}", contract_addr),
                 }
@@ -77,10 +77,10 @@ impl WasmMockQuerier {
         }
     }
 
-    fn handle_mission_query(&self, msg: &Binary) -> QuerierResult {
+    fn handle_app_query(&self, msg: &Binary) -> QuerierResult {
         let valid_identifiers = ["e", "b"];
         match from_binary(msg).unwrap() {
-            MissionQueryMsg::ComponentExists { name } => {
+            AppQueryMsg::ComponentExists { name } => {
                 let value = valid_identifiers.contains(&name.as_str());
                 SystemResult::Ok(ContractResult::Ok(to_binary(&value).unwrap()))
             }
@@ -188,7 +188,7 @@ impl WasmMockQuerier {
         }
     }
 
-    pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
+    pub fn new(base: MockQuerier) -> Self {
         WasmMockQuerier {
             base,
             contract_address: mock_env().contract.address.to_string(),

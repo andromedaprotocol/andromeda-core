@@ -11,8 +11,8 @@ use common::{
         modules::{Module, ADDRESS_LIST, OFFERS, RATES, RECEIPT},
         AndromedaMsg, AndromedaQuery,
     },
+    app::AndrAddress,
     error::ContractError,
-    mission::AndrAddress,
     primitive::{PrimitivePointer, Value},
     Funds,
 };
@@ -61,7 +61,7 @@ fn mint_token(deps: DepsMut, env: Env, token_id: String, owner: String, extensio
 
 #[test]
 fn test_andr_query() {
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     init_setup(deps.as_mut(), mock_env(), None);
 
     let msg = QueryMsg::AndrQuery(AndromedaQuery::Owner {});
@@ -180,14 +180,12 @@ fn test_instantiate_modules() {
             .add_submessages(msgs),
         res
     );
-<<<<<<< HEAD
 }*/
-
 #[test]
 fn test_transfer_nft() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
     assert_eq!(
@@ -256,7 +254,7 @@ fn test_agreed_transfer_nft() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
     let valid_info = mock_info(creator.as_str(), &[]);
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let env = mock_env();
     let agreed_amount = Coin {
         denom: "uluna".to_string(),
@@ -448,7 +446,7 @@ fn test_agreed_transfer_nft_primitive_pointer() {
 fn test_agreed_transfer_nft_wildcard() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let env = mock_env();
     let agreed_amount = Coin {
         denom: "uluna".to_string(),
@@ -506,7 +504,7 @@ fn test_agreed_transfer_nft_wildcard() {
 fn test_archive() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
     mint_token(
@@ -550,7 +548,7 @@ fn test_archive() {
 fn test_burn() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
     mint_token(
@@ -610,7 +608,7 @@ fn test_archived_check() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
     let valid_info = mock_info(creator.as_str(), &[]);
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
     mint_token(
@@ -649,7 +647,7 @@ fn test_archived_check() {
 fn test_transfer_agreement() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let env = mock_env();
     let agreement = TransferAgreement {
         purchaser: String::from("purchaser"),
@@ -898,7 +896,7 @@ fn test_transfer_with_offer() {
 }
 
 #[test]
-fn test_update_mission_contract() {
+fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules: Vec<Module> = vec![
@@ -918,7 +916,7 @@ fn test_update_mission_contract() {
         },
     ];
 
-    let info = mock_info("mission_contract", &[]);
+    let info = mock_info("app_contract", &[]);
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
@@ -930,22 +928,22 @@ fn test_update_mission_contract() {
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
 
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
-        address: "mission_contract".to_string(),
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: "app_contract".to_string(),
     });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
-            .add_attribute("action", "update_mission_contract")
-            .add_attribute("address", "mission_contract"),
+            .add_attribute("action", "update_app_contract")
+            .add_attribute("address", "app_contract"),
         res
     );
 }
 
 #[test]
-fn test_update_mission_contract_invalid_minter() {
+fn test_update_app_contract_invalid_minter() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules: Vec<Module> = vec![
@@ -965,7 +963,7 @@ fn test_update_mission_contract_invalid_minter() {
         },
     ];
 
-    let info = mock_info("mission_contract", &[]);
+    let info = mock_info("app_contract", &[]);
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
@@ -977,8 +975,8 @@ fn test_update_mission_contract_invalid_minter() {
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
 
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
-        address: "mission_contract".to_string(),
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: "app_contract".to_string(),
     });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -991,7 +989,7 @@ fn test_update_mission_contract_invalid_minter() {
 }
 
 #[test]
-fn test_update_mission_contract_invalid_module() {
+fn test_update_app_contract_invalid_module() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules: Vec<Module> = vec![
@@ -1011,7 +1009,7 @@ fn test_update_mission_contract_invalid_module() {
         },
     ];
 
-    let info = mock_info("mission_contract", &[]);
+    let info = mock_info("app_contract", &[]);
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
@@ -1023,8 +1021,8 @@ fn test_update_mission_contract_invalid_module() {
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
 
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract {
-        address: "mission_contract".to_string(),
+    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: "app_contract".to_string(),
     });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);

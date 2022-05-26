@@ -25,8 +25,8 @@ use cosmwasm_std::{
     QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
     WasmQuery,
 };
-use cw0::Expiration;
 use cw721::TokensResponse;
+use cw_utils::Expiration;
 use std::cmp;
 
 const MAX_LIMIT: u32 = 100;
@@ -82,11 +82,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    // Do this before the hooks get fired off to ensure that there are no errors from the mission
+    // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateMissionContract { address }) = msg {
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
         let config = CONFIG.load(deps.storage)?;
-        return contract.execute_update_mission_contract(
+        return contract.execute_update_app_contract(
             deps,
             info,
             address,
@@ -163,11 +163,10 @@ fn execute_mint(
         ContractError::CannotMintAfterSaleConducted {},
     )?;
 
-    let mission_contract = contract.get_mission_contract(deps.storage)?;
-    let token_contract =
-        config
-            .token_address
-            .get_address(deps.api, &deps.querier, mission_contract)?;
+    let app_contract = contract.get_app_contract(deps.storage)?;
+    let token_contract = config
+        .token_address
+        .get_address(deps.api, &deps.querier, app_contract)?;
     let crowdfund_contract = env.contract.address.to_string();
 
     let mut resp = Response::new();
@@ -579,7 +578,7 @@ fn transfer_tokens_and_send_funds(
             let msg = state.recipient.generate_msg_native(
                 deps.api,
                 &deps.querier,
-                ADOContract::default().get_mission_contract(deps.storage)?,
+                ADOContract::default().get_app_contract(deps.storage)?,
                 vec![Coin {
                     denom: state.price.denom.clone(),
                     amount: state.amount_to_send,
@@ -659,7 +658,7 @@ fn transfer_tokens_and_send_funds(
             contract_addr: config.token_address.get_address(
                 deps.api,
                 &deps.querier,
-                ADOContract::default().get_mission_contract(deps.storage)?,
+                ADOContract::default().get_app_contract(deps.storage)?,
             )?,
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: purchaser,
@@ -738,7 +737,7 @@ fn get_burn_messages(
     let token_address = config.token_address.get_address(
         api,
         querier,
-        ADOContract::default().get_mission_contract(storage)?,
+        ADOContract::default().get_app_contract(storage)?,
     )?;
     let tokens_to_burn = query_tokens(querier, token_address.clone(), address, limit)?;
 

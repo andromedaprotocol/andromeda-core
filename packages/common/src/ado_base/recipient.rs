@@ -1,8 +1,8 @@
 use crate::{
     ado_base::{AndromedaMsg, ExecuteMsg},
+    app::AndrAddress,
     encode_binary,
     error::ContractError,
-    mission::AndrAddress,
 };
 use cosmwasm_std::{Addr, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 /// this struct states that the recipient is an ADO and may attach the data field to the Receive message
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ADORecipient {
-    /// Addr can also be a human-readable identifier used in a mission contract.
+    /// Addr can also be a human-readable identifier used in a app contract.
     pub address: AndrAddress,
     pub msg: Option<Binary>,
 }
@@ -33,17 +33,17 @@ impl Recipient {
         Recipient::Addr(addr)
     }
 
-    /// Gets the address of the recipient. If the is an ADORecipient it will query the mission
+    /// Gets the address of the recipient. If the is an ADORecipient it will query the app
     /// contract to get its address if it fails address validation.
     pub fn get_addr(
         &self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_contract: Option<Addr>,
+        app_contract: Option<Addr>,
     ) -> Result<String, ContractError> {
         match &self {
             Recipient::Addr(string) => Ok(string.to_owned()),
-            Recipient::ADO(recip) => recip.address.get_address(api, querier, mission_contract),
+            Recipient::ADO(recip) => recip.address.get_address(api, querier, app_contract),
         }
     }
 
@@ -52,12 +52,12 @@ impl Recipient {
         &self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_contract: Option<Addr>,
+        app_contract: Option<Addr>,
         funds: Vec<Coin>,
     ) -> Result<SubMsg, ContractError> {
         Ok(match &self {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
-                contract_addr: self.get_addr(api, querier, mission_contract)?,
+                contract_addr: self.get_addr(api, querier, app_contract)?,
                 msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(
                     recip.msg.clone(),
                 )))?,
@@ -75,14 +75,14 @@ impl Recipient {
         &self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_contract: Option<Addr>,
+        app_contract: Option<Addr>,
         cw20_coin: Cw20Coin,
     ) -> Result<SubMsg, ContractError> {
         Ok(match &self {
             Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: cw20_coin.address,
                 msg: encode_binary(&Cw20ExecuteMsg::Send {
-                    contract: self.get_addr(api, querier, mission_contract)?,
+                    contract: self.get_addr(api, querier, app_contract)?,
                     amount: cw20_coin.amount,
                     msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(
                         recip.msg.clone(),
@@ -105,14 +105,14 @@ impl Recipient {
         &self,
         api: &dyn Api,
         querier: &QuerierWrapper,
-        mission_contract: Option<Addr>,
+        app_contract: Option<Addr>,
         asset: Asset,
     ) -> Result<SubMsg, ContractError> {
         match asset.info {
             AssetInfo::Cw20(contract_addr) => self.generate_msg_cw20(
                 api,
                 querier,
-                mission_contract,
+                app_contract,
                 Cw20Coin {
                     address: contract_addr.to_string(),
                     amount: asset.amount,
@@ -121,7 +121,7 @@ impl Recipient {
             AssetInfo::Native(denom) => self.generate_msg_native(
                 api,
                 querier,
-                mission_contract,
+                app_contract,
                 vec![Coin {
                     denom,
                     amount: asset.amount,
@@ -134,7 +134,7 @@ impl Recipient {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_MISSION_CONTRACT};
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
     use cosmwasm_std::{coins, testing::mock_dependencies, BankMsg, CosmosMsg, SubMsg, WasmMsg};
 
     fn andr_address(identifer: impl Into<String>) -> AndrAddress {
@@ -145,7 +145,7 @@ mod test {
 
     #[test]
     fn test_recipient_addr_generate_msg_native() {
-        let deps = mock_dependencies(&[]);
+        let deps = mock_dependencies();
         let recipient = Recipient::Addr("address".to_string());
         let funds = coins(100, "uusd");
         let msg = recipient
@@ -165,7 +165,7 @@ mod test {
 
     #[test]
     fn test_recipient_ado_generate_msg_native() {
-        let deps = mock_dependencies(&[]);
+        let deps = mock_dependencies();
         let recipient = Recipient::ADO(ADORecipient {
             address: andr_address("address"),
             msg: None,
@@ -188,7 +188,7 @@ mod test {
     }
 
     #[test]
-    fn test_recipient_ado_generate_msg_native_mission() {
+    fn test_recipient_ado_generate_msg_native_app() {
         let deps = mock_dependencies_custom(&[]);
         let recipient = Recipient::ADO(ADORecipient {
             address: andr_address("ab"),
@@ -199,7 +199,7 @@ mod test {
             .generate_msg_native(
                 deps.as_ref().api,
                 &deps.as_ref().querier,
-                Some(Addr::unchecked(MOCK_MISSION_CONTRACT)),
+                Some(Addr::unchecked(MOCK_APP_CONTRACT)),
                 funds.clone(),
             )
             .unwrap();
@@ -213,7 +213,7 @@ mod test {
 
     #[test]
     fn test_recipient_addr_generate_msg_cw20() {
-        let deps = mock_dependencies(&[]);
+        let deps = mock_dependencies();
         let recipient = Recipient::Addr("address".to_string());
         let cw20_coin = Cw20Coin {
             amount: 100u128.into(),
@@ -241,7 +241,7 @@ mod test {
 
     #[test]
     fn test_recipient_ado_generate_msg_cw20() {
-        let deps = mock_dependencies(&[]);
+        let deps = mock_dependencies();
         let recipient = Recipient::ADO(ADORecipient {
             address: andr_address("address"),
             msg: None,
@@ -272,7 +272,7 @@ mod test {
     }
 
     #[test]
-    fn test_recipient_ado_generate_msg_cw20_mission() {
+    fn test_recipient_ado_generate_msg_cw20_app() {
         let deps = mock_dependencies_custom(&[]);
         let recipient = Recipient::ADO(ADORecipient {
             address: andr_address("ab"),
@@ -286,7 +286,7 @@ mod test {
             .generate_msg_cw20(
                 deps.as_ref().api,
                 &deps.as_ref().querier,
-                Some(Addr::unchecked(MOCK_MISSION_CONTRACT)),
+                Some(Addr::unchecked(MOCK_APP_CONTRACT)),
                 cw20_coin.clone(),
             )
             .unwrap();
@@ -305,7 +305,7 @@ mod test {
 
     #[test]
     fn test_recipient_get_addr_addr_recipient() {
-        let deps = mock_dependencies(&[]);
+        let deps = mock_dependencies();
         let recipient = Recipient::Addr("address".to_string());
         assert_eq!(
             "address",
@@ -316,8 +316,8 @@ mod test {
     }
 
     #[test]
-    fn test_recipient_get_addr_ado_recipient_not_mission() {
-        let deps = mock_dependencies(&[]);
+    fn test_recipient_get_addr_ado_recipient_not_app() {
+        let deps = mock_dependencies();
         let recipient = Recipient::ADO(ADORecipient {
             address: andr_address("address"),
             msg: None,
@@ -331,7 +331,7 @@ mod test {
     }
 
     #[test]
-    fn test_recipient_get_addr_ado_recipient_mission() {
+    fn test_recipient_get_addr_ado_recipient_app() {
         let deps = mock_dependencies_custom(&[]);
         let recipient = Recipient::ADO(ADORecipient {
             // Since MockApi treats strings under 3 length invalid we use this.
@@ -344,7 +344,7 @@ mod test {
                 .get_addr(
                     deps.as_ref().api,
                     &deps.as_ref().querier,
-                    Some(Addr::unchecked(MOCK_MISSION_CONTRACT))
+                    Some(Addr::unchecked(MOCK_APP_CONTRACT))
                 )
                 .unwrap()
         );
