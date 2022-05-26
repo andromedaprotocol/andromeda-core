@@ -94,7 +94,7 @@ impl<'a> ADOContract<'a> {
     /// Loads all registered modules in Vector form
     pub(crate) fn load_modules(&self, storage: &dyn Storage) -> Result<Vec<Module>, ContractError> {
         let module_idx = self.module_idx.may_load(storage)?.unwrap_or(1);
-        let min = Some(Bound::inclusive("1"));
+        let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
         let modules: Vec<Module> = self
             .module_info
             .range(storage, min, None, Order::Ascending)
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_execute_register_module_unauthorized() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
@@ -261,7 +261,7 @@ mod tests {
 
     #[test]
     fn test_execute_register_module_addr() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn test_execute_register_module_validate() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let module = Module {
             module_type: AUCTION.to_owned(),
@@ -344,7 +344,7 @@ mod tests {
 
     #[test]
     fn test_execute_alter_module_unauthorized() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let info = mock_info("sender", &[]);
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_execute_alter_module_addr() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
@@ -425,7 +425,7 @@ mod tests {
 
     #[test]
     fn test_execute_alter_module_immutable() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         let module = Module {
             module_type: ADDRESS_LIST.to_owned(),
@@ -465,7 +465,7 @@ mod tests {
 
     #[test]
     fn test_execute_alter_module_nonexisting_module() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         let module = Module {
             module_type: AUCTION.to_owned(),
@@ -492,7 +492,7 @@ mod tests {
 
     #[test]
     fn test_execute_alter_module_incompatible_module() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         let module = Module {
             module_type: AUCTION.to_owned(),
@@ -529,7 +529,7 @@ mod tests {
 
     #[test]
     fn test_execute_deregister_module_unauthorized() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let info = mock_info("sender", &[]);
         ADOContract::default()
             .owner
@@ -544,7 +544,7 @@ mod tests {
 
     #[test]
     fn test_execute_deregister_module() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         ADOContract::default()
             .owner
@@ -582,7 +582,7 @@ mod tests {
 
     #[test]
     fn test_execute_deregister_module_immutable() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         ADOContract::default()
             .owner
@@ -609,7 +609,7 @@ mod tests {
 
     #[test]
     fn test_execute_deregister_module_nonexisting_module() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let info = mock_info("owner", &[]);
         ADOContract::default()
             .owner

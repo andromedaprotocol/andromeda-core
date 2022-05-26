@@ -46,18 +46,22 @@ impl<'a> ADOContract<'a> {
         let withdrawals = match tokens_to_withdraw {
             Some(tokens_to_withdraw) => tokens_to_withdraw,
             None => {
-                let withdrawals: Vec<Withdrawal> = self
+                let keys: Vec<Vec<u8>> = self
                     .withdrawable_tokens
                     .keys(deps.storage, None, None, Order::Ascending)
-                    .map(|token| {
-                        Ok(Withdrawal {
-                            token: token?,
-                            withdrawal_type: None,
-                        })
-                    })
-                    .collect::<Result<Vec<Withdrawal>, StdError>>()?;
+                    .collect();
 
-                withdrawals
+                let res: Result<Vec<_>, _> =
+                    keys.iter().map(|v| String::from_utf8(v.to_vec())).collect();
+
+                let res = res.map_err(StdError::invalid_utf8)?;
+
+                res.iter()
+                    .map(|k| Withdrawal {
+                        token: k.to_string(),
+                        withdrawal_type: None,
+                    })
+                    .collect()
             }
         };
 

@@ -1,8 +1,8 @@
 use cosmwasm_std::{
     coins, from_binary,
     testing::{mock_env, mock_info},
-    to_binary, Addr, BankMsg, CosmosMsg, DepsMut, Event, Reply, ReplyOn, Response, SubMsg,
-    SubMsgResponse, SubMsgResult, Uint128, WasmMsg,
+    to_binary, Addr, BankMsg, ContractResult, CosmosMsg, DepsMut, Event, Reply, ReplyOn, Response,
+    SubMsg, SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 
 use crate::contract::{execute, instantiate, query, reply};
@@ -87,7 +87,7 @@ fn test_instantiate_swapper_impl_new() {
 
     let reply_msg = Reply {
         id: 1,
-        result: SubMsgResult::Ok(SubMsgResponse {
+        result: ContractResult::Ok(SubMsgExecutionResponse {
             data: None,
             events: vec![
                 Event::new("Type").add_attribute("contract_address", "swapper_impl_address")

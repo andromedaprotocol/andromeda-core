@@ -2,10 +2,10 @@ use ado_base::state::ADOContract;
 use andromeda_modules::receipt::{Config, Receipt};
 use common::error::ContractError;
 use cosmwasm_std::{StdResult, Storage, Uint128};
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::{Item, Map, U128Key};
 
 pub const CONFIG: Item<Config> = Item::new("config");
-const RECEIPT: Map<u128, Receipt> = Map::new("receipt");
+const RECEIPT: Map<U128Key, Receipt> = Map::new("receipt");
 const NUM_RECEIPT: Item<Uint128> = Item::new("num_receipt");
 
 pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()> {
@@ -36,10 +36,10 @@ pub fn store_receipt(
     receipt_id: Uint128,
     receipt: &Receipt,
 ) -> StdResult<()> {
-    RECEIPT.save(storage, receipt_id.u128(), receipt)
+    RECEIPT.save(storage, U128Key::from(receipt_id.u128()), receipt)
 }
 pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Receipt> {
-    RECEIPT.load(storage, receipt_id.u128())
+    RECEIPT.load(storage, U128Key::from(receipt_id.u128()))
 }
 
 #[cfg(test)]
@@ -59,7 +59,7 @@ mod tests {
         let config = Config {
             minter: minter.clone(),
         };
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let deps_mut = deps.as_mut();
         ADOContract::default()
             .instantiate(

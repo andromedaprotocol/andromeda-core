@@ -145,7 +145,7 @@ mod test {
 
     #[test]
     fn test_recipient_addr_generate_msg_native() {
-        let deps = mock_dependencies();
+        let deps = mock_dependencies(&[]);
         let recipient = Recipient::Addr("address".to_string());
         let funds = coins(100, "uusd");
         let msg = recipient
@@ -165,7 +165,7 @@ mod test {
 
     #[test]
     fn test_recipient_ado_generate_msg_native() {
-        let deps = mock_dependencies();
+        let deps = mock_dependencies(&[]);
         let recipient = Recipient::ADO(ADORecipient {
             address: andr_address("address"),
             msg: None,
@@ -213,7 +213,7 @@ mod test {
 
     #[test]
     fn test_recipient_addr_generate_msg_cw20() {
-        let deps = mock_dependencies();
+        let deps = mock_dependencies(&[]);
         let recipient = Recipient::Addr("address".to_string());
         let cw20_coin = Cw20Coin {
             amount: 100u128.into(),
@@ -241,7 +241,7 @@ mod test {
 
     #[test]
     fn test_recipient_ado_generate_msg_cw20() {
-        let deps = mock_dependencies();
+        let deps = mock_dependencies(&[]);
         let recipient = Recipient::ADO(ADORecipient {
             address: andr_address("address"),
             msg: None,
@@ -305,7 +305,7 @@ mod test {
 
     #[test]
     fn test_recipient_get_addr_addr_recipient() {
-        let deps = mock_dependencies();
+        let deps = mock_dependencies(&[]);
         let recipient = Recipient::Addr("address".to_string());
         assert_eq!(
             "address",
@@ -317,7 +317,7 @@ mod test {
 
     #[test]
     fn test_recipient_get_addr_ado_recipient_not_app() {
-        let deps = mock_dependencies();
+        let deps = mock_dependencies(&[]);
         let recipient = Recipient::ADO(ADORecipient {
             address: andr_address("address"),
             msg: None,

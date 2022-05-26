@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn test_instantiate() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_execute_update_lock() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
         let owner = "creator";
@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_execute_update_recipients() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
         let owner = "creator";
@@ -368,7 +368,7 @@ mod tests {
 
     #[test]
     fn test_execute_send() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
         let sender_funds_amount = 10000u128;
@@ -442,7 +442,7 @@ mod tests {
 
     #[test]
     fn test_query_splitter() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let splitter = Splitter {
             recipients: vec![],
@@ -461,7 +461,7 @@ mod tests {
     #[test]
     fn test_execute_send_error() {
         //Executes send with more than 5 tokens [ACK-04]
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
         let sender_funds_amount = 10000u128;

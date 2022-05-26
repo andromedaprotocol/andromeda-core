@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn test_instantiate() {
         let owner = "creator";
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn test_store_receipt() {
         let owner = "creator";
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let unauth_info = mock_info("anyone", &[]);
@@ -220,7 +220,7 @@ mod tests {
     #[test]
     fn test_edit_receipt() {
         let owner = "creator";
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let unauth_info = mock_info("anyone", &[]);
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn test_andr_receive() {
         let owner = "creator";
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
         instantiate(
@@ -328,7 +328,7 @@ mod tests {
 
     #[test]
     fn test_on_funds_transfer_hook() {
-        let deps = mock_dependencies();
+        let deps = mock_dependencies(&[]);
         let events: Vec<Event> = vec![Event::new("Event1"), Event::new("Event2")];
 
         let query_msg = QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {

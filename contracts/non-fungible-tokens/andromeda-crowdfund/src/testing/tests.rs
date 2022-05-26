@@ -29,7 +29,7 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info},
     Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
-use cw_utils::Expiration;
+use cw0::Expiration;
 
 fn get_purchase(token_id: impl Into<String>, purchaser: impl Into<String>) -> Purchase {
     Purchase {

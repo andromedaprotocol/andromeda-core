@@ -202,7 +202,7 @@ pub enum QueryMsg {
         include_expired: Option<bool>,
     },
     /// Approvals for a given address (paginated)
-    AllOperators {
+    ApprovedForAll {
         owner: String,
         include_expired: Option<bool>,
         start_after: Option<String>,
@@ -246,12 +246,12 @@ impl From<QueryMsg> for Cw721QueryMsg {
                 token_id,
                 include_expired,
             },
-            QueryMsg::AllOperators {
+            QueryMsg::ApprovedForAll {
                 owner,
                 include_expired,
                 start_after,
                 limit,
-            } => Cw721QueryMsg::AllOperators {
+            } => Cw721QueryMsg::ApprovedForAll {
                 owner,
                 include_expired,
                 start_after,

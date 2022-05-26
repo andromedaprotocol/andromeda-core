@@ -4,7 +4,7 @@ use common::{
     app::AndrAddress,
 };
 use cosmwasm_std::{Coin, Uint128};
-use cw_utils::Expiration;
+use cw0::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

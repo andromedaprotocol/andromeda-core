@@ -21,6 +21,7 @@ use moneymarket::{
     oracle::{PriceResponse, QueryMsg as OracleQueryMsg},
     overseer::{CollateralsResponse, QueryMsg as OverseerQueryMsg},
 };
+use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_MARKET_CONTRACT: &str = "anchor_market";
 pub const MOCK_CUSTODY_CONTRACT: &str = "anchor_custody";
@@ -34,7 +35,7 @@ pub const MOCK_ORACLE_CONTRACT: &str = "anchor_oracle";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 
 pub struct WasmMockQuerier {
-    pub base: MockQuerier,
+    pub base: MockQuerier<TerraQueryWrapper>,
     pub loan_amount: Uint256,
 }
 
@@ -53,7 +54,7 @@ pub fn mock_dependencies_custom(
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
+        let request: QueryRequest<TerraQueryWrapper> = match from_slice(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -67,7 +68,7 @@ impl Querier for WasmMockQuerier {
 }
 
 impl WasmMockQuerier {
-    pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
+    pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
@@ -223,7 +224,7 @@ impl WasmMockQuerier {
         }
     }
 
-    pub fn new(base: MockQuerier) -> Self {
+    pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
         WasmMockQuerier {
             base,
             loan_amount: Uint256::zero(),

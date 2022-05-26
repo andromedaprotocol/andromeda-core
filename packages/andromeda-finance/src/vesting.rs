@@ -3,7 +3,7 @@ use common::{
     withdraw::WithdrawalType,
 };
 use cosmwasm_std::Uint128;
-use cw_utils::Duration;
+use cw0::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -34,6 +34,7 @@ pub enum ExecuteMsg {
     /// it will claim to the most recent release.
     ClaimAll {
         up_to_time: Option<u64>,
+        start_after: Option<u64>,
         limit: Option<u32>,
     },
     /// Creates a new batch

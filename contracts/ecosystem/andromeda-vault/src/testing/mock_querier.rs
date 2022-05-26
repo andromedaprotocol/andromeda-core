@@ -1,4 +1,4 @@
-//use andromeda_ecosystem::anchor_earn::PositionResponse;
+use andromeda_ecosystem::anchor_earn::PositionResponse;
 use common::ado_base::{
     operators::IsOperatorResponse, recipient::Recipient, AndromedaQuery, QueryMsg,
 };
@@ -8,15 +8,8 @@ use cosmwasm_std::{
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, Uint128, WasmQuery,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-// This is here since anchor_earn is defunct now.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct PositionResponse {
-    pub recipient: Recipient,
-    pub aust_amount: Uint128,
-}
+use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_ANCHOR_CONTRACT: &str = "anchor_contract";
 pub const MOCK_VAULT_CONTRACT: &str = "vault_contract";
@@ -31,18 +24,17 @@ pub fn mock_dependencies_custom(
         storage: MockStorage::default(),
         api: MockApi::default(),
         querier: custom_querier,
-        custom_query_type: std::marker::PhantomData,
     }
 }
 
 pub struct WasmMockQuerier {
-    pub base: MockQuerier,
+    pub base: MockQuerier<TerraQueryWrapper>,
 }
 
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
+        let request: QueryRequest<TerraQueryWrapper> = match from_slice(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -56,7 +48,7 @@ impl Querier for WasmMockQuerier {
 }
 
 impl WasmMockQuerier {
-    pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
+    pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
@@ -90,7 +82,7 @@ impl WasmMockQuerier {
         }
     }
 
-    pub fn new(base: MockQuerier) -> Self {
+    pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
         WasmMockQuerier { base }
     }
 }

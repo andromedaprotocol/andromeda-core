@@ -14,11 +14,12 @@ impl<'a> ADOContract<'a> {
     /// Queries all of the module ids.
     pub fn query_module_ids(&self, deps: Deps) -> Result<Vec<String>, ContractError> {
         let module_idx = self.module_idx.may_load(deps.storage)?.unwrap_or(1);
-        let min = Some(Bound::inclusive("1"));
+        let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
         let module_ids: Result<Vec<String>, _> = self
             .module_info
             .keys(deps.storage, min, None, Order::Ascending)
             .take(module_idx as usize)
+            .map(String::from_utf8)
             .collect();
         Ok(module_ids?)
     }
@@ -34,7 +35,7 @@ mod tests {
     #[test]
     fn test_query_module() {
         let contract = ADOContract::default();
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         contract
             .owner

@@ -83,7 +83,7 @@ pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> Result<bool, 
     let mut percent_sum: Decimal = Decimal::zero();
     for rec in recipients {
         // += operation is not supported for decimal.
-        percent_sum += rec.percent;
+        percent_sum = percent_sum + rec.percent;
     }
 
     require(

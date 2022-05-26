@@ -1,7 +1,7 @@
 use common::{ado_base::recipient::Recipient, app::AndrAddress, error::ContractError};
 use cosmwasm_std::{Coin, Order, Storage, SubMsg, Uint128};
+use cw0::Expiration;
 use cw_storage_plus::{Bound, Item, Map};
-use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -73,11 +73,14 @@ pub(crate) fn get_available_tokens(
     limit: Option<u32>,
 ) -> Result<Vec<String>, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.as_deref().map(Bound::exclusive);
+    let start = start_after.map(Bound::exclusive);
     let tokens: Result<Vec<String>, ContractError> = AVAILABLE_TOKENS
         .keys(storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|token| Ok(token?))
+        .map(|v| {
+            let token = String::from_utf8(v)?;
+            Ok(token)
+        })
         .collect();
     tokens
 }

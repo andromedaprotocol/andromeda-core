@@ -11,7 +11,7 @@ use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 #[test]
 fn proper_initialization() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
         // token_code_id: TOKEN_CODE_ID,

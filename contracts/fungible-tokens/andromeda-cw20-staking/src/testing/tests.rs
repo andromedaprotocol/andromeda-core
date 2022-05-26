@@ -1,7 +1,8 @@
+use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
     coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
+    to_binary, Addr, BankMsg, DepsMut, Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
@@ -40,7 +41,7 @@ fn init(
 
 #[test]
 fn test_instantiate() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
 
     let res = init(
         deps.as_mut(),
@@ -94,7 +95,7 @@ fn test_instantiate() {
 
 #[test]
 fn test_instantiate_staking_token_as_addtional_reward() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
 
     let res = init(
         deps.as_mut(),
@@ -372,7 +373,7 @@ fn test_update_global_indexes() {
 
     assert_eq!(
         GlobalRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(40u128), Uint128::from(100u128)),
+            index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
             previous_reward_balance: Uint128::new(40)
         },
         GLOBAL_REWARD_INFOS
@@ -382,7 +383,7 @@ fn test_update_global_indexes() {
 
     assert_eq!(
         GlobalRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(20u128), Uint128::from(100u128)),
+            index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
             previous_reward_balance: Uint128::new(20)
         },
         GLOBAL_REWARD_INFOS
@@ -437,7 +438,7 @@ fn test_update_global_indexes_selective() {
 
     assert_eq!(
         GlobalRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(40u128), Uint128::from(100u128)),
+            index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
             previous_reward_balance: Uint128::new(40)
         },
         GLOBAL_REWARD_INFOS
@@ -447,7 +448,7 @@ fn test_update_global_indexes_selective() {
 
     assert_eq!(
         GlobalRewardInfo {
-            index: Decimal::zero(),
+            index: Decimal256::zero(),
             previous_reward_balance: Uint128::zero()
         },
         GLOBAL_REWARD_INFOS
@@ -540,7 +541,7 @@ fn test_update_global_indexes_cw20_deposit() {
 
     assert_eq!(
         GlobalRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(20u128), Uint128::from(100u128)),
+            index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
             previous_reward_balance: Uint128::new(20)
         },
         GLOBAL_REWARD_INFOS
@@ -550,7 +551,7 @@ fn test_update_global_indexes_cw20_deposit() {
 
     assert_eq!(
         GlobalRewardInfo {
-            index: Decimal::zero(),
+            index: Decimal256::zero(),
             previous_reward_balance: Uint128::zero()
         },
         GLOBAL_REWARD_INFOS
@@ -656,7 +657,7 @@ fn test_claim_rewards() {
 
     assert_eq!(
         GlobalRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(100u128), Uint128::from(150u128)),
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
             previous_reward_balance: Uint128::new(100)
         },
         GLOBAL_REWARD_INFOS
@@ -694,8 +695,8 @@ fn test_claim_rewards() {
 
     assert_eq!(
         StakerRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(100u128), Uint128::from(150u128)),
-            pending_rewards: Decimal::zero(),
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
+            pending_rewards: Decimal256::zero(),
         },
         STAKER_REWARD_INFOS
             .load(deps.as_ref().storage, ("user1", "native:uusd"))
@@ -704,7 +705,7 @@ fn test_claim_rewards() {
 
     assert_eq!(
         GlobalRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(100u128), Uint128::from(150u128)),
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
             previous_reward_balance: Uint128::new(34)
         },
         GLOBAL_REWARD_INFOS
@@ -737,8 +738,8 @@ fn test_claim_rewards() {
 
     assert_eq!(
         StakerRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(100u128), Uint128::from(150u128)),
-            pending_rewards: Decimal::zero(),
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
+            pending_rewards: Decimal256::zero(),
         },
         STAKER_REWARD_INFOS
             .load(deps.as_ref().storage, ("user2", "native:uusd"))
@@ -747,7 +748,7 @@ fn test_claim_rewards() {
 
     assert_eq!(
         GlobalRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(100u128), Uint128::from(150u128)),
+            index: Decimal256::from_ratio(Uint256::from(100u128), Uint256::from(150u128)),
             // Small rounding error, shouldn't really make a difference and is inevitable.
             previous_reward_balance: Uint128::new(1),
         },
@@ -867,8 +868,8 @@ fn test_stake_rewards_update() {
 
     assert_eq!(
         StakerRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(20u128), Uint128::from(100u128)),
-            pending_rewards: Decimal::from_ratio(Uint128::from(20u128), Uint128::from(1u128))
+            index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
+            pending_rewards: Decimal256::from_uint256(Uint256::from(20u128))
         },
         STAKER_REWARD_INFOS
             .load(deps.as_ref().storage, ("user1", "cw20:incentive_token"))
@@ -877,8 +878,8 @@ fn test_stake_rewards_update() {
 
     assert_eq!(
         StakerRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(40u128), Uint128::from(100u128)),
-            pending_rewards: Decimal::from_ratio(Uint128::from(40u128), Uint128::from(1u128))
+            index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
+            pending_rewards: Decimal256::from_uint256(Uint256::from(40u128))
         },
         STAKER_REWARD_INFOS
             .load(deps.as_ref().storage, ("user1", "native:uusd"))
@@ -950,8 +951,8 @@ fn test_unstake_rewards_update() {
 
     assert_eq!(
         StakerRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(20u128), Uint128::from(100u128)),
-            pending_rewards: Decimal::from_ratio(Uint128::from(20u128), Uint128::from(1u128))
+            index: Decimal256::from_ratio(Uint256::from(20u128), Uint256::from(100u128)),
+            pending_rewards: Decimal256::from_uint256(Uint256::from(20u128))
         },
         STAKER_REWARD_INFOS
             .load(deps.as_ref().storage, ("user1", "cw20:incentive_token"))
@@ -960,8 +961,8 @@ fn test_unstake_rewards_update() {
 
     assert_eq!(
         StakerRewardInfo {
-            index: Decimal::from_ratio(Uint128::from(40u128), Uint128::from(100u128)),
-            pending_rewards: Decimal::from_ratio(Uint128::from(40u128), Uint128::from(1u128))
+            index: Decimal256::from_ratio(Uint256::from(40u128), Uint256::from(100u128)),
+            pending_rewards: Decimal256::from_uint256(Uint256::from(40u128))
         },
         STAKER_REWARD_INFOS
             .load(deps.as_ref().storage, ("user1", "native:uusd"))
@@ -1010,7 +1011,7 @@ fn test_add_reward_token() {
 
     assert_eq!(
         GlobalRewardInfo {
-            index: Decimal::zero(),
+            index: Decimal256::zero(),
             previous_reward_balance: Uint128::zero(),
         },
         GLOBAL_REWARD_INFOS

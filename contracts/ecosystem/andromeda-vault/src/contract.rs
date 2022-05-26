@@ -442,7 +442,8 @@ fn query_balance(
             .prefix(&address)
             .range(deps.storage, None, None, Order::Ascending)
             .map(|v| {
-                let (denom, balance) = v?;
+                let (denom_vec, balance) = v?;
+                let denom = String::from_utf8(denom_vec)?;
                 Ok(Coin {
                     denom,
                     amount: balance,

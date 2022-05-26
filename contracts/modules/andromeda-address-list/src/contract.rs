@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn test_instantiate() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_add_address() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
         let operator = "creator";
@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_remove_address() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
         let operator = "creator";
@@ -267,7 +267,7 @@ mod tests {
 
     #[test]
     fn test_execute_hook_whitelist() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
         let operator = "creator";
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn test_execute_hook_blacklist() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
 
         let operator = "creator";
@@ -342,7 +342,7 @@ mod tests {
 
     #[test]
     fn test_andr_get_query() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let address = "whitelistee";
 

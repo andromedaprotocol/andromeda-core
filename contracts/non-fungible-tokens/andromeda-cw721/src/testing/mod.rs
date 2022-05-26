@@ -61,7 +61,7 @@ fn mint_token(deps: DepsMut, env: Env, token_id: String, owner: String, extensio
 
 #[test]
 fn test_andr_query() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init_setup(deps.as_mut(), mock_env(), None);
 
     let msg = QueryMsg::AndrQuery(AndromedaQuery::Owner {});
@@ -187,7 +187,7 @@ fn test_instantiate_modules() {
 fn test_transfer_nft() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
     assert_eq!(
@@ -252,7 +252,7 @@ fn test_transfer_nft() {
 fn test_agreed_transfer_nft() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     let agreed_amount = Coin {
         denom: "uluna".to_string(),
@@ -386,7 +386,7 @@ fn test_agreed_transfer_nft_primitive_pointer() {
 fn test_agreed_transfer_nft_wildcard() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     let agreed_amount = Coin {
         denom: "uluna".to_string(),
@@ -441,7 +441,7 @@ fn test_agreed_transfer_nft_wildcard() {
 fn test_archive() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
     mint_token(
@@ -482,7 +482,7 @@ fn test_archive() {
 fn test_burn() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
     mint_token(
@@ -538,7 +538,7 @@ fn test_burn() {
 fn test_archived_check() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
     mint_token(
@@ -569,7 +569,7 @@ fn test_archived_check() {
 fn test_transfer_agreement() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     let agreement = TransferAgreement {
         purchaser: String::from("purchaser"),

@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     coin, coins, from_binary,
-    testing::{mock_dependencies, mock_dependencies_with_balance, mock_env, mock_info},
+    testing::{mock_dependencies, mock_env, mock_info},
     to_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
 };
 
@@ -38,7 +38,7 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
 
 #[test]
 fn test_instantiate() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
 
     let res = init(deps.as_mut()).unwrap();
 
@@ -82,7 +82,7 @@ fn test_instantiate() {
 
 #[test]
 fn test_instantiate_init_timestamp_past() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     let info = mock_info("owner", &[]);
 
@@ -108,7 +108,7 @@ fn test_instantiate_init_timestamp_past() {
 
 #[test]
 fn test_instantiate_init_deposit_window_zero() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     let info = mock_info("owner", &[]);
 
@@ -128,7 +128,7 @@ fn test_instantiate_init_deposit_window_zero() {
 
 #[test]
 fn test_instantiate_init_withdrawal_window_zero() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     let info = mock_info("owner", &[]);
 
@@ -148,7 +148,7 @@ fn test_instantiate_init_withdrawal_window_zero() {
 
 #[test]
 fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let env = mock_env();
     let info = mock_info("owner", &[]);
 
@@ -168,7 +168,7 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
 
 #[test]
 fn test_increase_incentives() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
 
     init(deps.as_mut()).unwrap();
 
@@ -199,7 +199,7 @@ fn test_increase_incentives() {
 
 #[test]
 fn test_increase_incentives_invalid_token() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
 
     init(deps.as_mut()).unwrap();
 
@@ -221,7 +221,7 @@ fn test_increase_incentives_invalid_token() {
 
 #[test]
 fn test_increase_incentives_after_phase_ends() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let mut env = mock_env();
 
     init(deps.as_mut()).unwrap();
@@ -246,7 +246,7 @@ fn test_increase_incentives_after_phase_ends() {
 
 #[test]
 fn test_increase_incentives_zero_amount() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
 
     init(deps.as_mut()).unwrap();
 
@@ -269,7 +269,7 @@ fn test_increase_incentives_zero_amount() {
 
 #[test]
 fn test_deposit_native() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
@@ -309,7 +309,7 @@ fn test_deposit_native() {
 
 #[test]
 fn test_deposit_native_zero_amount() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
@@ -327,7 +327,7 @@ fn test_deposit_native_zero_amount() {
 
 #[test]
 fn test_deposit_native_wrong_denom() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
@@ -345,7 +345,7 @@ fn test_deposit_native_wrong_denom() {
 
 #[test]
 fn test_deposit_native_multiple_denoms() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
@@ -363,7 +363,7 @@ fn test_deposit_native_multiple_denoms() {
 
 #[test]
 fn test_deposit_native_deposit_window_closed() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
@@ -378,7 +378,7 @@ fn test_deposit_native_deposit_window_closed() {
 
 #[test]
 fn test_withdraw_native() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
@@ -426,7 +426,7 @@ fn test_withdraw_native() {
 
 #[test]
 fn test_withdraw_native_withdraw_phase_first_half() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
@@ -490,7 +490,7 @@ fn test_withdraw_native_withdraw_phase_first_half() {
 
 #[test]
 fn test_withdraw_native_withdraw_phase_second_half() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
@@ -554,7 +554,7 @@ fn test_withdraw_native_withdraw_phase_second_half() {
 
 #[test]
 fn test_withdraw_native_withdrawal_closed() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
@@ -581,7 +581,7 @@ fn test_withdraw_native_withdrawal_closed() {
 
 #[test]
 fn test_withdraw_proceeds_unauthorized() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
@@ -594,7 +594,7 @@ fn test_withdraw_proceeds_unauthorized() {
 
 #[test]
 fn test_withdraw_proceeds_phase_not_started() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
@@ -614,7 +614,7 @@ fn test_withdraw_proceeds_phase_not_started() {
 
 #[test]
 fn test_withdraw_proceeds_phase_not_ended() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
@@ -637,7 +637,7 @@ fn test_withdraw_proceeds() {
     // This uusd is to simulate the deposit made prior to withdrawing proceeds. This is needed
     // since the mock querier doesn't automatically assign balances.
     let amount = 100;
-    let mut deps = mock_dependencies_with_balance(&coins(amount, "uusd"));
+    let mut deps = mock_dependencies(&coins(amount, "uusd"));
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
@@ -685,7 +685,7 @@ fn test_withdraw_proceeds() {
 
 #[test]
 fn test_enable_claims_no_bootstrap_specified() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::EnableClaims {};
@@ -721,7 +721,7 @@ fn test_enable_claims_no_bootstrap_specified() {
 
 #[test]
 fn test_enable_claims_bootstrap_specified() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let msg = InstantiateMsg {
         bootstrap_contract: Some(AndrAddress {
             identifier: MOCK_BOOTSTRAP_CONTRACT.to_owned(),
@@ -774,7 +774,7 @@ fn test_enable_claims_bootstrap_specified() {
 
 #[test]
 fn test_enable_claims_phase_not_ended() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::EnableClaims {};
@@ -793,7 +793,7 @@ fn test_enable_claims_phase_not_ended() {
 
 #[test]
 fn test_claim_rewards() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     // First increase incentives
@@ -935,7 +935,7 @@ fn test_claim_rewards() {
 
 #[test]
 fn test_claim_rewards_not_available() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     // First increase incentives
@@ -963,7 +963,7 @@ fn test_claim_rewards_not_available() {
 
 #[test]
 fn test_query_withdrawable_percent() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = QueryMsg::WithdrawalPercentAllowed { timestamp: None };
@@ -993,7 +993,7 @@ fn test_query_withdrawable_percent() {
 
 #[test]
 fn test_deposit_to_bootstrap_withdrawal_not_over() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositToBootstrap {
@@ -1008,7 +1008,7 @@ fn test_deposit_to_bootstrap_withdrawal_not_over() {
 
 #[test]
 fn test_deposit_to_bootstrap_contract_not_specified() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositToBootstrap {
@@ -1029,7 +1029,7 @@ fn test_deposit_to_bootstrap_contract_not_specified() {
 
 #[test]
 fn test_deposit_to_bootstrap_claims_allowed() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     init(deps.as_mut()).unwrap();
 
     let mut env = mock_env();
@@ -1057,7 +1057,7 @@ fn test_deposit_to_bootstrap_claims_allowed() {
 
 #[test]
 fn test_deposit_to_bootstrap() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     let msg = InstantiateMsg {
         bootstrap_contract: Some(AndrAddress {
             identifier: MOCK_BOOTSTRAP_CONTRACT.to_owned(),

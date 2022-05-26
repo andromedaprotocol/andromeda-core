@@ -6,10 +6,11 @@ use cosmwasm_std::{
     attr, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdResult, Uint128, WasmMsg,
 };
+use cw0::Expiration;
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
 use cw_asset::AssetInfo;
-use cw_utils::Expiration;
+use cw_storage_plus::U8Key;
 use sha2::Digest;
 use std::convert::TryInto;
 
@@ -104,17 +105,17 @@ pub fn execute_register_merkle_root(
 
     let stage = LATEST_STAGE.update(deps.storage, |stage| -> StdResult<_> { Ok(stage + 1) })?;
 
-    MERKLE_ROOT.save(deps.storage, stage, &merkle_root)?;
+    MERKLE_ROOT.save(deps.storage, stage.into(), &merkle_root)?;
     LATEST_STAGE.save(deps.storage, &stage)?;
 
     // save expiration
     let exp = expiration.unwrap_or(Expiration::Never {});
-    STAGE_EXPIRATION.save(deps.storage, stage, &exp)?;
+    STAGE_EXPIRATION.save(deps.storage, stage.into(), &exp)?;
 
     // save total airdropped amount
     let amount = total_amount.unwrap_or_else(Uint128::zero);
-    STAGE_AMOUNT.save(deps.storage, stage, &amount)?;
-    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &Uint128::zero())?;
+    STAGE_AMOUNT.save(deps.storage, stage.into(), &amount)?;
+    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage.into(), &Uint128::zero())?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "register_merkle_root"),
@@ -133,7 +134,7 @@ pub fn execute_claim(
     proof: Vec<String>,
 ) -> Result<Response, ContractError> {
     // not expired
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
     require(
         !expiration.is_expired(&env.block),
         ContractError::StageExpired { stage, expiration },
@@ -141,12 +142,12 @@ pub fn execute_claim(
 
     // verify not claimed
     require(
-        !CLAIM.has(deps.storage, (&info.sender, stage)),
+        !CLAIM.has(deps.storage, (&info.sender, stage.into())),
         ContractError::Claimed {},
     )?;
 
     let config = CONFIG.load(deps.storage)?;
-    let merkle_root = MERKLE_ROOT.load(deps.storage, stage)?;
+    let merkle_root = MERKLE_ROOT.load(deps.storage, stage.into())?;
 
     let user_input = format!("{}{}", info.sender, amount);
     let hash = sha2::Sha256::digest(user_input.as_bytes())
@@ -170,12 +171,12 @@ pub fn execute_claim(
     require(root_buf == hash, ContractError::VerificationFailed {})?;
 
     // Update claim index to the current stage
-    CLAIM.save(deps.storage, (&info.sender, stage), &true)?;
+    CLAIM.save(deps.storage, (&info.sender, stage.into()), &true)?;
 
     // Update total claimed to reflect
-    let mut claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
+    let mut claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage.into())?;
     claimed_amount += amount;
-    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &claimed_amount)?;
+    STAGE_AMOUNT_CLAIMED.save(deps.storage, stage.into(), &claimed_amount)?;
 
     let transfer_msg: CosmosMsg = match config.asset_info {
         AssetInfo::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
@@ -215,15 +216,15 @@ pub fn execute_burn(
     )?;
 
     // make sure is expired
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
+    let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
     require(
         expiration.is_expired(&env.block),
         ContractError::StageNotExpired { stage, expiration },
     )?;
 
     // Get total amount per stage and total claimed
-    let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
-    let claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
+    let total_amount = STAGE_AMOUNT.load(deps.storage, stage.into())?;
+    let claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage.into())?;
 
     // impossible but who knows
     require(
@@ -283,9 +284,9 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
 }
 
 pub fn query_merkle_root(deps: Deps, stage: u8) -> Result<MerkleRootResponse, ContractError> {
-    let merkle_root = MERKLE_ROOT.load(deps.storage, stage)?;
-    let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
+    let merkle_root = MERKLE_ROOT.load(deps.storage, stage.into())?;
+    let expiration = STAGE_EXPIRATION.load(deps.storage, stage.into())?;
+    let total_amount = STAGE_AMOUNT.load(deps.storage, stage.into())?;
 
     let resp = MerkleRootResponse {
         stage,
@@ -309,7 +310,7 @@ pub fn query_is_claimed(
     stage: u8,
     address: String,
 ) -> Result<IsClaimedResponse, ContractError> {
-    let key: (&Addr, u8) = (&deps.api.addr_validate(&address)?, stage);
+    let key: (&Addr, U8Key) = (&deps.api.addr_validate(&address)?, U8Key::from(stage));
     let is_claimed = CLAIM.may_load(deps.storage, key)?.unwrap_or(false);
     let resp = IsClaimedResponse { is_claimed };
 
@@ -317,7 +318,7 @@ pub fn query_is_claimed(
 }
 
 pub fn query_total_claimed(deps: Deps, stage: u8) -> Result<TotalClaimedResponse, ContractError> {
-    let total_claimed = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
+    let total_claimed = STAGE_AMOUNT_CLAIMED.load(deps.storage, U8Key::from(stage))?;
     let resp = TotalClaimedResponse { total_claimed };
 
     Ok(resp)
@@ -344,7 +345,7 @@ mod tests {
 
     #[test]
     fn proper_instantiation() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("anchor0000"),
@@ -374,7 +375,7 @@ mod tests {
 
     #[test]
     fn register_merkle_root() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("anchor0000"),
@@ -442,7 +443,7 @@ mod tests {
     #[test]
     fn claim() {
         // Run test 1
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
@@ -604,7 +605,7 @@ mod tests {
 
     #[test]
     fn claim_native() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
@@ -688,7 +689,7 @@ mod tests {
     #[test]
     fn multiple_claim() {
         // Run test 1
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let test_data: MultipleData = from_slice(TEST_DATA_1_MULTI).unwrap();
 
         let msg = InstantiateMsg {
@@ -757,7 +758,7 @@ mod tests {
     // Check expiration. Chain height in tests is 12345
     #[test]
     fn stage_expires() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("anchor0000"),
@@ -798,7 +799,7 @@ mod tests {
 
     #[test]
     fn cant_burn() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("token0000"),
@@ -835,7 +836,7 @@ mod tests {
 
     #[test]
     fn can_burn() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {
@@ -917,7 +918,7 @@ mod tests {
 
     #[test]
     fn can_burn_native() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let test_data: Encoded = from_slice(TEST_DATA_1).unwrap();
 
         let msg = InstantiateMsg {

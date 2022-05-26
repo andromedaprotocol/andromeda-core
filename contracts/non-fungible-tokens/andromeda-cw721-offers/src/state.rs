@@ -5,7 +5,7 @@ pub const CW721_CONTRACT: Item<String> = Item::new("cw721_contract");
 
 pub struct OfferIndexes<'a> {
     /// (purchaser, token_id))
-    pub purchaser: MultiIndex<'a, String, Offer, String>,
+    pub purchaser: MultiIndex<'a, (String, Vec<u8>), Offer>,
 }
 
 impl<'a> IndexList<Offer> for OfferIndexes<'a> {
@@ -17,7 +17,11 @@ impl<'a> IndexList<Offer> for OfferIndexes<'a> {
 
 pub fn offers<'a>() -> IndexedMap<'a, &'a str, Offer, OfferIndexes<'a>> {
     let indexes = OfferIndexes {
-        purchaser: MultiIndex::new(|e| e.purchaser.clone(), "ownership", "offer_purchaser"),
+        purchaser: MultiIndex::new(
+            |e, k| (e.purchaser.clone(), k),
+            "ownership",
+            "offer_purchaser",
+        ),
     };
     IndexedMap::new("ownership", indexes)
 }

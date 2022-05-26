@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_instantiate_query() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
         let info = mock_info(owner, &[]);
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_andr_receive() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies(&[]);
         let env = mock_env();
         let owner = "owner";
         let info = mock_info(owner, &[]);
