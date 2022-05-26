@@ -114,7 +114,7 @@ fn execute_place_offer(
     let coin: &Coin = &info.funds[0];
     require(
         // TODO: Add support for other denoms later.
-        coin.denom == "uusd",
+        coin.denom == "uusd" || coin.denom == "ujunox",
         ContractError::InvalidFunds {
             msg: "Only offers in uusd are allowed".to_string(),
         },
