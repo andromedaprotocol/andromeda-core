@@ -1,5 +1,5 @@
 use cosmwasm_std::{Api, BlockInfo, Coin};
-use cw0::Expiration;
+use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_validate() {
-        let deps = mock_dependencies(&[]);
+        let deps = mock_dependencies();
         let condition = EscrowCondition::Expiration(Expiration::AtHeight(1500));
         let coins = vec![coin(100u128, "uluna")];
         let recipient = Recipient::Addr("owner".into());
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     fn test_validate_funds_condition() {
-        let deps = mock_dependencies(&[]);
+        let deps = mock_dependencies();
         let recipient = Recipient::Addr("owner".into());
 
         let valid_escrow = Escrow {

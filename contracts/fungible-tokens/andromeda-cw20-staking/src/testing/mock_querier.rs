@@ -18,6 +18,7 @@ pub fn mock_dependencies_custom(
         api: MockApi::default(),
         storage: MockStorage::default(),
         querier: custom_querier,
+        custom_query_type: std::marker::PhantomData,
     }
 }
 

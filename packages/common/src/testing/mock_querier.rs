@@ -8,13 +8,12 @@ use cosmwasm_std::{
     to_binary, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult,
     QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
-use terra_cosmwasm::TerraQueryWrapper;
 
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 
 pub struct WasmMockQuerier {
-    pub base: MockQuerier<TerraQueryWrapper>,
+    pub base: MockQuerier,
 }
 
 pub fn mock_dependencies_custom(
@@ -27,13 +26,14 @@ pub fn mock_dependencies_custom(
         storage: MockStorage::default(),
         api: MockApi::default(),
         querier: custom_querier,
+        custom_query_type: std::marker::PhantomData,
     }
 }
 
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
-        let request: QueryRequest<TerraQueryWrapper> = match from_slice(bin_request) {
+        let request: QueryRequest<cosmwasm_std::Empty> = match from_slice(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
@@ -47,7 +47,7 @@ impl Querier for WasmMockQuerier {
 }
 
 impl WasmMockQuerier {
-    pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
+    pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
@@ -119,7 +119,7 @@ impl WasmMockQuerier {
         }
     }
 
-    pub fn new(base: MockQuerier<TerraQueryWrapper>) -> Self {
+    pub fn new(base: MockQuerier) -> Self {
         WasmMockQuerier { base }
     }
 }

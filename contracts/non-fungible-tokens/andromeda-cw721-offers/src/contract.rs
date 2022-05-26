@@ -353,15 +353,13 @@ fn query_all_offers(
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 
-    let pks: Vec<_> = offers()
+    let keys: Vec<String> = offers()
         .idx
         .purchaser
         .prefix(purchaser)
         .keys(deps.storage, start, None, Order::Ascending)
         .take(limit)
-        .collect();
-    let res: Result<Vec<String>, _> = pks.iter().map(|v| String::from_utf8(v.to_vec())).collect();
-    let keys = res.map_err(StdError::invalid_utf8)?;
+        .collect::<Result<Vec<String>, StdError>>()?;
     let mut offer_responses: Vec<OfferResponse> = vec![];
     for key in keys.iter() {
         offer_responses.push(offers().load(deps.storage, key)?.into());

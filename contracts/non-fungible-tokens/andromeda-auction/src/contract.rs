@@ -17,7 +17,6 @@ use cosmwasm_std::{
     WasmQuery,
 };
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
-use cw_storage_plus::U128Key;
 
 #[entry_point]
 pub fn instantiate(
@@ -148,13 +147,13 @@ fn execute_start_auction(
     )?;
 
     let auction_id = get_and_increment_next_auction_id(deps.storage, &token_id, &token_address)?;
-    BIDS.save(deps.storage, U128Key::new(auction_id.u128()), &vec![])?;
+    BIDS.save(deps.storage, auction_id.u128(), &vec![])?;
 
     let whitelist_str = format!("{:?}", &whitelist);
 
     TOKEN_AUCTION_STATE.save(
         deps.storage,
-        U128Key::new(auction_id.u128()),
+        auction_id.u128(),
         &TokenAuctionState {
             start_time,
             end_time,
@@ -227,7 +226,7 @@ fn execute_update_auction(
     token_auction_state.coin_denom = coin_denom.clone();
     TOKEN_AUCTION_STATE.save(
         deps.storage,
-        U128Key::new(token_auction_state.auction_id.u128()),
+        token_auction_state.auction_id.u128(),
         &token_auction_state,
     )?;
     Ok(Response::new().add_attributes(vec![
@@ -316,9 +315,9 @@ fn execute_place_bid(
     token_auction_state.high_bidder_addr = info.sender.clone();
     token_auction_state.high_bidder_amount = payment.amount;
 
-    let key = U128Key::new(token_auction_state.auction_id.u128());
-    TOKEN_AUCTION_STATE.save(deps.storage, key.clone(), &token_auction_state)?;
-    let mut bids_for_auction = BIDS.load(deps.storage, key.clone())?;
+    let key = token_auction_state.auction_id.u128();
+    TOKEN_AUCTION_STATE.save(deps.storage, key, &token_auction_state)?;
+    let mut bids_for_auction = BIDS.load(deps.storage, key)?;
     bids_for_auction.push(Bid {
         bidder: info.sender.to_string(),
         amount: payment.amount,
@@ -373,7 +372,7 @@ fn execute_cancel(
     token_auction_state.is_cancelled = true;
     TOKEN_AUCTION_STATE.save(
         deps.storage,
-        U128Key::new(token_auction_state.auction_id.u128()),
+        token_auction_state.auction_id.u128(),
         &token_auction_state,
     )?;
 
@@ -461,8 +460,7 @@ fn get_existing_token_auction_state(
         None => return Err(ContractError::AuctionDoesNotExist {}),
         Some(auction_info) => *auction_info.last().unwrap(),
     };
-    let token_auction_state =
-        TOKEN_AUCTION_STATE.load(storage, U128Key::new(latest_auction_id.u128()))?;
+    let token_auction_state = TOKEN_AUCTION_STATE.load(storage, latest_auction_id.u128())?;
 
     Ok(token_auction_state)
 }
@@ -566,7 +564,7 @@ fn query_bids(
 ) -> Result<BidsResponse, ContractError> {
     let bids = read_bids(
         deps.storage,
-        U128Key::new(auction_id.u128()),
+        auction_id.u128(),
         start_after,
         limit,
         order_by,
@@ -591,8 +589,7 @@ fn query_auction_state(
     deps: Deps,
     auction_id: Uint128,
 ) -> Result<AuctionStateResponse, ContractError> {
-    let token_auction_state =
-        TOKEN_AUCTION_STATE.load(deps.storage, U128Key::new(auction_id.u128()))?;
+    let token_auction_state = TOKEN_AUCTION_STATE.load(deps.storage, auction_id.u128())?;
     Ok(token_auction_state.into())
 }
 
@@ -666,9 +663,7 @@ mod tests {
                 token_address: MOCK_TOKEN_ADDR.to_owned(),
                 is_cancelled: false,
             },
-            TOKEN_AUCTION_STATE
-                .load(deps.storage, U128Key::new(1u128))
-                .unwrap()
+            TOKEN_AUCTION_STATE.load(deps.storage, 1u128).unwrap()
         );
 
         assert_eq!(
@@ -689,7 +684,7 @@ mod tests {
     #[test]
     fn test_auction_instantiate() {
         let owner = "creator";
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {};
@@ -1497,7 +1492,7 @@ mod tests {
                 is_cancelled: false,
             },
             TOKEN_AUCTION_STATE
-                .load(deps.as_ref().storage, U128Key::new(1u128))
+                .load(deps.as_ref().storage, 1u128)
                 .unwrap()
         );
     }
@@ -1739,7 +1734,7 @@ mod tests {
 
         assert!(
             TOKEN_AUCTION_STATE
-                .load(deps.as_ref().storage, U128Key::new(1u128))
+                .load(deps.as_ref().storage, 1u128)
                 .unwrap()
                 .is_cancelled
         );
@@ -1793,7 +1788,7 @@ mod tests {
 
         assert!(
             TOKEN_AUCTION_STATE
-                .load(deps.as_ref().storage, U128Key::new(1u128))
+                .load(deps.as_ref().storage, 1u128)
                 .unwrap()
                 .is_cancelled
         );

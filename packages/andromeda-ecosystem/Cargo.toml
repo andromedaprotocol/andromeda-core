@@ -11,14 +11,14 @@ backtraces = ["cosmwasm-std/backtraces"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = { version = "0.16.7" }
+cosmwasm-std = "1.0.0"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 schemars = "0.8.3"
-mirror-protocol = "2.1.1"
-astroport = "1.0.1"
-cw20 = { version = "0.9.1" }
-cosmwasm-bignumber = "2.2.0"
-cw-storage-plus = "0.9.1"
+#mirror-protocol = "2.1.1"
+#astroport = "1.0.1"
+cw20 = "0.13.2"
+#cosmwasm-bignumber = "2.2.0"
+cw-storage-plus = "0.13.2"
 
 common = { path = "../common", version = "0.1.0" }
-cw-asset = { version = "1.0.2" }
+cw-asset = { version = "2.0.0" }

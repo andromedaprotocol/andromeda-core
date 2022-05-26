@@ -17,8 +17,8 @@ use common::{
 };
 
 use crate::state::{
-    batches, get_all_batches_with_ids, get_claimable_batches_with_ids, key_to_int, save_new_batch,
-    Batch, Config, CONFIG,
+    batches, get_all_batches_with_ids, get_claimable_batches_with_ids, save_new_batch, Batch,
+    Config, CONFIG,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
@@ -84,11 +84,9 @@ pub fn execute(
             number_of_claims,
             batch_id,
         } => execute_claim(deps, env, info, number_of_claims, batch_id),
-        ExecuteMsg::ClaimAll {
-            start_after,
-            limit,
-            up_to_time,
-        } => execute_claim_all(deps, env, info, start_after, limit, up_to_time),
+        ExecuteMsg::ClaimAll { limit, up_to_time } => {
+            execute_claim_all(deps, env, info, limit, up_to_time)
+        }
         ExecuteMsg::Delegate { amount, validator } => {
             execute_delegate(deps, env, info, amount, validator)
         }
@@ -197,7 +195,7 @@ fn execute_claim(
     let config = CONFIG.load(deps.storage)?;
 
     // If it doesn't exist, error will be returned to user.
-    let key = batches().key(batch_id.into());
+    let key = batches().key(batch_id);
     let mut batch = key.load(deps.storage)?;
     let amount_to_send = claim_batch(&deps.querier, &env, &mut batch, &config, number_of_claims)?;
 
@@ -229,7 +227,6 @@ fn execute_claim_all(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    start_after: Option<u64>,
     limit: Option<u32>,
     up_to_time: Option<u64>,
 ) -> Result<Response, ContractError> {
@@ -243,13 +240,12 @@ fn execute_claim_all(
     let config = CONFIG.load(deps.storage)?;
 
     let current_time = env.block.time.seconds();
-    let batches_with_ids =
-        get_claimable_batches_with_ids(deps.storage, current_time, start_after, limit)?;
+    let batches_with_ids = get_claimable_batches_with_ids(deps.storage, current_time, limit)?;
     let up_to_time = cmp::min(current_time, up_to_time.unwrap_or(current_time));
 
     let mut total_amount_to_send = Uint128::zero();
     let last_batch_id = if !batches_with_ids.is_empty() {
-        key_to_int(&batches_with_ids.last().unwrap().0)?.to_string()
+        batches_with_ids.last().unwrap().0.to_string()
     } else {
         "none".to_string()
     };
@@ -429,7 +425,7 @@ fn query_config(deps: Deps) -> Result<Config, ContractError> {
 }
 
 fn query_batch(deps: Deps, env: Env, batch_id: u64) -> Result<BatchResponse, ContractError> {
-    let batch = batches().load(deps.storage, batch_id.into())?;
+    let batch = batches().load(deps.storage, batch_id)?;
 
     let config = CONFIG.load(deps.storage)?;
     get_batch_response(&deps.querier, &env, &config, batch, batch_id)
@@ -445,7 +441,6 @@ fn query_batches(
     let mut batches_response = vec![];
     let config = CONFIG.load(deps.storage)?;
     for (id, batch) in batches_with_ids {
-        let id = key_to_int(&id)?;
         let batch_response = get_batch_response(&deps.querier, &env, &config, batch, id)?;
 
         batches_response.push(batch_response);

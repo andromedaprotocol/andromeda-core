@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn proper_initialization() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn set_and_update_value_with_key() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn set_and_update_value_without_key() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     fn cannot_set_nested_vector_primitive() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
@@ -314,7 +314,7 @@ mod tests {
 
     #[test]
     fn delete_value_with_key() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
@@ -356,7 +356,7 @@ mod tests {
 
     #[test]
     fn delete_value_without_key() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
@@ -395,7 +395,7 @@ mod tests {
 
     #[test]
     fn non_creator_cannot_set_value() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
@@ -414,7 +414,7 @@ mod tests {
 
     #[test]
     fn non_creator_cannot_delete_value() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);
@@ -436,7 +436,7 @@ mod tests {
 
     #[test]
     fn test_execute_receive() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { operators: vec![] };
         let info = mock_info("creator", &[]);

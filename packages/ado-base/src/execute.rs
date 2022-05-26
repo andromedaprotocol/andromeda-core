@@ -149,13 +149,12 @@ impl<'a> ADOContract<'a> {
             ContractError::Unauthorized {},
         )?;
 
-        let keys: Vec<Vec<u8>> = self
+        let keys: Vec<String> = self
             .operators
             .keys(deps.storage, None, None, Order::Ascending)
-            .collect();
+            .collect::<Result<Vec<String>, _>>()?;
         for key in keys.iter() {
-            self.operators
-                .remove(deps.storage, &String::from_utf8(key.clone())?);
+            self.operators.remove(deps.storage, key);
         }
 
         for op in operators.iter() {
@@ -308,7 +307,7 @@ mod tests {
     #[test]
     fn test_update_app_contract() {
         let contract = ADOContract::default();
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let info = mock_info("owner", &[]);
         let deps_mut = deps.as_mut();

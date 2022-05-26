@@ -1,4 +1,3 @@
-use cosmwasm_bignumber::{Decimal256, Uint256};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -338,15 +337,10 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
             // Since we call `update_rewards` first, this entry will always exist.
             let mut staker_reward_info =
                 STAKER_REWARD_INFOS.load(deps.storage, (sender, &token_string))?;
-            let rewards: Uint128 =
-                Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128);
-
-            let decimals: Decimal256 = staker_reward_info.pending_rewards
-                - Decimal256::from_uint256(Uint256::from(rewards));
+            let rewards: Uint128 = staker_reward_info.pending_rewards * Uint128::from(1u128);
 
             if !rewards.is_zero() {
-                // Reduce pending rewards for staker to what is left over after rounding.
-                staker_reward_info.pending_rewards = decimals;
+                staker_reward_info.pending_rewards = Decimal::zero();
 
                 STAKER_REWARD_INFOS.save(
                     deps.storage,
@@ -442,8 +436,7 @@ fn update_global_index(
     let deposited_amount =
         reward_balance.checked_sub(global_reward_info.previous_reward_balance)?;
 
-    global_reward_info.index +=
-        Decimal256::from(Decimal::from_ratio(deposited_amount, state.total_share));
+    global_reward_info.index += Decimal::from_ratio(deposited_amount, state.total_share);
 
     global_reward_info.previous_reward_balance = reward_balance;
 
@@ -479,7 +472,7 @@ fn get_global_reward_infos(
         .range(storage, None, None, Order::Ascending)
         .map(|v| {
             let (token, reward_infos) = v?;
-            Ok((String::from_utf8(token)?, reward_infos))
+            Ok((token, reward_infos))
         })
         .collect()
 }
@@ -495,11 +488,11 @@ fn get_updated_staker_reward_info(
         .may_load(storage, (staker_address, token))?
         .unwrap_or_default();
 
-    let staker_share = Uint256::from(staker.share);
+    let staker_share = staker.share;
     let rewards = (global_reward_info.index - staker_reward_info.index) * staker_share;
 
     staker_reward_info.index = global_reward_info.index;
-    staker_reward_info.pending_rewards += Decimal256::from_uint256(rewards);
+    staker_reward_info.pending_rewards += Decimal::from_ratio(rewards, Uint128::new(1));
 
     Ok(staker_reward_info)
 }
@@ -549,7 +542,7 @@ pub(crate) fn get_pending_rewards(
             get_updated_staker_reward_info(storage, address, staker, &token, global_reward_info)?;
         pending_rewards.push((
             token,
-            Decimal::from(staker_reward_info.pending_rewards) * Uint128::from(1u128),
+            staker_reward_info.pending_rewards * Uint128::from(1u128),
         ))
     }
     Ok(pending_rewards)

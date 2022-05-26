@@ -42,7 +42,7 @@ mod tests {
 
     #[test]
     fn test_get_address_not_app() {
-        let deps = mock_dependencies(&[]);
+        let deps = mock_dependencies();
         let andr_address = AndrAddress {
             identifier: "address".to_string(),
         };
