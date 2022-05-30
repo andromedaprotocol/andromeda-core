@@ -171,7 +171,7 @@ fn execute_transfer(
     )?;
 
     let tax_amount = if let Some(agreement) =
-        &TRANSFER_AGREEMENTS.may_load(deps.storage, token_id.clone())?
+        &TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?
     {
         let app_contract = base_contract.get_app_contract(deps.storage)?;
         let agreement_amount =
@@ -244,7 +244,7 @@ fn check_can_send(
     }
 
     // token purchaser can send if correct funds are sent
-    if let Some(agreement) = &TRANSFER_AGREEMENTS.may_load(deps.storage, token_id.to_string())? {
+    if let Some(agreement) = &TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)? {
         let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
         let agreement_amount =
             get_transfer_agreement_amount(deps.api, &deps.querier, app_contract, agreement)?;
@@ -304,12 +304,12 @@ fn execute_update_transfer_agreement(
         ContractError::TokenIsArchived {},
     )?;
     if let Some(xfer_agreement) = &agreement {
-        TRANSFER_AGREEMENTS.save(deps.storage, token_id.to_string(), xfer_agreement)?;
+        TRANSFER_AGREEMENTS.save(deps.storage, &token_id, xfer_agreement)?;
         if xfer_agreement.purchaser != "*" {
             deps.api.addr_validate(&xfer_agreement.purchaser)?;
         }
     } else {
-        TRANSFER_AGREEMENTS.remove(deps.storage, token_id.to_string());
+        TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     }
 
     contract
@@ -333,11 +333,11 @@ fn execute_archive(
     let token = contract.tokens.load(deps.storage, &token_id)?;
     require(token.owner == info.sender, ContractError::Unauthorized {})?;
 
-    ARCHIVED.save(deps.storage, token_id.clone(), &true)?;
+    ARCHIVED.save(deps.storage, &token_id, &true)?;
 
     contract
         .tokens
-        .save(deps.storage, token_id.as_str(), &token)?;
+        .save(deps.storage, &token_id, &token)?;
 
     Ok(Response::default())
 }
@@ -385,7 +385,7 @@ pub fn query_transfer_agreement(
     deps: Deps,
     token_id: String,
 ) -> Result<Option<TransferAgreement>, ContractError> {
-    Ok(TRANSFER_AGREEMENTS.may_load(deps.storage, token_id)?)
+    Ok(TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?)
 }
 
 fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
