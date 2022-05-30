@@ -244,7 +244,7 @@ fn check_can_send(
     }
 
     // token purchaser can send if correct funds are sent
-    if let Some(agreement) = &TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)? {
+    if let Some(agreement) = &TRANSFER_AGREEMENTS.may_load(deps.storage, token_id)? {
         let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
         let agreement_amount =
             get_transfer_agreement_amount(deps.api, &deps.querier, app_contract, agreement)?;
@@ -335,9 +335,7 @@ fn execute_archive(
 
     ARCHIVED.save(deps.storage, &token_id, &true)?;
 
-    contract
-        .tokens
-        .save(deps.storage, &token_id, &token)?;
+    contract.tokens.save(deps.storage, &token_id, &token)?;
 
     Ok(Response::default())
 }

@@ -1,4 +1,6 @@
-use crate::state::{offers, query_is_archived, query_transfer_agreement, CW721_CONTRACT, VALID_DENOMS};
+use crate::state::{
+    offers, query_is_archived, query_transfer_agreement, CW721_CONTRACT, VALID_DENOMS,
+};
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::{
     cw721::QueryMsg as Cw721QueryMsg,

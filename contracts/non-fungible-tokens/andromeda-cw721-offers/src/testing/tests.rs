@@ -180,7 +180,12 @@ fn test_place_offer_invalid_denom() {
     };
     let info = mock_info(&purchaser, &coins(100u128, "uluna"));
     let res = execute(deps.as_mut(), env, info, msg);
-    assert_eq!(ContractError::InvalidFunds { msg: "Invalid offer denom".to_string() }, res.unwrap_err());
+    assert_eq!(
+        ContractError::InvalidFunds {
+            msg: "Invalid offer denom".to_string()
+        },
+        res.unwrap_err()
+    );
 }
 
 #[test]
