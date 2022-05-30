@@ -1,4 +1,4 @@
-use crate::state::{offers, query_is_archived, query_transfer_agreement, CW721_CONTRACT};
+use crate::state::{offers, query_is_archived, query_transfer_agreement, CW721_CONTRACT, VALID_DENOMS};
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::{
     cw721::QueryMsg as Cw721QueryMsg,
@@ -40,6 +40,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CW721_CONTRACT.save(deps.storage, &msg.andromeda_cw721_contract)?;
+    VALID_DENOMS.save(deps.storage, &msg.valid_demoms)?;
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -112,11 +113,11 @@ fn execute_place_offer(
         },
     )?;
     let coin: &Coin = &info.funds[0];
+    let valid_denoms = VALID_DENOMS.load(deps.storage)?;
     require(
-        // TODO: Add support for other denoms later.
-        coin.denom == "uusd" || coin.denom == "ujunox",
+        valid_denoms.contains(&coin.denom),
         ContractError::InvalidFunds {
-            msg: "Only offers in uusd are allowed".to_string(),
+            msg: "Invalid offer denom".to_string(),
         },
     )?;
     let mut msgs: Vec<SubMsg> = vec![];

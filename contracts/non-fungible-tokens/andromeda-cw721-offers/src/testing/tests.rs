@@ -21,6 +21,7 @@ fn init(deps: DepsMut, info: MessageInfo) -> Result<(), ContractError> {
         mock_env(),
         info,
         InstantiateMsg {
+            valid_demoms: vec!["uusd".to_string(), "ujuno".to_string()],
             andromeda_cw721_contract: MOCK_CW721_CONTRACT.to_owned(),
         },
     )
@@ -158,6 +159,28 @@ fn test_place_offer_expired() {
     let info = mock_info(&purchaser, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::Expired {}, res.unwrap_err());
+}
+
+#[test]
+fn test_place_offer_invalid_denom() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let token_id = String::from("offer_token");
+    let creator = String::from("creator");
+    let purchaser = String::from("purchaser");
+    let mut env = mock_env();
+    env.block.height = 1;
+
+    let info = mock_info(&creator, &[]);
+    init(deps.as_mut(), info).unwrap();
+
+    let msg = ExecuteMsg::PlaceOffer {
+        token_id,
+        expiration: Expiration::AtHeight(1000),
+        offer_amount: 100u128.into(),
+    };
+    let info = mock_info(&purchaser, &coins(100u128, "uluna"));
+    let res = execute(deps.as_mut(), env, info, msg);
+    assert_eq!(ContractError::InvalidFunds { msg: "Invalid offer denom".to_string() }, res.unwrap_err());
 }
 
 #[test]

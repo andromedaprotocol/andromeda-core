@@ -8,6 +8,7 @@ use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub const CW721_CONTRACT: Item<String> = Item::new("cw721_contract");
+pub const VALID_DENOMS: Item<Vec<String>> = Item::new("valid_denoms");
 
 pub struct OfferIndexes<'a> {
     /// (purchaser, token_id))
