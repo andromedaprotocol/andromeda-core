@@ -7,6 +7,7 @@ pub mod ownership;
 pub mod receipt;
 pub mod response;
 pub mod splitter;
+pub mod weighted_distribution_splitter;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing;
