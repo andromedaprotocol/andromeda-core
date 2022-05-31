@@ -62,6 +62,8 @@ pub enum QueryMsg {
     GetSplitterConfig {},
     /// The current contract owner.
     ContractOwner {},
+    /// A specific user's weight
+    GetUserWeight { user: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
@@ -71,15 +73,21 @@ pub struct GetSplitterConfigResponse {
     pub address_list_contract: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+pub struct GetUserWeightResponse {
+    pub weight: u16,
+}
 /// Ensures that a given list of recipients for a `splitter` contract is valid:
 ///
 /// * Must include at least one recipient
 /// * Currently there's no limit on weights, but will make them u16s for now to avoid absurd numbers
+
 pub fn validate_recipient_list(recipients: Vec<AddressWeight>) -> StdResult<bool> {
     require(
         recipients.len() > 0,
         StdError::generic_err("The recipients list must include at least one recipient"),
     )?;
+    // We rid the list of addresses from any duplicates.
 
     Ok(true)
 }

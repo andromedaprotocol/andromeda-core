@@ -8,16 +8,15 @@ use andromeda_protocol::{
     },
     ownership::{execute_update_owner, is_contract_owner, query_contract_owner, CONTRACT_OWNER},
     require,
-    weighted_distribution_splitter::GetSplitterConfigResponse,
     weighted_distribution_splitter::{
-        validate_recipient_list, AddressWeight, ExecuteMsg, InstantiateMsg, QueryMsg, Splitter,
+        validate_recipient_list, AddressWeight, ExecuteMsg, GetSplitterConfigResponse,
+        GetUserWeightResponse, InstantiateMsg, QueryMsg, Splitter,
     },
 };
 use cosmwasm_std::{
     attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128,
 };
-// use std::collections::HashMap;
 
 #[entry_point]
 pub fn instantiate(
@@ -95,18 +94,16 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
     let mut submsg: Vec<SubMsg> = Vec::new();
 
     let mut remainder_funds = info.funds.clone();
+
     // Set total weight as a u32 to avoid overflow
     let mut total_weight: u32 = 0;
-    // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS.
-    // Would like to understand more about why we loop through funds and what it exactly stored in it.
-    // From there we could look into HashMaps, or other methods to break the nested loops and avoid Denial of Service.
 
     // Calculate the total weight
     for recipient_addr in &splitter.recipients {
         let recipient_weight = recipient_addr.weight;
         total_weight += recipient_weight as u32;
     }
-
+    // A specific user's funds are determined by dividing his respective weight over the total weight
     for recipient_addr in &splitter.recipients {
         let recipient_weight = recipient_addr.weight;
         let mut vec_coin: Vec<Coin> = Vec::new();
@@ -125,12 +122,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
         .into_iter()
         .filter(|x| x.amount > Uint128::from(0u128))
         .collect();
-    // Who is the sender of this function?
-    // Why does the remaining funds go the the sender of the executor of the splitter?
-    // Is it considered tax(fee) or mistake?
-    // Discussion around caller of splitter function in andromeda_splitter smart contract.
-    // From tests, it looks like owner of smart contract (Andromeda) will recieve the rest of funds.
-    // If so, should be documented
+
     if remainder_funds.len() > 0 {
         submsg.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
@@ -217,6 +209,25 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetSplitterConfig {} => to_binary(&query_splitter(deps)?),
         QueryMsg::ContractOwner {} => to_binary(&query_contract_owner(deps)?),
+        QueryMsg::GetUserWeight { user } => to_binary(&query_user_weight(deps, user)?),
+    }
+}
+
+fn query_user_weight(deps: Deps, user: String) -> StdResult<GetUserWeightResponse> {
+    let splitter = SPLITTER.load(deps.storage)?;
+    let recipients = splitter.recipients;
+
+    // Check if the user exists in the list. If it exists, extract the weight.
+    let input: Vec<AddressWeight> = recipients
+        .into_iter()
+        .filter(|x| x.addr.contains(&user))
+        .collect();
+    if input.is_empty() {
+        return Ok(GetUserWeightResponse { weight: 0 });
+    } else {
+        let weight: Vec<u16> = input.into_iter().map(|x| x.weight).collect();
+        // There should be only one element at index 0
+        Ok(GetUserWeightResponse { weight: weight[0] })
     }
 }
 
@@ -232,6 +243,7 @@ fn query_splitter(deps: Deps) -> StdResult<GetSplitterConfigResponse> {
         address_list_contract,
     })
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -514,6 +526,42 @@ mod tests {
             val.address_list_contract.unwrap(),
             splitter.address_list.unwrap().address.unwrap()
         );
+    }
+
+    #[test]
+    fn test_query_user_weight() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+        let user1 = AddressWeight {
+            addr: "first".to_string(),
+            weight: 5,
+        };
+        let user2 = AddressWeight {
+            addr: "second".to_string(),
+            weight: 10,
+        };
+        let splitter = Splitter {
+            recipients: vec![user1, user2],
+            locked: false,
+            address_list: Some(AddressListModule {
+                address: Some(String::from("somecontractaddress")),
+                code_id: None,
+                moderators: None,
+                inclusive: false,
+            }),
+        };
+
+        SPLITTER
+            .save(deps.as_mut().storage, &splitter.clone())
+            .unwrap();
+
+        let query_msg = QueryMsg::GetUserWeight {
+            user: "second".to_string(),
+        };
+        let res = query(deps.as_ref(), env, query_msg).unwrap();
+        let val: GetUserWeightResponse = from_binary(&res).unwrap();
+
+        assert_eq!(val.weight, 10);
     }
 
     #[test]
