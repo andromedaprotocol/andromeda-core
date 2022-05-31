@@ -1332,6 +1332,106 @@ fn test_delegate_more_than_balance() {
 }
 
 #[test]
+fn test_redelegate_unauthorized() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("not_owner", &[]);
+
+    let msg = ExecuteMsg::Redelegate {
+        amount: None,
+        from: DEFAULT_VALIDATOR.to_string(),
+        to: "other_validator".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_redelegate_no_funds() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    let msg = ExecuteMsg::Redelegate {
+        amount: None,
+        from: DEFAULT_VALIDATOR.to_string(),
+        to: "other_validator".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::InvalidZeroAmount {}, res.unwrap_err());
+}
+
+#[test]
+fn test_redelegate() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    set_delegation(&mut deps.querier, 100, "uusd");
+
+    let msg = ExecuteMsg::Redelegate {
+        amount: None,
+        from: DEFAULT_VALIDATOR.to_string(),
+        to: "other_validator".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Staking(StakingMsg::Redelegate {
+                src_validator: DEFAULT_VALIDATOR.to_owned(),
+                dst_validator: "other_validator".to_string(),
+                amount: coin(100, "uusd")
+            }))
+            .add_attribute("action", "redelegate")
+            .add_attribute("from", DEFAULT_VALIDATOR)
+            .add_attribute("to", "other_validator")
+            .add_attribute("amount", "100"),
+        res
+    );
+}
+
+#[test]
+fn test_redelegate_more_than_max() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    set_delegation(&mut deps.querier, 100, "uusd");
+
+    let msg = ExecuteMsg::Redelegate {
+        amount: Some(Uint128::new(200)),
+        from: DEFAULT_VALIDATOR.to_string(),
+        to: "other_validator".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Staking(StakingMsg::Redelegate {
+                src_validator: DEFAULT_VALIDATOR.to_owned(),
+                dst_validator: "other_validator".to_string(),
+                amount: coin(100, "uusd")
+            }))
+            .add_attribute("action", "redelegate")
+            .add_attribute("from", DEFAULT_VALIDATOR)
+            .add_attribute("to", "other_validator")
+            .add_attribute("amount", "100"),
+        res
+    );
+}
+
+#[test]
 fn test_undelegate_unauthorized() {
     let mut deps = mock_dependencies();
     init(deps.as_mut());

@@ -90,6 +90,9 @@ pub fn execute(
         ExecuteMsg::Delegate { amount, validator } => {
             execute_delegate(deps, env, info, amount, validator)
         }
+        ExecuteMsg::Redelegate { amount, from, to } => {
+            execute_redelegate(deps, env, info, amount, from, to)
+        }
         ExecuteMsg::Undelegate { amount, validator } => {
             execute_undelegate(deps, env, info, amount, validator)
         }
@@ -317,6 +320,45 @@ fn execute_delegate(
         .add_message(msg)
         .add_attribute("action", "delegate")
         .add_attribute("validator", validator)
+        .add_attribute("amount", amount))
+}
+
+fn execute_redelegate(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Option<Uint128>,
+    from: String,
+    to: String,
+) -> Result<Response, ContractError> {
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let config = CONFIG.load(deps.storage)?;
+    let max_amount = get_amount_delegated(
+        &deps.querier,
+        env.contract.address.to_string(),
+        from.clone(),
+    )?;
+    let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
+
+    require(!amount.is_zero(), ContractError::InvalidZeroAmount {})?;
+
+    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Redelegate {
+        src_validator: from.clone(),
+        dst_validator: to.clone(),
+        amount: Coin {
+            denom: config.denom,
+            amount,
+        },
+    });
+
+    Ok(Response::new()
+        .add_message(msg)
+        .add_attribute("action", "redelegate")
+        .add_attribute("from", from)
+        .add_attribute("to", to)
         .add_attribute("amount", amount))
 }
 
