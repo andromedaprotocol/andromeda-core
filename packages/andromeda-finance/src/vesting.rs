@@ -65,6 +65,8 @@ pub enum ExecuteMsg {
         amount: Option<Uint128>,
         validator: String,
     },
+    /// Withdraws rewards from all delegations to the sender.
+    WithdrawRewards {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

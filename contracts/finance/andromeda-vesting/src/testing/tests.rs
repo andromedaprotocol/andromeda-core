@@ -1,8 +1,8 @@
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR},
-    Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, FullDelegation, Response, StakingMsg,
-    Uint128, Validator,
+    Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, DistributionMsg, FullDelegation, Response,
+    StakingMsg, Uint128, Validator,
 };
 use cw_utils::Duration;
 
@@ -55,7 +55,7 @@ fn set_delegation(querier: &mut MockQuerier, amount: u128, denom: &str) {
         "ustake",
         &[sample_validator(DEFAULT_VALIDATOR)],
         &[sample_delegation(DEFAULT_VALIDATOR, coin(amount, denom))],
-    );
+    )
 }
 
 fn create_batch(
@@ -1519,6 +1519,72 @@ fn test_undelegate_more_than_max() {
             .add_attribute("action", "undelegate")
             .add_attribute("validator", DEFAULT_VALIDATOR)
             .add_attribute("amount", "100"),
+        res
+    );
+}
+
+#[test]
+fn test_withdraw_rewards_unauthorized() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("not_owner", &[]);
+
+    let msg = ExecuteMsg::WithdrawRewards {};
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_withdraw_rewards() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    let msg = ExecuteMsg::WithdrawRewards {};
+
+    deps.querier.update_staking(
+        "ustake",
+        &[
+            sample_validator("validator1"),
+            sample_validator("validator2"),
+            sample_validator("validator3"),
+        ],
+        &[
+            sample_delegation("validator1", coin(100, "ustake")),
+            sample_delegation("validator2", coin(100, "ustake")),
+            sample_delegation("validator3", coin(100, "ustake")),
+        ],
+    );
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "withdraw_rewards")
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::WithdrawDelegatorReward {
+                    validator: "validator1".to_string()
+                }
+            ))
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::WithdrawDelegatorReward {
+                    validator: "validator2".to_string()
+                }
+            ))
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::WithdrawDelegatorReward {
+                    validator: "validator3".to_string()
+                }
+            )),
         res
     );
 }

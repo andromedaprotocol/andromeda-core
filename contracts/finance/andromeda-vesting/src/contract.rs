@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StakingMsg,
-    Uint128,
+    Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, MessageInfo, QuerierWrapper,
+    Response, StakingMsg, Uint128,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;
@@ -96,6 +96,7 @@ pub fn execute(
         ExecuteMsg::Undelegate { amount, validator } => {
             execute_undelegate(deps, env, info, amount, validator)
         }
+        ExecuteMsg::WithdrawRewards {} => execute_withdraw_rewards(deps, env, info),
     }
 }
 
@@ -396,6 +397,35 @@ fn execute_undelegate(
         .add_attribute("action", "undelegate")
         .add_attribute("validator", validator)
         .add_attribute("amount", amount))
+}
+
+fn execute_withdraw_rewards(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
+        ContractError::Unauthorized {},
+    )?;
+    let set_address_msg: CosmosMsg =
+        CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { address: sender });
+    let withdraw_rewards_msgs: Vec<CosmosMsg> = deps
+        .querier
+        .query_all_delegations(env.contract.address)?
+        .into_iter()
+        .map(|d| {
+            CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
+                validator: d.validator,
+            })
+        })
+        .collect();
+
+    Ok(Response::new()
+        .add_attribute("action", "withdraw_rewards")
+        .add_message(set_address_msg)
+        .add_messages(withdraw_rewards_msgs))
 }
 
 fn claim_batch(
