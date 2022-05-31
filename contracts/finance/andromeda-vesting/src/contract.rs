@@ -298,8 +298,9 @@ fn execute_delegate(
     amount: Option<Uint128>,
     validator: String,
 ) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
     let config = CONFIG.load(deps.storage)?;
@@ -318,6 +319,7 @@ fn execute_delegate(
     });
 
     Ok(Response::new()
+        .add_message(get_set_withdraw_address_msg(sender))
         .add_message(msg)
         .add_attribute("action", "delegate")
         .add_attribute("validator", validator)
@@ -332,8 +334,9 @@ fn execute_redelegate(
     from: String,
     to: String,
 ) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
     let config = CONFIG.load(deps.storage)?;
@@ -356,6 +359,7 @@ fn execute_redelegate(
     });
 
     Ok(Response::new()
+        .add_message(get_set_withdraw_address_msg(sender))
         .add_message(msg)
         .add_attribute("action", "redelegate")
         .add_attribute("from", from)
@@ -370,8 +374,9 @@ fn execute_undelegate(
     amount: Option<Uint128>,
     validator: String,
 ) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
     let config = CONFIG.load(deps.storage)?;
@@ -393,6 +398,7 @@ fn execute_undelegate(
     });
 
     Ok(Response::new()
+        .add_message(get_set_withdraw_address_msg(sender))
         .add_message(msg)
         .add_attribute("action", "undelegate")
         .add_attribute("validator", validator)
@@ -409,8 +415,6 @@ fn execute_withdraw_rewards(
         ADOContract::default().is_contract_owner(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
-    let set_address_msg: CosmosMsg =
-        CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { address: sender });
     let withdraw_rewards_msgs: Vec<CosmosMsg> = deps
         .querier
         .query_all_delegations(env.contract.address)?
@@ -424,7 +428,7 @@ fn execute_withdraw_rewards(
 
     Ok(Response::new()
         .add_attribute("action", "withdraw_rewards")
-        .add_message(set_address_msg)
+        .add_message(get_set_withdraw_address_msg(sender))
         .add_messages(withdraw_rewards_msgs))
 }
 
@@ -477,6 +481,10 @@ fn get_amount_delegated(
         None => Ok(Uint128::zero()),
         Some(full_delegation) => Ok(full_delegation.amount.amount),
     }
+}
+
+fn get_set_withdraw_address_msg(address: String) -> CosmosMsg {
+    CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { address })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -331,6 +331,11 @@ fn test_create_batch_and_delegate() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Delegate {
                 validator: DEFAULT_VALIDATOR.to_string(),
                 amount: coin(100, "uusd")
@@ -1290,6 +1295,11 @@ fn test_delegate() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Delegate {
                 validator: DEFAULT_VALIDATOR.to_string(),
                 amount: coin(100, "uusd")
@@ -1320,6 +1330,11 @@ fn test_delegate_more_than_balance() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Delegate {
                 validator: DEFAULT_VALIDATOR.to_string(),
                 amount: coin(100, "uusd")
@@ -1386,6 +1401,11 @@ fn test_redelegate() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Redelegate {
                 src_validator: DEFAULT_VALIDATOR.to_owned(),
                 dst_validator: "other_validator".to_string(),
@@ -1418,6 +1438,11 @@ fn test_redelegate_more_than_max() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Redelegate {
                 src_validator: DEFAULT_VALIDATOR.to_owned(),
                 dst_validator: "other_validator".to_string(),
@@ -1483,6 +1508,11 @@ fn test_undelegate() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Undelegate {
                 validator: DEFAULT_VALIDATOR.to_owned(),
                 amount: coin(100, "uusd")
@@ -1512,6 +1542,11 @@ fn test_undelegate_more_than_max() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Undelegate {
                 validator: DEFAULT_VALIDATOR.to_owned(),
                 amount: coin(100, "uusd")
