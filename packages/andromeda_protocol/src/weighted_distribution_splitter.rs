@@ -40,6 +40,8 @@ impl InstantiateMsg {
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     UpdateRecipients { recipients: Vec<AddressWeight> },
+    /// Used to remove a specific user
+    RemoveRecipient { recipient: String },
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock { lock: bool },
     /// Update the optional address list module. Only executable by the contract owner when the contract is not locked.

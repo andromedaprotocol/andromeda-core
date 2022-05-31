@@ -60,6 +60,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::UpdateRecipients { recipients } => {
             execute_update_recipients(deps, info, recipients)
         }
+        ExecuteMsg::RemoveRecipient { recipient } => {
+            execute_remove_recipient(deps, info, recipient)
+        }
         ExecuteMsg::UpdateLock { lock } => execute_update_lock(deps, info, lock),
         ExecuteMsg::UpdateAddressList { address_list } => {
             execute_update_address_list(deps, info, env, address_list)
@@ -157,6 +160,40 @@ fn execute_update_recipients(
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
+}
+
+fn execute_remove_recipient(
+    deps: DepsMut,
+    info: MessageInfo,
+    recipient: String,
+) -> StdResult<Response> {
+    require(
+        is_contract_owner(deps.storage, info.sender.to_string())?,
+        StdError::generic_err("May only be used by the contract owner"),
+    )?;
+
+    let mut splitter = SPLITTER.load(deps.storage)?;
+    if splitter.locked == true {
+        StdError::generic_err("The splitter is currently locked");
+    }
+    let user_index = splitter
+        .recipients
+        .clone()
+        .into_iter()
+        .position(|x| x.addr == recipient);
+
+    if user_index.is_some() {
+        // is using unwrap safe since its use is predicated on user_index's existence?
+        // its also difficult to imagine going out of bounds.
+        // is a sudden change in the number of recipients while running this function possible?
+        splitter.recipients.swap_remove(user_index.unwrap());
+    } else {
+        StdError::generic_err("User not found");
+    };
+
+    SPLITTER.save(deps.storage, &splitter)?;
+
+    Ok(Response::default().add_attributes(vec![attr("action", "removed_recipient")]))
 }
 
 fn execute_update_lock(deps: DepsMut, info: MessageInfo, lock: bool) -> StdResult<Response> {
@@ -364,6 +401,93 @@ mod tests {
         let updated = SPLITTER.load(deps.as_mut().storage).unwrap();
 
         assert_eq!(updated.address_list.unwrap(), address_list);
+    }
+
+    #[test]
+    fn test_execute_remove_recipient() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
+
+        let owner = "creator";
+        let info = mock_info(owner.clone(), &[]);
+
+        let recipient = vec![
+            AddressWeight {
+                addr: "address1".to_string(),
+                weight: 40,
+            },
+            AddressWeight {
+                addr: "address2".to_string(),
+                weight: 60,
+            },
+        ];
+        let msg = ExecuteMsg::UpdateRecipients {
+            recipients: recipient.clone(),
+        };
+
+        //incorrect owner
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &String::from("incorrect_owner"))
+            .unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        match res {
+            Ok(_ret) => assert!(false),
+            _ => {}
+        }
+
+        CONTRACT_OWNER
+            .save(deps.as_mut().storage, &owner.to_string())
+            .unwrap();
+
+        let splitter = Splitter {
+            recipients: vec![],
+            locked: false,
+            address_list: None,
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(
+            Response::default().add_attributes(vec![attr("action", "update_recipients")]),
+            res
+        );
+
+        //check result
+        let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+        assert_eq!(splitter.recipients, recipient);
+
+        let user1 = AddressWeight {
+            addr: "first".to_string(),
+            weight: 5,
+        };
+        let user2 = AddressWeight {
+            addr: "second".to_string(),
+            weight: 10,
+        };
+
+        let splitter = Splitter {
+            recipients: vec![user1, user2],
+            locked: false,
+            address_list: None,
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let msg = ExecuteMsg::RemoveRecipient {
+            recipient: "second".to_string(),
+        };
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+        let splitter = SPLITTER.load(deps.as_mut().storage).unwrap();
+
+        assert_eq!(
+            Response::default().add_attributes(vec![attr("action", "removed_recipient")]),
+            res
+        );
+        assert_eq!(splitter.recipients.len(), 1);
+
+        assert_eq!("first".to_string(), splitter.recipients[0].addr);
     }
 
     #[test]
