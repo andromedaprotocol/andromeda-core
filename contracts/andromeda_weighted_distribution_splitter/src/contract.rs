@@ -13,10 +13,26 @@ use andromeda_protocol::{
         GetUserWeightResponse, InstantiateMsg, QueryMsg, Splitter,
     },
 };
+use common::{
+    ado_base::{
+        hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
+        InstantiateMsg as BaseInstantiateMsg,
+    },
+    app::AndrAddress,
+    encode_binary,
+    error::ContractError,
+    require,
+};
 use cosmwasm_std::{
     attr, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128,
 };
+
+use cw2::{get_contract_version, set_contract_version};
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda-weighted-distribution-splitter";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
 pub fn instantiate(
@@ -24,8 +40,10 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     msg.validate()?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let splitter = Splitter {
         recipients: msg.recipients,
