@@ -209,7 +209,7 @@ fn execute_remove_recipient(
     )?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
-    if splitter.locked == true {
+    if splitter.locked {
         StdError::generic_err("The splitter is currently locked");
     }
 
@@ -219,11 +219,8 @@ fn execute_remove_recipient(
         .into_iter()
         .position(|x| x.recipient == recipient);
 
-    if user_index.is_some() {
-        // is using unwrap safe since its use is predicated on user_index's existence?
-        // its also difficult to imagine going out of bounds.
-        // is a sudden change in the number of recipients while running this function possible?
-        splitter.recipients.swap_remove(user_index.unwrap());
+    if let Some(i) = user_index {
+        splitter.recipients.swap_remove(i);
     } else {
         StdError::generic_err("User not found");
     };
@@ -283,9 +280,9 @@ fn query_user_weight(deps: Deps, user: Recipient) -> Result<GetUserWeightRespons
 
     // Check if the address exists in the list. If it exists, extract the weight.
     if addrs.is_empty() {
-        return Ok(GetUserWeightResponse {
+        Ok(GetUserWeightResponse {
             weight: Uint128::new(0),
-        });
+        })
     } else {
         let weight = addrs[0].weight;
         // There should be only one element at index 0
