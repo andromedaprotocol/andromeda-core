@@ -413,13 +413,13 @@ mod tests {
             .unwrap();
 
         let info = mock_info("incorrect_owner", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        let res = execute(deps.as_mut(), env.clone(), info, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
         let info = mock_info(owner, &[]);
 
         let msg = ExecuteMsg::UpdateRecipients {
-            recipients: recipient.clone(),
+            recipients: recipient,
         };
 
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -532,18 +532,17 @@ mod tests {
         //incorrect owner
         let info = mock_info("incorrect_owner", &[]);
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        match res {
-            Ok(_ret) => assert!(false),
-            _ => {}
-        }
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        if let Ok(_ret) = res {
+            assert!(false)
+        };
 
         let splitter = Splitter {
             recipients: recipient,
             locked: false,
         };
 
-        let info = mock_info(owner.clone(), &vec![Coin::new(10000_u128, "uluna")]);
+        let info = mock_info(owner, &[Coin::new(10000_u128, "uluna")]);
         let deps_mut = deps.as_mut();
         ADOContract::default()
             .instantiate(
@@ -621,9 +620,7 @@ mod tests {
             locked: false,
         };
 
-        SPLITTER
-            .save(deps.as_mut().storage, &splitter.clone())
-            .unwrap();
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
         let query_msg = QueryMsg::GetUserWeight {
             user: Recipient::Addr("second".to_string()),
@@ -663,14 +660,13 @@ mod tests {
 
         //incorrect owner
         let info = mock_info("incorrect_owner", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        match res {
-            Ok(_ret) => assert!(false),
-            _ => {}
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        if let Ok(_ret) = res {
+            assert!(false)
         }
 
         let info = mock_info(
-            owner.clone(),
+            owner,
             &vec![
                 Coin::new(sender_funds_amount, "uluna"),
                 Coin::new(sender_funds_amount, "uluna"),
