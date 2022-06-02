@@ -529,14 +529,6 @@ mod tests {
         ];
         let msg = ExecuteMsg::Send {};
 
-        //incorrect owner
-        let info = mock_info("incorrect_owner", &[]);
-
-        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
-        if let Ok(_ret) = res {
-            assert!(false)
-        };
-
         let splitter = Splitter {
             recipients: recipient,
             locked: false,
@@ -633,7 +625,7 @@ mod tests {
 
     #[test]
     fn test_execute_send_error() {
-        //Executes send with more than 5 tokens [ACK-04]
+        //Send more than 5 coins
         let mut deps = mock_dependencies();
         let env = mock_env();
 
@@ -658,13 +650,6 @@ mod tests {
         ];
         let msg = ExecuteMsg::Send {};
 
-        //incorrect owner
-        let info = mock_info("incorrect_owner", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
-        if let Ok(_ret) = res {
-            assert!(false)
-        }
-
         let info = mock_info(
             owner,
             &vec![
@@ -677,6 +662,21 @@ mod tests {
             ],
         );
         let splitter = Splitter {
+            recipients: recipient.clone(),
+            locked: false,
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
+
+        let expected_res = ContractError::ExceedsMaxAllowedCoins {};
+
+        assert_eq!(res, expected_res);
+
+        // Send 0 coins
+        let info = mock_info(owner, &[]);
+        let splitter = Splitter {
             recipients: recipient,
             locked: false,
         };
@@ -685,7 +685,9 @@ mod tests {
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
-        let expected_res = ContractError::ExceedsMaxAllowedCoins {};
+        let expected_res = ContractError::InvalidFunds {
+            msg: "Require at least one coin to be sent".to_string(),
+        };
 
         assert_eq!(res, expected_res);
     }
