@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
-    BankMsg, Decimal, Response, StdError, Uint128,
+    BankMsg, Response, StdError, Uint128,
 };
 
 use crate::contract::{execute, instantiate};
@@ -42,7 +42,7 @@ fn test_modules() {
         .add_attribute("action", "register_module")
         .add_attribute("module_idx", "1")
         .add_attribute("method", "instantiate")
-        .add_attribute("type", "splitter");
+        .add_attribute("type", "weighted-splitter");
     assert_eq!(expected_res, res);
 
     let msg = ExecuteMsg::Send {};

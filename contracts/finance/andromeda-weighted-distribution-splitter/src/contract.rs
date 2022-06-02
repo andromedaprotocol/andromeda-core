@@ -422,7 +422,7 @@ mod tests {
             recipients: recipient.clone(),
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::RemoveRecipient {
             recipient: Recipient::from_string(String::from("addr2")),
@@ -509,7 +509,6 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
-        let sender_funds_amount = 10000_u128;
         let owner = "creator";
 
         let recip_address1 = "address1".to_string();
