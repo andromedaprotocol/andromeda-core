@@ -3,6 +3,84 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
+      "description": "Update the recipients list. Only executable by the contract owner when the contract is not locked.",
+      "type": "object",
+      "required": [
+        "update_recipients"
+      ],
+      "properties": {
+        "update_recipients": {
+          "type": "object",
+          "required": [
+            "recipients"
+          ],
+          "properties": {
+            "recipients": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AddressWeight"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_recipient"
+      ],
+      "properties": {
+        "remove_recipient": {
+          "type": "object",
+          "required": [
+            "recipient"
+          ],
+          "properties": {
+            "recipient": {
+              "$ref": "#/definitions/Recipient"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Used to lock/unlock the contract allowing the config to be updated.",
+      "type": "object",
+      "required": [
+        "update_lock"
+      ],
+      "properties": {
+        "update_lock": {
+          "type": "object",
+          "required": [
+            "lock"
+          ],
+          "properties": {
+            "lock": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Divides any attached funds to the message amongst the recipients list.",
+      "type": "object",
+      "required": [
+        "send"
+      ],
+      "properties": {
+        "send": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "type": "object",
       "required": [
         "andr_receive"
@@ -10,54 +88,6 @@
       "properties": {
         "andr_receive": {
           "$ref": "#/definitions/AndromedaMsg"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "If key is not specified the default key will be used.",
-      "type": "object",
-      "required": [
-        "set_value"
-      ],
-      "properties": {
-        "set_value": {
-          "type": "object",
-          "required": [
-            "value"
-          ],
-          "properties": {
-            "key": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "value": {
-              "$ref": "#/definitions/Primitive"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "If key is not specified the default key will be used.",
-      "type": "object",
-      "required": [
-        "delete_value"
-      ],
-      "properties": {
-        "delete_value": {
-          "type": "object",
-          "properties": {
-            "key": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          }
         }
       },
       "additionalProperties": false
@@ -88,6 +118,21 @@
               "type": "null"
             }
           ]
+        }
+      }
+    },
+    "AddressWeight": {
+      "type": "object",
+      "required": [
+        "recipient",
+        "weight"
+      ],
+      "properties": {
+        "recipient": {
+          "$ref": "#/definitions/Recipient"
+        },
+        "weight": {
+          "$ref": "#/definitions/Uint128"
         }
       }
     },
@@ -339,21 +384,6 @@
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
       "type": "string"
     },
-    "Coin": {
-      "type": "object",
-      "required": [
-        "amount",
-        "denom"
-      ],
-      "properties": {
-        "amount": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "denom": {
-          "type": "string"
-        }
-      }
-    },
     "Decimal": {
       "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
       "type": "string"
@@ -377,85 +407,6 @@
           "type": "string"
         }
       }
-    },
-    "Primitive": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "uint128"
-          ],
-          "properties": {
-            "uint128": {
-              "$ref": "#/definitions/Uint128"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "decimal"
-          ],
-          "properties": {
-            "decimal": {
-              "$ref": "#/definitions/Decimal"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "coin"
-          ],
-          "properties": {
-            "coin": {
-              "$ref": "#/definitions/Coin"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "string"
-          ],
-          "properties": {
-            "string": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "bool"
-          ],
-          "properties": {
-            "bool": {
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "vec"
-          ],
-          "properties": {
-            "vec": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Primitive"
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
     },
     "Recipient": {
       "oneOf": [

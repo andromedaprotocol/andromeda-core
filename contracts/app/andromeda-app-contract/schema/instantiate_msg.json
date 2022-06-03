@@ -3,16 +3,16 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "mission",
+    "app",
     "name",
     "operators",
     "primitive_contract"
   ],
   "properties": {
-    "mission": {
+    "app": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/MissionComponent"
+        "$ref": "#/definitions/AppComponent"
       }
     },
     "name": {
@@ -29,11 +29,7 @@
     }
   },
   "definitions": {
-    "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
-      "type": "string"
-    },
-    "MissionComponent": {
+    "AppComponent": {
       "type": "object",
       "required": [
         "ado_type",
@@ -51,6 +47,10 @@
           "type": "string"
         }
       }
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
     }
   }
 }
