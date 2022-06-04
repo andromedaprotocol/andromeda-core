@@ -76,10 +76,12 @@ pub enum QueryMsg {
 pub struct GetSplitterConfigResponse {
     pub config: Splitter,
 }
-
+/// In addition to returning a specific recipient's weight, this function also returns the total weight of all recipients.
+/// This serves to put the user's weight into perspective.
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 pub struct GetUserWeightResponse {
     pub weight: Uint128,
+    pub total_weight: Uint128,
 }
 
 /// Ensures that a given list of recipients for a `weighted-splitter` contract is valid:

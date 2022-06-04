@@ -131,7 +131,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         info.funds.len() < 5,
         ContractError::ExceedsMaxAllowedCoins {},
     )?;
-    let mut total_weight = Uint128::new(0);
+    let mut total_weight = Uint128::zero();
 
     // Calculate the total weight
     for recipient_addr in &splitter.recipients {
@@ -274,19 +274,31 @@ fn query_user_weight(deps: Deps, user: Recipient) -> Result<GetUserWeightRespons
     let recipients = splitter.recipients;
 
     let addrs: Vec<AddressWeight> = recipients
+        .clone()
         .into_iter()
         .filter(|x| x.recipient == user)
         .collect();
+
+    // Calculate the total weight
+    let mut total_weight = Uint128::zero();
+    for recipient_addr in &recipients {
+        let recipient_weight = recipient_addr.weight;
+        total_weight += recipient_weight;
+    }
 
     // Check if the address exists in the list. If it exists, extract the weight.
     if addrs.is_empty() {
         Ok(GetUserWeightResponse {
             weight: Uint128::new(0),
+            total_weight,
         })
     } else {
         let weight = addrs[0].weight;
         // There should be only one element at index 0
-        Ok(GetUserWeightResponse { weight })
+        Ok(GetUserWeightResponse {
+            weight,
+            total_weight,
+        })
     }
 }
 
@@ -621,6 +633,7 @@ mod tests {
         let val: GetUserWeightResponse = from_binary(&res).unwrap();
 
         assert_eq!(val.weight, Uint128::new(10));
+        assert_eq!(val.total_weight, Uint128::new(15));
     }
 
     #[test]
