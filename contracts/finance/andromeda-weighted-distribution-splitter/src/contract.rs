@@ -2,8 +2,8 @@ use crate::state::SPLITTER;
 
 use ado_base::ADOContract;
 use andromeda_finance::weighted_splitter::{
-    validate_recipient_list, AddressWeight, ExecuteMsg, GetSplitterConfigResponse,
-    GetUserWeightResponse, InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
+    AddressWeight, ExecuteMsg, GetSplitterConfigResponse, GetUserWeightResponse, InstantiateMsg,
+    MigrateMsg, QueryMsg, Splitter,
 };
 use common::{
     ado_base::{
@@ -18,7 +18,7 @@ use common::{
 
 use cosmwasm_std::{
     attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, SubMsg, Uint128,
+    SubMsg, Uint128,
 };
 
 use cw2::{get_contract_version, set_contract_version};
@@ -34,7 +34,10 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    msg.validate()?;
+    require(
+        !msg.recipients.is_empty(),
+        ContractError::EmptyRecipientsList {},
+    )?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let splitter = Splitter {
         recipients: msg.recipients,
@@ -124,15 +127,12 @@ pub fn execute_add_recipient(
 
     // Check for duplicate recipients
 
-    let user_index = splitter
+    let user = splitter
         .recipients
-        .clone()
-        .into_iter()
-        .position(|x| x.recipient == recipient.recipient);
+        .iter()
+        .any(|x| x.recipient == recipient.recipient);
 
-    // If the index exists, the recipient is a duplicate
-    // If the index doesn't exist, it's a new recipient and we may proceed
-    require(user_index == None, ContractError::DuplicateRecipient {})?;
+    require(!user, ContractError::DuplicateRecipient {})?;
 
     splitter.recipients.push(recipient);
     let new_splitter = Splitter {
@@ -157,17 +157,16 @@ pub fn execute_andromeda(
 }
 
 fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
-    let sent_funds: Vec<Coin> = info.funds.clone();
     // Amount of coins sent should be at least 1
     require(
-        !sent_funds.is_empty(),
+        !&info.funds.is_empty(),
         ContractError::InvalidFunds {
             msg: "Require at least one coin to be sent".to_string(),
         },
     )?;
     // Can't send more than 5 types of coins
     require(
-        info.funds.len() < 5,
+        &info.funds.len() < &5,
         ContractError::ExceedsMaxAllowedCoins {},
     )?;
 
@@ -189,7 +188,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
     for recipient_addr in &splitter.recipients {
         let recipient_weight = recipient_addr.weight;
         let mut vec_coin: Vec<Coin> = Vec::new();
-        for (i, coin) in sent_funds.iter().enumerate() {
+        for (i, coin) in info.funds.clone().into_iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
             recip_coin.amount = coin.amount.multiply_ratio(recipient_weight, total_weight);
             remainder_funds[i].amount -= recip_coin.amount;
@@ -237,12 +236,14 @@ fn execute_update_recipients(
         ContractError::FunctionDeclinesFunds {},
     )?;
 
-    validate_recipient_list(recipients.clone())?;
+    require(
+        !recipients.is_empty(),
+        ContractError::EmptyRecipientsList {},
+    )?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
-    if splitter.locked {
-        StdError::generic_err("The splitter is currently locked");
-    }
+
+    require(!splitter.locked, ContractError::ContractLocked {})?;
 
     splitter.recipients = recipients;
     SPLITTER.save(deps.storage, &splitter)?;
@@ -267,11 +268,10 @@ fn execute_remove_recipient(
     )?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
-    if splitter.locked {
-        StdError::generic_err("The splitter is currently locked");
-    }
 
-    //First method: Recipients are stored in a vector, we search for the desired recipient's index in the vector
+    require(!splitter.locked, ContractError::ContractLocked {})?;
+
+    // Recipients are stored in a vector, we search for the desired recipient's index in the vector
 
     let user_index = splitter
         .recipients
@@ -281,7 +281,7 @@ fn execute_remove_recipient(
 
     // If the index exists, remove the element found in the index
     // If the index doesn't exist, return an error
-    require(user_index != None, ContractError::UserNotFound {})?;
+    require(user_index.is_some(), ContractError::UserNotFound {})?;
 
     if let Some(i) = user_index {
         splitter.recipients.swap_remove(i);
@@ -291,22 +291,6 @@ fn execute_remove_recipient(
         };
         SPLITTER.save(deps.storage, &new_splitter)?;
     };
-
-    // // 2nd method: Filter out the recipient then create another splitter with the new recipients list
-    // let new_recipients: Vec<AddressWeight> = splitter
-    //     .recipients
-    //     .clone()
-    //     .into_iter()
-    //     .filter(|x| x.recipient != recipient)
-    //     .collect();
-    // // If the new vector has the same length as the old one, it means that the recipient wasn't found
-    // if new_recipients.len() == splitter.recipients.len() {
-    //     StdError::generic_err("User not found");
-    // }
-    // let new = Splitter {
-    //     recipients: new_recipients,
-    //     locked: splitter.locked,
-    // };
 
     Ok(Response::default().add_attributes(vec![attr("action", "removed_recipient")]))
 }
@@ -361,11 +345,7 @@ fn query_user_weight(deps: Deps, user: Recipient) -> Result<GetUserWeightRespons
     let splitter = SPLITTER.load(deps.storage)?;
     let recipients = splitter.recipients;
 
-    let addrs: Vec<AddressWeight> = recipients
-        .clone()
-        .into_iter()
-        .filter(|x| x.recipient == user)
-        .collect();
+    let addrs = recipients.iter().find(|&x| x.recipient == user);
 
     // Calculate the total weight
     let mut total_weight = Uint128::zero();
@@ -374,17 +354,15 @@ fn query_user_weight(deps: Deps, user: Recipient) -> Result<GetUserWeightRespons
         total_weight += recipient_weight;
     }
 
-    // Check if the address exists in the list. If it exists, extract the weight.
-    if addrs.is_empty() {
+    if let Some(i) = addrs {
+        let weight = i.weight;
         Ok(GetUserWeightResponse {
-            weight: Uint128::new(0),
+            weight,
             total_weight,
         })
     } else {
-        let weight = addrs[0].weight;
-        // There should be only one element at index 0
         Ok(GetUserWeightResponse {
-            weight,
+            weight: Uint128::zero(),
             total_weight,
         })
     }

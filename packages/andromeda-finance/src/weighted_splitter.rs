@@ -1,8 +1,4 @@
-use common::{
-    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
-    error::ContractError,
-    require,
-};
+use common::ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -28,13 +24,6 @@ pub struct InstantiateMsg {
     /// sent the amount sent will be divided amongst these recipients depending on their assigned weight.
     pub recipients: Vec<AddressWeight>,
     pub modules: Option<Vec<Module>>,
-}
-
-impl InstantiateMsg {
-    pub fn validate(&self) -> Result<bool, ContractError> {
-        validate_recipient_list(self.recipients.clone())?;
-        Ok(true)
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -87,42 +76,4 @@ pub struct GetSplitterConfigResponse {
 pub struct GetUserWeightResponse {
     pub weight: Uint128,
     pub total_weight: Uint128,
-}
-
-/// Ensures that a given list of recipients for a `weighted-splitter` contract is valid:
-///
-/// * Must include at least one recipient
-pub fn validate_recipient_list(recipients: Vec<AddressWeight>) -> Result<bool, ContractError> {
-    require(
-        !recipients.is_empty(),
-        ContractError::EmptyRecipientsList {},
-    )?;
-
-    Ok(true)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_validate_recipient_list() {
-        let empty_recipients = vec![];
-        let res = validate_recipient_list(empty_recipients).unwrap_err();
-        assert_eq!(res, ContractError::EmptyRecipientsList {});
-
-        let valid_recipients = vec![
-            AddressWeight {
-                recipient: Recipient::from_string(String::from("Some Address")),
-                weight: Uint128::new(50),
-            },
-            AddressWeight {
-                recipient: Recipient::from_string(String::from("Some Address")),
-                weight: Uint128::new(50),
-            },
-        ];
-
-        let res = validate_recipient_list(valid_recipients).unwrap();
-        assert!(res);
-    }
 }
