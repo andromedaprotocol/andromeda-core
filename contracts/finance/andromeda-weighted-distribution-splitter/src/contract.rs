@@ -115,11 +115,17 @@ pub fn execute_andromeda(
 
 fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let sent_funds: Vec<Coin> = info.funds.clone();
+    // Amount of coins sent should be at least 1
     require(
         !sent_funds.is_empty(),
         ContractError::InvalidFunds {
             msg: "Require at least one coin to be sent".to_string(),
         },
+    )?;
+    // Can't send more than 5 types of coins
+    require(
+        info.funds.len() < 5,
+        ContractError::ExceedsMaxAllowedCoins {},
     )?;
 
     let splitter = SPLITTER.load(deps.storage)?;
@@ -127,18 +133,16 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
 
     let mut remainder_funds = info.funds.clone();
 
-    require(
-        info.funds.len() < 5,
-        ContractError::ExceedsMaxAllowedCoins {},
-    )?;
     let mut total_weight = Uint128::zero();
 
-    // Calculate the total weight
+    // Calculate the total weight of all recipients
     for recipient_addr in &splitter.recipients {
         let recipient_weight = recipient_addr.weight;
         total_weight += recipient_weight;
     }
 
+    // Each recipient recieves the funds * (the recipient's weight / total weight of all recipients)
+    // The remaining funds go to the sender of the function
     for recipient_addr in &splitter.recipients {
         let recipient_weight = recipient_addr.weight;
         let mut vec_coin: Vec<Coin> = Vec::new();
@@ -213,19 +217,42 @@ fn execute_remove_recipient(
         StdError::generic_err("The splitter is currently locked");
     }
 
+    //First method: Recipients are stored in a vector, we search for the desired recipient's index in the vector
+
     let user_index = splitter
         .recipients
         .clone()
         .into_iter()
         .position(|x| x.recipient == recipient);
 
+    // If the index exists, remove the element found in the index
+    // If the index doesn't exist, return an error
     if let Some(i) = user_index {
         splitter.recipients.swap_remove(i);
+        let new_splitter = Splitter {
+            recipients: splitter.recipients,
+            locked: splitter.locked,
+        };
+        SPLITTER.save(deps.storage, &new_splitter)?;
     } else {
         StdError::generic_err("User not found");
     };
 
-    SPLITTER.save(deps.storage, &splitter)?;
+    // // 2nd method: Filter out the recipient then create another splitter with the new recipients list
+    // let new_recipients: Vec<AddressWeight> = splitter
+    //     .recipients
+    //     .clone()
+    //     .into_iter()
+    //     .filter(|x| x.recipient != recipient)
+    //     .collect();
+    // // If the new vector has the same length as the old one, it means that the recipient wasn't found
+    // if new_recipients.len() == splitter.recipients.len() {
+    //     StdError::generic_err("User not found");
+    // }
+    // let new = Splitter {
+    //     recipients: new_recipients,
+    //     locked: splitter.locked,
+    // };
 
     Ok(Response::default().add_attributes(vec![attr("action", "removed_recipient")]))
 }
@@ -397,17 +424,14 @@ mod tests {
                 recipient: Recipient::from_string(String::from("addr2")),
                 weight: Uint128::new(60),
             },
+            AddressWeight {
+                recipient: Recipient::from_string(String::from("addr3")),
+                weight: Uint128::new(50),
+            },
         ];
         let msg = ExecuteMsg::UpdateRecipients {
             recipients: recipient.clone(),
         };
-
-        let splitter = Splitter {
-            recipients: vec![],
-            locked: false,
-        };
-
-        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
         let deps_mut = deps.as_mut();
         ADOContract::default()
@@ -431,16 +455,37 @@ mod tests {
         let info = mock_info(owner, &[]);
 
         let msg = ExecuteMsg::UpdateRecipients {
-            recipients: recipient,
+            recipients: recipient.clone(),
         };
+        let splitter = Splitter {
+            recipients: recipient,
+            locked: false,
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg = ExecuteMsg::RemoveRecipient {
-            recipient: Recipient::from_string(String::from("addr2")),
+            recipient: Recipient::from_string(String::from("addr1")),
         };
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+        let expected_splitter = Splitter {
+            recipients: vec![
+                AddressWeight {
+                    recipient: Recipient::from_string(String::from("addr3")),
+                    weight: Uint128::new(50),
+                },
+                AddressWeight {
+                    recipient: Recipient::from_string(String::from("addr2")),
+                    weight: Uint128::new(60),
+                },
+            ],
+            locked: false,
+        };
+        assert_eq!(expected_splitter, splitter);
         assert_eq!(
             Response::default().add_attributes(vec![attr("action", "removed_recipient")]),
             res
@@ -451,10 +496,11 @@ mod tests {
         assert_eq!(
             splitter.recipients[0],
             AddressWeight {
-                recipient: Recipient::from_string(String::from("addr1")),
-                weight: Uint128::new(40),
+                recipient: Recipient::from_string(String::from("addr3")),
+                weight: Uint128::new(50),
             }
         );
+        assert_eq!(splitter.recipients.len(), 2);
     }
 
     #[test]
