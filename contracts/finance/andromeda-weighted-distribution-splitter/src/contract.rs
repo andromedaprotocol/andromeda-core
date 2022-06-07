@@ -91,6 +91,7 @@ pub fn execute(
         ExecuteMsg::UpdateRecipients { recipients } => {
             execute_update_recipients(deps, info, recipients)
         }
+        ExecuteMsg::AddRecipient { recipient } => execute_add_recipient(deps, info, recipient),
         ExecuteMsg::RemoveRecipient { recipient } => {
             execute_remove_recipient(deps, info, recipient)
         }
@@ -99,6 +100,48 @@ pub fn execute(
         ExecuteMsg::Send {} => execute_send(deps, info),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
     }
+}
+
+pub fn execute_add_recipient(
+    deps: DepsMut,
+    info: MessageInfo,
+    recipient: AddressWeight,
+) -> Result<Response, ContractError> {
+    // Only the contract's owner can add a recipient
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    // No need to send funds
+    require(
+        info.funds.is_empty(),
+        ContractError::FunctionDeclinesFunds {},
+    )?;
+    // Check if splitter is locked
+    let mut splitter = SPLITTER.load(deps.storage)?;
+
+    require(!splitter.locked, ContractError::ContractLocked {})?;
+
+    // Check for duplicate recipients
+
+    let user_index = splitter
+        .recipients
+        .clone()
+        .into_iter()
+        .position(|x| x.recipient == recipient.recipient);
+
+    // If the index exists, the recipient is a duplicate
+    // If the index doesn't exist, it's a new recipient and we may proceed
+    require(user_index == None, ContractError::DuplicateRecipient {})?;
+
+    splitter.recipients.push(recipient);
+    let new_splitter = Splitter {
+        recipients: splitter.recipients,
+        locked: splitter.locked,
+    };
+    SPLITTER.save(deps.storage, &new_splitter)?;
+
+    Ok(Response::default().add_attributes(vec![attr("action", "added_recipient")]))
 }
 
 pub fn execute_andromeda(
@@ -188,6 +231,11 @@ fn execute_update_recipients(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
+    // No need to send funds
+    require(
+        info.funds.is_empty(),
+        ContractError::FunctionDeclinesFunds {},
+    )?;
 
     validate_recipient_list(recipients.clone())?;
 
@@ -212,6 +260,12 @@ fn execute_remove_recipient(
         ContractError::Unauthorized {},
     )?;
 
+    // No need to send funds
+    require(
+        info.funds.is_empty(),
+        ContractError::FunctionDeclinesFunds {},
+    )?;
+
     let mut splitter = SPLITTER.load(deps.storage)?;
     if splitter.locked {
         StdError::generic_err("The splitter is currently locked");
@@ -227,6 +281,8 @@ fn execute_remove_recipient(
 
     // If the index exists, remove the element found in the index
     // If the index doesn't exist, return an error
+    require(user_index != None, ContractError::UserNotFound {})?;
+
     if let Some(i) = user_index {
         splitter.recipients.swap_remove(i);
         let new_splitter = Splitter {
@@ -234,8 +290,6 @@ fn execute_remove_recipient(
             locked: splitter.locked,
         };
         SPLITTER.save(deps.storage, &new_splitter)?;
-    } else {
-        StdError::generic_err("User not found");
     };
 
     // // 2nd method: Filter out the recipient then create another splitter with the new recipients list
@@ -266,6 +320,13 @@ fn execute_update_lock(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
+
+    // No need to send funds
+    require(
+        info.funds.is_empty(),
+        ContractError::FunctionDeclinesFunds {},
+    )?;
+
     let mut splitter = SPLITTER.load(deps.storage)?;
     splitter.locked = lock;
     SPLITTER.save(deps.storage, &splitter)?;
@@ -469,8 +530,16 @@ mod tests {
         let msg = ExecuteMsg::RemoveRecipient {
             recipient: Recipient::from_string(String::from("addr1")),
         };
+        // Try removing a user that isn't in the list
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        let msg = ExecuteMsg::RemoveRecipient {
+            recipient: Recipient::from_string(String::from("addr1")),
+        };
+
+        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+        assert_eq!(err, ContractError::UserNotFound {});
+
         let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
         let expected_splitter = Splitter {
             recipients: vec![
@@ -501,6 +570,122 @@ mod tests {
             }
         );
         assert_eq!(splitter.recipients.len(), 2);
+    }
+
+    #[test]
+    fn test_execute_add_recipient() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let owner = "creator";
+
+        let recipient = vec![
+            AddressWeight {
+                recipient: Recipient::from_string(String::from("addr1")),
+                weight: Uint128::new(40),
+            },
+            AddressWeight {
+                recipient: Recipient::from_string(String::from("addr2")),
+                weight: Uint128::new(60),
+            },
+            AddressWeight {
+                recipient: Recipient::from_string(String::from("addr3")),
+                weight: Uint128::new(50),
+            },
+        ];
+        let msg = ExecuteMsg::UpdateRecipients {
+            recipients: recipient.clone(),
+        };
+
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
+
+        let info = mock_info("incorrect_owner", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+        let info = mock_info(owner, &[]);
+
+        let msg = ExecuteMsg::UpdateRecipients {
+            recipients: recipient.clone(),
+        };
+        let splitter = Splitter {
+            recipients: recipient,
+            locked: false,
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let msg = ExecuteMsg::AddRecipient {
+            recipient: AddressWeight {
+                recipient: Recipient::from_string(String::from("addr4")),
+                weight: Uint128::new(100),
+            },
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(
+            Response::default().add_attributes(vec![attr("action", "added_recipient")]),
+            res
+        );
+        // Add a duplicate user
+        let msg = ExecuteMsg::AddRecipient {
+            recipient: AddressWeight {
+                recipient: Recipient::from_string(String::from("addr4")),
+                weight: Uint128::new(100),
+            },
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        assert_eq!(res, ContractError::DuplicateRecipient {});
+
+        let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+        let expected_splitter = Splitter {
+            recipients: vec![
+                AddressWeight {
+                    recipient: Recipient::from_string(String::from("addr1")),
+                    weight: Uint128::new(40),
+                },
+                AddressWeight {
+                    recipient: Recipient::from_string(String::from("addr2")),
+                    weight: Uint128::new(60),
+                },
+                AddressWeight {
+                    recipient: Recipient::from_string(String::from("addr3")),
+                    weight: Uint128::new(50),
+                },
+                AddressWeight {
+                    recipient: Recipient::from_string(String::from("addr4")),
+                    weight: Uint128::new(100),
+                },
+            ],
+            locked: false,
+        };
+        assert_eq!(expected_splitter, splitter);
+
+        // check result
+        let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+        assert_eq!(
+            splitter.recipients[3],
+            AddressWeight {
+                recipient: Recipient::from_string(String::from("addr4")),
+                weight: Uint128::new(100),
+            }
+        );
+        assert_eq!(splitter.recipients.len(), 4);
     }
 
     #[test]

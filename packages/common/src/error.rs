@@ -19,6 +19,12 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("ContractLocked")]
+    ContractLocked {},
+
+    #[error("UserNotFound")]
+    UserNotFound {},
+
     #[error("PriceNotSet")]
     PriceNotSet {},
 
@@ -48,6 +54,9 @@ pub enum ContractError {
 
     #[error("InvalidAddress")]
     InvalidAddress {},
+
+    #[error("FunctionDeclinesFunds")]
+    FunctionDeclinesFunds {},
 
     #[error("ExpirationInPast")]
     ExpirationInPast {},
@@ -182,6 +191,9 @@ pub enum ContractError {
 
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
+
+    #[error("DuplicateRecipient")]
+    DuplicateRecipient {},
 
     // BEGIN CW20 ERRORS
     #[error("Cannot set to own account")]
