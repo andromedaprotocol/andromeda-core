@@ -64,7 +64,7 @@
       ],
       "properties": {
         "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a mission.",
+          "description": "Can be either an address or identifier of an ADO in a app.",
           "type": "string"
         }
       }

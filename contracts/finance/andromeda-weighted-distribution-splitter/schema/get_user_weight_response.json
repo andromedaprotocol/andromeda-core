@@ -1,11 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GetUserWeightResponse",
+  "description": "In addition to returning a specific recipient's weight, this function also returns the total weight of all recipients. This serves to put the user's weight into perspective.",
   "type": "object",
   "required": [
+    "total_weight",
     "weight"
   ],
   "properties": {
+    "total_weight": {
+      "$ref": "#/definitions/Uint128"
+    },
     "weight": {
       "$ref": "#/definitions/Uint128"
     }
