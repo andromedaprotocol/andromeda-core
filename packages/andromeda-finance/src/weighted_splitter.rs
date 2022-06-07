@@ -44,6 +44,9 @@ pub enum ExecuteMsg {
     UpdateRecipients {
         recipients: Vec<AddressWeight>,
     },
+    AddRecipient {
+        recipient: AddressWeight,
+    },
     RemoveRecipient {
         recipient: Recipient,
     },
