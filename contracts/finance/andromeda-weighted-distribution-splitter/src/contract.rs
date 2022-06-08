@@ -302,10 +302,7 @@ fn execute_update_recipients(
     require(!splitter.locked, ContractError::ContractLocked {})?;
 
     // A recipient's weight has to be greater than zero
-    let zero_weight = splitter
-        .recipients
-        .iter()
-        .any(|x| x.weight == Uint128::zero());
+    let zero_weight = recipients.iter().any(|x| x.weight == Uint128::zero());
 
     require(!zero_weight, ContractError::InvalidWeight {})?;
 
@@ -670,6 +667,7 @@ mod tests {
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
         // User not found
         let msg = ExecuteMsg::UpdateRecipientWeight {
             recipient: AddressWeight {
@@ -679,6 +677,17 @@ mod tests {
         };
         let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
         assert_eq!(err, ContractError::UserNotFound {});
+
+        // Invalid weight
+        let msg = ExecuteMsg::UpdateRecipientWeight {
+            recipient: AddressWeight {
+                recipient: Recipient::from_string(String::from("addr1")),
+                weight: Uint128::zero(),
+            },
+        };
+        let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        assert_eq!(err, ContractError::InvalidWeight {});
+
         // Locked contract
         let splitter = Splitter {
             recipients: recipient.clone(),
@@ -772,7 +781,7 @@ mod tests {
                 },
             )
             .unwrap();
-
+        // Unauthorized
         let info = mock_info("incorrect_owner", &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
@@ -790,6 +799,20 @@ mod tests {
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
         let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        // Invalid weight
+
+        let msg = ExecuteMsg::AddRecipient {
+            recipient: AddressWeight {
+                recipient: Recipient::from_string(String::from("addr4")),
+                weight: Uint128::zero(),
+            },
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        assert_eq!(ContractError::InvalidWeight {}, res);
+
+        // Works
 
         let msg = ExecuteMsg::AddRecipient {
             recipient: AddressWeight {
@@ -863,7 +886,7 @@ mod tests {
             },
             AddressWeight {
                 recipient: Recipient::from_string(String::from("addr2")),
-                weight: Uint128::new(60),
+                weight: Uint128::zero(),
             },
         ];
         let msg = ExecuteMsg::UpdateRecipients {
@@ -892,10 +915,33 @@ mod tests {
             )
             .unwrap();
 
+        // Unauthorized
+
         let info = mock_info("incorrect_owner", &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
+        // Invalid weight
+
+        let info = mock_info(owner, &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+        assert_eq!(res, ContractError::InvalidWeight {});
+
+        // Works
+
+        let recipient = vec![
+            AddressWeight {
+                recipient: Recipient::from_string(String::from("addr1")),
+                weight: Uint128::new(40),
+            },
+            AddressWeight {
+                recipient: Recipient::from_string(String::from("addr2")),
+                weight: Uint128::new(60),
+            },
+        ];
+        let msg = ExecuteMsg::UpdateRecipients {
+            recipients: recipient.clone(),
+        };
         let info = mock_info(owner, &[]);
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
