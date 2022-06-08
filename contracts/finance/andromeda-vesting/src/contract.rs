@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StakingMsg,
-    Uint128,
+    Binary, Coin, CosmosMsg, Deps, DepsMut, Env, GovMsg, MessageInfo, QuerierWrapper, Response,
+    StakingMsg, Uint128, VoteOption,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;
@@ -93,6 +93,7 @@ pub fn execute(
         ExecuteMsg::Undelegate { amount, validator } => {
             execute_undelegate(deps, env, info, amount, validator)
         }
+        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, info, proposal_id, vote),
     }
 }
 
@@ -393,6 +394,27 @@ fn claim_batch(
     }
 
     Ok(amount_to_send)
+}
+
+fn execute_vote(
+    deps: DepsMut,
+    info: MessageInfo,
+    proposal_id: u64,
+    vote: VoteOption,
+) -> Result<Response, ContractError> {
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let msg: CosmosMsg = CosmosMsg::Gov(GovMsg::Vote {
+        proposal_id,
+        vote: vote.clone(),
+    });
+    Ok(Response::new()
+        .add_message(msg)
+        .add_attribute("action", "vote")
+        .add_attribute("proposal_id", proposal_id.to_string())
+        .add_attribute("vote", format!("{:?}", vote)))
 }
 
 fn get_amount_delegated(
