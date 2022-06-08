@@ -1,8 +1,8 @@
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR},
-    Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, FullDelegation, GovMsg, Response, StakingMsg,
-    Uint128, Validator, VoteOption,
+    Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, DistributionMsg, FullDelegation, GovMsg,
+    Response, StakingMsg, Uint128, Validator, VoteOption,
 };
 use cw_utils::Duration;
 
@@ -55,7 +55,7 @@ fn set_delegation(querier: &mut MockQuerier, amount: u128, denom: &str) {
         "ustake",
         &[sample_validator(DEFAULT_VALIDATOR)],
         &[sample_delegation(DEFAULT_VALIDATOR, coin(amount, denom))],
-    );
+    )
 }
 
 fn create_batch(
@@ -331,6 +331,11 @@ fn test_create_batch_and_delegate() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Delegate {
                 validator: DEFAULT_VALIDATOR.to_string(),
                 amount: coin(100, "uusd")
@@ -1290,6 +1295,11 @@ fn test_delegate() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Delegate {
                 validator: DEFAULT_VALIDATOR.to_string(),
                 amount: coin(100, "uusd")
@@ -1320,12 +1330,127 @@ fn test_delegate_more_than_balance() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Delegate {
                 validator: DEFAULT_VALIDATOR.to_string(),
                 amount: coin(100, "uusd")
             }))
             .add_attribute("action", "delegate")
             .add_attribute("validator", DEFAULT_VALIDATOR)
+            .add_attribute("amount", "100"),
+        res
+    );
+}
+
+#[test]
+fn test_redelegate_unauthorized() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("not_owner", &[]);
+
+    let msg = ExecuteMsg::Redelegate {
+        amount: None,
+        from: DEFAULT_VALIDATOR.to_string(),
+        to: "other_validator".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_redelegate_no_funds() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    let msg = ExecuteMsg::Redelegate {
+        amount: None,
+        from: DEFAULT_VALIDATOR.to_string(),
+        to: "other_validator".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::InvalidZeroAmount {}, res.unwrap_err());
+}
+
+#[test]
+fn test_redelegate() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    set_delegation(&mut deps.querier, 100, "uusd");
+
+    let msg = ExecuteMsg::Redelegate {
+        amount: None,
+        from: DEFAULT_VALIDATOR.to_string(),
+        to: "other_validator".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
+            .add_message(CosmosMsg::Staking(StakingMsg::Redelegate {
+                src_validator: DEFAULT_VALIDATOR.to_owned(),
+                dst_validator: "other_validator".to_string(),
+                amount: coin(100, "uusd")
+            }))
+            .add_attribute("action", "redelegate")
+            .add_attribute("from", DEFAULT_VALIDATOR)
+            .add_attribute("to", "other_validator")
+            .add_attribute("amount", "100"),
+        res
+    );
+}
+
+#[test]
+fn test_redelegate_more_than_max() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    set_delegation(&mut deps.querier, 100, "uusd");
+
+    let msg = ExecuteMsg::Redelegate {
+        amount: Some(Uint128::new(200)),
+        from: DEFAULT_VALIDATOR.to_string(),
+        to: "other_validator".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
+            .add_message(CosmosMsg::Staking(StakingMsg::Redelegate {
+                src_validator: DEFAULT_VALIDATOR.to_owned(),
+                dst_validator: "other_validator".to_string(),
+                amount: coin(100, "uusd")
+            }))
+            .add_attribute("action", "redelegate")
+            .add_attribute("from", DEFAULT_VALIDATOR)
+            .add_attribute("to", "other_validator")
             .add_attribute("amount", "100"),
         res
     );
@@ -1383,6 +1508,11 @@ fn test_undelegate() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Undelegate {
                 validator: DEFAULT_VALIDATOR.to_owned(),
                 amount: coin(100, "uusd")
@@ -1412,6 +1542,11 @@ fn test_undelegate_more_than_max() {
 
     assert_eq!(
         Response::new()
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
             .add_message(CosmosMsg::Staking(StakingMsg::Undelegate {
                 validator: DEFAULT_VALIDATOR.to_owned(),
                 amount: coin(100, "uusd")
@@ -1421,6 +1556,20 @@ fn test_undelegate_more_than_max() {
             .add_attribute("amount", "100"),
         res
     );
+}
+
+#[test]
+fn test_withdraw_rewards_unauthorized() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("not_owner", &[]);
+
+    let msg = ExecuteMsg::WithdrawRewards {};
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
 
 #[test]
@@ -1438,6 +1587,58 @@ fn test_vote_unauthorized() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
+fn test_withdraw_rewards() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    let msg = ExecuteMsg::WithdrawRewards {};
+
+    deps.querier.update_staking(
+        "ustake",
+        &[
+            sample_validator("validator1"),
+            sample_validator("validator2"),
+            sample_validator("validator3"),
+        ],
+        &[
+            sample_delegation("validator1", coin(100, "ustake")),
+            sample_delegation("validator2", coin(100, "ustake")),
+            sample_delegation("validator3", coin(100, "ustake")),
+        ],
+    );
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "withdraw_rewards")
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::SetWithdrawAddress {
+                    address: "owner".to_string()
+                }
+            ))
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::WithdrawDelegatorReward {
+                    validator: "validator1".to_string()
+                }
+            ))
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::WithdrawDelegatorReward {
+                    validator: "validator2".to_string()
+                }
+            ))
+            .add_message(CosmosMsg::Distribution(
+                DistributionMsg::WithdrawDelegatorReward {
+                    validator: "validator3".to_string()
+                }
+            )),
+        res
+    );
 }
 
 #[test]

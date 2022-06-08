@@ -53,11 +53,20 @@ pub enum ExecuteMsg {
         amount: Option<Uint128>,
         validator: String,
     },
+    /// Redelegates the given amount of tokens, or all from the `from` validator to the `to`
+    /// validator.
+    Redelegate {
+        amount: Option<Uint128>,
+        from: String,
+        to: String,
+    },
     /// Undelegates the given amount of tokens, or all if not specified.
     Undelegate {
         amount: Option<Uint128>,
         validator: String,
     },
+    /// Withdraws rewards from all delegations to the sender.
+    WithdrawRewards {},
     /// Votes on the specified proposal with the specified vote.
     Vote {
         proposal_id: u64,

@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, Coin, CosmosMsg, Deps, DepsMut, Env, GovMsg, MessageInfo, QuerierWrapper, Response,
-    StakingMsg, Uint128, VoteOption,
+    Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
+    QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
 };
 use cw2::set_contract_version;
 use cw_asset::AssetInfo;
@@ -90,9 +90,13 @@ pub fn execute(
         ExecuteMsg::Delegate { amount, validator } => {
             execute_delegate(deps, env, info, amount, validator)
         }
+        ExecuteMsg::Redelegate { amount, from, to } => {
+            execute_redelegate(deps, env, info, amount, from, to)
+        }
         ExecuteMsg::Undelegate { amount, validator } => {
             execute_undelegate(deps, env, info, amount, validator)
         }
+        ExecuteMsg::WithdrawRewards {} => execute_withdraw_rewards(deps, env, info),
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, info, proposal_id, vote),
     }
 }
@@ -295,8 +299,9 @@ fn execute_delegate(
     amount: Option<Uint128>,
     validator: String,
 ) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
     let config = CONFIG.load(deps.storage)?;
@@ -315,9 +320,51 @@ fn execute_delegate(
     });
 
     Ok(Response::new()
+        .add_message(get_set_withdraw_address_msg(sender))
         .add_message(msg)
         .add_attribute("action", "delegate")
         .add_attribute("validator", validator)
+        .add_attribute("amount", amount))
+}
+
+fn execute_redelegate(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Option<Uint128>,
+    from: String,
+    to: String,
+) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
+        ContractError::Unauthorized {},
+    )?;
+    let config = CONFIG.load(deps.storage)?;
+    let max_amount = get_amount_delegated(
+        &deps.querier,
+        env.contract.address.to_string(),
+        from.clone(),
+    )?;
+    let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
+
+    require(!amount.is_zero(), ContractError::InvalidZeroAmount {})?;
+
+    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Redelegate {
+        src_validator: from.clone(),
+        dst_validator: to.clone(),
+        amount: Coin {
+            denom: config.denom,
+            amount,
+        },
+    });
+
+    Ok(Response::new()
+        .add_message(get_set_withdraw_address_msg(sender))
+        .add_message(msg)
+        .add_attribute("action", "redelegate")
+        .add_attribute("from", from)
+        .add_attribute("to", to)
         .add_attribute("amount", amount))
 }
 
@@ -328,8 +375,9 @@ fn execute_undelegate(
     amount: Option<Uint128>,
     validator: String,
 ) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
         ContractError::Unauthorized {},
     )?;
     let config = CONFIG.load(deps.storage)?;
@@ -351,10 +399,38 @@ fn execute_undelegate(
     });
 
     Ok(Response::new()
+        .add_message(get_set_withdraw_address_msg(sender))
         .add_message(msg)
         .add_attribute("action", "undelegate")
         .add_attribute("validator", validator)
         .add_attribute("amount", amount))
+}
+
+fn execute_withdraw_rewards(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    let sender = info.sender.to_string();
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
+        ContractError::Unauthorized {},
+    )?;
+    let withdraw_rewards_msgs: Vec<CosmosMsg> = deps
+        .querier
+        .query_all_delegations(env.contract.address)?
+        .into_iter()
+        .map(|d| {
+            CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
+                validator: d.validator,
+            })
+        })
+        .collect();
+
+    Ok(Response::new()
+        .add_attribute("action", "withdraw_rewards")
+        .add_message(get_set_withdraw_address_msg(sender))
+        .add_messages(withdraw_rewards_msgs))
 }
 
 fn claim_batch(
@@ -427,6 +503,10 @@ fn get_amount_delegated(
         None => Ok(Uint128::zero()),
         Some(full_delegation) => Ok(full_delegation.amount.amount),
     }
+}
+
+fn get_set_withdraw_address_msg(address: String) -> CosmosMsg {
+    CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { address })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
