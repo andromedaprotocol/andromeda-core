@@ -21,7 +21,7 @@ fn init(deps: DepsMut, info: MessageInfo) -> Result<(), ContractError> {
         mock_env(),
         info,
         InstantiateMsg {
-            valid_demoms: vec!["uusd".to_string(), "ujuno".to_string()],
+            valid_denom: "uusd".to_string(),
             andromeda_cw721_contract: MOCK_CW721_CONTRACT.to_owned(),
         },
     )

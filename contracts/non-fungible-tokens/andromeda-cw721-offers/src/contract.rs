@@ -1,5 +1,5 @@
 use crate::state::{
-    offers, query_is_archived, query_transfer_agreement, CW721_CONTRACT, VALID_DENOMS,
+    offers, query_is_archived, query_transfer_agreement, CW721_CONTRACT, VALID_DENOM,
 };
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::{
@@ -42,7 +42,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CW721_CONTRACT.save(deps.storage, &msg.andromeda_cw721_contract)?;
-    VALID_DENOMS.save(deps.storage, &msg.valid_demoms)?;
+    VALID_DENOM.save(deps.storage, &msg.valid_denom)?;
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -115,9 +115,9 @@ fn execute_place_offer(
         },
     )?;
     let coin: &Coin = &info.funds[0];
-    let valid_denoms = VALID_DENOMS.load(deps.storage)?;
+    let valid_denom = VALID_DENOM.load(deps.storage)?;
     require(
-        valid_denoms.contains(&coin.denom),
+        valid_denom == coin.denom,
         ContractError::InvalidFunds {
             msg: "Invalid offer denom".to_string(),
         },
