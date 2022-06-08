@@ -2,7 +2,7 @@ use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     withdraw::WithdrawalType,
 };
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Uint128, VoteOption};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -67,6 +67,11 @@ pub enum ExecuteMsg {
     },
     /// Withdraws rewards from all delegations to the sender.
     WithdrawRewards {},
+    /// Votes on the specified proposal with the specified vote.
+    Vote {
+        proposal_id: u64,
+        vote: VoteOption,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

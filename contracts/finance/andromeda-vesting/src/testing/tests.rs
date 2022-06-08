@@ -1,8 +1,8 @@
 use cosmwasm_std::{
     coin, coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR},
-    Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, DistributionMsg, FullDelegation, Response,
-    StakingMsg, Uint128, Validator,
+    Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, DistributionMsg, FullDelegation, GovMsg,
+    Response, StakingMsg, Uint128, Validator, VoteOption,
 };
 use cw_utils::Duration;
 
@@ -1573,6 +1573,23 @@ fn test_withdraw_rewards_unauthorized() {
 }
 
 #[test]
+fn test_vote_unauthorized() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("not_owner", &[]);
+
+    let msg = ExecuteMsg::Vote {
+        proposal_id: 1,
+        vote: VoteOption::Yes,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+}
+
+#[test]
 fn test_withdraw_rewards() {
     let mut deps = mock_dependencies();
     init(deps.as_mut());
@@ -1620,6 +1637,33 @@ fn test_withdraw_rewards() {
                     validator: "validator3".to_string()
                 }
             )),
+        res
+    );
+}
+
+#[test]
+fn test_vote() {
+    let mut deps = mock_dependencies();
+    init(deps.as_mut());
+
+    let info = mock_info("owner", &[]);
+
+    let msg = ExecuteMsg::Vote {
+        proposal_id: 1,
+        vote: VoteOption::Yes,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_message(CosmosMsg::Gov(GovMsg::Vote {
+                proposal_id: 1,
+                vote: VoteOption::Yes
+            }))
+            .add_attribute("action", "vote")
+            .add_attribute("proposal_id", "1")
+            .add_attribute("vote", "Yes"),
         res
     );
 }
