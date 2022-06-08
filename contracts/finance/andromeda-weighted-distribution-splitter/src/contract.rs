@@ -220,7 +220,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
     )?;
     // Can't send more than 5 types of coins
     require(
-        &info.funds.len() < &5,
+        info.funds.len() < 5,
         ContractError::ExceedsMaxAllowedCoins {},
     )?;
 
