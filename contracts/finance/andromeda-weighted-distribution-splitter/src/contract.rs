@@ -94,6 +94,9 @@ pub fn execute(
         ExecuteMsg::UpdateRecipients { recipients } => {
             execute_update_recipients(deps, info, recipients)
         }
+        ExecuteMsg::UpdateRecipientWeight { recipient } => {
+            execute_update_recipient_weight(deps, info, recipient)
+        }
         ExecuteMsg::AddRecipient { recipient } => execute_add_recipient(deps, info, recipient),
         ExecuteMsg::RemoveRecipient { recipient } => {
             execute_remove_recipient(deps, info, recipient)
@@ -103,6 +106,45 @@ pub fn execute(
         ExecuteMsg::Send {} => execute_send(deps, info),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
     }
+}
+
+pub fn execute_update_recipient_weight(
+    deps: DepsMut,
+    info: MessageInfo,
+    recipient: AddressWeight,
+) -> Result<Response, ContractError> {
+    // Only the contract's owner can update a recipient's weight
+    require(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    // No need to send funds
+    require(
+        info.funds.is_empty(),
+        ContractError::FunctionDeclinesFunds {},
+    )?;
+    // Check if splitter is locked
+    let mut splitter = SPLITTER.load(deps.storage)?;
+
+    require(!splitter.locked, ContractError::ContractLocked {})?;
+
+    // Recipients are stored in a vector, we search for the desired recipient's index in the vector
+
+    let user_index = splitter
+        .recipients
+        .clone()
+        .into_iter()
+        .position(|x| x.recipient == recipient.recipient);
+
+    // If the index exists, change the element's weight.
+    // If the index doesn't exist, the recipient isn't on the list
+    require(user_index.is_some(), ContractError::UserNotFound {})?;
+
+    if let Some(i) = user_index {
+        splitter.recipients[i].weight = recipient.weight;
+        SPLITTER.save(deps.storage, &splitter)?;
+    };
+    Ok(Response::default().add_attribute("action", "updated_recipient_weight"))
 }
 
 pub fn execute_add_recipient(
@@ -548,6 +590,125 @@ mod tests {
             }
         );
         assert_eq!(splitter.recipients.len(), 2);
+    }
+
+    #[test]
+    fn test_update_recipient_weight() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let owner = "creator";
+
+        let recipient = vec![
+            AddressWeight {
+                recipient: Recipient::from_string(String::from("addr1")),
+                weight: Uint128::new(40),
+            },
+            AddressWeight {
+                recipient: Recipient::from_string(String::from("addr2")),
+                weight: Uint128::new(60),
+            },
+            AddressWeight {
+                recipient: Recipient::from_string(String::from("addr3")),
+                weight: Uint128::new(50),
+            },
+        ];
+        let msg = ExecuteMsg::UpdateRecipients {
+            recipients: recipient.clone(),
+        };
+
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: None,
+                    primitive_contract: None,
+                },
+            )
+            .unwrap();
+
+        let info = mock_info("incorrect_owner", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+
+        let info = mock_info(owner, &[]);
+
+        let msg = ExecuteMsg::UpdateRecipients {
+            recipients: recipient.clone(),
+        };
+        let splitter = Splitter {
+            recipients: recipient.clone(),
+            locked: false,
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        // User not found
+        let msg = ExecuteMsg::UpdateRecipientWeight {
+            recipient: AddressWeight {
+                recipient: Recipient::from_string(String::from("addr4")),
+                weight: Uint128::new(100),
+            },
+        };
+        let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        assert_eq!(err, ContractError::UserNotFound {});
+        // Locked contract
+        let splitter = Splitter {
+            recipients: recipient.clone(),
+            locked: true,
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+        let msg = ExecuteMsg::UpdateRecipientWeight {
+            recipient: AddressWeight {
+                recipient: Recipient::from_string(String::from("addr1")),
+                weight: Uint128::new(100),
+            },
+        };
+        let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        assert_eq!(err, ContractError::ContractLocked {});
+        // Works
+        let splitter = Splitter {
+            recipients: recipient.clone(),
+            locked: false,
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+        let msg = ExecuteMsg::UpdateRecipientWeight {
+            recipient: AddressWeight {
+                recipient: Recipient::from_string(String::from("addr1")),
+                weight: Uint128::new(100),
+            },
+        };
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(
+            Response::default().add_attributes(vec![attr("action", "updated_recipient_weight")]),
+            res
+        );
+        let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+        let expected_splitter = Splitter {
+            recipients: vec![
+                AddressWeight {
+                    recipient: Recipient::from_string(String::from("addr1")),
+                    weight: Uint128::new(100),
+                },
+                AddressWeight {
+                    recipient: Recipient::from_string(String::from("addr2")),
+                    weight: Uint128::new(60),
+                },
+                AddressWeight {
+                    recipient: Recipient::from_string(String::from("addr3")),
+                    weight: Uint128::new(50),
+                },
+            ],
+            locked: false,
+        };
+        assert_eq!(expected_splitter, splitter);
     }
 
     #[test]

@@ -33,6 +33,10 @@ pub enum ExecuteMsg {
     UpdateRecipients {
         recipients: Vec<AddressWeight>,
     },
+    /// Update a specific recipient's weight. Only executable by the contract owner when the contract is not locked.
+    UpdateRecipientWeight {
+        recipient: AddressWeight,
+    },
     /// Add a single recipient to the recipient list. Only executable by the contract owner when the contract is not locked.
     AddRecipient {
         recipient: AddressWeight,
