@@ -31,6 +31,9 @@ pub enum ContractError {
     #[error("InvalidPrimitive")]
     InvalidPrimitive {},
 
+    #[error("InvalidWeight")]
+    InvalidWeight {},
+
     #[error("IllegalTokenName")]
     IllegalTokenName {},
 

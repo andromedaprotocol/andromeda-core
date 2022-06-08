@@ -123,6 +123,12 @@ pub fn execute_update_recipient_weight(
         info.funds.is_empty(),
         ContractError::FunctionDeclinesFunds {},
     )?;
+    // Can't set weight to 0
+    require(
+        recipient.weight > Uint128::zero(),
+        ContractError::InvalidWeight {},
+    )?;
+
     // Check if splitter is locked
     let mut splitter = SPLITTER.load(deps.storage)?;
 
@@ -166,6 +172,12 @@ pub fn execute_add_recipient(
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     require(!splitter.locked, ContractError::ContractLocked {})?;
+
+    // Can't set weight to 0
+    require(
+        recipient.weight > Uint128::zero(),
+        ContractError::InvalidWeight {},
+    )?;
 
     // Check for duplicate recipients
 
@@ -268,6 +280,7 @@ fn execute_update_recipients(
     info: MessageInfo,
     recipients: Vec<AddressWeight>,
 ) -> Result<Response, ContractError> {
+    // Only the owner can use this function
     require(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
@@ -277,7 +290,7 @@ fn execute_update_recipients(
         info.funds.is_empty(),
         ContractError::FunctionDeclinesFunds {},
     )?;
-
+    // Recipient list can't be empty
     require(
         !recipients.is_empty(),
         ContractError::EmptyRecipientsList {},
@@ -285,7 +298,16 @@ fn execute_update_recipients(
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
+    // Can't change splitter while locked
     require(!splitter.locked, ContractError::ContractLocked {})?;
+
+    // A recipient's weight has to be greater than zero
+    let zero_weight = splitter
+        .recipients
+        .iter()
+        .any(|x| x.weight == Uint128::zero());
+
+    require(!zero_weight, ContractError::InvalidWeight {})?;
 
     splitter.recipients = recipients;
     SPLITTER.save(deps.storage, &splitter)?;
