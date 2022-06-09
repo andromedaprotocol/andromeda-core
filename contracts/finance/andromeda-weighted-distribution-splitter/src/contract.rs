@@ -181,12 +181,12 @@ pub fn execute_add_recipient(
 
     // Check for duplicate recipients
 
-    let user = splitter
+    let user_exists = splitter
         .recipients
         .iter()
         .any(|x| x.recipient == recipient.recipient);
 
-    require(!user, ContractError::DuplicateRecipient {})?;
+    require(!user_exists, ContractError::DuplicateRecipient {})?;
 
     splitter.recipients.push(recipient);
     let new_splitter = Splitter {
@@ -242,7 +242,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
     for recipient_addr in &splitter.recipients {
         let recipient_weight = recipient_addr.weight;
         let mut vec_coin: Vec<Coin> = Vec::new();
-        for (i, coin) in info.funds.clone().into_iter().enumerate() {
+        for (i, coin) in info.funds.iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
             recip_coin.amount = coin.amount.multiply_ratio(recipient_weight, total_weight);
             remainder_funds[i].amount -= recip_coin.amount;
@@ -705,7 +705,7 @@ mod tests {
         assert_eq!(err, ContractError::ContractLocked {});
         // Works
         let splitter = Splitter {
-            recipients: recipient.clone(),
+            recipients: recipient,
             locked: false,
         };
 
@@ -890,7 +890,7 @@ mod tests {
             },
         ];
         let msg = ExecuteMsg::UpdateRecipients {
-            recipients: recipient.clone(),
+            recipients: recipient,
         };
 
         let splitter = Splitter {
