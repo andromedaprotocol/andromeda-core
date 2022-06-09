@@ -833,7 +833,7 @@ mod tests {
                 weight: Uint128::new(100),
             },
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
         assert_eq!(res, ContractError::DuplicateRecipient {});
 
         let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
