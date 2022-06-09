@@ -3,7 +3,7 @@ use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::{
     cw721::{
         ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MetadataAttribute,
-        MetadataType, TokenExtension, TokenMetadata,
+        TokenExtension,
     },
     wrapped_cw721::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, QueryMsg},
 };
@@ -137,25 +137,23 @@ fn execute_wrap(
         name: wrapped_token_id.clone(),
         publisher: sender.clone(),
         description: None,
-        transfer_agreement: None,
-        metadata: Some(TokenMetadata {
-            data_type: MetadataType::Other,
-            external_url: None,
-            data_url: None,
-            attributes: Some(vec![
-                MetadataAttribute {
-                    key: ORIGINAL_TOKEN_ID.to_owned(),
-                    value: token_id.clone(),
-                    display_label: None,
-                },
-                MetadataAttribute {
-                    key: ORIGINAL_TOKEN_ADDRESS.to_owned(),
-                    value: token_address.to_string(),
-                    display_label: None,
-                },
-            ]),
-        }),
-        archived: false,
+        attributes: vec![
+            MetadataAttribute {
+                trait_type: ORIGINAL_TOKEN_ID.to_owned(),
+                value: token_id.clone(),
+                display_type: None,
+            },
+            MetadataAttribute {
+                trait_type: ORIGINAL_TOKEN_ADDRESS.to_owned(),
+                value: token_address.to_string(),
+                display_type: None,
+            },
+        ],
+        image: String::from(""),
+        image_data: None,
+        external_url: None,
+        animation_url: None,
+        youtube_url: None,
     };
     let mint_msg = MintMsg {
         token_id: wrapped_token_id.to_string(),
@@ -228,16 +226,11 @@ fn get_original_nft_data(
             })?,
         },
     ))?;
-    if let Some(metadata) = token_info.extension.metadata {
-        if let Some(attributes) = metadata.attributes {
-            require(attributes.len() == 2, ContractError::InvalidMetadata {})?;
-            let original_token_id = attributes[0].value.clone();
-            let original_token_address = attributes[1].value.clone();
-            return Ok((original_token_id, original_token_address));
-        }
-        return Err(ContractError::InvalidMetadata {});
-    }
-    Err(ContractError::InvalidMetadata {})
+    let attributes = token_info.extension.attributes;
+    require(attributes.len() == 2, ContractError::InvalidMetadata {})?;
+    let original_token_id = attributes[0].value.clone();
+    let original_token_address = attributes[1].value.clone();
+    Ok((original_token_id, original_token_address))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -388,25 +381,23 @@ mod tests {
             name: token_id.clone(),
             publisher: owner.clone(),
             description: None,
-            transfer_agreement: None,
-            metadata: Some(TokenMetadata {
-                data_type: MetadataType::Other,
-                external_url: None,
-                data_url: None,
-                attributes: Some(vec![
-                    MetadataAttribute {
-                        key: ORIGINAL_TOKEN_ID.to_owned(),
-                        value: token_id.clone(),
-                        display_label: None,
-                    },
-                    MetadataAttribute {
-                        key: ORIGINAL_TOKEN_ADDRESS.to_owned(),
-                        value: token_address.to_string(),
-                        display_label: None,
-                    },
-                ]),
-            }),
-            archived: false,
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
+            attributes: vec![
+                MetadataAttribute {
+                    trait_type: ORIGINAL_TOKEN_ID.to_owned(),
+                    value: token_id.clone(),
+                    display_type: None,
+                },
+                MetadataAttribute {
+                    trait_type: ORIGINAL_TOKEN_ADDRESS.to_owned(),
+                    value: token_address.to_string(),
+                    display_type: None,
+                },
+            ],
         };
         let mint_msg = MintMsg {
             token_id: token_id.clone(),
@@ -460,25 +451,23 @@ mod tests {
             name: wrapped_token_id.clone(),
             publisher: owner.clone(),
             description: None,
-            transfer_agreement: None,
-            metadata: Some(TokenMetadata {
-                data_type: MetadataType::Other,
-                external_url: None,
-                data_url: None,
-                attributes: Some(vec![
-                    MetadataAttribute {
-                        key: ORIGINAL_TOKEN_ID.to_owned(),
-                        value: token_id.clone(),
-                        display_label: None,
-                    },
-                    MetadataAttribute {
-                        key: ORIGINAL_TOKEN_ADDRESS.to_owned(),
-                        value: token_address.to_string(),
-                        display_label: None,
-                    },
-                ]),
-            }),
-            archived: false,
+            attributes: vec![
+                MetadataAttribute {
+                    trait_type: ORIGINAL_TOKEN_ID.to_owned(),
+                    value: token_id.clone(),
+                    display_type: None,
+                },
+                MetadataAttribute {
+                    trait_type: ORIGINAL_TOKEN_ADDRESS.to_owned(),
+                    value: token_address.to_string(),
+                    display_type: None,
+                },
+            ],
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
         };
         let mint_msg = MintMsg {
             token_id: wrapped_token_id.to_owned(),

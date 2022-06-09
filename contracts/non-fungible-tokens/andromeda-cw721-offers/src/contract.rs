@@ -1,7 +1,9 @@
-use crate::state::{offers, CW721_CONTRACT};
+use crate::state::{
+    offers, query_is_archived, query_transfer_agreement, CW721_CONTRACT, VALID_DENOM,
+};
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::{
-    cw721::{QueryMsg as Cw721QueryMsg, TokenExtension},
+    cw721::QueryMsg as Cw721QueryMsg,
     cw721_offers::{AllOffersResponse, ExecuteMsg, InstantiateMsg, Offer, OfferResponse, QueryMsg},
 };
 use common::{
@@ -21,7 +23,7 @@ use cosmwasm_std::{
     QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
-use cw721::{Expiration, NftInfoResponse, OwnerOfResponse};
+use cw721::{Expiration, OwnerOfResponse};
 use cw_storage_plus::Bound;
 
 // version info for migration info
@@ -40,6 +42,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CW721_CONTRACT.save(deps.storage, &msg.andromeda_cw721_contract)?;
+    VALID_DENOM.save(deps.storage, &msg.valid_denom)?;
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -84,7 +87,6 @@ fn execute_place_offer(
 ) -> Result<Response, ContractError> {
     let purchaser = info.sender.as_str();
     let current_offer = offers().may_load(deps.storage, &token_id)?;
-    let token_extension = get_token_extension(deps.storage, &deps.querier, token_id.clone())?;
     let token_owner = get_token_owner(deps.storage, &deps.querier, token_id.clone())?;
     require(
         info.sender != token_owner,
@@ -102,7 +104,10 @@ fn execute_place_offer(
         !expiration.is_expired(&env.block),
         ContractError::Expired {},
     )?;
-    require(!token_extension.archived, ContractError::TokenIsArchived {})?;
+    require(
+        !query_is_archived(deps.querier, deps.storage, token_id.clone())?,
+        ContractError::TokenIsArchived {},
+    )?;
     require(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
@@ -110,11 +115,11 @@ fn execute_place_offer(
         },
     )?;
     let coin: &Coin = &info.funds[0];
+    let valid_denom = VALID_DENOM.load(deps.storage)?;
     require(
-        // TODO: Add support for other denoms later.
-        coin.denom == "uusd",
+        valid_denom == coin.denom,
         ContractError::InvalidFunds {
-            msg: "Only offers in uusd are allowed".to_string(),
+            msg: "Invalid offer denom".to_string(),
         },
     )?;
     let mut msgs: Vec<SubMsg> = vec![];
@@ -205,7 +210,6 @@ fn execute_accept_offer(
 ) -> Result<Response, ContractError> {
     let offer = offers().load(deps.storage, &token_id)?;
     let cw721_contract = CW721_CONTRACT.load(deps.storage)?;
-    let token_extension = get_token_extension(deps.storage, &deps.querier, token_id.clone())?;
     require(
         !offer.expiration.is_expired(&env.block),
         ContractError::Expired {},
@@ -216,7 +220,7 @@ fn execute_accept_offer(
         ContractError::Unauthorized {},
     )?;
     require(
-        token_extension.transfer_agreement.is_none(),
+        query_transfer_agreement(deps.querier, deps.storage, token_id.clone())?.is_none(),
         ContractError::TransferAgreementExists {},
     )?;
     let payment_msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -259,20 +263,6 @@ fn on_funds_transfer(
         }))?,
     }))?;
     Ok(res)
-}
-
-fn get_token_extension(
-    storage: &dyn Storage,
-    querier: &QuerierWrapper,
-    token_id: String,
-) -> Result<TokenExtension, ContractError> {
-    let address = CW721_CONTRACT.load(storage)?;
-    let res: NftInfoResponse<TokenExtension> =
-        querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: address,
-            msg: encode_binary(&Cw721QueryMsg::NftInfo { token_id })?,
-        }))?;
-    Ok(res.extension)
 }
 
 fn get_token_owner(

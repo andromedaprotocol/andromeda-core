@@ -32,6 +32,7 @@ impl Offer {
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     pub andromeda_cw721_contract: String,
+    pub valid_denom: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

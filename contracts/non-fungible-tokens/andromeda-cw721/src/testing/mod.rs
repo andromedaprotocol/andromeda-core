@@ -27,7 +27,7 @@ use andromeda_testing::testing::mock_querier::{
     bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
     MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
 };
-use cw721::{NftInfoResponse, OwnerOfResponse};
+use cw721::OwnerOfResponse;
 use cw721_base::MintMsg;
 
 const MINTER: &str = "minter";
@@ -180,9 +180,7 @@ fn test_instantiate_modules() {
             .add_submessages(msgs),
         res
     );
-<<<<<<< HEAD
 }*/
-
 #[test]
 fn test_transfer_nft() {
     let token_id = String::from("testtoken");
@@ -205,9 +203,12 @@ fn test_transfer_nft() {
             description: None,
             name: String::default(),
             publisher: creator.clone(),
-            transfer_agreement: None,
-            metadata: None,
-            archived: false,
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
+            attributes: vec![],
         },
     );
 
@@ -252,6 +253,7 @@ fn test_transfer_nft() {
 fn test_agreed_transfer_nft() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
+    let valid_info = mock_info(creator.as_str(), &[]);
     let mut deps = mock_dependencies();
     let env = mock_env();
     let agreed_amount = Coin {
@@ -269,14 +271,29 @@ fn test_agreed_transfer_nft() {
             description: None,
             name: String::default(),
             publisher: creator,
-            transfer_agreement: Some(TransferAgreement {
-                amount: Value::Raw(agreed_amount.clone()),
-                purchaser: purchaser.to_string(),
-            }),
-            metadata: None,
-            archived: false,
+            attributes: vec![],
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
         },
     );
+
+    let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
+        token_id: token_id.clone(),
+        agreement: Some(TransferAgreement {
+            amount: Value::Raw(agreed_amount.clone()),
+            purchaser: purchaser.to_string(),
+        }),
+    };
+    execute(
+        deps.as_mut(),
+        env.clone(),
+        valid_info,
+        transfer_agreement_msg,
+    )
+    .unwrap();
 
     let transfer_msg = ExecuteMsg::TransferNft {
         recipient: Addr::unchecked("recipient").to_string(),
@@ -308,6 +325,38 @@ fn test_agreed_transfer_nft() {
 }
 
 #[test]
+fn test_agreed_transfer_token_doesnt_exist() {
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let valid_info = mock_info(creator.as_str(), &[]);
+    let purchaser = "purchaser";
+    let agreement = TransferAgreement {
+        amount: Value::Pointer(PrimitivePointer {
+            address: AndrAddress {
+                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+            },
+            key: Some("sell_amount".to_string()),
+        }),
+        purchaser: purchaser.to_string(),
+    };
+    init_setup(deps.as_mut(), env.clone(), None);
+
+    let transfer_agreement = ExecuteMsg::TransferAgreement {
+        token_id,
+        agreement: Some(agreement),
+    };
+    let received = execute(deps.as_mut(), env, valid_info, transfer_agreement).unwrap_err();
+    let expected = ContractError::Std(StdError::NotFound {
+        kind: "cw721_base::state::TokenInfo<andromeda_non_fungible_tokens::cw721::TokenExtension>"
+            .to_string(),
+    });
+
+    assert_eq!(received, expected)
+}
+
+#[test]
 fn test_agreed_transfer_nft_primitive_pointer() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
@@ -317,7 +366,17 @@ fn test_agreed_transfer_nft_primitive_pointer() {
         denom: "uusd".to_string(),
         amount: Uint128::from(100u64),
     };
+    let valid_info = mock_info(creator.as_str(), &[]);
     let purchaser = "purchaser";
+    let agreement = TransferAgreement {
+        amount: Value::Pointer(PrimitivePointer {
+            address: AndrAddress {
+                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+            },
+            key: Some("sell_amount".to_string()),
+        }),
+        purchaser: purchaser.to_string(),
+    };
     init_setup(deps.as_mut(), env.clone(), None);
     mint_token(
         deps.as_mut(),
@@ -328,19 +387,20 @@ fn test_agreed_transfer_nft_primitive_pointer() {
             description: None,
             name: String::default(),
             publisher: creator,
-            transfer_agreement: Some(TransferAgreement {
-                amount: Value::Pointer(PrimitivePointer {
-                    address: AndrAddress {
-                        identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-                    },
-                    key: Some("sell_amount".to_string()),
-                }),
-                purchaser: purchaser.to_string(),
-            }),
-            metadata: None,
-            archived: false,
+            attributes: vec![],
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
         },
     );
+
+    let transfer_agreement = ExecuteMsg::TransferAgreement {
+        token_id: token_id.clone(),
+        agreement: Some(agreement),
+    };
+    execute(deps.as_mut(), env.clone(), valid_info, transfer_agreement).unwrap();
 
     let transfer_msg = ExecuteMsg::TransferNft {
         recipient: Addr::unchecked("recipient").to_string(),
@@ -403,9 +463,12 @@ fn test_agreed_transfer_nft_wildcard() {
             description: None,
             name: String::default(),
             publisher: creator.clone(),
-            transfer_agreement: None,
-            metadata: None,
-            archived: false,
+            attributes: vec![],
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
         },
     );
 
@@ -453,9 +516,12 @@ fn test_archive() {
             description: None,
             name: String::default(),
             publisher: creator.clone(),
-            transfer_agreement: None,
-            metadata: None,
-            archived: false,
+            attributes: vec![],
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
         },
     );
 
@@ -472,10 +538,10 @@ fn test_archive() {
     let info = mock_info(creator.as_str(), &[]);
     assert!(execute(deps.as_mut(), env.clone(), info, msg).is_ok());
 
-    let query_msg = QueryMsg::NftInfo { token_id };
+    let query_msg = QueryMsg::IsArchived { token_id };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: NftInfoResponse<TokenExtension> = from_binary(&query_resp).unwrap();
-    assert!(resp.extension.archived)
+    let resp: bool = from_binary(&query_resp).unwrap();
+    assert!(resp)
 }
 
 #[test]
@@ -494,9 +560,12 @@ fn test_burn() {
             description: None,
             name: String::default(),
             publisher: creator.clone(),
-            transfer_agreement: None,
-            metadata: None,
-            archived: false,
+            attributes: vec![],
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
         },
     );
 
@@ -538,6 +607,7 @@ fn test_burn() {
 fn test_archived_check() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
+    let valid_info = mock_info(creator.as_str(), &[]);
     let mut deps = mock_dependencies();
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
@@ -550,11 +620,19 @@ fn test_archived_check() {
             description: None,
             name: String::default(),
             publisher: creator.clone(),
-            transfer_agreement: None,
-            metadata: None,
-            archived: true,
+            attributes: vec![],
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
         },
     );
+
+    let archive_msg = ExecuteMsg::Archive {
+        token_id: token_id.clone(),
+    };
+    execute(deps.as_mut(), env.clone(), valid_info, archive_msg).unwrap();
 
     let msg = ExecuteMsg::Burn { token_id };
 
@@ -588,9 +666,12 @@ fn test_transfer_agreement() {
             description: None,
             name: String::default(),
             publisher: creator.clone(),
-            transfer_agreement: None,
-            metadata: None,
-            archived: false,
+            attributes: vec![],
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
         },
     );
 
@@ -608,10 +689,11 @@ fn test_transfer_agreement() {
     let info = mock_info(creator.as_str(), &[]);
     assert!(execute(deps.as_mut(), env.clone(), info, msg).is_ok());
 
-    let query_msg = QueryMsg::NftInfo { token_id };
+    let query_msg = QueryMsg::TransferAgreement { token_id };
     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: NftInfoResponse<TokenExtension> = from_binary(&query_resp).unwrap();
-    assert_eq!(resp.extension.transfer_agreement, Some(agreement))
+    let resp: Option<TransferAgreement> = from_binary(&query_resp).unwrap();
+    assert!(resp.is_some());
+    assert_eq!(resp, Some(agreement))
 }
 
 #[test]
@@ -662,9 +744,12 @@ fn test_modules() {
             description: None,
             name: String::default(),
             publisher: creator.clone(),
-            transfer_agreement: None,
-            metadata: None,
-            archived: false,
+            attributes: vec![],
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
         },
     );
 
@@ -777,9 +862,12 @@ fn test_transfer_with_offer() {
             description: None,
             name: String::default(),
             publisher: creator.clone(),
-            transfer_agreement: None,
-            metadata: None,
-            archived: false,
+            attributes: vec![],
+            image: String::from(""),
+            image_data: None,
+            external_url: None,
+            animation_url: None,
+            youtube_url: None,
         },
     );
 

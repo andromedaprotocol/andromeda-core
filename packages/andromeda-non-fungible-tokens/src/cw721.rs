@@ -35,66 +35,37 @@ pub struct TransferAgreement {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-/// Enum used to define the type of metadata held by a token
-pub enum MetadataType {
-    Image,
-    Video,
-    Audio,
-    Domain,
-    Json,
-    Other,
-}
-
-impl ToString for MetadataType {
-    fn to_string(&self) -> String {
-        match self {
-            MetadataType::Image => String::from("Image"),
-            MetadataType::Video => String::from("Video"),
-            MetadataType::Audio => String::from("Audio"),
-            MetadataType::Domain => String::from("Domain"),
-            MetadataType::Json => String::from("Json"),
-            MetadataType::Other => String::from("Other"),
-        }
-    }
-}
-// [TOK-02] Add approval function should have been here but maybe was removed or altered in alter commits.
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct MetadataAttribute {
     /// The key for the attribute
-    pub key: String,
+    pub trait_type: String,
     /// The value for the attribute
     pub value: String,
     /// The string used to display the attribute, if none is provided the `key` field can be used
-    pub display_label: Option<String>,
+    pub display_type: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct TokenMetadata {
-    /// The metadata type
-    pub data_type: MetadataType,
-    /// A URL to the token's source
-    pub external_url: Option<String>,
-    /// A URL to any off-chain data relating to the token, the response from this URL should match the defined `data_type` of the token
-    pub data_url: Option<String>,
-    /// On chain attributes related to the token (basic key/value)
-    pub attributes: Option<Vec<MetadataAttribute>>,
-}
-
+/// https://docs.opensea.io/docs/metadata-standards
+/// Replicates OpenSea Metadata Standards
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct TokenExtension {
     /// The name of the token
     pub name: String,
-    /// The original publisher of the token (immutable)
+    /// The original publisher of the token
     pub publisher: String,
     /// An optional description of the token
     pub description: Option<String>,
-    /// The transfer agreement of the token (if it exists)
-    pub transfer_agreement: Option<TransferAgreement>,
     /// The metadata of the token (if it exists)
-    pub metadata: Option<TokenMetadata>,
-    /// Whether the token is archived or not
-    pub archived: bool,
+    pub attributes: Vec<MetadataAttribute>,
+    /// URL to token image
+    pub image: String,
+    /// Raw SVG image data
+    pub image_data: Option<String>,
+    /// A URL to the token's source
+    pub external_url: Option<String>,
+    /// A URL to any multi-media attachments
+    pub animation_url: Option<String>,
+    /// A URL to a related YouTube video
+    pub youtube_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -229,6 +200,14 @@ pub enum QueryMsg {
     AllTokens {
         start_after: Option<String>,
         limit: Option<u32>,
+    },
+    /// If the token is archived
+    IsArchived {
+        token_id: String,
+    },
+    /// The transfer agreement for the token
+    TransferAgreement {
+        token_id: String,
     },
     /// Info of any modules assigned to the contract
     ModuleInfo {},
