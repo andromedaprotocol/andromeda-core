@@ -355,7 +355,7 @@ mod tests {
             },
         ];
         let msg = ExecuteMsg::UpdateRecipients {
-            recipients: recipient.clone(),
+            recipients: recipient,
         };
 
         let deps_mut = deps.as_mut();
@@ -374,7 +374,7 @@ mod tests {
             .unwrap();
 
         let info = mock_info("incorrect_owner", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 
@@ -538,7 +538,7 @@ mod tests {
             recipients: recipient.clone(),
         };
         let splitter = Splitter {
-            recipients: recipient.clone(),
+            recipients: recipient,
             locked: false,
         };
 
@@ -553,7 +553,7 @@ mod tests {
                 weight: Uint128::new(100),
             },
         };
-        let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
         assert_eq!(err, ContractError::UserNotFound {});
     }
 
@@ -607,7 +607,7 @@ mod tests {
             recipients: recipient.clone(),
         };
         let splitter = Splitter {
-            recipients: recipient.clone(),
+            recipients: recipient,
             locked: false,
         };
 
@@ -621,7 +621,7 @@ mod tests {
                 weight: Uint128::zero(),
             },
         };
-        let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
         assert_eq!(err, ContractError::InvalidWeight {});
     }
 
@@ -871,7 +871,7 @@ mod tests {
             },
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
         assert_eq!(ContractError::InvalidWeight {}, res);
     }
 
@@ -897,7 +897,7 @@ mod tests {
             },
         ];
         let msg = ExecuteMsg::UpdateRecipients {
-            recipients: recipient.clone(),
+            recipients: recipient,
         };
 
         let deps_mut = deps.as_mut();
@@ -915,7 +915,7 @@ mod tests {
             )
             .unwrap();
         let info = mock_info("incorrect_owner", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
+        let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 
@@ -1019,7 +1019,7 @@ mod tests {
         // Invalid weight
 
         let info = mock_info(owner, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
         assert_eq!(res, ContractError::InvalidWeight {});
     }
 
@@ -1069,7 +1069,7 @@ mod tests {
         // Unauthorized
 
         let info = mock_info("incorrect_owner", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
     }
 
