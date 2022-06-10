@@ -1,7 +1,7 @@
 use cosmwasm_std::{OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
-use cw_utils::Expiration;
+use cw_utils::{Expiration, ParseReplyError};
 use std::convert::From;
 use std::string::FromUtf8Error;
 use thiserror::Error;
@@ -15,6 +15,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     Hex(#[from] FromHexError),
+
+    #[error("{0}")]
+    ParseReply(#[from] ParseReplyError),
 
     #[error("Unauthorized")]
     Unauthorized {},

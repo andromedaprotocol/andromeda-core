@@ -3,7 +3,9 @@ use crate::{
     state::{ADO_ADDRESSES, ADO_DESCRIPTORS},
 };
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg};
-use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
+use andromeda_testing::{
+    reply::MsgInstantiateContractResponse, testing::mock_querier::mock_dependencies_custom,
+};
 use common::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{
     attr,
@@ -11,6 +13,7 @@ use cosmwasm_std::{
     to_binary, Addr, CosmosMsg, Empty, Event, Reply, ReplyOn, Response, StdError, SubMsg,
     SubMsgResponse, SubMsgResult, WasmMsg,
 };
+use prost::Message;
 
 #[test]
 fn test_empty_instantiation() {
@@ -619,10 +622,20 @@ fn test_reply_assign_app() {
     let mock_reply_event = Event::new("instantiate")
         .add_attribute("contract_address".to_string(), "tokenaddress".to_string());
 
+    let instantiate_reply = MsgInstantiateContractResponse {
+        contract_address: "tokenaddress".to_string(),
+        data: vec![],
+    };
+    let mut encoded_instantiate_reply = Vec::<u8>::with_capacity(instantiate_reply.encoded_len());
+
+    instantiate_reply
+        .encode(&mut encoded_instantiate_reply)
+        .unwrap();
+
     let mock_reply = Reply {
         id: component_idx,
         result: SubMsgResult::Ok(SubMsgResponse {
-            data: None,
+            data: Some(encoded_instantiate_reply.into()),
             events: vec![mock_reply_event],
         }),
     };

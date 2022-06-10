@@ -1,16 +1,8 @@
-use cosmwasm_std::{Reply, StdError, StdResult};
+use crate::error::ContractError;
+use cosmwasm_std::Reply;
+use cw_utils::parse_reply_instantiate_data;
 
-pub fn get_reply_address(msg: &Reply) -> StdResult<String> {
-    let res = msg.result.clone().unwrap();
-    let events = &res.events;
-    for event in events.iter() {
-        for attr in event.attributes.iter() {
-            if attr.key == "contract_address" && !attr.value.is_empty() {
-                return Ok(attr.value.clone());
-            }
-        }
-    }
-    Err(StdError::generic_err(
-        "Could not parse reply contract address",
-    ))
+pub fn get_reply_address(msg: Reply) -> Result<String, ContractError> {
+    let res = parse_reply_instantiate_data(msg)?;
+    Ok(res.contract_address)
 }

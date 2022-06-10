@@ -73,7 +73,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     }
     require(msg.id == 1, ContractError::InvalidReplyId {})?;
 
-    let addr = get_reply_address(&msg)?;
+    let addr = get_reply_address(msg)?;
     SWAPPER_IMPL_ADDR.save(deps.storage, &AndrAddress { identifier: addr })?;
     Ok(Response::default())
 }
