@@ -74,7 +74,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     let id = msg.id.to_string();
     let descriptor = ADO_DESCRIPTORS.load(deps.storage, &id)?;
 
-    let addr_str = get_reply_address(&msg)?;
+    let addr_str = get_reply_address(msg)?;
     let addr = &deps.api.addr_validate(&addr_str)?;
     ADO_ADDRESSES.save(deps.storage, &descriptor.name, addr)?;
     let assign_app = generate_assign_app_message(addr, &env.contract.address.to_string())?;

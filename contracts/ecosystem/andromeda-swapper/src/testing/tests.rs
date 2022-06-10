@@ -10,12 +10,14 @@ use andromeda_ecosystem::swapper::{
     Cw20HookMsg, ExecuteMsg, InstantiateInfo, InstantiateMsg, QueryMsg, SwapperCw20HookMsg,
     SwapperImpl, SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
 };
-use andromeda_testing::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2,
+use andromeda_testing::{
+    reply::MsgInstantiateContractResponse,
+    testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2},
 };
 use common::{ado_base::recipient::Recipient, app::AndrAddress, error::ContractError};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
+use prost::Message;
 
 const MOCK_ASTROPORT_WRAPPER_CONTRACT: &str = "astroport_wrapper";
 
@@ -85,10 +87,20 @@ fn test_instantiate_swapper_impl_new() {
         res
     );
 
+    let instantiate_reply = MsgInstantiateContractResponse {
+        contract_address: "swapper_impl_address".to_string(),
+        data: vec![],
+    };
+    let mut encoded_instantiate_reply = Vec::<u8>::with_capacity(instantiate_reply.encoded_len());
+
+    instantiate_reply
+        .encode(&mut encoded_instantiate_reply)
+        .unwrap();
+
     let reply_msg = Reply {
         id: 1,
         result: SubMsgResult::Ok(SubMsgResponse {
-            data: None,
+            data: Some(encoded_instantiate_reply.into()),
             events: vec![
                 Event::new("Type").add_attribute("contract_address", "swapper_impl_address")
             ],
