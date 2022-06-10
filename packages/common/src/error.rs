@@ -46,6 +46,9 @@ pub enum ContractError {
     #[error("NotInRefillMode")]
     NotInRefillMode {},
 
+    #[error("ReachedRecipientLimit")]
+    ReachedRecipientLimit {},
+
     #[error("MinterBlacklisted")]
     MinterBlacklisted {},
 
