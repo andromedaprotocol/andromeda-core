@@ -307,6 +307,12 @@ fn execute_update_recipients(
     // Can't change splitter while locked
     require(!splitter.locked, ContractError::ContractLocked {})?;
 
+    // Maximum number of recipients is 100
+    require(
+        recipients.len() <= 100,
+        ContractError::ReachedRecipientLimit {},
+    )?;
+
     // A recipient's weight has to be greater than zero
     let zero_weight = recipients.iter().any(|x| x.weight == Uint128::zero());
 
