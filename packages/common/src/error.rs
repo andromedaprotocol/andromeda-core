@@ -31,6 +31,12 @@ pub enum ContractError {
     #[error("InvalidPrimitive")]
     InvalidPrimitive {},
 
+    #[error("LockTimeTooShort")]
+    LockTimeTooShort {},
+
+    #[error("LockTimeTooLong")]
+    LockTimeTooLong {},
+
     #[error("InvalidWeight")]
     InvalidWeight {},
 

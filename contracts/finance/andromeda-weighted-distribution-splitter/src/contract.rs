@@ -18,8 +18,10 @@ use common::{
 
 use cosmwasm_std::{
     attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    SubMsg, Uint128,
+    SubMsg, Timestamp, Uint128,
 };
+
+use cw_utils::Expiration;
 
 use cw2::{get_contract_version, set_contract_version};
 // version info for migration info
@@ -29,7 +31,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -38,9 +40,11 @@ pub fn instantiate(
         ContractError::EmptyRecipientsList {},
     )?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let current_time = env.block.time.seconds();
     let splitter = Splitter {
         recipients: msg.recipients,
-        locked: false,
+        // If locking isn't desired upon instantiation, just set it to 0
+        locked: Expiration::AtTime(Timestamp::from_seconds(msg.lock_time + current_time)),
     };
 
     SPLITTER.save(deps.storage, &splitter)?;
@@ -91,16 +95,16 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => {
-            execute_update_recipients(deps, info, recipients)
+            execute_update_recipients(deps, env, info, recipients)
         }
         ExecuteMsg::UpdateRecipientWeight { recipient } => {
-            execute_update_recipient_weight(deps, info, recipient)
+            execute_update_recipient_weight(deps, env, info, recipient)
         }
-        ExecuteMsg::AddRecipient { recipient } => execute_add_recipient(deps, info, recipient),
+        ExecuteMsg::AddRecipient { recipient } => execute_add_recipient(deps, env, info, recipient),
         ExecuteMsg::RemoveRecipient { recipient } => {
-            execute_remove_recipient(deps, info, recipient)
+            execute_remove_recipient(deps, env, info, recipient)
         }
-        ExecuteMsg::UpdateLock { lock } => execute_update_lock(deps, info, lock),
+        ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
 
         ExecuteMsg::Send {} => execute_send(deps, info),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
@@ -109,6 +113,7 @@ pub fn execute(
 
 pub fn execute_update_recipient_weight(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     recipient: AddressWeight,
 ) -> Result<Response, ContractError> {
@@ -128,10 +133,13 @@ pub fn execute_update_recipient_weight(
         ContractError::InvalidWeight {},
     )?;
 
-    // Check if splitter is locked
+    // Splitter's lock should be expired
     let mut splitter = SPLITTER.load(deps.storage)?;
 
-    require(!splitter.locked, ContractError::ContractLocked {})?;
+    require(
+        splitter.locked.is_expired(&env.block),
+        ContractError::ContractLocked {},
+    )?;
 
     // Recipients are stored in a vector, we search for the desired recipient's index in the vector
 
@@ -154,6 +162,7 @@ pub fn execute_update_recipient_weight(
 
 pub fn execute_add_recipient(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     recipient: AddressWeight,
 ) -> Result<Response, ContractError> {
@@ -170,7 +179,12 @@ pub fn execute_add_recipient(
     // Check if splitter is locked
     let mut splitter = SPLITTER.load(deps.storage)?;
 
-    require(!splitter.locked, ContractError::ContractLocked {})?;
+    // Can't add recipients while the lock isn't expired
+
+    require(
+        splitter.locked.is_expired(&env.block),
+        ContractError::ContractLocked {},
+    )?;
 
     // Can't set weight to 0
     require(
@@ -283,6 +297,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
 
 fn execute_update_recipients(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     recipients: Vec<AddressWeight>,
 ) -> Result<Response, ContractError> {
@@ -304,8 +319,11 @@ fn execute_update_recipients(
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
-    // Can't change splitter while locked
-    require(!splitter.locked, ContractError::ContractLocked {})?;
+    // Can't update recipients while lock isn't expired
+    require(
+        splitter.locked.is_expired(&env.block),
+        ContractError::ContractLocked {},
+    )?;
 
     // Maximum number of recipients is 100
     require(
@@ -326,6 +344,7 @@ fn execute_update_recipients(
 
 fn execute_remove_recipient(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
@@ -342,7 +361,12 @@ fn execute_remove_recipient(
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
-    require(!splitter.locked, ContractError::ContractLocked {})?;
+    // Can't remove recipients while lock isn't expired
+
+    require(
+        splitter.locked.is_expired(&env.block),
+        ContractError::ContractLocked {},
+    )?;
 
     // Recipients are stored in a vector, we search for the desired recipient's index in the vector
 
@@ -370,8 +394,9 @@ fn execute_remove_recipient(
 
 fn execute_update_lock(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
-    lock: bool,
+    lock_time: u64,
 ) -> Result<Response, ContractError> {
     require(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -385,12 +410,32 @@ fn execute_update_lock(
     )?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
-    splitter.locked = lock;
+
+    // Can't call this function while the lock isn't expired
+
+    require(
+        splitter.locked.is_expired(&env.block),
+        ContractError::ContractLocked {},
+    )?;
+    // Get current time
+    let current_time = env.block.time.seconds();
+
+    // New lock time can't be too short (At least 1 day)
+    require(lock_time >= 86400, ContractError::LockTimeTooShort {})?;
+
+    // New lock time can't be unreasonably long (No more than 1 year)
+    require(lock_time <= 31_536_000, ContractError::LockTimeTooLong {})?;
+
+    // Set new lock time
+    let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
+
+    splitter.locked = new_lock;
+
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_lock"),
-        attr("locked", lock.to_string()),
+        attr("locked", new_lock.to_string()),
     ]))
 }
 
