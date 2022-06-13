@@ -236,7 +236,7 @@ fn test_execute_update_lock() {
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
-    assert_eq!(splitter.locked.is_expired(&env.block), false);
+    assert!(!splitter.locked.is_expired(&env.block));
 }
 
 #[test]
@@ -274,7 +274,7 @@ fn test_execute_update_lock_too_short() {
         .unwrap();
 
     let info = mock_info(owner, &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(ContractError::LockTimeTooShort {}, res);
 }
 
@@ -313,7 +313,7 @@ fn test_execute_update_lock_too_long() {
         .unwrap();
 
     let info = mock_info(owner, &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(ContractError::LockTimeTooLong {}, res);
 }
 
@@ -352,7 +352,7 @@ fn test_execute_update_lock_already_locked() {
         .unwrap();
 
     let info = mock_info(owner, &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(ContractError::ContractLocked {}, res);
 }
 
@@ -391,7 +391,7 @@ fn test_execute_update_lock_unauthorized() {
         .unwrap();
 
     let info = mock_info("incorrect_owner", &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
 
@@ -450,7 +450,7 @@ fn test_execute_remove_recipient() {
         recipient: Recipient::from_string(String::from("addr1")),
     };
     // Try removing a user that isn't in the list
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
     let expected_splitter = Splitter {
@@ -803,7 +803,7 @@ fn test_update_recipient_weight_locked_contract() {
 
     // Locked contract
     let splitter = Splitter {
-        recipients: recipient.clone(),
+        recipients: recipient,
         locked: Expiration::AtTime(Timestamp::from_seconds(current_time + 1)),
     };
 
@@ -814,7 +814,7 @@ fn test_update_recipient_weight_locked_contract() {
             weight: Uint128::new(100),
         },
     };
-    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::ContractLocked {});
 }
 
@@ -1014,7 +1014,7 @@ fn test_execute_add_recipient() {
         },
     };
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         Response::default().add_attributes(vec![attr("action", "added_recipient")]),
         res
