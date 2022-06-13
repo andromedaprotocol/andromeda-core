@@ -4,6 +4,7 @@ use common::{
     require,
 };
 use cosmwasm_std::Decimal;
+use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +20,7 @@ pub struct Splitter {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
     /// Whether or not the contract is currently locked. This restricts updating any config related fields.
-    pub locked: bool,
+    pub locked: Expiration,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -27,6 +28,7 @@ pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
+    pub lock_time: u64,
     pub modules: Option<Vec<Module>>,
 }
 
@@ -46,7 +48,7 @@ pub enum ExecuteMsg {
     },
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock {
-        lock: bool,
+        lock_time: u64,
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},

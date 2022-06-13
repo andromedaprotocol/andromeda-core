@@ -36,6 +36,7 @@ fn test_modules() {
             recipient: Recipient::from_string(String::from("Some Address")),
             percent: Decimal::percent(100),
         }],
+        lock_time: 0,
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let expected_res = Response::new()
@@ -102,6 +103,7 @@ fn test_update_app_contract() {
                 percent: Decimal::percent(50),
             },
         ],
+        lock_time: 0,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -144,6 +146,7 @@ fn test_update_app_contract_invalid_recipient() {
             }),
             percent: Decimal::percent(100),
         }],
+        lock_time: 0,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();

@@ -349,7 +349,7 @@ fn execute_remove_recipient(
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -399,7 +399,7 @@ fn execute_update_lock(
     lock_time: u64,
 ) -> Result<Response, ContractError> {
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 

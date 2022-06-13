@@ -16,9 +16,10 @@ use common::{
 };
 use cosmwasm_std::{
     attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, SubMsg, Uint128,
+    SubMsg, Timestamp, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw_utils::Expiration;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-splitter";
@@ -27,15 +28,17 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     msg.validate()?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let current_time = env.block.time.seconds();
     let splitter = Splitter {
         recipients: msg.recipients,
-        locked: false,
+        // If locking isn't desired upon instantiation, just set it to 0
+        locked: Expiration::AtTime(Timestamp::from_seconds(msg.lock_time + current_time)),
     };
 
     SPLITTER.save(deps.storage, &splitter)?;
@@ -86,9 +89,9 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => {
-            execute_update_recipients(deps, info, recipients)
+            execute_update_recipients(deps, env, info, recipients)
         }
-        ExecuteMsg::UpdateLock { lock } => execute_update_lock(deps, info, lock),
+        ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
         ExecuteMsg::Send {} => execute_send(deps, info),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
     }
@@ -170,20 +173,24 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
 
 fn execute_update_recipients(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     recipients: Vec<AddressPercent>,
 ) -> Result<Response, ContractError> {
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
     validate_recipient_list(recipients.clone())?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
-    if splitter.locked {
-        StdError::generic_err("The splitter is currently locked");
-    }
+    // Can't call this function while the lock isn't expired
+
+    require(
+        splitter.locked.is_expired(&env.block),
+        ContractError::ContractLocked {},
+    )?;
 
     splitter.recipients = recipients;
     SPLITTER.save(deps.storage, &splitter)?;
@@ -193,20 +200,48 @@ fn execute_update_recipients(
 
 fn execute_update_lock(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
-    lock: bool,
+    lock_time: u64,
 ) -> Result<Response, ContractError> {
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
+
+    // No need to send funds
+    require(
+        info.funds.is_empty(),
+        ContractError::FunctionDeclinesFunds {},
+    )?;
+
     let mut splitter = SPLITTER.load(deps.storage)?;
-    splitter.locked = lock;
+
+    // Can't call this function while the lock isn't expired
+
+    require(
+        splitter.locked.is_expired(&env.block),
+        ContractError::ContractLocked {},
+    )?;
+    // Get current time
+    let current_time = env.block.time.seconds();
+
+    // New lock time can't be too short (At least 1 day)
+    require(lock_time >= 86400, ContractError::LockTimeTooShort {})?;
+
+    // New lock time can't be unreasonably long (No more than 1 year)
+    require(lock_time <= 31_536_000, ContractError::LockTimeTooLong {})?;
+
+    // Set new lock time
+    let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
+
+    splitter.locked = new_lock;
+
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_lock"),
-        attr("locked", lock.to_string()),
+        attr("locked", new_lock.to_string()),
     ]))
 }
 
@@ -252,6 +287,7 @@ mod tests {
                 percent: Decimal::one(),
             }],
             modules: None,
+            lock_time: 0,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -262,17 +298,20 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
+        let current_time = env.block.time.seconds();
+        let lock_time = 100_000;
+
         let owner = "creator";
 
+        // Start off with an expiration that's behind current time (expired)
         let splitter = Splitter {
             recipients: vec![],
-            locked: false,
+            locked: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-        let lock = true;
-        let msg = ExecuteMsg::UpdateLock { lock };
+        let msg = ExecuteMsg::UpdateLock { lock_time };
         let deps_mut = deps.as_mut();
         ADOContract::default()
             .instantiate(
@@ -288,23 +327,22 @@ mod tests {
             )
             .unwrap();
 
-        let info = mock_info("incorrect_owner", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
-        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
-
         let info = mock_info(owner, &[]);
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let new_lock = Expiration::AtTime(Timestamp::from_seconds(current_time + lock_time));
         assert_eq!(
             Response::default().add_attributes(vec![
                 attr("action", "update_lock"),
-                attr("locked", lock.to_string())
+                attr("locked", new_lock.to_string())
             ]),
             res
         );
 
         //check result
         let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
-        assert_eq!(splitter.locked, lock);
+        assert!(!splitter.locked.is_expired(&env.block));
+        assert_eq!(new_lock, splitter.locked);
     }
 
     #[test]
@@ -330,7 +368,7 @@ mod tests {
 
         let splitter = Splitter {
             recipients: vec![],
-            locked: false,
+            locked: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -395,7 +433,7 @@ mod tests {
 
         let splitter = Splitter {
             recipients: recipient,
-            locked: false,
+            locked: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -446,7 +484,7 @@ mod tests {
         let env = mock_env();
         let splitter = Splitter {
             recipients: vec![],
-            locked: false,
+            locked: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -498,7 +536,7 @@ mod tests {
 
         let splitter = Splitter {
             recipients: recipient,
-            locked: false,
+            locked: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
