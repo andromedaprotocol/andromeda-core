@@ -57,10 +57,10 @@
       "description": "Approvals for a given address (paginated)",
       "type": "object",
       "required": [
-        "approved_for_all"
+        "all_operators"
       ],
       "properties": {
-        "approved_for_all": {
+        "all_operators": {
           "type": "object",
           "required": [
             "owner"

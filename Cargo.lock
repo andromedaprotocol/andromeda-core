@@ -453,6 +453,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-weighted-distribution-splitter"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-finance",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-wrapped-cw721"
 version = "0.1.0"
 dependencies = [
@@ -667,9 +684,9 @@ dependencies = [
 
 [[package]]
 name = "cw-utils"
-version = "0.13.2"
+version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "babd2c090f39d07ce5bf2556962305e795daa048ce20a93709eb591476e4a29e"
+checksum = "9dbaecb78c8e8abfd6b4258c7f4fbeb5c49a5e45ee4d910d3240ee8e1d714e1b"
 dependencies = [
  "cosmwasm-std",
  "schemars",

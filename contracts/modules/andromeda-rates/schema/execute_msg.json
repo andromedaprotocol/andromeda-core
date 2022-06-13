@@ -47,7 +47,7 @@
       ],
       "properties": {
         "address": {
-          "description": "Addr can also be a human-readable identifier used in a mission contract.",
+          "description": "Addr can also be a human-readable identifier used in a app contract.",
           "allOf": [
             {
               "$ref": "#/definitions/AndrAddress"
@@ -73,7 +73,7 @@
       ],
       "properties": {
         "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a mission.",
+          "description": "Can be either an address or identifier of an ADO in a app.",
           "type": "string"
         }
       }
@@ -146,10 +146,10 @@
         {
           "type": "object",
           "required": [
-            "update_mission_contract"
+            "update_app_contract"
           ],
           "properties": {
-            "update_mission_contract": {
+            "update_app_contract": {
               "type": "object",
               "required": [
                 "address"
@@ -159,19 +159,6 @@
                   "type": "string"
                 }
               }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Called after `UpdateMissionContract` to ensure that all `AndrAddress` instances are valid.",
-          "type": "object",
-          "required": [
-            "validate_andr_addresses"
-          ],
-          "properties": {
-            "validate_andr_addresses": {
-              "type": "object"
             }
           },
           "additionalProperties": false

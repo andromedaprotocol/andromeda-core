@@ -22,11 +22,26 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("ContractLocked")]
+    ContractLocked {},
+
+    #[error("UserNotFound")]
+    UserNotFound {},
+
     #[error("PriceNotSet")]
     PriceNotSet {},
 
     #[error("InvalidPrimitive")]
     InvalidPrimitive {},
+
+    #[error("LockTimeTooShort")]
+    LockTimeTooShort {},
+
+    #[error("LockTimeTooLong")]
+    LockTimeTooLong {},
+
+    #[error("InvalidWeight")]
+    InvalidWeight {},
 
     #[error("IllegalTokenName")]
     IllegalTokenName {},
@@ -40,6 +55,9 @@ pub enum ContractError {
     #[error("NotInRefillMode")]
     NotInRefillMode {},
 
+    #[error("ReachedRecipientLimit")]
+    ReachedRecipientLimit {},
+
     #[error("MinterBlacklisted")]
     MinterBlacklisted {},
 
@@ -51,6 +69,9 @@ pub enum ContractError {
 
     #[error("InvalidAddress")]
     InvalidAddress {},
+
+    #[error("FunctionDeclinesFunds")]
+    FunctionDeclinesFunds {},
 
     #[error("ExpirationInPast")]
     ExpirationInPast {},
@@ -185,6 +206,9 @@ pub enum ContractError {
 
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
+
+    #[error("DuplicateRecipient")]
+    DuplicateRecipient {},
 
     // BEGIN CW20 ERRORS
     #[error("Cannot set to own account")]

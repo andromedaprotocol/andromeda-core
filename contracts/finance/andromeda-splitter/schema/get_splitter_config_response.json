@@ -19,7 +19,7 @@
       ],
       "properties": {
         "address": {
-          "description": "Addr can also be a human-readable identifier used in a mission contract.",
+          "description": "Addr can also be a human-readable identifier used in a app contract.",
           "allOf": [
             {
               "$ref": "#/definitions/AndrAddress"
@@ -60,7 +60,7 @@
       ],
       "properties": {
         "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a mission.",
+          "description": "Can be either an address or identifier of an ADO in a app.",
           "type": "string"
         }
       }
