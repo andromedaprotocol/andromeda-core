@@ -324,7 +324,7 @@ mod tests {
                 percent: Decimal::one(),
             }],
             modules: None,
-            lock_time: Some(0),
+            lock_time: Some(100_000),
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());

@@ -42,7 +42,7 @@ fn test_modules() {
             recipient: Recipient::from_string(String::from("Some Address")),
             weight: Uint128::new(100),
         }],
-        lock_time: Some(10),
+        lock_time: None,
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let expected_res = Response::new()
@@ -109,7 +109,7 @@ fn test_update_app_contract() {
                 weight: Uint128::new(50),
             },
         ],
-        lock_time: Some(10),
+        lock_time: None,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -152,7 +152,7 @@ fn test_update_app_contract_invalid_recipient() {
             }),
             weight: Uint128::new(100),
         }],
-        lock_time: Some(10),
+        lock_time: Some(100_000),
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -182,7 +182,7 @@ fn test_instantiate() {
             weight: Uint128::new(1),
         }],
         modules: None,
-        lock_time: Some(10),
+        lock_time: None,
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(0, res.messages.len());
@@ -323,7 +323,7 @@ fn test_execute_update_lock_already_locked() {
     let env = mock_env();
 
     let current_time = env.block.time.seconds();
-    let lock_time = 10_000;
+    let lock_time = 100_000;
 
     let owner = "creator";
 
