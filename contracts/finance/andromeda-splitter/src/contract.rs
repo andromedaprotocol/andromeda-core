@@ -34,6 +34,11 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     msg.validate()?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    // Max 100 recipients
+    require(
+        msg.recipients.len() <= 100,
+        ContractError::ReachedRecipientLimit {},
+    )?;
     let current_time = env.block.time.seconds();
     let splitter = Splitter {
         recipients: msg.recipients,
@@ -190,6 +195,11 @@ fn execute_update_recipients(
     require(
         splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
+    )?;
+    // Max 100 recipients
+    require(
+        recipients.len() <= 100,
+        ContractError::ReachedRecipientLimit {},
     )?;
 
     splitter.recipients = recipients;
