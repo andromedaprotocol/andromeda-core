@@ -44,7 +44,12 @@ pub fn instantiate(
     let current_time = env.block.time.seconds();
     match msg.lock_time {
         Some(lock_time) => {
+            // New lock time can't be too short (At least 1 day)
+            require(lock_time >= 86400, ContractError::LockTimeTooShort {})?;
+
+            // New lock time can't be too long (Max 1 year)
             require(lock_time <= 31_536_000, ContractError::LockTimeTooLong {})?;
+
             let splitter = Splitter {
                 recipients: msg.recipients,
                 lock: Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time)),
