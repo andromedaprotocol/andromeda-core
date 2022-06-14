@@ -44,7 +44,7 @@ pub fn instantiate(
     let splitter = Splitter {
         recipients: msg.recipients,
         // If locking isn't desired upon instantiation, just set it to 0
-        locked: Expiration::AtTime(Timestamp::from_seconds(msg.lock_time + current_time)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(msg.lock_time + current_time)),
     };
 
     SPLITTER.save(deps.storage, &splitter)?;
@@ -137,7 +137,7 @@ pub fn execute_update_recipient_weight(
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
 
@@ -182,7 +182,7 @@ pub fn execute_add_recipient(
     // Can't add recipients while the lock isn't expired
 
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
 
@@ -211,7 +211,7 @@ pub fn execute_add_recipient(
     splitter.recipients.push(recipient);
     let new_splitter = Splitter {
         recipients: splitter.recipients,
-        locked: splitter.locked,
+        lock: splitter.lock,
     };
     SPLITTER.save(deps.storage, &new_splitter)?;
 
@@ -321,7 +321,7 @@ fn execute_update_recipients(
 
     // Can't update recipients while lock isn't expired
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
 
@@ -364,7 +364,7 @@ fn execute_remove_recipient(
     // Can't remove recipients while lock isn't expired
 
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
 
@@ -384,7 +384,7 @@ fn execute_remove_recipient(
         splitter.recipients.swap_remove(i);
         let new_splitter = Splitter {
             recipients: splitter.recipients,
-            locked: splitter.locked,
+            lock: splitter.lock,
         };
         SPLITTER.save(deps.storage, &new_splitter)?;
     };
@@ -414,7 +414,7 @@ fn execute_update_lock(
     // Can't call this function while the lock isn't expired
 
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
     // Get current time
@@ -429,7 +429,7 @@ fn execute_update_lock(
     // Set new lock time
     let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
 
-    splitter.locked = new_lock;
+    splitter.lock = new_lock;
 
     SPLITTER.save(deps.storage, &splitter)?;
 

@@ -201,7 +201,7 @@ fn test_execute_update_lock() {
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {
         recipients: vec![],
-        locked: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -236,7 +236,7 @@ fn test_execute_update_lock() {
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
-    assert!(!splitter.locked.is_expired(&env.block));
+    assert!(!splitter.lock.is_expired(&env.block));
 }
 
 #[test]
@@ -252,7 +252,7 @@ fn test_execute_update_lock_too_short() {
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {
         recipients: vec![],
-        locked: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -291,7 +291,7 @@ fn test_execute_update_lock_too_long() {
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {
         recipients: vec![],
-        locked: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -330,7 +330,7 @@ fn test_execute_update_lock_already_locked() {
     // Start off with an expiration that's ahead current time (unexpired)
     let splitter = Splitter {
         recipients: vec![],
-        locked: Expiration::AtTime(Timestamp::from_seconds(current_time + 1)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(current_time + 1)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -369,7 +369,7 @@ fn test_execute_update_lock_unauthorized() {
 
     let splitter = Splitter {
         recipients: vec![],
-        locked: new_lock,
+        lock: new_lock,
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -439,7 +439,7 @@ fn test_execute_remove_recipient() {
     };
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -464,7 +464,7 @@ fn test_execute_remove_recipient() {
                 weight: Uint128::new(60),
             },
         ],
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
     assert_eq!(expected_splitter, splitter);
     assert_eq!(
@@ -528,7 +528,7 @@ fn test_execute_remove_recipient_not_on_list() {
     };
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -588,7 +588,7 @@ fn test_execute_remove_recipient_contract_locked() {
     };
     let splitter = Splitter {
         recipients: recipient.clone(),
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -597,7 +597,7 @@ fn test_execute_remove_recipient_contract_locked() {
 
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(env.block.time.seconds() + 1)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(env.block.time.seconds() + 1)),
     };
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
@@ -704,7 +704,7 @@ fn test_update_recipient_weight() {
     };
     let splitter = Splitter {
         recipients: recipient.clone(),
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -714,7 +714,7 @@ fn test_update_recipient_weight() {
     // Works
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -745,7 +745,7 @@ fn test_update_recipient_weight() {
                 weight: Uint128::new(50),
             },
         ],
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
     assert_eq!(expected_splitter, splitter);
 }
@@ -794,7 +794,7 @@ fn test_update_recipient_weight_locked_contract() {
     let current_time = env.block.time.seconds();
     let splitter = Splitter {
         recipients: recipient.clone(),
-        locked: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -804,7 +804,7 @@ fn test_update_recipient_weight_locked_contract() {
     // Locked contract
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(current_time + 1)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(current_time + 1)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -868,7 +868,7 @@ fn test_update_recipient_weight_user_not_found() {
     };
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -937,7 +937,7 @@ fn test_update_recipient_weight_invalid_weight() {
     };
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -998,7 +998,7 @@ fn test_execute_add_recipient() {
     };
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1040,7 +1040,7 @@ fn test_execute_add_recipient() {
                 weight: Uint128::new(100),
             },
         ],
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
     assert_eq!(expected_splitter, splitter);
 
@@ -1100,7 +1100,7 @@ fn test_execute_add_recipient_duplicate_recipient() {
     };
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1175,7 +1175,7 @@ fn test_execute_add_recipient_invalid_weight() {
     };
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1237,7 +1237,7 @@ fn test_execute_add_recipient_locked_contract() {
     let info = mock_info(owner, &[]);
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(env.block.time.seconds() + 1)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(env.block.time.seconds() + 1)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1298,7 +1298,7 @@ fn test_execute_update_recipients() {
 
     let splitter = Splitter {
         recipients: vec![],
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1366,7 +1366,7 @@ fn test_execute_update_recipients_invalid_weight() {
 
     let splitter = Splitter {
         recipients: vec![],
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1418,7 +1418,7 @@ fn test_execute_update_recipients_contract_locked() {
 
     let splitter = Splitter {
         recipients: vec![],
-        locked: Expiration::AtTime(Timestamp::from_seconds(current_time + 1)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(current_time + 1)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1468,7 +1468,7 @@ fn test_execute_update_recipients_unauthorized() {
 
     let splitter = Splitter {
         recipients: vec![],
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1522,7 +1522,7 @@ fn test_execute_send() {
 
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     let info = mock_info(owner, &[Coin::new(10000_u128, "uluna")]);
@@ -1574,7 +1574,7 @@ fn test_query_splitter() {
     let env = mock_env();
     let splitter = Splitter {
         recipients: vec![],
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1600,7 +1600,7 @@ fn test_query_user_weight() {
     };
     let splitter = Splitter {
         recipients: vec![user1, user2],
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1655,7 +1655,7 @@ fn test_execute_send_error() {
     );
     let splitter = Splitter {
         recipients: recipient.clone(),
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -1670,7 +1670,7 @@ fn test_execute_send_error() {
     let info = mock_info(owner, &[]);
     let splitter = Splitter {
         recipients: recipient,
-        locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(0)),
     };
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();

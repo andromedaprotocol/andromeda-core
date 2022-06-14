@@ -20,7 +20,7 @@ pub struct Splitter {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
     pub recipients: Vec<AddressPercent>,
     /// Whether or not the contract is currently locked. This restricts updating any config related fields.
-    pub locked: Expiration,
+    pub lock: Expiration,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

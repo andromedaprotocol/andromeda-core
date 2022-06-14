@@ -38,7 +38,7 @@ pub fn instantiate(
     let splitter = Splitter {
         recipients: msg.recipients,
         // If locking isn't desired upon instantiation, just set it to 0
-        locked: Expiration::AtTime(Timestamp::from_seconds(msg.lock_time + current_time)),
+        lock: Expiration::AtTime(Timestamp::from_seconds(msg.lock_time + current_time)),
     };
 
     SPLITTER.save(deps.storage, &splitter)?;
@@ -188,7 +188,7 @@ fn execute_update_recipients(
     // Can't call this function while the lock isn't expired
 
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
 
@@ -220,7 +220,7 @@ fn execute_update_lock(
     // Can't call this function while the lock isn't expired
 
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
     // Get current time
@@ -235,7 +235,7 @@ fn execute_update_lock(
     // Set new lock time
     let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
 
-    splitter.locked = new_lock;
+    splitter.lock = new_lock;
 
     SPLITTER.save(deps.storage, &splitter)?;
 
@@ -306,7 +306,7 @@ mod tests {
         // Start off with an expiration that's behind current time (expired)
         let splitter = Splitter {
             recipients: vec![],
-            locked: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
+            lock: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -341,8 +341,8 @@ mod tests {
 
         //check result
         let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
-        assert!(!splitter.locked.is_expired(&env.block));
-        assert_eq!(new_lock, splitter.locked);
+        assert!(!splitter.lock.is_expired(&env.block));
+        assert_eq!(new_lock, splitter.lock);
     }
 
     #[test]
@@ -368,7 +368,7 @@ mod tests {
 
         let splitter = Splitter {
             recipients: vec![],
-            locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+            lock: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -433,7 +433,7 @@ mod tests {
 
         let splitter = Splitter {
             recipients: recipient,
-            locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+            lock: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -484,7 +484,7 @@ mod tests {
         let env = mock_env();
         let splitter = Splitter {
             recipients: vec![],
-            locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+            lock: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
@@ -536,7 +536,7 @@ mod tests {
 
         let splitter = Splitter {
             recipients: recipient,
-            locked: Expiration::AtTime(Timestamp::from_seconds(0)),
+            lock: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
         SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
