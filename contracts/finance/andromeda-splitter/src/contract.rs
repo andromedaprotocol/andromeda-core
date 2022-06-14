@@ -24,6 +24,10 @@ use cw_utils::Expiration;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+// 1 day in seconds
+const ONE_DAY: u64 = 86_400;
+// 1 year in seconds
+const ONE_YEAR: u64 = 31_536_000;
 
 #[entry_point]
 pub fn instantiate(
@@ -42,28 +46,17 @@ pub fn instantiate(
     let current_time = env.block.time.seconds();
     match msg.lock_time {
         Some(lock_time) => {
-            // New lock time can't be too short (At least 1 day)
-            require(lock_time >= 86400, ContractError::LockTimeTooShort {})?;
+            // New lock time can't be too short
+            require(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {})?;
 
-            // New lock time can't be too long (Max 1 year)
-            require(lock_time <= 31_536_000, ContractError::LockTimeTooLong {})?;
+            // New lock time can't be too long
+            require(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {})?;
 
             let splitter = Splitter {
                 recipients: msg.recipients,
                 lock: Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time)),
             };
             SPLITTER.save(deps.storage, &splitter)?;
-            ADOContract::default().instantiate(
-                deps.storage,
-                deps.api,
-                info,
-                BaseInstantiateMsg {
-                    ado_type: "splitter".to_string(),
-                    operators: None,
-                    modules: msg.modules,
-                    primitive_contract: None,
-                },
-            )
         }
         None => {
             let splitter = Splitter {
@@ -72,19 +65,19 @@ pub fn instantiate(
                 lock: Expiration::AtTime(Timestamp::from_seconds(current_time)),
             };
             SPLITTER.save(deps.storage, &splitter)?;
-            ADOContract::default().instantiate(
-                deps.storage,
-                deps.api,
-                info,
-                BaseInstantiateMsg {
-                    ado_type: "splitter".to_string(),
-                    operators: None,
-                    modules: msg.modules,
-                    primitive_contract: None,
-                },
-            )
         }
     }
+    ADOContract::default().instantiate(
+        deps.storage,
+        deps.api,
+        info,
+        BaseInstantiateMsg {
+            ado_type: "splitter".to_string(),
+            operators: None,
+            modules: msg.modules,
+            primitive_contract: None,
+        },
+    )
 }
 
 #[entry_point]
@@ -263,11 +256,11 @@ fn execute_update_lock(
     // Get current time
     let current_time = env.block.time.seconds();
 
-    // New lock time can't be too short (At least 1 day)
-    require(lock_time >= 86400, ContractError::LockTimeTooShort {})?;
+    // New lock time can't be too short
+    require(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {})?;
 
-    // New lock time can't be unreasonably long (No more than 1 year)
-    require(lock_time <= 31_536_000, ContractError::LockTimeTooLong {})?;
+    // New lock time can't be unreasonably long
+    require(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {})?;
 
     // Set new lock time
     let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
