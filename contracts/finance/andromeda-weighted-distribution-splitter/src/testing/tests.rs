@@ -42,7 +42,7 @@ fn test_modules() {
             recipient: Recipient::from_string(String::from("Some Address")),
             weight: Uint128::new(100),
         }],
-        lock_time: 10,
+        lock_time: Some(10),
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let expected_res = Response::new()
@@ -109,7 +109,7 @@ fn test_update_app_contract() {
                 weight: Uint128::new(50),
             },
         ],
-        lock_time: 10,
+        lock_time: Some(10),
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -152,7 +152,7 @@ fn test_update_app_contract_invalid_recipient() {
             }),
             weight: Uint128::new(100),
         }],
-        lock_time: 10,
+        lock_time: Some(10),
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -182,7 +182,7 @@ fn test_instantiate() {
             weight: Uint128::new(1),
         }],
         modules: None,
-        lock_time: 10,
+        lock_time: Some(10),
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(0, res.messages.len());

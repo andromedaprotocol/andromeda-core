@@ -35,30 +35,53 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    require(
-        !msg.recipients.is_empty(),
-        ContractError::EmptyRecipientsList {},
-    )?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    // Max 100 recipients
+    require(
+        msg.recipients.len() <= 100,
+        ContractError::ReachedRecipientLimit {},
+    )?;
     let current_time = env.block.time.seconds();
-    let splitter = Splitter {
-        recipients: msg.recipients,
-        // If locking isn't desired upon instantiation, just set it to 0
-        lock: Expiration::AtTime(Timestamp::from_seconds(msg.lock_time + current_time)),
-    };
-
-    SPLITTER.save(deps.storage, &splitter)?;
-    ADOContract::default().instantiate(
-        deps.storage,
-        deps.api,
-        info,
-        BaseInstantiateMsg {
-            ado_type: "weighted-splitter".to_string(),
-            operators: None,
-            modules: msg.modules,
-            primitive_contract: None,
-        },
-    )
+    match msg.lock_time {
+        Some(lock_time) => {
+            require(lock_time <= 31_536_000, ContractError::LockTimeTooLong {})?;
+            let splitter = Splitter {
+                recipients: msg.recipients,
+                lock: Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time)),
+            };
+            SPLITTER.save(deps.storage, &splitter)?;
+            ADOContract::default().instantiate(
+                deps.storage,
+                deps.api,
+                info,
+                BaseInstantiateMsg {
+                    ado_type: "weighted-splitter".to_string(),
+                    operators: None,
+                    modules: msg.modules,
+                    primitive_contract: None,
+                },
+            )
+        }
+        None => {
+            let splitter = Splitter {
+                recipients: msg.recipients,
+                // If locking isn't desired upon instantiation, it's automatically set to 0
+                lock: Expiration::AtTime(Timestamp::from_seconds(current_time)),
+            };
+            SPLITTER.save(deps.storage, &splitter)?;
+            ADOContract::default().instantiate(
+                deps.storage,
+                deps.api,
+                info,
+                BaseInstantiateMsg {
+                    ado_type: "weighted-splitter".to_string(),
+                    operators: None,
+                    modules: msg.modules,
+                    primitive_contract: None,
+                },
+            )
+        }
+    }
 }
 
 #[entry_point]

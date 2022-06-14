@@ -40,24 +40,51 @@ pub fn instantiate(
         ContractError::ReachedRecipientLimit {},
     )?;
     let current_time = env.block.time.seconds();
-    let splitter = Splitter {
-        recipients: msg.recipients,
-        // If locking isn't desired upon instantiation, just set it to 0
-        lock: Expiration::AtTime(Timestamp::from_seconds(msg.lock_time + current_time)),
-    };
+    match msg.lock_time {
+        Some(lock_time) => {
+            // New lock time can't be too short (At least 1 day)
+            require(lock_time >= 86400, ContractError::LockTimeTooShort {})?;
 
-    SPLITTER.save(deps.storage, &splitter)?;
-    ADOContract::default().instantiate(
-        deps.storage,
-        deps.api,
-        info,
-        BaseInstantiateMsg {
-            ado_type: "splitter".to_string(),
-            operators: None,
-            modules: msg.modules,
-            primitive_contract: None,
-        },
-    )
+            // New lock time can't be too long (Max 1 year)
+            require(lock_time <= 31_536_000, ContractError::LockTimeTooLong {})?;
+
+            let splitter = Splitter {
+                recipients: msg.recipients,
+                lock: Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time)),
+            };
+            SPLITTER.save(deps.storage, &splitter)?;
+            ADOContract::default().instantiate(
+                deps.storage,
+                deps.api,
+                info,
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: msg.modules,
+                    primitive_contract: None,
+                },
+            )
+        }
+        None => {
+            let splitter = Splitter {
+                recipients: msg.recipients,
+                // If locking isn't desired upon instantiation, it's automatically set to 0
+                lock: Expiration::AtTime(Timestamp::from_seconds(current_time)),
+            };
+            SPLITTER.save(deps.storage, &splitter)?;
+            ADOContract::default().instantiate(
+                deps.storage,
+                deps.api,
+                info,
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    operators: None,
+                    modules: msg.modules,
+                    primitive_contract: None,
+                },
+            )
+        }
+    }
 }
 
 #[entry_point]
@@ -297,7 +324,7 @@ mod tests {
                 percent: Decimal::one(),
             }],
             modules: None,
-            lock_time: 0,
+            lock_time: Some(0),
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
