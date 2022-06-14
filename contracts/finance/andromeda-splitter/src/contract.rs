@@ -44,7 +44,7 @@ pub fn instantiate(
         ContractError::ReachedRecipientLimit {},
     )?;
     let current_time = env.block.time.seconds();
-    match msg.lock_time {
+    let splitter = match msg.lock_time {
         Some(lock_time) => {
             // New lock time can't be too short
             require(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {})?;
@@ -52,21 +52,22 @@ pub fn instantiate(
             // New lock time can't be too long
             require(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {})?;
 
-            let splitter = Splitter {
+            Splitter {
                 recipients: msg.recipients,
                 lock: Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time)),
-            };
-            SPLITTER.save(deps.storage, &splitter)?;
+            }
         }
         None => {
-            let splitter = Splitter {
+            Splitter {
                 recipients: msg.recipients,
                 // If locking isn't desired upon instantiation, it's automatically set to 0
                 lock: Expiration::AtTime(Timestamp::from_seconds(current_time)),
-            };
-            SPLITTER.save(deps.storage, &splitter)?;
+            }
         }
-    }
+    };
+
+    SPLITTER.save(deps.storage, &splitter)?;
+
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
