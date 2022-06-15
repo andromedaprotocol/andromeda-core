@@ -1506,7 +1506,7 @@ fn test_execute_send() {
     let recip_weight1 = Uint128::new(10); // Weight of 10
 
     let recip_address2 = "address2".to_string();
-    let recip_percent2 = Uint128::new(20); // Weight of 20
+    let recip_weight2 = Uint128::new(20); // Weight of 20
 
     let recipient = vec![
         AddressWeight {
@@ -1515,7 +1515,7 @@ fn test_execute_send() {
         },
         AddressWeight {
             recipient: Recipient::Addr(recip_address2.clone()),
-            weight: recip_percent2,
+            weight: recip_weight2,
         },
     ];
     let msg = ExecuteMsg::Send {};
