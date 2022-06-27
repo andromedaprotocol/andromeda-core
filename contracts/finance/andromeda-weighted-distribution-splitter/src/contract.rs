@@ -28,6 +28,11 @@ use cw2::{get_contract_version, set_contract_version};
 const CONTRACT_NAME: &str = "crates.io:andromeda-weighted-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+// 1 day in seconds
+const ONE_DAY: u64 = 86_400;
+// 1 year in seconds
+const ONE_YEAR: u64 = 31_536_000;
+
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
@@ -35,19 +40,37 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    require(
-        !msg.recipients.is_empty(),
-        ContractError::EmptyRecipientsList {},
-    )?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    // Max 100 recipients
+    require(
+        msg.recipients.len() <= 100,
+        ContractError::ReachedRecipientLimit {},
+    )?;
     let current_time = env.block.time.seconds();
-    let splitter = Splitter {
-        recipients: msg.recipients,
-        // If locking isn't desired upon instantiation, just set it to 0
-        locked: Expiration::AtTime(Timestamp::from_seconds(msg.lock_time + current_time)),
+    let splitter = match msg.lock_time {
+        Some(lock_time) => {
+            // New lock time can't be too short
+            require(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {})?;
+
+            // New lock time can't be too long
+            require(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {})?;
+
+            Splitter {
+                recipients: msg.recipients,
+                lock: Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time)),
+            }
+        }
+        None => {
+            Splitter {
+                recipients: msg.recipients,
+                // If locking isn't desired upon instantiation, it's automatically set to 0
+                lock: Expiration::AtTime(Timestamp::from_seconds(current_time)),
+            }
+        }
     };
 
     SPLITTER.save(deps.storage, &splitter)?;
+
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -137,7 +160,7 @@ pub fn execute_update_recipient_weight(
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
 
@@ -182,7 +205,7 @@ pub fn execute_add_recipient(
     // Can't add recipients while the lock isn't expired
 
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
 
@@ -211,7 +234,7 @@ pub fn execute_add_recipient(
     splitter.recipients.push(recipient);
     let new_splitter = Splitter {
         recipients: splitter.recipients,
-        locked: splitter.locked,
+        lock: splitter.lock,
     };
     SPLITTER.save(deps.storage, &new_splitter)?;
 
@@ -321,7 +344,7 @@ fn execute_update_recipients(
 
     // Can't update recipients while lock isn't expired
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
 
@@ -349,7 +372,7 @@ fn execute_remove_recipient(
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -364,7 +387,7 @@ fn execute_remove_recipient(
     // Can't remove recipients while lock isn't expired
 
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
 
@@ -384,7 +407,7 @@ fn execute_remove_recipient(
         splitter.recipients.swap_remove(i);
         let new_splitter = Splitter {
             recipients: splitter.recipients,
-            locked: splitter.locked,
+            lock: splitter.lock,
         };
         SPLITTER.save(deps.storage, &new_splitter)?;
     };
@@ -399,7 +422,7 @@ fn execute_update_lock(
     lock_time: u64,
 ) -> Result<Response, ContractError> {
     require(
-        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
 
@@ -414,22 +437,22 @@ fn execute_update_lock(
     // Can't call this function while the lock isn't expired
 
     require(
-        splitter.locked.is_expired(&env.block),
+        splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked {},
     )?;
     // Get current time
     let current_time = env.block.time.seconds();
 
-    // New lock time can't be too short (At least 1 day)
-    require(lock_time >= 86400, ContractError::LockTimeTooShort {})?;
+    // New lock time can't be too short
+    require(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {})?;
 
-    // New lock time can't be unreasonably long (No more than 1 year)
-    require(lock_time <= 31_536_000, ContractError::LockTimeTooLong {})?;
+    // New lock time can't be unreasonably long
+    require(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {})?;
 
     // Set new lock time
     let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
 
-    splitter.locked = new_lock;
+    splitter.lock = new_lock;
 
     SPLITTER.save(deps.storage, &splitter)?;
 
