@@ -1,7 +1,8 @@
 pub mod ado_base;
+pub mod app;
 pub mod error;
-pub mod mission;
 pub mod primitive;
+pub mod rates;
 pub mod response;
 #[cfg(test)]
 pub mod testing;
@@ -13,6 +14,13 @@ use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::BTreeMap;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum OrderBy {
+    Asc,
+    Desc,
+}
 
 pub fn parse_struct<T>(val: &Binary) -> Result<T, ContractError>
 where

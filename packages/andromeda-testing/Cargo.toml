@@ -1,0 +1,24 @@
+[package]
+name = "andromeda-testing"
+version = "0.1.0"
+authors = ["Connor Barr <crnbarr@gmail.com>"]
+edition = "2018"
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = "1.0.0"
+cw721 = "0.13.2"
+cw20 = "0.13.2"
+prost = "0.9.0"
+
+common = { path = "../common", version = "0.1.0" }
+andromeda-non-fungible-tokens = { version = "0.1.0", path = "../andromeda-non-fungible-tokens" }
+andromeda-app = { version = "0.1.0", path = "../andromeda-app" }
+andromeda-modules = { version = "0.1.0", path = "../andromeda-modules" }
+

@@ -1,7 +1,7 @@
 use cosmwasm_std::{OverflowError, StdError};
-use cw0::Expiration;
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
+use cw_utils::{Expiration, ParseReplyError};
 use std::convert::From;
 use std::string::FromUtf8Error;
 use thiserror::Error;
@@ -16,17 +16,47 @@ pub enum ContractError {
     #[error("{0}")]
     Hex(#[from] FromHexError),
 
+    #[error("{0}")]
+    ParseReply(#[from] ParseReplyError),
+
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("ContractLocked")]
+    ContractLocked {},
+
+    #[error("UserNotFound")]
+    UserNotFound {},
+
+    #[error("PriceNotSet")]
+    PriceNotSet {},
+
     #[error("InvalidPrimitive")]
     InvalidPrimitive {},
+
+    #[error("LockTimeTooShort")]
+    LockTimeTooShort {},
+
+    #[error("LockTimeTooLong")]
+    LockTimeTooLong {},
+
+    #[error("InvalidWeight")]
+    InvalidWeight {},
 
     #[error("IllegalTokenName")]
     IllegalTokenName {},
 
     #[error("IllegalTokenSymbol")]
     IllegalTokenSymbol {},
+
+    #[error("Refilling")]
+    Refilling {},
+
+    #[error("NotInRefillMode")]
+    NotInRefillMode {},
+
+    #[error("ReachedRecipientLimit")]
+    ReachedRecipientLimit {},
 
     #[error("MinterBlacklisted")]
     MinterBlacklisted {},
@@ -39,6 +69,9 @@ pub enum ContractError {
 
     #[error("InvalidAddress")]
     InvalidAddress {},
+
+    #[error("FunctionDeclinesFunds")]
+    FunctionDeclinesFunds {},
 
     #[error("ExpirationInPast")]
     ExpirationInPast {},
@@ -126,6 +159,9 @@ pub enum ContractError {
         current_block: u64,
     },
 
+    #[error("OutOfNFTs")]
+    OutOfNFTs {},
+
     #[error("HighestBidderCannotOutBid")]
     HighestBidderCannotOutBid {},
 
@@ -171,6 +207,9 @@ pub enum ContractError {
     #[error("DuplicateCoinDenoms")]
     DuplicateCoinDenoms {},
 
+    #[error("DuplicateRecipient")]
+    DuplicateRecipient {},
+
     // BEGIN CW20 ERRORS
     #[error("Cannot set to own account")]
     CannotSetOwnAccount {},
@@ -195,6 +234,10 @@ pub enum ContractError {
 
     #[error("Invalid png header")]
     InvalidPngHeader {},
+
+    #[error("Duplicate initial balance addresses")]
+    DuplicateInitialBalanceAddresses {},
+
     // END CW20 ERRORS
     #[error("Invalid Module, {msg:?}")]
     InvalidModule { msg: Option<String> },
@@ -210,6 +253,9 @@ pub enum ContractError {
 
     #[error("token_id already claimed")]
     Claimed {},
+
+    #[error("Approval not found for: {spender}")]
+    ApprovalNotFound { spender: String },
 
     #[error("OfferAlreadyPlaced")]
     OfferAlreadyPlaced {},
@@ -247,8 +293,8 @@ pub enum ContractError {
     #[error("GeneratorNotSpecified")]
     GeneratorNotSpecified {},
 
-    #[error("TooManyMissionComponents")]
-    TooManyMissionComponents {},
+    #[error("TooManyAppComponents")]
+    TooManyAppComponents {},
 
     #[error("InvalidLtvRatio: {msg}")]
     InvalidLtvRatio { msg: String },
@@ -358,11 +404,20 @@ pub enum ContractError {
     #[error("Too many mint messages, limit is {limit}")]
     TooManyMintMessages { limit: u32 },
 
-    #[error("Mission contract not specified")]
-    MissionContractNotSpecified {},
+    #[error("App contract not specified")]
+    AppContractNotSpecified {},
 
     #[error("Invalid component: {name}")]
     InvalidComponent { name: String },
+
+    #[error("Multi-batch not supported")]
+    MultiBatchNotSupported {},
+
+    #[error("Unexpected number of bytes. Expected: {expected}, actual: {actual}")]
+    UnexpectedNumberOfBytes { expected: u8, actual: usize },
+
+    #[error("Not an assigned operator, {msg:?}")]
+    NotAssignedOperator { msg: Option<String> },
 }
 
 impl From<Cw20ContractError> for ContractError {
@@ -378,6 +433,9 @@ impl From<Cw20ContractError> for ContractError {
             Cw20ContractError::InvalidZeroAmount {} => ContractError::InvalidZeroAmount {},
             Cw20ContractError::InvalidXmlPreamble {} => ContractError::InvalidXmlPreamble {},
             Cw20ContractError::CannotSetOwnAccount {} => ContractError::CannotSetOwnAccount {},
+            Cw20ContractError::DuplicateInitialBalanceAddresses {} => {
+                ContractError::DuplicateInitialBalanceAddresses {}
+            }
         }
     }
 }
@@ -389,6 +447,9 @@ impl From<Cw721ContractError> for ContractError {
             Cw721ContractError::Expired {} => ContractError::Expired {},
             Cw721ContractError::Unauthorized {} => ContractError::Unauthorized {},
             Cw721ContractError::Claimed {} => ContractError::Claimed {},
+            Cw721ContractError::ApprovalNotFound { spender } => {
+                ContractError::ApprovalNotFound { spender }
+            }
         }
     }
 }

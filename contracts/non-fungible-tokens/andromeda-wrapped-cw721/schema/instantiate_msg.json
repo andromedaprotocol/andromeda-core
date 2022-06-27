@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "can_unwrap",
+    "cw721_instantiate_type",
+    "primitive_contract"
+  ],
+  "properties": {
+    "can_unwrap": {
+      "description": "Whether or not the cw721 token can be unwrapped once it is wrapped.",
+      "type": "boolean"
+    },
+    "cw721_instantiate_type": {
+      "description": "The cw721 contract can be instantiated or an existing address can be used. In the case that an existing address is used, the minter must be set to be this contract.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/InstantiateType"
+        }
+      ]
+    },
+    "primitive_contract": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "AndrAddress": {
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "Can be either an address or identifier of an ADO in a app.",
+          "type": "string"
+        }
+      }
+    },
+    "Cw721Specification": {
+      "type": "object",
+      "required": [
+        "name",
+        "symbol"
+      ],
+      "properties": {
+        "modules": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Module"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
+        }
+      }
+    },
+    "InstantiateType": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "new"
+          ],
+          "properties": {
+            "new": {
+              "$ref": "#/definitions/Cw721Specification"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Module": {
+      "description": "Modules can be instantiated in two different ways New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded Address - Provide an address for an already instantiated module contract A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
+      "type": "object",
+      "required": [
+        "address",
+        "is_mutable",
+        "module_type"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/AndrAddress"
+        },
+        "is_mutable": {
+          "type": "boolean"
+        },
+        "module_type": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

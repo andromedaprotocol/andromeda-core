@@ -2,6 +2,7 @@ use crate::{error::ContractError, require};
 use cosmwasm_std::{Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::cmp;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Withdrawal {
@@ -34,15 +35,15 @@ impl WithdrawalType {
                 require(*percent <= Decimal::one(), ContractError::InvalidRate {})?;
                 Ok(balance * *percent)
             }
-            WithdrawalType::Amount(amount) => {
-                require(
-                    amount <= &balance,
-                    ContractError::InvalidFunds {
-                        msg: "Requested withdrawal amount exceeds token balance".to_string(),
-                    },
-                )?;
-                Ok(*amount)
-            }
+            WithdrawalType::Amount(amount) => Ok(cmp::min(*amount, balance)),
+        }
+    }
+
+    /// Checks if the underlying value is zero or not.
+    pub fn is_zero(&self) -> bool {
+        match self {
+            WithdrawalType::Percentage(percent) => percent.is_zero(),
+            WithdrawalType::Amount(amount) => amount.is_zero(),
         }
     }
 }
@@ -95,17 +96,12 @@ mod tests {
     }
 
     #[test]
-    fn test_get_invalid_amount() {
+    fn test_get_too_high_amount() {
         let balance = Uint128::from(10u128);
         let withdrawal = Withdrawal {
             token: "token".to_string(),
             withdrawal_type: Some(WithdrawalType::Amount(balance + Uint128::from(1u128))),
         };
-        assert_eq!(
-            ContractError::InvalidFunds {
-                msg: "Requested withdrawal amount exceeds token balance".to_string(),
-            },
-            withdrawal.get_amount(balance).unwrap_err()
-        );
+        assert_eq!(10, withdrawal.get_amount(balance).unwrap().u128());
     }
 }
