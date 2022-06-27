@@ -1,21 +1,25 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, Response, Storage, Uint128,
+    attr, from_binary, Addr, Api, Attribute, Binary, CosmosMsg, Decimal, Decimal256, Deps, DepsMut,
+    Env, MessageInfo, Order, QuerierWrapper, Response, Storage, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{Asset, AssetInfo, AssetInfoUnchecked};
 use std::str::FromStr;
 
-use crate::state::{
-    get_stakers, Config, GlobalRewardInfo, Staker, StakerRewardInfo, State, CONFIG,
-    GLOBAL_REWARD_INFOS, STAKERS, STAKER_REWARD_INFOS, STATE,
+use crate::{
+    allocated_rewards::update_allocated_index,
+    state::{
+        get_stakers, Config, Staker, StakerRewardInfo, State, CONFIG, MAX_REWARD_TOKENS,
+        REWARD_TOKENS, STAKERS, STAKER_REWARD_INFOS, STATE,
+    },
 };
 use ado_base::ADOContract;
 use andromeda_fungible_tokens::cw20_staking::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakerResponse,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardToken,
+    RewardTokenUnchecked, RewardType, StakerResponse,
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
@@ -28,25 +32,32 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let additional_reward_tokens = if let Some(ref additional_rewards) = msg.additional_rewards {
+    let additional_reward_tokens = if let Some(additional_rewards) = msg.additional_rewards {
+        require(
+            additional_rewards.len() <= MAX_REWARD_TOKENS as usize,
+            ContractError::MaxRewardTokensExceeded {
+                max: MAX_REWARD_TOKENS,
+            },
+        )?;
         let staking_token = AssetInfoUnchecked::cw20(msg.staking_token.identifier.to_lowercase());
-        let additional_rewards: Result<Vec<AssetInfo>, ContractError> = additional_rewards
-            .iter()
+        let staking_token_identifier = msg.staking_token.identifier.clone();
+        let additional_rewards: Result<Vec<RewardToken>, ContractError> = additional_rewards
+            .into_iter()
             .map(|r| {
                 // Staking token cannot be used as an additional reward as it is a reward by
                 // default.
                 require(
-                    &staking_token != r,
+                    staking_token != r.asset_info,
                     ContractError::InvalidAsset {
-                        asset: msg.staking_token.identifier.clone(),
+                        asset: staking_token_identifier.clone(),
                     },
                 )?;
-                Ok(r.check(deps.api, None)?)
+                r.check(&env.block, deps.api)
             })
             .collect();
         additional_rewards?
@@ -54,17 +65,13 @@ pub fn instantiate(
         vec![]
     };
     for token in additional_reward_tokens.iter() {
-        GLOBAL_REWARD_INFOS.save(
-            deps.storage,
-            &token.to_string(),
-            &GlobalRewardInfo::default(),
-        )?;
+        REWARD_TOKENS.save(deps.storage, &token.to_string(), token)?;
     }
     CONFIG.save(
         deps.storage,
         &Config {
             staking_token: msg.staking_token,
-            additional_reward_tokens,
+            number_of_reward_tokens: additional_reward_tokens.len() as u32,
         },
     )?;
     STATE.save(
@@ -99,26 +106,33 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
-        ExecuteMsg::AddRewardToken { asset_info } => {
-            execute_add_reward_token(deps, env, info, asset_info)
+        ExecuteMsg::AddRewardToken { reward_token } => {
+            execute_add_reward_token(deps, env, info, reward_token)
         }
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
-            None => execute_update_global_indexes(deps, env, info.sender.to_string(), None),
+            None => update_global_indexes(
+                deps.storage,
+                &deps.querier,
+                env.block.time.seconds(),
+                env.contract.address,
+                None,
+            ),
             Some(asset_infos) => {
                 let asset_infos: Result<Vec<AssetInfo>, ContractError> = asset_infos
                     .iter()
                     .map(|a| Ok(a.check(deps.api, None)?))
                     .collect();
-                execute_update_global_indexes(
-                    deps,
-                    env,
-                    info.sender.to_string(),
+                update_global_indexes(
+                    deps.storage,
+                    &deps.querier,
+                    env.block.time.seconds(),
+                    env.contract.address,
                     Some(asset_infos?),
                 )
             }
         },
         ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(deps, env, info, amount),
-        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, info),
+        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
     }
 }
 
@@ -139,10 +153,11 @@ fn receive_cw20(
         Cw20HookMsg::StakeTokens {} => {
             execute_stake_tokens(deps, env, msg.sender, info.sender.to_string(), msg.amount)
         }
-        Cw20HookMsg::UpdateGlobalIndex {} => execute_update_global_indexes(
-            deps,
-            env,
-            msg.sender,
+        Cw20HookMsg::UpdateGlobalIndex {} => update_global_indexes(
+            deps.storage,
+            &deps.querier,
+            env.block.time.seconds(),
+            env.contract.address,
             Some(vec![AssetInfo::cw20(info.sender)]),
         ),
     }
@@ -152,7 +167,7 @@ fn execute_add_reward_token(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    asset_info: AssetInfoUnchecked,
+    reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     require(
@@ -160,11 +175,19 @@ fn execute_add_reward_token(
         ContractError::Unauthorized {},
     )?;
     let mut config = CONFIG.load(deps.storage)?;
-    let asset_info = asset_info.check(deps.api, None)?;
+    config.number_of_reward_tokens += 1;
     require(
-        !config.additional_reward_tokens.contains(&asset_info),
+        config.number_of_reward_tokens <= MAX_REWARD_TOKENS,
+        ContractError::MaxRewardTokensExceeded {
+            max: MAX_REWARD_TOKENS,
+        },
+    )?;
+    let mut reward_token = reward_token.check(&env.block, deps.api)?;
+    let reward_token_string = reward_token.to_string();
+    require(
+        !REWARD_TOKENS.has(deps.storage, &reward_token_string),
         ContractError::InvalidAsset {
-            asset: asset_info.to_string(),
+            asset: reward_token_string,
         },
     )?;
 
@@ -175,32 +198,29 @@ fn execute_add_reward_token(
     )?;
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
     require(
-        staking_token != asset_info,
+        staking_token != reward_token.asset_info,
         ContractError::InvalidAsset {
-            asset: asset_info.to_string(),
+            asset: reward_token.to_string(),
         },
     )?;
 
-    let asset_info_string = asset_info.to_string();
-    config.additional_reward_tokens.push(asset_info.clone());
-
-    CONFIG.save(deps.storage, &config)?;
+    let reward_token_string = reward_token.to_string();
 
     let state = STATE.load(deps.storage)?;
     update_global_index(
-        deps.storage,
         &deps.querier,
+        env.block.time.seconds(),
         env.contract.address,
         &state,
-        &config,
-        asset_info,
+        &mut reward_token,
     )?;
 
-    STATE.save(deps.storage, &state)?;
+    REWARD_TOKENS.save(deps.storage, &reward_token_string, &reward_token)?;
+    CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
         .add_attribute("action", "add_reward_token")
-        .add_attribute("added_token", asset_info_string))
+        .add_attribute("added_token", reward_token_string))
 }
 
 /// The foundation for this approach is inspired by Anchor's staking implementation:
@@ -215,11 +235,11 @@ fn execute_stake_tokens(
     let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
 
-    let app_contract = contract.get_app_contract(deps.storage)?;
+    let mission_contract = contract.get_app_contract(deps.storage)?;
     let staking_token_address =
         config
             .staking_token
-            .get_address(deps.api, &deps.querier, app_contract)?;
+            .get_address(deps.api, &deps.querier, mission_contract)?;
     require(
         token_address == staking_token_address,
         ContractError::InvalidFunds {
@@ -230,8 +250,16 @@ fn execute_stake_tokens(
     let mut state = STATE.load(deps.storage)?;
     let mut staker = STAKERS.may_load(deps.storage, &sender)?.unwrap_or_default();
 
+    // Update indexes, important for allocated rewards.
+    update_global_indexes(
+        deps.storage,
+        &deps.querier,
+        env.block.time.seconds(),
+        env.contract.address.clone(),
+        None,
+    )?;
     // Update the rewards for the user. This must be done before the new share is calculated.
-    update_rewards(deps.storage, &sender, &staker)?;
+    update_staker_rewards(deps.storage, &sender, &staker)?;
 
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
 
@@ -265,23 +293,24 @@ fn execute_unstake_tokens(
     info: MessageInfo,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    let config = CONFIG.load(deps.storage)?;
     let sender = info.sender.as_str();
 
-    let app_contract = contract.get_app_contract(deps.storage)?;
-    let staking_token_address =
-        config
-            .staking_token
-            .get_address(deps.api, &deps.querier, app_contract)?;
+    let staking_token = get_staking_token(deps.storage, deps.api, &deps.querier)?;
 
-    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
-    let total_balance = staking_token.query_balance(&deps.querier, env.contract.address)?;
+    let total_balance = staking_token.query_balance(&deps.querier, env.contract.address.clone())?;
 
     let staker = STAKERS.may_load(deps.storage, sender)?;
     if let Some(mut staker) = staker {
         let mut state = STATE.load(deps.storage)?;
-        update_rewards(deps.storage, sender, &staker)?;
+        // Update indexes, important for allocated rewards.
+        update_global_indexes(
+            deps.storage,
+            &deps.querier,
+            env.block.time.seconds(),
+            env.contract.address,
+            None,
+        )?;
+        update_staker_rewards(deps.storage, sender, &staker)?;
 
         let withdraw_share = amount
             .map(|v| {
@@ -324,23 +353,42 @@ fn execute_unstake_tokens(
     }
 }
 
-fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+fn execute_claim_rewards(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
-    let config = CONFIG.load(deps.storage)?;
     if let Some(staker) = STAKERS.may_load(deps.storage, sender)? {
-        update_rewards(deps.storage, sender, &staker)?;
+        // Update indexes, important for allocated rewards.
+        update_global_indexes(
+            deps.storage,
+            &deps.querier,
+            env.block.time.seconds(),
+            env.contract.address,
+            None,
+        )?;
+        update_staker_rewards(deps.storage, sender, &staker)?;
         let mut msgs: Vec<CosmosMsg> = vec![];
 
-        for token in config.additional_reward_tokens {
+        let reward_tokens = get_reward_tokens(deps.storage)?;
+
+        for mut token in reward_tokens {
             let token_string = token.to_string();
 
-            // Since we call `update_rewards` first, this entry will always exist.
+            // Since we call `update_staker_rewards` first, this entry will always exist.
             let mut staker_reward_info =
                 STAKER_REWARD_INFOS.load(deps.storage, (sender, &token_string))?;
-            let rewards: Uint128 = staker_reward_info.pending_rewards * Uint128::from(1u128);
+            let rewards: Uint128 =
+                Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())?
+                    * Uint128::from(1u128);
+
+            let decimals: Decimal256 =
+                staker_reward_info.pending_rewards - Decimal256::from_ratio(rewards, 1u128);
 
             if !rewards.is_zero() {
-                staker_reward_info.pending_rewards = Decimal::zero();
+                // Reduce pending rewards for staker to what is left over after rounding.
+                staker_reward_info.pending_rewards = decimals;
 
                 STAKER_REWARD_INFOS.save(
                     deps.storage,
@@ -348,15 +396,14 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
                     &staker_reward_info,
                 )?;
 
-                let mut global_reward_info =
-                    GLOBAL_REWARD_INFOS.load(deps.storage, &token_string)?;
-
-                // Reduce reward balance.
-                global_reward_info.previous_reward_balance = global_reward_info
-                    .previous_reward_balance
-                    .checked_sub(rewards)?;
-
-                GLOBAL_REWARD_INFOS.save(deps.storage, &token_string, &global_reward_info)?;
+                // Reduce reward balance if is non-allocated token.
+                if let RewardType::NonAllocated {
+                    previous_reward_balance,
+                } = &mut token.reward_type
+                {
+                    *previous_reward_balance = previous_reward_balance.checked_sub(rewards)?;
+                    REWARD_TOKENS.save(deps.storage, &token_string, &token)?;
+                }
 
                 let asset = Asset {
                     info: AssetInfoUnchecked::from_str(&token_string)?.check(deps.api, None)?,
@@ -376,125 +423,173 @@ fn execute_claim_rewards(deps: DepsMut, info: MessageInfo) -> Result<Response, C
     }
 }
 
-fn execute_update_global_indexes(
-    deps: DepsMut,
-    env: Env,
-    sender: String,
-    asset_infos: Option<Vec<AssetInfo>>,
-) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    require(
-        contract.is_owner_or_operator(deps.storage, &sender)?,
-        ContractError::Unauthorized {},
-    )?;
-    let state = STATE.load(deps.storage)?;
-    let config = CONFIG.load(deps.storage)?;
-    let reward_tokens = asset_infos.unwrap_or_else(|| config.additional_reward_tokens.clone());
-
-    for token in reward_tokens {
-        update_global_index(
-            deps.storage,
-            &deps.querier,
-            env.contract.address.clone(),
-            &state,
-            &config,
-            token,
-        )?;
-    }
-
-    Ok(Response::new().add_attribute("action", "update_global_indexes"))
-}
-
-/// This approach was inspired by Lido's bluna reward system.
-/// https://github.com/lidofinance/lido-terra-contracts/tree/d7026b9142d718f9b5b6be03b1af33040499553c/contracts/lido_terra_reward/src
-fn update_global_index(
+fn update_global_indexes(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
+    current_timestamp: u64,
+    contract_address: Addr,
+    asset_infos: Option<Vec<AssetInfo>>,
+) -> Result<Response, ContractError> {
+    let state = STATE.load(storage)?;
+
+    let all_assets = get_reward_tokens(storage)?
+        .into_iter()
+        .map(|r| r.asset_info)
+        .collect();
+
+    let asset_infos = asset_infos.unwrap_or(all_assets);
+
+    let mut attributes: Vec<Attribute> = vec![attr("action", "update_global_indexes")];
+    for asset_info in asset_infos {
+        let asset_info_string = asset_info.to_string();
+        let reward_token = REWARD_TOKENS.may_load(storage, &asset_info_string)?;
+        match reward_token {
+            None => {
+                return Err(ContractError::InvalidAsset {
+                    asset: asset_info_string.clone(),
+                })
+            }
+            Some(mut reward_token) => {
+                update_global_index(
+                    querier,
+                    current_timestamp,
+                    contract_address.clone(),
+                    &state,
+                    &mut reward_token,
+                )?;
+                REWARD_TOKENS.save(storage, &asset_info_string, &reward_token)?;
+
+                attributes.push(attr(asset_info_string, reward_token.index.to_string()));
+            }
+        }
+    }
+
+    Ok(Response::new().add_attributes(attributes))
+}
+
+fn update_global_index(
+    querier: &QuerierWrapper,
+    current_timestamp: u64,
     contract_address: Addr,
     state: &State,
-    config: &Config,
-    token: AssetInfo,
+    reward_token: &mut RewardToken,
 ) -> Result<(), ContractError> {
-    require(
-        config.additional_reward_tokens.contains(&token),
-        ContractError::InvalidAsset {
-            asset: token.to_string(),
-        },
-    )?;
-
     // In this case there is no point updating the index if no one is staked.
     if state.total_share.is_zero() {
         return Ok(());
     }
 
-    let token_string = token.to_string();
-    let mut global_reward_info = GLOBAL_REWARD_INFOS
-        .may_load(storage, &token_string)?
-        .unwrap_or_default();
-
-    let reward_balance = token.query_balance(querier, contract_address)?;
-    let deposited_amount =
-        reward_balance.checked_sub(global_reward_info.previous_reward_balance)?;
-
-    global_reward_info.index += Decimal::from_ratio(deposited_amount, state.total_share);
-
-    global_reward_info.previous_reward_balance = reward_balance;
-
-    GLOBAL_REWARD_INFOS.save(storage, &token_string, &global_reward_info)?;
+    match reward_token.reward_type {
+        RewardType::NonAllocated {
+            previous_reward_balance,
+        } => {
+            update_nonallocated_index(
+                state,
+                querier,
+                reward_token,
+                previous_reward_balance,
+                contract_address,
+            )?;
+        }
+        RewardType::Allocated {
+            allocation_config,
+            allocation_state,
+        } => {
+            update_allocated_index(
+                state.total_share,
+                reward_token,
+                allocation_config,
+                allocation_state,
+                current_timestamp,
+            )?;
+        }
+    }
 
     Ok(())
 }
 
-fn update_rewards(
+/// This approach was inspired by Lido's bluna reward system.
+/// https://github.com/lidofinance/lido-terra-contracts/tree/d7026b9142d718f9b5b6be03b1af33040499553c/contracts/lido_terra_reward/src
+fn update_nonallocated_index(
+    state: &State,
+    querier: &QuerierWrapper,
+    reward_token: &mut RewardToken,
+    previous_reward_balance: Uint128,
+    contract_address: Addr,
+) -> Result<(), ContractError> {
+    let reward_balance = reward_token
+        .asset_info
+        .query_balance(querier, contract_address)?;
+    let deposited_amount = reward_balance.checked_sub(previous_reward_balance)?;
+
+    reward_token.index += Decimal256::from_ratio(deposited_amount, state.total_share);
+
+    reward_token.reward_type = RewardType::NonAllocated {
+        previous_reward_balance: reward_balance,
+    };
+
+    Ok(())
+}
+
+fn update_staker_rewards(
     storage: &mut dyn Storage,
     staker_address: &str,
     staker: &Staker,
 ) -> Result<(), ContractError> {
-    let reward_infos: Vec<(String, GlobalRewardInfo)> = get_global_reward_infos(storage)?;
-    for (token, global_reward_info) in reward_infos {
-        let staker_reward_info = get_updated_staker_reward_info(
+    let reward_tokens: Vec<RewardToken> = get_reward_tokens(storage)?;
+    for token in reward_tokens {
+        let token_string = token.to_string();
+        let mut staker_reward_info = STAKER_REWARD_INFOS
+            .may_load(storage, (staker_address, &token_string))?
+            .unwrap_or_default();
+        update_staker_reward_info(staker, &mut staker_reward_info, token);
+        STAKER_REWARD_INFOS.save(
             storage,
-            staker_address,
-            staker,
-            &token,
-            global_reward_info,
+            (staker_address, &token_string),
+            &staker_reward_info,
         )?;
-
-        STAKER_REWARD_INFOS.save(storage, (staker_address, &token), &staker_reward_info)?;
     }
     Ok(())
 }
 
-fn get_global_reward_infos(
-    storage: &dyn Storage,
-) -> Result<Vec<(String, GlobalRewardInfo)>, ContractError> {
-    GLOBAL_REWARD_INFOS
+fn get_reward_tokens(storage: &dyn Storage) -> Result<Vec<RewardToken>, ContractError> {
+    REWARD_TOKENS
         .range(storage, None, None, Order::Ascending)
         .map(|v| {
-            let (token, reward_infos) = v?;
-            Ok((token, reward_infos))
+            let (_, reward_token) = v?;
+            Ok(reward_token)
         })
         .collect()
 }
 
-fn get_updated_staker_reward_info(
-    storage: &dyn Storage,
-    staker_address: &str,
+fn update_staker_reward_info(
     staker: &Staker,
-    token: &str,
-    global_reward_info: GlobalRewardInfo,
-) -> Result<StakerRewardInfo, ContractError> {
-    let mut staker_reward_info = STAKER_REWARD_INFOS
-        .may_load(storage, (staker_address, token))?
-        .unwrap_or_default();
+    staker_reward_info: &mut StakerRewardInfo,
+    reward_token: RewardToken,
+) {
+    let staker_share = Uint256::from(staker.share);
+    let rewards = (reward_token.index - staker_reward_info.index) * staker_share;
 
-    let staker_share = staker.share;
-    let rewards = (global_reward_info.index - staker_reward_info.index) * staker_share;
+    staker_reward_info.index = reward_token.index;
+    staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards, 1u128);
+}
 
-    staker_reward_info.index = global_reward_info.index;
-    staker_reward_info.pending_rewards += Decimal::from_ratio(rewards, Uint128::new(1));
+pub(crate) fn get_staking_token(
+    storage: &dyn Storage,
+    api: &dyn Api,
+    querier: &QuerierWrapper,
+) -> Result<AssetInfo, ContractError> {
+    let contract = ADOContract::default();
+    let config = CONFIG.load(storage)?;
 
-    Ok(staker_reward_info)
+    let mission_contract = contract.get_app_contract(storage)?;
+    let staking_token_address = config
+        .staking_token
+        .get_address(api, querier, mission_contract)?;
+
+    let staking_token = AssetInfo::cw20(api.addr_validate(&staking_token_address)?);
+
+    Ok(staking_token)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -503,10 +598,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::State {} => encode_binary(&query_state(deps)?),
-        QueryMsg::Staker { address } => encode_binary(&query_staker(deps, address)?),
+        QueryMsg::Staker { address } => encode_binary(&query_staker(deps, env, address)?),
         QueryMsg::Stakers { start_after, limit } => {
-            encode_binary(&query_stakers(deps, start_after, limit)?)
+            encode_binary(&query_stakers(deps, env, start_after, limit)?)
         }
+        QueryMsg::Timestamp {} => encode_binary(&query_timestamp(env)),
     }
 }
 
@@ -518,13 +614,21 @@ fn query_state(deps: Deps) -> Result<State, ContractError> {
     Ok(STATE.load(deps.storage)?)
 }
 
-fn query_staker(deps: Deps, address: String) -> Result<StakerResponse, ContractError> {
+fn query_staker(deps: Deps, env: Env, address: String) -> Result<StakerResponse, ContractError> {
     let staker = STAKERS.load(deps.storage, &address)?;
-    let pending_rewards = get_pending_rewards(deps.storage, &address, &staker)?;
+    let state = STATE.load(deps.storage)?;
+    let pending_rewards =
+        get_pending_rewards(deps.storage, &deps.querier, &env, &address, &staker)?;
+    let staking_token = get_staking_token(deps.storage, deps.api, &deps.querier)?;
+    let total_balance = staking_token.query_balance(&deps.querier, env.contract.address)?;
+    let balance = staker
+        .share
+        .multiply_ratio(total_balance, state.total_share);
     Ok(StakerResponse {
         address,
         share: staker.share,
         pending_rewards,
+        balance,
     })
 }
 
@@ -532,17 +636,32 @@ fn query_staker(deps: Deps, address: String) -> Result<StakerResponse, ContractE
 /// tuples.
 pub(crate) fn get_pending_rewards(
     storage: &dyn Storage,
+    querier: &QuerierWrapper,
+    env: &Env,
     address: &str,
     staker: &Staker,
 ) -> Result<Vec<(String, Uint128)>, ContractError> {
-    let reward_infos: Vec<(String, GlobalRewardInfo)> = get_global_reward_infos(storage)?;
+    let reward_tokens: Vec<RewardToken> = get_reward_tokens(storage)?;
     let mut pending_rewards = vec![];
-    for (token, global_reward_info) in reward_infos {
-        let staker_reward_info =
-            get_updated_staker_reward_info(storage, address, staker, &token, global_reward_info)?;
+    let state = STATE.load(storage)?;
+    let current_timestamp = env.block.time.seconds();
+    for mut token in reward_tokens {
+        let token_string = token.to_string();
+        let mut staker_reward_info = STAKER_REWARD_INFOS
+            .may_load(storage, (address, &token_string))?
+            .unwrap_or_default();
+        update_global_index(
+            querier,
+            current_timestamp,
+            env.contract.address.to_owned(),
+            &state,
+            &mut token,
+        )?;
+        update_staker_reward_info(staker, &mut staker_reward_info, token);
         pending_rewards.push((
-            token,
-            staker_reward_info.pending_rewards * Uint128::from(1u128),
+            token_string,
+            Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())?
+                * Uint128::from(1u128),
         ))
     }
     Ok(pending_rewards)
@@ -550,10 +669,16 @@ pub(crate) fn get_pending_rewards(
 
 fn query_stakers(
     deps: Deps,
+    env: Env,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<StakerResponse>, ContractError> {
-    get_stakers(deps.storage, start_after, limit)
+    let start = start_after.as_deref();
+    get_stakers(deps.storage, &deps.querier, deps.api, &env, start, limit)
+}
+
+fn query_timestamp(env: Env) -> u64 {
+    env.block.time.seconds()
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

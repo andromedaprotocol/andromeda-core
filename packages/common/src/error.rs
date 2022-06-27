@@ -353,6 +353,15 @@ pub enum ContractError {
     #[error("Invalid Asset: {asset}")]
     InvalidAsset { asset: String },
 
+    #[error("Invalid cycle duration")]
+    InvalidCycleDuration {},
+
+    #[error("Reward increase must be less than 1")]
+    InvalidRewardIncrease {},
+
+    #[error("Max of {max} for reward tokens is exceeded")]
+    MaxRewardTokensExceeded { max: u32 },
+
     #[error("Primitive Does Not Exist: {msg}")]
     PrimitiveDoesNotExist { msg: String },
 

@@ -23,7 +23,7 @@ pub fn mock_dependencies_custom(
 }
 
 pub struct WasmMockQuerier {
-    base: MockQuerier<Empty>,
+    pub base: MockQuerier<Empty>,
     token_querier: TokenQuerier,
 }
 
