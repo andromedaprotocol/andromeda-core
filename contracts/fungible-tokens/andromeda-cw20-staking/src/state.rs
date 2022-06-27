@@ -1,9 +1,9 @@
-use cosmwasm_std::{Api, Env, Order, QuerierWrapper, Storage, Uint128, Decimal256};
+use cosmwasm_std::{Api, Decimal256, Env, Order, QuerierWrapper, Storage, Uint128};
 use cw_storage_plus::{Bound, Item, Map};
 
 use crate::contract::{get_pending_rewards, get_staking_token};
 use andromeda_fungible_tokens::cw20_staking::{RewardToken, StakerResponse};
-use common::{error::ContractError, app::AndrAddress};
+use common::{app::AndrAddress, error::ContractError};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

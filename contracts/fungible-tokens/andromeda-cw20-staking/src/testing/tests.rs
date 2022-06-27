@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     coins, from_binary,
     testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg, Decimal256, Uint256
+    to_binary, Addr, BankMsg, Decimal, Decimal256, DepsMut, Response, Uint128, Uint256, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
@@ -17,7 +17,7 @@ use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, AllocationState, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
     RewardToken, RewardTokenUnchecked, RewardType, StakerResponse,
 };
-use common::{error::ContractError, app::AndrAddress};
+use common::{app::AndrAddress, error::ContractError};
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
 const MOCK_STAKING_TOKEN: &str = "staking_token";

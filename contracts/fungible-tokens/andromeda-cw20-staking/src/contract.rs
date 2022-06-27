@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, from_binary, Addr, Api, Attribute, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, QuerierWrapper, Response, Storage, Uint128, Uint256, Decimal256
+    attr, from_binary, Addr, Api, Attribute, Binary, CosmosMsg, Decimal, Decimal256, Deps, DepsMut,
+    Env, MessageInfo, Order, QuerierWrapper, Response, Storage, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -380,10 +380,11 @@ fn execute_claim_rewards(
             let mut staker_reward_info =
                 STAKER_REWARD_INFOS.load(deps.storage, (sender, &token_string))?;
             let rewards: Uint128 =
-                Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())? * Uint128::from(1u128);
+                Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())?
+                    * Uint128::from(1u128);
 
-            let decimals: Decimal256 = staker_reward_info.pending_rewards
-                - Decimal256::from_ratio(rewards, 1u128);
+            let decimals: Decimal256 =
+                staker_reward_info.pending_rewards - Decimal256::from_ratio(rewards, 1u128);
 
             if !rewards.is_zero() {
                 // Reduce pending rewards for staker to what is left over after rounding.
@@ -521,8 +522,7 @@ fn update_nonallocated_index(
         .query_balance(querier, contract_address)?;
     let deposited_amount = reward_balance.checked_sub(previous_reward_balance)?;
 
-    reward_token.index +=
-        Decimal256::from_ratio(deposited_amount, state.total_share);
+    reward_token.index += Decimal256::from_ratio(deposited_amount, state.total_share);
 
     reward_token.reward_type = RewardType::NonAllocated {
         previous_reward_balance: reward_balance,
@@ -600,7 +600,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::State {} => encode_binary(&query_state(deps)?),
         QueryMsg::Staker { address } => encode_binary(&query_staker(deps, env, address)?),
         QueryMsg::Stakers { start_after, limit } => {
-
             encode_binary(&query_stakers(deps, env, start_after, limit)?)
         }
         QueryMsg::Timestamp {} => encode_binary(&query_timestamp(env)),
@@ -661,7 +660,8 @@ pub(crate) fn get_pending_rewards(
         update_staker_reward_info(staker, &mut staker_reward_info, token);
         pending_rewards.push((
             token_string,
-            Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())? * Uint128::from(1u128),
+            Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())?
+                * Uint128::from(1u128),
         ))
     }
     Ok(pending_rewards)
@@ -673,15 +673,8 @@ fn query_stakers(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<StakerResponse>, ContractError> {
-    let start = start_after.as_ref().map(|x| &**x);
-    get_stakers(
-        deps.storage,
-        &deps.querier,
-        deps.api,
-        &env,
-        start,
-        limit,
-    )
+    let start = start_after.as_deref();
+    get_stakers(deps.storage, &deps.querier, deps.api, &env, start, limit)
 }
 
 fn query_timestamp(env: Env) -> u64 {

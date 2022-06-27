@@ -2,7 +2,7 @@ use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, AllocationState, RewardToken, RewardType,
 };
 use common::error::ContractError;
-use cosmwasm_std::{Decimal, Uint128, Decimal256};
+use cosmwasm_std::{Decimal, Decimal256, Uint128};
 
 /// This was taken with few changes from the MARS staking contract
 /// https://github.com/mars-protocol/mars-periphery/blob/537ab8046a4670d0e80de6cbf6e6e0492c586fb2/contracts/lp_staking/src/contract.rs#L420
