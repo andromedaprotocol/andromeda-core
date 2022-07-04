@@ -25,8 +25,14 @@ pub enum ContractError {
     #[error("ContractLocked")]
     ContractLocked {},
 
+    #[error("LockedNFT")]
+    LockedNFT {},
+
     #[error("UserNotFound")]
     UserNotFound {},
+
+    #[error("NFTNotFound")]
+    NFTNotFound {},
 
     #[error("PriceNotSet")]
     PriceNotSet {},
