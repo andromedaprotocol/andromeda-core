@@ -315,7 +315,7 @@ mod test {
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {};
-        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
         let nft_id = "ape1".to_string();
@@ -348,7 +348,7 @@ mod test {
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {};
-        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
         let nft_id = "ape1".to_string();
@@ -380,7 +380,7 @@ mod test {
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {};
-        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
         let nft_id = "ape1".to_string();
@@ -411,7 +411,7 @@ mod test {
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {};
-        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
         let nft_id = "ape1".to_string();
@@ -426,7 +426,7 @@ mod test {
             lock_time,
             andromeda_cw721_contract,
         };
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = ExecuteMsg::Claim {
             lock_id: "token0001ape1".to_string(),
@@ -445,7 +445,7 @@ mod test {
                 address: Addr::unchecked(MOCK_CONTRACT_ADDR),
             },
         };
-        let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized {});
     }
 
@@ -456,7 +456,7 @@ mod test {
         let env = mock_env();
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {};
-        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
         let nft_id = "ape1".to_string();
@@ -489,7 +489,7 @@ mod test {
                 address: Addr::unchecked(MOCK_CONTRACT_ADDR),
             },
         };
-        let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
 
         // searching for same token shouldn't work if it was claimed
 
@@ -509,7 +509,7 @@ mod test {
                 address: Addr::unchecked(MOCK_CONTRACT_ADDR),
             },
         };
-        let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
         assert_eq!(err, ContractError::NFTNotFound {});
     }
 }

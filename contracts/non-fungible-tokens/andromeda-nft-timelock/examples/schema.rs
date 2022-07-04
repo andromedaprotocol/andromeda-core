@@ -1,11 +1,10 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
+use andromeda_nft_timelock::state::LockDetails;
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use andromeda_non_fungible_tokens::auction::{
-    AuctionIdsResponse, AuctionStateResponse, BidsResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
-};
+use andromeda_non_fungible_tokens::nft_timelock::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -17,7 +16,5 @@ fn main() {
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
 
-    export_schema(&schema_for!(AuctionStateResponse), &out_dir);
-    export_schema(&schema_for!(AuctionIdsResponse), &out_dir);
-    export_schema(&schema_for!(BidsResponse), &out_dir);
+    export_schema(&schema_for!(LockDetails), &out_dir);
 }
