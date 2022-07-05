@@ -16,12 +16,6 @@ pub enum ExecuteMsg {
         lock_id: String,
     },
     ReceiveNft(Cw721ReceiveMsg),
-    // Lock {
-    //     recipient: Option<String>,
-    //     nft_id: String,
-    //     lock_time: u64,
-    //     andromeda_cw721_contract: String,
-    // },
     UpdateOwner {
         address: String,
     },

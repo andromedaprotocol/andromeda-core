@@ -6,10 +6,9 @@ use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 use cosmwasm_std::{
-    entry_point, from_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    QueryRequest, Response, SubMsg, WasmMsg, WasmQuery,
+    entry_point, from_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, WasmMsg,
 };
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
+use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg, Expiration};
 
 use crate::state::{LockDetails, LOCKED_ITEMS};
 
@@ -49,20 +48,6 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
-        // ExecuteMsg::Lock {
-        //     recipient,
-        //     nft_id,
-        //     lock_time,
-        //     andromeda_cw721_contract,
-        // } => execute_lock(
-        //     deps,
-        //     env,
-        //     info,
-        //     recipient,
-        //     nft_id,
-        //     lock_time,
-        //     andromeda_cw721_contract,
-        // ),
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(deps, env, info, msg),
         ExecuteMsg::Claim { lock_id } => execute_claim(deps, env, info, lock_id),
         ExecuteMsg::UpdateOwner { address } => {
@@ -130,8 +115,8 @@ fn execute_lock(
     let lock_details = LockDetails {
         recipient: recip,
         expiration: Expiration::AtTime(expiration_time),
-        nft_id: nft_id.clone(),
-        nft_contract: andromeda_cw721_contract.clone(),
+        nft_id,
+        nft_contract: andromeda_cw721_contract,
     };
 
     // Save all the details. The key represents the concatenated lock_id & the value represents the lock details
@@ -141,22 +126,6 @@ fn execute_lock(
         .add_attribute("action", "locked_nft")
         // The recipient should keep the lock ID to easily claim the NFT
         .add_attribute("lock_id", lock_id))
-}
-
-fn query_owner_of(
-    querier: QuerierWrapper,
-    token_addr: String,
-    token_id: String,
-) -> Result<OwnerOfResponse, ContractError> {
-    let res: OwnerOfResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: token_addr,
-        msg: encode_binary(&Cw721QueryMsg::OwnerOf {
-            token_id,
-            include_expired: None,
-        })?,
-    }))?;
-
-    Ok(res)
 }
 
 fn execute_claim(
@@ -211,311 +180,337 @@ fn query_locked_token(deps: Deps, lock_id: String) -> Result<LockDetails, Contra
     let nft = LOCKED_ITEMS.load(deps.storage, &lock_id)?;
     Ok(nft)
 }
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     use crate::mock_querier::{mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER};
-//     use andromeda_non_fungible_tokens::nft_timelock::{ExecuteMsg, InstantiateMsg};
-//     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR};
-//     use cosmwasm_std::{Addr, BlockInfo, ContractInfo, TransactionInfo};
-//     use cw721::Expiration;
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::mock_querier::{mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER};
+    use andromeda_non_fungible_tokens::nft_timelock::{ExecuteMsg, InstantiateMsg};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR};
+    use cosmwasm_std::{Addr, BlockInfo, ContractInfo, TransactionInfo};
+    use cw721::Expiration;
 
-//     #[test]
-//     fn test_instantiate() {
-//         let owner = "creator";
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let info = mock_info(owner, &[]);
-//         let msg = InstantiateMsg {};
-//         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
-//     }
-//     #[test]
-//     fn test_lock_too_long() {
-//         let owner = "creator";
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let info = mock_info(owner, &[]);
-//         let msg = InstantiateMsg {};
-//         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+    #[test]
+    fn test_instantiate() {
+        let owner = "creator";
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info(owner, &[]);
+        let msg = InstantiateMsg {};
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+    }
+    #[test]
+    fn test_lock_too_long() {
+        let owner = "creator";
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info(owner, &[]);
+        let msg = InstantiateMsg {};
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//         let nft_id = "ape".to_string();
-//         let lock_time = 1_000_000_000u64;
-//         let andromeda_cw721_contract = "contract".to_string();
+        let nft_id = "ape".to_string();
+        let lock_time = 1_000_000_000u64;
+        let andromeda_cw721_contract = "contract".to_string();
 
-//         let info = mock_info("me", &[]);
+        let info = mock_info("me", &[]);
 
-//         let msg = ExecuteMsg::Lock {
-//             recipient: None,
-//             nft_id,
-//             lock_time,
-//             andromeda_cw721_contract,
-//         };
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-//         assert_eq!(err, ContractError::LockTimeTooLong {});
-//     }
-//     #[test]
-//     fn test_lock_too_short() {
-//         let owner = "creator";
-//         let mut deps = mock_dependencies();
-//         let env = mock_env();
-//         let info = mock_info(owner, &[]);
-//         let msg = InstantiateMsg {};
-//         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+        let err = execute_lock(
+            deps.as_mut(),
+            env,
+            info,
+            None,
+            nft_id,
+            lock_time,
+            andromeda_cw721_contract,
+        )
+        .unwrap_err();
+        assert_eq!(err, ContractError::LockTimeTooLong {});
+    }
+    #[test]
+    fn test_lock_too_short() {
+        let owner = "creator";
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info(owner, &[]);
+        let msg = InstantiateMsg {};
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//         let nft_id = "ape".to_string();
-//         let lock_time = 100u64;
-//         let andromeda_cw721_contract = "contract".to_string();
+        let nft_id = "ape".to_string();
+        let lock_time = 100u64;
+        let andromeda_cw721_contract = "contract".to_string();
 
-//         let info = mock_info("me", &[]);
+        let info = mock_info("me", &[]);
 
-//         let msg = ExecuteMsg::Lock {
-//             recipient: None,
-//             nft_id,
-//             lock_time,
-//             andromeda_cw721_contract,
-//         };
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-//         assert_eq!(err, ContractError::LockTimeTooShort {});
-//     }
-//     #[test]
-//     fn test_lock_works() {
-//         let owner = "creator";
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info(owner, &[]);
-//         let msg = InstantiateMsg {};
-//         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+        let err = execute_lock(
+            deps.as_mut(),
+            env,
+            info,
+            None,
+            nft_id,
+            lock_time,
+            andromeda_cw721_contract,
+        )
+        .unwrap_err();
+        assert_eq!(err, ContractError::LockTimeTooShort {});
+    }
+    #[test]
+    fn test_lock_works() {
+        let owner = "creator";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(owner, &[]);
+        let msg = InstantiateMsg {};
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//         let nft_id = "ape1".to_string();
-//         let lock_time = 100_000u64;
-//         let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
+        let nft_id = "ape1".to_string();
+        let lock_time = 100_000u64;
+        let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
 
-//         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
 
-//         let msg = ExecuteMsg::Lock {
-//             recipient: None,
-//             nft_id,
-//             lock_time,
-//             andromeda_cw721_contract,
-//         };
-//         let mock_time = env.block.time;
-//         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let nft = LOCKED_ITEMS.load(&deps.storage, "token0001ape1").unwrap();
-//         let expected_nft = LockDetails {
-//             recipient: MOCK_TOKEN_OWNER.to_string(),
-//             expiration: Expiration::AtTime(mock_time.plus_seconds(100_000u64)),
-//             nft_id: "ape1".to_string(),
-//             nft_contract: MOCK_TOKEN_ADDR.to_string(),
-//         };
-//         assert_eq!(nft, expected_nft);
-//     }
+        let _res = execute_lock(
+            deps.as_mut(),
+            env.clone(),
+            info,
+            None,
+            nft_id,
+            lock_time,
+            andromeda_cw721_contract,
+        )
+        .unwrap();
+        let mock_time = env.block.time;
+        let nft = LOCKED_ITEMS.load(&deps.storage, "token0001ape1").unwrap();
+        let expected_nft = LockDetails {
+            recipient: MOCK_TOKEN_OWNER.to_string(),
+            expiration: Expiration::AtTime(mock_time.plus_seconds(100_000u64)),
+            nft_id: "ape1".to_string(),
+            nft_contract: MOCK_TOKEN_ADDR.to_string(),
+        };
+        assert_eq!(nft, expected_nft);
+    }
 
-//     #[test]
-//     fn test_lock_already_locked() {
-//         let owner = "creator";
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info(owner, &[]);
-//         let msg = InstantiateMsg {};
-//         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+    #[test]
+    fn test_lock_already_locked() {
+        let owner = "creator";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(owner, &[]);
+        let msg = InstantiateMsg {};
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//         let nft_id = "ape1".to_string();
-//         let lock_time = 100_000u64;
-//         let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
+        let nft_id = "ape1".to_string();
+        let lock_time = 100_000u64;
+        let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
 
-//         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
 
-//         let msg = ExecuteMsg::Lock {
-//             recipient: None,
-//             nft_id: nft_id.clone(),
-//             lock_time,
-//             andromeda_cw721_contract: andromeda_cw721_contract.clone(),
-//         };
-//         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-//         let msg = ExecuteMsg::Lock {
-//             recipient: None,
-//             nft_id,
-//             lock_time,
-//             andromeda_cw721_contract,
-//         };
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-//         assert_eq!(err, ContractError::LockedNFT {});
-//     }
+        let _res = execute_lock(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            None,
+            nft_id.clone(),
+            lock_time,
+            andromeda_cw721_contract.clone(),
+        )
+        .unwrap();
+        let err = execute_lock(
+            deps.as_mut(),
+            env,
+            info,
+            None,
+            nft_id,
+            lock_time,
+            andromeda_cw721_contract,
+        )
+        .unwrap_err();
+        assert_eq!(err, ContractError::LockedNFT {});
+    }
 
-//     #[test]
-//     fn test_claim_nft_not_found() {
-//         let owner = "creator";
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info(owner, &[]);
-//         let msg = InstantiateMsg {};
-//         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+    #[test]
+    fn test_claim_nft_not_found() {
+        let owner = "creator";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(owner, &[]);
+        let msg = InstantiateMsg {};
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//         let nft_id = "ape1".to_string();
-//         let lock_time = 100_000u64;
-//         let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
+        let nft_id = "ape1".to_string();
+        let lock_time = 100_000u64;
+        let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
 
-//         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
 
-//         let msg = ExecuteMsg::Lock {
-//             recipient: None,
-//             nft_id,
-//             lock_time,
-//             andromeda_cw721_contract,
-//         };
+        let _res = execute_lock(
+            deps.as_mut(),
+            env,
+            info.clone(),
+            None,
+            nft_id,
+            lock_time,
+            andromeda_cw721_contract,
+        )
+        .unwrap();
 
-//         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let msg = ExecuteMsg::Claim {
+            lock_id: "token0001ape2".to_string(),
+        };
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(err, ContractError::NFTNotFound {});
+    }
 
-//         let msg = ExecuteMsg::Claim {
-//             lock_id: "token0001ape2".to_string(),
-//         };
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-//         assert_eq!(err, ContractError::NFTNotFound {});
-//     }
+    #[test]
+    fn test_claim_nft_locked() {
+        let owner = "creator";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(owner, &[]);
+        let msg = InstantiateMsg {};
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//     #[test]
-//     fn test_claim_nft_locked() {
-//         let owner = "creator";
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info(owner, &[]);
-//         let msg = InstantiateMsg {};
-//         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+        let nft_id = "ape1".to_string();
+        let lock_time = 100_000u64;
+        let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
 
-//         let nft_id = "ape1".to_string();
-//         let lock_time = 100_000u64;
-//         let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
 
-//         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+        let _res = execute_lock(
+            deps.as_mut(),
+            env,
+            info.clone(),
+            None,
+            nft_id,
+            lock_time,
+            andromeda_cw721_contract,
+        )
+        .unwrap();
 
-//         let msg = ExecuteMsg::Lock {
-//             recipient: None,
-//             nft_id,
-//             lock_time,
-//             andromeda_cw721_contract,
-//         };
-//         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let msg = ExecuteMsg::Claim {
+            lock_id: "token0001ape1".to_string(),
+        };
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(err, ContractError::LockedNFT {});
+    }
 
-//         let msg = ExecuteMsg::Claim {
-//             lock_id: "token0001ape1".to_string(),
-//         };
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-//         assert_eq!(err, ContractError::LockedNFT {});
-//     }
+    #[test]
+    fn test_claim_unauthorized() {
+        let owner = "creator";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(owner, &[]);
+        let msg = InstantiateMsg {};
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//     #[test]
-//     fn test_claim_unauthorized() {
-//         let owner = "creator";
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info(owner, &[]);
-//         let msg = InstantiateMsg {};
-//         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+        let nft_id = "ape1".to_string();
+        let lock_time = 100_000u64;
+        let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
 
-//         let nft_id = "ape1".to_string();
-//         let lock_time = 100_000u64;
-//         let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
 
-//         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+        let _res = execute_lock(
+            deps.as_mut(),
+            env,
+            info,
+            None,
+            nft_id,
+            lock_time,
+            andromeda_cw721_contract,
+        )
+        .unwrap();
 
-//         let msg = ExecuteMsg::Lock {
-//             recipient: None,
-//             nft_id,
-//             lock_time,
-//             andromeda_cw721_contract,
-//         };
-//         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = ExecuteMsg::Claim {
+            lock_id: "token0001ape1".to_string(),
+        };
+        mock_env().block.time = mock_env().block.time.plus_seconds(200_000);
+        let info = mock_info("random", &[]);
 
-//         let msg = ExecuteMsg::Claim {
-//             lock_id: "token0001ape1".to_string(),
-//         };
-//         mock_env().block.time = mock_env().block.time.plus_seconds(200_000);
-//         let info = mock_info("random", &[]);
+        let env: Env = Env {
+            block: BlockInfo {
+                height: 12_345,
+                time: mock_env().block.time.plus_seconds(200_000),
+                chain_id: "cosmos-testnet-14002".to_string(),
+            },
+            transaction: Some(TransactionInfo { index: 3 }),
+            contract: ContractInfo {
+                address: Addr::unchecked(MOCK_CONTRACT_ADDR),
+            },
+        };
+        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
 
-//         let env: Env = Env {
-//             block: BlockInfo {
-//                 height: 12_345,
-//                 time: mock_env().block.time.plus_seconds(200_000),
-//                 chain_id: "cosmos-testnet-14002".to_string(),
-//             },
-//             transaction: Some(TransactionInfo { index: 3 }),
-//             contract: ContractInfo {
-//                 address: Addr::unchecked(MOCK_CONTRACT_ADDR),
-//             },
-//         };
-//         let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-//         assert_eq!(err, ContractError::Unauthorized {});
-//     }
+    #[test]
+    fn test_claim_works() {
+        let owner = "creator";
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info(owner, &[]);
+        let msg = InstantiateMsg {};
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//     #[test]
-//     fn test_claim_works() {
-//         let owner = "creator";
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info(owner, &[]);
-//         let msg = InstantiateMsg {};
-//         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+        let nft_id = "ape1".to_string();
+        let lock_time = 100_000u64;
+        let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
 
-//         let nft_id = "ape1".to_string();
-//         let lock_time = 100_000u64;
-//         let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
+        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
 
-//         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+        let _res = execute_lock(
+            deps.as_mut(),
+            env,
+            info.clone(),
+            None,
+            nft_id,
+            lock_time,
+            andromeda_cw721_contract,
+        )
+        .unwrap();
 
-//         let msg = ExecuteMsg::Lock {
-//             recipient: None,
-//             nft_id,
-//             lock_time,
-//             andromeda_cw721_contract,
-//         };
-//         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let msg = ExecuteMsg::Claim {
+            lock_id: "token0001ape1".to_string(),
+        };
+        mock_env().block.time = mock_env().block.time.plus_seconds(200_000);
 
-//         let msg = ExecuteMsg::Claim {
-//             lock_id: "token0001ape1".to_string(),
-//         };
-//         mock_env().block.time = mock_env().block.time.plus_seconds(200_000);
+        let env: Env = Env {
+            block: BlockInfo {
+                height: 12_345,
+                time: mock_env().block.time.plus_seconds(200_000),
+                chain_id: "cosmos-testnet-14002".to_string(),
+            },
+            transaction: Some(TransactionInfo { index: 3 }),
+            contract: ContractInfo {
+                address: Addr::unchecked(MOCK_CONTRACT_ADDR),
+            },
+        };
+        let _res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
 
-//         let env: Env = Env {
-//             block: BlockInfo {
-//                 height: 12_345,
-//                 time: mock_env().block.time.plus_seconds(200_000),
-//                 chain_id: "cosmos-testnet-14002".to_string(),
-//             },
-//             transaction: Some(TransactionInfo { index: 3 }),
-//             contract: ContractInfo {
-//                 address: Addr::unchecked(MOCK_CONTRACT_ADDR),
-//             },
-//         };
-//         let _res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+        // searching for the same token shouldn't work if it was successfully  claimed
 
-//         // searching for the same token shouldn't work if it was successfully  claimed
+        let msg = ExecuteMsg::Claim {
+            lock_id: "token0001ape1".to_string(),
+        };
+        mock_env().block.time = mock_env().block.time.plus_seconds(200_000);
 
-//         let msg = ExecuteMsg::Claim {
-//             lock_id: "token0001ape1".to_string(),
-//         };
-//         mock_env().block.time = mock_env().block.time.plus_seconds(200_000);
-
-//         let env: Env = Env {
-//             block: BlockInfo {
-//                 height: 12_345,
-//                 time: mock_env().block.time.plus_seconds(200_000),
-//                 chain_id: "cosmos-testnet-14002".to_string(),
-//             },
-//             transaction: Some(TransactionInfo { index: 3 }),
-//             contract: ContractInfo {
-//                 address: Addr::unchecked(MOCK_CONTRACT_ADDR),
-//             },
-//         };
-//         let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-//         assert_eq!(err, ContractError::NFTNotFound {});
-//     }
-// }
+        let env: Env = Env {
+            block: BlockInfo {
+                height: 12_345,
+                time: mock_env().block.time.plus_seconds(200_000),
+                chain_id: "cosmos-testnet-14002".to_string(),
+            },
+            transaction: Some(TransactionInfo { index: 3 }),
+            contract: ContractInfo {
+                address: Addr::unchecked(MOCK_CONTRACT_ADDR),
+            },
+        };
+        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+        assert_eq!(err, ContractError::NFTNotFound {});
+    }
+}
