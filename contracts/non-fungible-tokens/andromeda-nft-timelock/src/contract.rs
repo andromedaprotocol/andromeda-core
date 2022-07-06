@@ -180,8 +180,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 fn query_locked_token(deps: Deps, lock_id: String) -> Result<LockDetails, ContractError> {
-    let nft = LOCKED_ITEMS.load(deps.storage, &lock_id)?;
-    Ok(nft)
+    let nft = LOCKED_ITEMS.may_load(deps.storage, &lock_id)?;
+    if let Some(nft) = nft {
+        Ok(nft)
+    } else {
+        Err(ContractError::NFTNotFound {})
+    }
 }
 #[cfg(test)]
 mod test {
