@@ -69,7 +69,6 @@ fn handle_receive_cw721(
         } => execute_lock(
             deps,
             env,
-            info.clone(),
             recipient,
             msg.sender,
             msg.token_id,
@@ -78,11 +77,9 @@ fn handle_receive_cw721(
         ),
     }
 }
-
 fn execute_lock(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
     recipient: Option<String>,
     sender: String,
     nft_id: String,
@@ -216,12 +213,9 @@ mod test {
         let lock_time = 1_000_000_000u64;
         let andromeda_cw721_contract = "contract".to_string();
 
-        let info = mock_info("me", &[]);
-
         let err = execute_lock(
             deps.as_mut(),
             env,
-            info,
             None,
             "me".to_string(),
             nft_id,
@@ -246,12 +240,9 @@ mod test {
         let lock_time = 100u64;
         let andromeda_cw721_contract = "contract".to_string();
 
-        let info = mock_info("me", &[]);
-
         let err = execute_lock(
             deps.as_mut(),
             env,
-            info,
             None,
             "me".to_string(),
             nft_id,
@@ -276,12 +267,9 @@ mod test {
         let lock_time = 100_000u64;
         let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
 
-        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-
         let _res = execute_lock(
             deps.as_mut(),
             env.clone(),
-            info,
             None,
             "me".to_string(),
             nft_id,
@@ -314,12 +302,9 @@ mod test {
         let lock_time = 100_000u64;
         let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
 
-        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-
         let _res = execute_lock(
             deps.as_mut(),
             env.clone(),
-            info.clone(),
             None,
             "me".to_string(),
             nft_id.clone(),
@@ -330,7 +315,6 @@ mod test {
         let err = execute_lock(
             deps.as_mut(),
             env,
-            info,
             None,
             "me".to_string(),
             nft_id,
@@ -360,7 +344,6 @@ mod test {
         let _res = execute_lock(
             deps.as_mut(),
             env,
-            info.clone(),
             None,
             "me".to_string(),
             nft_id,
@@ -395,7 +378,6 @@ mod test {
         let _res = execute_lock(
             deps.as_mut(),
             env,
-            info.clone(),
             None,
             "me".to_string(),
             nft_id,
@@ -430,7 +412,6 @@ mod test {
         let _res = execute_lock(
             deps.as_mut(),
             env,
-            info.clone(),
             None,
             "me".to_string(),
             nft_id,
