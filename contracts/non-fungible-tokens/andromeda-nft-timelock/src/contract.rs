@@ -131,12 +131,11 @@ fn execute_lock(
 fn execute_claim(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     lock_id: String,
 ) -> Result<Response, ContractError> {
     // Check if lock ID exists
     let locked_item = LOCKED_ITEMS.may_load(deps.storage, &lock_id)?;
-    require(locked_item.is_some(), ContractError::NFTNotFound {})?;
 
     if let Some(locked_nft) = locked_item {
         // Check if lock is expired
@@ -144,12 +143,6 @@ fn execute_claim(
         require(
             expiration.is_expired(&env.block),
             ContractError::LockedNFT {},
-        )?;
-
-        // check if sender is recipient
-        require(
-            info.sender == locked_nft.recipient,
-            ContractError::Unauthorized {},
         )?;
 
         // Remove NFT from the list of locked items
@@ -206,6 +199,7 @@ mod test {
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
+
     #[test]
     fn test_lock_too_long() {
         let owner = "creator";
@@ -234,6 +228,7 @@ mod test {
         .unwrap_err();
         assert_eq!(err, ContractError::LockTimeTooLong {});
     }
+
     #[test]
     fn test_lock_too_short() {
         let owner = "creator";
@@ -262,6 +257,7 @@ mod test {
         .unwrap_err();
         assert_eq!(err, ContractError::LockTimeTooShort {});
     }
+
     #[test]
     fn test_lock_works() {
         let owner = "creator";
@@ -404,54 +400,6 @@ mod test {
         };
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(err, ContractError::LockedNFT {});
-    }
-
-    #[test]
-    fn test_claim_unauthorized() {
-        let owner = "creator";
-        let mut deps = mock_dependencies_custom(&[]);
-        let env = mock_env();
-        let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
-        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        let nft_id = "ape1".to_string();
-        let lock_time = 100_000u64;
-        let andromeda_cw721_contract = MOCK_TOKEN_ADDR.to_string();
-
-        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-
-        let _res = execute_lock(
-            deps.as_mut(),
-            env,
-            info,
-            None,
-            nft_id,
-            lock_time,
-            andromeda_cw721_contract,
-        )
-        .unwrap();
-
-        let msg = ExecuteMsg::Claim {
-            lock_id: "token0001ape1".to_string(),
-        };
-        mock_env().block.time = mock_env().block.time.plus_seconds(200_000);
-        let info = mock_info("random", &[]);
-
-        let env: Env = Env {
-            block: BlockInfo {
-                height: 12_345,
-                time: mock_env().block.time.plus_seconds(200_000),
-                chain_id: "cosmos-testnet-14002".to_string(),
-            },
-            transaction: Some(TransactionInfo { index: 3 }),
-            contract: ContractInfo {
-                address: Addr::unchecked(MOCK_CONTRACT_ADDR),
-            },
-        };
-        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(err, ContractError::Unauthorized {});
     }
 
     #[test]
