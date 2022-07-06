@@ -71,6 +71,7 @@ fn handle_receive_cw721(
             env,
             info.clone(),
             recipient,
+            msg.sender,
             msg.token_id,
             lock_time,
             info.sender.to_string(),
@@ -81,8 +82,9 @@ fn handle_receive_cw721(
 fn execute_lock(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     recipient: Option<String>,
+    sender: String,
     nft_id: String,
     lock_time: u64,
     andromeda_cw721_contract: String,
@@ -105,7 +107,7 @@ fn execute_lock(
         deps.api.addr_validate(&recipient)?;
         recipient
     } else {
-        info.sender.to_string()
+        sender
     };
 
     // Add lock time to current block time
@@ -221,6 +223,7 @@ mod test {
             env,
             info,
             None,
+            "me".to_string(),
             nft_id,
             lock_time,
             andromeda_cw721_contract,
@@ -250,6 +253,7 @@ mod test {
             env,
             info,
             None,
+            "me".to_string(),
             nft_id,
             lock_time,
             andromeda_cw721_contract,
@@ -279,6 +283,7 @@ mod test {
             env.clone(),
             info,
             None,
+            "me".to_string(),
             nft_id,
             lock_time,
             andromeda_cw721_contract,
@@ -287,7 +292,7 @@ mod test {
         let mock_time = env.block.time;
         let nft = LOCKED_ITEMS.load(&deps.storage, "token0001ape1").unwrap();
         let expected_nft = LockDetails {
-            recipient: MOCK_TOKEN_OWNER.to_string(),
+            recipient: "me".to_string(),
             expiration: Expiration::AtTime(mock_time.plus_seconds(100_000u64)),
             nft_id: "ape1".to_string(),
             nft_contract: MOCK_TOKEN_ADDR.to_string(),
@@ -316,6 +321,7 @@ mod test {
             env.clone(),
             info.clone(),
             None,
+            "me".to_string(),
             nft_id.clone(),
             lock_time,
             andromeda_cw721_contract.clone(),
@@ -326,6 +332,7 @@ mod test {
             env,
             info,
             None,
+            "me".to_string(),
             nft_id,
             lock_time,
             andromeda_cw721_contract,
@@ -355,6 +362,7 @@ mod test {
             env,
             info.clone(),
             None,
+            "me".to_string(),
             nft_id,
             lock_time,
             andromeda_cw721_contract,
@@ -389,6 +397,7 @@ mod test {
             env,
             info.clone(),
             None,
+            "me".to_string(),
             nft_id,
             lock_time,
             andromeda_cw721_contract,
@@ -423,6 +432,7 @@ mod test {
             env,
             info.clone(),
             None,
+            "me".to_string(),
             nft_id,
             lock_time,
             andromeda_cw721_contract,
