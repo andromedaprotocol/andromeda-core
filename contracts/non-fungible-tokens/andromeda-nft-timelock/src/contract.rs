@@ -138,34 +138,37 @@ fn execute_claim(
     let locked_item = LOCKED_ITEMS.may_load(deps.storage, &lock_id)?;
     require(locked_item.is_some(), ContractError::NFTNotFound {})?;
 
-    let locked_nft = locked_item.unwrap();
-    // Check if lock is expired
-    let expiration = locked_nft.expiration;
-    require(
-        expiration.is_expired(&env.block),
-        ContractError::LockedNFT {},
-    )?;
+    if let Some(locked_nft) = locked_item {
+        // Check if lock is expired
+        let expiration = locked_nft.expiration;
+        require(
+            expiration.is_expired(&env.block),
+            ContractError::LockedNFT {},
+        )?;
 
-    // check if sender is recipient
-    require(
-        info.sender == locked_nft.recipient,
-        ContractError::Unauthorized {},
-    )?;
+        // check if sender is recipient
+        require(
+            info.sender == locked_nft.recipient,
+            ContractError::Unauthorized {},
+        )?;
 
-    // Remove NFT from the list of locked items
-    LOCKED_ITEMS.remove(deps.storage, &lock_id);
+        // Remove NFT from the list of locked items
+        LOCKED_ITEMS.remove(deps.storage, &lock_id);
 
-    Ok(Response::new()
-        // Send NFT to the recipient
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: locked_nft.nft_contract,
-            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: locked_nft.recipient,
-                token_id: locked_nft.nft_id,
-            })?,
-            funds: vec![],
-        }))
-        .add_attribute("action", "claimed_nft"))
+        Ok(Response::new()
+            // Send NFT to the recipient
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: locked_nft.nft_contract,
+                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                    recipient: locked_nft.recipient,
+                    token_id: locked_nft.nft_id,
+                })?,
+                funds: vec![],
+            }))
+            .add_attribute("action", "claimed_nft"))
+    } else {
+        Err(ContractError::NFTNotFound {})
+    }
 }
 
 #[entry_point]
