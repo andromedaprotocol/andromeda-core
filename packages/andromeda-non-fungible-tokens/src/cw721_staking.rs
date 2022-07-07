@@ -29,6 +29,12 @@ pub enum ExecuteMsg {
     UpdateAllowedContracts {
         contract: Vec<String>,
     },
+    AddAllowedContract {
+        new_contract: String,
+    },
+    RemoveAllowedContract {
+        old_contract: String,
+    },
     UpdateOwner {
         address: String,
     },

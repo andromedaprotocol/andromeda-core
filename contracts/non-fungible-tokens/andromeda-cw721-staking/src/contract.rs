@@ -7,8 +7,8 @@ use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 use cosmwasm_std::{
-    attr, entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, Uint128, WasmMsg,
+    attr, entry_point, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, Uint128, WasmMsg,
 };
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 
@@ -56,6 +56,12 @@ pub fn execute(
         ExecuteMsg::UpdateAllowedContracts { contract } => {
             execute_update_allowed_contracts(deps, info, contract)
         }
+        ExecuteMsg::AddAllowedContract { new_contract } => {
+            execute_add_allowed_contract(deps, info, new_contract)
+        }
+        ExecuteMsg::RemoveAllowedContract { old_contract } => {
+            execute_remove_allowed_contract(deps, info, old_contract)
+        }
         ExecuteMsg::UpdateOwner { address } => {
             ADOContract::default().execute_update_owner(deps, info, address)
         }
@@ -75,8 +81,51 @@ fn execute_update_allowed_contracts(
         ContractError::Unauthorized {},
     )?;
 
+    ALLOWED_CONTRACTS.remove(deps.storage);
     ALLOWED_CONTRACTS.save(deps.storage, &contracts)?;
     Ok(Response::new().add_attribute("action", "updated_allowed_contracts"))
+}
+
+fn execute_add_allowed_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_contract: String,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    // Only owner or operator can use this function
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let mut new_contracts = ALLOWED_CONTRACTS.load(deps.storage)?;
+    new_contracts.push(new_contract);
+
+    ALLOWED_CONTRACTS.save(deps.storage, &new_contracts)?;
+    Ok(Response::new().add_attribute("action", "updated_allowed_contracts"))
+}
+
+fn execute_remove_allowed_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    old_contract: String,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    // Only owner or operator can use this function
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    let mut new_contracts = ALLOWED_CONTRACTS.load(deps.storage)?;
+    let index = new_contracts.iter().position(|x| x == &old_contract);
+    if let Some(index) = index {
+        new_contracts.swap_remove(index);
+        ALLOWED_CONTRACTS.save(deps.storage, &new_contracts)?;
+        Ok(Response::new().add_attribute("action", "updated_allowed_contracts"))
+    } else {
+        Err(ContractError::ContractAddressNotInAddressList {})
+    }
 }
 
 fn handle_receive_cw721(
@@ -100,13 +149,15 @@ fn execute_stake(
     token_address: String,
 ) -> Result<Response, ContractError> {
     let allowed_contracts = ALLOWED_CONTRACTS.load(deps.storage)?;
+
     // NFT has to be sent from an allowed contract
     require(
         allowed_contracts.contains(&token_address),
         ContractError::UnsupportedNFT {},
     )?;
+    // Concatenate the token's address and ID to form a unique key
+    let key = format!("{token_address}{token_id}");
 
-    let key = format!("{:?}{:?}", token_address, token_id);
     let data = StakedNft {
         owner: sender,
         id: token_id,
@@ -128,7 +179,7 @@ fn execute_unstake(
 ) -> Result<Response, ContractError> {
     let nft = STAKED_NFTS.may_load(deps.storage, key.clone())?;
     if let Some(nft) = nft {
-        // Only owner can claim the NFT
+        // Only owner can unstake the NFT
         require(info.sender == nft.owner, ContractError::Unauthorized {})?;
 
         // Can't unbond twice
@@ -202,15 +253,19 @@ fn execute_claim(
 
             // payout rewards and send back NFT
             Ok(Response::new()
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: nft.owner.clone(),
+                    amount: vec![nft.reward.unwrap_or_default()],
+                }))
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: env.contract.address.to_string(),
                     msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                         recipient: nft.owner,
                         token_id: nft.id,
                     })?,
-                    funds: vec![nft.reward.unwrap_or_default()],
+                    funds: vec![],
                 }))
-                .add_attribute("action", "claimed_nft"))
+                .add_attribute("action", "claimed_nft_and_reward"))
         } else {
             Err(ContractError::StillBonded {})
         }
@@ -234,5 +289,534 @@ fn query_staked_nft(deps: Deps, key: String) -> Result<StakedNft, ContractError>
         Ok(nft)
     } else {
         Err(ContractError::OutOfNFTs {})
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mock_querier::{
+        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
+    };
+    use andromeda_non_fungible_tokens::cw721_staking::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{
+        attr, coin, coins, from_binary, BankMsg, BlockInfo, ContractInfo, CosmosMsg, Response,
+        Timestamp,
+    };
+    use cw721::Expiration;
+
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+    }
+
+    #[test]
+    fn execute_instantiate() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    }
+
+    #[test]
+    fn execute_stake_unauthorized_contract() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "invalid".to_string();
+
+        let err = execute_stake(deps.as_mut(), env, sender, token_id, token_address).unwrap_err();
+        assert_eq!(err, ContractError::UnsupportedNFT {});
+    }
+
+    #[test]
+    fn execute_stake_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res = execute_stake(
+            deps.as_mut(),
+            env.clone(),
+            sender.clone(),
+            token_id.clone(),
+            token_address.clone(),
+        )
+        .unwrap();
+
+        let expected_details = StakedNft {
+            owner: sender,
+            id: token_id,
+            contract_address: token_address,
+            time_of_staking: env.block.time,
+            time_of_unbonding: None,
+            reward: None,
+        };
+        let details = STAKED_NFTS
+            .load(&deps.storage, "valid1".to_string())
+            .unwrap();
+
+        assert_eq!(expected_details, details);
+    }
+
+    #[test]
+    fn execute_unstake_nft_not_found() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res =
+            execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
+        let key = String::from("valid2");
+        let err = execute_unstake(deps.as_mut(), env, info, key).unwrap_err();
+        assert_eq!(err, ContractError::OutOfNFTs {});
+    }
+
+    #[test]
+    fn execute_unstake_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res =
+            execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
+        let key = String::from("valid1");
+
+        let info = mock_info("random", &[]);
+        let err = execute_unstake(deps.as_mut(), env, info, key).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn execute_unstake_not_long_enough() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res =
+            execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
+        let key = String::from("valid1");
+
+        let info = mock_info("someone", &[]);
+
+        let err = execute_unstake(deps.as_mut(), env, info, key).unwrap_err();
+        assert_eq!(err, ContractError::InsufficientBondedTime {});
+    }
+
+    #[test]
+    fn execute_unstake_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res = execute_stake(
+            deps.as_mut(),
+            env.clone(),
+            sender.clone(),
+            token_id.clone(),
+            token_address.clone(),
+        )
+        .unwrap();
+        let key = String::from("valid1");
+
+        let info = mock_info("someone", &[]);
+        let block_info = BlockInfo {
+            height: 12345,
+            time: env.block.time.plus_seconds(300_000),
+            chain_id: "cosmos-testnet-14002".to_string(),
+        };
+        let env = Env {
+            block: block_info,
+            transaction: None,
+            contract: ContractInfo {
+                address: env.contract.address,
+            },
+        };
+        let _res = execute_unstake(deps.as_mut(), env.clone(), info.clone(), key.clone()).unwrap();
+
+        let details = STAKED_NFTS
+            .load(&deps.storage, "valid1".to_string())
+            .unwrap();
+        println!("{:?}", details.time_of_staking.seconds());
+        println!("{:?}", env.block.time.clone().seconds());
+        let time_spent = env.block.time.clone().seconds() - details.time_of_staking.seconds();
+
+        println!("{:?}", time_spent);
+        let set_reward = REWARD.load(&deps.storage).unwrap();
+        let expected_reward = set_reward.amount * Uint128::from(time_spent);
+
+        let expected_details = StakedNft {
+            owner: sender,
+            id: token_id,
+            contract_address: token_address,
+            time_of_staking: details.time_of_staking,
+            time_of_unbonding: Some(env.block.time),
+            reward: Some(Coin {
+                denom: "ujuno".to_string(),
+                amount: expected_reward,
+            }),
+        };
+
+        assert_eq!(expected_details, details);
+    }
+
+    #[test]
+    fn execute_unstake_twice() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res =
+            execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
+        let key = String::from("valid1");
+
+        let info = mock_info("someone", &[]);
+        let block_info = BlockInfo {
+            height: 12345,
+            time: env.block.time.plus_seconds(300_000),
+            chain_id: "cosmos-testnet-14002".to_string(),
+        };
+        let env = Env {
+            block: block_info,
+            transaction: None,
+            contract: ContractInfo {
+                address: env.contract.address,
+            },
+        };
+        let _res = execute_unstake(deps.as_mut(), env.clone(), info.clone(), key.clone()).unwrap();
+
+        let err = execute_unstake(deps.as_mut(), env, info, key).unwrap_err();
+        assert_eq!(err, ContractError::AlreadyUnbonded {});
+    }
+
+    #[test]
+    fn test_claim_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res =
+            execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
+        let key = String::from("valid1");
+
+        let info = mock_info("someone", &[]);
+        let block_info = BlockInfo {
+            height: 12345,
+            time: env.block.time.plus_seconds(300_000),
+            chain_id: "cosmos-testnet-14002".to_string(),
+        };
+        let env = Env {
+            block: block_info,
+            transaction: None,
+            contract: ContractInfo {
+                address: env.contract.address,
+            },
+        };
+        let _res = execute_unstake(deps.as_mut(), env.clone(), info, key.clone()).unwrap();
+        let info = mock_info("random", &[]);
+        let err = execute_claim(deps.as_mut(), env, info, key).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_claim_unbonding_time_not_reached() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res =
+            execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
+        let key = String::from("valid1");
+
+        let info = mock_info("someone", &[]);
+        let block_info = BlockInfo {
+            height: 12345,
+            time: env.block.time.plus_seconds(300_000),
+            chain_id: "cosmos-testnet-14002".to_string(),
+        };
+        let env = Env {
+            block: block_info,
+            transaction: None,
+            contract: ContractInfo {
+                address: env.contract.address,
+            },
+        };
+        let _res = execute_unstake(deps.as_mut(), env.clone(), info.clone(), key.clone()).unwrap();
+
+        let err = execute_claim(deps.as_mut(), env, info, key).unwrap_err();
+        assert_eq!(err, ContractError::IncompleteUnbondingPeriod {});
+    }
+
+    #[test]
+    fn test_claim_unbonding_time_nft_not_found() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res =
+            execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
+        let key = String::from("valid1");
+
+        let info = mock_info("someone", &[]);
+        let block_info = BlockInfo {
+            height: 12345,
+            time: env.block.time.plus_seconds(300_000),
+            chain_id: "cosmos-testnet-14002".to_string(),
+        };
+        let env = Env {
+            block: block_info,
+            transaction: None,
+            contract: ContractInfo {
+                address: env.contract.address,
+            },
+        };
+        let _res = execute_unstake(deps.as_mut(), env.clone(), info.clone(), key).unwrap();
+        let key = "random".to_string();
+        let err = execute_claim(deps.as_mut(), env, info, key).unwrap_err();
+        assert_eq!(err, ContractError::OutOfNFTs {});
+    }
+
+    #[test]
+    fn test_claim_still_bonded() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res =
+            execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
+        let key = String::from("valid1");
+
+        let info = mock_info("someone", &[]);
+        let block_info = BlockInfo {
+            height: 12345,
+            time: env.block.time.plus_seconds(300_000),
+            chain_id: "cosmos-testnet-14002".to_string(),
+        };
+        let env = Env {
+            block: block_info,
+            transaction: None,
+            contract: ContractInfo {
+                address: env.contract.address,
+            },
+        };
+        let err = execute_claim(deps.as_mut(), env, info, key).unwrap_err();
+        assert_eq!(err, ContractError::StillBonded {});
+    }
+
+    #[test]
+    fn test_claim_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let sender = "someone".to_string();
+        let token_id = "1".to_string();
+        let token_address = "valid".to_string();
+
+        let _res =
+            execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
+        let key = String::from("valid1");
+
+        let info = mock_info("someone", &[]);
+        let block_info = BlockInfo {
+            height: 12345,
+            time: env.block.time.plus_seconds(300_000),
+            chain_id: "cosmos-testnet-14002".to_string(),
+        };
+        let env = Env {
+            block: block_info,
+            transaction: None,
+            contract: ContractInfo {
+                address: env.contract.address,
+            },
+        };
+        let _res = execute_unstake(deps.as_mut(), env.clone(), info.clone(), key.clone()).unwrap();
+
+        let err = execute_claim(deps.as_mut(), env, info, key).unwrap_err();
+        assert_eq!(err, ContractError::IncompleteUnbondingPeriod {});
     }
 }
