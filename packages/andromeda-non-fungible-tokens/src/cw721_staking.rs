@@ -1,7 +1,4 @@
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    OrderBy,
-};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::{Addr, Coin, Timestamp, Uint128};
 use cw721::{Cw721ReceiveMsg, Expiration};
 use schemars::JsonSchema;
@@ -25,10 +22,13 @@ pub enum ExecuteMsg {
     Unstake {
         key: String,
     },
+    /// Sends back the NFT to its original owner alongside the accrued rewards
     Claim {
         key: String,
     },
-
+    UpdateAllowedContracts {
+        contract: Vec<String>,
+    },
     UpdateOwner {
         address: String,
     },

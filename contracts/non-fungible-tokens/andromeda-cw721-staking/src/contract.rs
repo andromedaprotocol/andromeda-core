@@ -1,24 +1,17 @@
-use std::fmt::format;
-
-use crate::state::{
-    read_auction_infos, read_bids, StakedNft, ALLOWED_CONTRACTS, REWARD, STAKED_NFTS,
-    UNBONDING_PERIOD,
-};
+use crate::state::{StakedNft, ALLOWED_CONTRACTS, REWARD, STAKED_NFTS, UNBONDING_PERIOD};
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721_staking::{
-    AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
-    InstantiateMsg, QueryMsg,
+    Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
-    OrderBy,
 };
 use cosmwasm_std::{
-    attr, coins, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, Uint128, WasmMsg,
-    WasmQuery,
+    attr, entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, Uint128, WasmMsg,
 };
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
+use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
+
 // One day in seconds
 pub const ONE_DAY: u64 = 86400;
 
@@ -32,6 +25,7 @@ pub fn instantiate(
     ALLOWED_CONTRACTS.save(deps.storage, &vec![msg.nft_contract])?;
     UNBONDING_PERIOD.save(deps.storage, &msg.unbonding_period)?;
     REWARD.save(deps.storage, &msg.reward)?;
+
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -59,10 +53,30 @@ pub fn execute(
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(deps, env, info, msg),
         ExecuteMsg::Claim { key } => execute_claim(deps, env, info, key),
         ExecuteMsg::Unstake { key } => execute_unstake(deps, env, info, key),
+        ExecuteMsg::UpdateAllowedContracts { contract } => {
+            execute_update_allowed_contracts(deps, info, contract)
+        }
         ExecuteMsg::UpdateOwner { address } => {
             ADOContract::default().execute_update_owner(deps, info, address)
         }
     }
+}
+
+fn execute_update_allowed_contracts(
+    deps: DepsMut,
+    info: MessageInfo,
+    contracts: Vec<String>,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    // Only owner or operator can use this function
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    ALLOWED_CONTRACTS.save(deps.storage, &contracts)?;
+    Ok(Response::new().add_attribute("action", "updated_allowed_contracts"))
 }
 
 fn handle_receive_cw721(
@@ -72,22 +86,15 @@ fn handle_receive_cw721(
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
     match from_binary(&msg.msg)? {
-        Cw721HookMsg::Stake {} => execute_stake(
-            deps,
-            env,
-            info,
-            msg.sender,
-            msg.token_id,
-            info.sender.to_string(),
-        ),
+        Cw721HookMsg::Stake {} => {
+            execute_stake(deps, env, msg.sender, msg.token_id, info.sender.to_string())
+        }
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn execute_stake(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     sender: String,
     token_id: String,
     token_address: String,
@@ -119,7 +126,7 @@ fn execute_unstake(
     info: MessageInfo,
     key: String,
 ) -> Result<Response, ContractError> {
-    let nft = STAKED_NFTS.may_load(deps.storage, key)?;
+    let nft = STAKED_NFTS.may_load(deps.storage, key.clone())?;
     if let Some(nft) = nft {
         // Only owner can claim the NFT
         require(info.sender == nft.owner, ContractError::Unauthorized {})?;
@@ -172,7 +179,7 @@ fn execute_claim(
     info: MessageInfo,
     key: String,
 ) -> Result<Response, ContractError> {
-    let nft = STAKED_NFTS.may_load(deps.storage, key)?;
+    let nft = STAKED_NFTS.may_load(deps.storage, key.clone())?;
     if let Some(nft) = nft {
         // Only owner can claim the NFT
         require(info.sender == nft.owner, ContractError::Unauthorized {})?;
@@ -228,33 +235,4 @@ fn query_staked_nft(deps: Deps, key: String) -> Result<StakedNft, ContractError>
     } else {
         Err(ContractError::OutOfNFTs {})
     }
-}
-
-fn query_owner_of(
-    querier: QuerierWrapper,
-    token_addr: String,
-    token_id: String,
-) -> Result<OwnerOfResponse, ContractError> {
-    let res: OwnerOfResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: token_addr,
-        msg: encode_binary(&Cw721QueryMsg::OwnerOf {
-            token_id,
-            include_expired: None,
-        })?,
-    }))?;
-
-    Ok(res)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock_querier::{
-        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
-    };
-    use crate::state::AuctionInfo;
-    use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{attr, coin, coins, from_binary, BankMsg, CosmosMsg, Response, Timestamp};
-    use cw721::Expiration;
 }
