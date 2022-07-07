@@ -25,14 +25,29 @@ pub enum ContractError {
     #[error("ContractLocked")]
     ContractLocked {},
 
+    #[error("IncompleteUnbondingPeriod")]
+    IncompleteUnbondingPeriod {},
+
     #[error("UserNotFound")]
     UserNotFound {},
+
+    #[error("UnsupportedNFT")]
+    UnsupportedNFT {},
+
+    #[error("AlreadyUnbonded")]
+    AlreadyUnbonded {},
 
     #[error("PriceNotSet")]
     PriceNotSet {},
 
     #[error("InvalidPrimitive")]
     InvalidPrimitive {},
+
+    #[error("StillBonded")]
+    StillBonded {},
+
+    #[error("InsufficientBondedTime")]
+    InsufficientBondedTime {},
 
     #[error("LockTimeTooShort")]
     LockTimeTooShort {},

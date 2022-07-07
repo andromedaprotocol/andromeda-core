@@ -163,6 +163,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-cw721-staking"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-non-fungible-tokens",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw721",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-data-storage"
 version = "0.1.0"
 dependencies = [
