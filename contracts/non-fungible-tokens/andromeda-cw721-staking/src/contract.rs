@@ -294,15 +294,10 @@ fn query_staked_nft(deps: Deps, key: String) -> Result<StakedNft, ContractError>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock_querier::{
-        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
-    };
-    use andromeda_non_fungible_tokens::cw721_staking::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
+
+    use andromeda_non_fungible_tokens::cw721_staking::InstantiateMsg;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{
-        attr, coin, coins, from_binary, BankMsg, BlockInfo, ContractInfo, CosmosMsg, Response,
-        Timestamp,
-    };
+    use cosmwasm_std::{BlockInfo, ContractInfo};
 
     #[test]
     fn execute_instantiate() {
@@ -431,7 +426,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let sender = "someone".to_string();
         let token_id = "1".to_string();
@@ -460,7 +455,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let sender = "someone".to_string();
         let token_id = "1".to_string();
@@ -490,7 +485,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let sender = "someone".to_string();
         let token_id = "1".to_string();
@@ -519,7 +514,7 @@ mod tests {
                 address: env.contract.address,
             },
         };
-        let _res = execute_unstake(deps.as_mut(), env.clone(), info.clone(), key.clone()).unwrap();
+        let _res = execute_unstake(deps.as_mut(), env.clone(), info, key).unwrap();
 
         let details = STAKED_NFTS
             .load(&deps.storage, "valid1".to_string())
@@ -561,7 +556,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let sender = "someone".to_string();
         let token_id = "1".to_string();
@@ -604,7 +599,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let sender = "someone".to_string();
         let token_id = "1".to_string();
@@ -647,7 +642,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let sender = "someone".to_string();
         let token_id = "1".to_string();
@@ -690,7 +685,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let sender = "someone".to_string();
         let token_id = "1".to_string();
@@ -733,7 +728,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let sender = "someone".to_string();
         let token_id = "1".to_string();
@@ -774,7 +769,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let sender = "someone".to_string();
         let token_id = "1".to_string();
@@ -817,7 +812,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let info = mock_info("random", &[]);
         let contracts = vec!["1".to_string(), "2".to_string()];
@@ -840,7 +835,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let info = mock_info("me", &[]);
         let contracts = vec!["1".to_string(), "2".to_string()];
@@ -865,7 +860,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let info = mock_info("random", &[]);
         let new_contract = "1".to_string();
@@ -888,7 +883,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let info = mock_info("me", &[]);
         let new_contract = "1".to_string();
@@ -914,7 +909,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let info = mock_info("random", &[]);
         let new_contract = "1".to_string();
@@ -937,7 +932,7 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let info = mock_info("me", &[]);
         let new_contract = "1".to_string();
@@ -960,12 +955,12 @@ mod tests {
                 amount: Uint128::from(10_u16),
             },
         };
-        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let info = mock_info("me", &[]);
         let new_contract = "valid".to_string();
 
-        let res = execute_remove_allowed_contract(deps.as_mut(), info, new_contract).unwrap();
+        let _res = execute_remove_allowed_contract(deps.as_mut(), info, new_contract).unwrap();
 
         let expected_contracts: Vec<String> = vec![];
         let actual_contracts = ALLOWED_CONTRACTS.load(&deps.storage).unwrap();
