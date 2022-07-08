@@ -35,6 +35,9 @@ pub enum ExecuteMsg {
     RemoveAllowedContract {
         old_contract: String,
     },
+    UpdateUnbondingPeriod {
+        new_period: u64,
+    },
     UpdateOwner {
         address: String,
     },

@@ -65,7 +65,29 @@ pub fn execute(
         ExecuteMsg::UpdateOwner { address } => {
             ADOContract::default().execute_update_owner(deps, info, address)
         }
+        ExecuteMsg::UpdateUnbondingPeriod { new_period } => {
+            execute_update_unbonding_period(deps, info, new_period)
+        }
     }
+}
+
+fn execute_update_unbonding_period(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_period: u64,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    // Only owner or operator can use this function
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    // Save new unbonding period
+    UNBONDING_PERIOD.save(deps.storage, &new_period)?;
+
+    Ok(Response::new().add_attribute("action", "updated_unbonding_time"))
 }
 
 fn execute_update_allowed_contracts(
@@ -192,10 +214,10 @@ fn execute_unstake(
         let time_spent_bonded = current_time.seconds() - nft.time_of_staking.seconds();
 
         // Time spent bonded should be at least a day
-        require(
-            time_spent_bonded >= ONE_DAY,
-            ContractError::InsufficientBondedTime {},
-        )?;
+        // require(
+        //     time_spent_bonded >= ONE_DAY,
+        //     ContractError::InsufficientBondedTime {},
+        // )?;
 
         let reward = REWARD.load(deps.storage)?;
 
@@ -315,6 +337,56 @@ mod tests {
         };
 
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    }
+
+    #[test]
+    fn execute_update_bonding_time_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let info = mock_info("random", &[]);
+        let new_period = 10000;
+
+        let err = execute_update_unbonding_period(deps.as_mut(), info, new_period).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn execute_update_bonding_time_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let info = mock_info("me", &[]);
+        let new_period = 10000;
+
+        let _res = execute_update_unbonding_period(deps.as_mut(), info, new_period).unwrap();
+        let expected_period = 10000;
+        let actual_period = UNBONDING_PERIOD.load(&deps.storage).unwrap();
+        assert_eq!(expected_period, actual_period);
     }
 
     #[test]
