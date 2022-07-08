@@ -81,7 +81,6 @@ fn execute_update_allowed_contracts(
         ContractError::Unauthorized {},
     )?;
 
-    ALLOWED_CONTRACTS.remove(deps.storage);
     ALLOWED_CONTRACTS.save(deps.storage, &contracts)?;
     Ok(Response::new().add_attribute("action", "updated_allowed_contracts"))
 }
@@ -304,22 +303,6 @@ mod tests {
         attr, coin, coins, from_binary, BankMsg, BlockInfo, ContractInfo, CosmosMsg, Response,
         Timestamp,
     };
-    use cw721::Expiration;
-
-    fn test_instantiate() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("me", &[]);
-
-        let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
-            unbonding_period: 200000,
-            reward: Coin {
-                denom: "ujuno".to_string(),
-                amount: Uint128::from(10_u16),
-            },
-        };
-    }
 
     #[test]
     fn execute_instantiate() {
@@ -818,5 +801,174 @@ mod tests {
 
         let err = execute_claim(deps.as_mut(), env, info, key).unwrap_err();
         assert_eq!(err, ContractError::IncompleteUnbondingPeriod {});
+    }
+
+    #[test]
+    fn test_update_allowed_contracts_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info("random", &[]);
+        let contracts = vec!["1".to_string(), "2".to_string()];
+
+        let err = execute_update_allowed_contracts(deps.as_mut(), info, contracts).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_update_allowed_contracts_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info("me", &[]);
+        let contracts = vec!["1".to_string(), "2".to_string()];
+
+        let _res = execute_update_allowed_contracts(deps.as_mut(), info, contracts).unwrap();
+        let expected_contracts = vec!["1".to_string(), "2".to_string()];
+        let actual_contracts = ALLOWED_CONTRACTS.load(&deps.storage).unwrap();
+        assert_eq!(expected_contracts, actual_contracts);
+    }
+
+    #[test]
+    fn test_add_allowed_contract_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info("random", &[]);
+        let new_contract = "1".to_string();
+
+        let err = execute_add_allowed_contract(deps.as_mut(), info, new_contract).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_add_allowed_contract_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info("me", &[]);
+        let new_contract = "1".to_string();
+
+        let _res = execute_add_allowed_contract(deps.as_mut(), info, new_contract).unwrap();
+
+        let expected_contracts = vec!["valid".to_string(), "1".to_string()];
+        let actual_contracts = ALLOWED_CONTRACTS.load(&deps.storage).unwrap();
+        assert_eq!(expected_contracts, actual_contracts);
+    }
+
+    #[test]
+    fn test_remove_allowed_contract_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info("random", &[]);
+        let new_contract = "1".to_string();
+
+        let err = execute_remove_allowed_contract(deps.as_mut(), info, new_contract).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_remove_allowed_contract_not_found() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info("me", &[]);
+        let new_contract = "1".to_string();
+
+        let err = execute_remove_allowed_contract(deps.as_mut(), info, new_contract).unwrap_err();
+        assert_eq!(err, ContractError::ContractAddressNotInAddressList {});
+    }
+
+    #[test]
+    fn test_remove_allowed_contract_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let info = mock_info("me", &[]);
+        let new_contract = "valid".to_string();
+
+        let res = execute_remove_allowed_contract(deps.as_mut(), info, new_contract).unwrap();
+
+        let expected_contracts: Vec<String> = vec![];
+        let actual_contracts = ALLOWED_CONTRACTS.load(&deps.storage).unwrap();
+        assert_eq!(expected_contracts, actual_contracts);
     }
 }
