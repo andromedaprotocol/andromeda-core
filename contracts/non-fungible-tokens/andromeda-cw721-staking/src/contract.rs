@@ -300,8 +300,26 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::StakedNft { key } => encode_binary(&query_staked_nft(deps, key)?),
+        QueryMsg::AllowedContracts {} => encode_binary(&query_allowed_contracts(deps)?),
+        QueryMsg::UnbondingPeriod {} => encode_binary(&query_unbonding_period(deps)?),
+        QueryMsg::Reward {} => encode_binary(&query_reward(deps)?),
         QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
     }
+}
+
+fn query_reward(deps: Deps) -> Result<Coin, ContractError> {
+    let reward = REWARD.load(deps.storage)?;
+    Ok(reward)
+}
+
+fn query_unbonding_period(deps: Deps) -> Result<u64, ContractError> {
+    let period = UNBONDING_PERIOD.load(deps.storage)?;
+    Ok(period)
+}
+
+fn query_allowed_contracts(deps: Deps) -> Result<Vec<String>, ContractError> {
+    let allowed_contracts = ALLOWED_CONTRACTS.load(deps.storage)?;
+    Ok(allowed_contracts)
 }
 
 fn query_staked_nft(deps: Deps, key: String) -> Result<StakedNft, ContractError> {

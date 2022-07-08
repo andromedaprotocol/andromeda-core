@@ -55,6 +55,9 @@ pub enum Cw721HookMsg {
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     StakedNft { key: String },
+    AllowedContracts {},
+    UnbondingPeriod {},
+    Reward {},
     Owner {},
 }
 
