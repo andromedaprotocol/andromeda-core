@@ -214,10 +214,10 @@ fn execute_unstake(
         let time_spent_bonded = current_time.seconds() - nft.time_of_staking.seconds();
 
         // Time spent bonded should be at least a day
-        // require(
-        //     time_spent_bonded >= ONE_DAY,
-        //     ContractError::InsufficientBondedTime {},
-        // )?;
+        require(
+            time_spent_bonded >= ONE_DAY,
+            ContractError::InsufficientBondedTime {},
+        )?;
 
         let reward = REWARD.load(deps.storage)?;
 
@@ -279,7 +279,7 @@ fn execute_claim(
                     amount: vec![nft.reward.unwrap_or_default()],
                 }))
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: env.contract.address.to_string(),
+                    contract_addr: nft.contract_address,
                     msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                         recipient: nft.owner,
                         token_id: nft.id,
