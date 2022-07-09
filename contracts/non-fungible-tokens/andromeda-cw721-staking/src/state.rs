@@ -10,7 +10,8 @@ pub struct StakedNft {
     pub contract_address: String,
     pub time_of_staking: Timestamp,
     pub time_of_unbonding: Option<Timestamp>,
-    pub reward: Option<Coin>,
+    pub reward: Coin,
+    pub accrued_reward: Option<Coin>,
 }
 // list of cw721 contracts that we allow NFTs from
 pub const ALLOWED_CONTRACTS: Item<Vec<String>> = Item::new("allowed_contracts");

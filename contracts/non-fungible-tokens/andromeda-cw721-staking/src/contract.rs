@@ -62,6 +62,7 @@ pub fn execute(
         ExecuteMsg::RemoveAllowedContract { old_contract } => {
             execute_remove_allowed_contract(deps, info, old_contract)
         }
+        ExecuteMsg::UpdateReward { new_reward } => execute_update_reward(deps, info, new_reward),
         ExecuteMsg::UpdateOwner { address } => {
             ADOContract::default().execute_update_owner(deps, info, address)
         }
@@ -69,6 +70,31 @@ pub fn execute(
             execute_update_unbonding_period(deps, info, new_period)
         }
     }
+}
+
+fn execute_update_reward(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_reward: Coin,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    // Only owner or operator can use this function
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    // Reward can't be 0
+    require(
+        new_reward.amount > Uint128::zero(),
+        ContractError::RewardTooLow {},
+    )?;
+
+    // Save new reward
+    REWARD.save(deps.storage, &new_reward)?;
+
+    Ok(Response::new().add_attribute("action", "updated_reward"))
 }
 
 fn execute_update_unbonding_period(
@@ -179,13 +205,16 @@ fn execute_stake(
     // Concatenate the token's address and ID to form a unique key
     let key = format!("{token_address}{token_id}");
 
+    let reward = REWARD.load(deps.storage)?;
+
     let data = StakedNft {
         owner: sender,
         id: token_id,
         contract_address: token_address,
         time_of_staking: env.block.time,
         time_of_unbonding: None,
-        reward: None,
+        reward,
+        accrued_reward: None,
     };
 
     STAKED_NFTS.save(deps.storage, key, &data)?;
@@ -219,12 +248,13 @@ fn execute_unstake(
             ContractError::InsufficientBondedTime {},
         )?;
 
-        let reward = REWARD.load(deps.storage)?;
+        // We use the reward that was set at the time of staking
+        let reward = nft.reward;
 
         let payment = reward.amount * Uint128::from(time_spent_bonded);
 
-        let new_reward = Coin {
-            denom: reward.denom,
+        let accrued_reward = Coin {
+            denom: reward.clone().denom,
             amount: payment,
         };
 
@@ -234,7 +264,8 @@ fn execute_unstake(
             contract_address: nft.contract_address,
             time_of_staking: nft.time_of_staking,
             time_of_unbonding: Some(env.block.time),
-            reward: Some(new_reward),
+            reward,
+            accrued_reward: Some(accrued_reward),
         };
 
         STAKED_NFTS.save(deps.storage, key, &new_data)?;
@@ -276,7 +307,7 @@ fn execute_claim(
             Ok(Response::new()
                 .add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: nft.owner.clone(),
-                    amount: vec![nft.reward.unwrap_or_default()],
+                    amount: vec![nft.accrued_reward.unwrap_or_default()],
                 }))
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: nft.contract_address,
@@ -466,7 +497,11 @@ mod tests {
             contract_address: token_address,
             time_of_staking: env.block.time,
             time_of_unbonding: None,
-            reward: None,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+            accrued_reward: None,
         };
         let details = STAKED_NFTS
             .load(&deps.storage, "valid1".to_string())
@@ -623,7 +658,11 @@ mod tests {
             contract_address: token_address,
             time_of_staking: details.time_of_staking,
             time_of_unbonding: Some(env.block.time),
-            reward: Some(Coin {
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+            accrued_reward: Some(Coin {
                 denom: "ujuno".to_string(),
                 amount: expected_reward,
             }),

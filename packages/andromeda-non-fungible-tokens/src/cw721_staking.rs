@@ -38,6 +38,9 @@ pub enum ExecuteMsg {
     UpdateUnbondingPeriod {
         new_period: u64,
     },
+    UpdateReward {
+        new_reward: Coin,
+    },
     UpdateOwner {
         address: String,
     },
