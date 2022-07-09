@@ -53,8 +53,8 @@ pub fn execute(
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(deps, env, info, msg),
         ExecuteMsg::Claim { key } => execute_claim(deps, env, info, key),
         ExecuteMsg::Unstake { key } => execute_unstake(deps, env, info, key),
-        ExecuteMsg::UpdateAllowedContracts { contract } => {
-            execute_update_allowed_contracts(deps, info, contract)
+        ExecuteMsg::UpdateAllowedContracts { contracts } => {
+            execute_update_allowed_contracts(deps, info, contracts)
         }
         ExecuteMsg::AddAllowedContract { new_contract } => {
             execute_add_allowed_contract(deps, info, new_contract)
