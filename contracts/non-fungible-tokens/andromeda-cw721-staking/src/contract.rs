@@ -62,7 +62,6 @@ pub fn execute(
         ExecuteMsg::RemoveAllowedContract { old_contract } => {
             execute_remove_allowed_contract(deps, info, old_contract)
         }
-        ExecuteMsg::UpdateReward { new_reward } => execute_update_reward(deps, info, new_reward),
         ExecuteMsg::UpdateOwner { address } => {
             ADOContract::default().execute_update_owner(deps, info, address)
         }
@@ -70,31 +69,6 @@ pub fn execute(
             execute_update_unbonding_period(deps, info, new_period)
         }
     }
-}
-
-fn execute_update_reward(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_reward: Coin,
-) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-
-    // Only owner or operator can use this function
-    require(
-        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-
-    // Reward can't be 0
-    require(
-        new_reward.amount > Uint128::zero(),
-        ContractError::RewardTooLow {},
-    )?;
-
-    // Save new reward
-    REWARD.save(deps.storage, &new_reward)?;
-
-    Ok(Response::new().add_attribute("action", "updated_reward"))
 }
 
 fn execute_update_unbonding_period(
@@ -216,7 +190,6 @@ fn execute_stake(
         reward,
         accrued_reward: None,
     };
-
     STAKED_NFTS.save(deps.storage, key, &data)?;
     Ok(Response::new().add_attributes(vec![attr("action", "staked_nft")]))
 }
@@ -364,11 +337,13 @@ fn query_staked_nft(deps: Deps, key: String) -> Result<StakedNft, ContractError>
 
 #[cfg(test)]
 mod tests {
+    use std::iter::FromIterator;
+
     use super::*;
 
     use andromeda_non_fungible_tokens::cw721_staking::InstantiateMsg;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{BlockInfo, ContractInfo};
+    use cosmwasm_std::{BlockInfo, ContractInfo, Order};
 
     #[test]
     fn execute_instantiate() {
