@@ -12,6 +12,7 @@ use crate::cw721::TokenExtension;
 pub struct InstantiateMsg {
     pub andromeda_cw721_contract: AndrAddress,
     pub randomness_source: String,
+    pub required_coin: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
