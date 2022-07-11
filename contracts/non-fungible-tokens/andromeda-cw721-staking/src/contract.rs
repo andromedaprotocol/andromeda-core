@@ -337,13 +337,12 @@ fn query_staked_nft(deps: Deps, key: String) -> Result<StakedNft, ContractError>
 
 #[cfg(test)]
 mod tests {
-    use std::iter::FromIterator;
 
     use super::*;
 
     use andromeda_non_fungible_tokens::cw721_staking::InstantiateMsg;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{BlockInfo, ContractInfo, Order};
+    use cosmwasm_std::{BlockInfo, ContractInfo};
 
     #[test]
     fn execute_instantiate() {
