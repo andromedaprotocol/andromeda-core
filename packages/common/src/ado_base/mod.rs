@@ -64,6 +64,7 @@ pub enum AndromedaQuery {
     Get(Option<Binary>),
     Owner {},
     Operators {},
+    OriginalPublisher {},
     IsOperator { address: String },
     Module { id: Uint64 },
     ModuleIds {},

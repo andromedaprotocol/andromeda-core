@@ -2,7 +2,7 @@ use crate::state::ADOContract;
 use common::{
     ado_base::{
         operators::{IsOperatorResponse, OperatorsResponse},
-        ownership::ContractOwnerResponse,
+        ownership::{ContractOwnerResponse, PublisherResponse},
         AndromedaQuery, QueryMsg,
     },
     encode_binary,
@@ -34,6 +34,9 @@ impl<'a> ADOContract<'a> {
             }
             AndromedaQuery::Owner {} => encode_binary(&self.query_contract_owner(deps)?),
             AndromedaQuery::Operators {} => encode_binary(&self.query_operators(deps)?),
+            AndromedaQuery::OriginalPublisher {} => {
+                encode_binary(&self.query_original_publisher(deps)?)
+            }
             AndromedaQuery::IsOperator { address } => {
                 encode_binary(&self.query_is_operator(deps, &address)?)
             }
@@ -72,5 +75,9 @@ impl<'a> ADOContract<'a> {
         Ok(OperatorsResponse {
             operators: operators?,
         })
+    }
+    pub fn query_original_publisher(&self, deps: Deps) -> Result<PublisherResponse, ContractError> {
+        let original_publisher = self.original_publisher.load(deps.storage)?.to_string();
+        Ok(PublisherResponse { original_publisher })
     }
 }

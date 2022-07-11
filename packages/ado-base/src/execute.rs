@@ -22,6 +22,7 @@ impl<'a> ADOContract<'a> {
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
         self.owner.save(storage, &info.sender)?;
+        self.original_publisher.save(storage, &info.sender)?;
         self.ado_type.save(storage, &msg.ado_type)?;
         if let Some(operators) = msg.operators {
             self.initialize_operators(storage, operators)?;

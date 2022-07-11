@@ -9,6 +9,7 @@ use serde::de::DeserializeOwned;
 
 pub struct ADOContract<'a> {
     pub(crate) owner: Item<'a, Addr>,
+    pub(crate) original_publisher: Item<'a, Addr>,
     pub(crate) operators: Map<'a, &'a str, bool>,
     pub(crate) ado_type: Item<'a, String>,
     pub(crate) app_contract: Item<'a, Addr>,
@@ -28,6 +29,7 @@ impl<'a> Default for ADOContract<'a> {
     fn default() -> Self {
         ADOContract {
             owner: Item::new("owner"),
+            original_publisher: Item::new("original_publisher"),
             operators: Map::new("operators"),
             ado_type: Item::new("ado_type"),
             app_contract: Item::new("app_contract"),
