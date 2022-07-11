@@ -1,3 +1,4 @@
+pub mod ado_type;
 pub mod block_height;
 pub mod hooks;
 pub mod modules;
@@ -65,6 +66,7 @@ pub enum AndromedaQuery {
     Get(Option<Binary>),
     Owner {},
     Operators {},
+    Type {},
     OriginalPublisher {},
     BlockHeightUponCreation {},
     IsOperator { address: String },

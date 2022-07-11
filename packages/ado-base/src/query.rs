@@ -1,6 +1,7 @@
 use crate::state::ADOContract;
 use common::{
     ado_base::{
+        ado_type::TypeResponse,
         block_height::BlockHeightResponse,
         operators::{IsOperatorResponse, OperatorsResponse},
         ownership::{ContractOwnerResponse, PublisherResponse},
@@ -38,6 +39,7 @@ impl<'a> ADOContract<'a> {
             AndromedaQuery::OriginalPublisher {} => {
                 encode_binary(&self.query_original_publisher(deps)?)
             }
+            AndromedaQuery::Type {} => encode_binary(&self.query_type(deps)?),
             AndromedaQuery::BlockHeightUponCreation {} => {
                 encode_binary(&self.query_block_height_upon_creation(deps)?)
             }
@@ -91,5 +93,10 @@ impl<'a> ADOContract<'a> {
     ) -> Result<BlockHeightResponse, ContractError> {
         let block_height = self.block_height.load(deps.storage)?;
         Ok(BlockHeightResponse { block_height })
+    }
+
+    pub fn query_type(&self, deps: Deps) -> Result<TypeResponse, ContractError> {
+        let ado_type = self.ado_type.load(deps.storage)?;
+        Ok(TypeResponse { ado_type })
     }
 }
