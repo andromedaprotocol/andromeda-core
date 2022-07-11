@@ -12,6 +12,7 @@ use common::{
     parse_message, require,
 };
 use cosmwasm_std::{Binary, Deps, Env, Order};
+use cw2::get_contract_version;
 use serde::de::DeserializeOwned;
 
 type QueryFunction<Q> = fn(Deps, Env, Q) -> Result<Binary, ContractError>;
@@ -46,6 +47,7 @@ impl<'a> ADOContract<'a> {
             AndromedaQuery::IsOperator { address } => {
                 encode_binary(&self.query_is_operator(deps, &address)?)
             }
+            AndromedaQuery::Version {} => encode_binary(&get_contract_version(deps.storage)?),
             #[cfg(feature = "modules")]
             AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
             #[cfg(feature = "modules")]
