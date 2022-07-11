@@ -1,7 +1,7 @@
 use crate::state::{StakedNft, ALLOWED_CONTRACTS, REWARD, STAKED_NFTS, UNBONDING_PERIOD};
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721_staking::{
-    Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
+    Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
@@ -10,7 +10,12 @@ use cosmwasm_std::{
     attr, entry_point, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Response, Uint128, WasmMsg,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:andromeda_cw721_staking";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // One day in seconds
 pub const ONE_DAY: u64 = 86400;
@@ -25,6 +30,8 @@ pub fn instantiate(
     ALLOWED_CONTRACTS.save(deps.storage, &vec![msg.nft_contract])?;
     UNBONDING_PERIOD.save(deps.storage, &msg.unbonding_period)?;
     REWARD.save(deps.storage, &msg.reward)?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -304,6 +311,17 @@ fn execute_claim(
     } else {
         Err(ContractError::OutOfNFTs {})
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[entry_point]
