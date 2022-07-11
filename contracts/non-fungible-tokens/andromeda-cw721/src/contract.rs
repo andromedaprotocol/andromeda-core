@@ -28,7 +28,7 @@ pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -46,6 +46,7 @@ pub fn instantiate(
 
     ADOContract::default().instantiate(
         deps.storage,
+        env,
         deps.api,
         info,
         BaseInstantiateMsg {

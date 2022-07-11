@@ -38,7 +38,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -50,6 +50,7 @@ pub fn instantiate(
 
     let resp = contract.instantiate(
         deps.storage,
+        env,
         deps.api,
         info,
         BaseInstantiateMsg {

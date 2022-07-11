@@ -44,7 +44,7 @@ pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Rec
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::{mock_dependencies, mock_info};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     use super::*;
     use common::ado_base::InstantiateMsg as BaseInstantiateMsg;
@@ -64,6 +64,7 @@ mod tests {
         ADOContract::default()
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 mock_info(&owner, &[]),
                 BaseInstantiateMsg {

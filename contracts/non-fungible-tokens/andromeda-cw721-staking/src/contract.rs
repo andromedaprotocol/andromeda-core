@@ -18,7 +18,7 @@ pub const ONE_DAY: u64 = 86400;
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -28,6 +28,7 @@ pub fn instantiate(
 
     ADOContract::default().instantiate(
         deps.storage,
+        env,
         deps.api,
         info,
         BaseInstantiateMsg {

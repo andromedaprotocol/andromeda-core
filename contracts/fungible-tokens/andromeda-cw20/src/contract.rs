@@ -34,6 +34,7 @@ pub fn instantiate(
     let contract = ADOContract::default();
     let resp = contract.instantiate(
         deps.storage,
+        env.clone(),
         deps.api,
         info.clone(),
         BaseInstantiateMsg {

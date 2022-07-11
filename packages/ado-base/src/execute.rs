@@ -16,6 +16,7 @@ impl<'a> ADOContract<'a> {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
+        env: Env,
         #[cfg(feature = "primitive")] api: &dyn Api,
         #[cfg(not(feature = "primitive"))] _api: &dyn Api,
         info: MessageInfo,
@@ -23,6 +24,7 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         self.owner.save(storage, &info.sender)?;
         self.original_publisher.save(storage, &info.sender)?;
+        self.block_height.save(storage, &env.block.height)?;
         self.ado_type.save(storage, &msg.ado_type)?;
         if let Some(operators) = msg.operators {
             self.initialize_operators(storage, operators)?;
@@ -214,6 +216,7 @@ mod tests {
         contract
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 info.clone(),
                 InstantiateMsg {
@@ -260,6 +263,7 @@ mod tests {
         contract
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 info.clone(),
                 InstantiateMsg {
@@ -315,6 +319,7 @@ mod tests {
         contract
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 info.clone(),
                 InstantiateMsg {
@@ -354,6 +359,7 @@ mod tests {
         contract
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 info.clone(),
                 InstantiateMsg {

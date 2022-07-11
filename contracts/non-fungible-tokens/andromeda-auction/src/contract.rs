@@ -21,13 +21,14 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOf
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     NEXT_AUCTION_ID.save(deps.storage, &Uint128::from(1u128))?;
     ADOContract::default().instantiate(
         deps.storage,
+        env,
         deps.api,
         info,
         BaseInstantiateMsg {

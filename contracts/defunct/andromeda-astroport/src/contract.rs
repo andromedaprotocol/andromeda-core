@@ -46,7 +46,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -54,6 +54,7 @@ pub fn instantiate(
     let contract = ADOContract::default();
     let resp = contract.instantiate(
         deps.storage,
+        env,
         deps.api,
         info,
         BaseInstantiateMsg {

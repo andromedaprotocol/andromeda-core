@@ -1,6 +1,7 @@
 use crate::state::ADOContract;
 use common::{
     ado_base::{
+        block_height::BlockHeightResponse,
         operators::{IsOperatorResponse, OperatorsResponse},
         ownership::{ContractOwnerResponse, PublisherResponse},
         AndromedaQuery, QueryMsg,
@@ -36,6 +37,9 @@ impl<'a> ADOContract<'a> {
             AndromedaQuery::Operators {} => encode_binary(&self.query_operators(deps)?),
             AndromedaQuery::OriginalPublisher {} => {
                 encode_binary(&self.query_original_publisher(deps)?)
+            }
+            AndromedaQuery::BlockHeightUponCreation {} => {
+                encode_binary(&self.query_block_height_upon_creation(deps)?)
             }
             AndromedaQuery::IsOperator { address } => {
                 encode_binary(&self.query_is_operator(deps, &address)?)
@@ -79,5 +83,13 @@ impl<'a> ADOContract<'a> {
     pub fn query_original_publisher(&self, deps: Deps) -> Result<PublisherResponse, ContractError> {
         let original_publisher = self.original_publisher.load(deps.storage)?.to_string();
         Ok(PublisherResponse { original_publisher })
+    }
+
+    pub fn query_block_height_upon_creation(
+        &self,
+        deps: Deps,
+    ) -> Result<BlockHeightResponse, ContractError> {
+        let block_height = self.block_height.load(deps.storage)?;
+        Ok(BlockHeightResponse { block_height })
     }
 }

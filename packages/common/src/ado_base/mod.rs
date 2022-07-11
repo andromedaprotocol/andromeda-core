@@ -1,3 +1,4 @@
+pub mod block_height;
 pub mod hooks;
 pub mod modules;
 pub mod operators;
@@ -65,6 +66,7 @@ pub enum AndromedaQuery {
     Owner {},
     Operators {},
     OriginalPublisher {},
+    BlockHeightUponCreation {},
     IsOperator { address: String },
     Module { id: Uint64 },
     ModuleIds {},

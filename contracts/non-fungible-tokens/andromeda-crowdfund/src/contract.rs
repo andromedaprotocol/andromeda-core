@@ -36,7 +36,7 @@ pub(crate) const MAX_MINT_LIMIT: u32 = 100;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -51,6 +51,7 @@ pub fn instantiate(
     NUMBER_OF_TOKENS_AVAILABLE.save(deps.storage, &Uint128::zero())?;
     ADOContract::default().instantiate(
         deps.storage,
+        env,
         deps.api,
         info,
         BaseInstantiateMsg {

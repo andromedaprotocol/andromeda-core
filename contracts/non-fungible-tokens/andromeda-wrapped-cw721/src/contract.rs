@@ -33,6 +33,7 @@ pub fn instantiate(
     let mut msgs: Vec<SubMsg> = vec![];
     let resp = contract.instantiate(
         deps.storage,
+        env.clone(),
         deps.api,
         info.clone(),
         BaseInstantiateMsg {

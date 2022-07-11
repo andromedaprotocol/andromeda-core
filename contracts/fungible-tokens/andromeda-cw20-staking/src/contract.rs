@@ -83,6 +83,7 @@ pub fn instantiate(
 
     ADOContract::default().instantiate(
         deps.storage,
+        env,
         deps.api,
         info,
         BaseInstantiateMsg {

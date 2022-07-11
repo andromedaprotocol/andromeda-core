@@ -70,6 +70,7 @@ pub fn instantiate(
 
     ADOContract::default().instantiate(
         deps.storage,
+        env,
         deps.api,
         info,
         BaseInstantiateMsg {
@@ -347,6 +348,7 @@ mod tests {
         ADOContract::default()
             .instantiate(
                 deps_mut.storage,
+                env.clone(),
                 deps_mut.api,
                 mock_info(owner, &[]),
                 BaseInstantiateMsg {
@@ -408,6 +410,7 @@ mod tests {
         ADOContract::default()
             .instantiate(
                 deps_mut.storage,
+                env.clone(),
                 deps_mut.api,
                 mock_info(owner, &[]),
                 BaseInstantiateMsg {
@@ -473,6 +476,7 @@ mod tests {
         ADOContract::default()
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 mock_info(owner, &[]),
                 BaseInstantiateMsg {
@@ -576,6 +580,7 @@ mod tests {
         ADOContract::default()
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 mock_info(owner, &[]),
                 BaseInstantiateMsg {
