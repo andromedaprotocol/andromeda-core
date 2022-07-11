@@ -120,6 +120,13 @@ fn execute_add_allowed_contract(
         ContractError::Unauthorized {},
     )?;
     let mut new_contracts = ALLOWED_CONTRACTS.load(deps.storage)?;
+
+    // Prevent duplicate contracts
+    require(
+        !new_contracts.contains(&new_contract),
+        ContractError::DuplicateContract {},
+    )?;
+
     new_contracts.push(new_contract);
 
     ALLOWED_CONTRACTS.save(deps.storage, &new_contracts)?;
@@ -970,6 +977,30 @@ mod tests {
 
         let err = execute_add_allowed_contract(deps.as_mut(), info, new_contract).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_add_allowed_contract_duplicate_contract() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: "valid".to_string(),
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let info = mock_info("me", &[]);
+        let new_contract = "valid".to_string();
+
+        let err = execute_add_allowed_contract(deps.as_mut(), info, new_contract).unwrap_err();
+
+        assert_eq!(err, ContractError::DuplicateContract {});
     }
 
     #[test]

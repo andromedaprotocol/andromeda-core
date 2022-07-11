@@ -228,6 +228,9 @@ pub enum ContractError {
     #[error("DuplicateRecipient")]
     DuplicateRecipient {},
 
+    #[error("DuplicateContract")]
+    DuplicateContract {},
+
     // BEGIN CW20 ERRORS
     #[error("Cannot set to own account")]
     CannotSetOwnAccount {},
