@@ -323,9 +323,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::NumberOfNfts {} => encode_binary(&query_number_of_nfts(deps)?),
+        QueryMsg::RequiredCoin {} => encode_binary(&query_required_coin(deps)?),
         QueryMsg::SaleDetails {} => encode_binary(&query_state(deps)?),
         QueryMsg::Status {} => encode_binary(&query_status(deps)?),
     }
+}
+
+fn query_required_coin(deps: Deps) -> Result<String, ContractError> {
+    let required_coin = REQUIRED_COIN.load(deps.storage)?;
+    Ok(required_coin)
 }
 
 fn query_status(deps: Deps) -> Result<StatusResponse, ContractError> {
