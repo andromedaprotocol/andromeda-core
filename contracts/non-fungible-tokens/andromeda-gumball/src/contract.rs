@@ -396,6 +396,51 @@ mod tests {
     }
 
     #[test]
+    fn test_update_desired_coin_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            andromeda_cw721_contract: AndrAddress {
+                identifier: "cw721_contract".to_string(),
+            },
+            randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
+        };
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let status = STATUS.load(&deps.storage).unwrap();
+        assert!(!status);
+        let info = mock_info("random", &[]);
+        let new_coin = "DefinitelyNotUUSD".to_string();
+        let err = execute_update_required_coin(deps.as_mut(), info, new_coin).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_update_desired_coin_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            andromeda_cw721_contract: AndrAddress {
+                identifier: "cw721_contract".to_string(),
+            },
+            randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
+        };
+        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let status = STATUS.load(&deps.storage).unwrap();
+        assert!(!status);
+        let new_coin = "DefinitelyNotUUSD".to_string();
+        let _res = execute_update_required_coin(deps.as_mut(), info, new_coin).unwrap();
+        let expected_denom = "DefinitelyNotUUSD".to_string();
+        let actual_denom = REQUIRED_COIN.load(&deps.storage).unwrap();
+        assert_eq!(expected_denom, actual_denom);
+    }
+
+    #[test]
     fn test_sale_details_unauthorized() {
         let mut deps = mock_dependencies();
         let env = mock_env();
