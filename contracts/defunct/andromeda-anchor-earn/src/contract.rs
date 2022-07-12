@@ -55,6 +55,7 @@ pub fn instantiate(
         info,
         BaseInstantiateMsg {
             ado_type: "anchor_earn".to_string(),
+            ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
             primitive_contract: Some(msg.primitive_contract),
