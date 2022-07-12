@@ -65,6 +65,9 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::Mint(mint_msg) => execute_mint(deps, env, info, mint_msg),
         ExecuteMsg::Buy {} => execute_buy(deps, env, info),
+        ExecuteMsg::UpdateRequiredCoin { new_coin } => {
+            execute_update_required_coin(deps, info, new_coin)
+        }
         ExecuteMsg::SetSaleDetails {
             price,
             max_amount_per_wallet,
@@ -72,6 +75,25 @@ pub fn execute(
         } => execute_sale_details(deps, env, info, price, max_amount_per_wallet, recipient),
         ExecuteMsg::SwitchStatus {} => execute_switch_status(deps, info),
     }
+}
+
+fn execute_update_required_coin(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_coin: String,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    REQUIRED_COIN.save(deps.storage, &new_coin)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "updated required coin")
+        .add_attribute("new coin", new_coin))
 }
 
 fn execute_switch_status(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {

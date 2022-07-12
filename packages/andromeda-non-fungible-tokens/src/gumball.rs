@@ -21,6 +21,9 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     Mint(Vec<GumballMintMsg>),
     Buy {},
+    UpdateRequiredCoin {
+        new_coin: String,
+    },
     /// Sets price, max amount per wallet, and recipient
     SetSaleDetails {
         /// The price per token.
