@@ -44,6 +44,8 @@ pub fn read_receipt(storage: &dyn Storage, receipt_id: Uint128) -> StdResult<Rec
 
 #[cfg(test)]
 mod tests {
+    const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     use super::*;
@@ -69,6 +71,7 @@ mod tests {
                 mock_info(&owner, &[]),
                 BaseInstantiateMsg {
                     ado_type: "receipt".to_string(),
+                    ado_version: CONTRACT_VERSION.to_string(),
                     operators: Some(vec![operator.clone()]),
                     modules: None,
                     primitive_contract: None,

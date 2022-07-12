@@ -8,8 +8,10 @@ use cosmwasm_std::{
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
+use cw2::{get_contract_version, set_contract_version};
+
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
@@ -24,6 +26,8 @@ use cw721::ContractInfoResponse;
 use cw721_base::{state::TokenInfo, Cw721Contract};
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
+const CONTRACT_NAME: &str = "crates.io:andromeda_cw721";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -32,6 +36,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     let contract_info = ContractInfoResponse {
         name: msg.name,
         symbol: msg.symbol,
@@ -51,6 +57,7 @@ pub fn instantiate(
         info,
         BaseInstantiateMsg {
             ado_type: "cw721".to_string(),
+            ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: msg.modules.clone(),
             primitive_contract: None,
@@ -411,4 +418,15 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
         }
         _ => Err(ContractError::UnsupportedOperation {}),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }

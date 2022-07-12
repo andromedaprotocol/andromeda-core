@@ -26,6 +26,7 @@ impl<'a> ADOContract<'a> {
         self.original_publisher.save(storage, &info.sender)?;
         self.block_height.save(storage, &env.block.height)?;
         self.ado_type.save(storage, &msg.ado_type)?;
+        self.version.save(storage, &msg.ado_version)?;
         if let Some(operators) = msg.operators {
             self.initialize_operators(storage, operators)?;
         }
@@ -68,6 +69,9 @@ impl<'a> ADOContract<'a> {
             }
             AndromedaMsg::UpdateAppContract { address } => {
                 self.execute_update_app_contract(deps, info, address, None)
+            }
+            AndromedaMsg::UpdateVersion { version } => {
+                self.execute_update_version(deps, info, version)
             }
             #[cfg(feature = "withdraw")]
             AndromedaMsg::Withdraw {
@@ -185,6 +189,22 @@ impl<'a> ADOContract<'a> {
             .add_attribute("action", "update_app_contract")
             .add_attribute("address", address))
     }
+
+    pub fn execute_update_version(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        version: String,
+    ) -> Result<Response, ContractError> {
+        require(
+            self.is_contract_owner(deps.storage, info.sender.as_str())?,
+            ContractError::Unauthorized {},
+        )?;
+        self.version.save(deps.storage, &version)?;
+        Ok(Response::new()
+            .add_attribute("action", "update_version")
+            .add_attribute("version", version))
+    }
 }
 
 #[cfg(test)]
@@ -224,6 +244,7 @@ mod tests {
                     modules: None,
                     primitive_contract: None,
                     operators: None,
+                    ado_version: "version".to_string(),
                 },
             )
             .unwrap();
@@ -268,6 +289,7 @@ mod tests {
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
+                    ado_version: "version".to_string(),
                     modules: Some(vec![Module {
                         module_type: "module".to_owned(),
                         address: AndrAddress {
@@ -324,6 +346,7 @@ mod tests {
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
+                    ado_version: "version".to_string(),
                     modules: None,
                     primitive_contract: None,
                     operators: None,
@@ -364,6 +387,7 @@ mod tests {
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
+                    ado_version: "version".to_string(),
                     modules: Some(vec![Module {
                         module_type: "address_list".to_string(),
                         is_mutable: true,

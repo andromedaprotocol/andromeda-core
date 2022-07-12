@@ -74,6 +74,7 @@ pub fn instantiate(
         info,
         BaseInstantiateMsg {
             ado_type: "lockdrop".to_string(),
+            ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
             primitive_contract: None,

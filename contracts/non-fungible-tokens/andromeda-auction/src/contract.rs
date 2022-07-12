@@ -5,7 +5,7 @@ use crate::state::{
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
-    InstantiateMsg, QueryMsg,
+    InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
@@ -16,7 +16,11 @@ use cosmwasm_std::{
     DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, Uint128, WasmMsg,
     WasmQuery,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
+
+const CONTRACT_NAME: &str = "crates.io:andromeda_auction";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
 pub fn instantiate(
@@ -25,6 +29,7 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     NEXT_AUCTION_ID.save(deps.storage, &Uint128::from(1u128))?;
     ADOContract::default().instantiate(
         deps.storage,
@@ -33,6 +38,7 @@ pub fn instantiate(
         info,
         BaseInstantiateMsg {
             ado_type: "auction".to_string(),
+            ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
             primitive_contract: None,
@@ -526,7 +532,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             start_after,
             limit,
         )?),
-        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
     }
 }
 
@@ -608,6 +613,17 @@ fn query_owner_of(
     }))?;
 
     Ok(res)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[cfg(test)]

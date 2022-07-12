@@ -5,6 +5,7 @@ pub mod modules;
 pub mod operators;
 pub mod ownership;
 pub mod recipient;
+pub mod version;
 
 use crate::{
     ado_base::{modules::Module, recipient::Recipient},
@@ -18,6 +19,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
     pub ado_type: String,
+    pub ado_version: String,
     pub operators: Option<Vec<String>>,
     pub modules: Option<Vec<Module>>,
     pub primitive_contract: Option<String>,
@@ -36,6 +38,9 @@ pub enum AndromedaMsg {
     },
     UpdateAppContract {
         address: String,
+    },
+    UpdateVersion {
+        version: String,
     },
     Withdraw {
         recipient: Option<Recipient>,

@@ -4,7 +4,7 @@ use crate::state::{
 };
 use ado_base::ADOContract;
 use andromeda_non_fungible_tokens::{
-    crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
+    crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
 };
 use common::{
@@ -18,6 +18,8 @@ use common::{
     rates::get_tax_amount,
     require, Funds,
 };
+use cw2::{get_contract_version, set_contract_version};
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -32,6 +34,8 @@ use std::cmp;
 const MAX_LIMIT: u32 = 100;
 const DEFAULT_LIMIT: u32 = 50;
 pub(crate) const MAX_MINT_LIMIT: u32 = 100;
+const CONTRACT_NAME: &str = "crates.io:andromeda_crowdfund";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -40,6 +44,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONFIG.save(
         deps.storage,
         &Config {
@@ -56,6 +61,7 @@ pub fn instantiate(
         info,
         BaseInstantiateMsg {
             ado_type: "crowdfund".to_string(),
+            ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: msg.modules,
             primitive_contract: None,
@@ -811,4 +817,15 @@ fn query_available_tokens(
 
 fn query_is_token_available(deps: Deps, id: String) -> bool {
     AVAILABLE_TOKENS.has(deps.storage, &id)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }

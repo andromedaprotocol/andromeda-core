@@ -47,3 +47,7 @@ pub enum Cw721HookMsg {
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct MigrateMsg {}

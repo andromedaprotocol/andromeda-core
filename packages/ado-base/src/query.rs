@@ -5,6 +5,7 @@ use common::{
         block_height::BlockHeightResponse,
         operators::{IsOperatorResponse, OperatorsResponse},
         ownership::{ContractOwnerResponse, PublisherResponse},
+        version::VersionResponse,
         AndromedaQuery, QueryMsg,
     },
     encode_binary,
@@ -12,7 +13,6 @@ use common::{
     parse_message, require,
 };
 use cosmwasm_std::{Binary, Deps, Env, Order};
-use cw2::get_contract_version;
 use serde::de::DeserializeOwned;
 
 type QueryFunction<Q> = fn(Deps, Env, Q) -> Result<Binary, ContractError>;
@@ -47,7 +47,7 @@ impl<'a> ADOContract<'a> {
             AndromedaQuery::IsOperator { address } => {
                 encode_binary(&self.query_is_operator(deps, &address)?)
             }
-            AndromedaQuery::Version {} => encode_binary(&get_contract_version(deps.storage)?),
+            AndromedaQuery::Version {} => encode_binary(&self.query_version(deps)?),
             #[cfg(feature = "modules")]
             AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
             #[cfg(feature = "modules")]
@@ -100,5 +100,10 @@ impl<'a> ADOContract<'a> {
     pub fn query_type(&self, deps: Deps) -> Result<TypeResponse, ContractError> {
         let ado_type = self.ado_type.load(deps.storage)?;
         Ok(TypeResponse { ado_type })
+    }
+
+    pub fn query_version(&self, deps: Deps) -> Result<VersionResponse, ContractError> {
+        let version = self.version.load(deps.storage)?;
+        Ok(VersionResponse { version })
     }
 }

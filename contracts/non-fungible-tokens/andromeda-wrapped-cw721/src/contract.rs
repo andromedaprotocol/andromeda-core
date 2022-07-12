@@ -5,7 +5,9 @@ use andromeda_non_fungible_tokens::{
         ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MetadataAttribute,
         TokenExtension,
     },
-    wrapped_cw721::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, QueryMsg},
+    wrapped_cw721::{
+        Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, MigrateMsg, QueryMsg,
+    },
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
@@ -15,11 +17,15 @@ use cosmwasm_std::{
     entry_point, from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
     QueryRequest, Reply, Response, StdError, SubMsg, WasmMsg, WasmQuery,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NftInfoResponse};
 use cw721_base::MintMsg;
 
 const ORIGINAL_TOKEN_ID: &str = "original_token_id";
 const ORIGINAL_TOKEN_ADDRESS: &str = "original_token_address";
+
+const CONTRACT_NAME: &str = "crates.io:andromeda_wrapped_cw721";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -28,6 +34,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let contract = ADOContract::default();
     CAN_UNWRAP.save(deps.storage, &msg.can_unwrap)?;
     let mut msgs: Vec<SubMsg> = vec![];
@@ -38,6 +45,7 @@ pub fn instantiate(
         info.clone(),
         BaseInstantiateMsg {
             ado_type: "wrapped_cw721".to_string(),
+            ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
             primitive_contract: Some(msg.primitive_contract),
@@ -239,6 +247,17 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
 }
 
 #[cfg(test)]

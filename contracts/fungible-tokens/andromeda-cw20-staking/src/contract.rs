@@ -88,6 +88,7 @@ pub fn instantiate(
         info,
         BaseInstantiateMsg {
             ado_type: "cw20_staking".to_string(),
+            ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
             primitive_contract: None,
