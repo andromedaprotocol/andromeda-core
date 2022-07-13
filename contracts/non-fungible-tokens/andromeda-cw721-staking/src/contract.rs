@@ -27,7 +27,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    ALLOWED_CONTRACTS.save(deps.storage, &vec![msg.nft_contract])?;
+    ALLOWED_CONTRACTS.save(deps.storage, &msg.nft_contract)?;
     UNBONDING_PERIOD.save(deps.storage, &msg.unbonding_period)?;
     REWARD.save(deps.storage, &msg.reward)?;
 
@@ -375,7 +375,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -393,7 +393,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -417,7 +417,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -443,7 +443,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -467,7 +467,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -515,7 +515,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -542,7 +542,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -571,7 +571,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -601,7 +601,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -676,7 +676,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -719,7 +719,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -762,7 +762,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -805,7 +805,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -848,7 +848,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -889,7 +889,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -932,7 +932,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -955,7 +955,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -980,7 +980,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -1003,7 +1003,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -1027,7 +1027,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -1053,7 +1053,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -1076,7 +1076,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -1099,7 +1099,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
