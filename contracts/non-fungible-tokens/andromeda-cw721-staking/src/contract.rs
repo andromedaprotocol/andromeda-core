@@ -332,7 +332,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AllowedContracts {} => encode_binary(&query_allowed_contracts(deps)?),
         QueryMsg::UnbondingPeriod {} => encode_binary(&query_unbonding_period(deps)?),
         QueryMsg::Reward {} => encode_binary(&query_reward(deps)?),
-        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
     }
 }
 
