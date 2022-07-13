@@ -88,7 +88,6 @@ pub enum QueryMsg {
         limit: Option<u64>,
         order_by: Option<OrderBy>,
     },
-    Owner {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

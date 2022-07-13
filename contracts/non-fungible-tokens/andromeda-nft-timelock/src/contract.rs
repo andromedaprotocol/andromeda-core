@@ -168,7 +168,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::LockedToken { lock_id } => encode_binary(&query_locked_token(deps, lock_id)?),
-        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
     }
 }
 fn query_locked_token(deps: Deps, lock_id: String) -> Result<LockDetails, ContractError> {

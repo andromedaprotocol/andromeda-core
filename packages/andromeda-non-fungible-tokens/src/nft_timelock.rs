@@ -24,8 +24,7 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Cw721HookMsg {
-    /// Starts a new auction with the given parameters. The auction info can be modified before it
-    /// has started but is immutable after that.
+    /// Locks the token in the contract for the desired time while setting the recipient as the sender if not provided.
     StartLock {
         recipient: Option<String>,
         lock_time: u64,
@@ -37,5 +36,4 @@ pub enum Cw721HookMsg {
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     LockedToken { lock_id: String },
-    Owner {},
 }
