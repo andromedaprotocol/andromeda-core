@@ -525,7 +525,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             start_after,
             limit,
         )?),
-        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
     }
 }
 
