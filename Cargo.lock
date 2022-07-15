@@ -340,6 +340,7 @@ dependencies = [
  "cw2",
  "cw721",
  "schemars",
+ "semver",
  "serde",
 ]
 
