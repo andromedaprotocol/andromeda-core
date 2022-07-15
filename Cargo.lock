@@ -310,6 +310,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-nft-timelock"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-non-fungible-tokens",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw2",
+ "cw721",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-non-fungible-tokens"
 version = "0.1.0"
 dependencies = [
