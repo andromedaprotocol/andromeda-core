@@ -12,6 +12,7 @@ use crate::cw721::TokenExtension;
 pub struct InstantiateMsg {
     pub andromeda_cw721_contract: AndrAddress,
     pub randomness_source: String,
+    pub required_coin: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -20,6 +21,9 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     Mint(Vec<GumballMintMsg>),
     Buy {},
+    UpdateRequiredCoin {
+        new_coin: String,
+    },
     /// Sets price, max amount per wallet, and recipient
     SetSaleDetails {
         /// The price per token.
@@ -39,6 +43,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     NumberOfNfts {},
+    RequiredCoin {},
     SaleDetails {},
     Status {},
 }

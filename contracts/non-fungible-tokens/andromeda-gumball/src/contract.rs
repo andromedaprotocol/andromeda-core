@@ -1,4 +1,6 @@
-use crate::state::{State, CW721_CONTRACT, LIST, RANDOMNESS_PROVIDER, STATE, STATUS};
+use crate::state::{
+    State, CW721_CONTRACT, LIST, RANDOMNESS_PROVIDER, REQUIRED_COIN, STATE, STATUS,
+};
 use ado_base::ADOContract;
 use andromeda_non_fungible_tokens::gumball::{GumballMintMsg, LatestRandomResponse};
 use andromeda_non_fungible_tokens::{
@@ -20,7 +22,6 @@ use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda_gumball";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const UUSD_DENOM: &str = "uusd";
 
 pub(crate) const MAX_MINT_LIMIT: u32 = 100;
 
@@ -38,6 +39,7 @@ pub fn instantiate(
     LIST.save(deps.storage, &new_list)?;
     STATUS.save(deps.storage, &false)?;
     RANDOMNESS_PROVIDER.save(deps.storage, &msg.randomness_source)?;
+    REQUIRED_COIN.save(deps.storage, &msg.required_coin)?;
     ADOContract::default().instantiate(
         deps.storage,
         deps.api,
@@ -63,6 +65,9 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::Mint(mint_msg) => execute_mint(deps, env, info, mint_msg),
         ExecuteMsg::Buy {} => execute_buy(deps, env, info),
+        ExecuteMsg::UpdateRequiredCoin { new_coin } => {
+            execute_update_required_coin(deps, info, new_coin)
+        }
         ExecuteMsg::SetSaleDetails {
             price,
             max_amount_per_wallet,
@@ -70,6 +75,25 @@ pub fn execute(
         } => execute_sale_details(deps, env, info, price, max_amount_per_wallet, recipient),
         ExecuteMsg::SwitchStatus {} => execute_switch_status(deps, info),
     }
+}
+
+fn execute_update_required_coin(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_coin: String,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    REQUIRED_COIN.save(deps.storage, &new_coin)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "updated required coin")
+        .add_attribute("new coin", new_coin))
 }
 
 fn execute_switch_status(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
@@ -108,10 +132,11 @@ fn execute_sale_details(
     // Check valid amount
     require(!price.amount.is_zero(), ContractError::InvalidZeroAmount {})?;
     // Check valid denomination
+    let required_coin = REQUIRED_COIN.load(deps.storage)?;
     require(
-        price.denom == UUSD_DENOM,
+        price.denom == required_coin,
         ContractError::InvalidFunds {
-            msg: "Only uusd is allowed".to_string(),
+            msg: "Please send the required coin".to_string(),
         },
     )?;
     // Check valid max amount per wallet
@@ -233,15 +258,16 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
     require(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
-            msg: "Only one type of coin is required (uusd).".to_string(),
+            msg: "Only one type of coin is allowed.".to_string(),
         },
     )?;
     let sent_funds = &info.funds[0];
+    let required_coin = REQUIRED_COIN.load(deps.storage)?;
     // check for correct denomination
     require(
-        sent_funds.denom == UUSD_DENOM,
+        sent_funds.denom == required_coin,
         ContractError::InvalidFunds {
-            msg: "Only uusd is accepted".to_string(),
+            msg: "Please send the required coin".to_string(),
         },
     )?;
 
@@ -297,9 +323,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::NumberOfNfts {} => encode_binary(&query_number_of_nfts(deps)?),
+        QueryMsg::RequiredCoin {} => encode_binary(&query_required_coin(deps)?),
         QueryMsg::SaleDetails {} => encode_binary(&query_state(deps)?),
         QueryMsg::Status {} => encode_binary(&query_status(deps)?),
     }
+}
+
+fn query_required_coin(deps: Deps) -> Result<String, ContractError> {
+    let required_coin = REQUIRED_COIN.load(deps.storage)?;
+    Ok(required_coin)
 }
 
 fn query_status(deps: Deps) -> Result<StatusResponse, ContractError> {
@@ -361,11 +393,57 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
         let status = STATUS.load(&deps.storage).unwrap();
         assert!(!status);
+    }
+
+    #[test]
+    fn test_update_desired_coin_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            andromeda_cw721_contract: AndrAddress {
+                identifier: "cw721_contract".to_string(),
+            },
+            randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
+        };
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let status = STATUS.load(&deps.storage).unwrap();
+        assert!(!status);
+        let info = mock_info("random", &[]);
+        let new_coin = "DefinitelyNotUUSD".to_string();
+        let err = execute_update_required_coin(deps.as_mut(), info, new_coin).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_update_desired_coin_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg {
+            andromeda_cw721_contract: AndrAddress {
+                identifier: "cw721_contract".to_string(),
+            },
+            randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
+        };
+        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let status = STATUS.load(&deps.storage).unwrap();
+        assert!(!status);
+        let new_coin = "DefinitelyNotUUSD".to_string();
+        let _res = execute_update_required_coin(deps.as_mut(), info, new_coin).unwrap();
+        let expected_denom = "DefinitelyNotUUSD".to_string();
+        let actual_denom = REQUIRED_COIN.load(&deps.storage).unwrap();
+        assert_eq!(expected_denom, actual_denom);
     }
 
     #[test]
@@ -378,6 +456,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("anyone", &[]);
@@ -400,6 +479,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -422,6 +502,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -434,7 +515,7 @@ mod tests {
         assert_eq!(
             res,
             ContractError::InvalidFunds {
-                msg: "Only uusd is allowed".to_string(),
+                msg: "Please send the required coin".to_string(),
             }
         );
     }
@@ -449,6 +530,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -471,6 +553,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -501,6 +584,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -535,6 +619,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -582,6 +667,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -619,6 +705,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -664,6 +751,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -711,6 +799,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -762,6 +851,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
 
         instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -805,7 +895,7 @@ mod tests {
         assert_eq!(
             err,
             ContractError::InvalidFunds {
-                msg: "Only uusd is accepted".to_string(),
+                msg: "Please send the required coin".to_string(),
             }
         );
     }
@@ -820,6 +910,7 @@ mod tests {
                 identifier: "cw721_contract".to_string(),
             },
             randomness_source: "terrand".to_string(),
+            required_coin: "uusd".to_string(),
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
