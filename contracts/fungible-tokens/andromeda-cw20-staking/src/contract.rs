@@ -86,7 +86,7 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "cw20_staking".to_string(),
+            ado_type: "cw20-staking".to_string(),
             operators: None,
             modules: None,
             primitive_contract: None,

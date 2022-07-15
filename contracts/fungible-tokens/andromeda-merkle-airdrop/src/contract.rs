@@ -52,7 +52,7 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "merkle_airdrop".to_string(),
+            ado_type: "merkle-airdrop".to_string(),
             operators: None,
             modules: None,
             primitive_contract: None,

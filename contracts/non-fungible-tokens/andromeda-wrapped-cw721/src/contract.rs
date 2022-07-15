@@ -36,7 +36,7 @@ pub fn instantiate(
         deps.api,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "wrapped_cw721".to_string(),
+            ado_type: "wrapped-cw721".to_string(),
             operators: None,
             modules: None,
             primitive_contract: Some(msg.primitive_contract),
