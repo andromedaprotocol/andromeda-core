@@ -17,16 +17,16 @@
     {
       "type": "object",
       "required": [
-        "locked_token"
+        "staked_nft"
       ],
       "properties": {
-        "locked_token": {
+        "staked_nft": {
           "type": "object",
           "required": [
-            "lock_id"
+            "key"
           ],
           "properties": {
-            "lock_id": {
+            "key": {
               "type": "string"
             }
           }
@@ -37,10 +37,34 @@
     {
       "type": "object",
       "required": [
-        "owner"
+        "allowed_contracts"
       ],
       "properties": {
-        "owner": {
+        "allowed_contracts": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "unbonding_period"
+      ],
+      "properties": {
+        "unbonding_period": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "reward"
+      ],
+      "properties": {
+        "reward": {
           "type": "object"
         }
       },

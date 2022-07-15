@@ -25,12 +25,22 @@ pub enum ContractError {
     #[error("ContractLocked")]
     ContractLocked {},
 
+    #[error("RewardTooLow")]
+    RewardTooLow {},
+
+    #[error("IncompleteUnbondingPeriod")]
+    IncompleteUnbondingPeriod {},
     #[error("LockedNFT")]
     LockedNFT {},
 
     #[error("UserNotFound")]
     UserNotFound {},
 
+    #[error("UnsupportedNFT")]
+    UnsupportedNFT {},
+
+    #[error("AlreadyUnbonded")]
+    AlreadyUnbonded {},
     #[error("NFTNotFound")]
     NFTNotFound {},
 
@@ -39,6 +49,12 @@ pub enum ContractError {
 
     #[error("InvalidPrimitive")]
     InvalidPrimitive {},
+
+    #[error("StillBonded")]
+    StillBonded {},
+
+    #[error("InsufficientBondedTime")]
+    InsufficientBondedTime {},
 
     #[error("LockTimeTooShort")]
     LockTimeTooShort {},
@@ -215,6 +231,9 @@ pub enum ContractError {
 
     #[error("DuplicateRecipient")]
     DuplicateRecipient {},
+
+    #[error("DuplicateContract")]
+    DuplicateContract {},
 
     // BEGIN CW20 ERRORS
     #[error("Cannot set to own account")]

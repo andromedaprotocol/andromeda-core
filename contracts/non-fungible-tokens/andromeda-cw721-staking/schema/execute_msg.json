@@ -15,7 +15,40 @@
       "additionalProperties": false
     },
     {
-      "description": "Transfers the given token to the recipient once the time lock has expired.",
+      "type": "object",
+      "required": [
+        "receive_nft"
+      ],
+      "properties": {
+        "receive_nft": {
+          "$ref": "#/definitions/Cw721ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Assigns reward, and saves the unbonding time for later claim.",
+      "type": "object",
+      "required": [
+        "unstake"
+      ],
+      "properties": {
+        "unstake": {
+          "type": "object",
+          "required": [
+            "key"
+          ],
+          "properties": {
+            "key": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Sends back the NFT to its original owner alongside the accrued rewards",
       "type": "object",
       "required": [
         "claim"
@@ -24,10 +57,10 @@
         "claim": {
           "type": "object",
           "required": [
-            "lock_id"
+            "key"
           ],
           "properties": {
-            "lock_id": {
+            "key": {
               "type": "string"
             }
           }
@@ -38,11 +71,84 @@
     {
       "type": "object",
       "required": [
-        "receive_nft"
+        "update_allowed_contracts"
       ],
       "properties": {
-        "receive_nft": {
-          "$ref": "#/definitions/Cw721ReceiveMsg"
+        "update_allowed_contracts": {
+          "type": "object",
+          "required": [
+            "contracts"
+          ],
+          "properties": {
+            "contracts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "add_allowed_contract"
+      ],
+      "properties": {
+        "add_allowed_contract": {
+          "type": "object",
+          "required": [
+            "new_contract"
+          ],
+          "properties": {
+            "new_contract": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_allowed_contract"
+      ],
+      "properties": {
+        "remove_allowed_contract": {
+          "type": "object",
+          "required": [
+            "old_contract"
+          ],
+          "properties": {
+            "old_contract": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_unbonding_period"
+      ],
+      "properties": {
+        "update_unbonding_period": {
+          "type": "object",
+          "required": [
+            "new_period"
+          ],
+          "properties": {
+            "new_period": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
         }
       },
       "additionalProperties": false

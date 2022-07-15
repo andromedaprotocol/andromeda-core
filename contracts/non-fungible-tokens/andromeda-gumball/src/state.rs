@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 // Decided to put the token IDs in a vector
 // We'll use the length on the vector to determine the number of available NFTs
+pub const REQUIRED_COIN: Item<String> = Item::new("required_coin");
 pub const LIST: Item<Vec<String>> = Item::new("list of NFTs");
 pub const CW721_CONTRACT: Item<AndrAddress> = Item::new("cw721_contract");
 pub const RANDOMNESS_PROVIDER: Item<String> = Item::new("source of randomness");
