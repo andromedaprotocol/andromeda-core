@@ -118,3 +118,7 @@ pub struct AuctionIdsResponse {
 pub struct BidsResponse {
     pub bids: Vec<Bid>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct MigrateMsg {}

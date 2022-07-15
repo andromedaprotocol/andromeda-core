@@ -86,3 +86,7 @@ pub struct GumballMintMsg {
     /// Any custom extension used by this contract
     pub extension: TokenExtension,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct MigrateMsg {}

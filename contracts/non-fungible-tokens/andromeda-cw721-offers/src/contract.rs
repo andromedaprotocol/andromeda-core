@@ -4,7 +4,9 @@ use crate::state::{
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::{
     cw721::QueryMsg as Cw721QueryMsg,
-    cw721_offers::{AllOffersResponse, ExecuteMsg, InstantiateMsg, Offer, OfferResponse, QueryMsg},
+    cw721_offers::{
+        AllOffersResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, Offer, OfferResponse, QueryMsg,
+    },
 };
 use common::{
     ado_base::{
@@ -22,9 +24,10 @@ use cosmwasm_std::{
     has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
     QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version};
 use cw721::{Expiration, OwnerOfResponse};
 use cw_storage_plus::Bound;
+use semver::Version;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_cw721_offers";
@@ -36,7 +39,7 @@ const MAX_LIMIT: u32 = 30u32;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -45,10 +48,12 @@ pub fn instantiate(
     VALID_DENOM.save(deps.storage, &msg.valid_denom)?;
     ADOContract::default().instantiate(
         deps.storage,
+        env,
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "cw721-offers".to_string(),
+            ado_type: "cw721_offers".to_string(),
+            ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
             primitive_contract: None,
@@ -279,6 +284,44 @@ fn get_token_owner(
         })?,
     }))?;
     Ok(res.owner)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // New version
+    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
+
+    // Old version
+    let stored = get_contract_version(deps.storage)?;
+    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
+
+    let contract = ADOContract::default();
+
+    require(
+        stored.contract == CONTRACT_NAME,
+        ContractError::CannotMigrate {
+            previous_contract: stored.contract,
+        },
+    )?;
+
+    // New version has to be newer/greater than the old version
+    require(
+        storage_version < version,
+        ContractError::CannotMigrate {
+            previous_contract: stored.version,
+        },
+    )?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // Update the ADOContract's version
+    contract.execute_update_version(deps)?;
+
+    Ok(Response::default())
+}
+
+fn from_semver(err: semver::Error) -> StdError {
+    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

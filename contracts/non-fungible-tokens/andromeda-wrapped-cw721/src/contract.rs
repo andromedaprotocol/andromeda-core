@@ -5,7 +5,9 @@ use andromeda_non_fungible_tokens::{
         ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, MetadataAttribute,
         TokenExtension,
     },
-    wrapped_cw721::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, QueryMsg},
+    wrapped_cw721::{
+        Cw721HookMsg, ExecuteMsg, InstantiateMsg, InstantiateType, MigrateMsg, QueryMsg,
+    },
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
@@ -15,11 +17,16 @@ use cosmwasm_std::{
     entry_point, from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
     QueryRequest, Reply, Response, StdError, SubMsg, WasmMsg, WasmQuery,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NftInfoResponse};
 use cw721_base::MintMsg;
+use semver::Version;
 
 const ORIGINAL_TOKEN_ID: &str = "original_token_id";
 const ORIGINAL_TOKEN_ADDRESS: &str = "original_token_address";
+
+const CONTRACT_NAME: &str = "crates.io:andromeda_wrapped_cw721";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -28,15 +35,18 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let contract = ADOContract::default();
     CAN_UNWRAP.save(deps.storage, &msg.can_unwrap)?;
     let mut msgs: Vec<SubMsg> = vec![];
     let resp = contract.instantiate(
         deps.storage,
+        env.clone(),
         deps.api,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "wrapped-cw721".to_string(),
+            ado_type: "wrapped_cw721".to_string(),
+            ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
             primitive_contract: Some(msg.primitive_contract),
@@ -238,6 +248,44 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // New version
+    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
+
+    // Old version
+    let stored = get_contract_version(deps.storage)?;
+    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
+
+    let contract = ADOContract::default();
+
+    require(
+        stored.contract == CONTRACT_NAME,
+        ContractError::CannotMigrate {
+            previous_contract: stored.contract,
+        },
+    )?;
+
+    // New version has to be newer/greater than the old version
+    require(
+        storage_version < version,
+        ContractError::CannotMigrate {
+            previous_contract: stored.version,
+        },
+    )?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // Update the ADOContract's version
+    contract.execute_update_version(deps)?;
+
+    Ok(Response::default())
+}
+
+fn from_semver(err: semver::Error) -> StdError {
+    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg(test)]

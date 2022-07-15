@@ -14,6 +14,7 @@ use common::{
     app::AndrAddress,
     error::ContractError,
 };
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use crate::contract::query;
 use crate::state::SPLITTER;
@@ -211,10 +212,12 @@ fn test_execute_update_lock() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -262,10 +265,12 @@ fn test_execute_update_lock_too_short() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -301,10 +306,12 @@ fn test_execute_update_lock_too_long() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -340,10 +347,12 @@ fn test_execute_update_lock_already_locked() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -379,10 +388,12 @@ fn test_execute_update_lock_unauthorized() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -421,10 +432,12 @@ fn test_execute_remove_recipient() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -510,10 +523,12 @@ fn test_execute_remove_recipient_not_on_list() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -570,10 +585,12 @@ fn test_execute_remove_recipient_contract_locked() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -638,10 +655,12 @@ fn test_execute_remove_recipient_unauthorized() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -682,10 +701,12 @@ fn test_update_recipient_weight() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -775,10 +796,12 @@ fn test_update_recipient_weight_locked_contract() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -846,10 +869,12 @@ fn test_update_recipient_weight_user_not_found() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -915,10 +940,12 @@ fn test_update_recipient_weight_invalid_weight() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -980,10 +1007,12 @@ fn test_execute_add_recipient() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -1082,10 +1111,12 @@ fn test_execute_add_recipient_duplicate_recipient() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -1157,10 +1188,12 @@ fn test_execute_add_recipient_invalid_weight() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -1224,10 +1257,12 @@ fn test_execute_add_recipient_locked_contract() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -1274,10 +1309,12 @@ fn test_execute_add_recipient_unauthorized() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -1307,10 +1344,12 @@ fn test_execute_update_recipients() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -1375,10 +1414,12 @@ fn test_execute_update_recipients_invalid_weight() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -1427,10 +1468,12 @@ fn test_execute_update_recipients_contract_locked() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -1477,10 +1520,12 @@ fn test_execute_update_recipients_unauthorized() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             mock_info(owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
@@ -1530,10 +1575,12 @@ fn test_execute_send() {
     ADOContract::default()
         .instantiate(
             deps_mut.storage,
+            mock_env(),
             deps_mut.api,
             info.clone(),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
+                ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,

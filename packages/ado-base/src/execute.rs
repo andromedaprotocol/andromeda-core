@@ -16,13 +16,17 @@ impl<'a> ADOContract<'a> {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
+        env: Env,
         #[cfg(feature = "primitive")] api: &dyn Api,
         #[cfg(not(feature = "primitive"))] _api: &dyn Api,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
         self.owner.save(storage, &info.sender)?;
+        self.original_publisher.save(storage, &info.sender)?;
+        self.block_height.save(storage, &env.block.height)?;
         self.ado_type.save(storage, &msg.ado_type)?;
+        self.version.save(storage, &msg.ado_version)?;
         if let Some(operators) = msg.operators {
             self.initialize_operators(storage, operators)?;
         }
@@ -182,6 +186,14 @@ impl<'a> ADOContract<'a> {
             .add_attribute("action", "update_app_contract")
             .add_attribute("address", address))
     }
+
+    pub fn execute_update_version(&self, deps: DepsMut) -> Result<Response, ContractError> {
+        self.version
+            .save(deps.storage, &env!("CARGO_PKG_VERSION").to_string())?;
+        Ok(Response::new()
+            .add_attribute("action", "update_version")
+            .add_attribute("version", &env!("CARGO_PKG_VERSION").to_string()))
+    }
 }
 
 #[cfg(test)]
@@ -213,6 +225,7 @@ mod tests {
         contract
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 info.clone(),
                 InstantiateMsg {
@@ -220,6 +233,7 @@ mod tests {
                     modules: None,
                     primitive_contract: None,
                     operators: None,
+                    ado_version: "version".to_string(),
                 },
             )
             .unwrap();
@@ -259,10 +273,12 @@ mod tests {
         contract
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
+                    ado_version: "version".to_string(),
                     modules: Some(vec![Module {
                         module_type: "module".to_owned(),
                         address: AndrAddress {
@@ -314,10 +330,12 @@ mod tests {
         contract
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
+                    ado_version: "version".to_string(),
                     modules: None,
                     primitive_contract: None,
                     operators: None,
@@ -353,10 +371,12 @@ mod tests {
         contract
             .instantiate(
                 deps_mut.storage,
+                mock_env(),
                 deps_mut.api,
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
+                    ado_version: "version".to_string(),
                     modules: Some(vec![Module {
                         module_type: "address_list".to_string(),
                         is_mutable: true,

@@ -37,3 +37,7 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     LockedToken { lock_id: String },
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct MigrateMsg {}

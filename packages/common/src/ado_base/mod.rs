@@ -1,8 +1,11 @@
+pub mod ado_type;
+pub mod block_height;
 pub mod hooks;
 pub mod modules;
 pub mod operators;
 pub mod ownership;
 pub mod recipient;
+pub mod version;
 
 use crate::{
     ado_base::{modules::Module, recipient::Recipient},
@@ -16,6 +19,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
     pub ado_type: String,
+    pub ado_version: String,
     pub operators: Option<Vec<String>>,
     pub modules: Option<Vec<Module>>,
     pub primitive_contract: Option<String>,
@@ -64,9 +68,13 @@ pub enum AndromedaQuery {
     Get(Option<Binary>),
     Owner {},
     Operators {},
+    Type {},
+    OriginalPublisher {},
+    BlockHeightUponCreation {},
     IsOperator { address: String },
     Module { id: Uint64 },
     ModuleIds {},
+    Version {},
 }
 
 /// Helper enum for serialization

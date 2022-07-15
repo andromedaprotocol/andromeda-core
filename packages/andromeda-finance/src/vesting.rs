@@ -113,3 +113,7 @@ pub struct BatchResponse {
     /// The time at which the last claim took place in seconds.
     pub last_claimed_release_time: u64,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct MigrateMsg {}

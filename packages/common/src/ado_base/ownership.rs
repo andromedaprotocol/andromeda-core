@@ -6,3 +6,9 @@ use serde::{Deserialize, Serialize};
 pub struct ContractOwnerResponse {
     pub owner: String,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct PublisherResponse {
+    pub original_publisher: String,
+}
