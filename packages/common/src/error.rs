@@ -30,6 +30,8 @@ pub enum ContractError {
 
     #[error("IncompleteUnbondingPeriod")]
     IncompleteUnbondingPeriod {},
+    #[error("LockedNFT")]
+    LockedNFT {},
 
     #[error("UserNotFound")]
     UserNotFound {},
@@ -39,6 +41,8 @@ pub enum ContractError {
 
     #[error("AlreadyUnbonded")]
     AlreadyUnbonded {},
+    #[error("NFTNotFound")]
+    NFTNotFound {},
 
     #[error("PriceNotSet")]
     PriceNotSet {},
@@ -227,6 +231,9 @@ pub enum ContractError {
 
     #[error("DuplicateRecipient")]
     DuplicateRecipient {},
+
+    #[error("DuplicateContract")]
+    DuplicateContract {},
 
     // BEGIN CW20 ERRORS
     #[error("Cannot set to own account")]

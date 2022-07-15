@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    // The cw721 contract that you want to allow NFTs from
-    pub nft_contract: String,
+    // The cw721 contract(s) that you want to allow NFTs from
+    pub nft_contract: Vec<String>,
     pub unbonding_period: u64,
     pub reward: Coin,
 }
@@ -62,5 +62,4 @@ pub enum QueryMsg {
     AllowedContracts {},
     UnbondingPeriod {},
     Reward {},
-    Owner {},
 }

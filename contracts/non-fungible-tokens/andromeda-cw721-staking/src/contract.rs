@@ -29,11 +29,11 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    ALLOWED_CONTRACTS.save(deps.storage, &vec![msg.nft_contract])?;
+    ALLOWED_CONTRACTS.save(deps.storage, &msg.nft_contract)?;
     UNBONDING_PERIOD.save(deps.storage, &msg.unbonding_period)?;
     REWARD.save(deps.storage, &msg.reward)?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -131,6 +131,13 @@ fn execute_add_allowed_contract(
         ContractError::Unauthorized {},
     )?;
     let mut new_contracts = ALLOWED_CONTRACTS.load(deps.storage)?;
+
+    // Prevent duplicate contracts
+    require(
+        !new_contracts.contains(&new_contract),
+        ContractError::DuplicateContract {},
+    )?;
+
     new_contracts.push(new_contract);
 
     ALLOWED_CONTRACTS.save(deps.storage, &new_contracts)?;
@@ -310,6 +317,17 @@ fn execute_claim(
     }
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(ContractError::CannotMigrate {
+            previous_contract: version.contract,
+        });
+    }
+    Ok(Response::default())
+}
+
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
@@ -318,7 +336,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AllowedContracts {} => encode_binary(&query_allowed_contracts(deps)?),
         QueryMsg::UnbondingPeriod {} => encode_binary(&query_unbonding_period(deps)?),
         QueryMsg::Reward {} => encode_binary(&query_reward(deps)?),
-        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
     }
 }
 
@@ -400,7 +417,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -418,7 +435,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -442,7 +459,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -468,7 +485,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -492,7 +509,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -540,7 +557,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -567,7 +584,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -596,7 +613,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -626,7 +643,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -701,7 +718,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -744,7 +761,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -787,7 +804,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -830,7 +847,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -873,7 +890,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -914,7 +931,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -957,7 +974,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -980,7 +997,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -1005,7 +1022,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -1022,13 +1039,37 @@ mod tests {
     }
 
     #[test]
+    fn test_add_allowed_contract_duplicate_contract() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("me", &[]);
+
+        let msg = InstantiateMsg {
+            nft_contract: vec!["valid".to_string()],
+            unbonding_period: 200000,
+            reward: Coin {
+                denom: "ujuno".to_string(),
+                amount: Uint128::from(10_u16),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let info = mock_info("me", &[]);
+        let new_contract = "valid".to_string();
+
+        let err = execute_add_allowed_contract(deps.as_mut(), info, new_contract).unwrap_err();
+
+        assert_eq!(err, ContractError::DuplicateContract {});
+    }
+
+    #[test]
     fn test_add_allowed_contract_works() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -1054,7 +1095,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -1077,7 +1118,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
@@ -1100,7 +1141,7 @@ mod tests {
         let info = mock_info("me", &[]);
 
         let msg = InstantiateMsg {
-            nft_contract: "valid".to_string(),
+            nft_contract: vec!["valid".to_string()],
             unbonding_period: 200000,
             reward: Coin {
                 denom: "ujuno".to_string(),
