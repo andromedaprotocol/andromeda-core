@@ -70,9 +70,6 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::UpdateAppContract { address } => {
                 self.execute_update_app_contract(deps, info, address, None)
             }
-            AndromedaMsg::UpdateVersion { version } => {
-                self.execute_update_version(deps, info, version)
-            }
             #[cfg(feature = "withdraw")]
             AndromedaMsg::Withdraw {
                 recipient,
@@ -190,20 +187,12 @@ impl<'a> ADOContract<'a> {
             .add_attribute("address", address))
     }
 
-    pub fn execute_update_version(
-        &self,
-        deps: DepsMut,
-        info: MessageInfo,
-        version: String,
-    ) -> Result<Response, ContractError> {
-        require(
-            self.is_contract_owner(deps.storage, info.sender.as_str())?,
-            ContractError::Unauthorized {},
-        )?;
-        self.version.save(deps.storage, &version)?;
+    pub fn execute_update_version(&self, deps: DepsMut) -> Result<Response, ContractError> {
+        self.version
+            .save(deps.storage, &env!("CARGO_PKG_VERSION").to_string())?;
         Ok(Response::new()
             .add_attribute("action", "update_version")
-            .add_attribute("version", version))
+            .add_attribute("version", &env!("CARGO_PKG_VERSION").to_string()))
     }
 }
 

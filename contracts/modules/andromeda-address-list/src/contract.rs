@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
@@ -14,6 +14,7 @@ use common::{
     error::ContractError,
     parse_message, require,
 };
+use semver::Version;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-addresslist";
@@ -96,13 +97,40 @@ fn execute_remove_address(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    let version = get_contract_version(deps.storage)?;
-    if version.contract != CONTRACT_NAME {
-        return Err(ContractError::CannotMigrate {
-            previous_contract: version.contract,
-        });
-    }
+    // New version
+    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
+
+    // Old version
+    let stored = get_contract_version(deps.storage)?;
+    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
+
+    let contract = ADOContract::default();
+
+    require(
+        stored.contract == CONTRACT_NAME,
+        ContractError::CannotMigrate {
+            previous_contract: stored.contract,
+        },
+    )?;
+
+    // New version has to be newer/greater than the old version
+    require(
+        storage_version < version,
+        ContractError::CannotMigrate {
+            previous_contract: stored.version,
+        },
+    )?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // Update the ADOContract's version
+    contract.execute_update_version(deps)?;
+
     Ok(Response::default())
+}
+
+fn from_semver(err: semver::Error) -> StdError {
+    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

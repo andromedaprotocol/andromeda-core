@@ -2,15 +2,16 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
-    QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
+    QuerierWrapper, Response, StakingMsg, StdError, Uint128, VoteOption,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version};
 use cw_asset::AssetInfo;
 
+use semver::Version;
 use std::cmp;
 
 use ado_base::ADOContract;
-use andromeda_finance::vesting::{BatchResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_finance::vesting::{BatchResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
     withdraw::WithdrawalType,
@@ -509,6 +510,44 @@ fn get_amount_delegated(
 
 fn get_set_withdraw_address_msg(address: String) -> CosmosMsg {
     CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { address })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // New version
+    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
+
+    // Old version
+    let stored = get_contract_version(deps.storage)?;
+    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
+
+    let contract = ADOContract::default();
+
+    require(
+        stored.contract == CONTRACT_NAME,
+        ContractError::CannotMigrate {
+            previous_contract: stored.contract,
+        },
+    )?;
+
+    // New version has to be newer/greater than the old version
+    require(
+        storage_version < version,
+        ContractError::CannotMigrate {
+            previous_contract: stored.version,
+        },
+    )?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // Update the ADOContract's version
+    contract.execute_update_version(deps)?;
+
+    Ok(Response::default())
+}
+
+fn from_semver(err: semver::Error) -> StdError {
+    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

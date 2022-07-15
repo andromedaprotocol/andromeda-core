@@ -8,7 +8,7 @@ use common::{
 };
 use cosmwasm_std::{
     attr, entry_point, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, Uint128, WasmMsg,
+    MessageInfo, Response, StdError, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
@@ -16,6 +16,8 @@ use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_cw721_staking";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+use semver::Version;
 
 // One day in seconds
 pub const ONE_DAY: u64 = 86400;
@@ -346,13 +348,40 @@ fn query_staked_nft(deps: Deps, key: String) -> Result<StakedNft, ContractError>
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    let version = get_contract_version(deps.storage)?;
-    if version.contract != CONTRACT_NAME {
-        return Err(ContractError::CannotMigrate {
-            previous_contract: version.contract,
-        });
-    }
+    // New version
+    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
+
+    // Old version
+    let stored = get_contract_version(deps.storage)?;
+    let storage_version: Version = stored.version.parse().map_err(from_semver)?;
+
+    let contract = ADOContract::default();
+
+    require(
+        stored.contract == CONTRACT_NAME,
+        ContractError::CannotMigrate {
+            previous_contract: stored.contract,
+        },
+    )?;
+
+    // New version has to be newer/greater than the old version
+    require(
+        storage_version < version,
+        ContractError::CannotMigrate {
+            previous_contract: stored.version,
+        },
+    )?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // Update the ADOContract's version
+    contract.execute_update_version(deps)?;
+
     Ok(Response::default())
+}
+
+fn from_semver(err: semver::Error) -> StdError {
+    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg(test)]
