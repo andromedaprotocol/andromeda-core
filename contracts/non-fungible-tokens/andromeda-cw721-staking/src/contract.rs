@@ -12,6 +12,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
+use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_cw721_staking";
@@ -87,6 +88,7 @@ fn execute_update_unbonding_period(
     info: MessageInfo,
     new_period: u64,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
@@ -106,6 +108,7 @@ fn execute_update_allowed_contracts(
     info: MessageInfo,
     contracts: Vec<String>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
@@ -123,6 +126,7 @@ fn execute_add_allowed_contract(
     info: MessageInfo,
     new_contract: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
@@ -149,6 +153,8 @@ fn execute_remove_allowed_contract(
     info: MessageInfo,
     old_contract: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
@@ -218,6 +224,8 @@ fn execute_unstake(
     info: MessageInfo,
     key: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let nft = STAKED_NFTS.may_load(deps.storage, key.clone())?;
     if let Some(nft) = nft {
         // Only owner can unstake the NFT
@@ -273,6 +281,8 @@ fn execute_claim(
     info: MessageInfo,
     key: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let nft = STAKED_NFTS.may_load(deps.storage, key.clone())?;
     if let Some(nft) = nft {
         // Only owner can claim the NFT

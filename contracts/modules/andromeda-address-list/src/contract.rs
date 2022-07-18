@@ -14,6 +14,7 @@ use common::{
     error::ContractError,
     parse_message, require,
 };
+use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
@@ -65,6 +66,7 @@ fn execute_add_address(
     info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
@@ -82,6 +84,8 @@ fn execute_remove_address(
     info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},

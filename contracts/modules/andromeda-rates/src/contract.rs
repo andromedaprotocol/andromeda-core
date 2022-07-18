@@ -19,6 +19,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
+use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
@@ -83,6 +84,8 @@ fn execute_update_rates(
     info: MessageInfo,
     rates: Vec<RateInfo>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},

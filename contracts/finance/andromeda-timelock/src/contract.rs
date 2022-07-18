@@ -18,6 +18,7 @@ use common::{
     require,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
@@ -145,6 +146,8 @@ fn execute_release_funds(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
 
     let keys = get_keys_for_recipient(deps.storage, &recipient_addr, start_after, limit)?;
@@ -181,6 +184,8 @@ fn execute_release_specific_funds(
     owner: String,
     recipient: Option<String>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
     let key = get_key(&owner, &recipient);
     let escrow = escrows().may_load(deps.storage, key.clone())?;

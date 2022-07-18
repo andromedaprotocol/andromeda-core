@@ -15,6 +15,7 @@ schemars = "0.8.3"
 cw-storage-plus = "0.13.2"
 cw2 = "0.13.2"
 semver = "1"
+cw-utils = "0.13.4"
 
 andromeda-modules = { version = "0.1.0", path = "../../../packages/andromeda-modules" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }

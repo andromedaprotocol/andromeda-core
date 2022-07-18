@@ -14,7 +14,7 @@ use common::{
     primitive::{GetValueResponse, Primitive},
     require,
 };
-
+use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
@@ -66,6 +66,8 @@ pub fn execute_set_value(
     key: Option<String>,
     value: Primitive,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let sender = info.sender.to_string();
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
@@ -92,6 +94,7 @@ pub fn execute_delete_value(
     info: MessageInfo,
     key: Option<String>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     let sender = info.sender.to_string();
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,

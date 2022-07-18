@@ -19,7 +19,7 @@ use cosmwasm_std::{
     StdError, SubMsg, Timestamp, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_utils::Expiration;
+use cw_utils::{nonpayable, Expiration};
 use semver::Version;
 
 // version info for migration info
@@ -206,6 +206,8 @@ fn execute_update_recipients(
     info: MessageInfo,
     recipients: Vec<AddressPercent>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
@@ -238,15 +240,11 @@ fn execute_update_lock(
     info: MessageInfo,
     lock_time: u64,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
-    )?;
-
-    // No need to send funds
-    require(
-        info.funds.is_empty(),
-        ContractError::FunctionDeclinesFunds {},
     )?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;

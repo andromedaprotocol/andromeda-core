@@ -15,6 +15,7 @@ cw2 = "0.13.2"
 schemars = "0.8.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 semver = "1"
+cw-utils = "0.13.4"
 
 andromeda-data-storage = { version = "0.1.0", path = "../../../packages/andromeda-data-storage" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }
