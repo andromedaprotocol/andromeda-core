@@ -282,8 +282,6 @@ pub fn execute_withdraw_native(
     info: MessageInfo,
     withdraw_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
@@ -465,8 +463,6 @@ pub fn execute_claim_rewards(
     _env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-
     let config = CONFIG.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
 

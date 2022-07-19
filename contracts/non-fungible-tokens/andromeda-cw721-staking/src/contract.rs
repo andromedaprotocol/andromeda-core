@@ -271,7 +271,7 @@ fn execute_unstake(
 
         Ok(Response::new().add_attribute("action", "unbonded"))
     } else {
-        Err(ContractError::OutOfNFTs {})
+        Err(ContractError::NFTNotFound {})
     }
 }
 
@@ -323,7 +323,7 @@ fn execute_claim(
             Err(ContractError::StillBonded {})
         }
     } else {
-        Err(ContractError::OutOfNFTs {})
+        Err(ContractError::NFTNotFound {})
     }
 }
 
@@ -331,7 +331,7 @@ fn execute_claim(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
-        QueryMsg::StakedNft { key } => encode_binary(&query_staked_nft(deps, key)?),
+        QueryMsg::StakedNft { key } => encode_binary(&query_staked_nft(deps, env, key)?),
         QueryMsg::AllowedContracts {} => encode_binary(&query_allowed_contracts(deps)?),
         QueryMsg::UnbondingPeriod {} => encode_binary(&query_unbonding_period(deps)?),
         QueryMsg::Reward {} => encode_binary(&query_reward(deps)?),
@@ -353,12 +353,36 @@ fn query_allowed_contracts(deps: Deps) -> Result<Vec<String>, ContractError> {
     Ok(allowed_contracts)
 }
 
-fn query_staked_nft(deps: Deps, key: String) -> Result<StakedNft, ContractError> {
+fn query_staked_nft(deps: Deps, env: Env, key: String) -> Result<StakedNft, ContractError> {
     let nft = STAKED_NFTS.may_load(deps.storage, key)?;
     if let Some(nft) = nft {
-        Ok(nft)
+        let current_time = env.block.time;
+
+        let time_spent_bonded = current_time.seconds() - nft.time_of_staking.seconds();
+
+        // We use the reward that was set at the time of staking
+        let reward = nft.reward;
+
+        let payment = reward.amount * Uint128::from(time_spent_bonded);
+
+        let accrued_reward = Coin {
+            denom: reward.clone().denom,
+            amount: payment,
+        };
+
+        let new_data = StakedNft {
+            owner: nft.owner,
+            id: nft.id,
+            contract_address: nft.contract_address,
+            time_of_staking: nft.time_of_staking,
+            time_of_unbonding: nft.time_of_unbonding,
+            reward,
+            accrued_reward: Some(accrued_reward),
+        };
+
+        Ok(new_data)
     } else {
-        Err(ContractError::OutOfNFTs {})
+        Err(ContractError::NFTNotFound {})
     }
 }
 
@@ -573,7 +597,7 @@ mod tests {
             execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
         let key = String::from("valid2");
         let err = execute_unstake(deps.as_mut(), env, info, key).unwrap_err();
-        assert_eq!(err, ContractError::OutOfNFTs {});
+        assert_eq!(err, ContractError::NFTNotFound {});
     }
 
     #[test]
@@ -879,7 +903,7 @@ mod tests {
         let _res = execute_unstake(deps.as_mut(), env.clone(), info.clone(), key).unwrap();
         let key = "random".to_string();
         let err = execute_claim(deps.as_mut(), env, info, key).unwrap_err();
-        assert_eq!(err, ContractError::OutOfNFTs {});
+        assert_eq!(err, ContractError::NFTNotFound {});
     }
 
     #[test]
