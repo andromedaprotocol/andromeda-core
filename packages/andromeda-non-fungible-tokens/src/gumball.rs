@@ -43,7 +43,6 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     NumberOfNfts {},
-    RequiredCoin {},
     SaleDetails {},
     Status {},
 }

@@ -38,9 +38,6 @@ pub enum ExecuteMsg {
     UpdateUnbondingPeriod {
         new_period: u64,
     },
-    UpdateOwner {
-        address: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

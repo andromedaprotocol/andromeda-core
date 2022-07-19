@@ -74,9 +74,6 @@ pub fn execute(
         ExecuteMsg::RemoveAllowedContract { old_contract } => {
             execute_remove_allowed_contract(deps, info, old_contract)
         }
-        ExecuteMsg::UpdateOwner { address } => {
-            ADOContract::default().execute_update_owner(deps, info, address)
-        }
         ExecuteMsg::UpdateUnbondingPeriod { new_period } => {
             execute_update_unbonding_period(deps, info, new_period)
         }
