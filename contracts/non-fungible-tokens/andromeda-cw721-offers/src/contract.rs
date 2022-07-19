@@ -216,7 +216,6 @@ fn execute_accept_offer(
     token_id: String,
     recipient: String,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     let offer = offers().load(deps.storage, &token_id)?;
     let cw721_contract = CW721_CONTRACT.load(deps.storage)?;
     require(
