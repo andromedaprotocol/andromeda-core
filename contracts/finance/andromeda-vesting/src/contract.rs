@@ -194,8 +194,6 @@ fn execute_claim(
     number_of_claims: Option<u64>,
     batch_id: u64,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-
     let contract = ADOContract::default();
     // Should this be owner or recipient?
     require(
