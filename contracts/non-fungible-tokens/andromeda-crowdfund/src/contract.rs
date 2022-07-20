@@ -29,7 +29,7 @@ use cosmwasm_std::{
     WasmQuery,
 };
 use cw721::TokensResponse;
-use cw_utils::Expiration;
+use cw_utils::{nonpayable, Expiration};
 use std::cmp;
 
 const MAX_LIMIT: u32 = 100;
@@ -138,7 +138,7 @@ pub fn execute(
             execute_purchase_by_token_id(deps, env, info, token_id)
         }
         ExecuteMsg::ClaimRefund {} => execute_claim_refund(deps, env, info),
-        ExecuteMsg::EndSale { limit } => execute_end_sale(deps, env, limit),
+        ExecuteMsg::EndSale { limit } => execute_end_sale(deps, env, info, limit),
     }
 }
 
@@ -148,6 +148,8 @@ fn execute_mint(
     info: MessageInfo,
     mint_msgs: Vec<CrowdfundMintMsg>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         mint_msgs.len() <= MAX_MINT_LIMIT as usize,
         ContractError::TooManyMintMessages {
@@ -236,6 +238,8 @@ fn execute_start_sale(
     max_amount_per_wallet: Option<u32>,
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
@@ -483,6 +487,8 @@ fn execute_claim_refund(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let state = STATE.may_load(deps.storage)?;
     require(state.is_some(), ContractError::NoOngoingSale {})?;
     let state = state.unwrap();
@@ -510,8 +516,11 @@ fn execute_claim_refund(
 fn execute_end_sale(
     deps: DepsMut,
     env: Env,
+    info: MessageInfo,
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let state = STATE.may_load(deps.storage)?;
     require(state.is_some(), ContractError::NoOngoingSale {})?;
     let state = state.unwrap();

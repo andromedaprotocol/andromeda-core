@@ -9,7 +9,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
 use cw_asset::AssetInfo;
-use cw_utils::Expiration;
+use cw_utils::{nonpayable, Expiration};
 use sha2::Digest;
 use std::convert::TryInto;
 
@@ -97,6 +97,8 @@ pub fn execute_register_merkle_root(
     expiration: Option<Expiration>,
     total_amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
@@ -136,6 +138,8 @@ pub fn execute_claim(
     amount: Uint128,
     proof: Vec<String>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     // not expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
     require(

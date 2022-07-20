@@ -20,6 +20,7 @@ use cosmwasm_std::{
     SystemResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
@@ -213,6 +214,8 @@ pub fn execute_withdraw(
     withdrawals: Vec<Withdrawal>,
     strategy: Option<StrategyType>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         !withdrawals.is_empty(),
         ContractError::InvalidTokensToWithdraw {

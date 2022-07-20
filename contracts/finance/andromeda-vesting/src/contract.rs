@@ -7,6 +7,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use cw_asset::AssetInfo;
 
+use cw_utils::nonpayable;
 use semver::Version;
 use std::cmp;
 
@@ -238,6 +239,8 @@ fn execute_claim_all(
     limit: Option<u32>,
     up_to_time: Option<u64>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let contract = ADOContract::default();
 
     require(
@@ -414,6 +417,8 @@ fn execute_withdraw_rewards(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let sender = info.sender.to_string();
     require(
         ADOContract::default().is_contract_owner(deps.storage, &sender)?,
@@ -481,6 +486,7 @@ fn execute_vote(
     proposal_id: u64,
     vote: VoteOption,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     require(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},

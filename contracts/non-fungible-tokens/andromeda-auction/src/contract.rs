@@ -18,6 +18,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
+use cw_utils::nonpayable;
 use semver::Version;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda_auction";
@@ -198,6 +199,8 @@ fn execute_update_auction(
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     require(
@@ -347,6 +350,8 @@ fn execute_cancel(
     token_id: String,
     token_address: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     require(
@@ -390,10 +395,12 @@ fn execute_cancel(
 fn execute_claim(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     token_id: String,
     token_address: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     require(

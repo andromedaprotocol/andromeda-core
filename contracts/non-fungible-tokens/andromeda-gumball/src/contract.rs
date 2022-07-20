@@ -19,6 +19,7 @@ use cosmwasm_std::{
     WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw_utils::nonpayable;
 use semver::Version;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda_gumball";
@@ -85,6 +86,8 @@ fn execute_update_required_coin(
     info: MessageInfo,
     new_coin: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let contract = ADOContract::default();
 
     require(
@@ -100,6 +103,8 @@ fn execute_update_required_coin(
 }
 
 fn execute_switch_status(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let contract = ADOContract::default();
     let mut status = STATUS.load(deps.storage)?;
     require(
@@ -123,6 +128,8 @@ fn execute_sale_details(
     max_amount_per_wallet: Option<Uint128>,
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let contract = ADOContract::default();
     let status = STATUS.load(deps.storage)?;
     // Check status, can't change sale details while buying is allowed
@@ -179,6 +186,8 @@ fn execute_mint(
     info: MessageInfo,
     mint_msgs: Vec<GumballMintMsg>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         mint_msgs.len() <= MAX_MINT_LIMIT as usize,
         ContractError::TooManyMintMessages {
@@ -364,15 +373,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::NumberOfNfts {} => encode_binary(&query_number_of_nfts(deps)?),
-        QueryMsg::RequiredCoin {} => encode_binary(&query_required_coin(deps)?),
         QueryMsg::SaleDetails {} => encode_binary(&query_state(deps)?),
         QueryMsg::Status {} => encode_binary(&query_status(deps)?),
     }
-}
-
-fn query_required_coin(deps: Deps) -> Result<String, ContractError> {
-    let required_coin = REQUIRED_COIN.load(deps.storage)?;
-    Ok(required_coin)
 }
 
 fn query_status(deps: Deps) -> Result<StatusResponse, ContractError> {

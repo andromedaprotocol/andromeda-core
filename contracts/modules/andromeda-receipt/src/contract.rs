@@ -19,6 +19,7 @@ use cosmwasm_std::{
     attr, entry_point, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdError, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
@@ -73,6 +74,8 @@ fn execute_store_receipt(
     info: MessageInfo,
     receipt: Receipt,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         can_mint_receipt(deps.storage, &info.sender.to_string())?,
         ContractError::Unauthorized {},

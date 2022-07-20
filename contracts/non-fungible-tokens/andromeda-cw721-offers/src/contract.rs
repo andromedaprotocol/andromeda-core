@@ -27,6 +27,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Expiration, OwnerOfResponse};
 use cw_storage_plus::Bound;
+use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
@@ -186,6 +187,8 @@ fn execute_cancel_offer(
     info: MessageInfo,
     token_id: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let offer = offers().load(deps.storage, &token_id)?;
     require(
         info.sender == offer.purchaser,

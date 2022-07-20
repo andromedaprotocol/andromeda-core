@@ -1,7 +1,7 @@
 use cosmwasm_std::{OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
-use cw_utils::{Expiration, ParseReplyError};
+use cw_utils::{Expiration, ParseReplyError, PaymentError};
 use std::convert::From;
 use std::string::FromUtf8Error;
 use thiserror::Error;
@@ -18,6 +18,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     ParseReply(#[from] ParseReplyError),
+
+    #[error("{0}")]
+    Payment(#[from] PaymentError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -91,9 +94,6 @@ pub enum ContractError {
 
     #[error("InvalidAddress")]
     InvalidAddress {},
-
-    #[error("FunctionDeclinesFunds")]
-    FunctionDeclinesFunds {},
 
     #[error("ExpirationInPast")]
     ExpirationInPast {},

@@ -11,6 +11,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg, Expiration};
+use cw_utils::nonpayable;
 use semver::Version;
 
 use crate::state::{LockDetails, LOCKED_ITEMS};
@@ -141,9 +142,10 @@ fn execute_lock(
 fn execute_claim(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     lock_id: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     // Check if lock ID exists
     let locked_item = LOCKED_ITEMS.may_load(deps.storage, &lock_id)?;
 

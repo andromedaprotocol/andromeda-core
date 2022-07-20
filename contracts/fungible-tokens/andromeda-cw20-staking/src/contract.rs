@@ -24,7 +24,7 @@ use andromeda_fungible_tokens::cw20_staking::{
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
-
+use cw_utils::nonpayable;
 use semver::Version;
 
 // Version info, for migration info
@@ -297,6 +297,7 @@ fn execute_unstake_tokens(
     info: MessageInfo,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     let sender = info.sender.as_str();
 
     let staking_token = get_staking_token(deps.storage, deps.api, &deps.querier)?;

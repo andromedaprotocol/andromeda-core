@@ -21,7 +21,7 @@ use cosmwasm_std::{
     StdError, SubMsg, Timestamp, Uint128,
 };
 
-use cw_utils::Expiration;
+use cw_utils::{nonpayable, Expiration};
 use semver::Version;
 
 use cw2::{get_contract_version, set_contract_version};
@@ -143,16 +143,13 @@ pub fn execute_update_recipient_weight(
     info: MessageInfo,
     recipient: AddressWeight,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     // Only the contract's owner can update a recipient's weight
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
-    // No need to send funds
-    require(
-        info.funds.is_empty(),
-        ContractError::FunctionDeclinesFunds {},
-    )?;
+
     // Can't set weight to 0
     require(
         recipient.weight > Uint128::zero(),
@@ -192,16 +189,15 @@ pub fn execute_add_recipient(
     info: MessageInfo,
     recipient: AddressWeight,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     // Only the contract's owner can add a recipient
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     // No need to send funds
-    require(
-        info.funds.is_empty(),
-        ContractError::FunctionDeclinesFunds {},
-    )?;
+
     // Check if splitter is locked
     let mut splitter = SPLITTER.load(deps.storage)?;
 
@@ -327,16 +323,15 @@ fn execute_update_recipients(
     info: MessageInfo,
     recipients: Vec<AddressWeight>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     // Only the owner can use this function
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
     // No need to send funds
-    require(
-        info.funds.is_empty(),
-        ContractError::FunctionDeclinesFunds {},
-    )?;
+
     // Recipient list can't be empty
     require(
         !recipients.is_empty(),
@@ -374,15 +369,11 @@ fn execute_remove_recipient(
     info: MessageInfo,
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
-    )?;
-
-    // No need to send funds
-    require(
-        info.funds.is_empty(),
-        ContractError::FunctionDeclinesFunds {},
     )?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
@@ -424,15 +415,11 @@ fn execute_update_lock(
     info: MessageInfo,
     lock_time: u64,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     require(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
-    )?;
-
-    // No need to send funds
-    require(
-        info.funds.is_empty(),
-        ContractError::FunctionDeclinesFunds {},
     )?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;

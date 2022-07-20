@@ -12,6 +12,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
+use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda_cw721_staking";
@@ -73,9 +74,6 @@ pub fn execute(
         ExecuteMsg::RemoveAllowedContract { old_contract } => {
             execute_remove_allowed_contract(deps, info, old_contract)
         }
-        ExecuteMsg::UpdateOwner { address } => {
-            ADOContract::default().execute_update_owner(deps, info, address)
-        }
         ExecuteMsg::UpdateUnbondingPeriod { new_period } => {
             execute_update_unbonding_period(deps, info, new_period)
         }
@@ -87,6 +85,7 @@ fn execute_update_unbonding_period(
     info: MessageInfo,
     new_period: u64,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
@@ -106,6 +105,7 @@ fn execute_update_allowed_contracts(
     info: MessageInfo,
     contracts: Vec<String>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
@@ -123,6 +123,7 @@ fn execute_add_allowed_contract(
     info: MessageInfo,
     new_contract: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
@@ -149,6 +150,8 @@ fn execute_remove_allowed_contract(
     info: MessageInfo,
     old_contract: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
@@ -218,6 +221,8 @@ fn execute_unstake(
     info: MessageInfo,
     key: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let nft = STAKED_NFTS.may_load(deps.storage, key.clone())?;
     if let Some(nft) = nft {
         // Only owner can unstake the NFT
@@ -263,7 +268,7 @@ fn execute_unstake(
 
         Ok(Response::new().add_attribute("action", "unbonded"))
     } else {
-        Err(ContractError::OutOfNFTs {})
+        Err(ContractError::NFTNotFound {})
     }
 }
 
@@ -273,6 +278,8 @@ fn execute_claim(
     info: MessageInfo,
     key: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let nft = STAKED_NFTS.may_load(deps.storage, key.clone())?;
     if let Some(nft) = nft {
         // Only owner can claim the NFT
@@ -313,7 +320,7 @@ fn execute_claim(
             Err(ContractError::StillBonded {})
         }
     } else {
-        Err(ContractError::OutOfNFTs {})
+        Err(ContractError::NFTNotFound {})
     }
 }
 
@@ -321,7 +328,7 @@ fn execute_claim(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
-        QueryMsg::StakedNft { key } => encode_binary(&query_staked_nft(deps, key)?),
+        QueryMsg::StakedNft { key } => encode_binary(&query_staked_nft(deps, env, key)?),
         QueryMsg::AllowedContracts {} => encode_binary(&query_allowed_contracts(deps)?),
         QueryMsg::UnbondingPeriod {} => encode_binary(&query_unbonding_period(deps)?),
         QueryMsg::Reward {} => encode_binary(&query_reward(deps)?),
@@ -343,12 +350,36 @@ fn query_allowed_contracts(deps: Deps) -> Result<Vec<String>, ContractError> {
     Ok(allowed_contracts)
 }
 
-fn query_staked_nft(deps: Deps, key: String) -> Result<StakedNft, ContractError> {
+fn query_staked_nft(deps: Deps, env: Env, key: String) -> Result<StakedNft, ContractError> {
     let nft = STAKED_NFTS.may_load(deps.storage, key)?;
     if let Some(nft) = nft {
-        Ok(nft)
+        let current_time = env.block.time;
+
+        let time_spent_bonded = current_time.seconds() - nft.time_of_staking.seconds();
+
+        // We use the reward that was set at the time of staking
+        let reward = nft.reward;
+
+        let payment = reward.amount * Uint128::from(time_spent_bonded);
+
+        let accrued_reward = Coin {
+            denom: reward.clone().denom,
+            amount: payment,
+        };
+
+        let new_data = StakedNft {
+            owner: nft.owner,
+            id: nft.id,
+            contract_address: nft.contract_address,
+            time_of_staking: nft.time_of_staking,
+            time_of_unbonding: nft.time_of_unbonding,
+            reward,
+            accrued_reward: Some(accrued_reward),
+        };
+
+        Ok(new_data)
     } else {
-        Err(ContractError::OutOfNFTs {})
+        Err(ContractError::NFTNotFound {})
     }
 }
 
@@ -563,7 +594,7 @@ mod tests {
             execute_stake(deps.as_mut(), env.clone(), sender, token_id, token_address).unwrap();
         let key = String::from("valid2");
         let err = execute_unstake(deps.as_mut(), env, info, key).unwrap_err();
-        assert_eq!(err, ContractError::OutOfNFTs {});
+        assert_eq!(err, ContractError::NFTNotFound {});
     }
 
     #[test]
@@ -869,7 +900,7 @@ mod tests {
         let _res = execute_unstake(deps.as_mut(), env.clone(), info.clone(), key).unwrap();
         let key = "random".to_string();
         let err = execute_claim(deps.as_mut(), env, info, key).unwrap_err();
-        assert_eq!(err, ContractError::OutOfNFTs {});
+        assert_eq!(err, ContractError::NFTNotFound {});
     }
 
     #[test]

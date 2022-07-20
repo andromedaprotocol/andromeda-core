@@ -30,6 +30,7 @@ cw2 = "0.13.2"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 cw-asset = "2.0.0"
 semver = "1"
+cw-utils = "0.13.4"
 
 andromeda-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-fungible-tokens" }
 common = { version = "0.1.0", path = "../../../packages/common" }

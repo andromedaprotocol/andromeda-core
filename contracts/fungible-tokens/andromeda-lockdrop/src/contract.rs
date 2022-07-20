@@ -19,6 +19,7 @@ use common::{
 };
 
 use crate::state::{Config, State, CONFIG, STATE, USER_INFO};
+use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
@@ -351,6 +352,8 @@ pub fn execute_enable_claims(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
@@ -504,6 +507,8 @@ fn execute_withdraw_proceeds(
     info: MessageInfo,
     recipient: Option<String>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
     let config = CONFIG.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
