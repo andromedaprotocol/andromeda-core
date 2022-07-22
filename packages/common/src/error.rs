@@ -77,6 +77,12 @@ pub enum ContractError {
     #[error("Refilling")]
     Refilling {},
 
+    #[error("WithdrawalLimitExceeded")]
+    WithdrawalLimitExceeded {},
+
+    #[error("CoinNotFound")]
+    CoinNotFound {},
+
     #[error("NotInRefillMode")]
     NotInRefillMode {},
 
@@ -121,6 +127,9 @@ pub enum ContractError {
 
     #[error("NoReceivingAddress")]
     NoReceivingAddress {},
+
+    #[error("AccountNotFound")]
+    AccountNotFound {},
 
     #[error("ModuleDiscriptionTooLong: {msg}")]
     ModuleDiscriptionTooLong { msg: String },
