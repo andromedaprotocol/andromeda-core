@@ -36,7 +36,7 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "address_list".to_string(),
+            ado_type: "address-list".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: Some(msg.operators),
             modules: None,
