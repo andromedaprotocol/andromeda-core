@@ -1,37 +1,26 @@
-use std::{f32::MIN, ops::Index};
-
-use crate::state::{ACCOUNTS, ALLOWED_COINS, MINIMUM_WITHDRAWAL_FREQUENCY};
+use crate::state::{ACCOUNTS, ALLOWED_COIN, MINIMUM_WITHDRAWAL_FREQUENCY};
 use ado_base::ADOContract;
 use andromeda_finance::rate_limiting_withdrawals::{
-    validate_recipient_list, AccountDetails, AddressPercent, ExecuteMsg, InstantiateMsg,
-    MigrateMsg, QueryMsg,
+    AccountDetails, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::{
-        hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
-        InstantiateMsg as BaseInstantiateMsg,
-    },
-    app::AndrAddress,
+    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
     require,
 };
 use cosmwasm_std::{
     entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, SubMsg, Timestamp, Uint128,
+    StdError, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw20::Cw20ReceiveMsg;
-use cw_utils::{nonpayable, one_coin, Expiration};
+
+use cw_utils::one_coin;
 use semver::Version;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-// 1 day in seconds
-const ONE_DAY: u64 = 86_400;
-// 1 year in seconds
-const ONE_YEAR: u64 = 31_536_000;
 
 #[entry_point]
 pub fn instantiate(
@@ -42,6 +31,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     MINIMUM_WITHDRAWAL_FREQUENCY.save(deps.storage, &msg.minimum_withdrawal_time)?;
+    ALLOWED_COIN.save(deps.storage, &msg.allowed_coin)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -66,8 +56,8 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Deposit {} => execute_deposit(deps, env, info),
-        ExecuteMsg::Withdraw { coin } => execute_withdraw(deps, env, info, coin),
+        ExecuteMsg::Deposit { recipient } => execute_deposit(deps, env, info, recipient),
+        ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, env, info, amount),
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
@@ -78,66 +68,59 @@ pub fn execute_deposit(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     // Only one coin at a time
     one_coin(&info)?;
 
     // Coin has to be in the allowed list
-    let coin = ALLOWED_COINS.may_load(deps.storage, &info.funds[0].denom)?;
+    let coin = ALLOWED_COIN.load(deps.storage)?;
     require(
-        coin.is_some(),
+        coin.coin == info.funds[0].denom,
         ContractError::InvalidFunds {
             msg: "Coin must be part of the allowed list".to_string(),
         },
     )?;
-    // Load list of accounts
-    let account = ACCOUNTS.may_load(deps.storage, info.sender.to_string())?;
-    // Check if sender already has an account
-    if let Some(mut account) = account {
-        // Check the coin's index
-        let coin_index = account
-            .balance
-            .iter()
-            .position(|x| x.denom == info.funds[0].denom);
-        // If the user does have an account in that coin
-        if let Some(coin_index) = coin_index {
-            // Calculate new amount of coins
-            let new_amount = account.balance[coin_index].amount + info.funds[0].amount;
-            // Create updated coin
-            let updated_coin = Coin {
-                denom: info.funds[0].denom.to_string(),
-                amount: new_amount,
-            };
-            // remove old balance
-            account.balance.swap_remove(coin_index);
-            // add new balance with updated coin
-            account.balance.push(updated_coin);
-            // save changes
-            ACCOUNTS.save(deps.storage, info.sender.to_string(), &account)?;
 
-        // If user doesn't have an account with that coin
-        } else {
-            let new_coin = Coin {
-                denom: info.funds[0].denom.to_string(),
-                amount: info.funds[0].amount,
-            };
-            account.balance.push(new_coin);
-            // save changes
-            ACCOUNTS.save(deps.storage, info.sender.to_string(), &account)?;
-        }
+    let user = recipient
+        .clone()
+        .unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+
+    // Validate recipient address
+    let recipient_addr = user.get_addr(
+        deps.api,
+        &deps.querier,
+        ADOContract::default().get_app_contract(deps.storage)?,
+    )?;
+    deps.api.addr_validate(&recipient_addr)?;
+
+    // Load list of accounts
+    let account = ACCOUNTS.may_load(deps.storage, recipient_addr.clone())?;
+
+    // Check if recipient already has an account
+    if let Some(account) = account {
+        // If the user does have an account in that coin
+
+        // Calculate new amount of coins
+        let new_amount = account.balance + info.funds[0].amount;
+
+        // add new balance with updated coin
+        let new_details = AccountDetails {
+            balance: new_amount,
+            latest_withdrawal: account.latest_withdrawal,
+        };
+
+        // save changes
+        ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
+
         // If user doesn't have an account at all
     } else {
-        let new_user = info.sender.to_string();
-        let new_coin = Coin {
-            denom: info.funds[0].denom.to_string(),
-            amount: info.funds[0].amount,
-        };
         let new_account_details = AccountDetails {
-            balance: vec![new_coin],
+            balance: info.funds[0].amount,
             latest_withdrawal: None,
         };
         // save changes
-        ACCOUNTS.save(deps.storage, new_user, &new_account_details)?;
+        ACCOUNTS.save(deps.storage, recipient_addr, &new_account_details)?;
     }
 
     let res = Response::new()
@@ -150,113 +133,74 @@ pub fn execute_withdraw(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    coin: Coin,
+    amount: Uint128,
 ) -> Result<Response, ContractError> {
     // check if sender has an account
     let user = ACCOUNTS.may_load(deps.storage, info.sender.to_string())?;
-    if let Some(mut user) = user {
+    if let Some(user) = user {
         // Calculate time since last withdrawal
         if let Some(latest_withdrawal) = user.latest_withdrawal {
             let minimum_withdrawal_frequency = MINIMUM_WITHDRAWAL_FREQUENCY.load(deps.storage)?;
             let current_time = env.block.time.seconds();
             let seconds_since_withdrawal = current_time - latest_withdrawal.seconds();
+
             // make sure enough time has elapsed since the latest withdrawal
             require(
                 seconds_since_withdrawal >= minimum_withdrawal_frequency,
                 ContractError::FundsAreLocked {},
             )?;
-            // make sure the user has the requested coin
-            let coin_index = user.balance.iter().position(|x| x.denom == coin.denom);
-            require(
-                coin_index.is_some(),
-                ContractError::InvalidFunds {
-                    msg: "you don't have a balance in the requested coin".to_string(),
-                },
-            )?;
+
             // make sure the funds requested don't exceed the user's balance
-            if let Some(coin_index) = coin_index {
-                require(
-                    user.balance[coin_index].amount >= coin.amount,
-                    ContractError::InsufficientFunds {},
-                )?;
-                // make sure the funds don't exceed the withdrawal limit
-                let limit = ALLOWED_COINS.load(deps.storage, &coin.denom)?;
-                require(
-                    limit >= coin.amount,
-                    ContractError::WithdrawalLimitExceeded {},
-                )?;
-                // Update amount
-                let new_amount = user.balance[coin_index].amount - coin.amount;
+            require(user.balance >= amount, ContractError::InsufficientFunds {})?;
 
-                // Updated coin
-                let updated_coin = Coin {
-                    denom: info.funds[0].denom.to_string(),
-                    amount: new_amount,
-                };
+            // make sure the funds don't exceed the withdrawal limit
+            let limit = ALLOWED_COIN.load(deps.storage)?;
+            require(
+                limit.limit >= amount,
+                ContractError::WithdrawalLimitExceeded {},
+            )?;
 
-                // Remove old balance
-                user.balance.swap_remove(coin_index);
+            // Update amount
+            let new_amount = user.balance - amount;
 
-                // Insert latest balance
-                user.balance.push(updated_coin);
+            // Update account details
+            let new_details = AccountDetails {
+                balance: new_amount,
+                latest_withdrawal: Some(env.block.time),
+            };
 
-                // Update account details
-                let new_details = AccountDetails {
-                    balance: user.balance,
-                    latest_withdrawal: Some(env.block.time),
-                };
-
-                // Save changes
-                ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
-            }
+            // Save changes
+            ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
         } else {
-            // make sure the user has the requested coin
-            let coin_index = user.balance.iter().position(|x| x.denom == coin.denom);
-            require(
-                coin_index.is_some(),
-                ContractError::InvalidFunds {
-                    msg: "you don't have a balance in the requested coin".to_string(),
-                },
-            )?;
             // make sure the funds requested don't exceed the user's balance
-            if let Some(coin_index) = coin_index {
-                require(
-                    user.balance[coin_index].amount >= coin.amount,
-                    ContractError::InsufficientFunds {},
-                )?;
-                // make sure the funds don't exceed the withdrawal limit
-                let limit = ALLOWED_COINS.load(deps.storage, &coin.denom)?;
-                require(
-                    limit >= coin.amount,
-                    ContractError::WithdrawalLimitExceeded {},
-                )?;
-                // Update amount
-                let new_amount = user.balance[coin_index].amount - coin.amount;
+            require(user.balance >= amount, ContractError::InsufficientFunds {})?;
 
-                // Updated coin
-                let updated_coin = Coin {
-                    denom: info.funds[0].denom.to_string(),
-                    amount: new_amount,
-                };
+            // make sure the funds don't exceed the withdrawal limit
+            let limit = ALLOWED_COIN.load(deps.storage)?;
+            require(
+                limit.limit >= amount,
+                ContractError::WithdrawalLimitExceeded {},
+            )?;
 
-                // Remove old balance
-                user.balance.swap_remove(coin_index);
+            // Update amount
+            let new_amount = user.balance - amount;
 
-                // Insert latest balance
-                user.balance.push(updated_coin);
+            // Update account details
+            let new_details = AccountDetails {
+                balance: new_amount,
+                latest_withdrawal: Some(env.block.time),
+            };
 
-                // Update account details
-                let new_details = AccountDetails {
-                    balance: user.balance,
-                    latest_withdrawal: Some(env.block.time),
-                };
-
-                // Save changes
-                ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
-            }
+            // Save changes
+            ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
         }
-        // Transfer funds
 
+        let coin = Coin {
+            denom: ALLOWED_COIN.load(deps.storage)?.coin,
+            amount,
+        };
+
+        // Transfer funds
         let res = Response::new()
             .add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: info.sender.to_string(),
@@ -314,9 +258,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::MinimalWithdrawalFrequency {} => {
             encode_binary(&query_minimal_withdrawal_frequency(deps)?)
         }
-        QueryMsg::CoinWithdrawalLimit { coin } => {
-            encode_binary(&query_coin_withdrawal_limit(deps, coin)?)
-        }
+        QueryMsg::CoinWithdrawalLimit {} => encode_binary(&query_coin_withdrawal_limit(deps)?),
         QueryMsg::AccountDetails { account } => {
             encode_binary(&query_account_details(deps, account)?)
         }
@@ -333,13 +275,10 @@ fn query_account_details(deps: Deps, account: String) -> Result<AccountDetails, 
     }
 }
 
-fn query_coin_withdrawal_limit(deps: Deps, coin: String) -> Result<Uint128, ContractError> {
-    let limit = ALLOWED_COINS.may_load(deps.storage, &coin)?;
-    if let Some(limit) = limit {
-        Ok(limit)
-    } else {
-        Err(ContractError::CoinNotFound {})
-    }
+fn query_coin_withdrawal_limit(deps: Deps) -> Result<Uint128, ContractError> {
+    let limit = ALLOWED_COIN.load(deps.storage)?;
+
+    Ok(limit.limit)
 }
 
 fn query_minimal_withdrawal_frequency(deps: Deps) -> Result<u64, ContractError> {
@@ -350,9 +289,11 @@ fn query_minimal_withdrawal_frequency(deps: Deps) -> Result<u64, ContractError> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::ado_base::recipient::Recipient;
+    use andromeda_finance::rate_limiting_withdrawals::CoinAllowance;
+    use cosmwasm_std::coin;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, Coin, Decimal};
+    // 1 day in seconds
+    const ONE_DAY: u64 = 86_400;
 
     #[test]
     fn test_instantiate() {
@@ -362,55 +303,54 @@ mod tests {
         let msg = InstantiateMsg {
             minimum_withdrawal_time: ONE_DAY,
             modules: None,
-            allowed_coins: vec![Coin {
-                denom: "junox".to_string(),
-                amount: Uint128::from(20_u32),
-            }],
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(50_u64),
+            },
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
 
     #[test]
-    fn test_receive_zero_funds() {
+    fn test_deposit_zero_funds() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             minimum_withdrawal_time: ONE_DAY,
             modules: None,
-            allowed_coins: vec![Coin {
-                denom: "junox".to_string(),
-                amount: Uint128::from(20_u32),
-            }],
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(50_u64),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
 
-        let exec = ExecuteMsg::Deposit {};
-        let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
-        assert_eq!(
-            err,
-            ContractError::InvalidFunds {
-                msg: "can't send 0 funds".to_string(),
-            }
-        )
+        let exec = ExecuteMsg::Deposit { recipient: None };
+        let _err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
     }
 
     #[test]
-    fn test_receive_invalid_funds() {
+    fn test_deposit_invalid_funds() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             minimum_withdrawal_time: ONE_DAY,
             modules: None,
-            allowed_coins: vec![Coin {
-                denom: "junox".to_string(),
-                amount: Uint128::from(20_u32),
-            }],
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(50_u64),
+            },
         };
-        let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
-        let exec = ExecuteMsg::Deposit {};
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let exec = ExecuteMsg::Deposit {
+            recipient: Some(Recipient::Addr("me".to_string())),
+        };
+
+        let info = mock_info("creator", &[coin(30, "uusd")]);
+
         let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
         assert_eq!(
             err,
@@ -418,5 +358,238 @@ mod tests {
                 msg: "Coin must be part of the allowed list".to_string(),
             }
         )
+    }
+
+    #[test]
+    fn test_deposit_new_account_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            minimum_withdrawal_time: ONE_DAY,
+            modules: None,
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(50_u64),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let exec = ExecuteMsg::Deposit {
+            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+        };
+
+        let info = mock_info("creator", &[coin(30, "junox")]);
+
+        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+        let expected_balance = AccountDetails {
+            balance: Uint128::from(30_u16),
+            latest_withdrawal: None,
+        };
+        let actual_balance = ACCOUNTS
+            .load(&deps.storage, "andromedauser".to_string())
+            .unwrap();
+        assert_eq!(expected_balance, actual_balance)
+    }
+
+    #[test]
+    fn test_deposit_existing_account_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            minimum_withdrawal_time: ONE_DAY,
+            modules: None,
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(50_u64),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let exec = ExecuteMsg::Deposit {
+            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+        };
+
+        let info = mock_info("creator", &[coin(30, "junox")]);
+
+        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+        let exec = ExecuteMsg::Deposit { recipient: None };
+
+        let info = mock_info(&"andromedauser".to_string(), &[coin(70, "junox")]);
+
+        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+        let expected_balance = AccountDetails {
+            balance: Uint128::from(100_u16),
+            latest_withdrawal: None,
+        };
+        let actual_balance = ACCOUNTS
+            .load(&deps.storage, "andromedauser".to_string())
+            .unwrap();
+        assert_eq!(expected_balance, actual_balance)
+    }
+
+    #[test]
+    fn test_withdraw_account_not_found() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            minimum_withdrawal_time: ONE_DAY,
+            modules: None,
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(50_u64),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let exec = ExecuteMsg::Deposit {
+            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+        };
+
+        let info = mock_info("creator", &[coin(30, "junox")]);
+
+        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+
+        let info = mock_info("random", &[]);
+        let exec = ExecuteMsg::Withdraw {
+            amount: Uint128::from(19_u16),
+        };
+        let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
+        assert_eq!(err, ContractError::AccountNotFound {});
+    }
+
+    #[test]
+    fn test_withdraw_over_account_limit() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            minimum_withdrawal_time: ONE_DAY,
+            modules: None,
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(50_u64),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let exec = ExecuteMsg::Deposit {
+            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+        };
+
+        let info = mock_info("creator", &[coin(30, "junox")]);
+
+        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+
+        let info = mock_info("andromedauser", &[]);
+        let exec = ExecuteMsg::Withdraw {
+            amount: Uint128::from(31_u16),
+        };
+        let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
+        assert_eq!(err, ContractError::InsufficientFunds {});
+    }
+
+    #[test]
+    fn test_withdraw_funds_locked() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            minimum_withdrawal_time: ONE_DAY,
+            modules: None,
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(50_u64),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let exec = ExecuteMsg::Deposit {
+            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+        };
+
+        let info = mock_info("creator", &[coin(30, "junox")]);
+
+        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+
+        let info = mock_info("andromedauser", &[]);
+        let exec = ExecuteMsg::Withdraw {
+            amount: Uint128::from(10_u16),
+        };
+        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+
+        let info = mock_info("andromedauser", &[]);
+        let exec = ExecuteMsg::Withdraw {
+            amount: Uint128::from(10_u16),
+        };
+
+        let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
+
+        assert_eq!(err, ContractError::FundsAreLocked {});
+    }
+
+    #[test]
+    fn test_withdraw_over_allowed_limit() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            minimum_withdrawal_time: ONE_DAY,
+            modules: None,
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(20_u64),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let exec = ExecuteMsg::Deposit {
+            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+        };
+
+        let info = mock_info("creator", &[coin(30, "junox")]);
+
+        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+
+        let info = mock_info("andromedauser", &[]);
+        let exec = ExecuteMsg::Withdraw {
+            amount: Uint128::from(21_u16),
+        };
+        let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
+        assert_eq!(err, ContractError::WithdrawalLimitExceeded {});
+    }
+
+    #[test]
+    fn test_withdraw_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            minimum_withdrawal_time: ONE_DAY,
+            modules: None,
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(20_u64),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let exec = ExecuteMsg::Deposit {
+            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+        };
+
+        let info = mock_info("creator", &[coin(30, "junox")]);
+
+        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+
+        let info = mock_info("andromedauser", &[]);
+        let exec = ExecuteMsg::Withdraw {
+            amount: Uint128::from(10_u16),
+        };
+        let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
+
+        let expected_balance = AccountDetails {
+            balance: Uint128::from(20_u16),
+            latest_withdrawal: Some(env.block.time),
+        };
+        let actual_balance = ACCOUNTS
+            .load(&deps.storage, "andromedauser".to_string())
+            .unwrap();
+        assert_eq!(expected_balance, actual_balance)
     }
 }
