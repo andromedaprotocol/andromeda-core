@@ -83,7 +83,7 @@ pub fn execute_deposit(
     )?;
 
     let user = recipient
-        .clone()
+        
         .unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
 
     // Validate recipient address
@@ -414,7 +414,7 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
         let exec = ExecuteMsg::Deposit { recipient: None };
 
-        let info = mock_info(&"andromedauser".to_string(), &[coin(70, "junox")]);
+        let info = mock_info("andromedauser", &[coin(70, "junox")]);
 
         let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
         let expected_balance = AccountDetails {
