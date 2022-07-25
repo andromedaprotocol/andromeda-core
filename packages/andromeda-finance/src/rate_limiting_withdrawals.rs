@@ -6,14 +6,19 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 /// Keeps track of the account's balance and time of latest withdrawal
 pub struct AccountDetails {
+    /// Account balance, no need for denom since only one is allowed
     pub balance: Uint128,
+    /// Timestamp of latest withdrawal
     pub latest_withdrawal: Option<Timestamp>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CoinAllowance {
+    /// Sets the accepted coin denom
     pub coin: String,
+    /// Sets the withdrawal limit in terms of amount
     pub limit: Uint128,
+    /// Sets the minimum amount of time required between withdrawals in seconds
     pub minimal_withdrawal_frequency: u64,
 }
 
