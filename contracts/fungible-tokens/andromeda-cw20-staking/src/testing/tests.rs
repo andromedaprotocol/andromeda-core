@@ -73,7 +73,7 @@ fn test_instantiate() {
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw20_staking"),
+            .add_attribute("type", "cw20-staking"),
         res
     );
 
