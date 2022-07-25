@@ -1,13 +1,10 @@
-use crate::state::{ACCOUNTS, ALLOWED_COIN, MINIMUM_WITHDRAWAL_FREQUENCY};
+use crate::state::{ACCOUNTS, ALLOWED_COIN};
 use ado_base::ADOContract;
 use andromeda_finance::rate_limiting_withdrawals::{
-    AccountDetails, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
-    error::ContractError,
-    require,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 use cosmwasm_std::{
     entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
@@ -30,7 +27,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    MINIMUM_WITHDRAWAL_FREQUENCY.save(deps.storage, &msg.minimum_withdrawal_time)?;
     ALLOWED_COIN.save(deps.storage, &msg.allowed_coin)?;
 
     ADOContract::default().instantiate(
@@ -68,7 +64,7 @@ pub fn execute_deposit(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    recipient: Option<Recipient>,
+    recipient: Option<String>,
 ) -> Result<Response, ContractError> {
     // Only one coin at a time
     one_coin(&info)?;
@@ -82,20 +78,10 @@ pub fn execute_deposit(
         },
     )?;
 
-    let user = recipient
-        
-        .unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
-
-    // Validate recipient address
-    let recipient_addr = user.get_addr(
-        deps.api,
-        &deps.querier,
-        ADOContract::default().get_app_contract(deps.storage)?,
-    )?;
-    deps.api.addr_validate(&recipient_addr)?;
+    let user = recipient.unwrap_or_else(|| info.sender.to_string());
 
     // Load list of accounts
-    let account = ACCOUNTS.may_load(deps.storage, recipient_addr.clone())?;
+    let account = ACCOUNTS.may_load(deps.storage, user.clone())?;
 
     // Check if recipient already has an account
     if let Some(account) = account {
@@ -120,7 +106,7 @@ pub fn execute_deposit(
             latest_withdrawal: None,
         };
         // save changes
-        ACCOUNTS.save(deps.storage, recipient_addr, &new_account_details)?;
+        ACCOUNTS.save(deps.storage, user, &new_account_details)?;
     }
 
     let res = Response::new()
@@ -140,7 +126,9 @@ pub fn execute_withdraw(
     if let Some(user) = user {
         // Calculate time since last withdrawal
         if let Some(latest_withdrawal) = user.latest_withdrawal {
-            let minimum_withdrawal_frequency = MINIMUM_WITHDRAWAL_FREQUENCY.load(deps.storage)?;
+            let minimum_withdrawal_frequency = ALLOWED_COIN
+                .load(deps.storage)?
+                .minimal_withdrawal_frequency;
             let current_time = env.block.time.seconds();
             let seconds_since_withdrawal = current_time - latest_withdrawal.seconds();
 
@@ -255,10 +243,7 @@ fn from_semver(err: semver::Error) -> StdError {
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::MinimalWithdrawalFrequency {} => {
-            encode_binary(&query_minimal_withdrawal_frequency(deps)?)
-        }
-        QueryMsg::CoinWithdrawalLimit {} => encode_binary(&query_coin_withdrawal_limit(deps)?),
+        QueryMsg::CoinAllowanceDetails {} => encode_binary(&query_coin_allowance_details(deps)?),
         QueryMsg::AccountDetails { account } => {
             encode_binary(&query_account_details(deps, account)?)
         }
@@ -275,15 +260,9 @@ fn query_account_details(deps: Deps, account: String) -> Result<AccountDetails, 
     }
 }
 
-fn query_coin_withdrawal_limit(deps: Deps) -> Result<Uint128, ContractError> {
-    let limit = ALLOWED_COIN.load(deps.storage)?;
-
-    Ok(limit.limit)
-}
-
-fn query_minimal_withdrawal_frequency(deps: Deps) -> Result<u64, ContractError> {
-    let minimal_withdrawal_frequency = MINIMUM_WITHDRAWAL_FREQUENCY.load(deps.storage)?;
-    Ok(minimal_withdrawal_frequency)
+fn query_coin_allowance_details(deps: Deps) -> Result<CoinAllowance, ContractError> {
+    let details = ALLOWED_COIN.load(deps.storage)?;
+    Ok(details)
 }
 
 #[cfg(test)]
@@ -301,11 +280,11 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            minimum_withdrawal_time: ONE_DAY,
             modules: None,
             allowed_coin: CoinAllowance {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
             },
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -318,11 +297,11 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            minimum_withdrawal_time: ONE_DAY,
             modules: None,
             allowed_coin: CoinAllowance {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
             },
         };
         let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
@@ -337,16 +316,16 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            minimum_withdrawal_time: ONE_DAY,
             modules: None,
             allowed_coin: CoinAllowance {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
-            recipient: Some(Recipient::Addr("me".to_string())),
+            recipient: Some("me".to_string()),
         };
 
         let info = mock_info("creator", &[coin(30, "uusd")]);
@@ -366,16 +345,16 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            minimum_withdrawal_time: ONE_DAY,
             modules: None,
             allowed_coin: CoinAllowance {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
-            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+            recipient: Some("andromedauser".to_string()),
         };
 
         let info = mock_info("creator", &[coin(30, "junox")]);
@@ -397,16 +376,16 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            minimum_withdrawal_time: ONE_DAY,
             modules: None,
             allowed_coin: CoinAllowance {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
-            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+            recipient: Some("andromedauser".to_string()),
         };
 
         let info = mock_info("creator", &[coin(30, "junox")]);
@@ -433,16 +412,16 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            minimum_withdrawal_time: ONE_DAY,
             modules: None,
             allowed_coin: CoinAllowance {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
-            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+            recipient: Some("andromedauser".to_string()),
         };
 
         let info = mock_info("creator", &[coin(30, "junox")]);
@@ -463,16 +442,16 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            minimum_withdrawal_time: ONE_DAY,
             modules: None,
             allowed_coin: CoinAllowance {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
-            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+            recipient: Some("andromedauser".to_string()),
         };
 
         let info = mock_info("creator", &[coin(30, "junox")]);
@@ -493,16 +472,16 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            minimum_withdrawal_time: ONE_DAY,
             modules: None,
             allowed_coin: CoinAllowance {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
-            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+            recipient: Some("andromedauser".to_string()),
         };
 
         let info = mock_info("creator", &[coin(30, "junox")]);
@@ -531,16 +510,16 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            minimum_withdrawal_time: ONE_DAY,
             modules: None,
             allowed_coin: CoinAllowance {
                 coin: "junox".to_string(),
                 limit: Uint128::from(20_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
-            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+            recipient: Some("andromedauser".to_string()),
         };
 
         let info = mock_info("creator", &[coin(30, "junox")]);
@@ -561,16 +540,16 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            minimum_withdrawal_time: ONE_DAY,
             modules: None,
             allowed_coin: CoinAllowance {
                 coin: "junox".to_string(),
-                limit: Uint128::from(20_u64),
+                limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
             },
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
-            recipient: Some(Recipient::Addr("andromedauser".to_string())),
+            recipient: Some("andromedauser".to_string()),
         };
 
         let info = mock_info("creator", &[coin(30, "junox")]);
