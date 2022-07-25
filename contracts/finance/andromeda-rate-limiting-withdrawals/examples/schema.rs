@@ -3,8 +3,9 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use andromeda_finance::splitter::{
-    ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg, QueryMsg,
+use andromeda_finance::{
+    rate_limiting_withdrawals::{AccountDetails, CoinAllowance},
+    splitter::{ExecuteMsg, InstantiateMsg, QueryMsg},
 };
 
 fn main() {
@@ -17,5 +18,6 @@ fn main() {
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
 
-    export_schema(&schema_for!(GetSplitterConfigResponse), &out_dir);
+    export_schema(&schema_for!(AccountDetails), &out_dir);
+    export_schema(&schema_for!(CoinAllowance), &out_dir);
 }

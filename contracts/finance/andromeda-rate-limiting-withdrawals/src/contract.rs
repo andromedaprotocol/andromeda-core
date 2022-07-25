@@ -12,7 +12,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 
-use cw_utils::one_coin;
+use cw_utils::{nonpayable, one_coin};
 use semver::Version;
 
 // version info for migration info
@@ -121,6 +121,7 @@ pub fn execute_withdraw(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     // check if sender has an account
     let user = ACCOUNTS.may_load(deps.storage, info.sender.to_string())?;
     if let Some(user) = user {
