@@ -329,7 +329,7 @@ mod tests {
         assert_eq!(
             Response::new()
                 .add_attribute("method", "instantiate")
-                .add_attribute("type", "wrapped_cw721"),
+                .add_attribute("type", "wrapped-cw721"),
             res
         );
         assert!(ADOContract::default()
@@ -382,7 +382,7 @@ mod tests {
             Response::new()
                 .add_submessage(msg)
                 .add_attribute("method", "instantiate")
-                .add_attribute("type", "wrapped_cw721"),
+                .add_attribute("type", "wrapped-cw721"),
             res
         );
         assert!(ADOContract::default()
