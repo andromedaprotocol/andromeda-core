@@ -43,7 +43,10 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "receipt".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
+<<<<<<< HEAD
             operators: None,
+=======
+>>>>>>> e9cd9bd1cdcecf471270925b274664caa2c013df
             modules: None,
             primitive_contract: None,
         },
