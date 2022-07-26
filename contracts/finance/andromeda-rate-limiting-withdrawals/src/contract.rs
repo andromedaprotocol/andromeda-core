@@ -30,13 +30,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let msg = AndromedaQuery::Get(None);
-    let result = query(deps, env, msg);
-    let coin = CoinAllowance {
-        coin: msg.allowed_coin.coin,
-        limit: msg.allowed_coin.limit,
-        minimal_withdrawal_frequency: msg.primitive_contract,
-    };
+
     ALLOWED_COIN.save(deps.storage, &msg.allowed_coin)?;
 
     ADOContract::default().instantiate(
@@ -48,7 +42,7 @@ pub fn instantiate(
             ado_type: "rate-limiting-withdrawals".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             modules: msg.modules,
-            primitive_contract: Some(msg.primitive_contract),
+            primitive_contract: None,
         },
     )
 }

@@ -218,7 +218,6 @@ fn test_execute_update_lock() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -271,7 +270,6 @@ fn test_execute_update_lock_too_short() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -312,7 +310,6 @@ fn test_execute_update_lock_too_long() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -353,7 +350,6 @@ fn test_execute_update_lock_already_locked() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -394,7 +390,6 @@ fn test_execute_update_lock_unauthorized() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -438,7 +433,6 @@ fn test_execute_remove_recipient() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -529,7 +523,6 @@ fn test_execute_remove_recipient_not_on_list() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -591,7 +584,6 @@ fn test_execute_remove_recipient_contract_locked() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -661,7 +653,6 @@ fn test_execute_remove_recipient_unauthorized() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -707,7 +698,6 @@ fn test_update_recipient_weight() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -802,7 +792,6 @@ fn test_update_recipient_weight_locked_contract() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -875,7 +864,6 @@ fn test_update_recipient_weight_user_not_found() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -946,7 +934,6 @@ fn test_update_recipient_weight_invalid_weight() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -1013,7 +1000,6 @@ fn test_execute_add_recipient() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -1117,7 +1103,6 @@ fn test_execute_add_recipient_duplicate_recipient() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -1194,7 +1179,6 @@ fn test_execute_add_recipient_invalid_weight() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -1263,7 +1247,6 @@ fn test_execute_add_recipient_locked_contract() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -1315,7 +1298,6 @@ fn test_execute_add_recipient_unauthorized() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -1350,7 +1332,6 @@ fn test_execute_update_recipients() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -1420,7 +1401,6 @@ fn test_execute_update_recipients_invalid_weight() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -1474,7 +1454,6 @@ fn test_execute_update_recipients_contract_locked() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -1526,7 +1505,6 @@ fn test_execute_update_recipients_unauthorized() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
@@ -1581,7 +1559,6 @@ fn test_execute_send() {
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: None,
                 modules: None,
                 primitive_contract: None,
             },
