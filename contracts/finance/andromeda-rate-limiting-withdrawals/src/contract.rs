@@ -4,10 +4,7 @@ use andromeda_finance::rate_limiting_withdrawals::{
     AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
-    error::ContractError,
-    require,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 use cosmwasm_std::{
     entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
@@ -32,7 +29,6 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     ALLOWED_COIN.save(deps.storage, &msg.allowed_coin)?;
-
     ADOContract::default().instantiate(
         deps.storage,
         env,

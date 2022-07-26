@@ -206,7 +206,6 @@ mod tests {
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {
             minter: owner.to_string(),
-            operators: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -226,7 +225,6 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 minter: owner.to_string(),
-                operators: None,
             },
         )
         .unwrap();
@@ -263,7 +261,6 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 minter: owner.to_string(),
-                operators: None,
             },
         )
         .unwrap();
@@ -323,7 +320,6 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 minter: owner.to_string(),
-                operators: None,
             },
         )
         .unwrap();

@@ -26,7 +26,6 @@ pub struct CoinAllowance {
 pub struct InstantiateMsg {
     pub allowed_coin: CoinAllowance,
     pub modules: Option<Vec<Module>>,
-    // pub primitive_contract: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
