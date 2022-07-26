@@ -24,8 +24,6 @@ pub struct Receipt {
 pub struct InstantiateMsg {
     /// The address authorized to mint new receipts
     pub minter: String,
-    /// Optional list of moderating addresses authorized to update receipts, defaults to an empty vector
-    pub operators: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

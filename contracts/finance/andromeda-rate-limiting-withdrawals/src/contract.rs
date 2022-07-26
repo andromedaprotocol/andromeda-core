@@ -27,8 +27,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    ALLOWED_COIN.save(deps.storage, &msg.allowed_coin)?;
 
+    ALLOWED_COIN.save(deps.storage, &msg.allowed_coin)?;
     ADOContract::default().instantiate(
         deps.storage,
         env,

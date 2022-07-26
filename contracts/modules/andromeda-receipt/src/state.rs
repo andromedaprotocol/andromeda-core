@@ -72,7 +72,7 @@ mod tests {
                 BaseInstantiateMsg {
                     ado_type: "receipt".to_string(),
                     ado_version: CONTRACT_VERSION.to_string(),
-                    operators: Some(vec![operator.clone()]),
+                    operators: None,
                     modules: None,
                     primitive_contract: None,
                 },

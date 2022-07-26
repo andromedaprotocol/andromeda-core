@@ -50,7 +50,7 @@ pub fn instantiate(
             BaseInstantiateMsg {
                 ado_type: "app".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
-                operators: Some(msg.operators),
+                operators: None,
                 modules: None,
                 primitive_contract: Some(msg.primitive_contract),
             },
