@@ -34,6 +34,7 @@ pub enum ExecuteMsg {
     Deposit { recipient: Option<String> },
     Withdraw { amount: Uint128 },
     AndrReceive(AndromedaMsg),
+    UpdateAllowedCoin { new_coin: CoinAllowance },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

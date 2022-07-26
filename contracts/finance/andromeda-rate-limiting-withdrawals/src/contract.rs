@@ -57,7 +57,29 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
+        ExecuteMsg::UpdateAllowedCoin { new_coin } => {
+            execute_update_allowed_coin(deps, env, info, new_coin)
+        }
     }
+}
+
+pub fn execute_update_allowed_coin(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    new_coin: CoinAllowance,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    let contract = ADOContract::default();
+
+    // Only owner or operator can call this function
+    require(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    ALLOWED_COIN.save(deps.storage, &new_coin)?;
+    Ok(Response::new().add_attribute("action", "updated allowed coin"))
 }
 
 pub fn execute_deposit(
@@ -123,10 +145,10 @@ pub fn execute_withdraw(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // check if sender has an account
-    let user = ACCOUNTS.may_load(deps.storage, info.sender.to_string())?;
-    if let Some(user) = user {
+    let account = ACCOUNTS.may_load(deps.storage, info.sender.to_string())?;
+    if let Some(account) = account {
         // Calculate time since last withdrawal
-        if let Some(latest_withdrawal) = user.latest_withdrawal {
+        if let Some(latest_withdrawal) = account.latest_withdrawal {
             let minimum_withdrawal_frequency = ALLOWED_COIN
                 .load(deps.storage)?
                 .minimal_withdrawal_frequency;
@@ -140,7 +162,10 @@ pub fn execute_withdraw(
             )?;
 
             // make sure the funds requested don't exceed the user's balance
-            require(user.balance >= amount, ContractError::InsufficientFunds {})?;
+            require(
+                account.balance >= amount,
+                ContractError::InsufficientFunds {},
+            )?;
 
             // make sure the funds don't exceed the withdrawal limit
             let limit = ALLOWED_COIN.load(deps.storage)?;
@@ -150,7 +175,7 @@ pub fn execute_withdraw(
             )?;
 
             // Update amount
-            let new_amount = user.balance - amount;
+            let new_amount = account.balance - amount;
 
             // Update account details
             let new_details = AccountDetails {
@@ -162,7 +187,10 @@ pub fn execute_withdraw(
             ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
         } else {
             // make sure the funds requested don't exceed the user's balance
-            require(user.balance >= amount, ContractError::InsufficientFunds {})?;
+            require(
+                account.balance >= amount,
+                ContractError::InsufficientFunds {},
+            )?;
 
             // make sure the funds don't exceed the withdrawal limit
             let limit = ALLOWED_COIN.load(deps.storage)?;
@@ -172,7 +200,7 @@ pub fn execute_withdraw(
             )?;
 
             // Update amount
-            let new_amount = user.balance - amount;
+            let new_amount = account.balance - amount;
 
             // Update account details
             let new_details = AccountDetails {
@@ -290,6 +318,63 @@ mod tests {
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
+    }
+
+    #[test]
+    fn test_update_allowed_coin_unauthorized() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            modules: None,
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
+            },
+        };
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let new_coin = CoinAllowance {
+            coin: "juno".to_string(),
+            limit: Uint128::from(10_u64),
+            minimal_withdrawal_frequency: 600,
+        };
+        let info = mock_info("random", &vec![]);
+        let msg = ExecuteMsg::UpdateAllowedCoin { new_coin };
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {})
+    }
+
+    #[test]
+    fn test_update_allowed_coin_works() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            modules: None,
+            allowed_coin: CoinAllowance {
+                coin: "junox".to_string(),
+                limit: Uint128::from(50_u64),
+                minimal_withdrawal_frequency: ONE_DAY,
+            },
+        };
+        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let new_coin = CoinAllowance {
+            coin: "juno".to_string(),
+            limit: Uint128::from(10_u64),
+            minimal_withdrawal_frequency: 600,
+        };
+        let msg = ExecuteMsg::UpdateAllowedCoin { new_coin };
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_allowed_coin = CoinAllowance {
+            coin: "juno".to_string(),
+            limit: Uint128::from(10_u64),
+            minimal_withdrawal_frequency: 600,
+        };
+        let allowed_coin = ALLOWED_COIN.load(&deps.storage).unwrap();
+        assert_eq!(expected_allowed_coin, allowed_coin)
     }
 
     #[test]
