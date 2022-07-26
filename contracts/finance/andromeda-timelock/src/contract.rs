@@ -41,7 +41,6 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "timelock".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             modules: msg.modules,
             primitive_contract: None,
         },

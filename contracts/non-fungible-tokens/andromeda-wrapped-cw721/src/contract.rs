@@ -47,7 +47,6 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "wrapped-cw721".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             modules: None,
             primitive_contract: Some(msg.primitive_contract),
         },

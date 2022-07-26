@@ -42,7 +42,6 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "nft-timelock".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: None,
             modules: None,
             primitive_contract: None,
         },
