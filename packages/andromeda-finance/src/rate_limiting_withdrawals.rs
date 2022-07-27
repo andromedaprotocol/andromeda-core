@@ -11,6 +11,13 @@ pub struct AccountDetails {
     /// Timestamp of latest withdrawal
     pub latest_withdrawal: Option<Timestamp>,
 }
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CoinAndLimit {
+    /// Sets the accepted coin denom
+    pub coin: String,
+    /// Sets the withdrawal limit in terms of amount
+    pub limit: Uint128,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CoinAllowance {
@@ -21,20 +28,35 @@ pub struct CoinAllowance {
     /// Sets the minimum amount of time required between withdrawals in seconds
     pub minimal_withdrawal_frequency: u64,
 }
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ContractAndKey {
+    pub contract_address: String,
+    pub key: Option<String>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub allowed_coin: CoinAllowance,
+    pub allowed_coin: CoinAndLimit,
+    pub minimal_withdrawal_frequency: Option<u64>,
+    pub contract_key: Option<ContractAndKey>,
     pub modules: Option<Vec<Module>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Deposit { recipient: Option<String> },
-    Withdraw { amount: Uint128 },
+    Deposit {
+        recipient: Option<String>,
+    },
+    Withdraw {
+        amount: Uint128,
+    },
     AndrReceive(AndromedaMsg),
-    UpdateAllowedCoin { new_coin: CoinAllowance },
+    UpdateAllowedCoin {
+        allowed_coin: CoinAndLimit,
+        minimal_withdrawal_frequency: Option<u64>,
+        contract_key: Option<ContractAndKey>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

@@ -68,6 +68,9 @@ pub enum ContractError {
     #[error("InvalidWeight")]
     InvalidWeight {},
 
+    #[error("OnlyOneSourceAllowed")]
+    OnlyOneSourceAllowed {},
+
     #[error("IllegalTokenName")]
     IllegalTokenName {},
 
@@ -103,6 +106,9 @@ pub enum ContractError {
 
     #[error("ExpirationInPast")]
     ExpirationInPast {},
+
+    #[error("UnspecifiedWithdrawalFrequency")]
+    UnspecifiedWithdrawalFrequency {},
 
     #[error("ExpirationNotSpecified")]
     ExpirationNotSpecified {},
