@@ -79,7 +79,14 @@ pub fn execute_update_allowed_coin(
     )?;
 
     ALLOWED_COIN.save(deps.storage, &new_coin)?;
-    Ok(Response::new().add_attribute("action", "updated allowed coin"))
+    Ok(Response::new()
+        .add_attribute("action", "updated allowed coin")
+        .add_attribute("new_coin", new_coin.coin)
+        .add_attribute("new_withdrawal_limit", new_coin.limit)
+        .add_attribute(
+            "new_minimal_withdrawal_frequency",
+            new_coin.minimal_withdrawal_frequency.to_string(),
+        ))
 }
 
 pub fn execute_deposit(
@@ -340,7 +347,7 @@ mod tests {
             limit: Uint128::from(10_u64),
             minimal_withdrawal_frequency: 600,
         };
-        let info = mock_info("random", &vec![]);
+        let info = mock_info("random", &[]);
         let msg = ExecuteMsg::UpdateAllowedCoin { new_coin };
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized {})
