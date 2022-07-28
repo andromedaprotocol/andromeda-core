@@ -8,6 +8,7 @@ use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
+    primitive::GetValueResponse,
     require,
 };
 use cosmwasm_std::{
@@ -44,13 +45,14 @@ pub fn instantiate(
     };
 
     if let Some(contract_key) = msg.contract_key {
-        let message = &AndromedaQuery::Get(Some(encode_binary(&contract_key.key)?));
+        let message = AndromedaQuery::Get(Some(encode_binary(&contract_key.key)?));
 
         let resp: Binary = deps
             .querier
-            .query_wasm_smart(contract_key.contract_address, message)?;
+            .query_wasm_smart(contract_key.contract_address, &message)?;
 
-        let minimum_time: u64 = from_binary(&resp)?;
+        let value_response: GetValueResponse = from_binary(&resp)?;
+        let minimum_time: Uint128 = value_response.value.try_get_uint128()?;
 
         let coin = CoinAllowance {
             coin: msg.allowed_coin.clone().coin,
@@ -117,7 +119,7 @@ pub fn execute_update_allowed_coin(
     _env: Env,
     info: MessageInfo,
     allowed_coin: CoinAndLimit,
-    minimal_withdrawal_frequency: Option<u64>,
+    minimal_withdrawal_frequency: Option<Uint128>,
     contract_key: Option<ContractAndKey>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
@@ -146,7 +148,8 @@ pub fn execute_update_allowed_coin(
             .querier
             .query_wasm_smart(contract_key.contract_address, message)?;
 
-        let minimum_time: u64 = from_binary(&resp)?;
+        let value_response: GetValueResponse = from_binary(&resp)?;
+        let minimum_time: Uint128 = value_response.value.try_get_uint128()?;
 
         let coin = CoinAllowance {
             coin: allowed_coin.clone().coin,
@@ -240,8 +243,9 @@ pub fn execute_withdraw(
             let minimum_withdrawal_frequency = ALLOWED_COIN
                 .load(deps.storage)?
                 .minimal_withdrawal_frequency;
-            let current_time = env.block.time.seconds();
-            let seconds_since_withdrawal = current_time - latest_withdrawal.seconds();
+            let current_time = Uint128::from(env.block.time.seconds());
+            let seconds_since_withdrawal =
+                current_time - Uint128::from(latest_withdrawal.seconds());
 
             // make sure enough time has elapsed since the latest withdrawal
             require(
@@ -390,8 +394,6 @@ mod tests {
     };
     use cosmwasm_std::coin;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    // 1 day in seconds
-    const ONE_DAY: u64 = 86_400;
 
     #[test]
     fn test_instantiate_works() {
@@ -404,7 +406,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -440,7 +442,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: Some(ContractAndKey {
                 contract_address: String::from("contract"),
                 key: Some(String::from("key")),
@@ -461,7 +463,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -473,7 +475,7 @@ mod tests {
                 coin: String::from("junox"),
                 limit: Uint128::from(10_u64),
             },
-            minimal_withdrawal_frequency: Some(50_u64),
+            minimal_withdrawal_frequency: Some(Uint128::from(50_u64)),
             contract_key: None,
         };
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
@@ -491,7 +493,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
@@ -502,14 +504,14 @@ mod tests {
                 coin: String::from("juno"),
                 limit: Uint128::from(10_u64),
             },
-            minimal_withdrawal_frequency: Some(600),
+            minimal_withdrawal_frequency: Some(Uint128::from(600_u64)),
             contract_key: None,
         };
         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected_allowed_coin = CoinAllowance {
             coin: "juno".to_string(),
             limit: Uint128::from(10_u64),
-            minimal_withdrawal_frequency: 600,
+            minimal_withdrawal_frequency: Uint128::from(600_u64),
         };
         let allowed_coin = ALLOWED_COIN.load(&deps.storage).unwrap();
         assert_eq!(expected_allowed_coin, allowed_coin)
@@ -526,7 +528,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
@@ -546,7 +548,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -576,7 +578,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -608,7 +610,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -645,7 +647,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -676,7 +678,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -707,7 +709,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -746,7 +748,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(20_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -777,7 +779,7 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(ONE_DAY),
+            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
             contract_key: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();

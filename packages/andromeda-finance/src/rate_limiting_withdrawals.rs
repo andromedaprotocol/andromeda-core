@@ -26,8 +26,9 @@ pub struct CoinAllowance {
     /// Sets the withdrawal limit in terms of amount
     pub limit: Uint128,
     /// Sets the minimum amount of time required between withdrawals in seconds
-    pub minimal_withdrawal_frequency: u64,
+    pub minimal_withdrawal_frequency: Uint128,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ContractAndKey {
     pub contract_address: String,
@@ -37,7 +38,7 @@ pub struct ContractAndKey {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub allowed_coin: CoinAndLimit,
-    pub minimal_withdrawal_frequency: Option<u64>,
+    pub minimal_withdrawal_frequency: Option<Uint128>,
     pub contract_key: Option<ContractAndKey>,
     pub modules: Option<Vec<Module>>,
 }
@@ -54,7 +55,7 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     UpdateAllowedCoin {
         allowed_coin: CoinAndLimit,
-        minimal_withdrawal_frequency: Option<u64>,
+        minimal_withdrawal_frequency: Option<Uint128>,
         contract_key: Option<ContractAndKey>,
     },
 }
