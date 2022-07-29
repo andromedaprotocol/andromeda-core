@@ -43,7 +43,7 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "receipt".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: msg.operators,
+            operators: None,
             modules: None,
             primitive_contract: None,
         },
@@ -207,7 +207,6 @@ mod tests {
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {
             minter: owner.to_string(),
-            operators: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -227,7 +226,6 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 minter: owner.to_string(),
-                operators: None,
             },
         )
         .unwrap();
@@ -264,7 +262,6 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 minter: owner.to_string(),
-                operators: None,
             },
         )
         .unwrap();
@@ -324,7 +321,6 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 minter: owner.to_string(),
-                operators: None,
             },
         )
         .unwrap();

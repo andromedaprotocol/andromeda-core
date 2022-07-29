@@ -26,7 +26,7 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: InstantiateMsg,
+    _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     ADOContract::default().instantiate(
@@ -37,7 +37,7 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "primitive".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: Some(msg.operators),
+            operators: None,
             modules: None,
             primitive_contract: None,
         },
@@ -214,7 +214,7 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { operators: vec![] };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -226,7 +226,7 @@ mod tests {
     fn set_and_update_value_with_key() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { operators: vec![] };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -280,7 +280,7 @@ mod tests {
     fn set_and_update_value_without_key() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { operators: vec![] };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -332,7 +332,7 @@ mod tests {
     fn cannot_set_nested_vector_primitive() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { operators: vec![] };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -350,7 +350,7 @@ mod tests {
     fn delete_value_with_key() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { operators: vec![] };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -392,7 +392,7 @@ mod tests {
     fn delete_value_without_key() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { operators: vec![] };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -431,7 +431,7 @@ mod tests {
     fn non_creator_cannot_set_value() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { operators: vec![] };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -450,7 +450,7 @@ mod tests {
     fn non_creator_cannot_delete_value() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { operators: vec![] };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -472,7 +472,7 @@ mod tests {
     fn test_execute_receive() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { operators: vec![] };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success

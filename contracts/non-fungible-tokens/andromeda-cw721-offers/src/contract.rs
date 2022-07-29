@@ -53,7 +53,7 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "cw721_offers".to_string(),
+            ado_type: "cw721-offers".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,

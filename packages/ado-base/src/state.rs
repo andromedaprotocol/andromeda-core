@@ -1,7 +1,7 @@
 #[cfg(feature = "modules")]
 use common::ado_base::modules::Module;
 use common::{error::ContractError, parse_message};
-use cosmwasm_std::{Addr, Binary, Storage};
+use cosmwasm_std::{Addr, Binary};
 #[cfg(feature = "withdraw")]
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
@@ -52,17 +52,6 @@ impl<'a> Default for ADOContract<'a> {
 }
 
 impl<'a> ADOContract<'a> {
-    pub(crate) fn initialize_operators(
-        &self,
-        storage: &mut dyn Storage,
-        operators: Vec<String>,
-    ) -> Result<(), ContractError> {
-        for operator in operators.iter() {
-            self.operators.save(storage, operator, &true)?;
-        }
-        Ok(())
-    }
-
     pub(crate) fn is_nested<T: DeserializeOwned>(&self, data: &Option<Binary>) -> bool {
         let res: Result<T, ContractError> = parse_message(data);
         res.is_ok()

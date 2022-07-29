@@ -36,9 +36,9 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "address_list".to_string(),
+            ado_type: "address-list".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: Some(msg.operators),
+            operators: None,
             modules: None,
             primitive_contract: None,
         },
@@ -193,10 +193,7 @@ mod tests {
             deps,
             mock_env(),
             info,
-            InstantiateMsg {
-                operators: vec![],
-                is_inclusive: true,
-            },
+            InstantiateMsg { is_inclusive: true },
         )
         .unwrap();
     }
@@ -206,10 +203,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            operators: vec!["11".to_string(), "22".to_string()],
-            is_inclusive: true,
-        };
+        let msg = InstantiateMsg { is_inclusive: true };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }

@@ -32,7 +32,7 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: InstantiateMsg,
+    _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -44,7 +44,7 @@ pub fn instantiate(
         BaseInstantiateMsg {
             ado_type: "vault".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
-            operators: msg.operators,
+            operators: None,
             modules: None,
             primitive_contract: None,
         },

@@ -68,6 +68,9 @@ pub enum ContractError {
     #[error("InvalidWeight")]
     InvalidWeight {},
 
+    #[error("OnlyOneSourceAllowed")]
+    OnlyOneSourceAllowed {},
+
     #[error("IllegalTokenName")]
     IllegalTokenName {},
 
@@ -76,6 +79,12 @@ pub enum ContractError {
 
     #[error("Refilling")]
     Refilling {},
+
+    #[error("WithdrawalLimitExceeded")]
+    WithdrawalLimitExceeded {},
+
+    #[error("CoinNotFound")]
+    CoinNotFound {},
 
     #[error("NotInRefillMode")]
     NotInRefillMode {},
@@ -97,6 +106,9 @@ pub enum ContractError {
 
     #[error("ExpirationInPast")]
     ExpirationInPast {},
+
+    #[error("UnspecifiedWithdrawalFrequency")]
+    UnspecifiedWithdrawalFrequency {},
 
     #[error("ExpirationNotSpecified")]
     ExpirationNotSpecified {},
@@ -121,6 +133,9 @@ pub enum ContractError {
 
     #[error("NoReceivingAddress")]
     NoReceivingAddress {},
+
+    #[error("AccountNotFound")]
+    AccountNotFound {},
 
     #[error("ModuleDiscriptionTooLong: {msg}")]
     ModuleDiscriptionTooLong { msg: String },

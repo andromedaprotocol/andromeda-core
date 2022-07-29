@@ -27,9 +27,6 @@ impl<'a> ADOContract<'a> {
         self.block_height.save(storage, &env.block.height)?;
         self.ado_type.save(storage, &msg.ado_type)?;
         self.version.save(storage, &msg.ado_version)?;
-        if let Some(operators) = msg.operators {
-            self.initialize_operators(storage, operators)?;
-        }
         let attributes = [attr("method", "instantiate"), attr("type", &msg.ado_type)];
         #[cfg(feature = "primitive")]
         if let Some(primitive_contract) = msg.primitive_contract {
@@ -231,8 +228,8 @@ mod tests {
                 InstantiateMsg {
                     ado_type: "type".to_string(),
                     modules: None,
-                    primitive_contract: None,
                     operators: None,
+                    primitive_contract: None,
                     ado_version: "version".to_string(),
                 },
             )
@@ -284,10 +281,11 @@ mod tests {
                         address: AndrAddress {
                             identifier: "terra1...".to_string(),
                         },
+
                         is_mutable: true,
                     }]),
-                    primitive_contract: None,
                     operators: None,
+                    primitive_contract: None,
                 },
             )
             .unwrap();
@@ -337,8 +335,8 @@ mod tests {
                     ado_type: "type".to_string(),
                     ado_version: "version".to_string(),
                     modules: None,
-                    primitive_contract: None,
                     operators: None,
+                    primitive_contract: None,
                 },
             )
             .unwrap();
@@ -384,8 +382,8 @@ mod tests {
                             identifier: "z".to_string(),
                         },
                     }]),
-                    primitive_contract: None,
                     operators: None,
+                    primitive_contract: None,
                 },
             )
             .unwrap();

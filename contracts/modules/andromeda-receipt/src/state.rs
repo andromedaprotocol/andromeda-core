@@ -72,11 +72,16 @@ mod tests {
                 BaseInstantiateMsg {
                     ado_type: "receipt".to_string(),
                     ado_version: CONTRACT_VERSION.to_string(),
-                    operators: Some(vec![operator.clone()]),
+                    operators: None,
                     modules: None,
                     primitive_contract: None,
                 },
             )
+            .unwrap();
+        let info = mock_info(&owner, &[]);
+
+        ADOContract::default()
+            .execute_update_operators(deps.as_mut(), info, vec![operator.clone()])
             .unwrap();
 
         CONFIG.save(deps.as_mut().storage, &config).unwrap();

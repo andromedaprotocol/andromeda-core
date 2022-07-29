@@ -245,6 +245,7 @@ dependencies = [
  "common",
  "cosmwasm-std",
  "cw-utils",
+ "cw20",
  "schemars",
  "serde",
 ]
@@ -376,6 +377,25 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "cw2",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
+name = "andromeda-rate-limiting-withdrawals"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-finance",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
  "schemars",
  "semver",
  "serde",
@@ -782,9 +802,9 @@ dependencies = [
 
 [[package]]
 name = "cw20"
-version = "0.13.2"
+version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "356d364602c5fe763544ea00d485b825d6ef519a2fc6a3145528d7df3a603f40"
+checksum = "4cb782b8f110819a4eb5dbbcfed25ffba49ec16bbe32b4ad8da50a5ce68fec05"
 dependencies = [
  "cosmwasm-std",
  "cw-utils",
