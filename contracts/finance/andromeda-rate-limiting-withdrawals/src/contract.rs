@@ -12,8 +12,8 @@ use common::{
     require,
 };
 use cosmwasm_std::{
-    entry_point, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, Uint128,
+    entry_point, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdError, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -47,13 +47,12 @@ pub fn instantiate(
     if let Some(contract_key) = msg.contract_key {
         // If key is provided
         if let Some(key) = contract_key.key {
-            let message = AndromedaQuery::Get(Some(encode_binary(&key)?));
-            let resp: Binary = deps
+            let message = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(&key)?)));
+            let resp: GetValueResponse = deps
                 .querier
                 .query_wasm_smart(contract_key.contract_address.clone(), &message)?;
 
-            let value_response: GetValueResponse = from_binary(&resp)?;
-            let minimum_time: Uint128 = value_response.value.try_get_uint128()?;
+            let minimum_time: Uint128 = resp.value.try_get_uint128()?;
 
             let coin = CoinAllowance {
                 coin: msg.allowed_coin.clone().coin,
@@ -66,12 +65,11 @@ pub fn instantiate(
         // If key isn't provided
         let message = AndromedaQuery::Get(None);
 
-        let resp: Binary = deps
+        let resp: GetValueResponse = deps
             .querier
-            .query_wasm_smart(contract_key.contract_address, &message)?;
+            .query_wasm_smart(contract_key.contract_address.clone(), &message)?;
 
-        let value_response: GetValueResponse = from_binary(&resp)?;
-        let minimum_time: Uint128 = value_response.value.try_get_uint128()?;
+        let minimum_time: Uint128 = resp.value.try_get_uint128()?;
 
         let coin = CoinAllowance {
             coin: msg.allowed_coin.clone().coin,
@@ -134,7 +132,7 @@ pub fn execute(
     }
 }
 
-pub fn execute_update_allowed_coin(
+fn execute_update_allowed_coin(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -164,12 +162,14 @@ pub fn execute_update_allowed_coin(
     if let Some(contract_key) = contract_key {
         // If key is provided
         if let Some(key) = contract_key.key {
-            let message = AndromedaQuery::Get(Some(encode_binary(&key)?));
-            let resp = deps
+            let message = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(&key)?)));
+
+            let resp: Binary = deps
                 .querier
                 .query_wasm_smart(contract_key.contract_address.clone(), &message)?;
 
             let value_response: GetValueResponse = from_binary(&resp)?;
+
             let minimum_time: Uint128 = value_response.value.try_get_uint128()?;
 
             let coin = CoinAllowance {
@@ -181,14 +181,13 @@ pub fn execute_update_allowed_coin(
             ALLOWED_COIN.save(deps.storage, &coin)?;
         }
         // If key isn't provided
-        let message = AndromedaQuery::Get(None);
+        let message = QueryMsg::AndrQuery(AndromedaQuery::Get(None));
 
-        let resp: Binary = deps
+        let resp: GetValueResponse = deps
             .querier
-            .query_wasm_smart(contract_key.contract_address, &message)?;
+            .query_wasm_smart(contract_key.contract_address.clone(), &message)?;
 
-        let value_response: GetValueResponse = from_binary(&resp)?;
-        let minimum_time: Uint128 = value_response.value.try_get_uint128()?;
+        let minimum_time: Uint128 = resp.value.try_get_uint128()?;
 
         let coin = CoinAllowance {
             coin: allowed_coin.clone().coin,
@@ -213,7 +212,7 @@ pub fn execute_update_allowed_coin(
         .add_attribute("new_withdrawal_limit", allowed_coin.limit))
 }
 
-pub fn execute_deposit(
+fn execute_deposit(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -268,7 +267,7 @@ pub fn execute_deposit(
     Ok(res)
 }
 
-pub fn execute_withdraw(
+fn execute_withdraw(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
