@@ -44,7 +44,7 @@ pub fn instantiate(
     if let Some(contract_key) = msg.contract_key {
         let key = contract_key.key;
         let resp: GetValueResponse =
-            query_primitive(deps.querier, contract_key.contract_address.clone(), key)?;
+            query_primitive(deps.querier, contract_key.contract_address, key)?;
 
         let minimum_time: Uint128 = resp.value.try_get_uint128()?;
 
@@ -140,7 +140,7 @@ fn execute_update_allowed_coin(
     if let Some(contract_key) = contract_key {
         let key = contract_key.key;
         let resp: GetValueResponse =
-            query_primitive(deps.querier, contract_key.contract_address.clone(), key)?;
+            query_primitive(deps.querier, contract_key.contract_address, key)?;
 
         let minimum_time: Uint128 = resp.value.try_get_uint128()?;
 
