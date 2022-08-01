@@ -9,7 +9,11 @@ pub mod testing;
 pub mod withdraw;
 
 use crate::error::ContractError;
-use cosmwasm_std::{from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, SubMsg};
+use ado_base::{AndromedaQuery, QueryMsg};
+use cosmwasm_std::{
+    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, QueryRequest, SubMsg,
+    WasmQuery,
+};
 use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -57,6 +61,22 @@ pub fn unwrap_or_err<T>(val_opt: &Option<T>, err: ContractError) -> Result<&T, C
         Some(val) => Ok(val),
         None => Err(err),
     }
+}
+
+pub fn query_primitive<T>(
+    querrier: QuerierWrapper,
+    contract_address: String,
+    key: Option<String>,
+) -> Result<T, ContractError>
+where
+    T: DeserializeOwned,
+{
+    let message = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(&key)?)));
+    let resp: T = querrier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: contract_address,
+        msg: encode_binary(&message)?,
+    }))?;
+    Ok(resp)
 }
 
 /// A simple implementation of Solidity's "require" function. Takes a precondition and an error to return if the precondition is not met.
