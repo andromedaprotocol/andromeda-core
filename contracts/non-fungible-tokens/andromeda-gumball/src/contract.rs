@@ -293,8 +293,7 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
     let random_response: LatestRandomResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: randomness_source,
-            //msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
-            msg: encode_binary(&"TODO")?,
+            msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
         }))?;
     let randomness = Binary::to_base64(&random_response.randomness);
     let vec = randomness.into_bytes();

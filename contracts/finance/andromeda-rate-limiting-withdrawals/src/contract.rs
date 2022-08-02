@@ -112,79 +112,10 @@ pub fn execute(
     match msg {
         ExecuteMsg::Deposit { recipient } => execute_deposit(deps, env, info, recipient),
         ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, env, info, amount),
-        ExecuteMsg::UpdateAllowedCoin {
-            allowed_coin,
-            minimal_withdrawal_frequency,
-            contract_key,
-        } => execute_update_allowed_coin(
-            deps,
-            env,
-            info,
-            allowed_coin,
-            minimal_withdrawal_frequency,
-            contract_key,
-        ),
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
     }
-}
-
-fn execute_update_allowed_coin(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    allowed_coin: CoinAndLimit,
-    minimal_withdrawal_frequency: Option<Uint128>,
-    contract_key: Option<ContractAndKey>,
-) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-    let contract = ADOContract::default();
-
-    // Only owner or operator can call this function
-    require(
-        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-    // Can't choose 0 sources for withdrawal frequency
-    require(
-        minimal_withdrawal_frequency.is_some() || contract_key.is_some(),
-        ContractError::UnspecifiedWithdrawalFrequency {},
-    )?;
-
-    // Choose only 1 source for withdrawal frequency
-    if minimal_withdrawal_frequency.is_some() && contract_key.is_some() {
-        return Err(ContractError::OnlyOneSourceAllowed {});
-    };
-
-    if let Some(contract_key) = contract_key {
-        let key = contract_key.key;
-        let resp: GetValueResponse =
-            query_primitive(deps.querier, contract_key.contract_address, key)?;
-
-        let minimum_time: Uint128 = resp.value.try_get_uint128()?;
-
-        let coin = CoinAllowance {
-            coin: allowed_coin.clone().coin,
-            limit: allowed_coin.limit,
-            minimal_withdrawal_frequency: minimum_time,
-        };
-
-        ALLOWED_COIN.save(deps.storage, &coin)?;
-    }
-    // If minimum time is directly provided
-    if let Some(minimum_time) = minimal_withdrawal_frequency {
-        let coin = CoinAllowance {
-            coin: allowed_coin.coin.clone(),
-            limit: allowed_coin.limit,
-            minimal_withdrawal_frequency: minimum_time,
-        };
-        ALLOWED_COIN.save(deps.storage, &coin)?;
-    }
-    Ok(Response::new()
-        .add_attribute("action", "updated allowed coin")
-        .add_attribute("new_coin", allowed_coin.coin)
-        .add_attribute("new_withdrawal_limit", allowed_coin.limit))
 }
 
 fn execute_deposit(
@@ -464,71 +395,6 @@ mod tests {
         };
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
         assert_eq!(err, ContractError::OnlyOneSourceAllowed {});
-    }
-
-    #[test]
-    fn test_update_allowed_coin_unauthorized() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
-        };
-        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        let info = mock_info("random", &[]);
-        let msg = ExecuteMsg::UpdateAllowedCoin {
-            allowed_coin: CoinAndLimit {
-                coin: String::from("junox"),
-                limit: Uint128::from(10_u64),
-            },
-            minimal_withdrawal_frequency: Some(Uint128::from(50_u64)),
-            contract_key: None,
-        };
-        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        assert_eq!(err, ContractError::Unauthorized {})
-    }
-
-    #[test]
-    fn test_update_allowed_coin_works() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
-        };
-        let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        let msg = ExecuteMsg::UpdateAllowedCoin {
-            allowed_coin: CoinAndLimit {
-                coin: String::from("juno"),
-                limit: Uint128::from(10_u64),
-            },
-            minimal_withdrawal_frequency: Some(Uint128::from(600_u64)),
-            contract_key: None,
-        };
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_allowed_coin = CoinAllowance {
-            coin: "juno".to_string(),
-            limit: Uint128::from(10_u64),
-            minimal_withdrawal_frequency: Uint128::from(600_u64),
-        };
-        let allowed_coin = ALLOWED_COIN.load(&deps.storage).unwrap();
-        assert_eq!(expected_allowed_coin, allowed_coin)
     }
 
     #[test]
