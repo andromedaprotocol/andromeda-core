@@ -198,6 +198,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-cw721-timelock"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-non-fungible-tokens",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw721",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-data-storage"
 version = "0.1.0"
 dependencies = [
@@ -331,24 +349,6 @@ dependencies = [
  "common",
  "cosmwasm-std",
  "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-nft-timelock"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus",
- "cw-utils",
- "cw2",
- "cw721",
- "schemars",
- "semver",
  "serde",
 ]
 

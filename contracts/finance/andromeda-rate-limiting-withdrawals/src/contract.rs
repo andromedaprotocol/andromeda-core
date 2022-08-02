@@ -5,12 +5,15 @@ use andromeda_finance::rate_limiting_withdrawals::{
     MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
-    primitive::GetValueResponse, query_primitive, require,
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    primitive::GetValueResponse,
+    query_primitive, require,
 };
 use cosmwasm_std::{
-    entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, Uint128,
+    entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, StdError, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -89,6 +92,23 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    // Do this before the hooks get fired off to ensure that there are no errors from the app
+    // address not being fully setup yet.
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
+        return contract.execute_update_app_contract(deps, info, address, None);
+    };
+
+    contract.module_hook::<Response>(
+        deps.storage,
+        deps.api,
+        deps.querier,
+        AndromedaHook::OnExecute {
+            sender: info.sender.to_string(),
+            payload: to_binary(&msg)?,
+        },
+    )?;
     match msg {
         ExecuteMsg::Deposit { recipient } => execute_deposit(deps, env, info, recipient),
         ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, env, info, amount),
