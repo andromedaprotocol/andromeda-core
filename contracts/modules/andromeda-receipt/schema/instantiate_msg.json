@@ -9,16 +9,6 @@
     "minter": {
       "description": "The address authorized to mint new receipts",
       "type": "string"
-    },
-    "operators": {
-      "description": "Optional list of moderating addresses authorized to update receipts, defaults to an empty vector",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "string"
-      }
     }
   }
 }
