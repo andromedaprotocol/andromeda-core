@@ -1,8 +1,8 @@
 use crate::state::{ACCOUNTS, ALLOWED_COIN};
 use ado_base::ADOContract;
 use andromeda_finance::rate_limiting_withdrawals::{
-    AccountDetails, CoinAllowance, CoinAndLimit, ContractAndKey, ExecuteMsg, InstantiateMsg,
-    MigrateMsg, QueryMsg,
+    AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MigrateMsg, MinimumFrequency,
+    QueryMsg,
 };
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
@@ -33,41 +33,29 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // Can't choose 0 sources for withdrawal frequency
-    require(
-        msg.minimal_withdrawal_frequency.is_some() || msg.contract_key.is_some(),
-        ContractError::UnspecifiedWithdrawalFrequency {},
-    )?;
-
-    // Choose only 1 source for withdrawal frequency
-    if msg.minimal_withdrawal_frequency.is_some() && msg.contract_key.is_some() {
-        return Err(ContractError::OnlyOneSourceAllowed {});
-    };
-
-    if let Some(contract_key) = msg.contract_key {
-        let key = contract_key.key;
-        let resp: GetValueResponse =
-            query_primitive(deps.querier, contract_key.contract_address, key)?;
-
-        let minimum_time: Uint128 = resp.value.try_get_uint128()?;
-
-        let coin = CoinAllowance {
-            coin: msg.allowed_coin.clone().coin,
-            limit: msg.allowed_coin.limit,
-            minimal_withdrawal_frequency: minimum_time,
-        };
-
-        ALLOWED_COIN.save(deps.storage, &coin)?;
-    }
-
-    // If minimum time is directly provided
-    if let Some(minimum_time) = msg.minimal_withdrawal_frequency {
-        let coin = CoinAllowance {
-            coin: msg.allowed_coin.coin,
-            limit: msg.allowed_coin.limit,
-            minimal_withdrawal_frequency: minimum_time,
-        };
-        ALLOWED_COIN.save(deps.storage, &coin)?;
+    match msg.minimal_withdrawal_frequency {
+        MinimumFrequency::Time { time } => ALLOWED_COIN.save(
+            deps.storage,
+            &CoinAllowance {
+                coin: msg.allowed_coin.coin,
+                limit: msg.allowed_coin.limit,
+                minimal_withdrawal_frequency: time,
+            },
+        )?,
+        MinimumFrequency::AddressAndKey { address_and_key } => ALLOWED_COIN.save(
+            deps.storage,
+            &CoinAllowance {
+                coin: msg.allowed_coin.clone().coin,
+                limit: msg.allowed_coin.limit,
+                minimal_withdrawal_frequency: query_primitive::<GetValueResponse>(
+                    deps.querier,
+                    address_and_key.contract_address,
+                    address_and_key.key,
+                )?
+                .value
+                .try_get_uint128()?,
+            },
+        )?,
     }
 
     ADOContract::default().instantiate(
@@ -334,9 +322,7 @@ fn query_coin_allowance_details(deps: Deps) -> Result<CoinAllowance, ContractErr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_finance::rate_limiting_withdrawals::{
-        CoinAllowance, CoinAndLimit, ContractAndKey,
-    };
+    use andromeda_finance::rate_limiting_withdrawals::CoinAndLimit;
     use cosmwasm_std::coin;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
@@ -351,50 +337,12 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
+            minimal_withdrawal_frequency: MinimumFrequency::Time {
+                time: Uint128::from(10_u16),
+            },
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
-    }
-
-    #[test]
-    fn test_instantiate_no_source() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: None,
-            contract_key: None,
-        };
-        let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(err, ContractError::UnspecifiedWithdrawalFrequency {});
-    }
-
-    #[test]
-    fn test_instantiate_multiple_sources() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            modules: None,
-            allowed_coin: CoinAndLimit {
-                coin: "junox".to_string(),
-                limit: Uint128::from(50_u64),
-            },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: Some(ContractAndKey {
-                contract_address: String::from("contract"),
-                key: Some(String::from("key")),
-            }),
-        };
-        let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(err, ContractError::OnlyOneSourceAllowed {});
     }
 
     #[test]
@@ -408,8 +356,9 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
+            minimal_withdrawal_frequency: MinimumFrequency::Time {
+                time: Uint128::from(10_u16),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
 
@@ -428,8 +377,9 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
+            minimal_withdrawal_frequency: MinimumFrequency::Time {
+                time: Uint128::from(10_u16),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -458,8 +408,9 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
+            minimal_withdrawal_frequency: MinimumFrequency::Time {
+                time: Uint128::from(10_u16),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -490,8 +441,9 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
+            minimal_withdrawal_frequency: MinimumFrequency::Time {
+                time: Uint128::from(10_u16),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -527,8 +479,9 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
+            minimal_withdrawal_frequency: MinimumFrequency::Time {
+                time: Uint128::from(10_u16),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -558,8 +511,9 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
+            minimal_withdrawal_frequency: MinimumFrequency::Time {
+                time: Uint128::from(10_u16),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -589,8 +543,9 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
+            minimal_withdrawal_frequency: MinimumFrequency::Time {
+                time: Uint128::from(10_u16),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -628,8 +583,9 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(20_u64),
             },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
+            minimal_withdrawal_frequency: MinimumFrequency::Time {
+                time: Uint128::from(10_u16),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -659,8 +615,9 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
-            minimal_withdrawal_frequency: Some(Uint128::from(86_400_u64)),
-            contract_key: None,
+            minimal_withdrawal_frequency: MinimumFrequency::Time {
+                time: Uint128::from(10_u16),
+            },
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {

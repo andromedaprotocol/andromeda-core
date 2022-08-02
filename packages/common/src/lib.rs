@@ -64,7 +64,7 @@ pub fn unwrap_or_err<T>(val_opt: &Option<T>, err: ContractError) -> Result<&T, C
 }
 
 pub fn query_primitive<T>(
-    querrier: QuerierWrapper,
+    querier: QuerierWrapper,
     contract_address: String,
     key: Option<String>,
 ) -> Result<T, ContractError>
@@ -72,7 +72,7 @@ where
     T: DeserializeOwned,
 {
     let message = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(&key)?)));
-    let resp: T = querrier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+    let resp: T = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: contract_address,
         msg: encode_binary(&message)?,
     }))?;
