@@ -9,15 +9,24 @@
   ],
   "properties": {
     "coin": {
+      "description": "Sets the accepted coin denom",
       "type": "string"
     },
     "limit": {
-      "$ref": "#/definitions/Uint128"
+      "description": "Sets the withdrawal limit in terms of amount",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
     },
     "minimal_withdrawal_frequency": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+      "description": "Sets the minimum amount of time required between withdrawals in seconds",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
     }
   },
   "definitions": {

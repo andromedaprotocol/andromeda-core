@@ -36,11 +36,13 @@
         "update_lock": {
           "type": "object",
           "required": [
-            "lock"
+            "lock_time"
           ],
           "properties": {
-            "lock": {
-              "type": "boolean"
+            "lock_time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           }
         }

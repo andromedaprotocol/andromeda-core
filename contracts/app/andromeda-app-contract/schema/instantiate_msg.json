@@ -5,7 +5,6 @@
   "required": [
     "app",
     "name",
-    "operators",
     "primitive_contract"
   ],
   "properties": {
@@ -17,12 +16,6 @@
     },
     "name": {
       "type": "string"
-    },
-    "operators": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
     },
     "primitive_contract": {
       "type": "string"

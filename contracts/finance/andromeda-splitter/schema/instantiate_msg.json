@@ -6,6 +6,14 @@
     "recipients"
   ],
   "properties": {
+    "lock_time": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
     "modules": {
       "type": [
         "array",

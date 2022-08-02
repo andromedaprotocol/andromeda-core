@@ -9,7 +9,10 @@
   ],
   "properties": {
     "nft_contract": {
-      "type": "string"
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "reward": {
       "$ref": "#/definitions/Coin"
