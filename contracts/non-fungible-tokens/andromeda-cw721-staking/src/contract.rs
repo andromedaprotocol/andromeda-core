@@ -15,7 +15,7 @@ use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 use cw_utils::nonpayable;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_cw721_staking";
+const CONTRACT_NAME: &str = "crates.io:andromeda-cw721-staking";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use semver::Version;

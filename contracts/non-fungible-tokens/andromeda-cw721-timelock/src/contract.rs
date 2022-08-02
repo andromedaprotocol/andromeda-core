@@ -22,7 +22,7 @@ const ONE_DAY: u64 = 86_400;
 const ONE_YEAR: u64 = 31_536_000;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_cw721_timelock";
+const CONTRACT_NAME: &str = "crates.io:andromeda-cw721-timelock";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]

@@ -22,7 +22,7 @@ use cw_asset::AssetInfo;
 use terraswap::asset::AssetInfo as TerraSwapAssetInfo;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_mirror_wrapped_cdp";
+const CONTRACT_NAME: &str = "crates.io:andromeda-mirror-wrapped-cdp";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

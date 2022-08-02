@@ -27,7 +27,7 @@ use cw721::ContractInfoResponse;
 use cw721_base::{state::TokenInfo, Cw721Contract};
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
-const CONTRACT_NAME: &str = "crates.io:andromeda_cw721";
+const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

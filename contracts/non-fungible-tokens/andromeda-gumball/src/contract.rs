@@ -22,7 +22,7 @@ use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
 
-const CONTRACT_NAME: &str = "crates.io:andromeda_gumball";
+const CONTRACT_NAME: &str = "crates.io:andromeda-gumball";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub(crate) const MAX_MINT_LIMIT: u32 = 100;

@@ -25,7 +25,7 @@ use semver::Version;
 const ORIGINAL_TOKEN_ID: &str = "original_token_id";
 const ORIGINAL_TOKEN_ADDRESS: &str = "original_token_address";
 
-const CONTRACT_NAME: &str = "crates.io:andromeda_wrapped_cw721";
+const CONTRACT_NAME: &str = "crates.io:andromeda-wrapped-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -40,7 +40,7 @@ use cw_asset::{Asset, AssetInfo, AssetUnchecked};
 use std::cmp;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_astroport";
+const CONTRACT_NAME: &str = "crates.io:andromeda-astroport";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]

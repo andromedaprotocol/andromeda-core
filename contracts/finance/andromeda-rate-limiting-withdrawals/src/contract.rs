@@ -21,7 +21,7 @@ use cw_utils::{nonpayable, one_coin};
 use semver::Version;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-splitter";
+const CONTRACT_NAME: &str = "crates.io:andromeda-rate-limiting-withdrawals";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
