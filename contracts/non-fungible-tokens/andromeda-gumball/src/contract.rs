@@ -7,6 +7,7 @@ use andromeda_non_fungible_tokens::{
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
     gumball::{ExecuteMsg, InstantiateMsg, NumberOfNftsResponse, QueryMsg, StatusResponse},
 };
+
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
@@ -293,7 +294,9 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
     let random_response: LatestRandomResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: randomness_source,
-            msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
+            // msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
+            // Terrand hasn't upgraded to cosmwasm-std 1, it's still at 0.16
+            msg: encode_binary(&"TODO")?,
         }))?;
     let randomness = Binary::to_base64(&random_response.randomness);
     let vec = randomness.into_bytes();
