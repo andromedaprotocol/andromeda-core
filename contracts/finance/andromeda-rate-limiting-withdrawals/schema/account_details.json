@@ -17,6 +17,7 @@
     },
     "latest_withdrawal": {
       "description": "Timestamp of latest withdrawal",
+
       "anyOf": [
         {
           "$ref": "#/definitions/Timestamp"

@@ -402,6 +402,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-rate-limiting-withdrawals"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-finance",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-rates"
 version = "0.1.0"
 dependencies = [
