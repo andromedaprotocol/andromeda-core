@@ -1,5 +1,5 @@
 use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
+    ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     OrderBy,
 };
 use cosmwasm_std::{Addr, Timestamp, Uint128};
@@ -8,7 +8,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub modules: Option<Vec<Module>>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
