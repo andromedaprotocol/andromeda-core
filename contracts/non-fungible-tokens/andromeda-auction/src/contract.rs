@@ -8,13 +8,13 @@ use andromeda_non_fungible_tokens::auction::{
     InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
-    OrderBy,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    rates::get_tax_amount, require, Funds, OrderBy,
 };
 use cosmwasm_std::{
-    attr, coins, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage, Uint128,
-    WasmMsg, WasmQuery,
+    attr, coins, entry_point, from_binary, Addr, Api, BankMsg, Binary, BlockInfo, Coin, CosmosMsg,
+    Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage,
+    Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -439,14 +439,20 @@ fn execute_claim(
             .add_attribute("auction_id", token_auction_state.auction_id));
     }
 
+    // Calculate the funds to be received after tax
+    let after_tax_payment = purchase_tokens(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        &info,
+        token_auction_state.clone(),
+    )?;
+
     Ok(Response::new()
         // Send funds to the original owner.
         .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: token_auction_state.owner,
-            amount: coins(
-                token_auction_state.high_bidder_amount.u128(),
-                token_auction_state.coin_denom.clone(),
-            ),
+            amount: vec![after_tax_payment],
         }))
         // Send NFT to auction winner.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -463,6 +469,44 @@ fn execute_claim(
         .add_attribute("recipient", &token_auction_state.high_bidder_addr)
         .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
         .add_attribute("auction_id", token_auction_state.auction_id))
+}
+
+fn purchase_tokens(
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    querier: &QuerierWrapper,
+    info: &MessageInfo,
+    state: TokenAuctionState,
+) -> Result<Coin, ContractError> {
+    // let token_auction_state = get_existing_token_auction_state(storage, &token_id, &token_address)?;
+    // CHECK :: The user has sent enough funds to cover the base fee (without any taxes).
+    let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
+
+    let mut total_tax_amount = Uint128::zero();
+
+    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
+        storage,
+        api,
+        querier,
+        info.sender.to_string(),
+        Funds::Native(total_cost),
+        encode_binary(&"")?,
+    )?;
+
+    let remaining_amount = remainder.try_get_coin()?;
+
+    let tax_amount = get_tax_amount(&msgs, state.high_bidder_amount, remaining_amount.amount);
+
+    // Calculate total tax
+    total_tax_amount += tax_amount;
+
+    // Deduct taxes from the highest bid
+    let after_tax_payment = Coin {
+        denom: state.coin_denom.clone(),
+        amount: state.high_bidder_amount - total_tax_amount,
+    };
+
+    Ok(after_tax_payment)
 }
 
 fn get_existing_token_auction_state(
