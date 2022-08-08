@@ -201,7 +201,7 @@ fn query_deducted_funds(
             .rate
             .validate(deps.api, &deps.querier, app_contract)?;
         let fee = calculate_fee(rate, &coin)?;
-        for reciever in rate_info.receivers.iter() {
+        for reciever in rate_info.recipients.iter() {
             if !rate_info.is_additive {
                 deduct_funds(&mut leftover_funds, &fee)?;
                 event = event.add_attribute("deducted", fee.to_string());
@@ -281,7 +281,7 @@ mod tests {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: true,
                 description: Some("desc1".to_string()),
-                receivers: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::Addr("".into())],
             },
             RateInfo {
                 rate: Rate::Flat(Coin {
@@ -290,7 +290,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc2".to_string()),
-                receivers: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::Addr("".into())],
             },
         ];
         let msg = InstantiateMsg {
@@ -323,7 +323,7 @@ mod tests {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: true,
                 description: Some("desc1".to_string()),
-                receivers: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::Addr("".into())],
             },
             RateInfo {
                 rate: Rate::Flat(Coin {
@@ -332,7 +332,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc2".to_string()),
-                receivers: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::Addr("".into())],
             },
         ];
         let msg = InstantiateMsg { rates: vec![] };
@@ -362,13 +362,13 @@ mod tests {
                 }),
                 is_additive: true,
                 description: Some("desc2".to_string()),
-                receivers: vec![Recipient::Addr("1".into())],
+                recipients: vec![Recipient::Addr("1".into())],
             },
             RateInfo {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: false,
                 description: Some("desc1".to_string()),
-                receivers: vec![Recipient::Addr("2".into())],
+                recipients: vec![Recipient::Addr("2".into())],
             },
             RateInfo {
                 rate: Rate::External(PrimitivePointer {
@@ -379,7 +379,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc3".to_string()),
-                receivers: vec![Recipient::Addr("3".into())],
+                recipients: vec![Recipient::Addr("3".into())],
             },
         ];
         let msg = InstantiateMsg { rates };
@@ -450,13 +450,13 @@ mod tests {
                 }),
                 is_additive: true,
                 description: Some("desc2".to_string()),
-                receivers: vec![Recipient::Addr("1".into())],
+                recipients: vec![Recipient::Addr("1".into())],
             },
             RateInfo {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: false,
                 description: Some("desc1".to_string()),
-                receivers: vec![Recipient::Addr("2".into())],
+                recipients: vec![Recipient::Addr("2".into())],
             },
             RateInfo {
                 rate: Rate::External(PrimitivePointer {
@@ -467,7 +467,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc3".to_string()),
-                receivers: vec![Recipient::Addr("3".into())],
+                recipients: vec![Recipient::Addr("3".into())],
             },
         ];
         let msg = InstantiateMsg { rates };
