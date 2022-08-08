@@ -440,7 +440,7 @@ fn execute_claim(
     }
 
     // Calculate the funds to be received after tax
-    let after_tax_payment = purchase_tokens(
+    let after_tax_payment = purchase_token(
         deps.storage,
         deps.api,
         &deps.querier,
@@ -471,15 +471,13 @@ fn execute_claim(
         .add_attribute("auction_id", token_auction_state.auction_id))
 }
 
-fn purchase_tokens(
+fn purchase_token(
     storage: &mut dyn Storage,
     api: &dyn Api,
     querier: &QuerierWrapper,
     info: &MessageInfo,
     state: TokenAuctionState,
 ) -> Result<Coin, ContractError> {
-    // let token_auction_state = get_existing_token_auction_state(storage, &token_id, &token_address)?;
-    // CHECK :: The user has sent enough funds to cover the base fee (without any taxes).
     let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
 
     let mut total_tax_amount = Uint128::zero();
