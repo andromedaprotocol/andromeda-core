@@ -1,7 +1,4 @@
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
@@ -10,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     /// The bootsrap contract to be used in the second phase.
-    pub bootstrap_contract: Option<AndrAddress>,
+    // pub bootstrap_contract: Option<AndrAddress>,
     /// Timestamp till when deposits can be made
     pub init_timestamp: u64,
     /// Number of seconds for which lockup deposits will be accepted
@@ -79,7 +76,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     /// Bootstrap Contract address to which tokens can be delegated to for bootstrapping TOKEN-NATIVE Pool.
-    pub bootstrap_contract_address: Option<String>,
+    // pub bootstrap_contract_address: Option<String>,
     /// Timestamp till when deposits can be made.
     pub init_timestamp: u64,
     /// Number of seconds for which lockup deposits will be accepted.

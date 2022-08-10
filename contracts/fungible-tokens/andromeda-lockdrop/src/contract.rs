@@ -57,7 +57,7 @@ pub fn instantiate(
     )?;
 
     let config = Config {
-        bootstrap_contract_address: msg.bootstrap_contract,
+        // bootstrap_contract_address: msg.bootstrap_contract,
         init_timestamp: msg.init_timestamp,
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
@@ -354,22 +354,22 @@ pub fn execute_enable_claims(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let contract = ADOContract::default();
+    // let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
-    // If bootstrap is specified then only it can enable claims.
-    if let Some(bootstrap_contract_address) = &config.bootstrap_contract_address {
-        let app_contract = contract.get_app_contract(deps.storage)?;
-        let bootstrap_contract_address =
-            bootstrap_contract_address.get_address(deps.api, &deps.querier, app_contract)?;
+    // // If bootstrap is specified then only it can enable claims.
+    // if let Some(bootstrap_contract_address) = &config.bootstrap_contract_address {
+    //     let app_contract = contract.get_app_contract(deps.storage)?;
+    //     let bootstrap_contract_address =
+    //         bootstrap_contract_address.get_address(deps.api, &deps.querier, app_contract)?;
 
-        // CHECK :: ONLY BOOTSTRAP CONTRACT CAN CALL THIS FUNCTION
-        require(
-            info.sender == bootstrap_contract_address,
-            ContractError::Unauthorized {},
-        )?;
-    }
+    //     // CHECK :: ONLY BOOTSTRAP CONTRACT CAN CALL THIS FUNCTION
+    //     require(
+    //         info.sender == bootstrap_contract_address,
+    //         ContractError::Unauthorized {},
+    //     )?;
+    // }
 
     // CHECK :: Claims can only be enabled after the deposit / withdrawal windows are closed
     require(
@@ -413,11 +413,11 @@ pub fn execute_deposit_to_bootstrap(
         ContractError::ClaimsAlreadyAllowed {},
     )?;
 
-    // CHECK :: Bootstrap contract address should be set
-    require(
-        config.bootstrap_contract_address.is_some(),
-        ContractError::NoSavedBootstrapContract {},
-    )?;
+    // // CHECK :: Bootstrap contract address should be set
+    // require(
+    //     config.bootstrap_contract_address.is_some(),
+    //     ContractError::NoSavedBootstrapContract {},
+    // )?;
 
     let mut user_info = USER_INFO
         .may_load(deps.storage, &user_address)?
@@ -555,16 +555,16 @@ fn execute_withdraw_proceeds(
 /// @dev Returns the contract's configuration
 pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let contract = ADOContract::default();
-    let app_contract = contract.get_app_contract(deps.storage)?;
-    let bootstrap_contract_address = config
-        .bootstrap_contract_address
-        .map(|a| a.get_address(deps.api, &deps.querier, app_contract))
-        // Flip Option<Result> to Result<Option>
-        .map_or(Ok(None), |v| v.map(Some));
+    // let contract = ADOContract::default();
+    // let app_contract = contract.get_app_contract(deps.storage)?;
+    // let bootstrap_contract_address = config
+    //     .bootstrap_contract_address
+    //     .map(|a| a.get_address(deps.api, &deps.querier, app_contract))
+    //     // Flip Option<Result> to Result<Option>
+    //     .map_or(Ok(None), |v| v.map(Some));
 
     Ok(ConfigResponse {
-        bootstrap_contract_address: bootstrap_contract_address?,
+        // bootstrap_contract_address: bootstrap_contract_address?,
         init_timestamp: config.init_timestamp,
         deposit_window: config.deposit_window,
         withdrawal_window: config.withdrawal_window,

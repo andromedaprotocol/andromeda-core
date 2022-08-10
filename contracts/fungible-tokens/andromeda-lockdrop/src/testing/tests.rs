@@ -12,7 +12,7 @@ use andromeda_fungible_tokens::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };
-use common::{app::AndrAddress, error::ContractError};
+use common::error::ContractError;
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 const MOCK_INCENTIVE_TOKEN: &str = "mock_incentive_token";
@@ -25,7 +25,7 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
     let info = mock_info("owner", &[]);
 
     let msg = InstantiateMsg {
-        bootstrap_contract: None,
+        // bootstrap_contract: None,
         init_timestamp: env.block.time.seconds(),
         deposit_window: DEPOSIT_WINDOW,
         withdrawal_window: WITHDRAWAL_WINDOW,
@@ -55,7 +55,7 @@ fn test_instantiate() {
 
     assert_eq!(
         ConfigResponse {
-            bootstrap_contract_address: None,
+            // bootstrap_contract_address: None,
             init_timestamp: mock_env().block.time.seconds(),
             deposit_window: DEPOSIT_WINDOW,
             withdrawal_window: WITHDRAWAL_WINDOW,
@@ -87,7 +87,7 @@ fn test_instantiate_init_timestamp_past() {
     let info = mock_info("owner", &[]);
 
     let msg = InstantiateMsg {
-        bootstrap_contract: None,
+        // bootstrap_contract: None,
         init_timestamp: env.block.time.seconds() - 1,
         deposit_window: 5,
         withdrawal_window: 2,
@@ -113,7 +113,7 @@ fn test_instantiate_init_deposit_window_zero() {
     let info = mock_info("owner", &[]);
 
     let msg = InstantiateMsg {
-        bootstrap_contract: None,
+        // bootstrap_contract: None,
         init_timestamp: env.block.time.seconds() + 1,
         deposit_window: 0,
         withdrawal_window: 2,
@@ -133,7 +133,7 @@ fn test_instantiate_init_withdrawal_window_zero() {
     let info = mock_info("owner", &[]);
 
     let msg = InstantiateMsg {
-        bootstrap_contract: None,
+        // bootstrap_contract: None,
         init_timestamp: env.block.time.seconds() + 1,
         deposit_window: 5,
         withdrawal_window: 0,
@@ -153,7 +153,7 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
     let info = mock_info("owner", &[]);
 
     let msg = InstantiateMsg {
-        bootstrap_contract: None,
+        // bootstrap_contract: None,
         init_timestamp: env.block.time.seconds() + 1,
         deposit_window: 2,
         withdrawal_window: 5,
@@ -719,58 +719,58 @@ fn test_enable_claims_no_bootstrap_specified() {
     assert_eq!(ContractError::ClaimsAlreadyAllowed {}, res.unwrap_err());
 }
 
-#[test]
-fn test_enable_claims_bootstrap_specified() {
-    let mut deps = mock_dependencies();
-    let msg = InstantiateMsg {
-        bootstrap_contract: Some(AndrAddress {
-            identifier: MOCK_BOOTSTRAP_CONTRACT.to_owned(),
-        }),
-        init_timestamp: mock_env().block.time.seconds(),
-        deposit_window: DEPOSIT_WINDOW,
-        withdrawal_window: WITHDRAWAL_WINDOW,
-        incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
-        native_denom: "uusd".to_string(),
-    };
+// #[test]
+// fn test_enable_claims_bootstrap_specified() {
+//     let mut deps = mock_dependencies();
+//     let msg = InstantiateMsg {
+//         // bootstrap_contract: Some(AndrAddress {
+//         //     identifier: MOCK_BOOTSTRAP_CONTRACT.to_owned(),
+//         // }),
+//         init_timestamp: mock_env().block.time.seconds(),
+//         deposit_window: DEPOSIT_WINDOW,
+//         withdrawal_window: WITHDRAWAL_WINDOW,
+//         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
+//         native_denom: "uusd".to_string(),
+//     };
 
-    let info = mock_info("owner", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+//     let info = mock_info("owner", &[]);
+//     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let msg = ExecuteMsg::EnableClaims {};
+//     let msg = ExecuteMsg::EnableClaims {};
 
-    let mut env = mock_env();
-    env.block.time = env
-        .block
-        .time
-        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
+//     let mut env = mock_env();
+//     env.block.time = env
+//         .block
+//         .time
+//         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
 
-    let info = mock_info("not_bootstrap_contract", &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+//     let info = mock_info("not_bootstrap_contract", &[]);
+//     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
-    assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
+//     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = mock_info(MOCK_BOOTSTRAP_CONTRACT, &[]);
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+//     let info = mock_info(MOCK_BOOTSTRAP_CONTRACT, &[]);
+//     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-    assert_eq!(
-        Response::new().add_attribute("action", "enable_claims"),
-        res
-    );
+//     assert_eq!(
+//         Response::new().add_attribute("action", "enable_claims"),
+//         res
+//     );
 
-    assert_eq!(
-        State {
-            total_delegated: Uint128::zero(),
-            total_native_locked: Uint128::zero(),
-            are_claims_allowed: true
-        },
-        STATE.load(deps.as_ref().storage).unwrap()
-    );
+//     assert_eq!(
+//         State {
+//             total_delegated: Uint128::zero(),
+//             total_native_locked: Uint128::zero(),
+//             are_claims_allowed: true
+//         },
+//         STATE.load(deps.as_ref().storage).unwrap()
+//     );
 
-    // Try to do it again.
-    let res = execute(deps.as_mut(), env, info, msg);
+//     // Try to do it again.
+//     let res = execute(deps.as_mut(), env, info, msg);
 
-    assert_eq!(ContractError::ClaimsAlreadyAllowed {}, res.unwrap_err());
-}
+//     assert_eq!(ContractError::ClaimsAlreadyAllowed {}, res.unwrap_err());
+// }
 
 #[test]
 fn test_enable_claims_phase_not_ended() {
@@ -1006,26 +1006,26 @@ fn test_deposit_to_bootstrap_withdrawal_not_over() {
     assert_eq!(ContractError::PhaseOngoing {}, res.unwrap_err());
 }
 
-#[test]
-fn test_deposit_to_bootstrap_contract_not_specified() {
-    let mut deps = mock_dependencies();
-    init(deps.as_mut()).unwrap();
+// #[test]
+// fn test_deposit_to_bootstrap_contract_not_specified() {
+//     let mut deps = mock_dependencies();
+//     init(deps.as_mut()).unwrap();
 
-    let msg = ExecuteMsg::DepositToBootstrap {
-        amount: Uint128::new(100),
-    };
-    let info = mock_info("owner", &[]);
+//     let msg = ExecuteMsg::DepositToBootstrap {
+//         amount: Uint128::new(100),
+//     };
+//     let info = mock_info("owner", &[]);
 
-    let mut env = mock_env();
-    env.block.time = env
-        .block
-        .time
-        .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
+//     let mut env = mock_env();
+//     env.block.time = env
+//         .block
+//         .time
+//         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
 
-    let res = execute(deps.as_mut(), env, info, msg);
+//     let res = execute(deps.as_mut(), env, info, msg);
 
-    assert_eq!(ContractError::NoSavedBootstrapContract {}, res.unwrap_err());
-}
+//     assert_eq!(ContractError::NoSavedBootstrapContract {}, res.unwrap_err());
+// }
 
 #[test]
 fn test_deposit_to_bootstrap_claims_allowed() {
@@ -1059,9 +1059,9 @@ fn test_deposit_to_bootstrap_claims_allowed() {
 fn test_deposit_to_bootstrap() {
     let mut deps = mock_dependencies();
     let msg = InstantiateMsg {
-        bootstrap_contract: Some(AndrAddress {
-            identifier: MOCK_BOOTSTRAP_CONTRACT.to_owned(),
-        }),
+        // bootstrap_contract: Some(AndrAddress {
+        //     identifier: MOCK_BOOTSTRAP_CONTRACT.to_owned(),
+        // }),
         init_timestamp: mock_env().block.time.seconds(),
         deposit_window: DEPOSIT_WINDOW,
         withdrawal_window: WITHDRAWAL_WINDOW,
