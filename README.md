@@ -80,7 +80,7 @@ All contracts and packages can be built by running the build script:
 
 This will build all contract `.wasm` files in to the `artifacts` directory at the project root.
 
-To build a single contract, you need to have [wasm-opt] (https://command-not-found.com/wasm-opt)
+To build a single contract, you need to have [wasm-opt](https://command-not-found.com/wasm-opt)
 Then run:
 
 `./build.sh [contract name]` or `./build.sh [catogory name]`
