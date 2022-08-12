@@ -1,6 +1,6 @@
 # Andromeda Digital Objects
 
-A monorepository containing all the contracts and packages related to Andromeda Protocol using the [Juno](https://junonetwork.io) blockchain. Full documentation for all the contracts can be found [here](https://app.gitbook.com/@andromedaprotocol/s/andromeda/).
+A monorepository containing all the contracts and packages related to Andromeda Protocol. Full documentation for all the contracts can be found [here](https://app.gitbook.com/@andromedaprotocol/s/andromeda/).
 
 ## ADO Categories 
 
@@ -15,7 +15,7 @@ The contracts are classified based on their functionality. Currently we have 8 d
 | [fungible tokens](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/fungible-tokens)       | Contracts that integrate with fungible tokens (CW-20 tokens).|
 | [non-fungible-tokens](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens)         | Contacts that integrate with   non-funible toknes (NFTs).|
 | [modules](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/modules) |Andromeda modules that are attached to other ADOs to extend functionality.|
- | [defunct](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/defunct) |Andromeda contracts that are no longer functional since the terra crash.|
+ | [defunct](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/defunct) |Andromeda contracts that are no longer functional.|
 
 
 
@@ -83,17 +83,19 @@ This will build all contract `.wasm` files in to the `artifacts` directory at th
 To build a single contract, you need to have [wasm-opt](https://command-not-found.com/wasm-opt)
 Then run:
 
-`./build.sh [contract name]` or `./build.sh [catogory name]`
+`./build.sh [contract name]` or `./build.sh [catogory name]` 
 
 
 
 Examples:
 
 `./build.sh andromda vault` to build the vault contract.
-
 or
-
 `./build.sh finance` to build all contracts under the finance category.
+
+They can also be chained to build multiple directories at the same time:
+
+`./build.sh andromeda_app non-fungible-tokens` to build the app contract and all contracts under the non-fungible-tokens category.
 
 ### Formatting
 
