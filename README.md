@@ -1,4 +1,7 @@
-# Andromeda Digital Objects
+<p>&nbsp;</p>
+<p align="center">
+<img src="" width=500>
+</p>
 
 A monorepository containing all the contracts and packages related to Andromeda Protocol. Full documentation for all the contracts can be found [here](https://app.gitbook.com/@andromedaprotocol/s/andromeda/).
 
