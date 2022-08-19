@@ -72,7 +72,7 @@ pub struct LatestRandomResponse {
     pub randomness: Binary,
     pub worker: String,
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct GumballMintMsg {
     /// Unique ID of the NFT
     pub token_id: String,

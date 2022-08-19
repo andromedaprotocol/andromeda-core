@@ -19,7 +19,7 @@ pub struct ADORecipient {
     pub msg: Option<Binary>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Recipient {
     /// An address that is not another ADO. It is assumed that it is a valid address.
