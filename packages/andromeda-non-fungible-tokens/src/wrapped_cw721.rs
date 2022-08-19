@@ -18,7 +18,7 @@ pub struct Cw721Specification {
     pub modules: Option<Vec<Module>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     pub primitive_contract: String,
     /// The cw721 contract can be instantiated or an existing address can be used. In the case that
