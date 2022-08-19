@@ -42,6 +42,26 @@
       "additionalProperties": false
     },
     {
+      "type": "object",
+      "required": [
+        "update_required_coin"
+      ],
+      "properties": {
+        "update_required_coin": {
+          "type": "object",
+          "required": [
+            "new_coin"
+          ],
+          "properties": {
+            "new_coin": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Sets price, max amount per wallet, and recipient",
       "type": "object",
       "required": [
@@ -434,18 +454,18 @@
     "MetadataAttribute": {
       "type": "object",
       "required": [
-        "key",
+        "trait_type",
         "value"
       ],
       "properties": {
-        "display_label": {
+        "display_type": {
           "description": "The string used to display the attribute, if none is provided the `key` field can be used",
           "type": [
             "string",
             "null"
           ]
         },
-        "key": {
+        "trait_type": {
           "description": "The key for the attribute",
           "type": "string"
         },
@@ -454,18 +474,6 @@
           "type": "string"
         }
       }
-    },
-    "MetadataType": {
-      "description": "Enum used to define the type of metadata held by a token",
-      "type": "string",
-      "enum": [
-        "image",
-        "video",
-        "audio",
-        "domain",
-        "json",
-        "other"
-      ]
     },
     "Module": {
       "description": "Modules can be instantiated in two different ways New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded Address - Provide an address for an already instantiated module contract A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
@@ -484,29 +492,6 @@
         },
         "module_type": {
           "type": "string"
-        }
-      }
-    },
-    "PrimitivePointer": {
-      "type": "object",
-      "required": [
-        "address"
-      ],
-      "properties": {
-        "address": {
-          "description": "The address of the primitive contract.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/AndrAddress"
-            }
-          ]
-        },
-        "key": {
-          "description": "The optional key for the stored data.",
-          "type": [
-            "string",
-            "null"
-          ]
         }
       }
     },
@@ -540,82 +525,31 @@
       ]
     },
     "TokenExtension": {
+      "description": "https://docs.opensea.io/docs/metadata-standards Replicates OpenSea Metadata Standards",
       "type": "object",
       "required": [
-        "archived",
+        "attributes",
+        "image",
         "name",
         "publisher"
       ],
       "properties": {
-        "archived": {
-          "description": "Whether the token is archived or not",
-          "type": "boolean"
-        },
-        "description": {
-          "description": "An optional description of the token",
+        "animation_url": {
+          "description": "A URL to any multi-media attachments",
           "type": [
             "string",
             "null"
           ]
         },
-        "metadata": {
-          "description": "The metadata of the token (if it exists)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/TokenMetadata"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "name": {
-          "description": "The name of the token",
-          "type": "string"
-        },
-        "publisher": {
-          "description": "The original publisher of the token (immutable)",
-          "type": "string"
-        },
-        "transfer_agreement": {
-          "description": "The transfer agreement of the token (if it exists)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/TransferAgreement"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
-    },
-    "TokenMetadata": {
-      "type": "object",
-      "required": [
-        "data_type"
-      ],
-      "properties": {
         "attributes": {
-          "description": "On chain attributes related to the token (basic key/value)",
-          "type": [
-            "array",
-            "null"
-          ],
+          "description": "The metadata of the token (if it exists)",
+          "type": "array",
           "items": {
             "$ref": "#/definitions/MetadataAttribute"
           }
         },
-        "data_type": {
-          "description": "The metadata type",
-          "allOf": [
-            {
-              "$ref": "#/definitions/MetadataType"
-            }
-          ]
-        },
-        "data_url": {
-          "description": "A URL to any off-chain data relating to the token, the response from this URL should match the defined `data_type` of the token",
+        "description": {
+          "description": "An optional description of the token",
           "type": [
             "string",
             "null"
@@ -627,28 +561,32 @@
             "string",
             "null"
           ]
-        }
-      }
-    },
-    "TransferAgreement": {
-      "description": "A struct used to represent an agreed transfer of a token. The `purchaser` may use the `Transfer` message for this token as long as funds are provided equalling the `amount` defined in the agreement.",
-      "type": "object",
-      "required": [
-        "amount",
-        "purchaser"
-      ],
-      "properties": {
-        "amount": {
-          "description": "The amount required for the purchaser to transfer ownership of the token",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Value_for_Coin"
-            }
+        },
+        "image": {
+          "description": "URL to token image",
+          "type": "string"
+        },
+        "image_data": {
+          "description": "Raw SVG image data",
+          "type": [
+            "string",
+            "null"
           ]
         },
-        "purchaser": {
-          "description": "The address of the purchaser",
+        "name": {
+          "description": "The name of the token",
           "type": "string"
+        },
+        "publisher": {
+          "description": "The original publisher of the token",
+          "type": "string"
+        },
+        "youtube_url": {
+          "description": "A URL to a related YouTube video",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },
@@ -659,36 +597,6 @@
     "Uint64": {
       "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
       "type": "string"
-    },
-    "Value_for_Coin": {
-      "oneOf": [
-        {
-          "description": "The raw value.",
-          "type": "object",
-          "required": [
-            "raw"
-          ],
-          "properties": {
-            "raw": {
-              "$ref": "#/definitions/Coin"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "The pointer to the primitive. This SHOULD be of the same underlying type as `T`. For example, if `T` is `String`, then `PrimitivePointer` should point to a Primitive::String(..). This cannot be enforced at compile time though, so it is up to the discretion of the user.",
-          "type": "object",
-          "required": [
-            "pointer"
-          ],
-          "properties": {
-            "pointer": {
-              "$ref": "#/definitions/PrimitivePointer"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
     },
     "Withdrawal": {
       "type": "object",

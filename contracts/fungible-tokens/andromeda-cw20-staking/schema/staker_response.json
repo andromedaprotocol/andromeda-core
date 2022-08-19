@@ -4,14 +4,25 @@
   "type": "object",
   "required": [
     "address",
+    "balance",
     "pending_rewards",
     "share"
   ],
   "properties": {
     "address": {
+      "description": "Address of the staker.",
       "type": "string"
     },
+    "balance": {
+      "description": "The staker's balance of tokens.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
+    },
     "pending_rewards": {
+      "description": "The staker's pending rewards represented as [(token_1, amount_1), ..., (token_n, amount_n)]",
       "type": "array",
       "items": {
         "type": "array",
@@ -28,7 +39,12 @@
       }
     },
     "share": {
-      "$ref": "#/definitions/Uint128"
+      "description": "The staker's share of the tokens.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
     }
   },
   "definitions": {

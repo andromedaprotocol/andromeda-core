@@ -611,18 +611,18 @@
     "MetadataAttribute": {
       "type": "object",
       "required": [
-        "key",
+        "trait_type",
         "value"
       ],
       "properties": {
-        "display_label": {
+        "display_type": {
           "description": "The string used to display the attribute, if none is provided the `key` field can be used",
           "type": [
             "string",
             "null"
           ]
         },
-        "key": {
+        "trait_type": {
           "description": "The key for the attribute",
           "type": "string"
         },
@@ -631,18 +631,6 @@
           "type": "string"
         }
       }
-    },
-    "MetadataType": {
-      "description": "Enum used to define the type of metadata held by a token",
-      "type": "string",
-      "enum": [
-        "image",
-        "video",
-        "audio",
-        "domain",
-        "json",
-        "other"
-      ]
     },
     "MintMsg_for_TokenExtension": {
       "type": "object",
@@ -758,16 +746,28 @@
       ]
     },
     "TokenExtension": {
+      "description": "https://docs.opensea.io/docs/metadata-standards Replicates OpenSea Metadata Standards",
       "type": "object",
       "required": [
-        "archived",
+        "attributes",
+        "image",
         "name",
         "publisher"
       ],
       "properties": {
-        "archived": {
-          "description": "Whether the token is archived or not",
-          "type": "boolean"
+        "animation_url": {
+          "description": "A URL to any multi-media attachments",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "attributes": {
+          "description": "The metadata of the token (if it exists)",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MetadataAttribute"
+          }
         },
         "description": {
           "description": "An optional description of the token",
@@ -776,15 +776,22 @@
             "null"
           ]
         },
-        "metadata": {
-          "description": "The metadata of the token (if it exists)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/TokenMetadata"
-            },
-            {
-              "type": "null"
-            }
+        "external_url": {
+          "description": "A URL to the token's source",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "image": {
+          "description": "URL to token image",
+          "type": "string"
+        },
+        "image_data": {
+          "description": "Raw SVG image data",
+          "type": [
+            "string",
+            "null"
           ]
         },
         "name": {
@@ -792,55 +799,11 @@
           "type": "string"
         },
         "publisher": {
-          "description": "The original publisher of the token (immutable)",
+          "description": "The original publisher of the token",
           "type": "string"
         },
-        "transfer_agreement": {
-          "description": "The transfer agreement of the token (if it exists)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/TransferAgreement"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
-    },
-    "TokenMetadata": {
-      "type": "object",
-      "required": [
-        "data_type"
-      ],
-      "properties": {
-        "attributes": {
-          "description": "On chain attributes related to the token (basic key/value)",
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "$ref": "#/definitions/MetadataAttribute"
-          }
-        },
-        "data_type": {
-          "description": "The metadata type",
-          "allOf": [
-            {
-              "$ref": "#/definitions/MetadataType"
-            }
-          ]
-        },
-        "data_url": {
-          "description": "A URL to any off-chain data relating to the token, the response from this URL should match the defined `data_type` of the token",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "external_url": {
-          "description": "A URL to the token's source",
+        "youtube_url": {
+          "description": "A URL to a related YouTube video",
           "type": [
             "string",
             "null"
