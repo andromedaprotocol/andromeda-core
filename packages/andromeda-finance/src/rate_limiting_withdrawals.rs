@@ -3,7 +3,7 @@ use cosmwasm_std::{Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 /// Keeps track of the account's balance and time of latest withdrawal
 pub struct AccountDetails {
     /// Account balance, no need for denom since only one is allowed
@@ -11,7 +11,7 @@ pub struct AccountDetails {
     /// Timestamp of latest withdrawal
     pub latest_withdrawal: Option<Timestamp>,
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct CoinAndLimit {
     /// Sets the accepted coin denom
     pub coin: String,
@@ -19,7 +19,7 @@ pub struct CoinAndLimit {
     pub limit: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct CoinAllowance {
     /// Sets the accepted coin denom
     pub coin: String,
@@ -29,7 +29,7 @@ pub struct CoinAllowance {
     pub minimal_withdrawal_frequency: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ContractAndKey {
     pub contract_address: String,
     pub key: Option<String>,
@@ -42,7 +42,7 @@ pub struct InstantiateMsg {
     pub modules: Option<Vec<Module>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub enum MinimumFrequency {
     Time { time: Uint128 },
     AddressAndKey { address_and_key: ContractAndKey },
@@ -60,7 +60,7 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),

@@ -61,7 +61,7 @@ pub enum Rate {
     External(PrimitivePointer),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 // This is added such that both Rate::Flat and Rate::Percent have the same level of nesting which
 // makes it easier to work with on the frontend.
 pub struct PercentRate {

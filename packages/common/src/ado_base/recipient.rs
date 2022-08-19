@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 /// ADOs use a default Receive message for handling funds,
 /// this struct states that the recipient is an ADO and may attach the data field to the Receive message
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ADORecipient {
     /// Addr can also be a human-readable identifier used in a app contract.
     pub address: AndrAddress,

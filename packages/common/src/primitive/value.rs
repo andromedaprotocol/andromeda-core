@@ -25,7 +25,7 @@ where
     Pointer(PrimitivePointer),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct PrimitivePointer {
     /// The address of the primitive contract.
     pub address: AndrAddress,

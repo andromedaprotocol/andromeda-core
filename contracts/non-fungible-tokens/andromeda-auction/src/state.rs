@@ -37,7 +37,7 @@ pub struct Purchase {
     pub purchaser: String,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct AuctionInfo {
     pub auction_ids: Vec<Uint128>,
     pub token_address: String,

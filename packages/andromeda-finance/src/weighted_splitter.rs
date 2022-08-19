@@ -78,7 +78,7 @@ pub struct GetSplitterConfigResponse {
 }
 /// In addition to returning a specific recipient's weight, this function also returns the total weight of all recipients.
 /// This serves to put the user's weight into perspective.
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema)]
 pub struct GetUserWeightResponse {
     pub weight: Uint128,
     pub total_weight: Uint128,

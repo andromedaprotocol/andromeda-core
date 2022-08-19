@@ -34,7 +34,7 @@ pub struct TransferAgreement {
     pub purchaser: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub struct MetadataAttribute {
     /// The key for the attribute
     pub trait_type: String,
@@ -46,7 +46,7 @@ pub struct MetadataAttribute {
 
 /// https://docs.opensea.io/docs/metadata-standards
 /// Replicates OpenSea Metadata Standards
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub struct TokenExtension {
     /// The name of the token
     pub name: String,
