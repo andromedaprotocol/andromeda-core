@@ -14,7 +14,7 @@ use common::{
 use cosmwasm_std::{
     attr, coins, entry_point, from_binary, Addr, Api, BankMsg, Binary, BlockInfo, Coin, CosmosMsg,
     Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage,
-    Uint128, WasmMsg, WasmQuery,
+    SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -449,10 +449,11 @@ fn execute_claim(
     )?;
 
     Ok(Response::new()
+        .add_submessages(after_tax_payment.1)
         // Send funds to the original owner.
         .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: token_auction_state.owner,
-            amount: vec![after_tax_payment],
+            amount: vec![after_tax_payment.0],
         }))
         // Send NFT to auction winner.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -477,7 +478,7 @@ fn purchase_token(
     querier: &QuerierWrapper,
     info: &MessageInfo,
     state: TokenAuctionState,
-) -> Result<Coin, ContractError> {
+) -> Result<(Coin, Vec<SubMsg>), ContractError> {
     let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
 
     let mut total_tax_amount = Uint128::zero();
@@ -504,7 +505,7 @@ fn purchase_token(
         amount: state.high_bidder_amount - total_tax_amount,
     };
 
-    Ok(after_tax_payment)
+    Ok((after_tax_payment, msgs))
 }
 
 fn get_existing_token_auction_state(
