@@ -42,7 +42,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Cw20HookMsg {
     /// Stake the sent tokens. Address must match the `staking_token` given on instantiation. The user's pending
@@ -52,7 +52,7 @@ pub enum Cw20HookMsg {
     UpdateGlobalIndex {},
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
@@ -142,7 +142,7 @@ impl RewardTokenUnchecked {
     }
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 pub enum RewardType {
     Allocated {
         allocation_config: AllocationConfig,
@@ -166,7 +166,7 @@ impl fmt::Display for RewardToken {
     }
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 pub struct AllocationInfo {
     /// The allocation config, this is immutable.
     pub config: AllocationConfig,
@@ -174,7 +174,7 @@ pub struct AllocationInfo {
     pub state: AllocationState,
 }
 
-#[derive(Copy, Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Copy, Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 pub struct AllocationConfig {
     /// Timestamp from which Rewards will start getting accrued against the staked LP tokens
     pub init_timestamp: u64,
@@ -188,7 +188,7 @@ pub struct AllocationConfig {
     pub reward_increase: Option<Decimal>,
 }
 
-#[derive(Copy, Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Copy, Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 pub struct AllocationState {
     /// Keeps track of the distribution cycle
     pub current_cycle: u64,
@@ -198,7 +198,7 @@ pub struct AllocationState {
     pub last_distributed: u64,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 pub struct StakerResponse {
     /// Address of the staker.
     pub address: String,
@@ -210,6 +210,6 @@ pub struct StakerResponse {
     pub pending_rewards: Vec<(String, Uint128)>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum MigrateMsg {}

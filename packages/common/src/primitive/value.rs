@@ -8,7 +8,7 @@ use cosmwasm_std::{to_binary, Addr, Api, Coin, Decimal, QuerierWrapper, StdError
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Value<T>
 where
@@ -25,7 +25,7 @@ where
     Pointer(PrimitivePointer),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct PrimitivePointer {
     /// The address of the primitive contract.
     pub address: AndrAddress,

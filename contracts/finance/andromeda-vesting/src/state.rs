@@ -25,7 +25,7 @@ pub struct Config {
     pub unbonding_duration: Duration,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Batch {
     /// The amount of tokens in the batch
     pub amount: Uint128,

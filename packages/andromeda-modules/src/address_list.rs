@@ -2,7 +2,7 @@ use common::ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     pub is_inclusive: bool,
 }
@@ -37,7 +37,7 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct IncludesAddressResponse {
     /// Whether the address is included in the address list
     pub included: bool,
