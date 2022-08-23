@@ -27,7 +27,7 @@ use andromeda_testing::testing::mock_querier::{
     bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
     MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
 };
-use cw721::OwnerOfResponse;
+use cw721::{OwnerOfResponse, AllNftInfoResponse};
 use cw721_base::MintMsg;
 
 const MINTER: &str = "minter";
@@ -1032,4 +1032,59 @@ fn test_update_app_contract_invalid_module() {
         },
         res.unwrap_err()
     );
+}
+
+#[test]
+fn test_batch_mint() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info(MINTER, &[]);
+    let inst_msg = InstantiateMsg {
+        name: NAME.to_string(),
+        symbol: SYMBOL.to_string(),
+        minter: AndrAddress {
+            identifier: MINTER.to_string(),
+        },
+        modules: None,
+    };
+    let owner = "owner";
+    let mut mint_msgs: Vec<MintMsg<TokenExtension>> = Vec::new();
+
+    let mut i: i32 = 0;
+    while i < 5 {
+        let mint_msg = MintMsg {
+            token_id: i.to_string(),
+            owner: owner.to_string(),
+            token_uri: None,
+            extension: TokenExtension{ 
+                name: format!("Token {}", i.to_string()), 
+                publisher: owner.to_string(), 
+                description: None,
+                 attributes: vec![], 
+                 image: "Some URL".to_string(), 
+                 image_data: None, 
+                 external_url: None, 
+                 youtube_url: None, 
+                 animation_url: None 
+            },
+        };
+        i = i + 1;
+        mint_msgs.push(mint_msg)
+    }
+
+
+
+    instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
+
+    let msg: ExecuteMsg = ExecuteMsg::BatchMint { tokens: mint_msgs };
+
+    let _resp = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let mut i: i32 = 0;
+    while i < 5 {
+        let query_msg = QueryMsg::AllNftInfo { token_id: i.to_string(), include_expired: None };
+        let query_resp = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let info: AllNftInfoResponse<TokenExtension> = from_binary(&query_resp).unwrap();
+        assert_eq!(info.access.owner, owner.to_string());
+        i = i + 1;
+    }
 }
