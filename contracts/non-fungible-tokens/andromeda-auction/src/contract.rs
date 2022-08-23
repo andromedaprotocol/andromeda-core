@@ -499,6 +499,10 @@ fn purchase_token(
     // Calculate total tax
     total_tax_amount += tax_amount;
 
+    // if events[0].ty == "royalties".to_string() {
+
+    // }
+
     // Deduct taxes from the highest bid
     let after_tax_payment = Coin {
         denom: state.coin_denom.clone(),

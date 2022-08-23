@@ -32,10 +32,6 @@ pub enum ExecuteMsg {
     WithdrawNative {
         amount: Option<Uint128>,
     },
-    /// Deposit TOKEN to bootstrap contract.
-    DepositToBootstrap {
-        amount: Uint128,
-    },
     /// Facilitates reward claim after claims are enabled.
     ClaimRewards {},
     /// Called by the bootstrap contract when liquidity is added to the TOKEN-NATIVE Pool to enable TOKEN withdrawals by users.

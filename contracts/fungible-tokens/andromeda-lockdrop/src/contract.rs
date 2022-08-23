@@ -98,9 +98,6 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::DepositNative {} => execute_deposit_native(deps, env, info),
         ExecuteMsg::WithdrawNative { amount } => execute_withdraw_native(deps, env, info, amount),
-        ExecuteMsg::DepositToBootstrap { amount } => {
-            execute_deposit_to_bootstrap(deps, env, info, amount)
-        }
         ExecuteMsg::EnableClaims {} => execute_enable_claims(deps, env, info),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
         ExecuteMsg::WithdrawProceeds { recipient } => {
@@ -386,75 +383,6 @@ pub fn execute_enable_claims(
 
     STATE.save(deps.storage, &state)?;
     Ok(Response::new().add_attribute("action", "enable_claims"))
-}
-
-/// @dev Function to delegate part of the token rewards to be used for LP Bootstrapping via
-/// bootstrap
-/// @param amount : Number of tokens to delegate
-pub fn execute_deposit_to_bootstrap(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let mut state = STATE.load(deps.storage)?;
-    let user_address = info.sender;
-
-    // CHECK :: Have the deposit / withdraw windows concluded
-    require(
-        !is_withdraw_open(env.block.time.seconds(), &config),
-        ContractError::PhaseOngoing {},
-    )?;
-
-    // CHECK :: Can users withdraw their tokens ? -> if so, then delegation is no longer allowed
-    require(
-        !state.are_claims_allowed,
-        ContractError::ClaimsAlreadyAllowed {},
-    )?;
-
-    // // CHECK :: Bootstrap contract address should be set
-    // require(
-    //     config.bootstrap_contract_address.is_some(),
-    //     ContractError::NoSavedBootstrapContract {},
-    // )?;
-
-    let mut user_info = USER_INFO
-        .may_load(deps.storage, &user_address)?
-        .unwrap_or_default();
-
-    let total_incentives = config
-        .lockdrop_incentives
-        .multiply_ratio(user_info.total_native_locked, state.total_native_locked);
-
-    // CHECK :: token to delegate cannot exceed user's unclaimed token balance
-    let available_amount = total_incentives - user_info.delegated_incentives;
-    require(
-        amount <= available_amount,
-        ContractError::InvalidFunds {
-            msg: format!(
-                "Amount cannot exceed user's unclaimed token balance. Tokens to delegate = {}, Max delegatable tokens = {}",
-                amount,
-                available_amount
-            ),
-        },
-    )?;
-
-    // UPDATE STATE
-    user_info.delegated_incentives += amount;
-    state.total_delegated += amount;
-
-    // SAVE UPDATED STATE
-    STATE.save(deps.storage, &state)?;
-    USER_INFO.save(deps.storage, &user_address, &user_info)?;
-
-    // COSMOS_MSG ::Delegate tokens to the LP Bootstrapping via Bootstrap contract
-    // TODO: When Bootstrapping contract is created add this message.
-
-    Ok(Response::new()
-        .add_attribute("action", "deposit_to_bootstrap")
-        .add_attribute("user_address", user_address)
-        .add_attribute("delegated_amount", amount))
 }
 
 /// @dev Function to claim Rewards from lockdrop.
