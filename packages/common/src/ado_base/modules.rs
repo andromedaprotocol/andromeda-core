@@ -13,12 +13,12 @@ pub const OTHER: &str = "other";
 /// Modules can be instantiated in two different ways
 /// New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded
 /// Address - Provide an address for an already instantiated module contract
-/*#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+/*#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 =======
 /// Modules can be instantiated in two different ways
 /// New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded
 /// Address - Provide an address for an already instantiated module contract
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 >>>>>>> e7a02a492c55a32cee8e5c85ab8b1d4b1e2fe673
 #[serde(rename_all = "snake_case")]
 pub enum InstantiateType {
@@ -27,7 +27,7 @@ pub enum InstantiateType {
 }*/
 
 /// A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Module {
     pub module_type: String,
@@ -36,7 +36,7 @@ pub struct Module {
 }
 
 // TODO: Remove ModuleInfoWithAddress when we are confident with the AndrAddress replacement.
-/*#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+/*#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct ModuleInfoWithAddress {
     pub module: Module,

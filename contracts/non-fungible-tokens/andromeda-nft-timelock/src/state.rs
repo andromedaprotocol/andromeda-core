@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub const LOCKED_ITEMS: Map<&str, LockDetails> = Map::new("locked_items");
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct LockDetails {
     pub recipient: String,
     pub expiration: Expiration,

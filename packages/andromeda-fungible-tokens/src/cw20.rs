@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
     pub name: String,
     pub symbol: String,
@@ -34,7 +34,7 @@ impl From<InstantiateMsg> for Cw20InstantiateMsg {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Transfer is a base message to move tokens to another account without triggering actions
@@ -186,7 +186,7 @@ impl From<ExecuteMsg> for Cw20ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),

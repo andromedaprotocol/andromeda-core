@@ -4,13 +4,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Withdrawal {
     pub token: String,
     pub withdrawal_type: Option<WithdrawalType>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum WithdrawalType {
     Amount(Uint128),

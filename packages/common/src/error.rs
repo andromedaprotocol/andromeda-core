@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use hex::FromHexError;
 
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),

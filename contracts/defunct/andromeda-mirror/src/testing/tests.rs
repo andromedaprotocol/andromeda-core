@@ -171,7 +171,7 @@ fn assert_execute_cw20_msg(
     );
 }
 
-fn assert_query_msg<T: DeserializeOwned + Debug + PartialEq, Eq>(
+fn assert_query_msg<T: DeserializeOwned + Debug + PartialEq>(
     deps: Deps,
     msg: QueryMsg,
     expected_res: T,

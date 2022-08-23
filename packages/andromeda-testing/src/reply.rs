@@ -1,6 +1,6 @@
 use prost::Message;
 
-#[derive(Clone, PartialEq, Eq, Message)]
+#[derive(Clone, PartialEq, Message)]
 pub struct MsgInstantiateContractResponse {
     #[prost(string, tag = "1")]
     pub contract_address: ::prost::alloc::string::String,

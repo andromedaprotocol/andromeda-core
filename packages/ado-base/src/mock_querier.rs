@@ -16,7 +16,7 @@ pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 enum MissionQuery {
     AndrQuery(AndromedaQuery),

@@ -6,7 +6,7 @@ pub use value::{PrimitivePointer, Value};
 
 mod value;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Primitive {
     Uint128(Uint128),
@@ -116,7 +116,7 @@ impl Primitive {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GetValueResponse {
     pub key: String,
     pub value: Primitive,
