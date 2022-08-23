@@ -35,7 +35,7 @@ pub struct ContractAndKey {
     pub key: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     pub allowed_coin: CoinAndLimit,
     pub minimal_withdrawal_frequency: Option<Uint128>,
@@ -43,7 +43,7 @@ pub struct InstantiateMsg {
     pub modules: Option<Vec<Module>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Deposit {

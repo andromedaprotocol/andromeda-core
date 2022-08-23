@@ -38,7 +38,7 @@ pub enum SwapperCw20HookMsg {
 }
 
 /// Instantiate Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     pub swapper_impl: SwapperImpl,
     pub primitive_contract: String,
