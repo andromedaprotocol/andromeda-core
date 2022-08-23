@@ -6,7 +6,7 @@ use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Expiration;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
     pub asset_info: AssetInfo,
 }

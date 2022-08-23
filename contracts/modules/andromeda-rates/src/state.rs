@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
     pub rates: Vec<RateInfo>,
 }

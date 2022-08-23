@@ -8,7 +8,7 @@ use cw_asset::AssetInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SwapperMsg {
     Swap {
@@ -18,33 +18,33 @@ pub enum SwapperMsg {
 }
 
 /// Helper enum for calling contracts that implement the Swapper interface.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SwapperImplExecuteMsg {
     Swapper(SwapperMsg),
 }
 
 /// Helper enum for calling contracts that implement the Swapper interface.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SwapperImplCw20HookMsg {
     Swapper(SwapperCw20HookMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SwapperCw20HookMsg {
     Swap { ask_asset_info: AssetInfo },
 }
 
 /// Instantiate Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     pub swapper_impl: SwapperImpl,
     pub primitive_contract: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SwapperImpl {
     /// Specifies the instantiation specification for the swapper impl.
@@ -53,7 +53,7 @@ pub enum SwapperImpl {
     Reference(AndrAddress),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateInfo {
     /// The instantiate message encoded in base64.
     pub msg: Binary,
@@ -62,7 +62,7 @@ pub struct InstantiateInfo {
 }
 
 /// Execute Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
@@ -79,7 +79,7 @@ pub enum ExecuteMsg {
 }
 
 /// Cw20 Hook Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Cw20HookMsg {
     Swap {
@@ -89,7 +89,7 @@ pub enum Cw20HookMsg {
 }
 
 /// Query Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),

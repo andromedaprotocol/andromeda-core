@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::ADOContract;
 use common::{app::AndrAddress, error::ContractError, require};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 enum AppQueryMsg {
     ComponentExists { name: String },

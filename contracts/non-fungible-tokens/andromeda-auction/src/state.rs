@@ -10,7 +10,7 @@ use std::cmp;
 const MAX_LIMIT: u64 = 30;
 const DEFAULT_LIMIT: u64 = 10;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct TokenAuctionState {
     pub start_time: Expiration,
     pub end_time: Expiration,
@@ -25,7 +25,7 @@ pub struct TokenAuctionState {
     pub is_cancelled: bool,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct AuctionInfo {
     pub auction_ids: Vec<Uint128>,
     pub token_address: String,

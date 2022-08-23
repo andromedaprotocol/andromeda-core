@@ -77,7 +77,7 @@ fn execute_store_receipt(
     nonpayable(&info)?;
 
     require(
-        can_mint_receipt(deps.storage, &info.sender.to_string())?,
+        can_mint_receipt(deps.storage, info.sender.as_ref())?,
         ContractError::Unauthorized {},
     )?;
     let receipt_id = increment_num_receipt(deps.storage)?;
@@ -95,7 +95,7 @@ fn execute_edit_receipt(
     receipt: Receipt,
 ) -> Result<Response, ContractError> {
     require(
-        can_mint_receipt(deps.storage, &info.sender.to_string())?,
+        can_mint_receipt(deps.storage, info.sender.as_ref())?,
         ContractError::Unauthorized {},
     )?;
     read_receipt(deps.storage, receipt_id)?;

@@ -13,7 +13,7 @@ pub const CONFIG: Item<Config> = Item::new("config");
 /// The next ID to use for a newly added batch.
 pub const NEXT_ID: Item<u64> = Item::new("next_id");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
     /// The recipient of each batch.
     pub recipient: Recipient,
@@ -25,7 +25,7 @@ pub struct Config {
     pub unbonding_duration: Duration,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Batch {
     /// The amount of tokens in the batch
     pub amount: Uint128,
