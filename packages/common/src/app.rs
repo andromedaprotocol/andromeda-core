@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Api, QuerierWrapper};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct AndrAddress {
     /// Can be either an address or identifier of an ADO in a app.
     pub identifier: String,

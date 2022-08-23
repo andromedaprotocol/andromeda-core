@@ -36,7 +36,7 @@ pub struct Purchase {
     pub purchaser: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
     /// The address of the token contract whose tokens are being sold.
     pub token_address: AndrAddress,
