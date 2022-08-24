@@ -91,6 +91,7 @@ impl<'a> ADOContract<'a> {
                 events = [events, mod_resp.events].concat();
             }
         }
+        
 
         Ok((msgs, events, remainder))
     }

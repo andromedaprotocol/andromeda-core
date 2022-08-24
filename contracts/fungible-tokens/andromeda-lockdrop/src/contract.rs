@@ -507,7 +507,6 @@ pub fn query_state(deps: Deps) -> Result<StateResponse, ContractError> {
     let state: State = STATE.load(deps.storage)?;
     Ok(StateResponse {
         total_native_locked: state.total_native_locked,
-        total_delegated: state.total_delegated,
         are_claims_allowed: state.are_claims_allowed,
     })
 }
@@ -533,7 +532,6 @@ pub fn query_user_info(
     Ok(UserInfoResponse {
         total_native_locked: user_info.total_native_locked,
         total_incentives,
-        delegated_incentives: user_info.delegated_incentives,
         is_lockdrop_claimed: user_info.lockdrop_claimed,
         withdrawal_flag: user_info.withdrawal_flag,
     })

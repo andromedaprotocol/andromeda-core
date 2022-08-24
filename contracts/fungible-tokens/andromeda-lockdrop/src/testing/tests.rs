@@ -72,7 +72,6 @@ fn test_instantiate() {
     assert_eq!(
         StateResponse {
             total_native_locked: Uint128::zero(),
-            total_delegated: Uint128::zero(),
             are_claims_allowed: false,
         },
         state_res
@@ -870,7 +869,6 @@ fn test_claim_rewards() {
     assert_eq!(
         UserInfoResponse {
             total_native_locked: Uint128::new(75),
-            delegated_incentives: Uint128::zero(),
             is_lockdrop_claimed: true,
             withdrawal_flag: false,
             total_incentives: Uint128::new(75),
@@ -909,7 +907,6 @@ fn test_claim_rewards() {
     assert_eq!(
         UserInfoResponse {
             total_native_locked: Uint128::new(25),
-            delegated_incentives: Uint128::zero(),
             is_lockdrop_claimed: true,
             withdrawal_flag: false,
             total_incentives: Uint128::new(25),
