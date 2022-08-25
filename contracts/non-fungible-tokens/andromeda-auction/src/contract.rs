@@ -399,8 +399,6 @@ fn execute_claim(
     token_id: String,
     token_address: String,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     require(
@@ -483,7 +481,7 @@ fn purchase_token(
 
     let mut total_tax_amount = Uint128::zero();
 
-    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
+    let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
         storage,
         api,
         querier,
@@ -499,17 +497,24 @@ fn purchase_token(
     // Calculate total tax
     total_tax_amount += tax_amount;
 
-    // if events[0].ty == "royalties".to_string() {
+    // Check if royalties are applied
+    if events.into_iter().any(|x| x.ty == "royalties".to_string()) {
+        let after_tax_payment = Coin {
+            denom: state.coin_denom.clone(),
+            amount: total_tax_amount,
+        };
 
-    // }
-
+        Ok((after_tax_payment, msgs))
+    }
     // Deduct taxes from the highest bid
-    let after_tax_payment = Coin {
-        denom: state.coin_denom.clone(),
-        amount: state.high_bidder_amount - total_tax_amount,
-    };
+    else {
+        let after_tax_payment = Coin {
+            denom: state.coin_denom.clone(),
+            amount: state.high_bidder_amount - total_tax_amount,
+        };
 
-    Ok((after_tax_payment, msgs))
+        Ok((after_tax_payment, msgs))
+    }
 }
 
 fn get_existing_token_auction_state(
