@@ -498,9 +498,9 @@ fn purchase_token(
     total_tax_amount += tax_amount;
 
     // Check if royalties are applied
-    if events.into_iter().any(|x| x.ty == "royalties".to_string()) {
+    if events.into_iter().any(|x| x.ty == "royalties") {
         let after_tax_payment = Coin {
-            denom: state.coin_denom.clone(),
+            denom: state.coin_denom,
             amount: total_tax_amount,
         };
 
