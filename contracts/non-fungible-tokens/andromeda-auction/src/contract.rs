@@ -1766,14 +1766,13 @@ mod tests {
             recipient: "sender".to_string(),
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         };
+        // First message for royalty, Second message for tax
         assert_eq!(
             Response::new()
-            //royalty
                 .add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: MOCK_RATES_RECIPIENT.to_owned(),
                     amount: coins(10, "uusd"),
                 }))
-            //tax
                 .add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: MOCK_RATES_RECIPIENT.to_owned(),
                     amount: coins(10, "uusd"),
