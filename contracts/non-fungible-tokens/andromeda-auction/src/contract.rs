@@ -481,7 +481,7 @@ fn purchase_token(
 
     let mut total_tax_amount = Uint128::zero();
 
-    let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
+    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         storage,
         api,
         querier,
@@ -497,24 +497,11 @@ fn purchase_token(
     // Calculate total tax
     total_tax_amount += tax_amount;
 
-    // Check if royalties are applied
-    if events.into_iter().any(|x| x.ty == "royalties") {
-        let after_tax_payment = Coin {
-            denom: state.coin_denom,
-            amount: total_tax_amount,
-        };
-
-        Ok((after_tax_payment, msgs))
-    }
-    // Deduct taxes from the highest bid
-    else {
-        let after_tax_payment = Coin {
-            denom: state.coin_denom.clone(),
-            amount: state.high_bidder_amount - total_tax_amount,
-        };
-
-        Ok((after_tax_payment, msgs))
-    }
+    let after_tax_payment = Coin {
+        denom: state.coin_denom,
+        amount: remaining_amount.amount,
+    };
+    Ok((after_tax_payment, msgs))
 }
 
 fn get_existing_token_auction_state(
@@ -721,6 +708,9 @@ mod tests {
     };
     use crate::state::AuctionInfo;
     use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
+    use andromeda_testing::testing::mock_querier::{MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT};
+    use common::ado_base::modules::Module;
+    use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{attr, coin, coins, from_binary, BankMsg, CosmosMsg, Response, Timestamp};
     use cw721::Expiration;
@@ -1718,6 +1708,79 @@ mod tests {
                 .add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: MOCK_TOKEN_OWNER.to_owned(),
                     amount: coins(100, "uusd"),
+                }))
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                    msg: encode_binary(&transfer_nft_msg).unwrap(),
+                    funds: vec![],
+                }))
+                .add_attribute("action", "claim")
+                .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
+                .add_attribute("token_contract", MOCK_TOKEN_ADDR)
+                .add_attribute("recipient", "sender")
+                .add_attribute("winning_bid_amount", Uint128::from(100u128))
+                .add_attribute("auction_id", "1"),
+            res
+        );
+    }
+
+    #[test]
+    fn execute_claim_with_modules() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let mut env = mock_env();
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: "rates".to_string(),
+            address: AndrAddress {
+                identifier: MOCK_RATES_CONTRACT.to_owned(),
+            },
+            is_mutable: true,
+        };
+        let msg = InstantiateMsg {
+            modules: Some(vec![module]),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        start_auction(deps.as_mut(), None);
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+
+        let info = mock_info("sender", &coins(100, "uusd".to_string()));
+        let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        env.block.time = Timestamp::from_seconds(250);
+
+        let msg = ExecuteMsg::Claim {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+
+        let info = mock_info("any_user", &[]);
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        let transfer_nft_msg = Cw721ExecuteMsg::TransferNft {
+            recipient: "sender".to_string(),
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        };
+        assert_eq!(
+            Response::new()
+            //royalty
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: MOCK_RATES_RECIPIENT.to_owned(),
+                    amount: coins(10, "uusd"),
+                }))
+            //tax
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: MOCK_RATES_RECIPIENT.to_owned(),
+                    amount: coins(10, "uusd"),
+                }))
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: "owner".to_string(),
+                    amount: coins(90, "uusd"),
                 }))
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: MOCK_TOKEN_ADDR.to_string(),
