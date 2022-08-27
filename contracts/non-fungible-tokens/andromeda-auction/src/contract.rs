@@ -399,6 +399,7 @@ fn execute_claim(
     token_id: String,
     token_address: String,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     require(
