@@ -85,6 +85,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-automation"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-crowdfund"
 version = "0.1.0"
 dependencies = [
@@ -238,6 +248,46 @@ dependencies = [
  "cw-storage-plus",
  "cw20",
  "schemars",
+ "serde",
+]
+
+[[package]]
+name = "andromeda-evaluation"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-automation",
+ "andromeda-finance",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
+name = "andromeda-execution"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-automation",
+ "andromeda-finance",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "schemars",
+ "semver",
  "serde",
 ]
 
