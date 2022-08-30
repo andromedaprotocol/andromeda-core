@@ -166,18 +166,6 @@
         }
       },
       "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "owner"
-      ],
-      "properties": {
-        "owner": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
     }
   ],
   "definitions": {
@@ -221,6 +209,42 @@
           ],
           "properties": {
             "operators": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "original_publisher"
+          ],
+          "properties": {
+            "original_publisher": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "block_height_upon_creation"
+          ],
+          "properties": {
+            "block_height_upon_creation": {
               "type": "object"
             }
           },
@@ -273,6 +297,18 @@
           ],
           "properties": {
             "module_ids": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "version"
+          ],
+          "properties": {
+            "version": {
               "type": "object"
             }
           },

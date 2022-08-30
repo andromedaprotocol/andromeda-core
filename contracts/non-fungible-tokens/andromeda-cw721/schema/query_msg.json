@@ -220,6 +220,48 @@
       "additionalProperties": false
     },
     {
+      "description": "If the token is archived",
+      "type": "object",
+      "required": [
+        "is_archived"
+      ],
+      "properties": {
+        "is_archived": {
+          "type": "object",
+          "required": [
+            "token_id"
+          ],
+          "properties": {
+            "token_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "The transfer agreement for the token",
+      "type": "object",
+      "required": [
+        "transfer_agreement"
+      ],
+      "properties": {
+        "transfer_agreement": {
+          "type": "object",
+          "required": [
+            "token_id"
+          ],
+          "properties": {
+            "token_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Info of any modules assigned to the contract",
       "type": "object",
       "required": [
@@ -379,6 +421,42 @@
         {
           "type": "object",
           "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "original_publisher"
+          ],
+          "properties": {
+            "original_publisher": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "block_height_upon_creation"
+          ],
+          "properties": {
+            "block_height_upon_creation": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
             "is_operator"
           ],
           "properties": {
@@ -423,6 +501,18 @@
           ],
           "properties": {
             "module_ids": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "version"
+          ],
+          "properties": {
+            "version": {
               "type": "object"
             }
           },

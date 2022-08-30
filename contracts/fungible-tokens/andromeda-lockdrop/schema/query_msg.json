@@ -134,6 +134,42 @@
         {
           "type": "object",
           "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "original_publisher"
+          ],
+          "properties": {
+            "original_publisher": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "block_height_upon_creation"
+          ],
+          "properties": {
+            "block_height_upon_creation": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
             "is_operator"
           ],
           "properties": {
@@ -178,6 +214,18 @@
           ],
           "properties": {
             "module_ids": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "version"
+          ],
+          "properties": {
+            "version": {
               "type": "object"
             }
           },
