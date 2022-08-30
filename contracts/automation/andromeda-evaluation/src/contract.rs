@@ -97,13 +97,7 @@ fn execute_evaluate(
     let contract = ADOContract::default();
     let app_contract = contract.get_app_contract(deps.storage)?;
 
-    let res: bool;
-
-    if first > second {
-        res = true;
-    } else {
-        res = false;
-    }
+    let res: bool = if first > second { true } else { false };
 
     // get the address of the ADO that will interpret our result
     let contract_addr = EXECUTE_ADO_ADDRESS.load(deps.storage)?.get_address(
@@ -245,9 +239,7 @@ mod tests {
         let address = AndrAddress {
             identifier: "new_address".to_string(),
         };
-        let msg = ExecuteMsg::ChangeExecuteAddress {
-            address: address,
-        };
+        let msg = ExecuteMsg::ChangeExecuteAddress { address };
         let info = mock_info("random", &[]);
 
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
