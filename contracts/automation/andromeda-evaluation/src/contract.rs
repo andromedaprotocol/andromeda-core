@@ -240,13 +240,13 @@ mod tests {
         let msg = InstantiateMsg { address };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let address = AndrAddress {
             identifier: "new_address".to_string(),
         };
         let msg = ExecuteMsg::ChangeExecuteAddress {
-            address: address.clone(),
+            address: address,
         };
         let info = mock_info("random", &[]);
 
