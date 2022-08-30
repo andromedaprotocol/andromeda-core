@@ -97,7 +97,7 @@ fn execute_evaluate(
     let contract = ADOContract::default();
     let app_contract = contract.get_app_contract(deps.storage)?;
 
-    let res: bool = if first > second { true } else { false };
+    let res: bool = first > second;
 
     // get the address of the ADO that will interpret our result
     let contract_addr = EXECUTE_ADO_ADDRESS.load(deps.storage)?.get_address(
