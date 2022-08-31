@@ -324,6 +324,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-marketplace"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-modules",
+ "andromeda-non-fungible-tokens",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "cw721",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-merkle-airdrop"
 version = "0.1.0"
 dependencies = [
