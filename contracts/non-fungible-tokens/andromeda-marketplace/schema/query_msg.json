@@ -15,13 +15,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Gets the latest auction state for the given token. This will either be the current auction if there is one in progress or the last completed one.",
+      "description": "Gets the latest sale state for the given token. This will either be the current sale if there is one in progress or the last completed one.",
       "type": "object",
       "required": [
-        "latest_auction_state"
+        "latest_sale_state"
       ],
       "properties": {
-        "latest_auction_state": {
+        "latest_sale_state": {
           "type": "object",
           "required": [
             "token_address",
@@ -40,19 +40,19 @@
       "additionalProperties": false
     },
     {
-      "description": "Gets the auction state for the given auction id.",
+      "description": "Gets the sale state for the given sale id.",
       "type": "object",
       "required": [
-        "auction_state"
+        "sale_state"
       ],
       "properties": {
-        "auction_state": {
+        "sale_state": {
           "type": "object",
           "required": [
-            "auction_id"
+            "sale_id"
           ],
           "properties": {
-            "auction_id": {
+            "sale_id": {
               "$ref": "#/definitions/Uint128"
             }
           }
@@ -61,13 +61,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Gets the auction ids for the given token.",
+      "description": "Gets the sale ids for the given token.",
       "type": "object",
       "required": [
-        "auction_ids"
+        "sale_ids"
       ],
       "properties": {
-        "auction_ids": {
+        "sale_ids": {
           "type": "object",
           "required": [
             "token_address",
@@ -86,13 +86,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Gets all of the auction infos for a given token address.",
+      "description": "Gets all of the sale infos for a given token address.",
       "type": "object",
       "required": [
-        "auction_infos_for_address"
+        "sale_infos_for_address"
       ],
       "properties": {
-        "auction_infos_for_address": {
+        "sale_infos_for_address": {
           "type": "object",
           "required": [
             "token_address"
@@ -114,53 +114,6 @@
             },
             "token_address": {
               "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Gets the bids for the given auction id. Start_after starts indexing at 0.",
-      "type": "object",
-      "required": [
-        "bids"
-      ],
-      "properties": {
-        "bids": {
-          "type": "object",
-          "required": [
-            "auction_id"
-          ],
-          "properties": {
-            "auction_id": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "order_by": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/OrderBy"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "start_after": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
             }
           }
         }
@@ -319,13 +272,6 @@
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
       "type": "string"
-    },
-    "OrderBy": {
-      "type": "string",
-      "enum": [
-        "asc",
-        "desc"
-      ]
     },
     "Uint128": {
       "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
