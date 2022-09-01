@@ -83,9 +83,6 @@ pub fn execute(
             token_id,
             token_address,
         } => execute_cancel(deps, env, info, token_id, token_address),
-        ExecuteMsg::UpdateOwner { address } => {
-            ADOContract::default().execute_update_owner(deps, info, address)
-        }
     }
 }
 

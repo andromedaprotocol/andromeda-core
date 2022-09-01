@@ -27,9 +27,6 @@ pub enum ExecuteMsg {
         coin_denom: String,
         whitelist: Option<Vec<Addr>>,
     },
-    UpdateOwner {
-        address: String,
-    },
     CancelSale {
         token_id: String,
         token_address: String,
