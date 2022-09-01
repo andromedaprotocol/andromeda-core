@@ -15,7 +15,7 @@ use common::{
 };
 use cosmwasm_std::{
     attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response,
-    StdError, SubMsg,
+    StdError, SubMsg, to_binary,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
@@ -163,6 +163,11 @@ fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, Contr
         AndromedaHook::OnFundsTransfer { amount, .. } => {
             encode_binary(&query_deducted_funds(deps, amount)?)
         }
+        AndromedaHook::OnExecute { .. } => {
+            let resp: Response = Response::default();
+
+            Ok(to_binary(&resp)?)
+        },
         _ => Err(ContractError::UnsupportedOperation {}),
     }
 }
