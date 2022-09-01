@@ -366,13 +366,7 @@ fn purchase_token(
     // Calculate total tax
     total_tax_amount += tax_amount;
 
-    if events.iter().any(|x| x.ty == "royalty") {
-        let after_tax_payment = Coin {
-            denom: state.coin_denom,
-            amount: remaining_amount.amount,
-        };
-        Ok((after_tax_payment, msgs))
-    } else if events.iter().any(|x| x.ty == "tax") {
+    if events.iter().any(|x| x.ty == "tax") {
         let after_tax_payment = Coin {
             denom: state.coin_denom,
             amount: state.price - tax_amount,
