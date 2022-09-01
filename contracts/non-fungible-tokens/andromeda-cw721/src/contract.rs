@@ -24,11 +24,17 @@ use common::{
     require, Funds,
 };
 use cw721::ContractInfoResponse;
-use cw721_base::{state::TokenInfo, Cw721Contract};
+use cw721_base::{state::TokenInfo, Cw721Contract, MintMsg};
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+struct ExecuteEnv<'a> {
+    deps: DepsMut<'a>,
+    env: Env,
+    info: MessageInfo,
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -73,55 +79,69 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let execute_env = ExecuteEnv { deps, env, info };
     let contract = ADOContract::default();
 
     // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
     if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
-        let andr_minter = ANDR_MINTER.load(deps.storage)?;
-        return contract.execute_update_app_contract(deps, info, address, Some(vec![andr_minter]));
+        let andr_minter = ANDR_MINTER.load(execute_env.deps.storage)?;
+        return contract.execute_update_app_contract(
+            execute_env.deps,
+            execute_env.info,
+            address,
+            Some(vec![andr_minter]),
+        );
     };
 
     contract.module_hook::<Response>(
-        deps.storage,
-        deps.api,
-        deps.querier,
+        execute_env.deps.storage,
+        execute_env.deps.api,
+        execute_env.deps.querier,
         AndromedaHook::OnExecute {
-            sender: info.sender.to_string(),
+            sender: execute_env.info.sender.to_string(),
             payload: encode_binary(&msg)?,
         },
     )?;
 
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         require(
-            !is_archived(deps.storage, token_id)?,
+            !is_archived(execute_env.deps.storage, token_id)?,
             ContractError::TokenIsArchived {},
         )?;
     }
 
     match msg {
-        ExecuteMsg::Mint(_) => execute_mint(deps, env, info, msg),
+        ExecuteMsg::Mint(_) => execute_mint(execute_env, msg),
+        ExecuteMsg::BatchMint { tokens } => execute_batch_mint(execute_env, tokens),
         ExecuteMsg::TransferNft {
             recipient,
             token_id,
-        } => execute_transfer(deps, env, info, recipient, token_id),
+        } => execute_transfer(execute_env, recipient, token_id),
         ExecuteMsg::TransferAgreement {
             token_id,
             agreement,
-        } => execute_update_transfer_agreement(deps, env, info, token_id, agreement),
-        ExecuteMsg::Archive { token_id } => execute_archive(deps, env, info, token_id),
-        ExecuteMsg::Burn { token_id } => execute_burn(deps, info, token_id),
-        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        _ => Ok(AndrCW721Contract::default().execute(deps, env, info, msg.into())?),
+        } => execute_update_transfer_agreement(execute_env, token_id, agreement),
+        ExecuteMsg::Archive { token_id } => execute_archive(execute_env, token_id),
+        ExecuteMsg::Burn { token_id } => execute_burn(execute_env, token_id),
+        ExecuteMsg::AndrReceive(msg) => contract.execute(
+            execute_env.deps,
+            execute_env.env,
+            execute_env.info,
+            msg,
+            execute,
+        ),
+        _ => Ok(AndrCW721Contract::default().execute(
+            execute_env.deps,
+            execute_env.env,
+            execute_env.info,
+            msg.into(),
+        )?),
     }
 }
 
-fn execute_mint(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+fn execute_mint(env: ExecuteEnv, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, env } = env;
     let cw721_contract = AndrCW721Contract::default();
     let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     let andr_minter = ANDR_MINTER.load(deps.storage)?;
@@ -133,7 +153,39 @@ fn execute_mint(
         )?)?;
         save_minter(&cw721_contract, deps.storage, &addr)?;
     }
+
     Ok(cw721_contract.execute(deps, env, info, msg.into())?)
+}
+
+fn execute_batch_mint(
+    env: ExecuteEnv,
+    tokens_to_mint: Vec<MintMsg<TokenExtension>>,
+) -> Result<Response, ContractError> {
+    let ExecuteEnv {
+        mut deps,
+        info,
+        env,
+    } = env;
+    let mut resp = Response::default();
+    let cw721_contract = AndrCW721Contract::default();
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let andr_minter = ANDR_MINTER.load(deps.storage)?;
+    if cw721_contract.minter.may_load(deps.storage)?.is_none() {
+        let addr = deps.api.addr_validate(&andr_minter.get_address(
+            deps.api,
+            &deps.querier,
+            app_contract,
+        )?)?;
+        save_minter(&cw721_contract, deps.storage, &addr)?;
+    }
+    for msg in tokens_to_mint {
+        let mint_resp = cw721_contract.mint(deps.branch(), env.clone(), info.clone(), msg)?;
+        resp = resp
+            .add_attributes(mint_resp.attributes)
+            .add_submessages(mint_resp.messages);
+    }
+
+    Ok(resp)
 }
 
 fn save_minter(
@@ -145,12 +197,11 @@ fn save_minter(
 }
 
 fn execute_transfer(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    env: ExecuteEnv,
     recipient: String,
     token_id: String,
 ) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, env } = env;
     let base_contract = ADOContract::default();
     let responses = base_contract.module_hook::<Response>(
         deps.storage,
@@ -299,12 +350,11 @@ fn check_can_send(
 }
 
 fn execute_update_transfer_agreement(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
+    env: ExecuteEnv,
     token_id: String,
     agreement: Option<TransferAgreement>,
 ) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, .. } = env;
     let contract = AndrCW721Contract::default();
     let token = contract.tokens.load(deps.storage, &token_id)?;
     require(token.owner == info.sender, ContractError::Unauthorized {})?;
@@ -328,12 +378,8 @@ fn execute_update_transfer_agreement(
     Ok(Response::default())
 }
 
-fn execute_archive(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    token_id: String,
-) -> Result<Response, ContractError> {
+fn execute_archive(env: ExecuteEnv, token_id: String) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, .. } = env;
     require(
         !is_archived(deps.storage, &token_id)?,
         ContractError::TokenIsArchived {},
@@ -349,11 +395,8 @@ fn execute_archive(
     Ok(Response::default())
 }
 
-fn execute_burn(
-    deps: DepsMut,
-    info: MessageInfo,
-    token_id: String,
-) -> Result<Response, ContractError> {
+fn execute_burn(env: ExecuteEnv, token_id: String) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, .. } = env;
     let contract = AndrCW721Contract::default();
     let token = contract.tokens.load(deps.storage, &token_id)?;
     require(token.owner == info.sender, ContractError::Unauthorized {})?;
