@@ -249,9 +249,18 @@ fn execute_buy(
 
     // Make sure funds are equal to the price and in the correct denomination
     require(
-        payment.denom == coin_denom && payment.amount == token_sale_state.price,
+        payment.denom == coin_denom,
         ContractError::InvalidFunds {
             msg: format!("No {} assets are provided to sale", coin_denom),
+        },
+    )?;
+    require(
+        payment.amount == token_sale_state.price,
+        ContractError::InvalidFunds {
+            msg: format!(
+                "Sent funds aren't equal to sale price: {}",
+                token_sale_state.price
+            ),
         },
     )?;
 
@@ -754,19 +763,25 @@ mod tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert_eq!(error, res.unwrap_err());
 
-        let error = ContractError::InvalidFunds {
-            msg: "No uusd assets are provided to sale".to_string(),
-        };
-
         // Invalid denom sent
         let info = mock_info("sender", &[coin(100, "uluna")]);
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
-        assert_eq!(error, res.unwrap_err());
+        assert_eq!(
+            ContractError::InvalidFunds {
+                msg: "No uusd assets are provided to sale".to_string(),
+            },
+            res.unwrap_err()
+        );
 
         // Correct denom but empty
         let info = mock_info("sender", &[coin(0, "uusd")]);
         let res = execute(deps.as_mut(), env, info, msg);
-        assert_eq!(error, res.unwrap_err());
+        assert_eq!(
+            ContractError::InvalidFunds {
+                msg: "Sent funds aren't equal to sale price: 100".to_string(),
+            },
+            res.unwrap_err()
+        );
     }
 
     #[test]
