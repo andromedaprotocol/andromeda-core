@@ -482,7 +482,7 @@ fn purchase_token(
 
     let mut total_tax_amount = Uint128::zero();
 
-    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
+    let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
         storage,
         api,
         querier,
@@ -498,11 +498,19 @@ fn purchase_token(
     // Calculate total tax
     total_tax_amount += tax_amount;
 
-    let after_tax_payment = Coin {
-        denom: state.coin_denom,
-        amount: remaining_amount.amount,
-    };
-    Ok((after_tax_payment, msgs))
+    if events.iter().any(|x| x.ty == "tax") {
+        let after_tax_payment = Coin {
+            denom: state.coin_denom,
+            amount: state.high_bidder_amount - tax_amount,
+        };
+        Ok((after_tax_payment, msgs))
+    } else {
+        let after_tax_payment = Coin {
+            denom: state.coin_denom,
+            amount: remaining_amount.amount,
+        };
+        Ok((after_tax_payment, msgs))
+    }
 }
 
 fn get_existing_token_auction_state(
