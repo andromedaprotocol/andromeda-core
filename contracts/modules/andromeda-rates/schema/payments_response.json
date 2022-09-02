@@ -158,7 +158,7 @@
       "required": [
         "is_additive",
         "rate",
-        "receivers"
+        "recipients"
       ],
       "properties": {
         "description": {
@@ -173,7 +173,7 @@
         "rate": {
           "$ref": "#/definitions/Rate"
         },
-        "receivers": {
+        "recipients": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/Recipient"

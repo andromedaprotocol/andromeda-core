@@ -10,17 +10,6 @@
     "withdrawal_window"
   ],
   "properties": {
-    "bootstrap_contract": {
-      "description": "The bootsrap contract to be used in the second phase.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/AndrAddress"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "deposit_window": {
       "description": "Number of seconds for which lockup deposits will be accepted",
       "type": "integer",
@@ -32,7 +21,7 @@
       "type": "string"
     },
     "init_timestamp": {
-      "description": "Timestamp till when deposits can be made",
+      "description": "The bootsrap contract to be used in the second phase. Timestamp till when deposits can be made",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
@@ -46,20 +35,6 @@
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
-    }
-  },
-  "definitions": {
-    "AndrAddress": {
-      "type": "object",
-      "required": [
-        "identifier"
-      ],
-      "properties": {
-        "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a app.",
-          "type": "string"
-        }
-      }
     }
   }
 }

@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
-use common::app::AndrAddress;
+// use common::app::AndrAddress;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +16,7 @@ pub const USER_INFO: Map<&Addr, UserInfo> = Map::new("users");
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
     /// Bootstrap Contract address to which incentive tokens can be deposited for bootstrapping TOKEN-NATIVE Pool
-    pub bootstrap_contract_address: Option<AndrAddress>,
+    // pub bootstrap_contract_address: Option<AndrAddress>,
     /// Timestamp when Contract will start accepting deposits
     pub init_timestamp: u64,
     /// Deposit Window Length

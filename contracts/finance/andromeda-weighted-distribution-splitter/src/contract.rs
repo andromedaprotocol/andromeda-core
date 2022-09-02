@@ -26,7 +26,7 @@ use semver::Version;
 
 use cw2::{get_contract_version, set_contract_version};
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-weighted-splitter";
+const CONTRACT_NAME: &str = "crates.io:andromeda-weighted-distribution-splitter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // 1 day in seconds
@@ -78,7 +78,7 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "weighted-splitter".to_string(),
+            ado_type: "weighted-distribution-splitter".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: msg.modules,

@@ -38,26 +38,22 @@ pub struct ContractAndKey {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     pub allowed_coin: CoinAndLimit,
-    pub minimal_withdrawal_frequency: Option<Uint128>,
-    pub contract_key: Option<ContractAndKey>,
+    pub minimal_withdrawal_frequency: MinimumFrequency,
     pub modules: Option<Vec<Module>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub enum MinimumFrequency {
+    Time { time: Uint128 },
+    AddressAndKey { address_and_key: ContractAndKey },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Deposit {
-        recipient: Option<String>,
-    },
-    Withdraw {
-        amount: Uint128,
-    },
+    Deposit { recipient: Option<String> },
+    Withdraw { amount: Uint128 },
     AndrReceive(AndromedaMsg),
-    UpdateAllowedCoin {
-        allowed_coin: CoinAndLimit,
-        minimal_withdrawal_frequency: Option<Uint128>,
-        contract_key: Option<ContractAndKey>,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

@@ -1,6 +1,6 @@
 use andromeda_non_fungible_tokens::auction::{AuctionStateResponse, Bid};
 use common::{error::ContractError, OrderBy};
-use cosmwasm_std::{Addr, Order, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, Order, StdResult, Storage, SubMsg, Uint128};
 use cw721::Expiration;
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use schemars::JsonSchema;
@@ -23,6 +23,18 @@ pub struct TokenAuctionState {
     pub token_id: String,
     pub token_address: String,
     pub is_cancelled: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Purchase {
+    /// The token id being purchased.
+    pub token_id: String,
+    /// Amount of tax paid.
+    pub tax_amount: Uint128,
+    /// sub messages for sending funds for rates.
+    pub msgs: Vec<SubMsg>,
+    /// The purchaser of the token.
+    pub purchaser: String,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

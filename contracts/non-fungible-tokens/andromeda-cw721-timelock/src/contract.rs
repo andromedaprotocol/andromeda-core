@@ -1,5 +1,5 @@
 use ado_base::state::ADOContract;
-use andromeda_non_fungible_tokens::nft_timelock::{
+use andromeda_non_fungible_tokens::cw721_timelock::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
@@ -22,7 +22,7 @@ const ONE_DAY: u64 = 86_400;
 const ONE_YEAR: u64 = 31_536_000;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_cw721_staking";
+const CONTRACT_NAME: &str = "crates.io:andromeda-cw721-timelock";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
@@ -40,7 +40,7 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "nft-timelock".to_string(),
+            ado_type: "cw721-timelock".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
@@ -234,7 +234,7 @@ fn from_semver(err: semver::Error) -> StdError {
 mod test {
     use super::*;
     use crate::mock_querier::{mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER};
-    use andromeda_non_fungible_tokens::nft_timelock::{ExecuteMsg, InstantiateMsg};
+    use andromeda_non_fungible_tokens::cw721_timelock::{ExecuteMsg, InstantiateMsg};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{Addr, BlockInfo, ContractInfo, TransactionInfo};
     use cw721::Expiration;

@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, Decimal, StdError, Uint128};
+use cosmwasm_std::{Binary, Coin, Decimal, StdError, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +15,7 @@ pub enum Primitive {
     String(String),
     Bool(bool),
     Vec(Vec<Primitive>),
+    Binary(Binary),
 }
 
 fn parse_error(type_name: String) -> StdError {
@@ -57,6 +58,12 @@ impl From<Coin> for Primitive {
 impl From<Vec<Primitive>> for Primitive {
     fn from(value: Vec<Primitive>) -> Self {
         Primitive::Vec(value)
+    }
+}
+
+impl From<Binary> for Primitive {
+    fn from(value: Binary) -> Self {
+        Primitive::Binary(value)
     }
 }
 
@@ -114,6 +121,13 @@ impl Primitive {
             _ => Err(parse_error(String::from("Coin"))),
         }
     }
+
+    pub fn try_get_binary(&self) -> Result<Binary, StdError> {
+        match self {
+            Primitive::Binary(value) => Ok(value.clone()),
+            _ => Err(parse_error(String::from("Binary"))),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -125,6 +139,7 @@ pub struct GetValueResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cosmwasm_std::to_binary;
 
     #[test]
     fn test_parse_error() {
@@ -197,6 +212,21 @@ mod tests {
         assert_eq!(
             parse_error("Decimal".to_string()),
             primitive.try_get_decimal().unwrap_err()
+        );
+    }
+
+    #[test]
+    fn try_get_binary() {
+        let primitive = Primitive::Binary(to_binary("data").unwrap());
+        assert_eq!(
+            to_binary("data").unwrap(),
+            primitive.try_get_binary().unwrap()
+        );
+
+        let primitive = Primitive::String("String".to_string());
+        assert_eq!(
+            parse_error("Binary".to_string()),
+            primitive.try_get_binary().unwrap_err()
         );
     }
 
