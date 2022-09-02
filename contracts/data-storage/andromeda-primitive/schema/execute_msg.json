@@ -454,6 +454,18 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "binary"
+          ],
+          "properties": {
+            "binary": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
