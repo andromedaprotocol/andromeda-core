@@ -1,5 +1,5 @@
 use crate::state::{Config, CONFIG};
-use ado_base::ADOContract;
+use ado_base::{ADOContract, modules::hooks::handle_ado_hook};
 use andromeda_modules::rates::{
     calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
     QueryMsg, RateInfo,
@@ -14,7 +14,7 @@ use common::{
     parse_message, require, Funds,
 };
 use cosmwasm_std::{
-    attr, coin, entry_point, to_binary, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo,
+    attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo,
     Response, StdError, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -163,12 +163,7 @@ fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, Contr
         AndromedaHook::OnFundsTransfer { amount, .. } => {
             encode_binary(&query_deducted_funds(deps, amount)?)
         }
-        AndromedaHook::OnExecute { .. } => {
-            let resp: Response = Response::default();
-
-            Ok(to_binary(&resp)?)
-        }
-        _ => Err(ContractError::UnsupportedOperation {}),
+        _ => handle_ado_hook(msg),
     }
 }
 

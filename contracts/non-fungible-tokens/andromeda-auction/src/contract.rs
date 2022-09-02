@@ -8,7 +8,7 @@ use andromeda_non_fungible_tokens::auction::{
     InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, hooks::AndromedaHook}, encode_binary, error::ContractError,
     rates::get_tax_amount, require, Funds, OrderBy,
 };
 use cosmwasm_std::{
@@ -55,6 +55,18 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    contract.module_hook::<Response>(
+        deps.storage,
+        deps.api,
+        deps.querier,
+        AndromedaHook::OnExecute {
+            sender: info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+    
     match msg {
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)

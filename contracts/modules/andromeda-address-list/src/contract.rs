@@ -4,7 +4,7 @@ use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdE
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
-use ado_base::ADOContract;
+use ado_base::{ADOContract, modules::hooks::handle_ado_hook};
 use andromeda_modules::address_list::{
     ExecuteMsg, IncludesAddressResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };
@@ -141,12 +141,12 @@ fn from_semver(err: semver::Error) -> StdError {
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
-        QueryMsg::AndrHook(msg) => encode_binary(&handle_andr_hook(deps, msg)?),
+        QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
 }
 
-fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Response, ContractError> {
+fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
     match msg {
         AndromedaHook::OnExecute { sender, .. } => {
             let is_included = includes_address(deps.storage, &sender)?;
@@ -154,10 +154,11 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Response, Contract
             if is_included != is_inclusive {
                 Err(ContractError::InvalidAddress {})
             } else {
-                Ok(Response::default())
+                let resp: Response = Response::default();
+                Ok(encode_binary(&resp)?)
             }
         }
-        _ => Err(ContractError::UnsupportedOperation {}),
+        _ => handle_ado_hook(msg),
     }
 }
 

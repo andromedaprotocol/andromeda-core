@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     to_binary, Api, Binary, Event, QuerierWrapper, QueryRequest, StdError, Storage, SubMsg,
-    WasmQuery,
+    WasmQuery, Response,
 };
 use serde::de::DeserializeOwned;
 
@@ -128,6 +128,19 @@ where
         msg: to_binary(&msg)?,
     }));
     process_module_response(mod_resp)
+}
+
+/// Default handler for any Andromeda Module Hook messages
+pub fn handle_ado_hook(msg: AndromedaHook) -> Result<Binary, ContractError> {
+    match msg {
+        //DEV NOTE: Left as a match statement instead of a standard return in the case that specific module hooks require a 
+        //default handler in future
+        _ => {
+            let resp: Response = Response::default();
+
+            Ok(to_binary(&resp)?)
+        }
+    }
 }
 
 #[cfg(test)]
