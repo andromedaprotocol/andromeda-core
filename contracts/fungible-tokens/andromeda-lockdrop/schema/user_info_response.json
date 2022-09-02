@@ -3,16 +3,12 @@
   "title": "UserInfoResponse",
   "type": "object",
   "required": [
-    "delegated_incentives",
     "is_lockdrop_claimed",
     "total_incentives",
     "total_native_locked",
     "withdrawal_flag"
   ],
   "properties": {
-    "delegated_incentives": {
-      "$ref": "#/definitions/Uint128"
-    },
     "is_lockdrop_claimed": {
       "type": "boolean"
     },
