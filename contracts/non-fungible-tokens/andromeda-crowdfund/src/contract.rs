@@ -35,7 +35,7 @@ use std::cmp;
 const MAX_LIMIT: u32 = 100;
 const DEFAULT_LIMIT: u32 = 50;
 pub(crate) const MAX_MINT_LIMIT: u32 = 100;
-const CONTRACT_NAME: &str = "crates.io:andromeda_crowdfund";
+const CONTRACT_NAME: &str = "crates.io:andromeda-crowdfund";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

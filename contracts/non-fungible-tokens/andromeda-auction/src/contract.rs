@@ -8,13 +8,13 @@ use andromeda_non_fungible_tokens::auction::{
     InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
-    OrderBy,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    rates::get_tax_amount, require, Funds, OrderBy,
 };
 use cosmwasm_std::{
-    attr, coins, entry_point, from_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage, Uint128,
-    WasmMsg, WasmQuery,
+    attr, coins, entry_point, from_binary, Addr, Api, BankMsg, Binary, BlockInfo, Coin, CosmosMsg,
+    Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage,
+    SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -29,7 +29,7 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     NEXT_AUCTION_ID.save(deps.storage, &Uint128::from(1u128))?;
@@ -42,7 +42,7 @@ pub fn instantiate(
             ado_type: "auction".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: None,
+            modules: msg.modules,
             primitive_contract: None,
         },
     )
@@ -400,7 +400,6 @@ fn execute_claim(
     token_address: String,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     require(
@@ -439,14 +438,21 @@ fn execute_claim(
             .add_attribute("auction_id", token_auction_state.auction_id));
     }
 
+    // Calculate the funds to be received after tax
+    let after_tax_payment = purchase_token(
+        deps.storage,
+        deps.api,
+        &deps.querier,
+        &info,
+        token_auction_state.clone(),
+    )?;
+
     Ok(Response::new()
+        .add_submessages(after_tax_payment.1)
         // Send funds to the original owner.
         .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: token_auction_state.owner,
-            amount: coins(
-                token_auction_state.high_bidder_amount.u128(),
-                token_auction_state.coin_denom.clone(),
-            ),
+            amount: vec![after_tax_payment.0],
         }))
         // Send NFT to auction winner.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -463,6 +469,48 @@ fn execute_claim(
         .add_attribute("recipient", &token_auction_state.high_bidder_addr)
         .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
         .add_attribute("auction_id", token_auction_state.auction_id))
+}
+
+fn purchase_token(
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    querier: &QuerierWrapper,
+    info: &MessageInfo,
+    state: TokenAuctionState,
+) -> Result<(Coin, Vec<SubMsg>), ContractError> {
+    let total_cost = Coin::new(state.high_bidder_amount.u128(), state.coin_denom.clone());
+
+    let mut total_tax_amount = Uint128::zero();
+
+    let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
+        storage,
+        api,
+        querier,
+        info.sender.to_string(),
+        Funds::Native(total_cost),
+        encode_binary(&"")?,
+    )?;
+
+    let remaining_amount = remainder.try_get_coin()?;
+
+    let tax_amount = get_tax_amount(&msgs, state.high_bidder_amount, remaining_amount.amount);
+
+    // Calculate total tax
+    total_tax_amount += tax_amount;
+
+    if events.iter().any(|x| x.ty == "tax") {
+        let after_tax_payment = Coin {
+            denom: state.coin_denom,
+            amount: state.high_bidder_amount - tax_amount,
+        };
+        Ok((after_tax_payment, msgs))
+    } else {
+        let after_tax_payment = Coin {
+            denom: state.coin_denom,
+            amount: remaining_amount.amount,
+        };
+        Ok((after_tax_payment, msgs))
+    }
 }
 
 fn get_existing_token_auction_state(
@@ -669,6 +717,9 @@ mod tests {
     };
     use crate::state::AuctionInfo;
     use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
+    use andromeda_testing::testing::mock_querier::{MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT};
+    use common::ado_base::modules::Module;
+    use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{attr, coin, coins, from_binary, BankMsg, CosmosMsg, Response, Timestamp};
     use cw721::Expiration;
@@ -739,7 +790,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
@@ -749,7 +800,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let msg = ExecuteMsg::PlaceBid {
@@ -766,7 +817,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -789,7 +840,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -812,7 +863,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -835,7 +886,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), Some(vec![Addr::unchecked("sender")]));
@@ -860,7 +911,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -889,7 +940,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -915,7 +966,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -961,7 +1012,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1053,7 +1104,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1083,7 +1134,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
@@ -1122,7 +1173,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
@@ -1160,7 +1211,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
@@ -1191,7 +1242,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
@@ -1225,7 +1276,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
@@ -1253,7 +1304,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
@@ -1281,7 +1332,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
@@ -1309,7 +1360,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1340,7 +1391,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1374,7 +1425,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1402,7 +1453,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1429,7 +1480,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1456,7 +1507,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1483,7 +1534,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1510,7 +1561,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1553,7 +1604,7 @@ mod tests {
     fn execute_start_auction_after_previous_finished() {
         let mut deps = mock_dependencies_custom(&[]);
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // There was a previous auction.
@@ -1593,7 +1644,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1633,7 +1684,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1683,11 +1734,83 @@ mod tests {
     }
 
     #[test]
+    fn execute_claim_with_modules() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let mut env = mock_env();
+        let info = mock_info("owner", &[]);
+        let module = Module {
+            module_type: "rates".to_string(),
+            address: AndrAddress {
+                identifier: MOCK_RATES_CONTRACT.to_owned(),
+            },
+            is_mutable: true,
+        };
+        let msg = InstantiateMsg {
+            modules: Some(vec![module]),
+        };
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        start_auction(deps.as_mut(), None);
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+
+        env.block.time = Timestamp::from_seconds(150);
+
+        let info = mock_info("sender", &coins(100, "uusd".to_string()));
+        let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        env.block.time = Timestamp::from_seconds(250);
+
+        let msg = ExecuteMsg::Claim {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+
+        let info = mock_info("any_user", &[]);
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        let transfer_nft_msg = Cw721ExecuteMsg::TransferNft {
+            recipient: "sender".to_string(),
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        };
+        // First message for royalty, Second message for tax
+        assert_eq!(
+            Response::new()
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: MOCK_RATES_RECIPIENT.to_owned(),
+                    amount: coins(10, "uusd"),
+                }))
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: MOCK_RATES_RECIPIENT.to_owned(),
+                    amount: coins(10, "uusd"),
+                }))
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: "owner".to_string(),
+                    amount: coins(90, "uusd"),
+                }))
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                    msg: encode_binary(&transfer_nft_msg).unwrap(),
+                    funds: vec![],
+                }))
+                .add_attribute("action", "claim")
+                .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
+                .add_attribute("token_contract", MOCK_TOKEN_ADDR)
+                .add_attribute("recipient", "sender")
+                .add_attribute("winning_bid_amount", Uint128::from(100u128))
+                .add_attribute("auction_id", "1"),
+            res
+        );
+    }
+
+    #[test]
     fn execute_claim_auction_not_ended() {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1717,7 +1840,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
@@ -1755,7 +1878,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1797,7 +1920,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1851,7 +1974,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);
@@ -1874,7 +1997,7 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         start_auction(deps.as_mut(), None);

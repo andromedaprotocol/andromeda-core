@@ -47,7 +47,7 @@ pub struct RateInfo {
     pub rate: Rate,
     pub is_additive: bool,
     pub description: Option<String>,
-    pub receivers: Vec<Recipient>,
+    pub recipients: Vec<Recipient>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

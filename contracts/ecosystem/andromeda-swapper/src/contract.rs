@@ -22,7 +22,7 @@ use cw_asset::AssetInfo;
 use semver::Version;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_swapper";
+const CONTRACT_NAME: &str = "crates.io:andromeda-swapper";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]

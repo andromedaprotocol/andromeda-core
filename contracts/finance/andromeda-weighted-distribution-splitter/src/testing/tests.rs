@@ -50,7 +50,7 @@ fn test_modules() {
         .add_attribute("action", "register_module")
         .add_attribute("module_idx", "1")
         .add_attribute("method", "instantiate")
-        .add_attribute("type", "weighted-splitter");
+        .add_attribute("type", "weighted-distribution-splitter");
     assert_eq!(expected_res, res);
 
     let msg = ExecuteMsg::Send {};

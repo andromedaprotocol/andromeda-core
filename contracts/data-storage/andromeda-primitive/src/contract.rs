@@ -18,7 +18,7 @@ use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_primitive";
+const CONTRACT_NAME: &str = "crates.io:andromeda-primitive";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

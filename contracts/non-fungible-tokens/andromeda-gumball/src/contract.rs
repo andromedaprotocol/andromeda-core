@@ -7,6 +7,7 @@ use andromeda_non_fungible_tokens::{
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
     gumball::{ExecuteMsg, InstantiateMsg, NumberOfNftsResponse, QueryMsg, StatusResponse},
 };
+
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
@@ -22,7 +23,7 @@ use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
 
-const CONTRACT_NAME: &str = "crates.io:andromeda_gumball";
+const CONTRACT_NAME: &str = "crates.io:andromeda-gumball";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub(crate) const MAX_MINT_LIMIT: u32 = 100;
@@ -293,7 +294,8 @@ fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, 
     let random_response: LatestRandomResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: randomness_source,
-            //msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
+            // msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
+            // Terrand hasn't upgraded to cosmwasm-std 1, it's still at 0.16
             msg: encode_binary(&"TODO")?,
         }))?;
     let randomness = Binary::to_base64(&random_response.randomness);

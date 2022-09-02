@@ -57,7 +57,7 @@ pub fn instantiate(
     )?;
 
     let config = Config {
-        bootstrap_contract_address: msg.bootstrap_contract,
+        // bootstrap_contract_address: msg.bootstrap_contract,
         init_timestamp: msg.init_timestamp,
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
@@ -98,9 +98,6 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::DepositNative {} => execute_deposit_native(deps, env, info),
         ExecuteMsg::WithdrawNative { amount } => execute_withdraw_native(deps, env, info, amount),
-        ExecuteMsg::DepositToBootstrap { amount } => {
-            execute_deposit_to_bootstrap(deps, env, info, amount)
-        }
         ExecuteMsg::EnableClaims {} => execute_enable_claims(deps, env, info),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
         ExecuteMsg::WithdrawProceeds { recipient } => {
@@ -354,22 +351,22 @@ pub fn execute_enable_claims(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let contract = ADOContract::default();
+    // let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
-    // If bootstrap is specified then only it can enable claims.
-    if let Some(bootstrap_contract_address) = &config.bootstrap_contract_address {
-        let app_contract = contract.get_app_contract(deps.storage)?;
-        let bootstrap_contract_address =
-            bootstrap_contract_address.get_address(deps.api, &deps.querier, app_contract)?;
+    // // If bootstrap is specified then only it can enable claims.
+    // if let Some(bootstrap_contract_address) = &config.bootstrap_contract_address {
+    //     let app_contract = contract.get_app_contract(deps.storage)?;
+    //     let bootstrap_contract_address =
+    //         bootstrap_contract_address.get_address(deps.api, &deps.querier, app_contract)?;
 
-        // CHECK :: ONLY BOOTSTRAP CONTRACT CAN CALL THIS FUNCTION
-        require(
-            info.sender == bootstrap_contract_address,
-            ContractError::Unauthorized {},
-        )?;
-    }
+    //     // CHECK :: ONLY BOOTSTRAP CONTRACT CAN CALL THIS FUNCTION
+    //     require(
+    //         info.sender == bootstrap_contract_address,
+    //         ContractError::Unauthorized {},
+    //     )?;
+    // }
 
     // CHECK :: Claims can only be enabled after the deposit / withdrawal windows are closed
     require(
@@ -386,75 +383,6 @@ pub fn execute_enable_claims(
 
     STATE.save(deps.storage, &state)?;
     Ok(Response::new().add_attribute("action", "enable_claims"))
-}
-
-/// @dev Function to delegate part of the token rewards to be used for LP Bootstrapping via
-/// bootstrap
-/// @param amount : Number of tokens to delegate
-pub fn execute_deposit_to_bootstrap(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let mut state = STATE.load(deps.storage)?;
-    let user_address = info.sender;
-
-    // CHECK :: Have the deposit / withdraw windows concluded
-    require(
-        !is_withdraw_open(env.block.time.seconds(), &config),
-        ContractError::PhaseOngoing {},
-    )?;
-
-    // CHECK :: Can users withdraw their tokens ? -> if so, then delegation is no longer allowed
-    require(
-        !state.are_claims_allowed,
-        ContractError::ClaimsAlreadyAllowed {},
-    )?;
-
-    // CHECK :: Bootstrap contract address should be set
-    require(
-        config.bootstrap_contract_address.is_some(),
-        ContractError::NoSavedBootstrapContract {},
-    )?;
-
-    let mut user_info = USER_INFO
-        .may_load(deps.storage, &user_address)?
-        .unwrap_or_default();
-
-    let total_incentives = config
-        .lockdrop_incentives
-        .multiply_ratio(user_info.total_native_locked, state.total_native_locked);
-
-    // CHECK :: token to delegate cannot exceed user's unclaimed token balance
-    let available_amount = total_incentives - user_info.delegated_incentives;
-    require(
-        amount <= available_amount,
-        ContractError::InvalidFunds {
-            msg: format!(
-                "Amount cannot exceed user's unclaimed token balance. Tokens to delegate = {}, Max delegatable tokens = {}",
-                amount,
-                available_amount
-            ),
-        },
-    )?;
-
-    // UPDATE STATE
-    user_info.delegated_incentives += amount;
-    state.total_delegated += amount;
-
-    // SAVE UPDATED STATE
-    STATE.save(deps.storage, &state)?;
-    USER_INFO.save(deps.storage, &user_address, &user_info)?;
-
-    // COSMOS_MSG ::Delegate tokens to the LP Bootstrapping via Bootstrap contract
-    // TODO: When Bootstrapping contract is created add this message.
-
-    Ok(Response::new()
-        .add_attribute("action", "deposit_to_bootstrap")
-        .add_attribute("user_address", user_address)
-        .add_attribute("delegated_amount", amount))
 }
 
 /// @dev Function to claim Rewards from lockdrop.
@@ -555,16 +483,16 @@ fn execute_withdraw_proceeds(
 /// @dev Returns the contract's configuration
 pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let contract = ADOContract::default();
-    let app_contract = contract.get_app_contract(deps.storage)?;
-    let bootstrap_contract_address = config
-        .bootstrap_contract_address
-        .map(|a| a.get_address(deps.api, &deps.querier, app_contract))
-        // Flip Option<Result> to Result<Option>
-        .map_or(Ok(None), |v| v.map(Some));
+    // let contract = ADOContract::default();
+    // let app_contract = contract.get_app_contract(deps.storage)?;
+    // let bootstrap_contract_address = config
+    //     .bootstrap_contract_address
+    //     .map(|a| a.get_address(deps.api, &deps.querier, app_contract))
+    //     // Flip Option<Result> to Result<Option>
+    //     .map_or(Ok(None), |v| v.map(Some));
 
     Ok(ConfigResponse {
-        bootstrap_contract_address: bootstrap_contract_address?,
+        // bootstrap_contract_address: bootstrap_contract_address?,
         init_timestamp: config.init_timestamp,
         deposit_window: config.deposit_window,
         withdrawal_window: config.withdrawal_window,
@@ -579,7 +507,6 @@ pub fn query_state(deps: Deps) -> Result<StateResponse, ContractError> {
     let state: State = STATE.load(deps.storage)?;
     Ok(StateResponse {
         total_native_locked: state.total_native_locked,
-        total_delegated: state.total_delegated,
         are_claims_allowed: state.are_claims_allowed,
     })
 }
@@ -605,7 +532,6 @@ pub fn query_user_info(
     Ok(UserInfoResponse {
         total_native_locked: user_info.total_native_locked,
         total_incentives,
-        delegated_incentives: user_info.delegated_incentives,
         is_lockdrop_claimed: user_info.lockdrop_claimed,
         withdrawal_flag: user_info.withdrawal_flag,
     })

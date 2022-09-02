@@ -12,7 +12,6 @@ pub struct AppComponent {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub operators: Vec<String>,
     pub app: Vec<AppComponent>,
     pub name: String,
     pub primitive_contract: String,
