@@ -255,12 +255,9 @@ fn execute_buy(
         },
     )?;
     require(
-        payment.amount == token_sale_state.price,
+        payment.amount >= token_sale_state.price,
         ContractError::InvalidFunds {
-            msg: format!(
-                "Sent funds aren't equal to sale price: {}",
-                token_sale_state.price
-            ),
+            msg: "Insufficient funds".to_string(),
         },
     )?;
 
@@ -356,7 +353,7 @@ fn purchase_token(
 
     let mut total_tax_amount = Uint128::zero();
 
-    let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
+    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         storage,
         api,
         querier,
@@ -372,19 +369,11 @@ fn purchase_token(
     // Calculate total tax
     total_tax_amount += tax_amount;
 
-    if events.iter().any(|x| x.ty == "tax") {
-        let after_tax_payment = Coin {
-            denom: state.coin_denom,
-            amount: state.price - tax_amount,
-        };
-        Ok((after_tax_payment, msgs))
-    } else {
-        let after_tax_payment = Coin {
-            denom: state.coin_denom,
-            amount: remaining_amount.amount,
-        };
-        Ok((after_tax_payment, msgs))
-    }
+    let after_tax_payment = Coin {
+        denom: state.coin_denom,
+        amount: remaining_amount.amount,
+    };
+    Ok((after_tax_payment, msgs))
 }
 
 fn get_existing_token_sale_state(
