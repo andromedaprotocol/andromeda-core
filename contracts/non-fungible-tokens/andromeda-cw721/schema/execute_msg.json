@@ -265,6 +265,30 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Mint multiple tokens at a time",
+      "type": "object",
+      "required": [
+        "batch_mint"
+      ],
+      "properties": {
+        "batch_mint": {
+          "type": "object",
+          "required": [
+            "tokens"
+          ],
+          "properties": {
+            "tokens": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/MintMsg_for_TokenExtension"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
