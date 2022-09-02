@@ -7,8 +7,11 @@ use andromeda_non_fungible_tokens::marketplace::{
     SaleStateResponse, Status,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
-    rates::get_tax_amount, require, Funds,
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    rates::get_tax_amount,
+    require, Funds,
 };
 use cosmwasm_std::{
     attr, entry_point, from_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
@@ -54,6 +57,17 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    contract.module_hook::<Response>(
+        deps.storage,
+        deps.api,
+        deps.querier,
+        AndromedaHook::OnExecute {
+            sender: info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
     match msg {
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
@@ -256,9 +270,7 @@ fn execute_buy(
     )?;
     require(
         payment.amount >= token_sale_state.price,
-        ContractError::InvalidFunds {
-            msg: "Insufficient funds".to_string(),
-        },
+        ContractError::InsufficientFunds {},
     )?;
 
     let key = token_sale_state.sale_id.u128();
@@ -765,12 +777,7 @@ mod tests {
         // Correct denom but empty
         let info = mock_info("sender", &[coin(0, "uusd")]);
         let res = execute(deps.as_mut(), env, info, msg);
-        assert_eq!(
-            ContractError::InvalidFunds {
-                msg: "Sent funds aren't equal to sale price: 100".to_string(),
-            },
-            res.unwrap_err()
-        );
+        assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
     }
 
     #[test]
