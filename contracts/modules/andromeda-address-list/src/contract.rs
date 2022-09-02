@@ -4,7 +4,7 @@ use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdE
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
-use ado_base::{ADOContract, modules::hooks::handle_ado_hook};
+use ado_base::{modules::hooks::handle_ado_hook, ADOContract};
 use andromeda_modules::address_list::{
     ExecuteMsg, IncludesAddressResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };

@@ -1,5 +1,5 @@
 use crate::state::{Config, CONFIG};
-use ado_base::{ADOContract, modules::hooks::handle_ado_hook};
+use ado_base::{modules::hooks::handle_ado_hook, ADOContract};
 use andromeda_modules::rates::{
     calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
     QueryMsg, RateInfo,
@@ -14,8 +14,8 @@ use common::{
     parse_message, require, Funds,
 };
 use cosmwasm_std::{
-    attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo,
-    Response, StdError, SubMsg,
+    attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response,
+    StdError, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
