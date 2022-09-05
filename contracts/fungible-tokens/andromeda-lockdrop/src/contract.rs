@@ -3,7 +3,7 @@
 
 use cosmwasm_std::{
     ensure, entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, Timestamp, Uint128,
+    StdError, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
