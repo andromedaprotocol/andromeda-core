@@ -559,8 +559,8 @@ fn from_semver(err: semver::Error) -> StdError {
 mod tests {
     use super::*;
     use crate::mock_querier::{
-        mock_dependencies_custom, MOCK_RATES_CONTRACT, MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT,
-        MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
+        mock_dependencies_custom, MOCK_RATES_CONTRACT, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
+        MOCK_UNCLAIMED_TOKEN,
     };
     use crate::state::SaleInfo;
     use andromeda_non_fungible_tokens::marketplace::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
@@ -569,7 +569,6 @@ mod tests {
     use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coin, coins};
-    use schemars::_serde_json::de;
 
     fn start_sale(deps: DepsMut, whitelist: Option<Vec<Addr>>) {
         let hook_msg = Cw721HookMsg::StartSale {
@@ -616,28 +615,6 @@ mod tests {
                 )
                 .unwrap()
         );
-    }
-
-    fn get_rates_messages() -> Vec<SubMsg> {
-        let coin = coin(100u128, "uusd");
-        vec![
-            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
-                amount: vec![Coin {
-                    // Royalty of 10%
-                    amount: coin.amount.multiply_ratio(10u128, 100u128),
-                    denom: coin.denom.clone(),
-                }],
-            })),
-            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TAX_RECIPIENT.to_owned(),
-                amount: vec![Coin {
-                    // Flat tax of 50
-                    amount: Uint128::from(50u128),
-                    denom: coin.denom,
-                }],
-            })),
-        ]
     }
 
     #[test]

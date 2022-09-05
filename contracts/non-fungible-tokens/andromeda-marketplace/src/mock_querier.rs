@@ -9,7 +9,7 @@ use cosmwasm_std::{
     to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps, Querier, QuerierResult,
     QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
 };
-use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
+use cw721::{Cw721QueryMsg, OwnerOfResponse};
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
