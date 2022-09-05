@@ -3,7 +3,7 @@
 
 use cosmwasm_std::{
     ensure, entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, Uint128,
+    StdError, Timestamp, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -569,7 +569,7 @@ fn is_withdraw_open(current_timestamp: u64, config: &Config) -> bool {
 /// @dev Helper function to calculate maximum % of NATIVE deposited that can be withdrawn
 /// @params current_timestamp : Current block timestamp
 /// @params config : Contract configuration
-fn allowed_withdrawal_percent(current_timestamp: u64, config: &Config) -> Decimal {
+pub fn allowed_withdrawal_percent(current_timestamp: u64, config: &Config) -> Decimal {
     let withdrawal_cutoff_init_point = config.init_timestamp + config.deposit_window;
 
     // Deposit window :: 100% withdrawals allowed

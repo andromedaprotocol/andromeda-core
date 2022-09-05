@@ -90,9 +90,6 @@ pub fn execute(
             token_id,
             token_address,
         } => execute_claim(deps, env, info, token_id, token_address),
-        ExecuteMsg::UpdateOwner { address } => {
-            ADOContract::default().execute_update_owner(deps, info, address)
-        }
     }
 }
 

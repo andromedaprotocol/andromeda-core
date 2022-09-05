@@ -79,20 +79,6 @@ where
     Ok(resp)
 }
 
-/// A simple implementation of Solidity's "ensure!" function. Takes a precondition and an error to return if the precondition is not met.
-///
-/// ## Arguments
-///
-/// * `precond` - The required precondition, will return provided "err" parameter if precondition is false
-/// * `err` - The error to return if the required precondition is false
-///
-/// ## Example
-/// ```
-/// use common::error::ContractError;
-/// use cosmwasm_std::StdError;
-/// ensure!(false, ContractError::Std(StdError::generic_err("Some boolean condition was not met")));
-/// ```
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum Funds {
     Native(Coin),
