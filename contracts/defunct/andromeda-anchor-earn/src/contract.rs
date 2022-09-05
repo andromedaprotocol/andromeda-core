@@ -1,7 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, SubMsg, Uint128, WasmMsg,
+    ensure, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, SubMsg, Uint128,
+    WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
@@ -23,7 +24,7 @@ use common::{
     },
     encode_binary,
     error::ContractError,
-    parse_message, require,
+    parse_message,
     withdraw::Withdrawal,
 };
 
@@ -113,7 +114,7 @@ pub fn execute_deposit(
     let anchor_market = contract.get_cached_address(deps.storage, ANCHOR_MARKET)?;
     let anchor_aust_token = contract.get_cached_address(deps.storage, ANCHOR_AUST)?;
 
-    require(
+    ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
             msg: "Must deposit exactly 1 type of native coin.".to_string(),
@@ -126,7 +127,7 @@ pub fn execute_deposit(
     };
 
     let payment = &info.funds[0];
-    require(
+    ensure!(
         payment.denom == UUSD_DENOM && payment.amount > Uint128::zero(),
         ContractError::InvalidFunds {
             msg: "Must deposit a non-zero quantity of uusd".to_string(),
@@ -189,16 +190,16 @@ pub fn execute_withdraw(
 
     let authorized = recipient_addr == info.sender
         || ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?;
-    require(authorized, ContractError::Unauthorized {})?;
+    ensure!(authorized, ContractError::Unauthorized {})?;
 
-    require(
+    ensure!(
         matches!(recipient, Recipient::Addr(_)),
         ContractError::InvalidRecipientType {
             msg: "Only recipients of type Addr are allowed as it only specifies the owner of the position to withdraw from".to_string()
         },
     )?;
 
-    require(
+    ensure!(
         tokens_to_withdraw.is_some(),
         ContractError::InvalidWithdrawal {
             msg: Some("Withdrawal must be non-empty".to_string()),
@@ -206,7 +207,7 @@ pub fn execute_withdraw(
     )?;
     let tokens_to_withdraw = tokens_to_withdraw.unwrap();
 
-    require(
+    ensure!(
         tokens_to_withdraw.len() == 1,
         ContractError::InvalidWithdrawal {
             msg: Some("Must only withdraw a single token".to_string()),
@@ -246,7 +247,7 @@ fn withdraw_uusd(
     let authorized = recipient_addr == info.sender
         || contract.is_owner_or_operator(deps.storage, info.sender.as_str())?;
 
-    require(authorized, ContractError::Unauthorized {})?;
+    ensure!(authorized, ContractError::Unauthorized {})?;
 
     let uusd = AssetInfo::native(UUSD_DENOM);
     let contract_balance = uusd.query_balance(&deps.querier, env.contract.address)?;
@@ -290,7 +291,7 @@ fn withdraw_aust(
     let authorized = recipient_addr == info.sender
         || contract.is_owner_or_operator(deps.storage, info.sender.as_str())?;
 
-    require(authorized, ContractError::Unauthorized {})?;
+    ensure!(authorized, ContractError::Unauthorized {})?;
 
     let amount = withdrawal.get_amount(position.aust_amount)?;
 
@@ -329,7 +330,7 @@ fn reply_update_position(deps: DepsMut, env: Env) -> Result<Response, ContractEr
 
     let prev_aust_balance = PREV_AUST_BALANCE.load(deps.storage)?;
     let new_aust_balance = aust_balance.checked_sub(prev_aust_balance)?;
-    require(
+    ensure!(
         new_aust_balance > Uint128::zero(),
         ContractError::InvalidFunds {
             msg: "No aUST tokens minted".to_string(),
@@ -411,7 +412,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
@@ -419,7 +420,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     )?;
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,

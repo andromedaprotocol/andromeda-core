@@ -1725,7 +1725,7 @@ fn test_execute_send_error() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
     let expected_res = ContractError::InvalidFunds {
-        msg: "Require at least one coin to be sent".to_string(),
+        msg: "ensure! at least one coin to be sent".to_string(),
     };
 
     assert_eq!(res, expected_res);

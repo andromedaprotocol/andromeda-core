@@ -1,9 +1,9 @@
-use cosmwasm_std::{Addr, Api, Deps, QuerierWrapper, Storage};
+use cosmwasm_std::{ensure, Addr, Api, Deps, QuerierWrapper, Storage};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::ADOContract;
-use common::{app::AndrAddress, error::ContractError, require};
+use common::{app::AndrAddress, error::ContractError};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -22,10 +22,10 @@ impl<'a> ADOContract<'a> {
         mut addresses: Vec<AndrAddress>,
     ) -> Result<(), ContractError> {
         let app_contract = self.get_app_contract(deps.storage)?;
-        require(
+        ensure!(
             app_contract.is_some(),
-            ContractError::AppContractNotSpecified {},
-        )?;
+            ContractError::AppContractNotSpecified {}
+        );
         #[cfg(feature = "modules")]
         {
             let modules = self.load_modules(deps.storage)?;
@@ -57,10 +57,10 @@ impl<'a> ADOContract<'a> {
         // If the address passes this check then it doesn't refer to a app component by
         // name.
         if api.addr_validate(&identifier).is_err() {
-            require(
+            ensure!(
                 self.component_exists(querier, identifier.clone(), app_contract)?,
-                ContractError::InvalidComponent { name: identifier },
-            )?;
+                ContractError::InvalidComponent { name: identifier }
+            );
         }
         Ok(())
     }

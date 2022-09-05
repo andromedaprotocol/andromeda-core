@@ -16,12 +16,12 @@ use common::{
     encode_binary,
     error::ContractError,
     rates::get_tax_amount,
-    require, Funds,
+    Funds,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    ensure, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
     QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -94,51 +94,51 @@ fn execute_place_offer(
     let purchaser = info.sender.as_str();
     let current_offer = offers().may_load(deps.storage, &token_id)?;
     let token_owner = get_token_owner(deps.storage, &deps.querier, token_id.clone())?;
-    require(
+    ensure!(
         info.sender != token_owner,
-        ContractError::TokenOwnerCannotBid {},
-    )?;
-    require(
+        ContractError::TokenOwnerCannotBid {}
+    );
+    ensure!(
         // This is to avoid situations where a user transfers the token to the purchaser thinking
         // that there is an offer up and having the purchaser pull the offer right before (not
         // necessariliy malicious, could just be a coincidence). Having a concrete time will
         // give the seller a window of guaranteed time to accept the offer.
         expiration != Expiration::Never {},
-        ContractError::ExpirationMustNotBeNever {},
-    )?;
-    require(
+        ContractError::ExpirationMustNotBeNever {}
+    );
+    ensure!(
         !expiration.is_expired(&env.block),
-        ContractError::Expired {},
-    )?;
-    require(
+        ContractError::Expired {}
+    );
+    ensure!(
         !query_is_archived(deps.querier, deps.storage, token_id.clone())?,
-        ContractError::TokenIsArchived {},
-    )?;
-    require(
+        ContractError::TokenIsArchived {}
+    );
+    ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
             msg: "Must send one type of funds".to_string(),
-        },
-    )?;
+        }
+    );
     let coin: &Coin = &info.funds[0];
     let valid_denom = VALID_DENOM.load(deps.storage)?;
-    require(
+    ensure!(
         valid_denom == coin.denom,
         ContractError::InvalidFunds {
             msg: "Invalid offer denom".to_string(),
-        },
-    )?;
+        }
+    );
     let mut msgs: Vec<SubMsg> = vec![];
     if let Some(current_offer) = current_offer {
-        require(
+        ensure!(
             purchaser != current_offer.purchaser,
-            ContractError::OfferAlreadyPlaced {},
-        )?;
-        require(
+            ContractError::OfferAlreadyPlaced {}
+        );
+        ensure!(
             current_offer.expiration.is_expired(&env.block)
                 || current_offer.offer_amount < offer_amount,
-            ContractError::OfferLowerThanCurrent {},
-        )?;
+            ContractError::OfferLowerThanCurrent {}
+        );
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             amount: vec![current_offer.get_full_amount()],
             to_address: current_offer.purchaser,
@@ -166,11 +166,11 @@ fn execute_place_offer(
         msgs: res.msgs,
         events: res.events,
     };
-    // require that the sender has sent enough for taxes
-    require(
+    // ensure! that the sender has sent enough for taxes
+    ensure!(
         has_coins(&info.funds, &offer.get_full_amount()),
-        ContractError::InsufficientFunds {},
-    )?;
+        ContractError::InsufficientFunds {}
+    );
 
     offers().save(deps.storage, &token_id, &offer)?;
     Ok(Response::new()
@@ -190,14 +190,14 @@ fn execute_cancel_offer(
     nonpayable(&info)?;
 
     let offer = offers().load(deps.storage, &token_id)?;
-    require(
+    ensure!(
         info.sender == offer.purchaser,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         offer.expiration.is_expired(&env.block),
-        ContractError::OfferNotExpired {},
-    )?;
+        ContractError::OfferNotExpired {}
+    );
     offers().remove(deps.storage, &token_id)?;
     let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: info.sender.to_string(),
@@ -218,19 +218,19 @@ fn execute_accept_offer(
 ) -> Result<Response, ContractError> {
     let offer = offers().load(deps.storage, &token_id)?;
     let cw721_contract = CW721_CONTRACT.load(deps.storage)?;
-    require(
+    ensure!(
         !offer.expiration.is_expired(&env.block),
-        ContractError::Expired {},
-    )?;
+        ContractError::Expired {}
+    );
     // Only the cw721 contract can accept offers.
-    require(
+    ensure!(
         info.sender == cw721_contract,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         query_transfer_agreement(deps.querier, deps.storage, token_id.clone())?.is_none(),
-        ContractError::TransferAgreementExists {},
-    )?;
+        ContractError::TransferAgreementExists {}
+    );
     let payment_msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: recipient,
         amount: vec![Coin {
@@ -300,20 +300,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -360,7 +360,7 @@ fn handle_andr_hook(deps: Deps, env: Env, msg: AndromedaHook) -> Result<Binary, 
                         // happen.
                         msg: encode_binary(&ExecuteMsg::AcceptOffer {
                             token_id,
-                            // We require a recipient since the owner of the token will have
+                            // We ensure! a recipient since the owner of the token will have
                             // changed once this message gets executed. Sender is assuemd to be the
                             // orignal owner of the token.
                             recipient: sender,

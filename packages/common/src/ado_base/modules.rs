@@ -1,4 +1,5 @@
-use crate::{app::AndrAddress, error::ContractError, require};
+use crate::{app::AndrAddress, error::ContractError};
+use cosmwasm_std::ensure;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -50,7 +51,7 @@ impl Module {
     pub fn validate(&self, modules: &[Module], ado_type: &str) -> Result<(), ContractError> {
         // We allow multiple rates modules.
         if self.module_type != RATES {
-            require(self.is_unique(modules), ContractError::ModuleNotUnique {})?;
+            ensure!(self.is_unique(modules), ContractError::ModuleNotUnique {});
         }
 
         if ado_type == "cw20" && contains_module(modules, AUCTION) {

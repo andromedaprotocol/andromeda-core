@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
+use cosmwasm_std::{ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{DATA, DEFAULT_KEY};
@@ -12,7 +12,6 @@ use common::{
     error::ContractError,
     parse_message,
     primitive::{GetValueResponse, Primitive},
-    require,
 };
 use cw_utils::nonpayable;
 use semver::Version;
@@ -69,10 +68,10 @@ pub fn execute_set_value(
     nonpayable(&info)?;
 
     let sender = info.sender.to_string();
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     if value.is_invalid() {
         return Err(ContractError::InvalidPrimitive {});
     }
@@ -96,10 +95,10 @@ pub fn execute_delete_value(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     let sender = info.sender.to_string();
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let key = get_key_or_default(&key);
     DATA.remove(deps.storage, key);
     Ok(Response::new()
@@ -119,20 +118,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

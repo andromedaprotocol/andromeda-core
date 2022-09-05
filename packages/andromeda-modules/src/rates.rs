@@ -7,9 +7,11 @@ use common::{
     encode_binary,
     error::ContractError,
     primitive::{Primitive, PrimitivePointer},
-    require, Funds,
+    Funds,
 };
-use cosmwasm_std::{Addr, Api, Coin, Decimal, Fraction, QuerierWrapper, QueryRequest, WasmQuery};
+use cosmwasm_std::{
+    ensure, Addr, Api, Coin, Decimal, Fraction, QuerierWrapper, QueryRequest, WasmQuery,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -94,10 +96,10 @@ impl Rate {
         app_contract: Option<Addr>,
     ) -> Result<Rate, ContractError> {
         let rate = self.clone().get_rate(api, querier, app_contract)?;
-        require(rate.is_non_zero()?, ContractError::InvalidRate {})?;
+        ensure!(rate.is_non_zero()?, ContractError::InvalidRate {});
 
         if let Rate::Percent(PercentRate { percent }) = rate {
-            require(percent <= Decimal::one(), ContractError::InvalidRate {})?;
+            ensure!(percent <= Decimal::one(), ContractError::InvalidRate {});
         }
 
         Ok(rate)
@@ -174,12 +176,11 @@ pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractErr
         Rate::Flat(rate) => Ok(Coin::new(rate.amount.u128(), rate.denom)),
         Rate::Percent(PercentRate { percent }) => {
             // [COM-03] Make sure that fee_rate between 0 and 100.
-            require(
+            ensure!(
                 // No need for rate >=0 due to type limits (Question: Should add or remove?)
                 percent <= Decimal::one() && !percent.is_zero(),
-                ContractError::InvalidRate {},
-            )
-            .unwrap();
+                ContractError::InvalidRate {}
+            );
             let mut fee_amount = payment.amount * percent;
 
             // Always round any remainder up and prioritise the fee receiver.

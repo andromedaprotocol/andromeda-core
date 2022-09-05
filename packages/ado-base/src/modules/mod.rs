@@ -201,7 +201,7 @@ impl<'a> ADOContract<'a> {
             }
 
             let id = msg.id.to_string();
-            require(
+            ensure!(
                 self.module_info.has(deps.storage, &id),
                 ContractError::InvalidReplyId {},
             )?;

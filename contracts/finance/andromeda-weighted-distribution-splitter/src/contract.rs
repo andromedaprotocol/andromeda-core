@@ -13,12 +13,11 @@ use common::{
     app::AndrAddress,
     encode_binary,
     error::ContractError,
-    require,
 };
 
 use cosmwasm_std::{
-    attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, SubMsg, Timestamp, Uint128,
+    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, StdError, SubMsg, Timestamp, Uint128,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -43,18 +42,18 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     // Max 100 recipients
-    require(
+    ensure!(
         msg.recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {},
-    )?;
+        ContractError::ReachedRecipientLimit {}
+    );
     let current_time = env.block.time.seconds();
     let splitter = match msg.lock_time {
         Some(lock_time) => {
             // New lock time can't be too short
-            require(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {})?;
+            ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
 
             // New lock time can't be too long
-            require(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {})?;
+            ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
 
             Splitter {
                 recipients: msg.recipients,
@@ -145,24 +144,24 @@ pub fn execute_update_recipient_weight(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // Only the contract's owner can update a recipient's weight
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     // Can't set weight to 0
-    require(
+    ensure!(
         recipient.weight > Uint128::zero(),
-        ContractError::InvalidWeight {},
-    )?;
+        ContractError::InvalidWeight {}
+    );
 
     // Splitter's lock should be expired
     let mut splitter = SPLITTER.load(deps.storage)?;
 
-    require(
+    ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {},
-    )?;
+        ContractError::ContractLocked {}
+    );
 
     // Recipients are stored in a vector, we search for the desired recipient's index in the vector
 
@@ -174,7 +173,7 @@ pub fn execute_update_recipient_weight(
 
     // If the index exists, change the element's weight.
     // If the index doesn't exist, the recipient isn't on the list
-    require(user_index.is_some(), ContractError::UserNotFound {})?;
+    ensure!(user_index.is_some(), ContractError::UserNotFound {});
 
     if let Some(i) = user_index {
         splitter.recipients[i].weight = recipient.weight;
@@ -192,10 +191,10 @@ pub fn execute_add_recipient(
     nonpayable(&info)?;
 
     // Only the contract's owner can add a recipient
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     // No need to send funds
 
     // Check if splitter is locked
@@ -203,16 +202,16 @@ pub fn execute_add_recipient(
 
     // Can't add recipients while the lock isn't expired
 
-    require(
+    ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {},
-    )?;
+        ContractError::ContractLocked {}
+    );
 
     // Can't set weight to 0
-    require(
+    ensure!(
         recipient.weight > Uint128::zero(),
-        ContractError::InvalidWeight {},
-    )?;
+        ContractError::InvalidWeight {}
+    );
 
     // Check for duplicate recipients
 
@@ -221,14 +220,14 @@ pub fn execute_add_recipient(
         .iter()
         .any(|x| x.recipient == recipient.recipient);
 
-    require(!user_exists, ContractError::DuplicateRecipient {})?;
+    ensure!(!user_exists, ContractError::DuplicateRecipient {});
 
     // Adding a recipient can't push the total number of recipients over 100
 
-    require(
+    ensure!(
         splitter.recipients.len() < 100,
-        ContractError::ReachedRecipientLimit {},
-    )?;
+        ContractError::ReachedRecipientLimit {}
+    );
 
     splitter.recipients.push(recipient);
     let new_splitter = Splitter {
@@ -254,17 +253,17 @@ pub fn execute_andromeda(
 
 fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     // Amount of coins sent should be at least 1
-    require(
+    ensure!(
         !&info.funds.is_empty(),
         ContractError::InvalidFunds {
-            msg: "Require at least one coin to be sent".to_string(),
-        },
-    )?;
+            msg: "ensure! at least one coin to be sent".to_string(),
+        }
+    );
     // Can't send more than 5 types of coins
-    require(
+    ensure!(
         info.funds.len() < 5,
-        ContractError::ExceedsMaxAllowedCoins {},
-    )?;
+        ContractError::ExceedsMaxAllowedCoins {}
+    );
 
     let splitter = SPLITTER.load(deps.storage)?;
     let mut msgs: Vec<SubMsg> = Vec::new();
@@ -326,36 +325,36 @@ fn execute_update_recipients(
     nonpayable(&info)?;
 
     // Only the owner can use this function
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     // No need to send funds
 
     // Recipient list can't be empty
-    require(
+    ensure!(
         !recipients.is_empty(),
-        ContractError::EmptyRecipientsList {},
-    )?;
+        ContractError::EmptyRecipientsList {}
+    );
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     // Can't update recipients while lock isn't expired
-    require(
+    ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {},
-    )?;
+        ContractError::ContractLocked {}
+    );
 
     // Maximum number of recipients is 100
-    require(
+    ensure!(
         recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {},
-    )?;
+        ContractError::ReachedRecipientLimit {}
+    );
 
     // A recipient's weight has to be greater than zero
     let zero_weight = recipients.iter().any(|x| x.weight == Uint128::zero());
 
-    require(!zero_weight, ContractError::InvalidWeight {})?;
+    ensure!(!zero_weight, ContractError::InvalidWeight {});
 
     splitter.recipients = recipients;
     SPLITTER.save(deps.storage, &splitter)?;
@@ -371,19 +370,19 @@ fn execute_remove_recipient(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     // Can't remove recipients while lock isn't expired
 
-    require(
+    ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {},
-    )?;
+        ContractError::ContractLocked {}
+    );
 
     // Recipients are stored in a vector, we search for the desired recipient's index in the vector
 
@@ -395,7 +394,7 @@ fn execute_remove_recipient(
 
     // If the index exists, remove the element found in the index
     // If the index doesn't exist, return an error
-    require(user_index.is_some(), ContractError::UserNotFound {})?;
+    ensure!(user_index.is_some(), ContractError::UserNotFound {});
 
     if let Some(i) = user_index {
         splitter.recipients.swap_remove(i);
@@ -417,27 +416,27 @@ fn execute_update_lock(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     // Can't call this function while the lock isn't expired
 
-    require(
+    ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {},
-    )?;
+        ContractError::ContractLocked {}
+    );
     // Get current time
     let current_time = env.block.time.seconds();
 
     // New lock time can't be too short
-    require(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {})?;
+    ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
 
     // New lock time can't be unreasonably long
-    require(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {})?;
+    ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
 
     // Set new lock time
     let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
@@ -463,20 +462,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

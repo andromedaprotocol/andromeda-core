@@ -3,11 +3,9 @@ use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721_staking::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
-};
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
-    attr, entry_point, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    attr, ensure, entry_point, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Response, StdError, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -89,10 +87,10 @@ fn execute_update_unbonding_period(
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     // Save new unbonding period
     UNBONDING_PERIOD.save(deps.storage, &new_period)?;
@@ -109,10 +107,10 @@ fn execute_update_allowed_contracts(
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     ALLOWED_CONTRACTS.save(deps.storage, &contracts)?;
     Ok(Response::new().add_attribute("action", "updated_allowed_contracts"))
@@ -127,17 +125,17 @@ fn execute_add_allowed_contract(
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let mut new_contracts = ALLOWED_CONTRACTS.load(deps.storage)?;
 
     // Prevent duplicate contracts
-    require(
+    ensure!(
         !new_contracts.contains(&new_contract),
-        ContractError::DuplicateContract {},
-    )?;
+        ContractError::DuplicateContract {}
+    );
 
     new_contracts.push(new_contract);
 
@@ -155,10 +153,10 @@ fn execute_remove_allowed_contract(
     let contract = ADOContract::default();
 
     // Only owner or operator can use this function
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let mut new_contracts = ALLOWED_CONTRACTS.load(deps.storage)?;
     let index = new_contracts.iter().position(|x| x == &old_contract);
     if let Some(index) = index {
@@ -193,10 +191,10 @@ fn execute_stake(
     let allowed_contracts = ALLOWED_CONTRACTS.load(deps.storage)?;
 
     // NFT has to be sent from an allowed contract
-    require(
+    ensure!(
         allowed_contracts.contains(&token_address),
-        ContractError::UnsupportedNFT {},
-    )?;
+        ContractError::UnsupportedNFT {}
+    );
     // Concatenate the token's address and ID to form a unique key
     let key = format!("{token_address}{token_id}");
 
@@ -226,23 +224,23 @@ fn execute_unstake(
     let nft = STAKED_NFTS.may_load(deps.storage, key.clone())?;
     if let Some(nft) = nft {
         // Only owner can unstake the NFT
-        require(info.sender == nft.owner, ContractError::Unauthorized {})?;
+        ensure!(info.sender == nft.owner, ContractError::Unauthorized {});
 
         // Can't unbond twice
-        require(
+        ensure!(
             nft.time_of_unbonding.is_none(),
-            ContractError::AlreadyUnbonded {},
-        )?;
+            ContractError::AlreadyUnbonded {}
+        );
 
         let current_time = env.block.time;
 
         let time_spent_bonded = current_time.seconds() - nft.time_of_staking.seconds();
 
         // Time spent bonded should be at least a day
-        require(
+        ensure!(
             time_spent_bonded >= ONE_DAY,
-            ContractError::InsufficientBondedTime {},
-        )?;
+            ContractError::InsufficientBondedTime {}
+        );
 
         // We use the reward that was set at the time of staking
         let reward = nft.reward;
@@ -283,7 +281,7 @@ fn execute_claim(
     let nft = STAKED_NFTS.may_load(deps.storage, key.clone())?;
     if let Some(nft) = nft {
         // Only owner can claim the NFT
-        require(info.sender == nft.owner, ContractError::Unauthorized {})?;
+        ensure!(info.sender == nft.owner, ContractError::Unauthorized {});
 
         // NFT should be unbonded
         if let Some(time_of_unbonding) = nft.time_of_unbonding {
@@ -293,10 +291,10 @@ fn execute_claim(
             let time_spent_unbonded = env.block.time.seconds() - time_of_unbonding.seconds();
 
             // time spent unbonded should equal or exceed the unbonding period
-            require(
+            ensure!(
                 time_spent_unbonded >= unbonding_period,
-                ContractError::IncompleteUnbondingPeriod {},
-            )?;
+                ContractError::IncompleteUnbondingPeriod {}
+            );
 
             // Remove NFT from list of staked NFTs
             STAKED_NFTS.remove(deps.storage, key);
@@ -394,20 +392,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

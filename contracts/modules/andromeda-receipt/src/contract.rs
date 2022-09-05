@@ -13,10 +13,11 @@ use common::{
     },
     encode_binary,
     error::ContractError,
-    parse_message, require,
+    parse_message,
 };
 use cosmwasm_std::{
-    attr, entry_point, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdError, Uint128,
+    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdError,
+    Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
@@ -76,10 +77,10 @@ fn execute_store_receipt(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         can_mint_receipt(deps.storage, info.sender.as_ref())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let receipt_id = increment_num_receipt(deps.storage)?;
     store_receipt(deps.storage, receipt_id, &receipt)?;
     Ok(Response::new().add_attributes(vec![
@@ -94,10 +95,10 @@ fn execute_edit_receipt(
     receipt_id: Uint128,
     receipt: Receipt,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         can_mint_receipt(deps.storage, info.sender.as_ref())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     read_receipt(deps.storage, receipt_id)?;
     store_receipt(deps.storage, receipt_id, &receipt)?;
 
@@ -119,20 +120,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

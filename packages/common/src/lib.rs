@@ -11,8 +11,8 @@ pub mod withdraw;
 use crate::error::ContractError;
 use ado_base::{AndromedaQuery, QueryMsg};
 use cosmwasm_std::{
-    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, QueryRequest, SubMsg,
-    WasmQuery,
+    ensure, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, QueryRequest,
+    SubMsg, WasmQuery,
 };
 use cw20::Cw20Coin;
 use schemars::JsonSchema;
@@ -79,7 +79,7 @@ where
     Ok(resp)
 }
 
-/// A simple implementation of Solidity's "require" function. Takes a precondition and an error to return if the precondition is not met.
+/// A simple implementation of Solidity's "ensure!" function. Takes a precondition and an error to return if the precondition is not met.
 ///
 /// ## Arguments
 ///
@@ -90,15 +90,9 @@ where
 /// ```
 /// use common::error::ContractError;
 /// use cosmwasm_std::StdError;
-/// use common::require;
-/// require(false, ContractError::Std(StdError::generic_err("Some boolean condition was not met")));
+/// use common::ensure!;
+/// ensure!(false, ContractError::Std(StdError::generic_err("Some boolean condition was not met")));
 /// ```
-pub fn require(precond: bool, err: ContractError) -> Result<bool, ContractError> {
-    match precond {
-        true => Ok(true),
-        false => Err(err),
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum Funds {
@@ -193,10 +187,10 @@ pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<bool, ContractEr
 
     match coin_amount {
         Some(c) => {
-            require(
+            ensure!(
                 c.amount >= funds.amount,
-                ContractError::InsufficientFunds {},
-            )?;
+                ContractError::InsufficientFunds {}
+            );
             c.amount -= funds.amount;
             Ok(true)
         }

@@ -1,6 +1,6 @@
 use crate::ADOContract;
-use common::{ado_base::modules::Module, error::ContractError, require};
-use cosmwasm_std::{DepsMut, MessageInfo, Response, Storage, Uint64};
+use common::{ado_base::modules::Module, error::ContractError};
+use cosmwasm_std::{ensure, DepsMut, MessageInfo, Response, Storage, Uint64};
 
 impl<'a> ADOContract<'a> {
     /// A wrapper for `fn register_module`. The parameters are "extracted" from `DepsMut` to be able to
@@ -12,10 +12,10 @@ impl<'a> ADOContract<'a> {
         module: Module,
         should_validate: bool,
     ) -> Result<Response, ContractError> {
-        require(
+        ensure!(
             self.is_owner_or_operator(storage, sender)?,
-            ContractError::Unauthorized {},
-        )?;
+            ContractError::Unauthorized {}
+        );
         let resp = Response::default();
         let idx = self.register_module(storage, &module)?;
         if should_validate {
@@ -35,10 +35,10 @@ impl<'a> ADOContract<'a> {
         module: Module,
     ) -> Result<Response, ContractError> {
         let addr = info.sender.as_str();
-        require(
+        ensure!(
             self.is_owner_or_operator(deps.storage, addr)?,
-            ContractError::Unauthorized {},
-        )?;
+            ContractError::Unauthorized {}
+        );
         self.alter_module(deps.storage, module_idx, &module)?;
         self.validate_modules(
             &self.load_modules(deps.storage)?,
@@ -57,10 +57,10 @@ impl<'a> ADOContract<'a> {
         module_idx: Uint64,
     ) -> Result<Response, ContractError> {
         let addr = info.sender.as_str();
-        require(
+        ensure!(
             self.is_owner_or_operator(deps.storage, addr)?,
-            ContractError::Unauthorized {},
-        )?;
+            ContractError::Unauthorized {}
+        );
         self.deregister_module(deps.storage, module_idx)?;
         Ok(Response::default()
             .add_attribute("action", "deregister_module")

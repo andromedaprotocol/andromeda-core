@@ -11,13 +11,13 @@ use common::{
     app::AndrAddress,
     encode_binary,
     error::ContractError,
-    parse_message, require,
+    parse_message,
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{
-    coin, entry_point, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn, Response, StdError, SubMsg,
-    SystemResult, Uint128, WasmMsg, WasmQuery,
+    coin, ensure, entry_point, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps,
+    DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn, Response, StdError,
+    SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
@@ -115,10 +115,10 @@ fn execute_deposit(
 
     // If no amount is provided then the sent funds are used as a deposit
     let deposited_funds = if let Some(deposit_amount) = amount {
-        require(
+        ensure!(
             !deposit_amount.amount.is_zero(),
-            ContractError::InsufficientFunds {},
-        )?;
+            ContractError::InsufficientFunds {}
+        );
         let mut deposit_balance = info
             .funds
             .iter()
@@ -144,10 +144,10 @@ fn execute_deposit(
 
             // Amount that must be removed from the vault to add to the deposit
             let difference = deposit_amount.amount.checked_sub(deposit_balance)?;
-            require(
+            ensure!(
                 vault_balance >= difference,
-                ContractError::InsufficientFunds {},
-            )?;
+                ContractError::InsufficientFunds {}
+            );
 
             deposit_balance = deposit_balance.checked_add(vault_balance)?;
             //Subtract the removed funds from balance
@@ -159,20 +159,20 @@ fn execute_deposit(
         }
 
         // Ensure enough funds are present
-        require(
+        ensure!(
             deposit_balance >= deposit_amount.amount,
-            ContractError::InsufficientFunds {},
-        )?;
+            ContractError::InsufficientFunds {}
+        );
         let funds_vec: Vec<Coin> = vec![deposit_amount];
         funds_vec
     } else {
         info.funds
     };
 
-    require(
+    ensure!(
         !deposited_funds.is_empty(),
-        ContractError::InsufficientFunds {},
-    )?;
+        ContractError::InsufficientFunds {}
+    );
     match strategy {
         // Depositing to vault
         None => {
@@ -216,12 +216,12 @@ pub fn execute_withdraw(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         !withdrawals.is_empty(),
         ContractError::InvalidTokensToWithdraw {
             msg: "No tokens provided for withdrawal".to_string(),
-        },
-    )?;
+        }
+    );
     match strategy {
         None => withdraw_vault(deps, info, recipient, withdrawals),
         Some(strategy) => withdraw_strategy(deps, info, strategy, withdrawals),
@@ -249,18 +249,18 @@ pub fn withdraw_vault(
         let balance = BALANCES
             .load(deps.storage, (info.sender.as_str(), &denom))
             .unwrap_or_else(|_| Uint128::zero());
-        require(!balance.is_zero(), ContractError::InsufficientFunds {})?;
+        ensure!(!balance.is_zero(), ContractError::InsufficientFunds {});
 
         match withdrawal.withdrawal_type {
             Some(withdrawal_type) => match withdrawal_type {
                 WithdrawalType::Amount(amount) => {
-                    require(
+                    ensure!(
                         !amount.is_zero(),
                         ContractError::InvalidWithdrawal {
                             msg: Some("Amount must be non-zero".to_string()),
-                        },
-                    )?;
-                    require(balance >= amount, ContractError::InsufficientFunds {})?;
+                        }
+                    );
+                    ensure!(balance >= amount, ContractError::InsufficientFunds {});
                     withdrawal_amount.push(coin(amount.u128(), denom.clone()));
                     BALANCES.save(
                         deps.storage,
@@ -269,12 +269,12 @@ pub fn withdraw_vault(
                     )?;
                 }
                 WithdrawalType::Percentage(percent) => {
-                    require(
+                    ensure!(
                         !percent.is_zero(),
                         ContractError::InvalidWithdrawal {
                             msg: Some("Percent must be non-zero".to_string()),
-                        },
-                    )?;
+                        }
+                    );
                     let amount = balance * percent;
                     withdrawal_amount.push(coin(amount.u128(), denom.clone()));
                     BALANCES.save(
@@ -342,10 +342,10 @@ fn execute_update_strategy(
     strategy: StrategyType,
     address: AndrAddress,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_ref())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     let strategy_addr = address.get_address(deps.api, &deps.querier, app_contract)?;
 
@@ -364,12 +364,12 @@ fn execute_update_strategy(
             address: env.contract.address.to_string(),
         }),
     )?;
-    require(
+    ensure!(
         strategy_is_operator.is_operator,
         ContractError::NotAssignedOperator {
             msg: Some("Vault contract is not an operator for the given address".to_string()),
-        },
-    )?;
+        }
+    );
 
     STRATEGY_CONTRACT_ADDRESSES.save(deps.storage, strategy.to_string(), &strategy_addr)?;
 
@@ -390,20 +390,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -453,7 +453,7 @@ fn query_balance(
 ) -> Result<Binary, ContractError> {
     if let Some(strategy) = strategy {
         let strategy_addr = STRATEGY_CONTRACT_ADDRESSES.load(deps.storage, strategy.to_string())?;
-        // DEV NOTE: Why does this require a generic type when not using custom query?
+        // DEV NOTE: Why does this ensure! a generic type when not using custom query?
         let query: QueryRequest<Empty> = QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: strategy_addr,
             msg: to_binary(&AndrQueryMsg::AndrQuery(AndromedaQuery::Get(Some(

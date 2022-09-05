@@ -1,9 +1,8 @@
 use common::{
     ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    require,
 };
-use cosmwasm_std::Decimal;
+use cosmwasm_std::{ensure, Decimal};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -77,10 +76,10 @@ pub struct GetSplitterConfigResponse {
 /// * Must include at least one recipient
 /// * The combined percentage of the recipients must not exceed 100
 pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> Result<bool, ContractError> {
-    require(
+    ensure!(
         !recipients.is_empty(),
-        ContractError::EmptyRecipientsList {},
-    )?;
+        ContractError::EmptyRecipientsList {}
+    );
 
     let mut percent_sum: Decimal = Decimal::zero();
     for rec in recipients {
@@ -88,10 +87,10 @@ pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> Result<bool, 
         percent_sum += rec.percent;
     }
 
-    require(
+    ensure!(
         percent_sum <= Decimal::one(),
-        ContractError::AmountExceededHundredPrecent {},
-    )?;
+        ContractError::AmountExceededHundredPrecent {}
+    );
 
     Ok(true)
 }
