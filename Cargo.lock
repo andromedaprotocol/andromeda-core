@@ -328,6 +328,7 @@ name = "andromeda-marketplace"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "andromeda-app",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
  "andromeda-testing",

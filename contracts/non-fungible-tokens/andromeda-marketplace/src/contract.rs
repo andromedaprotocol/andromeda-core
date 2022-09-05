@@ -14,9 +14,9 @@ use common::{
     require, Funds,
 };
 use cosmwasm_std::{
-    attr, entry_point, from_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg, Uint128,
-    WasmMsg, WasmQuery,
+    attr, entry_point, from_binary, has_coins, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg,
+    Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
@@ -381,6 +381,15 @@ fn purchase_token(
     // Calculate total tax
     total_tax_amount += tax_amount;
 
+    let required_payment = Coin {
+        denom: state.coin_denom.clone(),
+        amount: state.price + total_tax_amount,
+    };
+    require(
+        has_coins(&info.funds, &required_payment),
+        ContractError::InsufficientFunds {},
+    )?;
+
     let after_tax_payment = Coin {
         denom: state.coin_denom,
         amount: remaining_amount.amount,
@@ -550,13 +559,17 @@ fn from_semver(err: semver::Error) -> StdError {
 mod tests {
     use super::*;
     use crate::mock_querier::{
-        mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
+        mock_dependencies_custom, MOCK_RATES_CONTRACT, MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT,
+        MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     };
     use crate::state::SaleInfo;
     use andromeda_non_fungible_tokens::marketplace::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
 
+    use common::ado_base::modules::{Module, RATES};
+    use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coin, coins};
+    use schemars::_serde_json::de;
 
     fn start_sale(deps: DepsMut, whitelist: Option<Vec<Addr>>) {
         let hook_msg = Cw721HookMsg::StartSale {
@@ -603,6 +616,28 @@ mod tests {
                 )
                 .unwrap()
         );
+    }
+
+    fn get_rates_messages() -> Vec<SubMsg> {
+        let coin = coin(100u128, "uusd");
+        vec![
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_ROYALTY_RECIPIENT.to_owned(),
+                amount: vec![Coin {
+                    // Royalty of 10%
+                    amount: coin.amount.multiply_ratio(10u128, 100u128),
+                    denom: coin.denom.clone(),
+                }],
+            })),
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_TAX_RECIPIENT.to_owned(),
+                amount: vec![Coin {
+                    // Flat tax of 50
+                    amount: Uint128::from(50u128),
+                    denom: coin.denom,
+                }],
+            })),
+        ]
     }
 
     #[test]
@@ -871,5 +906,64 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
         let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
         assert_eq!(err, ContractError::InvalidZeroAmount {})
+    }
+
+    #[test]
+    fn execute_buy_with_tax_and_royalty_insufficient_funds() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let modules = vec![Module {
+            module_type: RATES.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_RATES_CONTRACT.to_owned(),
+            },
+            is_mutable: false,
+        }];
+        let msg = InstantiateMsg {
+            modules: Some(modules),
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        start_sale(deps.as_mut(), None);
+        assert_sale_created(deps.as_ref(), None);
+
+        let msg = ExecuteMsg::Buy {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+
+        let info = mock_info("someone", &coins(100, "uusd".to_string()));
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(err, ContractError::InsufficientFunds {})
+    }
+
+    #[test]
+    fn execute_buy_with_tax_and_royalty_works() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("owner", &[]);
+        let modules = vec![Module {
+            module_type: RATES.to_owned(),
+            address: AndrAddress {
+                identifier: MOCK_RATES_CONTRACT.to_owned(),
+            },
+            is_mutable: false,
+        }];
+        let msg = InstantiateMsg {
+            modules: Some(modules),
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        start_sale(deps.as_mut(), None);
+        assert_sale_created(deps.as_ref(), None);
+
+        let msg = ExecuteMsg::Buy {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+
+        let info = mock_info("someone", &coins(150, "uusd".to_string()));
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     }
 }
