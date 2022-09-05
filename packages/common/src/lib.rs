@@ -90,7 +90,6 @@ where
 /// ```
 /// use common::error::ContractError;
 /// use cosmwasm_std::StdError;
-/// use common::ensure!;
 /// ensure!(false, ContractError::Std(StdError::generic_err("Some boolean condition was not met")));
 /// ```
 
