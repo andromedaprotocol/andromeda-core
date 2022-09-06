@@ -1,13 +1,17 @@
 use ado_base::state::ADOContract;
-use andromeda_automation::execution::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_automation::execution::{
+    ExecuteMsg, InstantiateMsg, LogicGate, MigrateMsg, QueryMsg,
+};
 
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, error::ContractError, require};
 use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
+
+use crate::state::LOGIC_GATE;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-evaluation";
@@ -18,9 +22,10 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    LOGIC_GATE.save(deps.storage, &msg.logic_gate)?;
     ADOContract::default().instantiate(
         deps.storage,
         env,
@@ -62,17 +67,18 @@ pub fn execute(
 }
 
 fn execute_interpret(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    res: bool,
+    res: Vec<bool>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    if res {
-        Ok(Response::new().add_attribute("result", "true".to_string()))
-    } else {
-        Ok(Response::new().add_attribute("result", "false".to_string()))
+    let logic = LOGIC_GATE.load(deps.storage)?;
+    if logic == LogicGate::AND {
+        let one_is_false = res.iter().any(|x| x == &false);
+        ensure!(one_is_false, ContractError::Unauthorized {});
     }
+    Ok(Response::new().add_attribute("result", "true".to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -1,5 +1,5 @@
-use common::app::AndrAddress;
+use andromeda_automation::execution::LogicGate;
 use cw_storage_plus::Item;
 
-//
-pub const EXECUTE_ADO_ADDRESS: Item<AndrAddress> = Item::new("execute_ado_address");
+// Logic gate setting
+pub const LOGIC_GATE: Item<LogicGate> = Item::new("logic_gate");
