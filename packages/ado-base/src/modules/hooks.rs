@@ -116,7 +116,7 @@ fn hook_query<T: DeserializeOwned>(
     addr: String,
 ) -> Result<Option<T>, ContractError> {
     let msg = HookMsg::AndrHook(hook_msg);
-    let mod_resp = querier.query_wasm_smart::<Option<T>>(addr, &msg);
+    let mod_resp: Result<Option<T>, StdError> = querier.query_wasm_smart(addr, &msg);
     process_module_response(mod_resp)
 }
 
