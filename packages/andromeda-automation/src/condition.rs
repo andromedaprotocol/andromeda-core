@@ -1,7 +1,4 @@
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct InstantiateMsg {
     // Not optional since the address list is essential
     pub logic_gate: LogicGate,
-    pub whitelist: Vec<AndrAddress>,
+    pub whitelist: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
