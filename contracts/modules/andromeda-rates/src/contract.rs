@@ -152,7 +152,7 @@ fn handle_andromeda_query(
     match msg {
         AndromedaQuery::Get(data) => {
             let funds: Funds = parse_message(&data)?;
-            encode_binary(&query_deducted_funds(deps, funds)?)
+            encode_binary(&Some(query_deducted_funds(deps, funds)?))
         }
         _ => ADOContract::default().query(deps, env, msg, query),
     }
@@ -163,11 +163,7 @@ fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, Contr
         AndromedaHook::OnFundsTransfer { amount, .. } => {
             encode_binary(&query_deducted_funds(deps, amount)?)
         }
-        _ => {
-            let resp: Response = Response::default();
-
-            Ok(encode_binary(&resp)?)
-        }
+        _ => Ok(encode_binary(&None::<Response>)?),
     }
 }
 

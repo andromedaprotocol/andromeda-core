@@ -1,6 +1,4 @@
-use cosmwasm_std::{
-    to_binary, Api, Binary, Event, QuerierWrapper, StdError, Storage, SubMsg,
-};
+use cosmwasm_std::{to_binary, Api, Binary, Event, QuerierWrapper, StdError, Storage, SubMsg};
 use serde::de::DeserializeOwned;
 
 use crate::modules::ADOContract;
@@ -15,20 +13,17 @@ use common::{
 
 impl<'a> ADOContract<'a> {
     /// Sends the provided hook message to all registered modules
-    pub fn module_hook<T>(
+    pub fn module_hook<T: DeserializeOwned>(
         &self,
         storage: &dyn Storage,
         api: &dyn Api,
         querier: QuerierWrapper,
         hook_msg: AndromedaHook,
-    ) -> Result<Vec<T>, ContractError>
-    where
-        T: DeserializeOwned,
-    {
+    ) -> Result<Vec<T>, ContractError> {
         let addresses: Vec<String> = self.load_module_addresses(storage, api, &querier)?;
         let mut resp: Vec<T> = Vec::new();
         for addr in addresses {
-            let mod_resp: Option<T> = hook_query(&querier, hook_msg.clone(), addr)?;
+            let mod_resp = hook_query::<T>(&querier, hook_msg.clone(), addr)?;
             if let Some(mod_resp) = mod_resp {
                 resp.push(mod_resp);
             }
@@ -98,9 +93,11 @@ impl<'a> ADOContract<'a> {
 /// Processes the given module response by hiding the error if it is `UnsupportedOperation` and
 /// bubbling up any other one. A return value of Ok(None) signifies that the operation was not
 /// supported.
-fn process_module_response<T>(mod_resp: Result<T, StdError>) -> Result<Option<T>, ContractError> {
+fn process_module_response<T>(
+    mod_resp: Result<Option<T>, StdError>,
+) -> Result<Option<T>, ContractError> {
     match mod_resp {
-        Ok(mod_resp) => Ok(Some(mod_resp)),
+        Ok(mod_resp) => Ok(mod_resp),
         Err(StdError::NotFound { kind }) => {
             if kind.contains("operation") {
                 Ok(None)
@@ -113,23 +110,15 @@ fn process_module_response<T>(mod_resp: Result<T, StdError>) -> Result<Option<T>
 }
 
 /// Queries the given address with the given hook message and returns the processed result.
-fn hook_query<T>(
+fn hook_query<T: DeserializeOwned>(
     querier: &QuerierWrapper,
     hook_msg: AndromedaHook,
     addr: String,
-) -> Result<Option<T>, ContractError>
-where
-    T: DeserializeOwned,
-{
+) -> Result<Option<T>, ContractError> {
     let msg = HookMsg::AndrHook(hook_msg);
-    let mod_resp: Result<T, StdError> = querier.query_wasm_smart(addr, &msg);
+    let mod_resp = querier.query_wasm_smart::<Option<T>>(addr, &msg);
     process_module_response(mod_resp)
 }
-
-// /// Default handler for any Andromeda Module Hook messages
-// pub fn handle_ado_hook(_msg: AndromedaHook) -> Result<Binary, ContractError> {
-//     Err(ContractError::UnsupportedOperation {  })
-// }
 
 #[cfg(test)]
 mod tests {
@@ -139,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_process_module_response() {
-        let res: Option<Response> = process_module_response(Ok(Response::new())).unwrap();
+        let res: Option<Response> = process_module_response(Ok(Some(Response::new()))).unwrap();
         assert_eq!(Some(Response::new()), res);
 
         let res: Option<Response> =

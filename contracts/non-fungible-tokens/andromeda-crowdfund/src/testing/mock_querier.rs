@@ -154,9 +154,8 @@ impl WasmMockQuerier {
                             ],
                         ),
                         Funds::Cw20(_) => {
-                            return SystemResult::Ok(ContractResult::Err(
-                                "UnsupportedOperation".to_string(),
-                            ))
+                            let resp: Response = Response::default();
+                            return SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()));
                         }
                     };
                     let response = OnFundsTransferResponse {
@@ -164,9 +163,9 @@ impl WasmMockQuerier {
                         events: vec![],
                         leftover_funds: new_funds,
                     };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&Some(response)).unwrap()))
                 }
-                _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },
         }
     }
@@ -183,7 +182,7 @@ impl WasmMockQuerier {
                         SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
                     }
                 }
-                _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },
         }
     }

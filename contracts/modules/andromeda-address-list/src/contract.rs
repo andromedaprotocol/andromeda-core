@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
+use cosmwasm_std::{attr, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
@@ -154,15 +154,10 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             if is_included != is_inclusive {
                 Err(ContractError::Unauthorized {})
             } else {
-                let resp: Response = Response::default();
-                Ok(encode_binary(&resp)?)
+                Ok(to_binary(&None::<Response>)?)
             }
         }
-        _ => {
-            let resp: Response = Response::default();
-
-            Ok(encode_binary(&resp)?)
-        }
+        _ => Ok(to_binary(&None::<Response>)?),
     }
 }
 
@@ -322,8 +317,9 @@ mod tests {
             payload: encode_binary(&"".to_string()).unwrap(),
         });
 
-        let res: Response = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-        assert_eq!(Response::default(), res);
+        let res: Option<Response> =
+            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        assert_eq!(None, res);
 
         let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
             sender: "random".to_string(),
@@ -331,7 +327,7 @@ mod tests {
         });
 
         let res_err: ContractError = query(deps.as_ref(), mock_env(), msg).unwrap_err();
-        assert_eq!(ContractError::InvalidAddress {}, res_err);
+        assert_eq!(ContractError::Unauthorized {}, res_err);
     }
 
     #[test]
@@ -361,8 +357,9 @@ mod tests {
             payload: encode_binary(&"".to_string()).unwrap(),
         });
 
-        let res: Response = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-        assert_eq!(Response::default(), res);
+        let res: Option<Response> =
+            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        assert_eq!(None, res);
 
         let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
             sender: address.to_string(),
@@ -370,7 +367,7 @@ mod tests {
         });
 
         let res_err: ContractError = query(deps.as_ref(), mock_env(), msg).unwrap_err();
-        assert_eq!(ContractError::InvalidAddress {}, res_err);
+        assert_eq!(ContractError::Unauthorized {}, res_err);
     }
 
     #[test]

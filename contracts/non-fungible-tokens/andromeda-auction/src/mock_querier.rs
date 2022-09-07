@@ -6,7 +6,7 @@ use cosmwasm_std::{
     from_binary, from_slice,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Event, OwnedDeps, Querier,
-    QuerierResult, QueryRequest, SubMsg, SystemError, SystemResult, WasmMsg, WasmQuery,
+    QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, WasmMsg, WasmQuery,
 };
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 
@@ -124,9 +124,9 @@ impl WasmMockQuerier {
                         events: vec![Event::new("Royalty"), Event::new("Tax")],
                         leftover_funds: new_funds,
                     };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&Some(response)).unwrap()))
                 }
-                _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },
 
             _ => panic!("Unsupported Query"),

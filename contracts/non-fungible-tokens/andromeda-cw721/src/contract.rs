@@ -94,16 +94,6 @@ pub fn execute(
         );
     };
 
-    contract.module_hook::<Response>(
-        execute_env.deps.storage,
-        execute_env.deps.api,
-        execute_env.deps.querier,
-        AndromedaHook::OnExecute {
-            sender: execute_env.info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
-
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         require(
             !is_archived(execute_env.deps.storage, token_id)?,
@@ -112,18 +102,6 @@ pub fn execute(
     }
 
     match msg {
-        ExecuteMsg::Mint(_) => execute_mint(execute_env, msg),
-        ExecuteMsg::BatchMint { tokens } => execute_batch_mint(execute_env, tokens),
-        ExecuteMsg::TransferNft {
-            recipient,
-            token_id,
-        } => execute_transfer(execute_env, recipient, token_id),
-        ExecuteMsg::TransferAgreement {
-            token_id,
-            agreement,
-        } => execute_update_transfer_agreement(execute_env, token_id, agreement),
-        ExecuteMsg::Archive { token_id } => execute_archive(execute_env, token_id),
-        ExecuteMsg::Burn { token_id } => execute_burn(execute_env, token_id),
         ExecuteMsg::AndrReceive(msg) => contract.execute(
             execute_env.deps,
             execute_env.env,
@@ -131,12 +109,38 @@ pub fn execute(
             msg,
             execute,
         ),
-        _ => Ok(AndrCW721Contract::default().execute(
-            execute_env.deps,
-            execute_env.env,
-            execute_env.info,
-            msg.into(),
-        )?),
+        _ => {
+            contract.module_hook::<Response>(
+                execute_env.deps.storage,
+                execute_env.deps.api,
+                execute_env.deps.querier,
+                AndromedaHook::OnExecute {
+                    sender: execute_env.info.sender.to_string(),
+                    payload: encode_binary(&msg)?,
+                },
+            )?;
+
+            match msg {
+                ExecuteMsg::Mint(_) => execute_mint(execute_env, msg),
+                ExecuteMsg::BatchMint { tokens } => execute_batch_mint(execute_env, tokens),
+                ExecuteMsg::TransferNft {
+                    recipient,
+                    token_id,
+                } => execute_transfer(execute_env, recipient, token_id),
+                ExecuteMsg::TransferAgreement {
+                    token_id,
+                    agreement,
+                } => execute_update_transfer_agreement(execute_env, token_id, agreement),
+                ExecuteMsg::Archive { token_id } => execute_archive(execute_env, token_id),
+                ExecuteMsg::Burn { token_id } => execute_burn(execute_env, token_id),
+                _ => Ok(AndrCW721Contract::default().execute(
+                    execute_env.deps,
+                    execute_env.env,
+                    execute_env.info,
+                    msg.into(),
+                )?),
+            }
+        }
     }
 }
 
@@ -458,13 +462,9 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
                 events,
                 leftover_funds: remainder,
             };
-            Ok(encode_binary(&res)?)
+            Ok(encode_binary(&Some(res))?)
         }
-        _ => {
-            let resp: Response = Response::default();
-
-            Ok(encode_binary(&resp)?)
-        }
+        _ => Ok(encode_binary(&None::<Response>)?),
     }
 }
 
