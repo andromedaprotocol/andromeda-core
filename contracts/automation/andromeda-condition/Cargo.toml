@@ -1,5 +1,5 @@
 [package]
-name = "andromeda-execution"
+name = "andromeda-condition"
 version = "0.1.0"
 edition = "2018"
 

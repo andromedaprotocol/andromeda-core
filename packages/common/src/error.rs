@@ -28,6 +28,9 @@ pub enum ContractError {
     #[error("ContractLocked")]
     ContractLocked {},
 
+    #[error("UnmetCondition")]
+    UnmetCondition {},
+
     #[error("RewardTooLow")]
     RewardTooLow {},
 

@@ -110,8 +110,8 @@ fn execute_evaluate(
         .add_attribute("result", res.to_string())
         .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr,
-            msg: to_binary(&andromeda_automation::execution::ExecuteMsg::Interpret {
-                res: vec![res],
+            msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                result: res,
             })?,
             funds: vec![],
         }))))
@@ -217,8 +217,8 @@ mod tests {
             .add_attribute("result", "true".to_string())
             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: "legit_address".to_string(),
-                msg: to_binary(&andromeda_automation::execution::ExecuteMsg::Interpret {
-                    res: vec![true],
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: true,
                 })
                 .unwrap(),
                 funds: vec![],
