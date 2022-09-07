@@ -56,6 +56,7 @@ impl<'a> ADOContract<'a> {
         }
     }
 }
+
 impl<'a> ADOContract<'a> {
     pub fn query_contract_owner(&self, deps: Deps) -> Result<ContractOwnerResponse, ContractError> {
         let owner = self.owner.load(deps.storage)?;

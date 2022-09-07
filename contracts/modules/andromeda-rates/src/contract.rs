@@ -1,5 +1,5 @@
 use crate::state::{Config, CONFIG};
-use ado_base::{modules::hooks::handle_ado_hook, ADOContract};
+use ado_base::ADOContract;
 use andromeda_modules::rates::{
     calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
     QueryMsg, RateInfo,
@@ -163,7 +163,11 @@ fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, Contr
         AndromedaHook::OnFundsTransfer { amount, .. } => {
             encode_binary(&query_deducted_funds(deps, amount)?)
         }
-        _ => handle_ado_hook(msg),
+        _ => {
+            let resp: Response = Response::default();
+
+            Ok(encode_binary(&resp)?)
+        }
     }
 }
 

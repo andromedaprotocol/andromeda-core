@@ -4,7 +4,7 @@ use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdE
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
-use ado_base::{modules::hooks::handle_ado_hook, ADOContract};
+use ado_base::ADOContract;
 use andromeda_modules::address_list::{
     ExecuteMsg, IncludesAddressResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };
@@ -152,13 +152,17 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             let is_included = includes_address(deps.storage, &sender)?;
             let is_inclusive = IS_INCLUSIVE.load(deps.storage)?;
             if is_included != is_inclusive {
-                Err(ContractError::InvalidAddress {})
+                Err(ContractError::Unauthorized {})
             } else {
                 let resp: Response = Response::default();
                 Ok(encode_binary(&resp)?)
             }
         }
-        _ => handle_ado_hook(msg),
+        _ => {
+            let resp: Response = Response::default();
+
+            Ok(encode_binary(&resp)?)
+        }
     }
 }
 

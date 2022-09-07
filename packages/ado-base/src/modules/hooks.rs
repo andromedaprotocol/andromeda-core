@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    to_binary, Api, Binary, Event, QuerierWrapper, QueryRequest, Response, StdError, Storage,
+    to_binary, Api, Binary, Event, QuerierWrapper, QueryRequest, StdError, Storage,
     SubMsg, WasmQuery,
 };
 use serde::de::DeserializeOwned;
@@ -102,18 +102,18 @@ impl<'a> ADOContract<'a> {
 fn process_module_response<T>(mod_resp: Result<T, StdError>) -> Result<Option<T>, ContractError> {
     match mod_resp {
         Ok(mod_resp) => Ok(Some(mod_resp)),
-        Err(StdError::GenericErr { msg }) => {
-            if msg.contains("UnsupportedOperation") {
+        Err(StdError::NotFound { kind }) => {
+            if kind.contains("operation") {
                 Ok(None)
             } else {
-                Err(ContractError::Std(StdError::GenericErr { msg }))
+                Err(ContractError::Std(StdError::NotFound { kind }))
             }
         }
         Err(e) => Err(e.into()),
     }
 }
 
-/// Queriers the given address with the given hook message and returns the processed result.
+/// Queries the given address with the given hook message and returns the processed result.
 fn hook_query<T>(
     querier: &QuerierWrapper,
     hook_msg: AndromedaHook,
@@ -123,19 +123,14 @@ where
     T: DeserializeOwned,
 {
     let msg = HookMsg::AndrHook(hook_msg);
-    let mod_resp: Result<T, StdError> = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: addr,
-        msg: to_binary(&msg)?,
-    }));
+    let mod_resp: Result<T, StdError> = querier.query_wasm_smart(addr, &msg);
     process_module_response(mod_resp)
 }
 
-/// Default handler for any Andromeda Module Hook messages
-pub fn handle_ado_hook(_msg: AndromedaHook) -> Result<Binary, ContractError> {
-    let resp: Response = Response::default();
-
-    Ok(to_binary(&resp)?)
-}
+// /// Default handler for any Andromeda Module Hook messages
+// pub fn handle_ado_hook(_msg: AndromedaHook) -> Result<Binary, ContractError> {
+//     Err(ContractError::UnsupportedOperation {  })
+// }
 
 #[cfg(test)]
 mod tests {
@@ -148,9 +143,7 @@ mod tests {
         let res: Option<Response> = process_module_response(Ok(Response::new())).unwrap();
         assert_eq!(Some(Response::new()), res);
 
-        let res: Option<Response> = process_module_response(Err(StdError::generic_err(
-            "XXXXXXX UnsupportedOperation XXXXXXX",
-        )))
+        let res: Option<Response> = process_module_response(Err(StdError::not_found("operation".to_string())))
         .unwrap();
         assert_eq!(None, res);
 

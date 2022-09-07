@@ -460,7 +460,11 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             };
             Ok(encode_binary(&res)?)
         }
-        _ => Err(ContractError::UnsupportedOperation {}),
+        _ => {
+            let resp: Response = Response::default();
+
+            Ok(encode_binary(&resp)?)
+        }
     }
 }
 

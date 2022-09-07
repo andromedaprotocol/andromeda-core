@@ -108,3 +108,11 @@ where
 
     Ok(resp)
 }
+
+/// Helper enum for serialization
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct AndromedaHookResponse<T> {
+    pub resp: Option<T>,
+    pub err: Option<String>,
+}

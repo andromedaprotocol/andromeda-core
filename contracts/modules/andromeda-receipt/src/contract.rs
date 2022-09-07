@@ -1,7 +1,7 @@
 use crate::state::{
     can_mint_receipt, increment_num_receipt, read_receipt, store_config, store_receipt, CONFIG,
 };
-use ado_base::{modules::hooks::handle_ado_hook, state::ADOContract};
+use ado_base::state::ADOContract;
 use andromeda_modules::receipt::{
     generate_receipt_message, Config, ContractInfoResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
     QueryMsg, Receipt, ReceiptResponse,
@@ -171,7 +171,11 @@ fn handle_andr_hook(env: Env, msg: AndromedaHook) -> Result<Binary, ContractErro
                 events: vec![],
             })
         }
-        _ => handle_ado_hook(msg),
+        _ => {
+            let resp: Response = Response::default();
+
+            Ok(encode_binary(&resp)?)
+        }
     }
 }
 

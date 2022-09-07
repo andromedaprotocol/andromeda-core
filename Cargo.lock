@@ -20,7 +20,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-address-list"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "ado-base",
  "andromeda-modules",
@@ -406,7 +406,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rates"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "ado-base",
  "andromeda-modules",
@@ -425,7 +425,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-receipt"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "ado-base",
  "andromeda-modules",
