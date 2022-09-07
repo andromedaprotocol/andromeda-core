@@ -1,6 +1,5 @@
 use cosmwasm_std::{
-    to_binary, Api, Binary, Event, QuerierWrapper, QueryRequest, StdError, Storage,
-    SubMsg, WasmQuery,
+    to_binary, Api, Binary, Event, QuerierWrapper, StdError, Storage, SubMsg,
 };
 use serde::de::DeserializeOwned;
 
@@ -143,8 +142,8 @@ mod tests {
         let res: Option<Response> = process_module_response(Ok(Response::new())).unwrap();
         assert_eq!(Some(Response::new()), res);
 
-        let res: Option<Response> = process_module_response(Err(StdError::not_found("operation".to_string())))
-        .unwrap();
+        let res: Option<Response> =
+            process_module_response(Err(StdError::not_found("operation".to_string()))).unwrap();
         assert_eq!(None, res);
 
         let res: ContractError =
