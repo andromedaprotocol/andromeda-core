@@ -1,6 +1,6 @@
 use andromeda_non_fungible_tokens::marketplace::{SaleStateResponse, Status};
 use common::error::ContractError;
-use cosmwasm_std::{Addr, Order, Storage, SubMsg, Uint128};
+use cosmwasm_std::{Order, Storage, SubMsg, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,6 @@ const DEFAULT_LIMIT: u64 = 10;
 pub struct TokenSaleState {
     pub coin_denom: String,
     pub sale_id: Uint128,
-    pub whitelist: Option<Vec<Addr>>,
     pub owner: String,
     pub token_id: String,
     pub token_address: String,
@@ -54,7 +53,6 @@ impl From<TokenSaleState> for SaleStateResponse {
         SaleStateResponse {
             coin_denom: token_sale_state.coin_denom,
             sale_id: token_sale_state.sale_id,
-            whitelist: token_sale_state.whitelist,
             status: token_sale_state.status,
             price: token_sale_state.price,
         }

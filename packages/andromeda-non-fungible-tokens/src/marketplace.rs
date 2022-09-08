@@ -1,5 +1,5 @@
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Uint128;
 use cw721::Cw721ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -25,7 +25,6 @@ pub enum ExecuteMsg {
         token_address: String,
         price: Uint128,
         coin_denom: String,
-        whitelist: Option<Vec<Addr>>,
     },
     CancelSale {
         token_id: String,
@@ -38,11 +37,7 @@ pub enum ExecuteMsg {
 pub enum Cw721HookMsg {
     /// Starts a new sale with the given parameters. The sale info can be modified before it
     /// has started but is immutable after that.
-    StartSale {
-        price: Uint128,
-        coin_denom: String,
-        whitelist: Option<Vec<Addr>>,
-    },
+    StartSale { price: Uint128, coin_denom: String },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 
@@ -84,7 +79,6 @@ pub struct SaleStateResponse {
     pub sale_id: Uint128,
     pub coin_denom: String,
     pub price: Uint128,
-    pub whitelist: Option<Vec<Addr>>,
     pub status: Status,
 }
 
