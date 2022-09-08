@@ -255,7 +255,7 @@ mod tests {
         let operation = Operators::Greater;
         let msg = InstantiateMsg {
             address,
-            operation: operation.clone().clone(),
+            operation: operation.clone(),
         };
         let info = mock_info("creator", &[]);
 
@@ -292,7 +292,7 @@ mod tests {
         let operation = Operators::Greater;
         let msg = InstantiateMsg {
             address,
-            operation: operation.clone().clone(),
+            operation: operation.clone(),
         };
         let info = mock_info("creator", &[]);
 
