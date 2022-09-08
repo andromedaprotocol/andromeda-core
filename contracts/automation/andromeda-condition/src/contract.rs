@@ -290,7 +290,7 @@ mod tests {
             logic_gate: LogicGate::AND,
             whitelist: vec!["legit_address".to_string()],
         };
-        let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address", &[]);
@@ -309,7 +309,7 @@ mod tests {
             logic_gate: LogicGate::AND,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
         };
-        let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address1", &[]);
@@ -341,7 +341,7 @@ mod tests {
             logic_gate: LogicGate::OR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
         };
-        let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address1", &[]);
@@ -372,7 +372,7 @@ mod tests {
             logic_gate: LogicGate::OR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
         };
-        let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address1", &[]);
@@ -392,5 +392,400 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected_response = Response::new().add_attribute("result", "sent by OR".to_string());
         assert_eq!(expected_response, res)
+    }
+
+    #[test]
+    fn test_evaluate_works_xor_some_true() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::XOR,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address2", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true, false];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::Interpret {};
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_response = Response::new().add_attribute("result", "sent by XOR".to_string());
+        assert_eq!(expected_response, res)
+    }
+
+    #[test]
+    fn test_evaluate_xor_all_true() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::XOR,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address2", &[]);
+        // Interpret gets fired off since the number of results == the number of whitelisted addresses
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let _result = RESULTS.load(&deps.storage).unwrap();
+        let _expected_result = vec![true, true];
+        assert_eq!(err, ContractError::UnmetCondition {})
+    }
+
+    #[test]
+    fn test_evaluate_works_not() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOT,
+            whitelist: vec!["legit_address1".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![false];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::Interpret {};
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_response = Response::new().add_attribute("result", "sent by NOT".to_string());
+        assert_eq!(expected_response, res)
+    }
+
+    #[test]
+    fn test_evaluate_not_true() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOT,
+            whitelist: vec!["legit_address1".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address1", &[]);
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true];
+        assert_eq!(result, expected_result);
+        assert_eq!(err, ContractError::UnmetCondition {});
+    }
+
+    #[test]
+    fn test_evaluate_not_more_than_one_input() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOT,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![false];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address2", &[]);
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![false, false];
+        assert_eq!(result, expected_result);
+
+        assert_eq!(err, ContractError::UnmetCondition {});
+    }
+
+    #[test]
+    fn test_evaluate_works_nand_some_true() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NAND,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address2", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true, false];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::Interpret {};
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_response = Response::new().add_attribute("result", "sent by NAND".to_string());
+        assert_eq!(expected_response, res)
+    }
+
+    #[test]
+    fn test_evaluate_works_nand_all_false() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NAND,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![false];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address2", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![false, false];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::Interpret {};
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_response = Response::new().add_attribute("result", "sent by NAND".to_string());
+        assert_eq!(expected_response, res)
+    }
+
+    #[test]
+    fn test_evaluate_nand_all_true() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NAND,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address2", &[]);
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true, true];
+        assert_eq!(result, expected_result);
+        assert_eq!(err, ContractError::UnmetCondition {});
+    }
+
+    #[test]
+    fn test_evaluate_works_nor_all_false() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOR,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![false];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address2", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![false, false];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::Interpret {};
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_response = Response::new().add_attribute("result", "sent by NOR".to_string());
+        assert_eq!(expected_response, res)
+    }
+
+    #[test]
+    fn test_evaluate_nor_some_true() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOR,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address2", &[]);
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true, false];
+        assert_eq!(result, expected_result);
+        assert_eq!(err, ContractError::UnmetCondition {});
+    }
+
+    #[test]
+    fn test_evaluate_nor_all_true() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOR,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address2", &[]);
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true, true];
+        assert_eq!(result, expected_result);
+        assert_eq!(err, ContractError::UnmetCondition {});
+    }
+
+    #[test]
+    fn test_evaluate_works_xnor_all_true() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::XNOR,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address2", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true, true];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::Interpret {};
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        let expected_response = Response::new().add_attribute("result", "sent by XNOR".to_string());
+        assert_eq!(expected_response, res);
+    }
+
+    #[test]
+    fn test_evaluate_works_xnor_all_false() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::XNOR,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![false];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address2", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![false, false];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::Interpret {};
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        let expected_response = Response::new().add_attribute("result", "sent by XNOR".to_string());
+        assert_eq!(expected_response, res);
+    }
+
+    #[test]
+    fn test_evaluate_xnor_some_true() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::XNOR,
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let msg = ExecuteMsg::StoreResult { result: true };
+        let info = mock_info("legit_address1", &[]);
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true];
+        assert_eq!(result, expected_result);
+
+        let msg = ExecuteMsg::StoreResult { result: false };
+        let info = mock_info("legit_address2", &[]);
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true, false];
+        assert_eq!(result, expected_result);
+        assert_eq!(err, ContractError::UnmetCondition {});
     }
 }
