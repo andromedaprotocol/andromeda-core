@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 pub struct InstantiateMsg {
     // Execute ADO's address
     pub address: AndrAddress,
+    // Desired operation
+    pub operation: Operators,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -24,6 +26,9 @@ pub enum ExecuteMsg {
     ChangeExecuteAddress {
         address: AndrAddress,
     },
+    ChangeOperation {
+        operation: Operators,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -35,4 +40,13 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     ExecuteADO {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+pub enum Operators {
+    Greater,
+    GreaterEqual,
+    Equal,
+    LessEqual,
+    Less,
 }

@@ -16,7 +16,7 @@ use semver::Version;
 use crate::state::{LOGIC_GATE, RESULTS, WHITELIST};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-evaluation";
+const CONTRACT_NAME: &str = "crates.io:andromeda-condition";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -37,7 +37,7 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "evaluation".to_string(),
+            ado_type: "condition".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
