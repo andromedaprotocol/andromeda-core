@@ -1,6 +1,4 @@
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
