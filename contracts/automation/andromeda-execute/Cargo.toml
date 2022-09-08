@@ -1,0 +1,29 @@
+[package]
+name = "andromeda-execute"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = "1.0.0"
+serde = { version = "1.0.127", default-features = false, features = ["derive"] }
+schemars = "0.8.3"
+cw-storage-plus = "0.13.2"
+cw2 = "0.13.2"
+cw20 = "0.13.4"
+cw-utils = "0.13.4"
+semver = "1"
+
+
+andromeda-finance = { version = "0.1.0", path = "../../../packages/andromeda-finance" }
+andromeda-automation = { version = "0.1.0", path = "../../../packages/andromeda-automation" }
+
+ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["modules"] }
+common = { version = "0.1.0", path = "../../../packages/common" }
+
+[dev-dependencies]
+cosmwasm-schema = "1.0.0"
+
+andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }

@@ -226,10 +226,7 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Greater;
-        let msg = InstantiateMsg {
-            address,
-            operation: operation.clone(),
-        };
+        let msg = InstantiateMsg { address, operation };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
