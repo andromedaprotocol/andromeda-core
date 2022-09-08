@@ -22,12 +22,10 @@ pub enum ExecuteMsg {
     Evaluate {
         first: Uint128,
         second: Uint128,
+        operation: Operators,
     },
     ChangeExecuteAddress {
         address: AndrAddress,
-    },
-    ChangeOperation {
-        operation: Operators,
     },
 }
 

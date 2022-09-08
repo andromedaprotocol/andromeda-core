@@ -1,4 +1,4 @@
-use crate::state::{EXECUTE_ADO_ADDRESS, OPERATION};
+use crate::state::EXECUTE_ADO_ADDRESS;
 use ado_base::state::ADOContract;
 use andromeda_automation::evaluation::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, Operators, QueryMsg,
@@ -28,7 +28,6 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    OPERATION.save(deps.storage, &msg.operation)?;
     EXECUTE_ADO_ADDRESS.save(deps.storage, &msg.address)?;
 
     ADOContract::default().instantiate(
@@ -67,30 +66,15 @@ pub fn execute(
     let contract = ADOContract::default();
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        ExecuteMsg::Evaluate { first, second } => execute_evaluate(deps, env, info, first, second),
+        ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        } => execute_evaluate(deps, env, info, first, second, operation),
         ExecuteMsg::ChangeExecuteAddress { address } => {
             execute_change_execute_address(deps, env, info, address)
         }
-        ExecuteMsg::ChangeOperation { operation } => {
-            execute_change_operation(deps, env, info, operation)
-        }
     }
-}
-
-fn execute_change_operation(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    operation: Operators,
-) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-    // Only the contract's owner can update the Execute ADO address
-    require(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-    OPERATION.save(deps.storage, &operation)?;
-    Ok(Response::new().add_attribute("action", "changed_operation"))
 }
 
 fn execute_change_execute_address(
@@ -115,6 +99,7 @@ fn execute_evaluate(
     info: MessageInfo,
     first: Uint128,
     second: Uint128,
+    operation: Operators,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -126,8 +111,6 @@ fn execute_evaluate(
         &deps.querier,
         app_contract,
     )?;
-
-    let operation = OPERATION.load(deps.storage)?;
 
     match operation {
         Operators::Greater => Ok(Response::new()
@@ -243,7 +226,10 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Greater;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -267,14 +253,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Greater;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone().clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(40);
         let second = Uint128::new(30);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -297,14 +290,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Greater;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone().clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(40);
         let second = Uint128::new(130);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -327,14 +327,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Greater;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(40);
         let second = Uint128::new(40);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -357,14 +364,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::GreaterEqual;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(40);
         let second = Uint128::new(40);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -387,14 +401,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::GreaterEqual;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(140);
         let second = Uint128::new(40);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -417,14 +438,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::GreaterEqual;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(40);
         let second = Uint128::new(140);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -447,14 +475,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Equal;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(40);
         let second = Uint128::new(40);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -477,14 +512,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Equal;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(140);
         let second = Uint128::new(40);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -507,14 +549,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Equal;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(140);
         let second = Uint128::new(1140);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -537,14 +586,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::LessEqual;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(140);
         let second = Uint128::new(1140);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -567,14 +623,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::LessEqual;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(140);
         let second = Uint128::new(140);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -597,14 +660,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::LessEqual;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(1140);
         let second = Uint128::new(140);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -627,14 +697,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Less;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(1140);
         let second = Uint128::new(140);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -657,14 +734,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Less;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(140);
         let second = Uint128::new(140);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -687,14 +771,21 @@ mod tests {
             identifier: "legit_address".to_string(),
         };
         let operation = Operators::Less;
-        let msg = InstantiateMsg { address, operation };
+        let msg = InstantiateMsg {
+            address,
+            operation: operation.clone(),
+        };
         let info = mock_info("creator", &[]);
 
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let first = Uint128::new(40);
         let second = Uint128::new(140);
-        let msg = ExecuteMsg::Evaluate { first, second };
+        let msg = ExecuteMsg::Evaluate {
+            first,
+            second,
+            operation,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
@@ -708,48 +799,6 @@ mod tests {
                 funds: vec![],
             })));
         assert_eq!(res, expected);
-    }
-
-    #[test]
-    fn test_change_operation_unauthorized() {
-        let mut deps = mock_dependencies();
-        let address = AndrAddress {
-            identifier: "legit_address".to_string(),
-        };
-        let operation = Operators::Greater;
-        let msg = InstantiateMsg { address, operation };
-        let info = mock_info("creator", &[]);
-
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-        let operation = Operators::GreaterEqual;
-        let msg = ExecuteMsg::ChangeOperation { operation };
-        let info = mock_info("random", &[]);
-
-        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        assert_eq!(err, ContractError::Unauthorized {})
-    }
-
-    #[test]
-    fn test_change_operation_works() {
-        let mut deps = mock_dependencies();
-        let address = AndrAddress {
-            identifier: "legit_address".to_string(),
-        };
-        let operation = Operators::Greater;
-        let msg = InstantiateMsg { address, operation };
-        let info = mock_info("creator", &[]);
-
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-        let operation = Operators::GreaterEqual;
-        let msg = ExecuteMsg::ChangeOperation {
-            operation: operation.clone(),
-        };
-
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let actual = OPERATION.load(&deps.storage).unwrap();
-        assert_eq!(operation, actual)
     }
 
     #[test]
