@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     // Target ADO's address
-    pub address: AndrAddress,
+    pub target_address: AndrAddress,
+    // Condition ADO's address
+    pub condition_address: AndrAddress,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

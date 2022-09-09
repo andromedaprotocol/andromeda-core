@@ -1,6 +1,6 @@
 use std::env;
 
-use crate::state::TARGET_ADO_ADDRESS;
+use crate::state::{CONDITION_ADO_ADDRESS, TARGET_ADO_ADDRESS};
 use ado_base::state::ADOContract;
 use andromeda_automation::{
     counter,
@@ -10,8 +10,8 @@ use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg, WasmMsg,
+    ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -29,7 +29,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    TARGET_ADO_ADDRESS.save(deps.storage, &msg.address)?;
+    TARGET_ADO_ADDRESS.save(deps.storage, &msg.target_address)?;
+    CONDITION_ADO_ADDRESS.save(deps.storage, &msg.condition_address)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -71,13 +72,17 @@ pub fn execute(
     }
 }
 
-fn execute_execute(
-    deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-) -> Result<Response, ContractError> {
+fn execute_execute(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let app_contract = contract.get_app_contract(deps.storage)?;
+
+    let condition_ado = CONDITION_ADO_ADDRESS.load(deps.storage)?.get_address(
+        deps.api,
+        &deps.querier,
+        app_contract.clone(),
+    )?;
+
+    ensure!(info.sender == condition_ado, ContractError::Unauthorized {});
 
     let contract_addr = TARGET_ADO_ADDRESS.load(deps.storage)?.get_address(
         deps.api,
@@ -154,10 +159,17 @@ mod tests {
     #[test]
     fn test_initialization() {
         let mut deps = mock_dependencies();
-        let address = AndrAddress {
-            identifier: "legit_address".to_string(),
+        let target_address = AndrAddress {
+            identifier: "target_address".to_string(),
         };
-        let msg = InstantiateMsg { address };
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+
+        let msg = InstantiateMsg {
+            target_address,
+            condition_address,
+        };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -169,18 +181,25 @@ mod tests {
         assert_eq!(
             addr,
             AndrAddress {
-                identifier: "legit_address".to_string(),
+                identifier: "target_address".to_string(),
             }
         )
     }
 
     #[test]
-    fn test_execute() {
+    fn test_execute_unauthorized() {
         let mut deps = mock_dependencies();
-        let address = AndrAddress {
-            identifier: "legit_address".to_string(),
+        let target_address = AndrAddress {
+            identifier: "target_address".to_string(),
         };
-        let msg = InstantiateMsg { address };
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+
+        let msg = InstantiateMsg {
+            target_address,
+            condition_address,
+        };
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
@@ -192,15 +211,51 @@ mod tests {
         assert_eq!(
             addr,
             AndrAddress {
-                identifier: "legit_address".to_string(),
+                identifier: "target_address".to_string(),
             }
         );
 
         let msg = ExecuteMsg::Execute {};
+        let info = mock_info("not_condition_address", &[]);
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {})
+    }
+
+    #[test]
+    fn test_execute() {
+        let mut deps = mock_dependencies();
+        let target_address = AndrAddress {
+            identifier: "target_address".to_string(),
+        };
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+
+        let msg = InstantiateMsg {
+            target_address,
+            condition_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // make sure address was saved correctly
+        let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
+        assert_eq!(
+            addr,
+            AndrAddress {
+                identifier: "target_address".to_string(),
+            }
+        );
+
+        let msg = ExecuteMsg::Execute {};
+        let info = mock_info("condition_address", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         println!("{:?}", res.messages);
         let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "legit_address".to_string(),
+            contract_addr: "target_address".to_string(),
             msg: to_binary(&counter::ExecuteMsg::Increment {}).unwrap(),
             funds: vec![],
         }));
