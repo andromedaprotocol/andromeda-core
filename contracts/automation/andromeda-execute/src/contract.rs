@@ -203,7 +203,7 @@ mod tests {
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
         // make sure address was saved correctly
@@ -238,7 +238,7 @@ mod tests {
         let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
         // make sure address was saved correctly
