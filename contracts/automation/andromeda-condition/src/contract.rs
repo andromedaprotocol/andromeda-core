@@ -1,19 +1,21 @@
 use ado_base::state::ADOContract;
-use andromeda_automation::condition::{
-    ExecuteMsg, InstantiateMsg, LogicGate, MigrateMsg, QueryMsg,
+use andromeda_automation::{
+    condition::{ExecuteMsg, InstantiateMsg, LogicGate, MigrateMsg, QueryMsg},
+    execute,
 };
 
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
 };
 use cosmwasm_std::{
-    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
 
-use crate::state::{LOGIC_GATE, RESULTS, WHITELIST};
+use crate::state::{EXECUTE_ADO, LOGIC_GATE, RESULTS, WHITELIST};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-condition";
@@ -30,6 +32,7 @@ pub fn instantiate(
 
     LOGIC_GATE.save(deps.storage, &msg.logic_gate)?;
     WHITELIST.save(deps.storage, &msg.whitelist)?;
+    EXECUTE_ADO.save(deps.storage, &msg.execute_ado)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -120,7 +123,8 @@ fn execute_interpret(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // Check authority
-    // let contract = ADOContract::default();
+    let contract = ADOContract::default();
+    let app_contract = contract.get_app_contract(deps.storage)?;
     // ensure!(
     //     contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
     //     ContractError::Unauthorized {}
@@ -129,6 +133,10 @@ fn execute_interpret(
     let logic = LOGIC_GATE.load(deps.storage)?;
     // Load results
     let res = RESULTS.load(deps.storage)?;
+    let contract_addr =
+        EXECUTE_ADO
+            .load(deps.storage)?
+            .get_address(deps.api, &deps.querier, app_contract)?;
     match logic {
         LogicGate::AND =>
         // We don't want to find a false bool, so we want it to return false
@@ -137,7 +145,13 @@ fn execute_interpret(
                 !res.iter().any(|x| x == &false),
                 ContractError::UnmetCondition {}
             );
-            Ok(Response::new().add_attribute("result", "sent by AND".to_string()))
+            Ok(Response::new()
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr,
+                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                    funds: vec![],
+                }))
+                .add_attribute("result", "sent by AND".to_string()))
         }
         // Just one result being true meets our condition
         LogicGate::OR => {
@@ -145,7 +159,13 @@ fn execute_interpret(
                 res.iter().any(|x| x == &true),
                 ContractError::UnmetCondition {}
             );
-            Ok(Response::new().add_attribute("result", "sent by OR".to_string()))
+            Ok(Response::new()
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr,
+                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                    funds: vec![],
+                }))
+                .add_attribute("result", "sent by OR".to_string()))
         }
         // At lease one result should be true, but not all of them
         LogicGate::XOR => {
@@ -154,12 +174,24 @@ fn execute_interpret(
                     .all(|x| x == &true && res.iter().any(|x| x == &true)),
                 ContractError::UnmetCondition {}
             );
-            Ok(Response::new().add_attribute("result", "sent by XOR".to_string()))
+            Ok(Response::new()
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr,
+                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                    funds: vec![],
+                }))
+                .add_attribute("result", "sent by XOR".to_string()))
         }
         // Only takes one input, takes false as true
         LogicGate::NOT => {
             ensure!(res.len() == 1 && !res[0], ContractError::UnmetCondition {});
-            Ok(Response::new().add_attribute("result", "sent by NOT".to_string()))
+            Ok(Response::new()
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr,
+                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                    funds: vec![],
+                }))
+                .add_attribute("result", "sent by NOT".to_string()))
         }
         // Any input is valid unless they're all true
         LogicGate::NAND => {
@@ -167,7 +199,13 @@ fn execute_interpret(
                 !res.iter().all(|x| x == &true),
                 ContractError::UnmetCondition {}
             );
-            Ok(Response::new().add_attribute("result", "sent by NAND".to_string()))
+            Ok(Response::new()
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr,
+                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                    funds: vec![],
+                }))
+                .add_attribute("result", "sent by NAND".to_string()))
         }
         // Input should be all false
         LogicGate::NOR => {
@@ -175,7 +213,13 @@ fn execute_interpret(
                 res.iter().all(|x| x == &false),
                 ContractError::UnmetCondition {}
             );
-            Ok(Response::new().add_attribute("result", "sent by NOR".to_string()))
+            Ok(Response::new()
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr,
+                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                    funds: vec![],
+                }))
+                .add_attribute("result", "sent by NOR".to_string()))
         }
         // Input should be all false or all true
         LogicGate::XNOR => {
@@ -183,7 +227,13 @@ fn execute_interpret(
                 res.iter().all(|x| x == &false) || res.iter().all(|x| x == &true),
                 ContractError::UnmetCondition {}
             );
-            Ok(Response::new().add_attribute("result", "sent by XNOR".to_string()))
+            Ok(Response::new()
+                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr,
+                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                    funds: vec![],
+                }))
+                .add_attribute("result", "sent by XNOR".to_string()))
         }
     }
 }
@@ -246,6 +296,7 @@ fn query_whitelist(deps: Deps) -> Result<Vec<String>, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
@@ -256,6 +307,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::AND,
             whitelist: vec!["legit_address".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -274,6 +328,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::AND,
             whitelist: vec!["legit_address".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
         let msg = ExecuteMsg::StoreResult { result: true };
@@ -289,6 +346,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::AND,
             whitelist: vec!["legit_address".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -308,6 +368,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::AND,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -328,7 +391,14 @@ mod tests {
         let msg = ExecuteMsg::Interpret {};
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let expected_response = Response::new().add_attribute("result", "sent by AND".to_string());
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by AND".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -340,6 +410,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::OR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -359,7 +432,14 @@ mod tests {
 
         let msg = ExecuteMsg::Interpret {};
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_response = Response::new().add_attribute("result", "sent by OR".to_string());
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by OR".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -371,6 +451,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::OR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -390,7 +473,14 @@ mod tests {
 
         let msg = ExecuteMsg::Interpret {};
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_response = Response::new().add_attribute("result", "sent by OR".to_string());
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by OR".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -402,6 +492,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::XOR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -421,7 +514,14 @@ mod tests {
 
         let msg = ExecuteMsg::Interpret {};
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_response = Response::new().add_attribute("result", "sent by XOR".to_string());
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by XOR".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -433,6 +533,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::XOR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -460,6 +563,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NOT,
             whitelist: vec!["legit_address1".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -472,7 +578,14 @@ mod tests {
 
         let msg = ExecuteMsg::Interpret {};
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_response = Response::new().add_attribute("result", "sent by NOT".to_string());
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by NOT".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -484,6 +597,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NOT,
             whitelist: vec!["legit_address1".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -504,6 +620,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NOT,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -532,6 +651,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NAND,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -551,7 +673,14 @@ mod tests {
 
         let msg = ExecuteMsg::Interpret {};
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_response = Response::new().add_attribute("result", "sent by NAND".to_string());
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by NAND".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -563,6 +692,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NAND,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -582,7 +714,14 @@ mod tests {
 
         let msg = ExecuteMsg::Interpret {};
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_response = Response::new().add_attribute("result", "sent by NAND".to_string());
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by NAND".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -594,6 +733,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NAND,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -621,6 +763,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NOR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -640,7 +785,14 @@ mod tests {
 
         let msg = ExecuteMsg::Interpret {};
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_response = Response::new().add_attribute("result", "sent by NOR".to_string());
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by NOR".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -652,6 +804,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NOR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -679,6 +834,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NOR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -706,6 +864,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::XNOR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -726,7 +887,14 @@ mod tests {
         let msg = ExecuteMsg::Interpret {};
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let expected_response = Response::new().add_attribute("result", "sent by XNOR".to_string());
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by XNOR".to_string());
         assert_eq!(expected_response, res);
     }
 
@@ -738,6 +906,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::XNOR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -758,7 +929,14 @@ mod tests {
         let msg = ExecuteMsg::Interpret {};
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let expected_response = Response::new().add_attribute("result", "sent by XNOR".to_string());
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by XNOR".to_string());
         assert_eq!(expected_response, res);
     }
 
@@ -770,6 +948,9 @@ mod tests {
         let msg = InstantiateMsg {
             logic_gate: LogicGate::XNOR,
             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
