@@ -119,6 +119,10 @@ pub enum ExecuteMsg {
         token_id: String,
         agreement: Option<TransferAgreement>,
     },
+    /// Mint multiple tokens at a time
+    BatchMint {
+        tokens: Vec<MintMsg<TokenExtension>>,
+    },
 }
 
 impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {

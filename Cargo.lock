@@ -428,7 +428,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rates"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ado-base",
  "andromeda-modules",
