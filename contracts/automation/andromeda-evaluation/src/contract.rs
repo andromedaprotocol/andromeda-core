@@ -67,9 +67,10 @@ pub fn execute(
     let contract = ADOContract::default();
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        ExecuteMsg::Evaluate { second, operation } => {
-            execute_evaluate(deps, env, info, second, operation)
-        }
+        ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        } => execute_evaluate(deps, env, info, user_value, operation),
         ExecuteMsg::ChangeExecuteAddress { address } => {
             execute_change_execute_address(deps, env, info, address)
         }
@@ -96,14 +97,14 @@ fn execute_evaluate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    // first: Uint128,
-    second: Uint128,
+    user_value: Uint128,
     operation: Operators,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
     let contract = ADOContract::default();
     let app_contract = contract.get_app_contract(deps.storage)?;
+
     // get the address of the ADO that will interpret our result
     let contract_addr = EXECUTE_ADO_ADDRESS.load(deps.storage)?.get_address(
         deps.api,
@@ -111,59 +112,60 @@ fn execute_evaluate(
         app_contract.clone(),
     )?;
 
+    // get the address of the oracle contract that will provide data to be compared with the user's data
     let query_addr =
         QUERY_ADO_ADDRESS
             .load(deps.storage)?
             .get_address(deps.api, &deps.querier, app_contract)?;
 
-    let first: Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+    let oracle_value: Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: query_addr,
         msg: to_binary(&andromeda_automation::counter::QueryMsg::Count {})?,
     }))?;
 
     match operation {
         Operators::Greater => Ok(Response::new()
-            .add_attribute("result", (first > second).to_string())
+            .add_attribute("result", (oracle_value > user_value).to_string())
             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-                    result: first > second,
+                    result: oracle_value > user_value,
                 })?,
                 funds: vec![],
             })))),
         Operators::GreaterEqual => Ok(Response::new()
-            .add_attribute("result", (first >= second).to_string())
+            .add_attribute("result", (oracle_value >= user_value).to_string())
             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-                    result: first >= second,
+                    result: oracle_value >= user_value,
                 })?,
                 funds: vec![],
             })))),
         Operators::Equal => Ok(Response::new()
-            .add_attribute("result", (first == second).to_string())
+            .add_attribute("result", (oracle_value == user_value).to_string())
             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-                    result: first == second,
+                    result: oracle_value == user_value,
                 })?,
                 funds: vec![],
             })))),
         Operators::LessEqual => Ok(Response::new()
-            .add_attribute("result", (first <= second).to_string())
+            .add_attribute("result", (oracle_value <= user_value).to_string())
             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-                    result: first <= second,
+                    result: oracle_value <= user_value,
                 })?,
                 funds: vec![],
             })))),
         Operators::Less => Ok(Response::new()
-            .add_attribute("result", (first < second).to_string())
+            .add_attribute("result", (oracle_value < user_value).to_string())
             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-                    result: first < second,
+                    result: oracle_value < user_value,
                 })?,
                 funds: vec![],
             })))),
@@ -264,18 +266,19 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 //         };
 //         let operation = Operators::Greater;
 //         let msg = InstantiateMsg {
-//             address,
 //             operation: operation.clone(),
+//             execute_address: todo!(),
+//             query_address: todo!(),
 //         };
 //         let info = mock_info("creator", &[]);
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(40);
-//         let second = Uint128::new(30);
+//         let oracle_value = Uint128::new(40);
+//         let user_value = Uint128::new(30);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -308,11 +311,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(40);
-//         let second = Uint128::new(130);
+//         let oracle_value = Uint128::new(40);
+//         let user_value = Uint128::new(130);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -345,11 +348,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(40);
-//         let second = Uint128::new(40);
+//         let oracle_value = Uint128::new(40);
+//         let user_value = Uint128::new(40);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -382,11 +385,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(40);
-//         let second = Uint128::new(40);
+//         let oracle_value = Uint128::new(40);
+//         let user_value = Uint128::new(40);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -419,11 +422,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(140);
-//         let second = Uint128::new(40);
+//         let oracle_value = Uint128::new(140);
+//         let user_value = Uint128::new(40);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -456,11 +459,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(40);
-//         let second = Uint128::new(140);
+//         let oracle_value = Uint128::new(40);
+//         let user_value = Uint128::new(140);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -493,11 +496,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(40);
-//         let second = Uint128::new(40);
+//         let oracle_value = Uint128::new(40);
+//         let user_value = Uint128::new(40);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -530,11 +533,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(140);
-//         let second = Uint128::new(40);
+//         let oracle_value = Uint128::new(140);
+//         let user_value = Uint128::new(40);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -567,11 +570,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(140);
-//         let second = Uint128::new(1140);
+//         let oracle_value = Uint128::new(140);
+//         let user_value = Uint128::new(1140);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -604,11 +607,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(140);
-//         let second = Uint128::new(1140);
+//         let oracle_value = Uint128::new(140);
+//         let user_value = Uint128::new(1140);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -641,11 +644,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(140);
-//         let second = Uint128::new(140);
+//         let oracle_value = Uint128::new(140);
+//         let user_value = Uint128::new(140);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -678,11 +681,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(1140);
-//         let second = Uint128::new(140);
+//         let oracle_value = Uint128::new(1140);
+//         let user_value = Uint128::new(140);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -715,11 +718,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(1140);
-//         let second = Uint128::new(140);
+//         let oracle_value = Uint128::new(1140);
+//         let user_value = Uint128::new(140);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -752,11 +755,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(140);
-//         let second = Uint128::new(140);
+//         let oracle_value = Uint128::new(140);
+//         let user_value = Uint128::new(140);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 
@@ -789,11 +792,11 @@ fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
 
 //         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-//         let first = Uint128::new(40);
-//         let second = Uint128::new(140);
+//         let oracle_value = Uint128::new(40);
+//         let user_value = Uint128::new(140);
 //         let msg = ExecuteMsg::Evaluate {
-//             first,
-//             second,
+//             oracle_value,
+//             user_value,
 //             operation,
 //         };
 

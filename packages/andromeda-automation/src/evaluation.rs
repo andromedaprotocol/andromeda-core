@@ -25,7 +25,7 @@ pub enum ExecuteMsg {
     /// Evaluates 2 pieces of data
     Evaluate {
         // first: Uint128,
-        second: Uint128,
+        user_value: Uint128,
         operation: Operators,
     },
     ChangeExecuteAddress {
