@@ -36,6 +36,7 @@ pub enum ContractError {
 
     #[error("IncompleteUnbondingPeriod")]
     IncompleteUnbondingPeriod {},
+
     #[error("LockedNFT")]
     LockedNFT {},
 
@@ -70,6 +71,9 @@ pub enum ContractError {
 
     #[error("InvalidWeight")]
     InvalidWeight {},
+
+    #[error("NoResults")]
+    NoResults {},
 
     #[error("OnlyOneSourceAllowed")]
     OnlyOneSourceAllowed {},

@@ -9,7 +9,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     // Execute ADO's address
-    pub address: AndrAddress,
+    pub execute_address: AndrAddress,
+
+    // Query ADO's address
+    pub query_address: AndrAddress,
+
     // Desired operation
     pub operation: Operators,
 }
@@ -20,7 +24,7 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Evaluates 2 pieces of data
     Evaluate {
-        first: Uint128,
+        // first: Uint128,
         second: Uint128,
         operation: Operators,
     },

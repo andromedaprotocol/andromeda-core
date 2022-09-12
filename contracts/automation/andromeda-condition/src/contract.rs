@@ -87,9 +87,10 @@ fn execute_store_result(
         whitelist.contains(&info.sender.to_string()),
         ContractError::Unauthorized {}
     );
-
+    // There won't be any results to load at the beginning
     let results = RESULTS.may_load(deps.storage)?;
 
+    // In case this isn't the first time we're storing results
     if let Some(mut results) = results {
         results.push(result);
         RESULTS.save(deps.storage, &results)?;
@@ -97,22 +98,23 @@ fn execute_store_result(
 
         // if the number of results equals the number of whitelisted addressses,
         if results.len() == whitelist.len() {
-            execute_interpret(deps, _env, info)?;
+            Ok(execute_interpret(deps, _env, info)?)
+        } else {
+            Ok(Response::new().add_attribute("action", "stored result"))
         }
-
-        Ok(Response::new().add_attribute("action", "stored result"))
+    // In case we're storing our first result
     } else {
         let results = vec![result];
         RESULTS.save(deps.storage, &results)?;
 
         let whitelist = WHITELIST.load(deps.storage)?;
 
-        // if the number of results equals the number of whitelisted addressses,
+        // if the number of results equals the number of whitelisted addressses, interpret the results
         if results.len() == whitelist.len() {
-            execute_interpret(deps, _env, info)?;
+            Ok(execute_interpret(deps, _env, info)?)
+        } else {
+            Ok(Response::new().add_attribute("action", "stored result"))
         }
-
-        Ok(Response::new().add_attribute("action", "stored result"))
     }
 }
 
@@ -133,6 +135,8 @@ fn execute_interpret(
     let logic = LOGIC_GATE.load(deps.storage)?;
     // Load results
     let res = RESULTS.load(deps.storage)?;
+    ensure!(!res.is_empty(), ContractError::NoResults {});
+
     let contract_addr =
         EXECUTE_ADO
             .load(deps.storage)?
@@ -145,6 +149,11 @@ fn execute_interpret(
                 !res.iter().any(|x| x == &false),
                 ContractError::UnmetCondition {}
             );
+
+            // Reset stored results after interpreting them
+            let new: Vec<bool> = vec![];
+            RESULTS.save(deps.storage, &new)?;
+
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
@@ -159,6 +168,11 @@ fn execute_interpret(
                 res.iter().any(|x| x == &true),
                 ContractError::UnmetCondition {}
             );
+
+            // Reset stored results after interpreting them
+            let new: Vec<bool> = vec![];
+            RESULTS.save(deps.storage, &new)?;
+
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
@@ -174,6 +188,11 @@ fn execute_interpret(
                     .all(|x| x == &true && res.iter().any(|x| x == &true)),
                 ContractError::UnmetCondition {}
             );
+
+            // Reset stored results after interpreting them
+            let new: Vec<bool> = vec![];
+            RESULTS.save(deps.storage, &new)?;
+
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
@@ -185,6 +204,11 @@ fn execute_interpret(
         // Only takes one input, takes false as true
         LogicGate::NOT => {
             ensure!(res.len() == 1 && !res[0], ContractError::UnmetCondition {});
+
+            // Reset stored results after interpreting them
+            let new: Vec<bool> = vec![];
+            RESULTS.save(deps.storage, &new)?;
+
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
@@ -199,6 +223,10 @@ fn execute_interpret(
                 !res.iter().all(|x| x == &true),
                 ContractError::UnmetCondition {}
             );
+            // Reset stored results after interpreting them
+            let new: Vec<bool> = vec![];
+            RESULTS.save(deps.storage, &new)?;
+
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
@@ -213,6 +241,10 @@ fn execute_interpret(
                 res.iter().all(|x| x == &false),
                 ContractError::UnmetCondition {}
             );
+            // Reset stored results after interpreting them
+            let new: Vec<bool> = vec![];
+            RESULTS.save(deps.storage, &new)?;
+
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
@@ -227,6 +259,10 @@ fn execute_interpret(
                 res.iter().all(|x| x == &false) || res.iter().all(|x| x == &true),
                 ContractError::UnmetCondition {}
             );
+            // Reset stored results after interpreting them
+            let new: Vec<bool> = vec![];
+            RESULTS.save(deps.storage, &new)?;
+
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
@@ -345,7 +381,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::AND,
-            whitelist: vec!["legit_address".to_string()],
+            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
@@ -353,7 +389,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address", &[]);
+        let info = mock_info("legit_address1", &[]);
         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result = vec![true];
@@ -383,13 +419,10 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address2", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, true];
+        let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
@@ -425,13 +458,11 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address2", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, true];
+        let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
 
-        let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -466,13 +497,11 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address2", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, false];
+        let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
 
-        let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -507,13 +536,11 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address2", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, false];
+        let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
 
-        let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -571,13 +598,11 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![false];
+        let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
 
-        let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -659,20 +684,22 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result = vec![true];
         assert_eq!(result, expected_result);
+        assert_eq!(
+            res,
+            Response::new().add_attribute("action", "stored result")
+        );
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address2", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, false];
+        let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
 
-        let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -707,22 +734,11 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address2", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![false, false];
+        let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-        let expected_response = Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr,
-                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-                funds: vec![],
-            }))
-            .add_attribute("result", "sent by NAND".to_string());
-        assert_eq!(expected_response, res)
+        println!("{:?}", res)
     }
 
     #[test]
@@ -780,19 +796,12 @@ mod tests {
         let info = mock_info("legit_address2", &[]);
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![false, false];
+        let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
 
         let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-        let expected_response = Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr,
-                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-                funds: vec![],
-            }))
-            .add_attribute("result", "sent by NOR".to_string());
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let expected_response = ContractError::NoResults {};
         assert_eq!(expected_response, res)
     }
 
@@ -879,13 +888,10 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address2", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, true];
+        let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
@@ -921,13 +927,10 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address2", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![false, false];
+        let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
