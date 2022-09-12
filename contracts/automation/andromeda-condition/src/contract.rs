@@ -419,7 +419,7 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address2", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
@@ -458,7 +458,7 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address2", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
@@ -497,7 +497,7 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address2", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
@@ -536,7 +536,7 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address2", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
@@ -598,7 +598,7 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address1", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
@@ -695,7 +695,7 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address2", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
@@ -734,7 +734,7 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address2", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
@@ -888,7 +888,7 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: true };
         let info = mock_info("legit_address2", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
@@ -927,7 +927,7 @@ mod tests {
 
         let msg = ExecuteMsg::StoreResult { result: false };
         let info = mock_info("legit_address2", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let result = RESULTS.load(&deps.storage).unwrap();
         let expected_result: Vec<bool> = vec![];
         assert_eq!(result, expected_result);
