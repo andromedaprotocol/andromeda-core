@@ -1,0 +1,30 @@
+[package]
+name = "andromeda-marketplace"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = "1.0.0"
+serde = { version = "1.0.127", default-features = false, features = ["derive"] }
+schemars = "0.8.3"
+cw-storage-plus = "0.13.2"
+cw721 = "0.13.2"
+cw2 = "0.13.2"
+cw20 = "0.13.2"
+semver = "1"
+cw-utils = "0.13.4"
+
+andromeda-non-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-non-fungible-tokens" }
+common = { version = "0.1.0", path = "../../../packages/common" }
+ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["modules"] }
+
+[dev-dependencies]
+cosmwasm-schema = "1.0.0"
+andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }
+andromeda-modules = { version = "0.1.0", path = "../../../packages/andromeda-modules" }
+andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
