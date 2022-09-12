@@ -14,8 +14,8 @@ use common::{
     parse_message, require, Funds,
 };
 use cosmwasm_std::{
-    attr, coin, entry_point, to_binary, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo,
-    Response, StdError, SubMsg,
+    attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response,
+    StdError, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
@@ -152,7 +152,7 @@ fn handle_andromeda_query(
     match msg {
         AndromedaQuery::Get(data) => {
             let funds: Funds = parse_message(&data)?;
-            encode_binary(&query_deducted_funds(deps, funds)?)
+            encode_binary(&Some(query_deducted_funds(deps, funds)?))
         }
         _ => ADOContract::default().query(deps, env, msg, query),
     }
@@ -163,12 +163,7 @@ fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, Contr
         AndromedaHook::OnFundsTransfer { amount, .. } => {
             encode_binary(&query_deducted_funds(deps, amount)?)
         }
-        AndromedaHook::OnExecute { .. } => {
-            let resp: Response = Response::default();
-
-            Ok(to_binary(&resp)?)
-        }
-        _ => Err(ContractError::UnsupportedOperation {}),
+        _ => Ok(encode_binary(&None::<Response>)?),
     }
 }
 

@@ -153,7 +153,8 @@ fn execute_place_offer(
             denom: coin.denom.clone(),
             amount: offer_amount,
         },
-    )?;
+    )?
+    .unwrap();
     let remaining_amount = res.leftover_funds.try_get_coin()?;
     let tax_amount = get_tax_amount(&res.msgs, offer_amount, remaining_amount.amount);
     let offer = Offer {
@@ -257,19 +258,20 @@ fn on_funds_transfer(
     sender: String,
     token_id: String,
     amount: Coin,
-) -> Result<OnFundsTransferResponse, ContractError> {
+) -> Result<Option<OnFundsTransferResponse>, ContractError> {
     let address = CW721_CONTRACT.load(storage)?;
-    let res: OnFundsTransferResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: address,
-        msg: encode_binary(&Cw721QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
-            // Not sure sender should be this contract or the info.sender. If we get different
-            // usecases in the future, using this contract as sender could allow us to have
-            // separate cases for what the hook should return.
-            sender,
-            payload: encode_binary(&token_id)?,
-            amount: Funds::Native(amount),
-        }))?,
-    }))?;
+    let res: Option<OnFundsTransferResponse> =
+        querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: address,
+            msg: encode_binary(&Cw721QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
+                // Not sure sender should be this contract or the info.sender. If we get different
+                // usecases in the future, using this contract as sender could allow us to have
+                // separate cases for what the hook should return.
+                sender,
+                payload: encode_binary(&token_id)?,
+                amount: Funds::Native(amount),
+            }))?,
+        }))?;
     Ok(res)
 }
 
@@ -372,7 +374,7 @@ fn handle_andr_hook(deps: Deps, env: Env, msg: AndromedaHook) -> Result<Binary, 
 
             Ok(encode_binary(&resp)?)
         }
-        _ => Err(ContractError::UnsupportedOperation {}),
+        _ => Ok(encode_binary(&None::<Response>)?),
     }
 }
 

@@ -165,13 +165,13 @@ fn handle_andr_hook(env: Env, msg: AndromedaHook) -> Result<Binary, ContractErro
         } => {
             let events: Vec<Event> = parse_message(&Some(payload))?;
             let msg = generate_receipt_message(env.contract.address.to_string(), events)?;
-            encode_binary(&OnFundsTransferResponse {
+            encode_binary(&Some(OnFundsTransferResponse {
                 msgs: vec![msg],
                 leftover_funds: amount,
                 events: vec![],
-            })
+            }))
         }
-        _ => Err(ContractError::UnsupportedOperation {}),
+        _ => Ok(encode_binary(&None::<Response>)?),
     }
 }
 

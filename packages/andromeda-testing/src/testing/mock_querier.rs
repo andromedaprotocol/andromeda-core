@@ -187,7 +187,7 @@ impl WasmMockQuerier {
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
                 }
-                _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },
 
             _ => panic!("Unsupported Query"),
@@ -217,7 +217,7 @@ impl WasmMockQuerier {
                     }
                     panic!("Unsupported Query")
                 }
-                _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },
             OffersQueryMsg::Offer { .. } => {
                 let response = OfferResponse {
@@ -246,7 +246,7 @@ impl WasmMockQuerier {
                         SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
                     }
                 }
-                _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },
             _ => panic!("Unsupported Query"),
         }
@@ -270,7 +270,7 @@ impl WasmMockQuerier {
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
                 }
-                _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },
             _ => panic!("Unsupported Query"),
         }

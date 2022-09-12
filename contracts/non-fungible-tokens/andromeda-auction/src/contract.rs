@@ -69,6 +69,7 @@ pub fn execute(
             payload: encode_binary(&msg)?,
         },
     )?;
+
     match msg {
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
