@@ -32,5 +32,6 @@ pub struct MigrateMsg {}
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
+    ConditionADO {},
     TargetADO {},
 }
