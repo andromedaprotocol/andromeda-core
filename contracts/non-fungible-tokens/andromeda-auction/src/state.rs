@@ -19,6 +19,7 @@ pub struct TokenAuctionState {
     pub coin_denom: String,
     pub auction_id: Uint128,
     pub whitelist: Option<Vec<Addr>>,
+    pub min_bid: Option<Uint128>,
     pub owner: String,
     pub token_id: String,
     pub token_address: String,
@@ -53,6 +54,7 @@ impl From<TokenAuctionState> for AuctionStateResponse {
             auction_id: token_auction_state.auction_id,
             whitelist: token_auction_state.whitelist,
             is_cancelled: token_auction_state.is_cancelled,
+            min_bid: None,
         }
     }
 }
