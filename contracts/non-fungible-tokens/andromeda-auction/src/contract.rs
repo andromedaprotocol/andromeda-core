@@ -2074,13 +2074,17 @@ mod tests {
         env.block.time = Timestamp::from_seconds(150);
 
         let info = mock_info("bidder", &coins(10, "uusd"));
-        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
 
         assert_eq!(
             res,
             ContractError::InvalidFunds {
                 msg: "Must provide at least 100 uusd to bid".to_string()
             }
-        )
+        );
+
+        let info = mock_info("bidder", &coins(100, "uusd"));
+        //Will error if invalid
+        execute(deps.as_mut(), env, info, msg).unwrap();
     }
 }
