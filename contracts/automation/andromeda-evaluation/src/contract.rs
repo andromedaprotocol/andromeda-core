@@ -71,8 +71,8 @@ pub fn execute(
             user_value,
             operation,
         } => execute_evaluate(deps, env, info, user_value, operation),
-        ExecuteMsg::ChangeExecuteAddress { address } => {
-            execute_change_execute_address(deps, env, info, address)
+        ExecuteMsg::ChangeConditionAddress { address } => {
+            execute_change_condition_address(deps, env, info, address)
         }
         ExecuteMsg::ChangeQueryAddress { address } => {
             execute_change_query_address(deps, env, info, address)
@@ -96,7 +96,7 @@ fn execute_change_query_address(
     Ok(Response::new().add_attribute("action", "changed_query_ado_address"))
 }
 
-fn execute_change_execute_address(
+fn execute_change_condition_address(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,

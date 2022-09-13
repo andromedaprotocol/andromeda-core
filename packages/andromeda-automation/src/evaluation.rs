@@ -24,7 +24,7 @@ pub enum ExecuteMsg {
         user_value: Uint128,
         operation: Operators,
     },
-    ChangeExecuteAddress {
+    ChangeConditionAddress {
         address: AndrAddress,
     },
     ChangeQueryAddress {

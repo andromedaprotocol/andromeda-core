@@ -7,13 +7,15 @@ use andromeda_automation::{
     execute::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
+    error::ContractError, require,
 };
 use cosmwasm_std::{
     ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
     Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
@@ -69,7 +71,28 @@ pub fn execute(
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::Execute {} => execute_execute(deps, env, info),
+        ExecuteMsg::UpdateConditionAddress { condition_address } => {
+            execute_update_condition_address(deps, env, info, condition_address)
+        }
     }
+}
+
+fn execute_update_condition_address(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    condition_address: AndrAddress,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    // Only the contract's owner can update the Execute ADO address
+    require(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+
+    CONDITION_ADO_ADDRESS.save(deps.storage, &condition_address)?;
+
+    Ok(Response::new().add_attribute("action", "updated_condition_address"))
 }
 
 fn execute_execute(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {

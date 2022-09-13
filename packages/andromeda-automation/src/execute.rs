@@ -19,6 +19,9 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Evaluates 2 pieces of data
     Execute {},
+    UpdateConditionAddress {
+        condition_address: AndrAddress,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

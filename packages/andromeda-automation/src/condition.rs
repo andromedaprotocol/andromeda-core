@@ -27,6 +27,9 @@ pub enum ExecuteMsg {
     UpdateWhitelist {
         addresses: Vec<String>,
     },
+    UpdateLogicGate {
+        logic_gate: LogicGate,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

@@ -79,7 +79,28 @@ pub fn execute(
         ExecuteMsg::UpdateWhitelist { addresses } => {
             execute_update_whitelist_ado(deps, env, info, addresses)
         }
+        ExecuteMsg::UpdateLogicGate { logic_gate } => {
+            execute_update_logic_gate(deps, env, info, logic_gate)
+        }
     }
+}
+
+fn execute_update_logic_gate(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    logic_gate: LogicGate,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    // Check authority
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    LOGIC_GATE.save(deps.storage, &logic_gate)?;
+
+    Ok(Response::new().add_attribute("action", "updated_logic_gate"))
 }
 
 fn execute_update_whitelist_ado(
@@ -139,27 +160,27 @@ fn execute_store_result(
     if let Some(mut results) = results {
         results.push(result);
         RESULTS.save(deps.storage, &results)?;
-        // let whitelist = WHITELIST.load(deps.storage)?;
+        let whitelist = WHITELIST.load(deps.storage)?;
 
-        // // if the number of results equals the number of whitelisted addressses,
-        // if results.len() == whitelist.len() {
-        //     Ok(execute_interpret(deps, _env, info)?)
-        // } else {
-        Ok(Response::new().add_attribute("action", "stored result"))
-        // }
+        // if the number of results equals the number of whitelisted addressses,
+        if results.len() == whitelist.len() {
+            Ok(execute_interpret(deps, _env, info)?)
+        } else {
+            Ok(Response::new().add_attribute("action", "stored result"))
+        }
         // In case we're storing our first result
     } else {
         let results = vec![result];
         RESULTS.save(deps.storage, &results)?;
 
-        // let whitelist = WHITELIST.load(deps.storage)?;
+        let whitelist = WHITELIST.load(deps.storage)?;
 
-        // // if the number of results equals the number of whitelisted addressses, interpret the results
-        // if results.len() == whitelist.len() {
-        //     Ok(execute_interpret(deps, _env, info)?)
-        // } else {
-        Ok(Response::new().add_attribute("action", "stored result"))
-        // }
+        // if the number of results equals the number of whitelisted addressses, interpret the results
+        if results.len() == whitelist.len() {
+            Ok(execute_interpret(deps, _env, info)?)
+        } else {
+            Ok(Response::new().add_attribute("action", "stored result"))
+        }
     }
 }
 
@@ -169,13 +190,9 @@ fn execute_interpret(
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    // Check authority
     let contract = ADOContract::default();
     let app_contract = contract.get_app_contract(deps.storage)?;
-    ensure!(
-        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+
     // Load logic gate
     let logic = LOGIC_GATE.load(deps.storage)?;
     // Load results
