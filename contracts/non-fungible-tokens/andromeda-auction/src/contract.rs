@@ -93,7 +93,7 @@ pub fn execute(
             end_time,
             coin_denom,
             whitelist,
-            min_bid
+            min_bid,
         ),
         ExecuteMsg::PlaceBid {
             token_id,
@@ -254,7 +254,7 @@ fn execute_update_auction(
     token_auction_state.end_time = end_time;
     token_auction_state.whitelist = whitelist.clone();
     token_auction_state.coin_denom = coin_denom.clone();
-    token_auction_state.min_bid = min_bid.clone();
+    token_auction_state.min_bid = min_bid;
     TOKEN_AUCTION_STATE.save(
         deps.storage,
         token_auction_state.auction_id.u128(),
@@ -267,7 +267,7 @@ fn execute_update_auction(
         attr("coin_denom", coin_denom),
         attr("auction_id", token_auction_state.auction_id.to_string()),
         attr("whitelist", format!("{:?}", &whitelist)),
-        attr("min_bid", format!("{:?}", &min_bid))
+        attr("min_bid", format!("{:?}", &min_bid)),
     ]))
 }
 
@@ -327,7 +327,12 @@ fn execute_place_bid(
         }
     );
     let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
-    ensure!(payment.amount >= min_bid, ContractError::InvalidFunds { msg: format!("Must provide at least {} {} to bid", min_bid, coin_denom) });
+    ensure!(
+        payment.amount >= min_bid,
+        ContractError::InvalidFunds {
+            msg: format!("Must provide at least {} {} to bid", min_bid, coin_denom)
+        }
+    );
     ensure!(
         token_auction_state.high_bidder_amount < payment.amount,
         ContractError::BidSmallerThanHighestBid {}
@@ -2069,8 +2074,13 @@ mod tests {
         env.block.time = Timestamp::from_seconds(150);
 
         let info = mock_info("bidder", &coins(10, "uusd"));
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
-        assert_eq!(res, ContractError::InvalidFunds { msg: "Must provide at least 100 uusd to bid".to_string() })
+        assert_eq!(
+            res,
+            ContractError::InvalidFunds {
+                msg: "Must provide at least 100 uusd to bid".to_string()
+            }
+        )
     }
 }
