@@ -8,8 +8,11 @@ use andromeda_non_fungible_tokens::auction::{
     InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
-    rates::get_tax_amount, Funds, OrderBy,
+    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    encode_binary,
+    error::ContractError,
+    rates::get_tax_amount,
+    Funds, OrderBy,
 };
 use cosmwasm_std::{
     attr, coins, ensure, entry_point, from_binary, Addr, Api, BankMsg, Binary, BlockInfo, Coin,
@@ -55,6 +58,18 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    contract.module_hook::<Response>(
+        deps.storage,
+        deps.api,
+        deps.querier,
+        AndromedaHook::OnExecute {
+            sender: info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+
     match msg {
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
@@ -479,7 +494,7 @@ fn purchase_token(
 
     let mut total_tax_amount = Uint128::zero();
 
-    let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
+    let (msgs, _events, remainder) = ADOContract::default().on_funds_transfer(
         storage,
         api,
         querier,
@@ -495,19 +510,11 @@ fn purchase_token(
     // Calculate total tax
     total_tax_amount += tax_amount;
 
-    if events.iter().any(|x| x.ty == "tax") {
-        let after_tax_payment = Coin {
-            denom: state.coin_denom,
-            amount: state.high_bidder_amount - tax_amount,
-        };
-        Ok((after_tax_payment, msgs))
-    } else {
-        let after_tax_payment = Coin {
-            denom: state.coin_denom,
-            amount: remaining_amount.amount,
-        };
-        Ok((after_tax_payment, msgs))
-    }
+    let after_tax_payment = Coin {
+        denom: state.coin_denom,
+        amount: remaining_amount.amount,
+    };
+    Ok((after_tax_payment, msgs))
 }
 
 fn get_existing_token_auction_state(

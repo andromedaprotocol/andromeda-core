@@ -50,9 +50,7 @@ where
 {
     match to_binary(val) {
         Ok(encoded_val) => Ok(encoded_val),
-        Err(err) => Err(ContractError::ParsingError {
-            err: err.to_string(),
-        }),
+        Err(err) => Err(err.into()),
     }
 }
 

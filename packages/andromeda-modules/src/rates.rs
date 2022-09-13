@@ -1,17 +1,9 @@
 use common::{
-    ado_base::{
-        hooks::{AndromedaHook, OnFundsTransferResponse},
-        recipient::Recipient,
-        AndromedaMsg, AndromedaQuery,
-    },
-    encode_binary,
+    ado_base::{hooks::AndromedaHook, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     primitive::{Primitive, PrimitivePointer},
-    Funds,
 };
-use cosmwasm_std::{
-    ensure, Addr, Api, Coin, Decimal, Fraction, QuerierWrapper, QueryRequest, WasmQuery,
-};
+use cosmwasm_std::{ensure, Addr, Api, Coin, Decimal, Fraction, QuerierWrapper};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -147,21 +139,6 @@ impl ToString for PaymentAttribute {
     fn to_string(&self) -> String {
         format!("{}<{}", self.receiver, self.amount)
     }
-}
-
-pub fn on_required_payments(
-    querier: QuerierWrapper,
-    addr: String,
-    amount: Funds,
-) -> Result<OnFundsTransferResponse, ContractError> {
-    let res: OnFundsTransferResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: addr,
-        msg: encode_binary(&QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
-            encode_binary(&amount)?,
-        ))))?,
-    }))?;
-
-    Ok(res)
 }
 
 /// Calculates a fee amount given a `Rate` and payment amount.

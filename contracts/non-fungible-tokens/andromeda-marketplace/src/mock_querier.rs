@@ -9,13 +9,16 @@ use cosmwasm_std::{
     to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps, Querier, QuerierResult,
     QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
 };
-use cw721::{Cw721QueryMsg, TokensResponse};
+use cw721::{Cw721QueryMsg, OwnerOfResponse};
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 
+pub const MOCK_TOKEN_ADDR: &str = "token0001";
+pub const MOCK_TOKEN_OWNER: &str = "owner";
+pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
@@ -66,7 +69,7 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
-                    MOCK_TOKEN_CONTRACT => self.handle_token_query(msg),
+                    MOCK_TOKEN_ADDR => self.handle_token_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_APP_CONTRACT => self.handle_app_query(msg),
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
@@ -90,28 +93,18 @@ impl WasmMockQuerier {
 
     fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            Cw721QueryMsg::Tokens { owner, .. } => {
-                let res = if owner == MOCK_CONDITIONS_MET_CONTRACT
-                    || owner == MOCK_CONDITIONS_NOT_MET_CONTRACT
-                {
-                    TokensResponse {
-                        tokens: MOCK_TOKENS_FOR_SALE
-                            [MOCK_TOKENS_FOR_SALE.len() - self.tokens_left_to_burn..]
-                            .iter()
-                            .copied()
-                            .map(String::from)
-                            .collect(),
+            Cw721QueryMsg::OwnerOf { token_id, .. } => {
+                let res = if token_id == MOCK_UNCLAIMED_TOKEN {
+                    OwnerOfResponse {
+                        owner: mock_env().contract.address.to_string(),
+                        approvals: vec![],
                     }
                 } else {
-                    TokensResponse {
-                        tokens: MOCK_TOKENS_FOR_SALE
-                            .iter()
-                            .copied()
-                            .map(String::from)
-                            .collect(),
+                    OwnerOfResponse {
+                        owner: MOCK_TOKEN_OWNER.to_owned(),
+                        approvals: vec![],
                     }
                 };
-
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }
 
@@ -154,8 +147,9 @@ impl WasmMockQuerier {
                             ],
                         ),
                         Funds::Cw20(_) => {
-                            let resp: Response = Response::default();
-                            return SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()));
+                            return SystemResult::Ok(ContractResult::Ok(
+                                to_binary(&None::<Response>).unwrap(),
+                            ))
                         }
                     };
                     let response = OnFundsTransferResponse {
@@ -163,7 +157,7 @@ impl WasmMockQuerier {
                         events: vec![],
                         leftover_funds: new_funds,
                     };
-                    SystemResult::Ok(ContractResult::Ok(to_binary(&Some(response)).unwrap()))
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&response).unwrap()))
                 }
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },
@@ -182,7 +176,7 @@ impl WasmMockQuerier {
                         SystemResult::Ok(ContractResult::Err("InvalidAddress".to_string()))
                     }
                 }
-                _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
+                _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
             },
         }
     }
