@@ -54,7 +54,7 @@ impl From<TokenAuctionState> for AuctionStateResponse {
             auction_id: token_auction_state.auction_id,
             whitelist: token_auction_state.whitelist,
             is_cancelled: token_auction_state.is_cancelled,
-            min_bid: None,
+            min_bid: token_auction_state.min_bid,
         }
     }
 }
