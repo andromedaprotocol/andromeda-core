@@ -3,10 +3,10 @@ use common::{
     ado_base::{modules::Module, AndromedaMsg, ExecuteMsg, InstantiateMsg},
     app::AndrAddress,
     error::ContractError,
-    parse_message, require,
+    parse_message,
 };
 use cosmwasm_std::{
-    attr, Api, DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, Storage,
+    attr, ensure, Api, DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, Storage,
 };
 use serde::de::DeserializeOwned;
 
@@ -53,10 +53,10 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         match msg {
             AndromedaMsg::Receive(data) => {
-                require(
+                ensure!(
                     !self.is_nested::<ExecuteMsg>(&data),
-                    ContractError::NestedAndromedaMsg {},
-                )?;
+                    ContractError::NestedAndromedaMsg {}
+                );
                 let received: E = parse_message(&data)?;
                 (execute_function)(deps, env, info, received)
             }
@@ -126,10 +126,10 @@ impl<'a> ADOContract<'a> {
         info: MessageInfo,
         new_owner: String,
     ) -> Result<Response, ContractError> {
-        require(
+        ensure!(
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
-            ContractError::Unauthorized {},
-        )?;
+            ContractError::Unauthorized {}
+        );
         let new_owner_addr = deps.api.addr_validate(&new_owner)?;
         self.owner.save(deps.storage, &new_owner_addr)?;
 
@@ -145,10 +145,10 @@ impl<'a> ADOContract<'a> {
         info: MessageInfo,
         operators: Vec<String>,
     ) -> Result<Response, ContractError> {
-        require(
+        ensure!(
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
-            ContractError::Unauthorized {},
-        )?;
+            ContractError::Unauthorized {}
+        );
 
         let keys: Vec<String> = self
             .operators
@@ -172,10 +172,10 @@ impl<'a> ADOContract<'a> {
         address: String,
         addresses: Option<Vec<AndrAddress>>,
     ) -> Result<Response, ContractError> {
-        require(
+        ensure!(
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
-            ContractError::Unauthorized {},
-        )?;
+            ContractError::Unauthorized {}
+        );
         self.app_contract
             .save(deps.storage, &deps.api.addr_validate(&address)?)?;
         self.validate_andr_addresses(deps.as_ref(), addresses.unwrap_or_default())?;

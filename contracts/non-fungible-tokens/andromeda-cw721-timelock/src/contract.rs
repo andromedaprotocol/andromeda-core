@@ -2,11 +2,9 @@ use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721_timelock::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
-};
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
-    entry_point, from_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
+    ensure, entry_point, from_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
     StdError, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -62,9 +60,6 @@ pub fn execute(
         }
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(deps, env, info, msg),
         ExecuteMsg::Claim { lock_id } => execute_claim(deps, env, info, lock_id),
-        ExecuteMsg::UpdateOwner { address } => {
-            ADOContract::default().execute_update_owner(deps, info, address)
-        }
     }
 }
 
@@ -99,17 +94,17 @@ fn execute_lock(
     andromeda_cw721_contract: String,
 ) -> Result<Response, ContractError> {
     // Lock time can't be too long
-    require(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {})?;
+    ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
 
     // Lock time can't be too short
-    require(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {})?;
+    ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
 
     // Concatenate NFT's contract address and ID to form a unique ID for each NFT
     let lock_id = format!("{andromeda_cw721_contract}{nft_id}");
 
     // Make sure NFT isn't already locked in this contract
     let lock_id_check = LOCKED_ITEMS.may_load(deps.storage, &lock_id)?;
-    require(lock_id_check.is_none(), ContractError::LockedNFT {})?;
+    ensure!(lock_id_check.is_none(), ContractError::LockedNFT {});
 
     // Validate recipient's address if given, and set the sender as recipient if none was provided
     let recip = if let Some(recipient) = recipient {
@@ -152,10 +147,10 @@ fn execute_claim(
     if let Some(locked_nft) = locked_item {
         // Check if lock is expired
         let expiration = locked_nft.expiration;
-        require(
+        ensure!(
             expiration.is_expired(&env.block),
-            ContractError::LockedNFT {},
-        )?;
+            ContractError::LockedNFT {}
+        );
 
         // Remove NFT from the list of locked items
         LOCKED_ITEMS.remove(deps.storage, &lock_id);
@@ -203,20 +198,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

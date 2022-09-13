@@ -11,11 +11,11 @@ use common::{
     },
     deduct_funds, encode_binary,
     error::ContractError,
-    parse_message, require, Funds,
+    parse_message, Funds,
 };
 use cosmwasm_std::{
-    attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response,
-    StdError, SubMsg,
+    attr, coin, ensure, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo,
+    Response, StdError, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
@@ -86,10 +86,10 @@ fn execute_update_rates(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let mut config = CONFIG.load(deps.storage)?;
     config.rates = rates;
     CONFIG.save(deps.storage, &config)?;
@@ -108,20 +108,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

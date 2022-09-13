@@ -11,11 +11,11 @@ use andromeda_non_fungible_tokens::{
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError, require, response::get_reply_address,
+    error::ContractError, response::get_reply_address,
 };
 use cosmwasm_std::{
-    entry_point, from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    QueryRequest, Reply, Response, StdError, SubMsg, WasmMsg, WasmQuery,
+    ensure, entry_point, from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo,
+    QuerierWrapper, QueryRequest, Reply, Response, StdError, SubMsg, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NftInfoResponse};
@@ -84,7 +84,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             msg.result.unwrap_err(),
         )));
     }
-    require(msg.id == 1, ContractError::InvalidReplyId {})?;
+    ensure!(msg.id == 1, ContractError::InvalidReplyId {});
 
     let addr = get_reply_address(msg)?;
     ANDROMEDA_CW721_ADDR.save(deps.storage, &addr)?;
@@ -133,14 +133,14 @@ fn execute_wrap(
     token_address: Addr,
     wrapped_token_id: Option<String>,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         token_address != env.contract.address,
-        ContractError::CannotDoubleWrapToken {},
-    )?;
+        ContractError::CannotDoubleWrapToken {}
+    );
 
     let wrapped_token_id = wrapped_token_id.unwrap_or_else(|| token_id.to_string());
     let extension = TokenExtension {
@@ -195,11 +195,11 @@ fn execute_unwrap(
 ) -> Result<Response, ContractError> {
     let can_unwrap = CAN_UNWRAP.load(deps.storage)?;
     let cw721_contract_addr = ANDROMEDA_CW721_ADDR.load(deps.storage)?;
-    require(can_unwrap, ContractError::UnwrappingDisabled {})?;
-    require(
+    ensure!(can_unwrap, ContractError::UnwrappingDisabled {});
+    ensure!(
         token_address == cw721_contract_addr,
-        ContractError::TokenNotWrappedByThisContract {},
-    )?;
+        ContractError::TokenNotWrappedByThisContract {}
+    );
     let (original_token_id, original_token_address) =
         get_original_nft_data(&deps.querier, token_id.clone(), token_address.to_string())?;
 
@@ -237,7 +237,7 @@ fn get_original_nft_data(
         },
     ))?;
     let attributes = token_info.extension.attributes;
-    require(attributes.len() == 2, ContractError::InvalidMetadata {})?;
+    ensure!(attributes.len() == 2, ContractError::InvalidMetadata {});
     let original_token_id = attributes[0].value.clone();
     let original_token_address = attributes[1].value.clone();
     Ok((original_token_id, original_token_address))
@@ -261,20 +261,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

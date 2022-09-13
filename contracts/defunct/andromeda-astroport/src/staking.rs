@@ -12,7 +12,7 @@ use astroport::{
     generator::{Cw20HookMsg as GeneratorCw20HookMsg, ExecuteMsg as GeneratorExecuteMsg},
     staking::Cw20HookMsg as StakingCw20HookMsg,
 };
-use common::{encode_binary, error::ContractError, require};
+use common::{encode_binary, error::ContractError, ensure!};
 use cw20::Cw20ExecuteMsg;
 use cw_asset::AssetInfo;
 use std::cmp;
@@ -26,10 +26,10 @@ pub fn execute_stake_lp(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let astroport_generator = contract.get_cached_address(deps.storage, ASTROPORT_GENERATOR)?;
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let lp_token = AssetInfo::cw20(deps.api.addr_validate(&lp_token_contract)?);
     let balance = lp_token.query_balance(&deps.querier, env.contract.address)?;
     let amount = cmp::min(amount.unwrap_or(balance), balance);
@@ -58,10 +58,10 @@ pub fn execute_unstake_lp(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let astroport_generator = contract.get_cached_address(deps.storage, ASTROPORT_GENERATOR)?;
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let lp_token = deps.api.addr_validate(&lp_token_contract)?;
     let amount_staked = query_amount_staked(
         &deps.querier,
@@ -91,10 +91,10 @@ pub fn execute_claim_lp_staking_rewards(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let astroport_generator = contract.get_cached_address(deps.storage, ASTROPORT_GENERATOR)?;
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let lp_token = deps.api.addr_validate(&lp_token_contract)?;
     let lp_unstake_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: astroport_generator.clone(),
@@ -170,10 +170,10 @@ fn stake_or_unstake_astro(
     let astroport_astro = contract.get_cached_address(deps.storage, ASTROPORT_ASTRO)?;
     let astroport_xastro = contract.get_cached_address(deps.storage, ASTROPORT_XASTRO)?;
     let astroport_staking = contract.get_cached_address(deps.storage, ASTROPORT_STAKING)?;
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let (token_addr, msg, action) = if stake {
         (astroport_astro, StakingCw20HookMsg::Enter {}, "stake_astro")

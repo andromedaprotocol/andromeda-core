@@ -11,10 +11,10 @@ use common::{
     encode_binary,
     error::ContractError,
     rates::get_tax_amount,
-    require, Funds,
+    Funds,
 };
 use cosmwasm_std::{
-    attr, entry_point, from_binary, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps,
+    attr, ensure, entry_point, from_binary, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps,
     DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg,
     Uint128, WasmMsg, WasmQuery,
 };
@@ -120,7 +120,7 @@ fn execute_start_sale(
     coin_denom: String,
 ) -> Result<Response, ContractError> {
     // Price can't be zero
-    require(price > Uint128::zero(), ContractError::InvalidZeroAmount {})?;
+    ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
 
     let sale_id = get_and_increment_next_sale_id(deps.storage, &token_id, &token_address)?;
 
@@ -164,13 +164,13 @@ fn execute_update_sale(
         get_existing_token_sale_state(deps.storage, &token_id, &token_address)?;
     // Only token owner is authorized to update the sale
 
-    require(
+    ensure!(
         info.sender == token_sale_state.owner,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     // New price can't be zero
-    require(price > Uint128::zero(), ContractError::InvalidZeroAmount {})?;
+    ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
 
     token_sale_state.price = price;
     token_sale_state.coin_denom = coin_denom.clone();
@@ -200,24 +200,24 @@ fn execute_buy(
         get_existing_token_sale_state(deps.storage, &token_id, &token_address)?;
 
     // Sale needs to be open
-    require(
+    ensure!(
         token_sale_state.status == Status::Open,
-        ContractError::SaleNotOpen {},
-    )?;
+        ContractError::SaleNotOpen {}
+    );
 
     // The owner can't buy his own NFT
-    require(
+    ensure!(
         token_sale_state.owner != info.sender,
-        ContractError::TokenOwnerCannotBuy {},
-    )?;
+        ContractError::TokenOwnerCannotBuy {}
+    );
 
     // Only one coin can be sent
-    require(
+    ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
-            msg: "Sales require exactly one coin to be sent.".to_string(),
-        },
-    )?;
+            msg: "Sales ensure! exactly one coin to be sent.".to_string(),
+        }
+    );
 
     let token_owner = query_owner_of(
         deps.querier,
@@ -225,27 +225,27 @@ fn execute_buy(
         token_id.clone(),
     )?
     .owner;
-    require(
+    ensure!(
         // If this is false then the token is no longer held by the contract so the token has been
         // claimed.
         token_owner == env.contract.address,
-        ContractError::SaleAlreadyConducted {},
-    )?;
+        ContractError::SaleAlreadyConducted {}
+    );
 
     let coin_denom = token_sale_state.coin_denom.clone();
     let payment: &Coin = &info.funds[0];
 
     // Make sure funds are equal to the price and in the correct denomination
-    require(
+    ensure!(
         payment.denom == coin_denom,
         ContractError::InvalidFunds {
             msg: format!("No {} assets are provided to sale", coin_denom),
-        },
-    )?;
-    require(
+        }
+    );
+    ensure!(
         payment.amount >= token_sale_state.price,
-        ContractError::InsufficientFunds {},
-    )?;
+        ContractError::InsufficientFunds {}
+    );
 
     let key = token_sale_state.sale_id.u128();
 
@@ -298,16 +298,16 @@ fn execute_cancel(
     let mut token_sale_state =
         get_existing_token_sale_state(deps.storage, &token_id, &token_address)?;
 
-    require(
+    ensure!(
         info.sender == token_sale_state.owner,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     // Sale needs to be open to be cancelled
-    require(
+    ensure!(
         token_sale_state.status == Status::Open,
-        ContractError::SaleNotOpen {},
-    )?;
+        ContractError::SaleNotOpen {}
+    );
 
     let messages: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: token_sale_state.token_address.clone(),
@@ -359,10 +359,10 @@ fn purchase_token(
         denom: state.coin_denom.clone(),
         amount: state.price + total_tax_amount,
     };
-    require(
+    ensure!(
         has_coins(&info.funds, &required_payment),
-        ContractError::InsufficientFunds {},
-    )?;
+        ContractError::InsufficientFunds {}
+    );
 
     let after_tax_payment = Coin {
         denom: state.coin_denom,
@@ -502,20 +502,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -731,7 +731,7 @@ mod tests {
         assert_sale_created(deps.as_ref());
 
         let error = ContractError::InvalidFunds {
-            msg: "Sales require exactly one coin to be sent.".to_string(),
+            msg: "Sales ensure! exactly one coin to be sent.".to_string(),
         };
         let msg = ExecuteMsg::Buy {
             token_id: MOCK_UNCLAIMED_TOKEN.to_string(),

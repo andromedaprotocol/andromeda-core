@@ -12,12 +12,12 @@ use common::{
     encode_binary,
     error::ContractError,
     rates::get_tax_amount,
-    require, Funds, OrderBy,
+    Funds, OrderBy,
 };
 use cosmwasm_std::{
-    attr, coins, entry_point, from_binary, Addr, Api, BankMsg, Binary, BlockInfo, Coin, CosmosMsg,
-    Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage,
-    SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, coins, ensure, entry_point, from_binary, Addr, Api, BankMsg, Binary, BlockInfo, Coin,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError,
+    Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -105,9 +105,6 @@ pub fn execute(
             token_id,
             token_address,
         } => execute_claim(deps, env, info, token_id, token_address),
-        ExecuteMsg::UpdateOwner { address } => {
-            ADOContract::default().execute_update_owner(deps, info, address)
-        }
     }
 }
 
@@ -149,26 +146,26 @@ fn execute_start_auction(
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         start_time != Expiration::Never {} && end_time != Expiration::Never {},
-        ContractError::ExpirationMustNotBeNever {},
-    )?;
-    require(
+        ContractError::ExpirationMustNotBeNever {}
+    );
+    ensure!(
         start_time.partial_cmp(&end_time) != None,
-        ContractError::ExpirationsMustBeOfSameType {},
-    )?;
-    require(
+        ContractError::ExpirationsMustBeOfSameType {}
+    );
+    ensure!(
         start_time < end_time,
-        ContractError::StartTimeAfterEndTime {},
-    )?;
+        ContractError::StartTimeAfterEndTime {}
+    );
     let block_time = block_to_expiration(&env.block, start_time).unwrap();
-    require(
+    ensure!(
         start_time > block_time,
         ContractError::StartTimeInThePast {
             current_seconds: env.block.time.seconds(),
             current_block: env.block.height,
-        },
-    )?;
+        }
+    );
 
     let auction_id = get_and_increment_next_auction_id(deps.storage, &token_id, &token_address)?;
     BIDS.save(deps.storage, auction_id.u128(), &vec![])?;
@@ -218,33 +215,33 @@ fn execute_update_auction(
 
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
-    require(
+    ensure!(
         info.sender == token_auction_state.owner,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         !token_auction_state.start_time.is_expired(&env.block),
-        ContractError::AuctionAlreadyStarted {},
-    )?;
-    require(
+        ContractError::AuctionAlreadyStarted {}
+    );
+    ensure!(
         start_time != Expiration::Never {} && end_time != Expiration::Never {},
-        ContractError::ExpirationMustNotBeNever {},
-    )?;
-    require(
+        ContractError::ExpirationMustNotBeNever {}
+    );
+    ensure!(
         start_time.partial_cmp(&end_time) != None,
-        ContractError::ExpirationsMustBeOfSameType {},
-    )?;
-    require(
+        ContractError::ExpirationsMustBeOfSameType {}
+    );
+    ensure!(
         start_time < end_time,
-        ContractError::StartTimeAfterEndTime {},
-    )?;
-    require(
+        ContractError::StartTimeAfterEndTime {}
+    );
+    ensure!(
         !start_time.is_expired(&env.block),
         ContractError::StartTimeInThePast {
             current_seconds: env.block.time.seconds(),
             current_block: env.block.height,
-        },
-    )?;
+        }
+    );
 
     token_auction_state.start_time = start_time;
     token_auction_state.end_time = end_time;
@@ -275,55 +272,55 @@ fn execute_place_bid(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    require(
+    ensure!(
         !token_auction_state.is_cancelled,
-        ContractError::AuctionCancelled {},
-    )?;
+        ContractError::AuctionCancelled {}
+    );
 
-    require(
+    ensure!(
         token_auction_state.start_time.is_expired(&env.block),
-        ContractError::AuctionNotStarted {},
-    )?;
-    require(
+        ContractError::AuctionNotStarted {}
+    );
+    ensure!(
         !token_auction_state.end_time.is_expired(&env.block),
-        ContractError::AuctionEnded {},
-    )?;
+        ContractError::AuctionEnded {}
+    );
 
-    require(
+    ensure!(
         token_auction_state.owner != info.sender,
-        ContractError::TokenOwnerCannotBid {},
-    )?;
+        ContractError::TokenOwnerCannotBid {}
+    );
 
-    require(
+    ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
-            msg: "Auctions require exactly one coin to be sent.".to_string(),
-        },
-    )?;
+            msg: "Auctions ensure! exactly one coin to be sent.".to_string(),
+        }
+    );
     if let Some(ref whitelist) = token_auction_state.whitelist {
-        require(
+        ensure!(
             whitelist.iter().any(|x| x == &info.sender),
-            ContractError::Unauthorized {},
-        )?;
+            ContractError::Unauthorized {}
+        );
     }
 
-    require(
+    ensure!(
         token_auction_state.high_bidder_addr != info.sender,
-        ContractError::HighestBidderCannotOutBid {},
-    )?;
+        ContractError::HighestBidderCannotOutBid {}
+    );
 
     let coin_denom = token_auction_state.coin_denom.clone();
     let payment: &Coin = &info.funds[0];
-    require(
+    ensure!(
         payment.denom == coin_denom && payment.amount > Uint128::zero(),
         ContractError::InvalidFunds {
             msg: format!("No {} assets are provided to auction", coin_denom),
-        },
-    )?;
-    require(
+        }
+    );
+    ensure!(
         token_auction_state.high_bidder_amount < payment.amount,
-        ContractError::BidSmallerThanHighestBid {},
-    )?;
+        ContractError::BidSmallerThanHighestBid {}
+    );
 
     let mut messages: Vec<CosmosMsg> = vec![];
     // Send back previous bid unless there was no previous bid.
@@ -369,14 +366,14 @@ fn execute_cancel(
 
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
-    require(
+    ensure!(
         info.sender == token_auction_state.owner,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         !token_auction_state.end_time.is_expired(&env.block),
-        ContractError::AuctionEnded {},
-    )?;
+        ContractError::AuctionEnded {}
+    );
     let mut messages: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: token_auction_state.token_address.clone(),
         msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
@@ -417,22 +414,22 @@ fn execute_claim(
     nonpayable(&info)?;
     let token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
-    require(
+    ensure!(
         token_auction_state.end_time.is_expired(&env.block),
-        ContractError::AuctionNotEnded {},
-    )?;
+        ContractError::AuctionNotEnded {}
+    );
     let token_owner = query_owner_of(
         deps.querier,
         token_auction_state.token_address.clone(),
         token_id.clone(),
     )?
     .owner;
-    require(
+    ensure!(
         // If this is false then the token is no longer held by the contract so the token has been
         // claimed.
         token_owner == env.contract.address,
-        ContractError::AuctionAlreadyClaimed {},
-    )?;
+        ContractError::AuctionAlreadyClaimed {}
+    );
     // This is the case where no-one bid on the token.
     if token_auction_state.high_bidder_amount.is_zero() {
         return Ok(Response::new()
@@ -689,20 +686,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -982,7 +979,7 @@ mod tests {
         env.block.time = Timestamp::from_seconds(150);
 
         let error = ContractError::InvalidFunds {
-            msg: "Auctions require exactly one coin to be sent.".to_string(),
+            msg: "Auctions ensure! exactly one coin to be sent.".to_string(),
         };
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_string(),

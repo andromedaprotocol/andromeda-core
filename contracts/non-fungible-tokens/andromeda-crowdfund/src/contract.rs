@@ -16,7 +16,7 @@ use common::{
     error::ContractError,
     merge_sub_msgs,
     rates::get_tax_amount,
-    require, Funds,
+    Funds,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -24,9 +24,9 @@ use semver::Version;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
-    WasmQuery,
+    ensure, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128,
+    WasmMsg, WasmQuery,
 };
 use cw721::TokensResponse;
 use cw_utils::{nonpayable, Expiration};
@@ -150,28 +150,28 @@ fn execute_mint(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         mint_msgs.len() <= MAX_MINT_LIMIT as usize,
         ContractError::TooManyMintMessages {
             limit: MAX_MINT_LIMIT,
-        },
-    )?;
+        }
+    );
     let contract = ADOContract::default();
-    require(
+    ensure!(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     // Can only mint when no sale is ongoing.
-    require(
+    ensure!(
         STATE.may_load(deps.storage)?.is_none(),
-        ContractError::SaleStarted {},
-    )?;
+        ContractError::SaleStarted {}
+    );
     let sale_conducted = SALE_CONDUCTED.load(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
-    require(
+    ensure!(
         config.can_mint_after_sale || !sale_conducted,
-        ContractError::CannotMintAfterSaleConducted {},
-    )?;
+        ContractError::CannotMintAfterSaleConducted {}
+    );
 
     let app_contract = contract.get_app_contract(deps.storage)?;
     let token_contract = config
@@ -240,21 +240,21 @@ fn execute_start_sale(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         !matches!(expiration, Expiration::Never {}),
-        ContractError::ExpirationMustNotBeNever {},
-    )?;
-    require(
+        ContractError::ExpirationMustNotBeNever {}
+    );
+    ensure!(
         !expiration.is_expired(&env.block),
-        ContractError::ExpirationInPast {},
-    )?;
+        ContractError::ExpirationInPast {}
+    );
     SALE_CONDUCTED.save(deps.storage, &true)?;
     let state = STATE.may_load(deps.storage)?;
-    require(state.is_none(), ContractError::SaleStarted {})?;
+    ensure!(state.is_none(), ContractError::SaleStarted {});
     let max_amount_per_wallet = max_amount_per_wallet.unwrap_or(1u32);
 
     // This is to prevent cloning price.
@@ -293,27 +293,27 @@ fn execute_purchase_by_token_id(
     let state = STATE.may_load(deps.storage)?;
 
     // CHECK :: That there is an ongoing sale.
-    require(state.is_some(), ContractError::NoOngoingSale {})?;
+    ensure!(state.is_some(), ContractError::NoOngoingSale {});
 
     let mut state = state.unwrap();
-    require(
+    ensure!(
         !state.expiration.is_expired(&env.block),
-        ContractError::NoOngoingSale {},
-    )?;
+        ContractError::NoOngoingSale {}
+    );
 
     let mut purchases = PURCHASES
         .may_load(deps.storage, &sender)?
         .unwrap_or_default();
 
-    require(
+    ensure!(
         AVAILABLE_TOKENS.has(deps.storage, &token_id),
-        ContractError::TokenNotAvailable {},
-    )?;
+        ContractError::TokenNotAvailable {}
+    );
 
     let max_possible = state.max_amount_per_wallet - purchases.len() as u32;
 
     // CHECK :: The user is able to purchase these without going over the limit.
-    require(max_possible > 0, ContractError::PurchaseLimitReached {})?;
+    ensure!(max_possible > 0, ContractError::PurchaseLimitReached {});
 
     purchase_tokens(
         deps.storage,
@@ -343,13 +343,13 @@ fn execute_purchase(
     let state = STATE.may_load(deps.storage)?;
 
     // CHECK :: That there is an ongoing sale.
-    require(state.is_some(), ContractError::NoOngoingSale {})?;
+    ensure!(state.is_some(), ContractError::NoOngoingSale {});
 
     let mut state = state.unwrap();
-    require(
+    ensure!(
         !state.expiration.is_expired(&env.block),
-        ContractError::NoOngoingSale {},
-    )?;
+        ContractError::NoOngoingSale {}
+    );
 
     let mut purchases = PURCHASES
         .may_load(deps.storage, &sender)?
@@ -358,7 +358,7 @@ fn execute_purchase(
     let max_possible = state.max_amount_per_wallet - purchases.len() as u32;
 
     // CHECK :: The user is able to purchase these without going over the limit.
-    require(max_possible > 0, ContractError::PurchaseLimitReached {})?;
+    ensure!(max_possible > 0, ContractError::PurchaseLimitReached {});
 
     let number_of_tokens_wanted =
         number_of_tokens.map_or(max_possible, |n| cmp::min(n, max_possible));
@@ -418,7 +418,7 @@ fn purchase_tokens(
     purchases: &mut Vec<Purchase>,
 ) -> Result<Coin, ContractError> {
     // CHECK :: There are any tokens left to purchase.
-    require(!token_ids.is_empty(), ContractError::AllTokensPurchased {})?;
+    ensure!(!token_ids.is_empty(), ContractError::AllTokensPurchased {});
 
     let number_of_tokens_purchased = token_ids.len();
 
@@ -427,10 +427,10 @@ fn purchase_tokens(
         state.price.amount.u128() * number_of_tokens_purchased as u128,
         state.price.denom.clone(),
     );
-    require(
+    ensure!(
         has_coins(&info.funds, &total_cost),
-        ContractError::InsufficientFunds {},
-    )?;
+        ContractError::InsufficientFunds {}
+    );
 
     let mut total_tax_amount = Uint128::zero();
 
@@ -475,10 +475,10 @@ fn purchase_tokens(
         amount: state.price.amount * Uint128::from(number_of_tokens_purchased as u128)
             + total_tax_amount,
     };
-    require(
+    ensure!(
         has_coins(&info.funds, &required_payment),
-        ContractError::InsufficientFunds {},
-    )?;
+        ContractError::InsufficientFunds {}
+    );
     Ok(required_payment)
 }
 
@@ -490,19 +490,19 @@ fn execute_claim_refund(
     nonpayable(&info)?;
 
     let state = STATE.may_load(deps.storage)?;
-    require(state.is_some(), ContractError::NoOngoingSale {})?;
+    ensure!(state.is_some(), ContractError::NoOngoingSale {});
     let state = state.unwrap();
-    require(
+    ensure!(
         state.expiration.is_expired(&env.block),
-        ContractError::SaleNotEnded {},
-    )?;
-    require(
+        ContractError::SaleNotEnded {}
+    );
+    ensure!(
         state.amount_sold < state.min_tokens_sold,
-        ContractError::MinSalesExceeded {},
-    )?;
+        ContractError::MinSalesExceeded {}
+    );
 
     let purchases = PURCHASES.may_load(deps.storage, info.sender.as_str())?;
-    require(purchases.is_some(), ContractError::NoPurchases {})?;
+    ensure!(purchases.is_some(), ContractError::NoPurchases {});
     let purchases = purchases.unwrap();
     let refund_msg = process_refund(deps.storage, &purchases, &state.price);
     let mut resp = Response::new();
@@ -522,14 +522,14 @@ fn execute_end_sale(
     nonpayable(&info)?;
 
     let state = STATE.may_load(deps.storage)?;
-    require(state.is_some(), ContractError::NoOngoingSale {})?;
+    ensure!(state.is_some(), ContractError::NoOngoingSale {});
     let state = state.unwrap();
     let number_of_tokens_available = NUMBER_OF_TOKENS_AVAILABLE.load(deps.storage)?;
-    require(
+    ensure!(
         // If all tokens have been sold the sale can be ended too.
         state.expiration.is_expired(&env.block) || number_of_tokens_available.is_zero(),
-        ContractError::SaleNotEnded {},
-    )?;
+        ContractError::SaleNotEnded {}
+    );
     if state.amount_sold < state.min_tokens_sold {
         issue_refunds_and_burn_tokens(deps, env, limit)
     } else {
@@ -544,7 +544,7 @@ fn issue_refunds_and_burn_tokens(
 ) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    require(limit > 0, ContractError::LimitMustNotBeZero {})?;
+    ensure!(limit > 0, ContractError::LimitMustNotBeZero {});
     let mut refund_msgs: Vec<CosmosMsg> = vec![];
     // Issue refunds for `limit` number of users.
     let purchases: Vec<Vec<Purchase>> = PURCHASES
@@ -588,7 +588,7 @@ fn transfer_tokens_and_send_funds(
     let mut state = STATE.load(deps.storage)?;
     let mut resp = Response::new();
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    require(limit > 0, ContractError::LimitMustNotBeZero {})?;
+    ensure!(limit > 0, ContractError::LimitMustNotBeZero {});
     // Send the funds if they haven't been sent yet and if all of the tokens have been transferred.
     if state.amount_transferred == state.amount_sold {
         if state.amount_to_send > Uint128::zero() {
@@ -840,20 +840,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
