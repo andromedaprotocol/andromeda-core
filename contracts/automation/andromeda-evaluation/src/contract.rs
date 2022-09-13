@@ -1,4 +1,4 @@
-use crate::state::{EXECUTE_ADO_ADDRESS, QUERY_ADO_ADDRESS};
+use crate::state::{CONDITION_ADO_ADDRESS, QUERY_ADO_ADDRESS};
 use ado_base::state::ADOContract;
 use andromeda_automation::evaluation::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, Operators, QueryMsg,
@@ -28,7 +28,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    EXECUTE_ADO_ADDRESS.save(deps.storage, &msg.execute_address)?;
+    CONDITION_ADO_ADDRESS.save(deps.storage, &msg.condition_address)?;
     QUERY_ADO_ADDRESS.save(deps.storage, &msg.query_address)?;
 
     ADOContract::default().instantiate(
@@ -74,7 +74,26 @@ pub fn execute(
         ExecuteMsg::ChangeExecuteAddress { address } => {
             execute_change_execute_address(deps, env, info, address)
         }
+        ExecuteMsg::ChangeQueryAddress { address } => {
+            execute_change_query_address(deps, env, info, address)
+        }
     }
+}
+
+fn execute_change_query_address(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: AndrAddress,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    // Only the contract's owner can update the Execute ADO address
+    require(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {},
+    )?;
+    QUERY_ADO_ADDRESS.save(deps.storage, &address)?;
+    Ok(Response::new().add_attribute("action", "changed_query_ado_address"))
 }
 
 fn execute_change_execute_address(
@@ -89,7 +108,7 @@ fn execute_change_execute_address(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {},
     )?;
-    EXECUTE_ADO_ADDRESS.save(deps.storage, &address)?;
+    CONDITION_ADO_ADDRESS.save(deps.storage, &address)?;
     Ok(Response::new().add_attribute("action", "changed_execute_ado_address"))
 }
 
@@ -106,7 +125,7 @@ fn execute_evaluate(
     let app_contract = contract.get_app_contract(deps.storage)?;
 
     // get the address of the ADO that will interpret our result
-    let contract_addr = EXECUTE_ADO_ADDRESS.load(deps.storage)?.get_address(
+    let contract_addr = CONDITION_ADO_ADDRESS.load(deps.storage)?.get_address(
         deps.api,
         &deps.querier,
         app_contract.clone(),
@@ -214,12 +233,18 @@ fn from_semver(err: semver::Error) -> StdError {
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
-        QueryMsg::ExecuteADO {} => encode_binary(&query_execute_ado_query(deps)?),
+        QueryMsg::ConditionADO {} => encode_binary(&query_condition_ado(deps)?),
+        QueryMsg::QueryADO {} => encode_binary(&query_query_ado(deps)?),
     }
 }
 
-fn query_execute_ado_query(deps: Deps) -> Result<String, ContractError> {
-    let address = EXECUTE_ADO_ADDRESS.load(deps.storage)?;
+fn query_query_ado(deps: Deps) -> Result<String, ContractError> {
+    let address = QUERY_ADO_ADDRESS.load(deps.storage)?;
+    Ok(address.identifier)
+}
+
+fn query_condition_ado(deps: Deps) -> Result<String, ContractError> {
+    let address = CONDITION_ADO_ADDRESS.load(deps.storage)?;
     Ok(address.identifier)
 }
 

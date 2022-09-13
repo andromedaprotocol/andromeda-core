@@ -17,10 +17,22 @@
     {
       "type": "object",
       "required": [
-        "execute_a_d_o"
+        "condition_a_d_o"
       ],
       "properties": {
-        "execute_a_d_o": {
+        "condition_a_d_o": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "query_a_d_o"
+      ],
+      "properties": {
+        "query_a_d_o": {
           "type": "object"
         }
       },

@@ -21,6 +21,12 @@ pub enum ExecuteMsg {
     StoreResult {
         result: bool,
     },
+    UpdateExecuteADO {
+        address: AndrAddress,
+    },
+    UpdateWhitelist {
+        addresses: Vec<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -33,6 +39,7 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     LogicGate {},
     Whitelist {},
+    Results {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

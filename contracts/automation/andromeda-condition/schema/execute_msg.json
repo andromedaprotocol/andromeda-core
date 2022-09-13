@@ -22,13 +22,45 @@
       ],
       "properties": {
         "interpret": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "store_result"
+      ],
+      "properties": {
+        "store_result": {
           "type": "object",
           "required": [
-            "res"
+            "result"
           ],
           "properties": {
-            "res": {
+            "result": {
               "type": "boolean"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_execute_a_d_o"
+      ],
+      "properties": {
+        "update_execute_a_d_o": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "$ref": "#/definitions/AndrAddress"
             }
           }
         }

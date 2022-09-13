@@ -9,13 +9,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     // Execute ADO's address
-    pub execute_address: AndrAddress,
+    pub condition_address: AndrAddress,
 
     // Query ADO's address
     pub query_address: AndrAddress,
-
-    // Desired operation
-    pub operation: Operators,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -24,11 +21,13 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Evaluates 2 pieces of data
     Evaluate {
-        // first: Uint128,
         user_value: Uint128,
         operation: Operators,
     },
     ChangeExecuteAddress {
+        address: AndrAddress,
+    },
+    ChangeQueryAddress {
         address: AndrAddress,
     },
 }
@@ -41,7 +40,8 @@ pub struct MigrateMsg {}
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
-    ExecuteADO {},
+    ConditionADO {},
+    QueryADO {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]

@@ -1,5 +1,50 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "InstantiateMsg",
-  "type": "object"
+  "type": "object",
+  "required": [
+    "execute_ado",
+    "logic_gate",
+    "whitelist"
+  ],
+  "properties": {
+    "execute_ado": {
+      "$ref": "#/definitions/AndrAddress"
+    },
+    "logic_gate": {
+      "$ref": "#/definitions/LogicGate"
+    },
+    "whitelist": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "definitions": {
+    "AndrAddress": {
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "Can be either an address or identifier of an ADO in a app.",
+          "type": "string"
+        }
+      }
+    },
+    "LogicGate": {
+      "type": "string",
+      "enum": [
+        "AND",
+        "OR",
+        "XOR",
+        "NOT",
+        "NAND",
+        "NOR",
+        "XNOR"
+      ]
+    }
+  }
 }

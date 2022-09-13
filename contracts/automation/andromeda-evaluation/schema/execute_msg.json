@@ -24,14 +24,14 @@
         "evaluate": {
           "type": "object",
           "required": [
-            "first",
-            "second"
+            "operation",
+            "user_value"
           ],
           "properties": {
-            "first": {
-              "$ref": "#/definitions/Uint128"
+            "operation": {
+              "$ref": "#/definitions/Operators"
             },
-            "second": {
+            "user_value": {
               "$ref": "#/definitions/Uint128"
             }
           }
@@ -46,6 +46,26 @@
       ],
       "properties": {
         "change_execute_address": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "$ref": "#/definitions/AndrAddress"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "change_query_address"
+      ],
+      "properties": {
+        "change_query_address": {
           "type": "object",
           "required": [
             "address"
@@ -359,6 +379,16 @@
           "type": "string"
         }
       }
+    },
+    "Operators": {
+      "type": "string",
+      "enum": [
+        "Greater",
+        "GreaterEqual",
+        "Equal",
+        "LessEqual",
+        "Less"
+      ]
     },
     "Recipient": {
       "oneOf": [

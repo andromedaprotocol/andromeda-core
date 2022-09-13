@@ -96,6 +96,9 @@ pub enum ContractError {
     #[error("NotInRefillMode")]
     NotInRefillMode {},
 
+    #[error("NotEnoughResults")]
+    NotEnoughResults {},
+
     #[error("ReachedRecipientLimit")]
     ReachedRecipientLimit {},
 
