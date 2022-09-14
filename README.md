@@ -12,13 +12,13 @@ The contracts are classified based on their functionality. Currently we have 8 d
 | Category| Description |                                                                                                                                 
 | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [app](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/app)| Contracts used for building Andromeda apps. |
-| [data-storage](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/data-storage/andromeda-primitive)    | Contract used to store any type of data  (uint, string, bool ect...).|  
+| [data-storage](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/data-storage/andromeda-primitive)    | Contracts used to store any type of data  (uint, string, bool ect...).|  
 | [ecosystem](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/ecosystem) | Contracts that are allow interaction with different ecosystem protocols.|                      
 | [finance](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/finance)       |  Contracts used by fungible tokens to perform defi operations.|                                                                                      
 | [fungible tokens](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/fungible-tokens)       | Contracts that integrate with fungible tokens (CW-20 tokens).|
-| [non-fungible-tokens](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens)         | Contacts that integrate with   non-funible toknes (NFTs).|
+| [non-fungible-tokens](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens)         | Contacts that integrate with non-funible toknes (NFTs). Includes a standard CW721 contract with some custom features.|
 | [modules](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/modules) |Andromeda modules that are attached to other ADOs to extend functionality.|
- | [defunct](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/defunct) |Andromeda contracts that are no longer functional.|
+ | [defunct](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/defunct) |Andromeda contracts that are no longer supported.|
 
 
 
@@ -45,7 +45,7 @@ The contracts are classified based on their functionality. Currently we have 8 d
 | [andromeda-cw721-staking](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens/andromeda-cw721-staking)|non-fungible-tokens| Contract that allows custom staking of NFTs.|[Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/non-fungible-tokens/cw721-staking)|
 | [andromeda-gumball](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens/andromeda-gumball)|non-fungible-tokens| Contract that allows users to pay a price to get a random NFT.| [Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/non-fungible-tokens/gumball)|
 | [andromeda-nft-timelock](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens/andromeda-nft-timelock)|non-fungible-tokens| Contract that locks an NFT for a certain period of time.| [Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/non-fungible-tokens/nft-timelock)|
-| [andromeda-wrapped-cw721](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens/andromeda-wrapped-cw721)| non-fungible-tokens| Contract that wraps an NFT and mints an andromeda NFT that can leverage our custom messages and modules instead. The token can be unwrapped.| [Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/non-fungible-tokens/wrapped-cw721)|
+| [andromeda-wrapped-cw721](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens/andromeda-wrapped-cw721)| non-fungible-tokens| Contract that wraps an NFT and mints an Andromeda NFT that can leverage our custom messages and modules instead. The token can be unwrapped.| [Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/non-fungible-tokens/wrapped-cw721)|
 
 ## Modules
 
@@ -56,13 +56,18 @@ Modules are smart contracts that can be added to other ADOs on instantiation to 
 | [address-list](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/modules/andromeda-address-list)| A module used to whitelist/blacklist a list of addresses to interact with the ADO.|[Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/address-list)|
 | [rates](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/modules/andromeda-rates)| A module used to add rates (taxes/royalties) on fund transfers| [Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/rates)|
 | [cw721-offers](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens/andromeda-cw721-offers)|Module that can be attached to the cw721 ADO as another way to buy and sell NFTs.|[Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/nft-offers)|
-| [receipts](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/receipt-contract)| A module that can be attached to ADOs that saves the events of messages.| [Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/receipt-contract)|
+| [receipts](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/receipt-contract)| A module that can be attached to ADOs that saves the events of messages.| [Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/receipt-contract)| 
 
 ## Packages
 
 | Contract                                                                                                             | Description                                                                                                                                          |
 | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [andromeda_protocol](https://github.com/andromedaprotocol/andromeda-contracts/tree/main/packages/andromeda_protocol) | Package used to define message types and various utility methods used by Andromeda ADO Contracts.|
+| [andromeda_protocol](https://github.com/andromedaprotocol/andromeda-core/tree/development/packages) | Package used to define message types and various utility methods used by Andromeda ADO Contracts.|
+
+### ADO Base
+
+The pacakges also includes the [ado_base](https://github.com/andromedaprotocol/andromeda-core/tree/development/packages/ado-base). Since all our ADOs are built using the same architecture, redundency was inevitable. So we decided to bundle up all the functions/messages/structures that are used by all ADOs into one place which can be referenced by any new ADOs. 
+
 ## Development
 
 ### Environment Setup
