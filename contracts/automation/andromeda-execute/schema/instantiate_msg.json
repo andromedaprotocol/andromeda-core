@@ -3,10 +3,14 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "address"
+    "condition_address",
+    "query_address"
   ],
   "properties": {
-    "address": {
+    "condition_address": {
+      "$ref": "#/definitions/AndrAddress"
+    },
+    "query_address": {
       "$ref": "#/definitions/AndrAddress"
     }
   },

@@ -3,16 +3,12 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "execute_address",
-    "operation",
+    "condition_address",
     "query_address"
   ],
   "properties": {
-    "execute_address": {
+    "condition_address": {
       "$ref": "#/definitions/AndrAddress"
-    },
-    "operation": {
-      "$ref": "#/definitions/Operators"
     },
     "query_address": {
       "$ref": "#/definitions/AndrAddress"
@@ -30,16 +26,6 @@
           "type": "string"
         }
       }
-    },
-    "Operators": {
-      "type": "string",
-      "enum": [
-        "Greater",
-        "GreaterEqual",
-        "Equal",
-        "LessEqual",
-        "Less"
-      ]
     }
   }
 }

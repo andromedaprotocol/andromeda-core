@@ -5,11 +5,11 @@ use andromeda_automation::evaluation::{
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError, require,
+    error::ContractError,
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest,
-    Reply, Response, StdError, SubMsg, Uint128, WasmMsg, WasmQuery,
+    ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QueryRequest, Reply, Response, StdError, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
@@ -88,10 +88,10 @@ fn execute_change_query_address(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // Only the contract's owner can update the Execute ADO address
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     QUERY_ADO_ADDRESS.save(deps.storage, &address)?;
     Ok(Response::new().add_attribute("action", "changed_query_ado_address"))
 }
@@ -104,12 +104,12 @@ fn execute_change_condition_address(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // Only the contract's owner can update the Execute ADO address
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     CONDITION_ADO_ADDRESS.save(deps.storage, &address)?;
-    Ok(Response::new().add_attribute("action", "changed_execute_ado_address"))
+    Ok(Response::new().add_attribute("action", "changed_CONDITION_ADO_ADDRESS"))
 }
 
 fn execute_evaluate(
@@ -202,20 +202,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -248,640 +248,695 @@ fn query_condition_ado(deps: Deps) -> Result<String, ContractError> {
     Ok(address.identifier)
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use andromeda_automation::evaluation::Operators;
-//     use common::app::AndrAddress;
-//     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-
-//     #[test]
-//     fn test_initialization() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Greater;
-//         let msg = InstantiateMsg {
-//             operation,
-//             execute_address: todo!(),
-//             query_address: todo!(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         // we can just call .unwrap() to assert this was a success
-//         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
-
-//         // make sure address was saved correctly
-//         let addr = EXECUTE_ADO_ADDRESS.load(&deps.storage).unwrap();
-//         assert_eq!(
-//             addr,
-//             AndrAddress {
-//                 identifier: "legit_address".to_string(),
-//             }
-//         )
-//     }
-
-//     #[test]
-//     fn test_evaluate_greater_is_greater() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Greater;
-//         let msg = InstantiateMsg {
-//             operation: operation.clone(),
-//             execute_address: todo!(),
-//             query_address: todo!(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(40);
-//         let user_value = Uint128::new(30);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "true".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: true,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_greater_is_less() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Greater;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(40);
-//         let user_value = Uint128::new(130);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "false".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: false,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_greater_is_equal() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Greater;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(40);
-//         let user_value = Uint128::new(40);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "false".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: false,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_greater_equal_is_equal() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::GreaterEqual;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(40);
-//         let user_value = Uint128::new(40);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "true".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: true,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_greater_equal_is_greater() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::GreaterEqual;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(140);
-//         let user_value = Uint128::new(40);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "true".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: true,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_greater_equal_is_less() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::GreaterEqual;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(40);
-//         let user_value = Uint128::new(140);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "false".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: false,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_equal_is_equal() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Equal;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(40);
-//         let user_value = Uint128::new(40);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "true".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: true,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_equal_is_greater() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Equal;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(140);
-//         let user_value = Uint128::new(40);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "false".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: false,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_equal_is_less() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Equal;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(140);
-//         let user_value = Uint128::new(1140);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "false".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: false,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_less_equal_is_less() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::LessEqual;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(140);
-//         let user_value = Uint128::new(1140);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "true".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: true,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_less_equal_is_equal() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::LessEqual;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(140);
-//         let user_value = Uint128::new(140);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "true".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: true,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_less_equal_is_greater() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::LessEqual;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(1140);
-//         let user_value = Uint128::new(140);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "false".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: false,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_less_is_greater() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Less;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(1140);
-//         let user_value = Uint128::new(140);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "false".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: false,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_less_is_equal() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Less;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(140);
-//         let user_value = Uint128::new(140);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "false".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: false,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_evaluate_less_is_less() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Less;
-//         let msg = InstantiateMsg {
-//             address,
-//             operation: operation.clone(),
-//         };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let oracle_value = Uint128::new(40);
-//         let user_value = Uint128::new(140);
-//         let msg = ExecuteMsg::Evaluate {
-//             oracle_value,
-//             user_value,
-//             operation,
-//         };
-
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected = Response::new()
-//             .add_attribute("result", "true".to_string())
-//             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: "legit_address".to_string(),
-//                 msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-//                     result: true,
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             })));
-//         assert_eq!(res, expected);
-//     }
-
-//     #[test]
-//     fn test_change_address_unauthorized() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Greater;
-//         let msg = InstantiateMsg { address, operation };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         let address = AndrAddress {
-//             identifier: "new_address".to_string(),
-//         };
-//         let msg = ExecuteMsg::ChangeExecuteAddress { address };
-//         let info = mock_info("random", &[]);
-
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-//         assert_eq!(err, ContractError::Unauthorized {})
-//     }
-
-//     #[test]
-//     fn test_change_address_works() {
-//         let mut deps = mock_dependencies();
-//         let address = AndrAddress {
-//             identifier: "legit_address".to_string(),
-//         };
-//         let operation = Operators::Greater;
-//         let msg = InstantiateMsg { address, operation };
-//         let info = mock_info("creator", &[]);
-
-//         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-//         let address = AndrAddress {
-//             identifier: "new_address".to_string(),
-//         };
-//         let msg = ExecuteMsg::ChangeExecuteAddress {
-//             address: address.clone(),
-//         };
-
-//         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let actual = EXECUTE_ADO_ADDRESS.load(&deps.storage).unwrap();
-//         assert_eq!(address, actual)
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mock_querier::{mock_dependencies_custom, MOCK_QUERY_CONTRACT};
+    use andromeda_automation::evaluation::Operators;
+    use common::app::AndrAddress;
+    use cosmwasm_std::testing::{mock_env, mock_info};
+
+    #[test]
+    fn test_initialization() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // make sure address was saved correctly
+        let addr = CONDITION_ADO_ADDRESS.load(&deps.storage).unwrap();
+        assert_eq!(
+            addr,
+            AndrAddress {
+                identifier: "condition_address".to_string(),
+            }
+        );
+
+        let addr = QUERY_ADO_ADDRESS.load(&deps.storage).unwrap();
+        assert_eq!(
+            addr,
+            AndrAddress {
+                identifier: MOCK_QUERY_CONTRACT.to_string(),
+            }
+        )
+    }
+
+    #[test]
+    fn test_evaluate_greater_is_greater() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let operation = Operators::Greater;
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        // Set query result to 40
+        let user_value = Uint128::new(30);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "true".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: true,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_greater_is_less() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let operation = Operators::Greater;
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(130);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "false".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: false,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_greater_is_equal() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let operation = Operators::Greater;
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(40);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "false".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: false,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_greater_equal_is_equal() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::GreaterEqual;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(40);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "true".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: true,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_greater_equal_is_greater() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::GreaterEqual;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(30);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "true".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: true,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_greater_equal_is_less() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::GreaterEqual;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(140);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "false".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: false,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_equal_is_equal() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::Equal;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(40);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "true".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: true,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_equal_is_greater() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::Equal;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(30);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "false".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: false,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_equal_is_less() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::Equal;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(1140);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "false".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: false,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_less_equal_is_less() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::LessEqual;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(1140);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "true".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: true,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_less_equal_is_equal() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::LessEqual;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(40);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "true".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: true,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_less_equal_is_greater() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::LessEqual;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(30);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "false".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: false,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_less_is_greater() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::Less;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(30);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "false".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: false,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_less_is_equal() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::Less;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(40);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "false".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: false,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_evaluate_less_is_less() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let operation = Operators::Less;
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let user_value = Uint128::new(140);
+        let msg = ExecuteMsg::Evaluate {
+            user_value,
+            operation,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected = Response::new()
+            .add_attribute("result", "true".to_string())
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "condition_address".to_string(),
+                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                    result: true,
+                })
+                .unwrap(),
+                funds: vec![],
+            })));
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_change_address_unauthorized() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        let address = AndrAddress {
+            identifier: "new_address".to_string(),
+        };
+        let msg = ExecuteMsg::ChangeConditionAddress { address };
+        let info = mock_info("random", &[]);
+
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {})
+    }
+
+    #[test]
+    fn test_change_address_works() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let condition_address = AndrAddress {
+            identifier: "condition_address".to_string(),
+        };
+        let query_address = AndrAddress {
+            identifier: MOCK_QUERY_CONTRACT.to_string(),
+        };
+
+        let msg = InstantiateMsg {
+            condition_address,
+            query_address,
+        };
+        let info = mock_info("creator", &[]);
+
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let address = AndrAddress {
+            identifier: "new_address".to_string(),
+        };
+        let msg = ExecuteMsg::ChangeConditionAddress {
+            address: address.clone(),
+        };
+
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let actual = CONDITION_ADO_ADDRESS.load(&deps.storage).unwrap();
+        assert_eq!(address, actual)
+    }
+}
