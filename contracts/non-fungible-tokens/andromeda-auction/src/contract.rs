@@ -82,6 +82,7 @@ pub fn execute(
             end_time,
             coin_denom,
             whitelist,
+            min_bid,
         } => execute_update_auction(
             deps,
             env,
@@ -92,6 +93,7 @@ pub fn execute(
             end_time,
             coin_denom,
             whitelist,
+            min_bid,
         ),
         ExecuteMsg::PlaceBid {
             token_id,
@@ -120,6 +122,7 @@ fn handle_receive_cw721(
             end_time,
             coin_denom,
             whitelist,
+            min_bid,
         } => execute_start_auction(
             deps,
             env,
@@ -130,6 +133,7 @@ fn handle_receive_cw721(
             end_time,
             coin_denom,
             whitelist,
+            min_bid,
         ),
     }
 }
@@ -145,6 +149,7 @@ fn execute_start_auction(
     end_time: Expiration,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
+    min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     ensure!(
         start_time != Expiration::Never {} && end_time != Expiration::Never {},
@@ -183,6 +188,7 @@ fn execute_start_auction(
             coin_denom: coin_denom.clone(),
             auction_id,
             whitelist,
+            min_bid,
             owner: sender,
             token_id,
             token_address,
@@ -210,6 +216,7 @@ fn execute_update_auction(
     end_time: Expiration,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
+    min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -247,6 +254,7 @@ fn execute_update_auction(
     token_auction_state.end_time = end_time;
     token_auction_state.whitelist = whitelist.clone();
     token_auction_state.coin_denom = coin_denom.clone();
+    token_auction_state.min_bid = min_bid;
     TOKEN_AUCTION_STATE.save(
         deps.storage,
         token_auction_state.auction_id.u128(),
@@ -259,6 +267,7 @@ fn execute_update_auction(
         attr("coin_denom", coin_denom),
         attr("auction_id", token_auction_state.auction_id.to_string()),
         attr("whitelist", format!("{:?}", &whitelist)),
+        attr("min_bid", format!("{:?}", &min_bid)),
     ]))
 }
 
@@ -315,6 +324,13 @@ fn execute_place_bid(
         payment.denom == coin_denom && payment.amount > Uint128::zero(),
         ContractError::InvalidFunds {
             msg: format!("No {} assets are provided to auction", coin_denom),
+        }
+    );
+    let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
+    ensure!(
+        payment.amount >= min_bid,
+        ContractError::InvalidFunds {
+            msg: format!("Must provide at least {} {} to bid", min_bid, coin_denom)
         }
     );
     ensure!(
@@ -736,12 +752,13 @@ mod tests {
         from_binary(&query(deps, env, query_msg).unwrap()).unwrap()
     }
 
-    fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>) {
+    fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
         let hook_msg = Cw721HookMsg::StartAuction {
             start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
             whitelist,
+            min_bid,
         };
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -755,7 +772,7 @@ mod tests {
         let _res = execute(deps, env, info, msg).unwrap();
     }
 
-    fn assert_auction_created(deps: Deps, whitelist: Option<Vec<Addr>>) {
+    fn assert_auction_created(deps: Deps, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
         assert_eq!(
             TokenAuctionState {
                 start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
@@ -769,6 +786,7 @@ mod tests {
                 token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
                 token_address: MOCK_TOKEN_ADDR.to_owned(),
                 is_cancelled: false,
+                min_bid,
             },
             TOKEN_AUCTION_STATE.load(deps.storage, 1u128).unwrap()
         );
@@ -824,8 +842,8 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
-        assert_auction_created(deps.as_ref(), None);
+        start_auction(deps.as_mut(), None, None);
+        assert_auction_created(deps.as_ref(), None, None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -847,8 +865,8 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
-        assert_auction_created(deps.as_ref(), None);
+        start_auction(deps.as_mut(), None, None);
+        assert_auction_created(deps.as_ref(), None, None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -870,8 +888,8 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
-        assert_auction_created(deps.as_ref(), None);
+        start_auction(deps.as_mut(), None, None);
+        assert_auction_created(deps.as_ref(), None, None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -893,8 +911,8 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), Some(vec![Addr::unchecked("sender")]));
-        assert_auction_created(deps.as_ref(), Some(vec![Addr::unchecked("sender")]));
+        start_auction(deps.as_mut(), Some(vec![Addr::unchecked("sender")]), None);
+        assert_auction_created(deps.as_ref(), Some(vec![Addr::unchecked("sender")]), None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -918,8 +936,8 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
-        assert_auction_created(deps.as_ref(), None);
+        start_auction(deps.as_mut(), None, None);
+        assert_auction_created(deps.as_ref(), None, None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -947,8 +965,8 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
-        assert_auction_created(deps.as_ref(), None);
+        start_auction(deps.as_mut(), None, None);
+        assert_auction_created(deps.as_ref(), None, None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -973,8 +991,8 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
-        assert_auction_created(deps.as_ref(), None);
+        start_auction(deps.as_mut(), None, None);
+        assert_auction_created(deps.as_ref(), None, None);
 
         env.block.time = Timestamp::from_seconds(150);
 
@@ -1019,8 +1037,8 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
-        assert_auction_created(deps.as_ref(), None);
+        start_auction(deps.as_mut(), None, None);
+        assert_auction_created(deps.as_ref(), None, None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1050,6 +1068,7 @@ mod tests {
             coin_denom: "uusd".to_string(),
             whitelist: None,
             is_cancelled: false,
+            min_bid: None,
         };
 
         let res = query_latest_auction_state_helper(deps.as_ref(), env.clone());
@@ -1111,8 +1130,8 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
-        assert_auction_created(deps.as_ref(), None);
+        start_auction(deps.as_mut(), None, None);
+        assert_auction_created(deps.as_ref(), None, None);
 
         let msg = ExecuteMsg::CancelAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1146,6 +1165,7 @@ mod tests {
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1169,7 +1189,7 @@ mod tests {
                 attr("whitelist", "None"),
             ]),
         );
-        assert_auction_created(deps.as_ref(), None);
+        assert_auction_created(deps.as_ref(), None, None);
     }
 
     #[test]
@@ -1185,6 +1205,7 @@ mod tests {
             end_time: Expiration::AtHeight(200),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1223,6 +1244,7 @@ mod tests {
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1254,6 +1276,7 @@ mod tests {
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1288,6 +1311,7 @@ mod tests {
             end_time: Expiration::AtTime(Timestamp::from_seconds(100)),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1316,6 +1340,7 @@ mod tests {
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1344,6 +1369,7 @@ mod tests {
             start_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1367,7 +1393,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1376,6 +1402,7 @@ mod tests {
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let mut env = mock_env();
         env.block.height = 0;
@@ -1398,7 +1425,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1407,6 +1434,7 @@ mod tests {
             end_time: Expiration::AtHeight(200),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let mut env = mock_env();
         env.block.height = 150;
@@ -1432,7 +1460,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1441,6 +1469,7 @@ mod tests {
             end_time: Expiration::AtHeight(100),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let mut env = mock_env();
         env.block.height = 0;
@@ -1460,7 +1489,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1469,6 +1498,7 @@ mod tests {
             end_time: Expiration::AtHeight(200),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -1487,7 +1517,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1496,6 +1526,7 @@ mod tests {
             end_time: Expiration::Never {},
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -1514,7 +1545,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1523,6 +1554,7 @@ mod tests {
             end_time: Expiration::AtHeight(200),
             coin_denom: "uluna".to_string(),
             whitelist: Some(vec![Addr::unchecked("user")]),
+            min_bid: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(150);
@@ -1541,7 +1573,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1550,6 +1582,7 @@ mod tests {
             end_time: Expiration::AtHeight(200),
             coin_denom: "uluna".to_string(),
             whitelist: Some(vec![Addr::unchecked("user")]),
+            min_bid: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(150);
@@ -1568,7 +1601,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1577,6 +1610,7 @@ mod tests {
             end_time: Expiration::AtHeight(200),
             coin_denom: "uluna".to_string(),
             whitelist: Some(vec![Addr::unchecked("user")]),
+            min_bid: None,
         };
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(0);
@@ -1597,6 +1631,7 @@ mod tests {
                 token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
                 token_address: MOCK_TOKEN_ADDR.to_owned(),
                 is_cancelled: false,
+                min_bid: None,
             },
             TOKEN_AUCTION_STATE
                 .load(deps.as_ref().storage, 1u128)
@@ -1612,13 +1647,14 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // There was a previous auction.
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let hook_msg = Cw721HookMsg::StartAuction {
             start_time: Expiration::AtTime(Timestamp::from_seconds(300)),
             end_time: Expiration::AtTime(Timestamp::from_seconds(400)),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1651,7 +1687,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         env.block.time = Timestamp::from_seconds(250);
 
@@ -1691,7 +1727,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1754,7 +1790,7 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1817,7 +1853,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1852,6 +1888,7 @@ mod tests {
             end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
             coin_denom: "uusd".to_string(),
             whitelist: None,
+            min_bid: None,
         };
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1885,7 +1922,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::CancelAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1927,7 +1964,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::PlaceBid {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1981,7 +2018,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::CancelAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -2004,7 +2041,7 @@ mod tests {
         let msg = InstantiateMsg { modules: None };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        start_auction(deps.as_mut(), None);
+        start_auction(deps.as_mut(), None, None);
 
         let msg = ExecuteMsg::CancelAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -2017,5 +2054,37 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
         assert_eq!(ContractError::AuctionEnded {}, res.unwrap_err());
+    }
+
+    #[test]
+    fn execute_bid_below_min_price() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let mut env = mock_env();
+        let info = mock_info("owner", &[]);
+        let msg = InstantiateMsg { modules: None };
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        start_auction(deps.as_mut(), None, Some(Uint128::from(100u128)));
+
+        let msg = ExecuteMsg::PlaceBid {
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            token_address: MOCK_TOKEN_ADDR.to_string(),
+        };
+        // Auction start and end are 100 and 200.
+        env.block.time = Timestamp::from_seconds(150);
+
+        let info = mock_info("bidder", &coins(10, "uusd"));
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
+
+        assert_eq!(
+            res,
+            ContractError::InvalidFunds {
+                msg: "Must provide at least 100 uusd to bid".to_string()
+            }
+        );
+
+        let info = mock_info("bidder", &coins(100, "uusd"));
+        //Will error if invalid
+        execute(deps.as_mut(), env, info, msg).unwrap();
     }
 }
