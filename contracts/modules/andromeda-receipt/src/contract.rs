@@ -95,7 +95,6 @@ fn execute_edit_receipt(
     receipt_id: Uint128,
     receipt: Receipt,
 ) -> Result<Response, ContractError> {
-
     ensure!(
         can_mint_receipt(deps.storage, info.sender.as_ref())?,
         ContractError::Unauthorized {}
