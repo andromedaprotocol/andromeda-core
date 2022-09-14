@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, SubMsg,
+    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, SubMsg,
 };
 
 use crate::state::{escrows, get_key, get_keys_for_recipient};
@@ -15,7 +15,6 @@ use common::{
     },
     encode_binary,
     error::ContractError,
-    require,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -149,7 +148,7 @@ fn execute_release_funds(
 
     let keys = get_keys_for_recipient(deps.storage, &recipient_addr, start_after, limit)?;
 
-    require(!keys.is_empty(), ContractError::NoLockedFunds {})?;
+    ensure!(!keys.is_empty(), ContractError::NoLockedFunds {});
 
     let mut msgs: Vec<SubMsg> = vec![];
     for key in keys.iter() {
@@ -166,7 +165,7 @@ fn execute_release_funds(
         }
     }
 
-    require(!msgs.is_empty(), ContractError::FundsAreLocked {})?;
+    ensure!(!msgs.is_empty(), ContractError::FundsAreLocked {});
 
     Ok(Response::new().add_submessages(msgs).add_attributes(vec![
         attr("action", "release_funds"),
@@ -187,10 +186,10 @@ fn execute_release_specific_funds(
     match escrow {
         None => Err(ContractError::NoLockedFunds {}),
         Some(escrow) => {
-            require(
+            ensure!(
                 !escrow.is_locked(&env.block)?,
-                ContractError::FundsAreLocked {},
-            )?;
+                ContractError::FundsAreLocked {}
+            );
             escrows().remove(deps.storage, key)?;
             let msg = escrow.recipient.generate_msg_native(
                 deps.api,
@@ -217,20 +216,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

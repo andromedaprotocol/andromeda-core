@@ -1,6 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError};
+use cosmwasm_std::{
+    attr, ensure, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+};
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};
@@ -12,7 +14,7 @@ use common::{
     ado_base::{hooks::AndromedaHook, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
-    parse_message, require,
+    parse_message,
 };
 use cw_utils::nonpayable;
 use semver::Version;
@@ -67,10 +69,10 @@ fn execute_add_address(
     address: String,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     add_address(deps.storage, &address)?;
 
     Ok(Response::new().add_attributes(vec![
@@ -86,10 +88,10 @@ fn execute_remove_address(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     remove_address(deps.storage, &address);
 
@@ -110,20 +112,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -141,23 +143,23 @@ fn from_semver(err: semver::Error) -> StdError {
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
-        QueryMsg::AndrHook(msg) => encode_binary(&handle_andr_hook(deps, msg)?),
+        QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
 }
 
-fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Response, ContractError> {
+fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
     match msg {
         AndromedaHook::OnExecute { sender, .. } => {
             let is_included = includes_address(deps.storage, &sender)?;
             let is_inclusive = IS_INCLUSIVE.load(deps.storage)?;
             if is_included != is_inclusive {
-                Err(ContractError::InvalidAddress {})
+                Err(ContractError::Unauthorized {})
             } else {
-                Ok(Response::default())
+                Ok(to_binary(&None::<Response>)?)
             }
         }
-        _ => Err(ContractError::UnsupportedOperation {}),
+        _ => Ok(to_binary(&None::<Response>)?),
     }
 }
 
@@ -317,8 +319,9 @@ mod tests {
             payload: encode_binary(&"".to_string()).unwrap(),
         });
 
-        let res: Response = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-        assert_eq!(Response::default(), res);
+        let res: Option<Response> =
+            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        assert_eq!(None, res);
 
         let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
             sender: "random".to_string(),
@@ -326,7 +329,7 @@ mod tests {
         });
 
         let res_err: ContractError = query(deps.as_ref(), mock_env(), msg).unwrap_err();
-        assert_eq!(ContractError::InvalidAddress {}, res_err);
+        assert_eq!(ContractError::Unauthorized {}, res_err);
     }
 
     #[test]
@@ -356,8 +359,9 @@ mod tests {
             payload: encode_binary(&"".to_string()).unwrap(),
         });
 
-        let res: Response = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-        assert_eq!(Response::default(), res);
+        let res: Option<Response> =
+            from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        assert_eq!(None, res);
 
         let msg = QueryMsg::AndrHook(AndromedaHook::OnExecute {
             sender: address.to_string(),
@@ -365,7 +369,7 @@ mod tests {
         });
 
         let res_err: ContractError = query(deps.as_ref(), mock_env(), msg).unwrap_err();
-        assert_eq!(ContractError::InvalidAddress {}, res_err);
+        assert_eq!(ContractError::Unauthorized {}, res_err);
     }
 
     #[test]

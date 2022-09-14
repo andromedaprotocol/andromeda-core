@@ -10,9 +10,9 @@ use common::{
     },
     encode_binary,
     error::ContractError,
-    parse_message, require,
+    parse_message,
 };
-use cosmwasm_std::{Binary, Deps, Env, Order};
+use cosmwasm_std::{ensure, Binary, Deps, Env, Order};
 use serde::de::DeserializeOwned;
 
 type QueryFunction<Q> = fn(Deps, Env, Q) -> Result<Binary, ContractError>;
@@ -28,10 +28,10 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Binary, ContractError> {
         match msg {
             AndromedaQuery::Get(data) => {
-                require(
+                ensure!(
                     !self.is_nested::<QueryMsg>(&data),
-                    ContractError::NestedAndromedaMsg {},
-                )?;
+                    ContractError::NestedAndromedaMsg {}
+                );
                 let received: Q = parse_message(&data)?;
                 (query_function)(deps, env, received)
             }
@@ -56,6 +56,7 @@ impl<'a> ADOContract<'a> {
         }
     }
 }
+
 impl<'a> ADOContract<'a> {
     pub fn query_contract_owner(&self, deps: Deps) -> Result<ContractOwnerResponse, ContractError> {
         let owner = self.owner.load(deps.storage)?;

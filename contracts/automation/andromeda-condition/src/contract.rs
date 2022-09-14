@@ -6,7 +6,7 @@ use andromeda_automation::{
 
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError, require,
+    error::ContractError,
 };
 use cosmwasm_std::{
     ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
@@ -362,20 +362,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

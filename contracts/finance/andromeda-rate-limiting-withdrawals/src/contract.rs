@@ -9,11 +9,11 @@ use common::{
     encode_binary,
     error::ContractError,
     primitive::GetValueResponse,
-    query_primitive, require,
+    query_primitive,
 };
 use cosmwasm_std::{
-    entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, Uint128,
+    ensure, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdError, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -117,12 +117,12 @@ fn execute_deposit(
 
     // Coin has to be in the allowed list
     let coin = ALLOWED_COIN.load(deps.storage)?;
-    require(
+    ensure!(
         coin.coin == info.funds[0].denom,
         ContractError::InvalidFunds {
             msg: "Coin must be part of the allowed list".to_string(),
-        },
-    )?;
+        }
+    );
 
     let user = recipient.unwrap_or_else(|| info.sender.to_string());
 
@@ -181,23 +181,23 @@ fn execute_withdraw(
                 current_time - Uint128::from(latest_withdrawal.seconds());
 
             // make sure enough time has elapsed since the latest withdrawal
-            require(
+            ensure!(
                 seconds_since_withdrawal >= minimum_withdrawal_frequency,
-                ContractError::FundsAreLocked {},
-            )?;
+                ContractError::FundsAreLocked {}
+            );
 
             // make sure the funds requested don't exceed the user's balance
-            require(
+            ensure!(
                 account.balance >= amount,
-                ContractError::InsufficientFunds {},
-            )?;
+                ContractError::InsufficientFunds {}
+            );
 
             // make sure the funds don't exceed the withdrawal limit
             let limit = ALLOWED_COIN.load(deps.storage)?;
-            require(
+            ensure!(
                 limit.limit >= amount,
-                ContractError::WithdrawalLimitExceeded {},
-            )?;
+                ContractError::WithdrawalLimitExceeded {}
+            );
 
             // Update amount
             let new_amount = account.balance - amount;
@@ -212,17 +212,17 @@ fn execute_withdraw(
             ACCOUNTS.save(deps.storage, info.sender.to_string(), &new_details)?;
         } else {
             // make sure the funds requested don't exceed the user's balance
-            require(
+            ensure!(
                 account.balance >= amount,
-                ContractError::InsufficientFunds {},
-            )?;
+                ContractError::InsufficientFunds {}
+            );
 
             // make sure the funds don't exceed the withdrawal limit
             let limit = ALLOWED_COIN.load(deps.storage)?;
-            require(
+            ensure!(
                 limit.limit >= amount,
-                ContractError::WithdrawalLimitExceeded {},
-            )?;
+                ContractError::WithdrawalLimitExceeded {}
+            );
 
             // Update amount
             let new_amount = account.balance - amount;
@@ -267,20 +267,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

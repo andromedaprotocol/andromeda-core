@@ -4,21 +4,12 @@
   "type": "object",
   "required": [
     "are_claims_allowed",
-    "total_delegated",
     "total_native_locked"
   ],
   "properties": {
     "are_claims_allowed": {
       "description": "Boolean value indicating if the user can withdraw their token rewards or not.",
       "type": "boolean"
-    },
-    "total_delegated": {
-      "description": "Number of Tokens deposited into the bootstrap contract.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Uint128"
-        }
-      ]
     },
     "total_native_locked": {
       "description": "Total NATIVE deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window.",

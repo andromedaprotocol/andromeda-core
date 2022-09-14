@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
+    ensure, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
     QuerierWrapper, Response, StakingMsg, StdError, Uint128, VoteOption,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -14,7 +14,7 @@ use std::cmp;
 use ado_base::ADOContract;
 use andromeda_finance::vesting::{BatchResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
     withdraw::WithdrawalType,
 };
 
@@ -114,41 +114,41 @@ fn execute_create_batch(
     release_amount: WithdrawalType,
     validator_to_delegate_to: Option<String>,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let config = CONFIG.load(deps.storage)?;
     let current_time = env.block.time.seconds();
 
-    require(
+    ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
             msg: "Creating a batch must be accompanied with a single native fund".to_string(),
-        },
-    )?;
+        }
+    );
 
     let funds = info.funds[0].clone();
 
-    require(
+    ensure!(
         funds.denom == config.denom,
         ContractError::InvalidFunds {
             msg: "Invalid denom".to_string(),
-        },
-    )?;
+        }
+    );
 
-    require(
+    ensure!(
         !funds.amount.is_zero(),
         ContractError::InvalidFunds {
             msg: "Funds must be non-zero".to_string(),
-        },
-    )?;
+        }
+    );
 
-    require(
+    ensure!(
         release_unit > 0 && !release_amount.is_zero(),
-        ContractError::InvalidZeroAmount {},
-    )?;
+        ContractError::InvalidZeroAmount {}
+    );
 
     let lockup_end = if let Some(duration) = lockup_duration {
         current_time + duration
@@ -196,10 +196,10 @@ fn execute_claim(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     // Should this be owner or recipient?
-    require(
+    ensure!(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let config = CONFIG.load(deps.storage)?;
 
@@ -208,10 +208,10 @@ fn execute_claim(
     let mut batch = key.load(deps.storage)?;
     let amount_to_send = claim_batch(&deps.querier, &env, &mut batch, &config, number_of_claims)?;
 
-    require(
+    ensure!(
         !amount_to_send.is_zero(),
-        ContractError::WithdrawalIsEmpty {},
-    )?;
+        ContractError::WithdrawalIsEmpty {}
+    );
 
     key.save(deps.storage, &batch)?;
 
@@ -243,10 +243,10 @@ fn execute_claim_all(
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let config = CONFIG.load(deps.storage)?;
 
@@ -306,16 +306,16 @@ fn execute_delegate(
     validator: String,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.to_string();
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let config = CONFIG.load(deps.storage)?;
     let asset = AssetInfo::native(config.denom.clone());
     let max_amount = asset.query_balance(&deps.querier, env.contract.address)?;
     let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
 
-    require(!amount.is_zero(), ContractError::InvalidZeroAmount {})?;
+    ensure!(!amount.is_zero(), ContractError::InvalidZeroAmount {});
 
     let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Delegate {
         validator: validator.clone(),
@@ -342,10 +342,10 @@ fn execute_redelegate(
     to: String,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.to_string();
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let config = CONFIG.load(deps.storage)?;
     let max_amount = get_amount_delegated(
         &deps.querier,
@@ -354,7 +354,7 @@ fn execute_redelegate(
     )?;
     let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
 
-    require(!amount.is_zero(), ContractError::InvalidZeroAmount {})?;
+    ensure!(!amount.is_zero(), ContractError::InvalidZeroAmount {});
 
     let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Redelegate {
         src_validator: from.clone(),
@@ -382,10 +382,10 @@ fn execute_undelegate(
     validator: String,
 ) -> Result<Response, ContractError> {
     let sender = info.sender.to_string();
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let config = CONFIG.load(deps.storage)?;
     let max_amount = get_amount_delegated(
         &deps.querier,
@@ -394,7 +394,7 @@ fn execute_undelegate(
     )?;
     let amount = cmp::min(max_amount, amount.unwrap_or(max_amount));
 
-    require(!amount.is_zero(), ContractError::InvalidZeroAmount {})?;
+    ensure!(!amount.is_zero(), ContractError::InvalidZeroAmount {});
 
     let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Undelegate {
         validator: validator.clone(),
@@ -420,10 +420,10 @@ fn execute_withdraw_rewards(
     nonpayable(&info)?;
 
     let sender = info.sender.to_string();
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let withdraw_rewards_msgs: Vec<CosmosMsg> = deps
         .querier
         .query_all_delegations(env.contract.address)?
@@ -449,10 +449,10 @@ fn claim_batch(
     number_of_claims: Option<u64>,
 ) -> Result<Uint128, ContractError> {
     let current_time = env.block.time.seconds();
-    require(
+    ensure!(
         batch.lockup_end <= current_time,
-        ContractError::FundsAreLocked {},
-    )?;
+        ContractError::FundsAreLocked {}
+    );
     let amount_per_claim = batch.release_amount.get_amount(batch.amount)?;
 
     let total_amount = AssetInfo::native(config.denom.to_owned())
@@ -487,10 +487,10 @@ fn execute_vote(
     vote: VoteOption,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let msg: CosmosMsg = CosmosMsg::Gov(GovMsg::Vote {
         proposal_id,
         vote: vote.clone(),
@@ -529,20 +529,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

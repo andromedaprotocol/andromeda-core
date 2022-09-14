@@ -171,14 +171,23 @@ pub enum ContractError {
     #[error("AuctionDoesNotExist")]
     AuctionDoesNotExist {},
 
+    #[error("SaleDoesNotExist")]
+    SaleDoesNotExist {},
+
     #[error("AuctionNotStarted")]
     AuctionNotStarted {},
 
     #[error("AuctionEnded")]
     AuctionEnded {},
 
+    #[error("SaleNotOpen")]
+    SaleNotOpen {},
+
     #[error("TokenOwnerCannotBid")]
     TokenOwnerCannotBid {},
+
+    #[error("TokenOwnerCannotBuy")]
+    TokenOwnerCannotBuy {},
 
     #[error("BidSmallerThanHighestBid")]
     BidSmallerThanHighestBid {},
@@ -217,6 +226,9 @@ pub enum ContractError {
 
     #[error("AuctionRewardAlreadyClaimed")]
     AuctionAlreadyClaimed {},
+
+    #[error("SaleAlreadyConducted")]
+    SaleAlreadyConducted {},
 
     #[error("AuctionNotEnded")]
     AuctionNotEnded {},

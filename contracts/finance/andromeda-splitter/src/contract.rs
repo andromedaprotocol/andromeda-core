@@ -12,11 +12,10 @@ use common::{
     app::AndrAddress,
     encode_binary,
     error::ContractError,
-    require,
 };
 use cosmwasm_std::{
-    attr, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, SubMsg, Timestamp, Uint128,
+    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, StdError, SubMsg, Timestamp, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::{nonpayable, Expiration};
@@ -40,18 +39,18 @@ pub fn instantiate(
     msg.validate()?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     // Max 100 recipients
-    require(
+    ensure!(
         msg.recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {},
-    )?;
+        ContractError::ReachedRecipientLimit {}
+    );
     let current_time = env.block.time.seconds();
     let splitter = match msg.lock_time {
         Some(lock_time) => {
             // New lock time can't be too short
-            require(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {})?;
+            ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
 
             // New lock time can't be too long
-            require(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {})?;
+            ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
 
             Splitter {
                 recipients: msg.recipients,
@@ -140,12 +139,12 @@ pub fn execute_andromeda(
 
 fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let sent_funds: Vec<Coin> = info.funds.clone();
-    require(
+    ensure!(
         !sent_funds.is_empty(),
         ContractError::InvalidFunds {
-            msg: "Require at least one coin to be sent".to_string(),
-        },
-    )?;
+            msg: "ensure! at least one coin to be sent".to_string(),
+        }
+    );
 
     let splitter = SPLITTER.load(deps.storage)?;
     let mut msgs: Vec<SubMsg> = Vec::new();
@@ -155,10 +154,10 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
     // Would like to understand more about why we loop through funds and what it exactly stored in it.
     // From there we could look into HashMaps, or other methods to break the nested loops and avoid Denial of Service.
     // [ACK-04] Limit number of coins sent to 5.
-    require(
+    ensure!(
         info.funds.len() < 5,
-        ContractError::ExceedsMaxAllowedCoins {},
-    )?;
+        ContractError::ExceedsMaxAllowedCoins {}
+    );
     for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
@@ -208,25 +207,25 @@ fn execute_update_recipients(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     validate_recipient_list(recipients.clone())?;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
     // Can't call this function while the lock isn't expired
 
-    require(
+    ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {},
-    )?;
+        ContractError::ContractLocked {}
+    );
     // Max 100 recipients
-    require(
+    ensure!(
         recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {},
-    )?;
+        ContractError::ReachedRecipientLimit {}
+    );
 
     splitter.recipients = recipients;
     SPLITTER.save(deps.storage, &splitter)?;
@@ -242,27 +241,27 @@ fn execute_update_lock(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     // Can't call this function while the lock isn't expired
 
-    require(
+    ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {},
-    )?;
+        ContractError::ContractLocked {}
+    );
     // Get current time
     let current_time = env.block.time.seconds();
 
     // New lock time can't be too short
-    require(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {})?;
+    ensure!(lock_time >= ONE_DAY, ContractError::LockTimeTooShort {});
 
     // New lock time can't be unreasonably long
-    require(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {})?;
+    ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
 
     // Set new lock time
     let new_lock = Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time));
@@ -288,20 +287,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

@@ -8,7 +8,7 @@ use andromeda_automation::{
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError, require,
+    error::ContractError,
 };
 use cosmwasm_std::{
     ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
@@ -85,10 +85,10 @@ fn execute_update_condition_address(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // Only the contract's owner can update the Execute ADO address
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     CONDITION_ADO_ADDRESS.save(deps.storage, &condition_address)?;
 
@@ -133,20 +133,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

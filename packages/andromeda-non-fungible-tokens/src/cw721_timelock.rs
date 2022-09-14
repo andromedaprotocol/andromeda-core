@@ -16,9 +16,6 @@ pub enum ExecuteMsg {
         lock_id: String,
     },
     ReceiveNft(Cw721ReceiveMsg),
-    UpdateOwner {
-        address: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

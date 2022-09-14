@@ -1,5 +1,5 @@
 use crate::ADOContract;
-use common::{ado_base::recipient::Recipient, error::ContractError, require, withdraw::Withdrawal};
+use common::{ado_base::recipient::Recipient, error::ContractError, withdraw::Withdrawal};
 use cosmwasm_std::{coin, DepsMut, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg};
 use cw20::Cw20Coin;
 
@@ -38,7 +38,7 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
         let sender = info.sender.as_str();
-        require(
+        ensure!(
             self.is_owner_or_operator(deps.storage, sender)?,
             ContractError::Unauthorized {},
         )?;
@@ -107,7 +107,7 @@ impl<'a> ADOContract<'a> {
                 msgs.push(msg);
             }
         }
-        require(
+        ensure!(
             !msgs.is_empty(),
             ContractError::InvalidFunds {
                 msg: "No funds to withdraw".to_string(),

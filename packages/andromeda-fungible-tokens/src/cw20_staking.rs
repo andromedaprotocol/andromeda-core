@@ -2,9 +2,8 @@ use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
     error::ContractError,
-    require,
 };
-use cosmwasm_std::{Api, BlockInfo, Decimal, Decimal256, Uint128};
+use cosmwasm_std::{ensure, Api, BlockInfo, Decimal, Decimal256, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use schemars::JsonSchema;
@@ -101,26 +100,26 @@ impl RewardTokenUnchecked {
                 let cycle_rewards = allocation_config.cycle_rewards;
                 let reward_increase = allocation_config.reward_increase;
 
-                require(
+                ensure!(
                     init_timestamp >= block_info.time.seconds(),
                     ContractError::StartTimeInThePast {
                         current_block: block_info.height,
                         current_seconds: block_info.time.seconds(),
-                    },
-                )?;
+                    }
+                );
 
-                require(
+                ensure!(
                     init_timestamp < till_timestamp,
-                    ContractError::StartTimeAfterEndTime {},
-                )?;
+                    ContractError::StartTimeAfterEndTime {}
+                );
 
-                require(cycle_duration > 0, ContractError::InvalidCycleDuration {})?;
+                ensure!(cycle_duration > 0, ContractError::InvalidCycleDuration {});
 
                 if let Some(reward_increase) = reward_increase {
-                    require(
+                    ensure!(
                         reward_increase < Decimal::one(),
-                        ContractError::InvalidRewardIncrease {},
-                    )?;
+                        ContractError::InvalidRewardIncrease {}
+                    );
                 }
 
                 RewardType::Allocated {

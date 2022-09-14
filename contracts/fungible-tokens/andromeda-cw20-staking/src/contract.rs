@@ -1,8 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, from_binary, Addr, Api, Attribute, Binary, CosmosMsg, Decimal, Decimal256, Deps, DepsMut,
-    Env, MessageInfo, Order, QuerierWrapper, Response, StdError, Storage, Uint128, Uint256,
+    attr, ensure, from_binary, Addr, Api, Attribute, Binary, CosmosMsg, Decimal, Decimal256, Deps,
+    DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, StdError, Storage, Uint128,
+    Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -21,9 +22,7 @@ use andromeda_fungible_tokens::cw20_staking::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardToken,
     RewardTokenUnchecked, RewardType, StakerResponse,
 };
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
-};
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cw_utils::nonpayable;
 use semver::Version;
 
@@ -40,12 +39,12 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let additional_reward_tokens = if let Some(additional_rewards) = msg.additional_rewards {
-        require(
+        ensure!(
             additional_rewards.len() <= MAX_REWARD_TOKENS as usize,
             ContractError::MaxRewardTokensExceeded {
                 max: MAX_REWARD_TOKENS,
-            },
-        )?;
+            }
+        );
         let staking_token = AssetInfoUnchecked::cw20(msg.staking_token.identifier.to_lowercase());
         let staking_token_identifier = msg.staking_token.identifier.clone();
         let additional_rewards: Result<Vec<RewardToken>, ContractError> = additional_rewards
@@ -53,12 +52,12 @@ pub fn instantiate(
             .map(|r| {
                 // Staking token cannot be used as an additional reward as it is a reward by
                 // default.
-                require(
+                ensure!(
                     staking_token != r.asset_info,
                     ContractError::InvalidAsset {
                         asset: staking_token_identifier.clone(),
-                    },
-                )?;
+                    }
+                );
                 r.check(&env.block, deps.api)
             })
             .collect();
@@ -146,12 +145,12 @@ fn receive_cw20(
     info: MessageInfo,
     msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         !msg.amount.is_zero(),
         ContractError::InvalidFunds {
             msg: "Amount must be non-zero".to_string(),
-        },
-    )?;
+        }
+    );
 
     match from_binary(&msg.msg)? {
         Cw20HookMsg::StakeTokens {} => {
@@ -174,26 +173,26 @@ fn execute_add_reward_token(
     reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let mut config = CONFIG.load(deps.storage)?;
     config.number_of_reward_tokens += 1;
-    require(
+    ensure!(
         config.number_of_reward_tokens <= MAX_REWARD_TOKENS,
         ContractError::MaxRewardTokensExceeded {
             max: MAX_REWARD_TOKENS,
-        },
-    )?;
+        }
+    );
     let mut reward_token = reward_token.check(&env.block, deps.api)?;
     let reward_token_string = reward_token.to_string();
-    require(
+    ensure!(
         !REWARD_TOKENS.has(deps.storage, &reward_token_string),
         ContractError::InvalidAsset {
             asset: reward_token_string,
-        },
-    )?;
+        }
+    );
 
     let staking_token_address = config.staking_token.get_address(
         deps.api,
@@ -201,12 +200,12 @@ fn execute_add_reward_token(
         contract.get_app_contract(deps.storage)?,
     )?;
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address)?);
-    require(
+    ensure!(
         staking_token != reward_token.asset_info,
         ContractError::InvalidAsset {
             asset: reward_token.to_string(),
-        },
-    )?;
+        }
+    );
 
     let reward_token_string = reward_token.to_string();
 
@@ -244,12 +243,12 @@ fn execute_stake_tokens(
         config
             .staking_token
             .get_address(deps.api, &deps.querier, mission_contract)?;
-    require(
+    ensure!(
         token_address == staking_token_address,
         ContractError::InvalidFunds {
             msg: "Deposited cw20 token is not the staking token".to_string(),
-        },
-    )?;
+        }
+    );
 
     let mut state = STATE.load(deps.storage)?;
     let mut staker = STAKERS.may_load(deps.storage, &sender)?.unwrap_or_default();
@@ -326,12 +325,12 @@ fn execute_unstake_tokens(
             })
             .unwrap_or(staker.share);
 
-        require(
+        ensure!(
             withdraw_share <= staker.share,
             ContractError::InvalidWithdrawal {
                 msg: Some("Desired amount exceeds balance".to_string()),
-            },
-        )?;
+            }
+        );
 
         let withdraw_amount = amount
             .unwrap_or_else(|| withdraw_share.multiply_ratio(total_balance, state.total_share));
@@ -418,7 +417,7 @@ fn execute_claim_rewards(
             }
         }
 
-        require(!msgs.is_empty(), ContractError::WithdrawalIsEmpty {})?;
+        ensure!(!msgs.is_empty(), ContractError::WithdrawalIsEmpty {});
 
         Ok(Response::new()
             .add_attribute("action", "claim_rewards")
@@ -697,20 +696,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

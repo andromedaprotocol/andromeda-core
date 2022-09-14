@@ -35,9 +35,7 @@ pub enum ExecuteMsg {
         end_time: Expiration,
         coin_denom: String,
         whitelist: Option<Vec<Addr>>,
-    },
-    UpdateOwner {
-        address: String,
+        min_bid: Option<Uint128>,
     },
     CancelAuction {
         token_id: String,
@@ -55,6 +53,7 @@ pub enum Cw721HookMsg {
         end_time: Expiration,
         coin_denom: String,
         whitelist: Option<Vec<Addr>>,
+        min_bid: Option<Uint128>,
     },
 }
 
@@ -108,6 +107,7 @@ pub struct AuctionStateResponse {
     pub auction_id: Uint128,
     pub coin_denom: String,
     pub whitelist: Option<Vec<Addr>>,
+    pub min_bid: Option<Uint128>,
     pub is_cancelled: bool,
 }
 

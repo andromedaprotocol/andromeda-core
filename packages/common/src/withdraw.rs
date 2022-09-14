@@ -1,5 +1,5 @@
-use crate::{error::ContractError, require};
-use cosmwasm_std::{Decimal, Uint128};
+use crate::error::ContractError;
+use cosmwasm_std::{ensure, Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::cmp;
@@ -32,7 +32,7 @@ impl WithdrawalType {
     pub fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
         match self {
             WithdrawalType::Percentage(percent) => {
-                require(*percent <= Decimal::one(), ContractError::InvalidRate {})?;
+                ensure!(*percent <= Decimal::one(), ContractError::InvalidRate {});
                 Ok(balance * *percent)
             }
             WithdrawalType::Amount(amount) => Ok(cmp::min(*amount, balance)),

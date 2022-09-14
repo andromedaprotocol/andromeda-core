@@ -1,7 +1,5 @@
-use common::{
-    ado_base::recipient::Recipient, error::ContractError, require, withdraw::WithdrawalType,
-};
-use cosmwasm_std::{Order, Storage, Uint128};
+use common::{ado_base::recipient::Recipient, error::ContractError, withdraw::WithdrawalType};
+use cosmwasm_std::{ensure, Order, Storage, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, MultiIndex};
 use cw_utils::Duration;
 use schemars::JsonSchema;
@@ -79,10 +77,10 @@ pub(crate) fn save_new_batch(
     config: &Config,
 ) -> Result<(), ContractError> {
     let next_id = NEXT_ID.may_load(storage)?.unwrap_or(1);
-    require(
+    ensure!(
         next_id == 1 || config.is_multi_batch_enabled,
-        ContractError::MultiBatchNotSupported {},
-    )?;
+        ContractError::MultiBatchNotSupported {}
+    );
     batches().save(storage, next_id, &batch)?;
     NEXT_ID.save(storage, &(next_id + 1))?;
 

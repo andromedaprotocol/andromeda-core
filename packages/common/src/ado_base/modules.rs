@@ -1,4 +1,5 @@
-use crate::{app::AndrAddress, error::ContractError, require};
+use crate::{app::AndrAddress, error::ContractError};
+use cosmwasm_std::ensure;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -9,23 +10,6 @@ pub const AUCTION: &str = "auction";
 pub const RECEIPT: &str = "receipt";
 pub const OTHER: &str = "other";
 
-// TODO: Remove InstantiateType when we are confident with the AndrAddress replacement.
-/// Modules can be instantiated in two different ways
-/// New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded
-/// Address - Provide an address for an already instantiated module contract
-/*#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-=======
-/// Modules can be instantiated in two different ways
-/// New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded
-/// Address - Provide an address for an already instantiated module contract
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
->>>>>>> e7a02a492c55a32cee8e5c85ab8b1d4b1e2fe673
-#[serde(rename_all = "snake_case")]
-pub enum InstantiateType {
-    New(Binary),
-    Address(String),
-}*/
-
 /// A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -35,22 +19,13 @@ pub struct Module {
     pub is_mutable: bool,
 }
 
-// TODO: Remove ModuleInfoWithAddress when we are confident with the AndrAddress replacement.
-/*#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct ModuleInfoWithAddress {
-    pub module: Module,
-    pub address: String,
-<<<<<<< HEAD
-}*/
-
 impl Module {
     /// Validates `self` by checking that it is unique, does not conflict with any other module,
     /// and does not conflict with the creating ADO.
     pub fn validate(&self, modules: &[Module], ado_type: &str) -> Result<(), ContractError> {
         // We allow multiple rates modules.
         if self.module_type != RATES {
-            require(self.is_unique(modules), ContractError::ModuleNotUnique {})?;
+            ensure!(self.is_unique(modules), ContractError::ModuleNotUnique {});
         }
 
         if ado_type == "cw20" && contains_module(modules, AUCTION) {

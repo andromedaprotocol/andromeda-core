@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-cw721"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2018"
 

@@ -123,58 +123,6 @@ impl<'a> ADOContract<'a> {
         module_addresses
     }
 
-    /*
-         * TODO: Remove when happy with InstantiateType removal.
-         * /// Loads all modules with their registered addresses in Vector form
-    =======
-        fn load_module_addresses(&self, storage: &dyn Storage) -> Result<Vec<String>, ContractError> {
-            let module_idx = self.module_idx.may_load(storage)?.unwrap_or(1);
-            let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
-            // let max = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
-            let module_addresses: Vec<String> = self
-                .module_addr
-                .range(storage, min, None, Order::Ascending)
-                .take(module_idx.try_into().unwrap())
-                .flatten()
-                .map(|(_vec, addr)| addr.to_string())
-                .collect();
-
-            Ok(module_addresses)
-        }
-
-        /// Loads all modules with their registered addresses in Vector form
-    >>>>>>> e7a02a492c55a32cee8e5c85ab8b1d4b1e2fe673
-        fn load_modules_with_address(
-            &self,
-            storage: &dyn Storage,
-        ) -> Result<Vec<ModuleInfoWithAddress>, ContractError> {
-            let modules = self.load_modules(storage)?;
-            let module_idx = self.module_idx.may_load(storage)?.unwrap_or(1);
-            let min = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
-            // let max = Some(Bound::Inclusive(1u64.to_le_bytes().to_vec()));
-            let module_addresses: Vec<String> = self
-                .module_addr
-                .range(storage, min, None, Order::Ascending)
-                .take(module_idx.try_into().unwrap())
-                .flatten()
-                .map(|(_vec, addr)| addr.to_string())
-                .collect();
-
-            let mut modules_with_addresses: Vec<ModuleInfoWithAddress> = Vec::new();
-            for (index, module_address) in module_addresses.iter().enumerate() {
-                let module_opt = modules.get(index);
-                if let Some(module) = module_opt {
-                    modules_with_addresses.push(ModuleInfoWithAddress {
-                        module: module.clone(),
-                        address: module_address.to_string(),
-                    });
-                }
-            }
-
-            Ok(modules_with_addresses)
-    <<<<<<< HEAD
-        }*/
-
     /// Validates all modules.
     fn validate_modules(&self, modules: &[Module], ado_type: &str) -> Result<(), ContractError> {
         for module in modules {
@@ -183,36 +131,6 @@ impl<'a> ADOContract<'a> {
 
         Ok(())
     }
-
-    /*
-         * TODO: Remove when happyw with InstantiateType removal
-         * pub fn handle_module_reply(
-    =======
-        pub fn handle_module_reply(
-    >>>>>>> e7a02a492c55a32cee8e5c85ab8b1d4b1e2fe673
-            &self,
-            deps: DepsMut,
-            msg: Reply,
-        ) -> Result<Response, ContractError> {
-            if msg.result.is_err() {
-                return Err(ContractError::Std(StdError::generic_err(
-                    msg.result.unwrap_err(),
-                )));
-            }
-
-            let id = msg.id.to_string();
-            require(
-                self.module_info.has(deps.storage, &id),
-                ContractError::InvalidReplyId {},
-            )?;
-
-            let addr = get_reply_address(&msg)?;
-            self.module_addr
-                .save(deps.storage, &id, &deps.api.addr_validate(&addr)?)?;
-
-            Ok(Response::default())
-    <<<<<<< HEAD
-        }*/
 }
 
 #[cfg(test)]
