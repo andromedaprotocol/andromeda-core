@@ -14,7 +14,10 @@ use andromeda_fungible_tokens::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
+};
 
 use crate::state::{Config, State, CONFIG, STATE, USER_INFO};
 use cw_utils::nonpayable;
@@ -41,7 +44,7 @@ pub fn instantiate(
     ensure!(
         msg.init_timestamp >= env.block.time.seconds(),
         ContractError::StartTimeInThePast {
-            current_time: env.block.time.nanos(),
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
         }
     );

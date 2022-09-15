@@ -12,7 +12,7 @@ use andromeda_fungible_tokens::lockdrop::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse,
     UserInfoResponse,
 };
-use common::error::ContractError;
+use common::{error::ContractError, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 const MOCK_INCENTIVE_TOKEN: &str = "mock_incentive_token";
@@ -97,7 +97,7 @@ fn test_instantiate_init_timestamp_past() {
 
     assert_eq!(
         ContractError::StartTimeInThePast {
-            current_time: env.block.time.nanos(),
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
         },
         res.unwrap_err()

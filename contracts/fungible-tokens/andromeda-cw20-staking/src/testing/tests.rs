@@ -17,7 +17,9 @@ use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, AllocationState, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
     RewardToken, RewardTokenUnchecked, RewardType, StakerResponse,
 };
-use common::{app::AndrAddress, error::ContractError};
+use common::{
+    app::AndrAddress, error::ContractError, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
+};
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
 const MOCK_STAKING_TOKEN: &str = "staking_token";
@@ -210,7 +212,7 @@ fn test_instantiate_start_time_in_past() {
     assert_eq!(
         ContractError::StartTimeInThePast {
             current_block: env.block.height,
-            current_time: env.block.time.nanos()
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO
         },
         res.unwrap_err()
     );

@@ -11,13 +11,14 @@ use common::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
+    expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
     rates::get_tax_amount,
     Funds, OrderBy,
 };
 use cosmwasm_std::{
     attr, coins, ensure, entry_point, from_binary, Addr, Api, BankMsg, Binary, BlockInfo, Coin,
     CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError,
-    Storage, SubMsg, Uint128, WasmMsg, WasmQuery, Timestamp,
+    Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -153,19 +154,17 @@ fn execute_start_auction(
 ) -> Result<Response, ContractError> {
     ensure!(
         start_time > 0 && duration > 0,
-        ContractError::ExpirationMustNotBeNever {}
+        ContractError::InvalidExpirationTime {}
     );
-    ensure!(start_time <= u64::MAX/1000000, ContractError::Std(StdError::generic_err(format!("Start time must be less than {}", u64::MAX))));
-    ensure!(start_time + duration <= u64::MAX/1000000, ContractError::Std(StdError::generic_err(format!("Start time + Duration must be less than {}", u64::MAX))));
 
-    let start_expiration = Expiration::AtTime(Timestamp::from_nanos(start_time * 1000000));
-    let end_expiration = Expiration::AtTime(Timestamp::from_nanos((start_time + duration) * 1000000));
+    let start_expiration = expiration_from_milliseconds(start_time)?;
+    let end_expiration = expiration_from_milliseconds(start_time + duration)?;
 
     let block_time = block_to_expiration(&env.block, start_expiration).unwrap();
     ensure!(
         start_expiration.gt(&block_time),
         ContractError::StartTimeInThePast {
-            current_time: env.block.time.nanos() / 1000000,
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO / 1000000,
             current_block: env.block.height,
         }
     );
@@ -243,7 +242,7 @@ fn execute_update_auction(
     ensure!(
         !start_time.is_expired(&env.block),
         ContractError::StartTimeInThePast {
-            current_time: env.block.time.nanos(),
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
         }
     );
@@ -1291,7 +1290,7 @@ mod tests {
 
         assert_eq!(
             ContractError::StartTimeInThePast {
-                current_time: env.block.time.nanos() / 1000000,
+                current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO / 1000000,
                 current_block: env.block.height,
             },
             res.unwrap_err()
@@ -1324,7 +1323,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::ExpirationMustNotBeNever {}, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpirationTime {}, res.unwrap_err());
     }
 
     #[test]
@@ -1353,7 +1352,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::ExpirationMustNotBeNever {}, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpirationTime {}, res.unwrap_err());
     }
 
     // #[test]
@@ -1445,7 +1444,7 @@ mod tests {
 
         assert_eq!(
             ContractError::StartTimeInThePast {
-                current_time: env.block.time.nanos(),
+                current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
                 current_block: env.block.height,
             },
             res.unwrap_err()
