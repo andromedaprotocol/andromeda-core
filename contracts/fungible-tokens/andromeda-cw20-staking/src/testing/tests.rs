@@ -210,7 +210,7 @@ fn test_instantiate_start_time_in_past() {
     assert_eq!(
         ContractError::StartTimeInThePast {
             current_block: env.block.height,
-            current_seconds: env.block.time.seconds()
+            current_time: env.block.time.nanos()
         },
         res.unwrap_err()
     );

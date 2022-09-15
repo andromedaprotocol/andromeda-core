@@ -41,7 +41,7 @@ pub fn instantiate(
     ensure!(
         msg.init_timestamp >= env.block.time.seconds(),
         ContractError::StartTimeInThePast {
-            current_seconds: env.block.time.seconds(),
+            current_time: env.block.time.nanos(),
             current_block: env.block.height,
         }
     );

@@ -198,10 +198,10 @@ pub enum ContractError {
     StartTimeAfterEndTime {},
 
     #[error(
-        "Start time in past. Current seconds: {current_seconds}. Current block: {current_block}"
+        "Start time in past. Current time: {current_time}. Current block: {current_block}"
     )]
     StartTimeInThePast {
-        current_seconds: u64,
+        current_time: u64,
         current_block: u64,
     },
 

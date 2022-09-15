@@ -104,7 +104,7 @@ impl RewardTokenUnchecked {
                     init_timestamp >= block_info.time.seconds(),
                     ContractError::StartTimeInThePast {
                         current_block: block_info.height,
-                        current_seconds: block_info.time.seconds(),
+                        current_time: block_info.time.nanos(),
                     }
                 );
 

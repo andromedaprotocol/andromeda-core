@@ -97,7 +97,7 @@ fn test_instantiate_init_timestamp_past() {
 
     assert_eq!(
         ContractError::StartTimeInThePast {
-            current_seconds: env.block.time.seconds(),
+            current_time: env.block.time.nanos(),
             current_block: env.block.height,
         },
         res.unwrap_err()

@@ -49,11 +49,13 @@ pub enum Cw721HookMsg {
     /// Starts a new auction with the given parameters. The auction info can be modified before it
     /// has started but is immutable after that.
     StartAuction {
-        start_time: Expiration,
-        end_time: Expiration,
+        /// Start time in milliseconds since epoch
+        start_time: u64,
+        /// Duration in milliseconds since epoch
+        duration: u64,
         coin_denom: String,
-        whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
+        whitelist: Option<Vec<Addr>>,
     },
 }
 
