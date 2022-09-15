@@ -229,7 +229,7 @@ fn execute_update_auction(
     );
     ensure!(
         start_time > 0 && duration > 0,
-        ContractError::InvalidExpirationTime{}
+        ContractError::InvalidExpirationTime {}
     );
 
     let start_exp = expiration_from_milliseconds(start_time)?;
@@ -1405,10 +1405,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(
-            ContractError::InvalidExpirationTime {  },
-            res.unwrap_err()
-        );
+        assert_eq!(ContractError::InvalidExpirationTime {}, res.unwrap_err());
     }
 
     #[test]
@@ -1471,7 +1468,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::InvalidExpirationTime {  }, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpirationTime {}, res.unwrap_err());
     }
 
     #[test]
