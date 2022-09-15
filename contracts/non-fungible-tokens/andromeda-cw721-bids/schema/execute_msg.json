@@ -1,18 +1,81 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AllOffersResponse",
-  "type": "object",
-  "required": [
-    "offers"
-  ],
-  "properties": {
-    "offers": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/OfferResponse"
-      }
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "place_bid"
+      ],
+      "properties": {
+        "place_bid": {
+          "type": "object",
+          "required": [
+            "bid_amount",
+            "expiration",
+            "token_id"
+          ],
+          "properties": {
+            "bid_amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "expiration": {
+              "$ref": "#/definitions/Expiration"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "cancel_bid"
+      ],
+      "properties": {
+        "cancel_bid": {
+          "type": "object",
+          "required": [
+            "token_id"
+          ],
+          "properties": {
+            "token_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Restricted to Cw721 contract.",
+      "type": "object",
+      "required": [
+        "accept_bid"
+      ],
+      "properties": {
+        "accept_bid": {
+          "type": "object",
+          "required": [
+            "recipient",
+            "token_id"
+          ],
+          "properties": {
+            "recipient": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
-  },
+  ],
   "definitions": {
     "Expiration": {
       "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
@@ -59,37 +122,6 @@
           "additionalProperties": false
         }
       ]
-    },
-    "OfferResponse": {
-      "type": "object",
-      "required": [
-        "denom",
-        "expiration",
-        "offer_amount",
-        "purchaser",
-        "remaining_amount",
-        "tax_amount"
-      ],
-      "properties": {
-        "denom": {
-          "type": "string"
-        },
-        "expiration": {
-          "$ref": "#/definitions/Expiration"
-        },
-        "offer_amount": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "purchaser": {
-          "type": "string"
-        },
-        "remaining_amount": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "tax_amount": {
-          "$ref": "#/definitions/Uint128"
-        }
-      }
     },
     "Timestamp": {
       "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",

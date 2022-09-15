@@ -163,7 +163,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-cw721-offers"
+name = "andromeda-cw721-bids"
 version = "0.1.0"
 dependencies = [
  "ado-base",
