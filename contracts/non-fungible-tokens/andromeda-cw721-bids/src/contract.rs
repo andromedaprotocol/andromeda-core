@@ -5,7 +5,7 @@ use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::{
     cw721::QueryMsg as Cw721QueryMsg,
     cw721_bid::{
-        AllBidsResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, Bid, BidResponse, QueryMsg,
+        AllBidsResponse, Bid, BidResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
     },
 };
 use common::{
@@ -135,8 +135,7 @@ fn execute_place_bid(
             ContractError::BidAlreadyPlaced {}
         );
         ensure!(
-            current_bid.expiration.is_expired(&env.block)
-                || current_bid.bid_amount < bid_amount,
+            current_bid.expiration.is_expired(&env.block) || current_bid.bid_amount < bid_amount,
             ContractError::BidLowerThanCurrent {}
         );
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -191,10 +190,7 @@ fn execute_cancel_bid(
     nonpayable(&info)?;
 
     let bid = bids().load(deps.storage, &token_id)?;
-    ensure!(
-        info.sender == bid.purchaser,
-        ContractError::Unauthorized {}
-    );
+    ensure!(info.sender == bid.purchaser, ContractError::Unauthorized {});
     ensure!(
         bid.expiration.is_expired(&env.block),
         ContractError::BidNotExpired {}

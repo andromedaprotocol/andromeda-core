@@ -2,7 +2,7 @@ use crate::{
     contract::{execute, instantiate, query},
     state::{bids, CW721_CONTRACT},
 };
-use andromeda_non_fungible_tokens::cw721_bid::{ExecuteMsg, InstantiateMsg, Bid, QueryMsg};
+use andromeda_non_fungible_tokens::cw721_bid::{Bid, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_testing::testing::mock_querier::{
     bank_sub_msg, mock_dependencies_custom, MOCK_CW721_CONTRACT, MOCK_RATES_RECIPIENT,
     MOCK_TOKEN_TRANSFER_AGREEMENT,
@@ -211,9 +211,7 @@ fn test_place_bid_previous_expired() {
         events: vec![],
     };
 
-    bids()
-        .save(deps.as_mut().storage, &token_id, &bid)
-        .unwrap();
+    bids().save(deps.as_mut().storage, &token_id, &bid).unwrap();
 
     env.block.height = 12;
 
@@ -278,9 +276,7 @@ fn test_accept_bid_expired() {
         msgs: vec![],
         events: vec![],
     };
-    bids()
-        .save(deps.as_mut().storage, &token_id, &bid)
-        .unwrap();
+    bids().save(deps.as_mut().storage, &token_id, &bid).unwrap();
 
     let msg = ExecuteMsg::AcceptBid {
         token_id,
@@ -314,9 +310,7 @@ fn test_accept_bid_existing_transfer_agreement() {
         msgs: vec![],
         events: vec![],
     };
-    bids()
-        .save(deps.as_mut().storage, &token_id, &bid)
-        .unwrap();
+    bids().save(deps.as_mut().storage, &token_id, &bid).unwrap();
 
     let msg = ExecuteMsg::AcceptBid {
         token_id,
@@ -349,9 +343,7 @@ fn test_cancel_bid() {
         msgs: vec![],
         events: vec![],
     };
-    bids()
-        .save(deps.as_mut().storage, &token_id, &bid)
-        .unwrap();
+    bids().save(deps.as_mut().storage, &token_id, &bid).unwrap();
 
     let msg = ExecuteMsg::CancelBid {
         token_id: token_id.clone(),
@@ -403,9 +395,7 @@ fn test_on_transfer_hook() {
         events: vec![],
     };
 
-    bids()
-        .save(deps.as_mut().storage, &token_id, &bid)
-        .unwrap();
+    bids().save(deps.as_mut().storage, &token_id, &bid).unwrap();
 
     let msg = QueryMsg::AndrHook(AndromedaHook::OnTransfer {
         token_id: token_id.clone(),

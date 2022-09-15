@@ -16,7 +16,7 @@ use andromeda_modules::{
 };
 use andromeda_non_fungible_tokens::{
     cw721::{MetadataAttribute, QueryMsg as Cw721QueryMsg, TokenExtension, TransferAgreement},
-    cw721_bid::{ExecuteMsg as BidsExecuteMsg, BidResponse, QueryMsg as BidsQueryMsg},
+    cw721_bid::{BidResponse, ExecuteMsg as BidsExecuteMsg, QueryMsg as BidsQueryMsg},
 };
 use cosmwasm_std::{
     coin, coins, from_binary, from_slice,

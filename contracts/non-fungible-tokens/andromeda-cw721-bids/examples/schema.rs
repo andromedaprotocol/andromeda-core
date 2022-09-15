@@ -2,7 +2,7 @@ use std::env::current_dir;
 use std::fs::create_dir_all;
 
 use andromeda_non_fungible_tokens::cw721_bid::{
-    AllBidsResponse, ExecuteMsg, InstantiateMsg, BidResponse, QueryMsg,
+    AllBidsResponse, BidResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
