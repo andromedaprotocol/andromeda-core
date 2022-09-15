@@ -12,8 +12,8 @@ backtraces = ["cosmwasm-std/backtraces"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = "1.0.0"
-cw721 = "0.13.2"
+cosmwasm-std = "1.1.0"
+cw721 = "0.13.4"
 cw20 = "0.13.2"
 prost = "0.9.0"
 

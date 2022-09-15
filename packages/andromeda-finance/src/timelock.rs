@@ -1,7 +1,6 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
 use cw_utils::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use common::{
     ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
@@ -9,8 +8,7 @@ use common::{
     merge_coins,
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 /// Enum used to specify the condition which must be met in order for the Escrow to unlock.
 pub enum EscrowCondition {
     /// Requires a given time or block height to be reached.
@@ -19,7 +17,7 @@ pub enum EscrowCondition {
     MinimumFunds(Vec<Coin>),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 /// Struct used to define funds being held in Escrow
 pub struct Escrow {
     /// Funds being held within the Escrow
@@ -120,14 +118,13 @@ impl Escrow {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// An optional vector of modules
     pub modules: Option<Vec<Module>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Hold funds in Escrow
@@ -146,20 +143,19 @@ pub enum ExecuteMsg {
         recipient_addr: Option<String>,
     },
 }
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
     /// Queries funds held by an address
-    GetLockedFunds {
-        owner: String,
-        recipient: String,
-    },
+    #[returns(GetLockedFundsResponse)]
+    GetLockedFunds { owner: String, recipient: String },
     /// Queries the funds for the given recipient.
+    #[returns(GetLockedFundsForRecipientResponse)]
     GetLockedFundsForRecipient {
         recipient: String,
         start_after: Option<String>,
@@ -167,14 +163,12 @@ pub enum QueryMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct GetLockedFundsResponse {
     pub funds: Option<Escrow>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct GetLockedFundsForRecipientResponse {
     pub funds: Vec<Escrow>,
 }

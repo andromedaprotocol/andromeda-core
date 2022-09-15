@@ -1,11 +1,10 @@
 use crate::state::{
-    auction_infos, read_auction_infos, read_bids, AuctionInfo, TokenAuctionState, BIDS,
-    NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
+    auction_infos, read_auction_infos, read_bids, BIDS, NEXT_AUCTION_ID, TOKEN_AUCTION_STATE,
 };
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::auction::{
-    AuctionIdsResponse, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg, ExecuteMsg,
-    InstantiateMsg, MigrateMsg, QueryMsg,
+    AuctionIdsResponse, AuctionInfo, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenAuctionState,
 };
 use common::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
@@ -735,8 +734,9 @@ mod tests {
     use crate::mock_querier::{
         mock_dependencies_custom, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
     };
-    use crate::state::AuctionInfo;
-    use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
+    use andromeda_non_fungible_tokens::auction::{
+        AuctionInfo, Cw721HookMsg, ExecuteMsg, InstantiateMsg,
+    };
     use andromeda_testing::testing::mock_querier::{MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT};
     use common::ado_base::modules::Module;
     use common::app::AndrAddress;

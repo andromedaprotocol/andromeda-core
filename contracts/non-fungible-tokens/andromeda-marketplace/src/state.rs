@@ -1,14 +1,13 @@
 use andromeda_non_fungible_tokens::marketplace::{SaleStateResponse, Status};
 use common::error::ContractError;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Order, Storage, SubMsg, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 const MAX_LIMIT: u64 = 30;
 const DEFAULT_LIMIT: u64 = 10;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct TokenSaleState {
     pub coin_denom: String,
     pub sale_id: Uint128,
@@ -19,7 +18,7 @@ pub struct TokenSaleState {
     pub status: Status,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Purchase {
     /// The token id being purchased.
     pub token_id: String,
@@ -31,7 +30,8 @@ pub struct Purchase {
     pub purchaser: String,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
+#[derive(Default)]
 pub struct SaleInfo {
     pub sale_ids: Vec<Uint128>,
     pub token_address: String,

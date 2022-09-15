@@ -3,6 +3,8 @@ use common::{
     app::AndrAddress,
     primitive::Value,
 };
+use cosmwasm_schema::cw_serde;
+
 use cosmwasm_std::{Binary, Coin};
 use cw721::Expiration;
 pub use cw721_base::MintMsg;
@@ -10,8 +12,7 @@ use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// Name of the NFT contract
     pub name: String,
@@ -25,7 +26,7 @@ pub struct InstantiateMsg {
     pub modules: Option<Vec<Module>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 /// A struct used to represent an agreed transfer of a token. The `purchaser` may use the `Transfer` message for this token as long as funds are provided equalling the `amount` defined in the agreement.
 pub struct TransferAgreement {
     /// The amount required for the purchaser to transfer ownership of the token
@@ -34,7 +35,7 @@ pub struct TransferAgreement {
     pub purchaser: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct MetadataAttribute {
     /// The key for the attribute
     pub trait_type: String,
@@ -46,7 +47,7 @@ pub struct MetadataAttribute {
 
 /// https://docs.opensea.io/docs/metadata-standards
 /// Replicates OpenSea Metadata Standards
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct TokenExtension {
     /// The name of the token
     pub name: String,
@@ -68,8 +69,7 @@ pub struct TokenExtension {
     pub youtube_url: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Mints a token
@@ -171,6 +171,7 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     AndrHook(AndromedaHook),
+
     /// Owner of the given token by ID
     OwnerOf {
         token_id: String,
@@ -267,6 +268,5 @@ impl From<QueryMsg> for Cw721QueryMsg {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}

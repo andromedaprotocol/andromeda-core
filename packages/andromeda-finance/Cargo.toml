@@ -18,3 +18,4 @@ schemars = "0.8.3"
 cw-utils = "0.13.2"
 
 common = { path = "../common", version = "0.1.0" }
+cosmwasm-schema = { version = "1.1.0" }

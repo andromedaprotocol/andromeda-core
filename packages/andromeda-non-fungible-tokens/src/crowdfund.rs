@@ -3,20 +3,18 @@ use common::{
     ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
 use cw_utils::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub token_address: AndrAddress,
     pub can_mint_after_sale: bool,
     pub modules: Option<Vec<Module>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Mints a new token to be sold in a future sale. Only possible when the sale is not ongoing.
@@ -51,22 +49,54 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(State)]
     State {},
+    #[returns(Config)]
     Config {},
+    #[returns(Vec<String>)]
     AvailableTokens {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    IsTokenAvailable {
-        id: String,
-    },
+    #[returns(bool)]
+    IsTokenAvailable { id: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
+pub struct Config {
+    /// The address of the token contract whose tokens are being sold.
+    pub token_address: AndrAddress,
+    /// Whether or not the owner can mint additional tokens after the sale has been conducted.
+    pub can_mint_after_sale: bool,
+}
+
+#[cw_serde]
+pub struct State {
+    /// The expiration denoting when the sale ends.
+    pub expiration: Expiration,
+    /// The price of each token.
+    pub price: Coin,
+    /// The minimum number of tokens sold for the sale to go through.
+    pub min_tokens_sold: Uint128,
+    /// The max number of tokens allowed per wallet.
+    pub max_amount_per_wallet: u32,
+    /// Number of tokens sold.
+    pub amount_sold: Uint128,
+    /// The amount of funds to send to recipient if sale successful. This already
+    /// takes into account the royalties and taxes.
+    pub amount_to_send: Uint128,
+    /// Number of tokens transferred to purchasers if sale was successful.
+    pub amount_transferred: Uint128,
+    /// The recipient of the raised funds if the sale is successful.
+    pub recipient: Recipient,
+}
+
+#[cw_serde]
 pub struct CrowdfundMintMsg {
     /// Unique ID of the NFT
     pub token_id: String,
@@ -80,6 +110,5 @@ pub struct CrowdfundMintMsg {
     pub extension: TokenExtension,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}

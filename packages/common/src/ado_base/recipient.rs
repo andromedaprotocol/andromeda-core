@@ -4,23 +4,21 @@ use crate::{
     encode_binary,
     error::ContractError,
 };
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw_asset::{Asset, AssetInfo};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 /// ADOs use a default Receive message for handling funds,
 /// this struct states that the recipient is an ADO and may attach the data field to the Receive message
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct ADORecipient {
     /// Addr can also be a human-readable identifier used in a app contract.
     pub address: AndrAddress,
     pub msg: Option<Binary>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Recipient {
     /// An address that is not another ADO. It is assumed that it is a valid address.
     Addr(String),
@@ -127,6 +125,9 @@ impl Recipient {
                     amount: asset.amount,
                 }],
             ),
+            _ => Err(ContractError::InvalidAsset {
+                asset: asset.to_string(),
+            }),
         }
     }
 }

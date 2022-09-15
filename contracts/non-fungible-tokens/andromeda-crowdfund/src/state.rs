@@ -1,9 +1,8 @@
-use common::{ado_base::recipient::Recipient, app::AndrAddress, error::ContractError};
-use cosmwasm_std::{Coin, Order, Storage, SubMsg, Uint128};
+use andromeda_non_fungible_tokens::crowdfund::{Config, State};
+use common::error::ContractError;
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{Order, Storage, SubMsg, Uint128};
 use cw_storage_plus::{Bound, Item, Map};
-use cw_utils::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 /// The config.
 pub const CONFIG: Item<Config> = Item::new("config");
@@ -24,7 +23,7 @@ pub const AVAILABLE_TOKENS: Map<&str, bool> = Map::new("available_tokens");
 /// config.can_mint_after_sale is false.
 pub const SALE_CONDUCTED: Item<bool> = Item::new("sale_conducted");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Purchase {
     /// The token id being purchased.
     pub token_id: String,
@@ -34,35 +33,6 @@ pub struct Purchase {
     pub msgs: Vec<SubMsg>,
     /// The purchaser of the token.
     pub purchaser: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct Config {
-    /// The address of the token contract whose tokens are being sold.
-    pub token_address: AndrAddress,
-    /// Whether or not the owner can mint additional tokens after the sale has been conducted.
-    pub can_mint_after_sale: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct State {
-    /// The expiration denoting when the sale ends.
-    pub expiration: Expiration,
-    /// The price of each token.
-    pub price: Coin,
-    /// The minimum number of tokens sold for the sale to go through.
-    pub min_tokens_sold: Uint128,
-    /// The max number of tokens allowed per wallet.
-    pub max_amount_per_wallet: u32,
-    /// Number of tokens sold.
-    pub amount_sold: Uint128,
-    /// The amount of funds to send to recipient if sale successful. This already
-    /// takes into account the royalties and taxes.
-    pub amount_to_send: Uint128,
-    /// Number of tokens transferred to purchasers if sale was successful.
-    pub amount_transferred: Uint128,
-    /// The recipient of the raised funds if the sale is successful.
-    pub recipient: Recipient,
 }
 
 const MAX_LIMIT: u32 = 50;

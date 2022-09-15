@@ -1,7 +1,6 @@
 use crate::{app::AndrAddress, error::ContractError};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::ensure;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 pub const RATES: &str = "rates";
 pub const OFFERS: &str = "offers";
@@ -11,8 +10,7 @@ pub const RECEIPT: &str = "receipt";
 pub const OTHER: &str = "other";
 
 /// A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct Module {
     pub module_type: String,
     pub address: AndrAddress,

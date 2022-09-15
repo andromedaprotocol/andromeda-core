@@ -3,6 +3,7 @@ use common::{
     app::AndrAddress,
     error::ContractError,
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Api, BlockInfo, Decimal, Decimal256, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
@@ -10,7 +11,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// The cw20 token that can be staked.
     pub staking_token: AndrAddress,
@@ -18,8 +19,7 @@ pub struct InstantiateMsg {
     pub additional_rewards: Option<Vec<RewardTokenUnchecked>>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     AndrReceive(AndromedaMsg),
@@ -41,8 +41,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Cw20HookMsg {
     /// Stake the sent tokens. Address must match the `staking_token` given on instantiation. The user's pending
     /// rewards and indexes are updated for each additional reward token.
@@ -51,30 +50,48 @@ pub enum Cw20HookMsg {
     UpdateGlobalIndex {},
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
     /// Gets the config of the contract.
+    #[returns(Config)]
     Config {},
     /// Gets the state of the contract.
+    #[returns(State)]
     State {},
     /// Returns a `StakerResponse` for the given staker. The pending rewards are updated to the
     /// present index.
-    Staker {
-        address: String,
-    },
+    #[returns(StakerResponse)]
+    Staker { address: String },
     /// Returns a `Vec<StakerResponse>` for range of stakers. The pending rewards are updated to the
     /// present index for each staker.
+    #[returns(Vec<StakerResponse>)]
     Stakers {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Queries the current timestamp.
+    #[returns(u64)]
     Timestamp {},
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[cw_serde]
+pub struct Config {
+    /// The token accepted for staking.
+    pub staking_token: AndrAddress,
+    /// The current number of reward tokens, cannot exceed `MAX_REWARD_TOKENS`.
+    pub number_of_reward_tokens: u32,
+}
+
+#[cw_serde]
+pub struct State {
+    /// The total share of the staking token in the contract.
+    pub total_share: Uint128,
+}
+
+#[cw_serde]
 pub struct RewardTokenUnchecked {
     pub asset_info: AssetInfoUnchecked,
     pub allocation_config: Option<AllocationConfig>,
@@ -141,7 +158,7 @@ impl RewardTokenUnchecked {
     }
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[cw_serde]
 pub enum RewardType {
     Allocated {
         allocation_config: AllocationConfig,
@@ -152,7 +169,7 @@ pub enum RewardType {
     },
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[cw_serde]
 pub struct RewardToken {
     pub asset_info: AssetInfo,
     pub index: Decimal256,
@@ -165,7 +182,7 @@ impl fmt::Display for RewardToken {
     }
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[cw_serde]
 pub struct AllocationInfo {
     /// The allocation config, this is immutable.
     pub config: AllocationConfig,
@@ -197,7 +214,7 @@ pub struct AllocationState {
     pub last_distributed: u64,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[cw_serde]
 pub struct StakerResponse {
     /// Address of the staker.
     pub address: String,
@@ -209,6 +226,5 @@ pub struct StakerResponse {
     pub pending_rewards: Vec<(String, Uint128)>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum MigrateMsg {}

@@ -1,17 +1,15 @@
 use crate::error::ContractError;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Decimal, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use std::cmp;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Withdrawal {
     pub token: String,
     pub withdrawal_type: Option<WithdrawalType>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum WithdrawalType {
     Amount(Uint128),
     Percentage(Decimal),

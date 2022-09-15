@@ -1,23 +1,12 @@
-use std::env::current_dir;
-use std::fs::create_dir_all;
+use cosmwasm_schema::write_api;
 
-use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-
-use andromeda_non_fungible_tokens::auction::{
-    AuctionIdsResponse, AuctionStateResponse, BidsResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
-};
+use andromeda_non_fungible_tokens::auction::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
-    let mut out_dir = current_dir().unwrap();
-    out_dir.push("schema");
-    create_dir_all(&out_dir).unwrap();
-    remove_schemas(&out_dir).unwrap();
+    write_api! {
+        instantiate: InstantiateMsg,
+        query: QueryMsg,
+        execute: ExecuteMsg,
 
-    export_schema(&schema_for!(InstantiateMsg), &out_dir);
-    export_schema(&schema_for!(ExecuteMsg), &out_dir);
-    export_schema(&schema_for!(QueryMsg), &out_dir);
-
-    export_schema(&schema_for!(AuctionStateResponse), &out_dir);
-    export_schema(&schema_for!(AuctionIdsResponse), &out_dir);
-    export_schema(&schema_for!(BidsResponse), &out_dir);
+    }
 }

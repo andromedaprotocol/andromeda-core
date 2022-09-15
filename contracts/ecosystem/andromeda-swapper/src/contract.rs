@@ -177,7 +177,8 @@ fn execute_send(
         ContractError::Unauthorized {}
     );
     let msg: SubMsg = match &ask_asset_info {
-        AssetInfo::Native(denom) => {
+        cw_asset::AssetInfoBase::Cw1155(_contract_addr, _denom) => todo!(),
+        cw_asset::AssetInfoBase::Native(denom) => {
             let amount = ask_asset_info.query_balance(&deps.querier, env.contract.address)?;
             recipient.generate_msg_native(
                 deps.api,
@@ -189,7 +190,7 @@ fn execute_send(
                 }],
             )?
         }
-        AssetInfo::Cw20(contract_addr) => {
+        cw_asset::AssetInfoBase::Cw20(contract_addr) => {
             let amount = ask_asset_info.query_balance(&deps.querier, env.contract.address)?;
             recipient.generate_msg_cw20(
                 deps.api,
@@ -201,6 +202,7 @@ fn execute_send(
                 },
             )?
         }
+        _ => todo!(),
     };
     Ok(Response::new()
         .add_attribute("action", "send")

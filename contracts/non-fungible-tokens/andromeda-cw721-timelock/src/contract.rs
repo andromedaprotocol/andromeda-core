@@ -1,6 +1,6 @@
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721_timelock::{
-    Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    Cw721HookMsg, ExecuteMsg, InstantiateMsg, LockDetails, MigrateMsg, QueryMsg,
 };
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
@@ -12,7 +12,7 @@ use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg, Expiration};
 use cw_utils::nonpayable;
 use semver::Version;
 
-use crate::state::{LockDetails, LOCKED_ITEMS};
+use crate::state::LOCKED_ITEMS;
 
 // 1 day in seconds
 const ONE_DAY: u64 = 86_400;

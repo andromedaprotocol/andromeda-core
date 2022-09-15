@@ -1,10 +1,9 @@
 use common::ado_base::hooks::AndromedaHook;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Event, SubMsg, Uint128};
 use cw721::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Offer {
     pub denom: String,
     /// What the purchaser offers.
@@ -28,15 +27,13 @@ impl Offer {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub andromeda_cw721_contract: String,
     pub valid_denom: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     PlaceOffer {
         token_id: String,
@@ -53,13 +50,14 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaHook)]
     AndrHook(AndromedaHook),
-    Offer {
-        token_id: String,
-    },
+    #[returns(OfferResponse)]
+    Offer { token_id: String },
+    #[returns(AllOffersResponse)]
     AllOffers {
         purchaser: String,
         limit: Option<u32>,
@@ -67,7 +65,7 @@ pub enum QueryMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct OfferResponse {
     pub denom: String,
     pub offer_amount: Uint128,
@@ -77,7 +75,7 @@ pub struct OfferResponse {
     pub purchaser: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct AllOffersResponse {
     pub offers: Vec<OfferResponse>,
 }
@@ -95,6 +93,5 @@ impl From<Offer> for OfferResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}

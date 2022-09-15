@@ -1,9 +1,8 @@
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Timestamp, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 /// Keeps track of the account's balance and time of latest withdrawal
 pub struct AccountDetails {
     /// Account balance, no need for denom since only one is allowed
@@ -11,7 +10,7 @@ pub struct AccountDetails {
     /// Timestamp of latest withdrawal
     pub latest_withdrawal: Option<Timestamp>,
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct CoinAndLimit {
     /// Sets the accepted coin denom
     pub coin: String,
@@ -19,7 +18,7 @@ pub struct CoinAndLimit {
     pub limit: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct CoinAllowance {
     /// Sets the accepted coin denom
     pub coin: String,
@@ -29,45 +28,44 @@ pub struct CoinAllowance {
     pub minimal_withdrawal_frequency: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct ContractAndKey {
     pub contract_address: String,
     pub key: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub allowed_coin: CoinAndLimit,
     pub minimal_withdrawal_frequency: MinimumFrequency,
     pub modules: Option<Vec<Module>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub enum MinimumFrequency {
     Time { time: Uint128 },
     AddressAndKey { address_and_key: ContractAndKey },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     Deposit { recipient: Option<String> },
     Withdraw { amount: Uint128 },
     AndrReceive(AndromedaMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
     /// Provides the allowed coin and limits for withdrawal size and frequency
+    #[returns(CoinAllowance)]
     CoinAllowanceDetails {},
     /// Shows the balance and latest withdrawal time
-    AccountDetails {
-        account: String,
-    },
+    #[returns(AccountDetails)]
+    AccountDetails { account: String },
 }

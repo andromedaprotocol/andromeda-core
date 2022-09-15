@@ -1,16 +1,14 @@
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw721::Cw721ReceiveMsg;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub modules: Option<Vec<Module>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     ReceiveNft(Cw721ReceiveMsg),
@@ -32,40 +30,48 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Cw721HookMsg {
     /// Starts a new sale with the given parameters. The sale info can be modified before it
     /// has started but is immutable after that.
     StartSale { price: Uint128, coin_denom: String },
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-
+#[cw_serde]
 pub enum Status {
     Open,
     Executed,
     Cancelled,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+pub struct SaleInfo {
+    pub sale_ids: Vec<Uint128>,
+    pub token_address: String,
+    pub token_id: String,
+}
+
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
     /// Gets the latest sale state for the given token. This will either be the current sale
     /// if there is one in progress or the last completed one.
+    #[returns(SaleStateResponse)]
     LatestSaleState {
         token_id: String,
         token_address: String,
     },
+    #[returns(SaleStateResponse)]
     /// Gets the sale state for the given sale id.
-    SaleState {
-        sale_id: Uint128,
-    },
+    SaleState { sale_id: Uint128 },
+    #[returns(SaleIdsResponse)]
     /// Gets the sale ids for the given token.
     SaleIds {
         token_id: String,
         token_address: String,
     },
+    #[returns(Vec<SaleInfo>)]
     /// Gets all of the sale infos for a given token address.
     SaleInfosForAddress {
         token_address: String,
@@ -74,7 +80,7 @@ pub enum QueryMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct SaleStateResponse {
     pub sale_id: Uint128,
     pub coin_denom: String,
@@ -82,11 +88,10 @@ pub struct SaleStateResponse {
     pub status: Status,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct SaleIdsResponse {
     pub sale_ids: Vec<Uint128>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}

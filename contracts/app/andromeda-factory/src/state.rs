@@ -8,7 +8,7 @@ use cw_storage_plus::Map;
 pub const SYM_ADDRESS: Map<String, String> = Map::new("address");
 pub const CODE_ID: Map<&str, u64> = Map::new("code_id");
 
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+// #[cw_serde]
 // pub struct Config {
 //     pub token_code_id: u64,
 //     pub receipt_code_id: u64,

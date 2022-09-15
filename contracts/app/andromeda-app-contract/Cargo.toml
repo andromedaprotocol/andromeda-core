@@ -21,6 +21,6 @@ ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features=["
 common = { version = "0.1.0", path = "../../../packages/common" }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0" }
+cosmwasm-schema = { version = "1.1.0" }
 andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }
 prost = "0.9"
