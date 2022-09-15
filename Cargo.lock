@@ -65,7 +65,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "ado-base",
  "andromeda-modules",
