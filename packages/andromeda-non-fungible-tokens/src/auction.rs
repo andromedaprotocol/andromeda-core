@@ -31,8 +31,8 @@ pub enum ExecuteMsg {
     UpdateAuction {
         token_id: String,
         token_address: String,
-        start_time: Expiration,
-        end_time: Expiration,
+        start_time: u64,
+        duration: u64,
         coin_denom: String,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
