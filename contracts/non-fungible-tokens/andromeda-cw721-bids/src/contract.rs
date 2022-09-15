@@ -1,11 +1,11 @@
 use crate::state::{
-    offers, query_is_archived, query_transfer_agreement, CW721_CONTRACT, VALID_DENOM,
+    bids, query_is_archived, query_transfer_agreement, CW721_CONTRACT, VALID_DENOM,
 };
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::{
     cw721::QueryMsg as Cw721QueryMsg,
-    cw721_offers::{
-        AllOffersResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, Offer, OfferResponse, QueryMsg,
+    cw721_bid::{
+        AllBidsResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, Bid, BidResponse, QueryMsg,
     },
 };
 use common::{
@@ -31,7 +31,7 @@ use cw_utils::nonpayable;
 use semver::Version;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-cw721-offers";
+const CONTRACT_NAME: &str = "crates.io:andromeda-cw721-bids";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const DEFAULT_LIMIT: u32 = 10u32;
@@ -53,7 +53,7 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "cw721-offers".to_string(),
+            ado_type: "cw721-bids".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
@@ -70,29 +70,29 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::PlaceOffer {
+        ExecuteMsg::PlaceBid {
             token_id,
             expiration,
-            offer_amount,
-        } => execute_place_offer(deps, env, info, token_id, offer_amount, expiration),
-        ExecuteMsg::AcceptOffer {
+            bid_amount,
+        } => execute_place_bid(deps, env, info, token_id, bid_amount, expiration),
+        ExecuteMsg::AcceptBid {
             token_id,
             recipient,
-        } => execute_accept_offer(deps, env, info, token_id, recipient),
-        ExecuteMsg::CancelOffer { token_id } => execute_cancel_offer(deps, env, info, token_id),
+        } => execute_accept_bid(deps, env, info, token_id, recipient),
+        ExecuteMsg::CancelBid { token_id } => execute_cancel_bid(deps, env, info, token_id),
     }
 }
 
-fn execute_place_offer(
+fn execute_place_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     token_id: String,
-    offer_amount: Uint128,
+    bid_amount: Uint128,
     expiration: Expiration,
 ) -> Result<Response, ContractError> {
     let purchaser = info.sender.as_str();
-    let current_offer = offers().may_load(deps.storage, &token_id)?;
+    let current_bid = bids().may_load(deps.storage, &token_id)?;
     let token_owner = get_token_owner(deps.storage, &deps.querier, token_id.clone())?;
     ensure!(
         info.sender != token_owner,
@@ -100,9 +100,9 @@ fn execute_place_offer(
     );
     ensure!(
         // This is to avoid situations where a user transfers the token to the purchaser thinking
-        // that there is an offer up and having the purchaser pull the offer right before (not
+        // that there is an bid up and having the purchaser pull the bid right before (not
         // necessariliy malicious, could just be a coincidence). Having a concrete time will
-        // give the seller a window of guaranteed time to accept the offer.
+        // give the seller a window of guaranteed time to accept the bid.
         expiration != Expiration::Never {},
         ContractError::ExpirationMustNotBeNever {}
     );
@@ -125,23 +125,23 @@ fn execute_place_offer(
     ensure!(
         valid_denom == coin.denom,
         ContractError::InvalidFunds {
-            msg: "Invalid offer denom".to_string(),
+            msg: "Invalid bid denom".to_string(),
         }
     );
     let mut msgs: Vec<SubMsg> = vec![];
-    if let Some(current_offer) = current_offer {
+    if let Some(current_bid) = current_bid {
         ensure!(
-            purchaser != current_offer.purchaser,
-            ContractError::OfferAlreadyPlaced {}
+            purchaser != current_bid.purchaser,
+            ContractError::BidAlreadyPlaced {}
         );
         ensure!(
-            current_offer.expiration.is_expired(&env.block)
-                || current_offer.offer_amount < offer_amount,
-            ContractError::OfferLowerThanCurrent {}
+            current_bid.expiration.is_expired(&env.block)
+                || current_bid.bid_amount < bid_amount,
+            ContractError::BidLowerThanCurrent {}
         );
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            amount: vec![current_offer.get_full_amount()],
-            to_address: current_offer.purchaser,
+            amount: vec![current_bid.get_full_amount()],
+            to_address: current_bid.purchaser,
         })));
     }
     let res = on_funds_transfer(
@@ -151,16 +151,16 @@ fn execute_place_offer(
         token_id.clone(),
         Coin {
             denom: coin.denom.clone(),
-            amount: offer_amount,
+            amount: bid_amount,
         },
     )?
     .unwrap();
     let remaining_amount = res.leftover_funds.try_get_coin()?;
-    let tax_amount = get_tax_amount(&res.msgs, offer_amount, remaining_amount.amount);
-    let offer = Offer {
+    let tax_amount = get_tax_amount(&res.msgs, bid_amount, remaining_amount.amount);
+    let bid = Bid {
         purchaser: purchaser.to_owned(),
         denom: coin.denom.clone(),
-        offer_amount,
+        bid_amount,
         remaining_amount: remaining_amount.amount,
         tax_amount,
         expiration,
@@ -169,20 +169,20 @@ fn execute_place_offer(
     };
     // ensure! that the sender has sent enough for taxes
     ensure!(
-        has_coins(&info.funds, &offer.get_full_amount()),
+        has_coins(&info.funds, &bid.get_full_amount()),
         ContractError::InsufficientFunds {}
     );
 
-    offers().save(deps.storage, &token_id, &offer)?;
+    bids().save(deps.storage, &token_id, &bid)?;
     Ok(Response::new()
         .add_submessages(msgs)
-        .add_attribute("action", "place_offer")
+        .add_attribute("action", "place_bid")
         .add_attribute("purchaser", purchaser)
-        .add_attribute("offer_amount", offer_amount)
+        .add_attribute("bid_amount", bid_amount)
         .add_attribute("token_id", token_id))
 }
 
-fn execute_cancel_offer(
+fn execute_cancel_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -190,40 +190,40 @@ fn execute_cancel_offer(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let offer = offers().load(deps.storage, &token_id)?;
+    let bid = bids().load(deps.storage, &token_id)?;
     ensure!(
-        info.sender == offer.purchaser,
+        info.sender == bid.purchaser,
         ContractError::Unauthorized {}
     );
     ensure!(
-        offer.expiration.is_expired(&env.block),
-        ContractError::OfferNotExpired {}
+        bid.expiration.is_expired(&env.block),
+        ContractError::BidNotExpired {}
     );
-    offers().remove(deps.storage, &token_id)?;
+    bids().remove(deps.storage, &token_id)?;
     let msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: info.sender.to_string(),
-        amount: vec![offer.get_full_amount()],
+        amount: vec![bid.get_full_amount()],
     }));
     Ok(Response::new()
         .add_submessage(msg)
-        .add_attribute("action", "cancel_offer")
+        .add_attribute("action", "cancel_bid")
         .add_attribute("token_id", token_id))
 }
 
-fn execute_accept_offer(
+fn execute_accept_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     token_id: String,
     recipient: String,
 ) -> Result<Response, ContractError> {
-    let offer = offers().load(deps.storage, &token_id)?;
+    let bid = bids().load(deps.storage, &token_id)?;
     let cw721_contract = CW721_CONTRACT.load(deps.storage)?;
     ensure!(
-        !offer.expiration.is_expired(&env.block),
+        !bid.expiration.is_expired(&env.block),
         ContractError::Expired {}
     );
-    // Only the cw721 contract can accept offers.
+    // Only the cw721 contract can accept bids.
     ensure!(
         info.sender == cw721_contract,
         ContractError::Unauthorized {}
@@ -235,20 +235,20 @@ fn execute_accept_offer(
     let payment_msg: SubMsg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: recipient,
         amount: vec![Coin {
-            amount: offer.remaining_amount,
-            denom: offer.denom,
+            amount: bid.remaining_amount,
+            denom: bid.denom,
         }],
     }));
 
     let resp = Response::new()
-        .add_submessages(offer.msgs)
+        .add_submessages(bid.msgs)
         .add_submessage(payment_msg)
-        .add_events(offer.events);
+        .add_events(bid.events);
 
-    offers().remove(deps.storage, &token_id)?;
+    bids().remove(deps.storage, &token_id)?;
 
     Ok(resp
-        .add_attribute("action", "accept_offer")
+        .add_attribute("action", "accept_bid")
         .add_attribute("token_id", token_id))
 }
 
@@ -333,12 +333,12 @@ fn from_semver(err: semver::Error) -> StdError {
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrHook(msg) => handle_andr_hook(deps, env, msg),
-        QueryMsg::Offer { token_id } => encode_binary(&query_offer(deps, token_id)?),
-        QueryMsg::AllOffers {
+        QueryMsg::Bid { token_id } => encode_binary(&query_bid(deps, token_id)?),
+        QueryMsg::AllBids {
             purchaser,
             limit,
             start_after,
-        } => encode_binary(&query_all_offers(deps, purchaser, limit, start_after)?),
+        } => encode_binary(&query_all_bids(deps, purchaser, limit, start_after)?),
     }
 }
 
@@ -350,17 +350,17 @@ fn handle_andr_hook(deps: Deps, env: Env, msg: AndromedaHook) -> Result<Binary, 
             recipient,
         } => {
             let mut resp: Response = Response::new();
-            let offer = offers().may_load(deps.storage, &token_id)?;
-            if let Some(offer) = offer {
-                if offer.purchaser == recipient {
+            let bid = bids().may_load(deps.storage, &token_id)?;
+            if let Some(bid) = bid {
+                if bid.purchaser == recipient {
                     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
                         contract_addr: env.contract.address.to_string(),
                         funds: vec![],
                         // The assumption is that the owner transfering the token to a user that has
-                        // an offer means they want to accept that offer. If the offer is
+                        // an bid means they want to accept that bid. If the bid is
                         // expired this message will end up failing and the transfer will not
                         // happen.
-                        msg: encode_binary(&ExecuteMsg::AcceptOffer {
+                        msg: encode_binary(&ExecuteMsg::AcceptBid {
                             token_id,
                             // We ensure! a recipient since the owner of the token will have
                             // changed once this message gets executed. Sender is assuemd to be the
@@ -378,31 +378,31 @@ fn handle_andr_hook(deps: Deps, env: Env, msg: AndromedaHook) -> Result<Binary, 
     }
 }
 
-fn query_offer(deps: Deps, token_id: String) -> Result<OfferResponse, ContractError> {
-    Ok(offers().load(deps.storage, &token_id)?.into())
+fn query_bid(deps: Deps, token_id: String) -> Result<BidResponse, ContractError> {
+    Ok(bids().load(deps.storage, &token_id)?.into())
 }
 
-fn query_all_offers(
+fn query_all_bids(
     deps: Deps,
     purchaser: String,
     limit: Option<u32>,
     start_after: Option<String>,
-) -> Result<AllOffersResponse, ContractError> {
+) -> Result<AllBidsResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 
-    let keys: Vec<String> = offers()
+    let keys: Vec<String> = bids()
         .idx
         .purchaser
         .prefix(purchaser)
         .keys(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .collect::<Result<Vec<String>, StdError>>()?;
-    let mut offer_responses: Vec<OfferResponse> = vec![];
+    let mut bid_responses: Vec<BidResponse> = vec![];
     for key in keys.iter() {
-        offer_responses.push(offers().load(deps.storage, key)?.into());
+        bid_responses.push(bids().load(deps.storage, key)?.into());
     }
-    Ok(AllOffersResponse {
-        offers: offer_responses,
+    Ok(AllBidsResponse {
+        bids: bid_responses,
     })
 }

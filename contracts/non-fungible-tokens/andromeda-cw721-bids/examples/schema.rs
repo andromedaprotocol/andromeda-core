@@ -1,8 +1,8 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use andromeda_non_fungible_tokens::cw721_offers::{
-    AllOffersResponse, ExecuteMsg, InstantiateMsg, OfferResponse, QueryMsg,
+use andromeda_non_fungible_tokens::cw721_bid::{
+    AllBidsResponse, ExecuteMsg, InstantiateMsg, BidResponse, QueryMsg,
 };
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
@@ -16,6 +16,6 @@ fn main() {
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
 
-    export_schema(&schema_for!(AllOffersResponse), &out_dir);
-    export_schema(&schema_for!(OfferResponse), &out_dir);
+    export_schema(&schema_for!(AllBidsResponse), &out_dir);
+    export_schema(&schema_for!(BidResponse), &out_dir);
 }

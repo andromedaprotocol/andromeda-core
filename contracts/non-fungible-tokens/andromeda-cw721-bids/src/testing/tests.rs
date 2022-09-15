@@ -1,8 +1,8 @@
 use crate::{
     contract::{execute, instantiate, query},
-    state::{offers, CW721_CONTRACT},
+    state::{bids, CW721_CONTRACT},
 };
-use andromeda_non_fungible_tokens::cw721_offers::{ExecuteMsg, InstantiateMsg, Offer, QueryMsg};
+use andromeda_non_fungible_tokens::cw721_bid::{ExecuteMsg, InstantiateMsg, Bid, QueryMsg};
 use andromeda_testing::testing::mock_querier::{
     bank_sub_msg, mock_dependencies_custom, MOCK_CW721_CONTRACT, MOCK_RATES_RECIPIENT,
     MOCK_TOKEN_TRANSFER_AGREEMENT,
@@ -30,9 +30,9 @@ fn init(deps: DepsMut, info: MessageInfo) -> Result<(), ContractError> {
 }
 
 #[test]
-fn test_place_offer_accept_offer() {
+fn test_place_bid_accept_bid() {
     let mut deps = mock_dependencies_custom(&[]);
-    let token_id = String::from("offer_token");
+    let token_id = String::from("bid_token");
     let creator = String::from("creator");
     let purchaser = String::from("purchaser");
     let other_purchaser = String::from("other_purchaser");
@@ -45,10 +45,10 @@ fn test_place_offer_accept_offer() {
         CW721_CONTRACT.load(deps.as_ref().storage).unwrap()
     );
 
-    let msg = ExecuteMsg::PlaceOffer {
+    let msg = ExecuteMsg::PlaceBid {
         token_id: token_id.clone(),
         expiration: Expiration::AtHeight(current_block_height + 1),
-        offer_amount: 100u128.into(),
+        bid_amount: 100u128.into(),
     };
 
     let info = mock_info(&creator, &[]);
@@ -65,31 +65,31 @@ fn test_place_offer_accept_offer() {
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
     assert_eq!(
         Response::new()
-            .add_attribute("action", "place_offer")
+            .add_attribute("action", "place_bid")
             .add_attribute("purchaser", &purchaser)
-            .add_attribute("offer_amount", "100")
+            .add_attribute("bid_amount", "100")
             .add_attribute("token_id", &token_id),
         res
     );
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
-    assert_eq!(ContractError::OfferAlreadyPlaced {}, res.unwrap_err());
+    assert_eq!(ContractError::BidAlreadyPlaced {}, res.unwrap_err());
 
-    let msg = ExecuteMsg::PlaceOffer {
+    let msg = ExecuteMsg::PlaceBid {
         token_id: token_id.clone(),
         expiration: Expiration::AtHeight(current_block_height + 1),
-        offer_amount: 50u128.into(),
+        bid_amount: 50u128.into(),
     };
 
     // 5 extra uusd for tax.
     let info = mock_info(&other_purchaser, &coins(50u128 + 5u128, "uusd"));
     let res = execute(deps.as_mut(), mock_env(), info, msg);
-    assert_eq!(ContractError::OfferLowerThanCurrent {}, res.unwrap_err());
+    assert_eq!(ContractError::BidLowerThanCurrent {}, res.unwrap_err());
 
-    let msg = ExecuteMsg::PlaceOffer {
+    let msg = ExecuteMsg::PlaceBid {
         token_id: token_id.clone(),
         expiration: Expiration::AtHeight(current_block_height + 1),
-        offer_amount: 150u128.into(),
+        bid_amount: 150u128.into(),
     };
 
     // 15 extra uusd for tax.
@@ -101,14 +101,14 @@ fn test_place_offer_accept_offer() {
                 to_address: purchaser,
                 amount: coins(110u128, "uusd"),
             })))
-            .add_attribute("action", "place_offer")
+            .add_attribute("action", "place_bid")
             .add_attribute("purchaser", &other_purchaser)
-            .add_attribute("offer_amount", "150")
+            .add_attribute("bid_amount", "150")
             .add_attribute("token_id", &token_id),
         res
     );
 
-    let msg = ExecuteMsg::AcceptOffer {
+    let msg = ExecuteMsg::AcceptBid {
         token_id: token_id.clone(),
         recipient: creator.clone(),
     };
@@ -127,21 +127,21 @@ fn test_place_offer_accept_offer() {
             .add_submessages(msgs)
             .add_event(Event::new("Royalty"))
             .add_event(Event::new("Tax"))
-            .add_attribute("action", "accept_offer")
+            .add_attribute("action", "accept_bid")
             .add_attribute("token_id", &token_id),
         res
     );
 
     assert_eq!(
         None,
-        offers().may_load(deps.as_ref().storage, &token_id).unwrap()
+        bids().may_load(deps.as_ref().storage, &token_id).unwrap()
     );
 }
 
 #[test]
-fn test_place_offer_expired() {
+fn test_place_bid_expired() {
     let mut deps = mock_dependencies_custom(&[]);
-    let token_id = String::from("offer_token");
+    let token_id = String::from("bid_token");
     let creator = String::from("creator");
     let purchaser = String::from("purchaser");
     let mut env = mock_env();
@@ -149,10 +149,10 @@ fn test_place_offer_expired() {
     let info = mock_info(&creator, &[]);
     init(deps.as_mut(), info).unwrap();
 
-    let msg = ExecuteMsg::PlaceOffer {
+    let msg = ExecuteMsg::PlaceBid {
         token_id,
         expiration: Expiration::AtHeight(10),
-        offer_amount: 100u128.into(),
+        bid_amount: 100u128.into(),
     };
 
     env.block.height = 12;
@@ -162,9 +162,9 @@ fn test_place_offer_expired() {
 }
 
 #[test]
-fn test_place_offer_invalid_denom() {
+fn test_place_bid_invalid_denom() {
     let mut deps = mock_dependencies_custom(&[]);
-    let token_id = String::from("offer_token");
+    let token_id = String::from("bid_token");
     let creator = String::from("creator");
     let purchaser = String::from("purchaser");
     let mut env = mock_env();
@@ -173,25 +173,25 @@ fn test_place_offer_invalid_denom() {
     let info = mock_info(&creator, &[]);
     init(deps.as_mut(), info).unwrap();
 
-    let msg = ExecuteMsg::PlaceOffer {
+    let msg = ExecuteMsg::PlaceBid {
         token_id,
         expiration: Expiration::AtHeight(1000),
-        offer_amount: 100u128.into(),
+        bid_amount: 100u128.into(),
     };
     let info = mock_info(&purchaser, &coins(100u128, "uluna"));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(
         ContractError::InvalidFunds {
-            msg: "Invalid offer denom".to_string()
+            msg: "Invalid bid denom".to_string()
         },
         res.unwrap_err()
     );
 }
 
 #[test]
-fn test_place_offer_previous_expired() {
+fn test_place_bid_previous_expired() {
     let mut deps = mock_dependencies_custom(&[]);
-    let token_id = String::from("offer_token");
+    let token_id = String::from("bid_token");
     let creator = String::from("creator");
     let purchaser = String::from("purchaser");
     let other_purchaser = String::from("other_purchaser");
@@ -200,9 +200,9 @@ fn test_place_offer_previous_expired() {
     let info = mock_info(&creator, &[]);
     init(deps.as_mut(), info).unwrap();
 
-    let offer = Offer {
+    let bid = Bid {
         denom: "uusd".to_string(),
-        offer_amount: 100u128.into(),
+        bid_amount: 100u128.into(),
         remaining_amount: 90u128.into(),
         tax_amount: 10u128.into(),
         expiration: Expiration::AtHeight(10),
@@ -211,16 +211,16 @@ fn test_place_offer_previous_expired() {
         events: vec![],
     };
 
-    offers()
-        .save(deps.as_mut().storage, &token_id, &offer)
+    bids()
+        .save(deps.as_mut().storage, &token_id, &bid)
         .unwrap();
 
     env.block.height = 12;
 
-    let msg = ExecuteMsg::PlaceOffer {
+    let msg = ExecuteMsg::PlaceBid {
         token_id: token_id.clone(),
         expiration: Expiration::AtHeight(15),
-        offer_amount: 50u128.into(),
+        bid_amount: 50u128.into(),
     };
 
     let info = mock_info(&other_purchaser, &coins(50 + 5, "uusd"));
@@ -232,17 +232,17 @@ fn test_place_offer_previous_expired() {
     assert_eq!(
         Response::new()
             .add_submessage(msg)
-            .add_attribute("action", "place_offer")
+            .add_attribute("action", "place_bid")
             .add_attribute("purchaser", &other_purchaser)
-            .add_attribute("offer_amount", "50")
+            .add_attribute("bid_amount", "50")
             .add_attribute("token_id", &token_id),
         res
     );
 
     assert_eq!(
-        Offer {
+        Bid {
             denom: "uusd".to_string(),
-            offer_amount: 50u128.into(),
+            bid_amount: 50u128.into(),
             remaining_amount: 45u128.into(),
             tax_amount: 5u128.into(),
             expiration: Expiration::AtHeight(15),
@@ -253,14 +253,14 @@ fn test_place_offer_previous_expired() {
             ],
             events: vec![Event::new("Royalty"), Event::new("Tax")],
         },
-        offers().load(deps.as_ref().storage, &token_id).unwrap()
+        bids().load(deps.as_ref().storage, &token_id).unwrap()
     );
 }
 
 #[test]
-fn test_accept_offer_expired() {
+fn test_accept_bid_expired() {
     let mut deps = mock_dependencies_custom(&[]);
-    let token_id = String::from("offer_token");
+    let token_id = String::from("bid_token");
     let creator = String::from("creator");
     let purchaser = String::from("purchaser");
     let mut env = mock_env();
@@ -268,9 +268,9 @@ fn test_accept_offer_expired() {
     let info = mock_info(&creator, &[]);
     init(deps.as_mut(), info).unwrap();
 
-    let offer = Offer {
+    let bid = Bid {
         denom: "uusd".to_string(),
-        offer_amount: 50u128.into(),
+        bid_amount: 50u128.into(),
         remaining_amount: 45u128.into(),
         tax_amount: 5u128.into(),
         expiration: Expiration::AtHeight(10),
@@ -278,11 +278,11 @@ fn test_accept_offer_expired() {
         msgs: vec![],
         events: vec![],
     };
-    offers()
-        .save(deps.as_mut().storage, &token_id, &offer)
+    bids()
+        .save(deps.as_mut().storage, &token_id, &bid)
         .unwrap();
 
-    let msg = ExecuteMsg::AcceptOffer {
+    let msg = ExecuteMsg::AcceptBid {
         token_id,
         recipient: creator,
     };
@@ -295,7 +295,7 @@ fn test_accept_offer_expired() {
 }
 
 #[test]
-fn test_accept_offer_existing_transfer_agreement() {
+fn test_accept_bid_existing_transfer_agreement() {
     let mut deps = mock_dependencies_custom(&[]);
     let token_id = String::from(MOCK_TOKEN_TRANSFER_AGREEMENT);
     let creator = String::from("creator");
@@ -304,9 +304,9 @@ fn test_accept_offer_existing_transfer_agreement() {
     let info = mock_info(&creator, &[]);
     init(deps.as_mut(), info).unwrap();
 
-    let offer = Offer {
+    let bid = Bid {
         denom: "uusd".to_string(),
-        offer_amount: 50u128.into(),
+        bid_amount: 50u128.into(),
         remaining_amount: 45u128.into(),
         tax_amount: 5u128.into(),
         expiration: Expiration::Never {},
@@ -314,11 +314,11 @@ fn test_accept_offer_existing_transfer_agreement() {
         msgs: vec![],
         events: vec![],
     };
-    offers()
-        .save(deps.as_mut().storage, &token_id, &offer)
+    bids()
+        .save(deps.as_mut().storage, &token_id, &bid)
         .unwrap();
 
-    let msg = ExecuteMsg::AcceptOffer {
+    let msg = ExecuteMsg::AcceptBid {
         token_id,
         recipient: creator,
     };
@@ -329,7 +329,7 @@ fn test_accept_offer_existing_transfer_agreement() {
 }
 
 #[test]
-fn test_cancel_offer() {
+fn test_cancel_bid() {
     let mut deps = mock_dependencies_custom(&[]);
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
@@ -339,9 +339,9 @@ fn test_cancel_offer() {
     let info = mock_info(&creator, &[]);
     init(deps.as_mut(), info).unwrap();
 
-    let offer = Offer {
+    let bid = Bid {
         denom: "uusd".to_string(),
-        offer_amount: 100u128.into(),
+        bid_amount: 100u128.into(),
         remaining_amount: 90u128.into(),
         tax_amount: 10u128.into(),
         expiration: Expiration::AtHeight(current_block_height + 1),
@@ -349,11 +349,11 @@ fn test_cancel_offer() {
         msgs: vec![],
         events: vec![],
     };
-    offers()
-        .save(deps.as_mut().storage, &token_id, &offer)
+    bids()
+        .save(deps.as_mut().storage, &token_id, &bid)
         .unwrap();
 
-    let msg = ExecuteMsg::CancelOffer {
+    let msg = ExecuteMsg::CancelBid {
         token_id: token_id.clone(),
     };
 
@@ -363,7 +363,7 @@ fn test_cancel_offer() {
 
     let info = mock_info(&purchaser, &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
-    assert_eq!(ContractError::OfferNotExpired {}, res.unwrap_err());
+    assert_eq!(ContractError::BidNotExpired {}, res.unwrap_err());
 
     let mut env = mock_env();
     env.block.height = current_block_height + 2;
@@ -371,30 +371,30 @@ fn test_cancel_offer() {
     assert_eq!(
         Response::new()
             .add_submessage(bank_sub_msg(100 + 10, &purchaser))
-            .add_attribute("action", "cancel_offer")
+            .add_attribute("action", "cancel_bid")
             .add_attribute("token_id", &token_id),
         res
     );
 
     assert_eq!(
         None,
-        offers().may_load(deps.as_ref().storage, &token_id).unwrap(),
+        bids().may_load(deps.as_ref().storage, &token_id).unwrap(),
     );
 }
 
 #[test]
 fn test_on_transfer_hook() {
     let mut deps = mock_dependencies_custom(&[]);
-    let token_id = String::from("offer_token");
+    let token_id = String::from("bid_token");
     let creator = String::from("creator");
     let purchaser = String::from("purchaser");
 
     let info = mock_info(&creator, &[]);
     init(deps.as_mut(), info).unwrap();
 
-    let offer = Offer {
+    let bid = Bid {
         denom: "uusd".to_string(),
-        offer_amount: 50u128.into(),
+        bid_amount: 50u128.into(),
         remaining_amount: 45u128.into(),
         tax_amount: 5u128.into(),
         expiration: Expiration::AtHeight(10),
@@ -403,8 +403,8 @@ fn test_on_transfer_hook() {
         events: vec![],
     };
 
-    offers()
-        .save(deps.as_mut().storage, &token_id, &offer)
+    bids()
+        .save(deps.as_mut().storage, &token_id, &bid)
         .unwrap();
 
     let msg = QueryMsg::AndrHook(AndromedaHook::OnTransfer {
@@ -418,7 +418,7 @@ fn test_on_transfer_hook() {
     let msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: mock_env().contract.address.to_string(),
         funds: vec![],
-        msg: to_binary(&ExecuteMsg::AcceptOffer {
+        msg: to_binary(&ExecuteMsg::AcceptBid {
             token_id,
             recipient: "sender".to_string(),
         })

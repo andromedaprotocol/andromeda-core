@@ -309,14 +309,14 @@ pub enum ContractError {
     #[error("Approval not found for: {spender}")]
     ApprovalNotFound { spender: String },
 
-    #[error("OfferAlreadyPlaced")]
-    OfferAlreadyPlaced {},
+    #[error("BidAlreadyPlaced")]
+    BidAlreadyPlaced {},
 
-    #[error("OfferLowerThanCurrent")]
-    OfferLowerThanCurrent {},
+    #[error("BidLowerThanCurrent")]
+    BidLowerThanCurrent {},
 
-    #[error("OfferNotExpired")]
-    OfferNotExpired {},
+    #[error("BidNotExpired")]
+    BidNotExpired {},
 
     #[error("TransferAgreementExists")]
     TransferAgreementExists {},
