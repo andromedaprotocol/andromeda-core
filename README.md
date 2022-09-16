@@ -55,7 +55,7 @@ Modules are smart contracts that can be added to other ADOs on instantiation to 
 |-------------------------------|---------------------------|-----------------------------|
 | [address-list](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/modules/andromeda-address-list)| A module used to whitelist/blacklist a list of addresses to interact with the ADO.|[Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/address-list)|
 | [rates](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/modules/andromeda-rates)| A module used to add rates (taxes/royalties) on fund transfers| [Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/rates)|
-| [cw721-offers](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens/andromeda-cw721-offers)|Module that can be attached to the cw721 ADO as another way to buy and sell NFTs.|[Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/nft-offers)|
+| [cw721-bids](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts/non-fungible-tokens/andromeda-cw721-bids)|Module that can be attached to the cw721 ADO as another way to buy and sell NFTs.|[Gitbook](https://docs.andromedaprotocol.io/andromeda/andromeda-digital-objects/cw721-bids)|
 | [receipts](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/receipt-contract)| A module that can be attached to ADOs that saves the events of messages.| [Gitbook](https://docs.andromedaprotocol.io/andromeda/smart-contracts/modules/receipt-contract)| 
 
 ## Packages
