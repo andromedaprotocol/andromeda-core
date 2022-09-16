@@ -197,11 +197,9 @@ pub enum ContractError {
     #[error("StartTimeAfterEndTime")]
     StartTimeAfterEndTime {},
 
-    #[error(
-        "Start time in past. Current seconds: {current_seconds}. Current block: {current_block}"
-    )]
+    #[error("Start time in past. Current time: {current_time}. Current block: {current_block}")]
     StartTimeInThePast {
-        current_seconds: u64,
+        current_time: u64,
         current_block: u64,
     },
 
@@ -470,6 +468,9 @@ pub enum ContractError {
 
     #[error("Not an assigned operator, {msg:?}")]
     NotAssignedOperator { msg: Option<String> },
+
+    #[error("Invalid Expiration Time")]
+    InvalidExpirationTime {},
 }
 
 impl From<Cw20ContractError> for ContractError {
