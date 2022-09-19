@@ -20,7 +20,11 @@ impl<'a> IndexList<Escrow> for EscrowIndexes<'a> {
 
 pub fn escrows<'a>() -> IndexedMap<'a, Vec<u8>, Escrow, EscrowIndexes<'a>> {
     let indexes = EscrowIndexes {
-        owner: MultiIndex::new(|e| e.recipient_addr.clone(), "ownership", "escrow_owner"),
+        owner: MultiIndex::new(
+            |_pk: &[u8], e| e.recipient_addr.clone(),
+            "ownership",
+            "escrow_owner",
+        ),
     };
     IndexedMap::new("ownership", indexes)
 }

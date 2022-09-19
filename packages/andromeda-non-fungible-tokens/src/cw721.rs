@@ -9,8 +9,6 @@ use cosmwasm_std::{Binary, Coin};
 use cw721::Expiration;
 pub use cw721_base::MintMsg;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -65,7 +63,7 @@ pub struct TokenExtension {
     pub external_url: Option<String>,
     /// A URL to any multi-media attachments
     pub animation_url: Option<String>,
-    /// A URL to a related YouTube video
+    /// A URL to a related YouTube videos
     pub youtube_url: Option<String>,
 }
 
@@ -123,9 +121,12 @@ pub enum ExecuteMsg {
     BatchMint {
         tokens: Vec<MintMsg<TokenExtension>>,
     },
+    Extension {
+        msg: TokenExtension,
+    },
 }
 
-impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
+impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, TokenExtension> {
     fn from(msg: ExecuteMsg) -> Self {
         match msg {
             ExecuteMsg::TransferNft {
@@ -161,13 +162,15 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
             }
             ExecuteMsg::RevokeAll { operator } => Cw721ExecuteMsg::RevokeAll { operator },
             ExecuteMsg::Mint(msg) => Cw721ExecuteMsg::Mint(*msg),
+            ExecuteMsg::Burn { token_id } => Cw721ExecuteMsg::Burn { token_id },
+            ExecuteMsg::Extension { msg } => Cw721ExecuteMsg::Extension { msg },
+
             _ => panic!("Unsupported message"),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     AndrHook(AndromedaHook),
@@ -218,9 +221,12 @@ pub enum QueryMsg {
     ModuleInfo {},
     /// The current config of the contract
     ContractInfo {},
+    Extension {
+        msg: TokenExtension,
+    },
 }
 
-impl From<QueryMsg> for Cw721QueryMsg {
+impl From<QueryMsg> for Cw721QueryMsg<TokenExtension> {
     fn from(msg: QueryMsg) -> Self {
         match msg {
             QueryMsg::OwnerOf {
@@ -263,6 +269,7 @@ impl From<QueryMsg> for Cw721QueryMsg {
             QueryMsg::AllTokens { start_after, limit } => {
                 Cw721QueryMsg::AllTokens { start_after, limit }
             }
+            QueryMsg::Extension { msg } => Cw721QueryMsg::Extension { msg },
             _ => panic!("Unsupported message"),
         }
     }

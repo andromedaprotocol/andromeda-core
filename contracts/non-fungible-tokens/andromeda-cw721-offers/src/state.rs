@@ -24,7 +24,11 @@ impl<'a> IndexList<Offer> for OfferIndexes<'a> {
 
 pub fn offers<'a>() -> IndexedMap<'a, &'a str, Offer, OfferIndexes<'a>> {
     let indexes = OfferIndexes {
-        purchaser: MultiIndex::new(|e| e.purchaser.clone(), "ownership", "offer_purchaser"),
+        purchaser: MultiIndex::new(
+            |_pk: &[u8], e| e.purchaser.clone(),
+            "ownership",
+            "offer_purchaser",
+        ),
     };
     IndexedMap::new("ownership", indexes)
 }

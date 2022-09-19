@@ -37,6 +37,7 @@ pub struct StakerRewardInfo {
 
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
+
 pub(crate) fn get_stakers(
     storage: &dyn Storage,
     querier: &QuerierWrapper,

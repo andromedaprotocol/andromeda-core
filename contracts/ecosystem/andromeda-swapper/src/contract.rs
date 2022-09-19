@@ -111,6 +111,7 @@ fn execute_swap(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+
     ensure!(
         info.funds.len() <= 1,
         ContractError::InvalidFunds {

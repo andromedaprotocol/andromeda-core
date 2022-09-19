@@ -10,11 +10,12 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 cosmwasm-std = "1.1.0"
+cosmwasm-schema = "1.1.0"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-schemars = "0.8.3"
-cw-storage-plus = "0.13.2"
-cw20 = "0.13.2"
-cw2 = "0.13.2"
+schemars = "0.8.10"
+cw-storage-plus = "0.15.0"
+cw20 = "0.15.0"
+cw2 = "0.15.0"
 moneymarket = "0.3.0"
 anchor-token = "0.3.0"
 cosmwasm-bignumber = "2.2.0"
@@ -24,5 +25,3 @@ andromeda-ecosystem = { version = "0.1.0", path = "../../../packages/andromeda-e
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["primitive", "withdraw"] }
 
-[dev-dependencies]
-cosmwasm-schema = "1.1.0"

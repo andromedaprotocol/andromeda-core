@@ -31,7 +31,11 @@ impl<'a> IndexList<AuctionInfo> for AuctionIdIndices<'a> {
 
 pub fn auction_infos<'a>() -> IndexedMap<'a, &'a str, AuctionInfo, AuctionIdIndices<'a>> {
     let indexes = AuctionIdIndices {
-        token: MultiIndex::new(|r| r.token_address.clone(), "ownership", "token_index"),
+        token: MultiIndex::new(
+            |_pk: &[u8], r| r.token_address.clone(),
+            "ownership",
+            "token_index",
+        ),
     };
     IndexedMap::new("ownership", indexes)
 }

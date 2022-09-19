@@ -78,7 +78,11 @@ impl<'a> IndexList<SaleInfo> for SaleIdIndices<'a> {
 
 pub fn sale_infos<'a>() -> IndexedMap<'a, &'a str, SaleInfo, SaleIdIndices<'a>> {
     let indexes = SaleIdIndices {
-        token: MultiIndex::new(|r| r.token_address.clone(), "ownership", "token_index"),
+        token: MultiIndex::new(
+            |_pk: &[u8], r| r.token_address.clone(),
+            "ownership",
+            "token_index",
+        ),
     };
     IndexedMap::new("ownership", indexes)
 }
