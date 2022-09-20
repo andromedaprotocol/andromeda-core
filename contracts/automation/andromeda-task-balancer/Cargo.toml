@@ -1,0 +1,29 @@
+[package]
+name = "andromeda-task-balancer"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = "1.1.0"
+cosmwasm-storage = "1.1.0"
+cosmwasm-schema = "1.1.0"
+cw-storage-plus = "0.15.0"
+cw2 = "0.15.0"
+schemars = "0.8.8"
+serde = { version = "1.0.137", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.31" }
+semver = "1"
+
+andromeda-finance = { version = "0.1.0", path = "../../../packages/andromeda-finance" }
+andromeda-automation = { version = "0.1.0", path = "../../../packages/andromeda-automation" }
+
+ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["modules"] }
+common = { version = "0.1.0", path = "../../../packages/common" }
+
+[dev-dependencies]
+cosmwasm-schema = "1.0.0"
+
+andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }

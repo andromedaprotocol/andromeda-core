@@ -13,7 +13,7 @@ pub const RANDOMNESS_PROVIDER: Item<String> = Item::new("source of randomness");
 pub const STATE: Item<State> = Item::new("state");
 pub const STATUS: Item<bool> = Item::new("status");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct State {
     /// The price of each token.
     pub price: Coin,
