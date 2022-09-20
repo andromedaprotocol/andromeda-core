@@ -3,7 +3,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    attr, ensure, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
     MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -184,7 +184,6 @@ pub fn execute_claim(
     STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &claimed_amount)?;
 
     let transfer_msg: CosmosMsg = match config.asset_info {
-        AssetInfoBase::Cw1155(_address, _denom) => todo!(),
         AssetInfoBase::Native(denom) => CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: vec![Coin { amount, denom }],
@@ -197,7 +196,7 @@ pub fn execute_claim(
                 amount,
             })?,
         }),
-        _ => todo!(),
+        _ => CosmosMsg::Custom(Empty {}),
     };
 
     let res = Response::new()
@@ -244,7 +243,6 @@ pub fn execute_burn(
 
     let config = CONFIG.load(deps.storage)?;
     let burn_msg = match config.asset_info {
-        AssetInfoBase::Cw1155(_address, _denom) => todo!(),
         AssetInfoBase::Native(denom) => CosmosMsg::Bank(BankMsg::Burn {
             amount: vec![Coin {
                 amount: balance_to_burn,
@@ -258,7 +256,7 @@ pub fn execute_burn(
                 amount: balance_to_burn,
             })?,
         }),
-        _ => todo!(),
+        _ => CosmosMsg::Custom(Empty {}),
     };
 
     // Burn the tokens and response
