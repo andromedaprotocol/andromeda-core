@@ -164,7 +164,7 @@ fn execute_start_auction(
     ensure!(
         start_expiration.gt(&block_time),
         ContractError::StartTimeInThePast {
-            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO / 1000000,
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
         }
     );
@@ -1285,7 +1285,7 @@ mod tests {
 
         assert_eq!(
             ContractError::StartTimeInThePast {
-                current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO / 1000000,
+                current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
                 current_block: env.block.height,
             },
             res.unwrap_err()
