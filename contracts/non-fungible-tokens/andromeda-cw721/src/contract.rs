@@ -26,8 +26,7 @@ use common::{
 use cw721::ContractInfoResponse;
 use cw721_base::{state::TokenInfo, Cw721Contract, MintMsg};
 
-pub type AndrCW721Contract<'a> =
-    Cw721Contract<'a, TokenExtension, TokenExtension, TokenExtension, Empty>;
+pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 

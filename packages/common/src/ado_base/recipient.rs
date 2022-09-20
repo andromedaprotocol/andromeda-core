@@ -6,9 +6,9 @@ use crate::{
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg, WasmMsg};
-use cw1155::Cw1155ExecuteMsg;
+
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
-use cw_asset::{Asset, AssetInfo};
+use cw_asset::{AssetInfo, AssetInfoBase};
 
 /// ADOs use a default Receive message for handling funds,
 /// this struct states that the recipient is an ADO and may attach the data field to the Receive message
@@ -100,64 +100,27 @@ impl Recipient {
         })
     }
 
-    pub fn generate_msg_cw1155(
-        &self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        app_contract: Option<Addr>,
-        cw20_coin: Cw20Coin,
-    ) -> Result<SubMsg, ContractError> {
-        Ok(match &self {
-            Recipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
-                contract_addr: cw20_coin.address,
-                msg: encode_binary(&Cw20ExecuteMsg::Send {
-                    contract: self.get_addr(api, querier, app_contract)?,
-                    amount: cw20_coin.amount,
-                    msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(
-                        recip.msg.clone(),
-                    )))?,
-                })?,
-                funds: vec![],
-            }),
-            Recipient::Addr(addr) => SubMsg::new(WasmMsg::Execute {
-                contract_addr: cw20_coin.address,
-                msg: encode_binary(&Cw1155ExecuteMsg::BatchSendFrom {
-                    from: (),
-                    to: (),
-                    batch: (),
-                    msg: (),
-                })?,
-                funds: vec![],
-            }),
-        })
-    }
-
     pub fn generate_msg_from_asset(
         &self,
         api: &dyn Api,
         querier: &QuerierWrapper,
         app_contract: Option<Addr>,
-        asset: Asset,
+        asset: AssetInfo,
+        funds: Vec<Coin>,
     ) -> Result<SubMsg, ContractError> {
-        match asset.info {
-            AssetInfo::Cw20(contract_addr) => self.generate_msg_cw20(
+        match asset {
+            AssetInfoBase::Cw20(ref contract_addr) => self.generate_msg_cw20(
                 api,
                 querier,
                 app_contract,
                 Cw20Coin {
                     address: contract_addr.to_string(),
-                    amount: asset.amount,
+                    amount: asset.query_balance(querier, contract_addr)?,
                 },
             ),
-            AssetInfo::Native(denom) => self.generate_msg_native(
-                api,
-                querier,
-                app_contract,
-                vec![Coin {
-                    denom,
-                    amount: asset.amount,
-                }],
-            ),
+            AssetInfoBase::Native(_denom) => {
+                self.generate_msg_native(api, querier, app_contract, funds)
+            }
             _ => Err(ContractError::InvalidAsset {
                 asset: asset.to_string(),
             }),

@@ -5,6 +5,7 @@ use common::{
 };
 use cosmwasm_schema::cw_serde;
 
+use ::cw721::CustomMsg;
 use cosmwasm_std::{Binary, Coin};
 use cw721::Expiration;
 pub use cw721_base::MintMsg;
@@ -68,6 +69,9 @@ pub struct TokenExtension {
     pub youtube_url: Option<String>,
 }
 
+impl CustomMsg for ExecuteMsg {}
+impl CustomMsg for QueryMsg {}
+
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
@@ -123,11 +127,11 @@ pub enum ExecuteMsg {
         tokens: Vec<MintMsg<TokenExtension>>,
     },
     Extension {
-        msg: MetadataAttribute,
+        msg: Box<ExecuteMsg>,
     },
 }
 
-impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, MetadataAttribute> {
+impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
     fn from(msg: ExecuteMsg) -> Self {
         match msg {
             ExecuteMsg::TransferNft {
@@ -164,7 +168,7 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, MetadataAttribute> {
             ExecuteMsg::RevokeAll { operator } => Cw721ExecuteMsg::RevokeAll { operator },
             ExecuteMsg::Mint(msg) => Cw721ExecuteMsg::Mint(*msg),
             ExecuteMsg::Burn { token_id } => Cw721ExecuteMsg::Burn { token_id },
-            ExecuteMsg::Extension { msg } => Cw721ExecuteMsg::Extension { msg },
+            ExecuteMsg::Extension { msg } => Cw721ExecuteMsg::Extension { msg: *msg },
 
             _ => panic!("Unsupported message"),
         }
@@ -223,11 +227,11 @@ pub enum QueryMsg {
     /// The current config of the contract
     ContractInfo {},
     Extension {
-        msg: MetadataAttribute,
+        msg: Box<QueryMsg>,
     },
 }
 
-impl From<QueryMsg> for Cw721QueryMsg<MetadataAttribute> {
+impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
     fn from(msg: QueryMsg) -> Self {
         match msg {
             QueryMsg::OwnerOf {
@@ -270,7 +274,7 @@ impl From<QueryMsg> for Cw721QueryMsg<MetadataAttribute> {
             QueryMsg::AllTokens { start_after, limit } => {
                 Cw721QueryMsg::AllTokens { start_after, limit }
             }
-            QueryMsg::Extension { msg } => Cw721QueryMsg::Extension { msg },
+            QueryMsg::Extension { msg } => Cw721QueryMsg::Extension { msg: *msg },
             _ => panic!("Unsupported message"),
         }
     }
