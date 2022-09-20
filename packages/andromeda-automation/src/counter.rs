@@ -8,7 +8,6 @@ pub struct InstantiateMsg {}
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    /// Evaluates 2 pieces of data
     Increment {},
 }
 

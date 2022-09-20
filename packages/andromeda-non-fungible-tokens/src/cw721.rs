@@ -46,6 +46,7 @@ pub struct MetadataAttribute {
 /// https://docs.opensea.io/docs/metadata-standards
 /// Replicates OpenSea Metadata Standards
 #[cw_serde]
+#[derive(Default)]
 pub struct TokenExtension {
     /// The name of the token
     pub name: String,
@@ -122,11 +123,11 @@ pub enum ExecuteMsg {
         tokens: Vec<MintMsg<TokenExtension>>,
     },
     Extension {
-        msg: TokenExtension,
+        msg: MetadataAttribute,
     },
 }
 
-impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, TokenExtension> {
+impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, MetadataAttribute> {
     fn from(msg: ExecuteMsg) -> Self {
         match msg {
             ExecuteMsg::TransferNft {
@@ -222,11 +223,11 @@ pub enum QueryMsg {
     /// The current config of the contract
     ContractInfo {},
     Extension {
-        msg: TokenExtension,
+        msg: MetadataAttribute,
     },
 }
 
-impl From<QueryMsg> for Cw721QueryMsg<TokenExtension> {
+impl From<QueryMsg> for Cw721QueryMsg<MetadataAttribute> {
     fn from(msg: QueryMsg) -> Self {
         match msg {
             QueryMsg::OwnerOf {

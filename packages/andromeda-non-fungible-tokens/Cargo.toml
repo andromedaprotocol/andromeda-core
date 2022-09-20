@@ -18,7 +18,5 @@ schemars = "0.8.10"
 cw-utils = "0.15.0"
 cw721 = "0.15.0"
 cw721-base = { version = "0.15.0", features=["library"]}
-cw1155 = "0.15.0"
-cw1155-base = "0.15.0"
 
 common = { path = "../common", version = "0.1.0" }
