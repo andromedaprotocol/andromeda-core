@@ -13,8 +13,8 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
-cosmwasm-std = "1.1.0"
-cosmwasm-schema = "1.1.0"
+cosmwasm-std = "1.1.2"
+cosmwasm-schema = "1.1.2"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 schemars = "0.8.10"
 cw-storage-plus = "0.15.0"
