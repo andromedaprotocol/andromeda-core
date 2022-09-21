@@ -246,7 +246,7 @@ fn execute_interpret(
                 }))
                 .add_attribute("result", "sent by OR".to_string()))
         }
-        // At lease one result should be true, but not all of them
+        // At least one result should be true, but not all of them
         LogicGate::XOR => {
             // At least two results should be available
             ensure!(res.len() > 1_usize, ContractError::NotEnoughResults {});
@@ -306,7 +306,7 @@ fn execute_interpret(
                 }))
                 .add_attribute("result", "sent by NAND".to_string()))
         }
-        // Input should be all false
+        // All input should be false
         LogicGate::NOR => {
             // At least two results should be available
             ensure!(res.len() > 1_usize, ContractError::NotEnoughResults {});

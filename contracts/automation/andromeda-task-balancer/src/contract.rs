@@ -71,10 +71,31 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::Add { contract } => try_add(deps, env, info, contract),
         ExecuteMsg::UpdateAdmin { new_admin } => try_update(deps, info, new_admin),
+        // ExecuteMsg::HandleError { msg } => handle_error(deps, env, info, msg),
     }
 }
 
-pub fn try_add(
+// fn handle_error(
+//     deps: DepsMut,
+//     _env: Env,
+//     info: MessageInfo,
+//     msg: ContractError,
+// ) -> Result<Response, ContractError> {
+//     match msg {
+//         ContractError::UnmetCondition {} => {
+//             Ok(Response::new().add_attribute("ReceivedError", "unmet_condition"))
+//         }
+//         ContractError::ExecuteError {} => {
+//             CONTRACTS.remove(deps.storage, info.sender.to_string());
+//             Ok(Response::new()
+//                 .add_attribute("received_error", "execute_error")
+//                 .add_attribute("removed_contract", info.sender.to_string()))
+//         }
+//         _ => Err(ContractError::UnsupportedOperation {}),
+//     }
+// }
+
+fn try_add(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,

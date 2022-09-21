@@ -117,6 +117,9 @@ pub enum ContractError {
     #[error("ExpirationInPast")]
     ExpirationInPast {},
 
+    #[error("ExecuteError")]
+    ExecuteError {},
+
     #[error("UnspecifiedWithdrawalFrequency")]
     UnspecifiedWithdrawalFrequency {},
 

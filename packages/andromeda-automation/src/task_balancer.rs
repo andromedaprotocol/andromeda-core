@@ -1,6 +1,6 @@
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -13,6 +13,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     Add { contract: String },
+    // HandleError { msg:  },
     UpdateAdmin { new_admin: String },
 }
 
