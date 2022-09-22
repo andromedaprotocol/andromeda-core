@@ -1318,7 +1318,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::InvalidExpirationTime {}, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
     }
 
     #[test]
