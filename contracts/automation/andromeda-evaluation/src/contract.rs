@@ -1,8 +1,9 @@
-use crate::state::{CONDITION_ADO_ADDRESS, QUERY_ADO_ADDRESS};
+use crate::state::{CONDITION_ADO_ADDRESS, QUERY_ADO_ADDRESS, TASK_BALANCER_ADDRESS};
 use ado_base::state::ADOContract;
 use andromeda_automation::evaluation::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, Operators, QueryMsg,
 };
+use andromeda_automation::task_balancer::ExecuteMsg::RemoveProcess;
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
     error::ContractError,
@@ -30,6 +31,7 @@ pub fn instantiate(
 
     CONDITION_ADO_ADDRESS.save(deps.storage, &msg.condition_address)?;
     QUERY_ADO_ADDRESS.save(deps.storage, &msg.query_address)?;
+    TASK_BALANCER_ADDRESS.save(deps.storage, &msg.task_balancer)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -47,14 +49,27 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
+pub fn reply(deps: Deps, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+    // Load task balancer's address
+    let contract_addr = TASK_BALANCER_ADDRESS.load(deps.storage)?;
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let contract_addr = contract_addr.get_address(deps.api, &deps.querier, app_contract.clone())?;
+    if let Some(app_address) = app_contract {
+        match reply.id {
+            1 => Ok(Response::new().add_submessage(SubMsg::new(CosmosMsg::Wasm(
+                WasmMsg::Execute {
+                    contract_addr,
+                    msg: to_binary(&RemoveProcess {
+                        process_address: app_address.into_string(),
+                    })?,
+                    funds: vec![],
+                },
+            )))),
+            _ => Err(ContractError::AccountNotFound {}),
+        }
+    } else {
+        Err(ContractError::AccountNotFound {})
     }
-
-    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -145,13 +160,17 @@ fn execute_evaluate(
     match operation {
         Operators::Greater => Ok(Response::new()
             .add_attribute("result", (oracle_value > user_value).to_string())
-            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr,
-                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-                    result: oracle_value > user_value,
-                })?,
-                funds: vec![],
-            })))),
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr,
+                    msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                        result: oracle_value > user_value,
+                    })?,
+                    funds: vec![],
+                }),
+                1,
+            ))),
+
         Operators::GreaterEqual => Ok(Response::new()
             .add_attribute("result", (oracle_value >= user_value).to_string())
             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -266,9 +285,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -304,10 +327,14 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let operation = Operators::Greater;
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -343,10 +370,14 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let operation = Operators::Greater;
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -382,10 +413,14 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let operation = Operators::Greater;
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -422,9 +457,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -461,9 +500,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -500,9 +543,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -539,9 +586,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -578,9 +629,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -617,9 +672,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -656,9 +715,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -695,9 +758,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -734,9 +801,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -773,9 +844,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -812,9 +887,13 @@ mod tests {
         let query_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -852,9 +931,14 @@ mod tests {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
 
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
+
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -891,9 +975,14 @@ mod tests {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
 
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
+
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 
@@ -920,9 +1009,14 @@ mod tests {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
 
+        let task_balancer = AndrAddress {
+            identifier: "task_balancer_address".to_string(),
+        };
+
         let msg = InstantiateMsg {
             condition_address,
             query_address,
+            task_balancer,
         };
         let info = mock_info("creator", &[]);
 

@@ -113,13 +113,14 @@ fn execute_execute(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respon
         app_contract,
     )?;
 
-    Ok(
-        Response::new().add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+    Ok(Response::new().add_submessage(SubMsg::reply_on_error(
+        CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr,
             msg: to_binary(&counter::ExecuteMsg::Increment {})?,
             funds: vec![],
-        }))),
-    )
+        }),
+        2,
+    )))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

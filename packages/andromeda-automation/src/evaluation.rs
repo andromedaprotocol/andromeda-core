@@ -8,11 +8,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
-    // Execute ADO's address
+    // Condition ADO's address
     pub condition_address: AndrAddress,
 
     // Query ADO's address
     pub query_address: AndrAddress,
+
+    // Task balancer ADO's address
+    pub task_balancer: AndrAddress,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
