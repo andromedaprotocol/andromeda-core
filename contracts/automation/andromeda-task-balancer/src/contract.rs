@@ -83,6 +83,10 @@ fn remove_processs(
     info: MessageInfo,
     process_address: String,
 ) -> Result<Response, ContractError> {
+    CONTRACTS.remove(deps.storage, process_address)?;
+    Ok(Response::new()
+        .add_attribute("action", "removed_process")
+        .add_attribute("process", process_address))
 }
 
 fn try_add(
