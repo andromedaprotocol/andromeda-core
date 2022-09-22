@@ -1,6 +1,6 @@
 use andromeda_non_fungible_tokens::{
     cw721::{QueryMsg as CW721QueryMsg, TransferAgreement},
-    cw721_offers::Offer,
+    cw721_bid::Bid,
 };
 use common::error::ContractError;
 use cosmwasm_std::{QuerierWrapper, Storage};
@@ -10,24 +10,24 @@ use serde::{de::DeserializeOwned, Serialize};
 pub const CW721_CONTRACT: Item<String> = Item::new("cw721_contract");
 pub const VALID_DENOM: Item<String> = Item::new("valid_denom");
 
-pub struct OfferIndexes<'a> {
+pub struct BidIndexes<'a> {
     /// (purchaser, token_id))
-    pub purchaser: MultiIndex<'a, String, Offer, String>,
+    pub purchaser: MultiIndex<'a, String, Bid, String>,
 }
 
-impl<'a> IndexList<Offer> for OfferIndexes<'a> {
-    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Offer>> + '_> {
-        let v: Vec<&dyn Index<Offer>> = vec![&self.purchaser];
+impl<'a> IndexList<Bid> for BidIndexes<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Bid>> + '_> {
+        let v: Vec<&dyn Index<Bid>> = vec![&self.purchaser];
         Box::new(v.into_iter())
     }
 }
 
-pub fn offers<'a>() -> IndexedMap<'a, &'a str, Offer, OfferIndexes<'a>> {
-    let indexes = OfferIndexes {
+pub fn bids<'a>() -> IndexedMap<'a, &'a str, Bid, BidIndexes<'a>> {
+    let indexes = BidIndexes {
         purchaser: MultiIndex::new(
             |_pk: &[u8], e| e.purchaser.clone(),
             "ownership",
-            "offer_purchaser",
+            "bid_purchaser",
         ),
     };
     IndexedMap::new("ownership", indexes)

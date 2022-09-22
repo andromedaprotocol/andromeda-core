@@ -10,6 +10,7 @@ use common::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
+    expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
     rates::get_tax_amount,
     Funds, OrderBy,
 };
@@ -78,7 +79,7 @@ pub fn execute(
             token_id,
             token_address,
             start_time,
-            end_time,
+            duration,
             coin_denom,
             whitelist,
             min_bid,
@@ -89,7 +90,7 @@ pub fn execute(
             token_id,
             token_address,
             start_time,
-            end_time,
+            duration,
             coin_denom,
             whitelist,
             min_bid,
@@ -118,7 +119,7 @@ fn handle_receive_cw721(
     match from_binary(&msg.msg)? {
         Cw721HookMsg::StartAuction {
             start_time,
-            end_time,
+            duration,
             coin_denom,
             whitelist,
             min_bid,
@@ -129,7 +130,7 @@ fn handle_receive_cw721(
             msg.token_id,
             info.sender.to_string(),
             start_time,
-            end_time,
+            duration,
             coin_denom,
             whitelist,
             min_bid,
@@ -144,29 +145,25 @@ fn execute_start_auction(
     sender: String,
     token_id: String,
     token_address: String,
-    start_time: Expiration,
-    end_time: Expiration,
+    start_time: u64,
+    duration: u64,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     ensure!(
-        start_time != Expiration::Never {} && end_time != Expiration::Never {},
-        ContractError::ExpirationMustNotBeNever {}
+        start_time > 0 && duration > 0,
+        ContractError::InvalidExpiration {}
     );
+
+    let start_expiration = expiration_from_milliseconds(start_time)?;
+    let end_expiration = expiration_from_milliseconds(start_time + duration)?;
+
+    let block_time = block_to_expiration(&env.block, start_expiration).unwrap();
     ensure!(
-        start_time.partial_cmp(&end_time) != None,
-        ContractError::ExpirationsMustBeOfSameType {}
-    );
-    ensure!(
-        start_time < end_time,
-        ContractError::StartTimeAfterEndTime {}
-    );
-    let block_time = block_to_expiration(&env.block, start_time).unwrap();
-    ensure!(
-        start_time > block_time,
+        start_expiration.gt(&block_time),
         ContractError::StartTimeInThePast {
-            current_seconds: env.block.time.seconds(),
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
         }
     );
@@ -180,8 +177,8 @@ fn execute_start_auction(
         deps.storage,
         auction_id.u128(),
         &TokenAuctionState {
-            start_time,
-            end_time,
+            start_time: start_expiration,
+            end_time: end_expiration,
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             coin_denom: coin_denom.clone(),
@@ -196,8 +193,8 @@ fn execute_start_auction(
     )?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "start_auction"),
-        attr("start_time", start_time.to_string()),
-        attr("end_time", end_time.to_string()),
+        attr("start_time", start_expiration.to_string()),
+        attr("end_time", end_expiration.to_string()),
         attr("coin_denom", coin_denom),
         attr("auction_id", auction_id.to_string()),
         attr("whitelist", whitelist_str),
@@ -211,8 +208,8 @@ fn execute_update_auction(
     info: MessageInfo,
     token_id: String,
     token_address: String,
-    start_time: Expiration,
-    end_time: Expiration,
+    start_time: u64,
+    duration: u64,
     coin_denom: String,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
@@ -230,27 +227,22 @@ fn execute_update_auction(
         ContractError::AuctionAlreadyStarted {}
     );
     ensure!(
-        start_time != Expiration::Never {} && end_time != Expiration::Never {},
-        ContractError::ExpirationMustNotBeNever {}
+        start_time > 0 && duration > 0,
+        ContractError::InvalidExpiration {}
     );
+
+    let start_exp = expiration_from_milliseconds(start_time)?;
+    let end_exp = expiration_from_milliseconds(start_time + duration)?;
     ensure!(
-        start_time.partial_cmp(&end_time) != None,
-        ContractError::ExpirationsMustBeOfSameType {}
-    );
-    ensure!(
-        start_time < end_time,
-        ContractError::StartTimeAfterEndTime {}
-    );
-    ensure!(
-        !start_time.is_expired(&env.block),
+        !start_exp.is_expired(&env.block),
         ContractError::StartTimeInThePast {
-            current_seconds: env.block.time.seconds(),
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
         }
     );
 
-    token_auction_state.start_time = start_time;
-    token_auction_state.end_time = end_time;
+    token_auction_state.start_time = start_exp;
+    token_auction_state.end_time = end_exp;
     token_auction_state.whitelist = whitelist.clone();
     token_auction_state.coin_denom = coin_denom.clone();
     token_auction_state.min_bid = min_bid;
@@ -262,7 +254,7 @@ fn execute_update_auction(
     Ok(Response::new().add_attributes(vec![
         attr("action", "start_auction"),
         attr("start_time", start_time.to_string()),
-        attr("end_time", end_time.to_string()),
+        attr("end_time", end_exp.to_string()),
         attr("coin_denom", coin_denom),
         attr("auction_id", token_auction_state.auction_id.to_string()),
         attr("whitelist", format!("{:?}", &whitelist)),
@@ -446,13 +438,15 @@ fn execute_claim(
         ContractError::AuctionAlreadyClaimed {}
     );
     // This is the case where no-one bid on the token.
-    if token_auction_state.high_bidder_amount.is_zero() {
+    if token_auction_state.high_bidder_addr.to_string().is_empty()
+        || token_auction_state.high_bidder_amount.is_zero()
+    {
         return Ok(Response::new()
             // Send NFT back to the original owner.
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: token_auction_state.token_address.clone(),
                 msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: token_auction_state.owner,
+                    recipient: token_auction_state.owner.clone(),
                     token_id: token_id.clone(),
                 })?,
                 funds: vec![],
@@ -460,7 +454,7 @@ fn execute_claim(
             .add_attribute("action", "claim")
             .add_attribute("token_id", token_id)
             .add_attribute("token_contract", token_auction_state.token_address)
-            .add_attribute("recipient", &token_auction_state.high_bidder_addr)
+            .add_attribute("recipient", token_auction_state.owner)
             .add_attribute("winning_bid_amount", token_auction_state.high_bidder_amount)
             .add_attribute("auction_id", token_auction_state.auction_id));
     }
@@ -754,8 +748,8 @@ mod tests {
 
     fn start_auction(deps: DepsMut, whitelist: Option<Vec<Addr>>, min_bid: Option<Uint128>) {
         let hook_msg = Cw721HookMsg::StartAuction {
-            start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
-            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+            start_time: 100000,
+            duration: 100000,
             coin_denom: "uusd".to_string(),
             whitelist,
             min_bid,
@@ -1153,7 +1147,7 @@ mod tests {
     }
 
     #[test]
-    fn execute_start_auction() {
+    fn test_execute_start_auction() {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
@@ -1161,8 +1155,8 @@ mod tests {
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
-            start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
-            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+            start_time: 100000,
+            duration: 100000,
             coin_denom: "uusd".to_string(),
             whitelist: None,
             min_bid: None,
@@ -1192,76 +1186,76 @@ mod tests {
         assert_auction_created(deps.as_ref(), None, None);
     }
 
-    #[test]
-    fn execute_start_auction_with_block_height() {
-        let mut deps = mock_dependencies_custom(&[]);
-        let env = mock_env();
-        let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg { modules: None };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    // #[test]
+    // fn execute_start_auction_with_block_height() {
+    //     let mut deps = mock_dependencies_custom(&[]);
+    //     let env = mock_env();
+    //     let info = mock_info("owner", &[]);
+    //     let msg = InstantiateMsg { modules: None };
+    //     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let hook_msg = Cw721HookMsg::StartAuction {
-            start_time: Expiration::AtHeight(100),
-            end_time: Expiration::AtHeight(200),
-            coin_denom: "uusd".to_string(),
-            whitelist: None,
-            min_bid: None,
-        };
-        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
-            sender: MOCK_TOKEN_OWNER.to_owned(),
-            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-            msg: encode_binary(&hook_msg).unwrap(),
-        });
-        let mut env = mock_env();
-        env.block.height = 0;
+    //     let hook_msg = Cw721HookMsg::StartAuction {
+    //         start_time: Expiration::AtHeight(100),
+    //         end_time: Expiration::AtHeight(200),
+    //         coin_denom: "uusd".to_string(),
+    //         whitelist: None,
+    //         min_bid: None,
+    //     };
+    //     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+    //         sender: MOCK_TOKEN_OWNER.to_owned(),
+    //         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+    //         msg: encode_binary(&hook_msg).unwrap(),
+    //     });
+    //     let mut env = mock_env();
+    //     env.block.height = 0;
 
-        let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    //     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    //     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-        assert_eq!(
-            res,
-            Response::new().add_attributes(vec![
-                attr("action", "start_auction"),
-                attr("start_time", "expiration height: 100"),
-                attr("end_time", "expiration height: 200"),
-                attr("coin_denom", "uusd"),
-                attr("auction_id", "1"),
-                attr("whitelist", "None"),
-            ]),
-        );
-    }
+    //     assert_eq!(
+    //         res,
+    //         Response::new().add_attributes(vec![
+    //             attr("action", "start_auction"),
+    //             attr("start_time", "expiration height: 100"),
+    //             attr("end_time", "expiration height: 200"),
+    //             attr("coin_denom", "uusd"),
+    //             attr("auction_id", "1"),
+    //             attr("whitelist", "None"),
+    //         ]),
+    //     );
+    // }
 
-    #[test]
-    fn execute_start_auction_with_mismatched_expirations() {
-        let mut deps = mock_dependencies_custom(&[]);
-        let env = mock_env();
-        let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg { modules: None };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    // #[test]
+    // fn execute_start_auction_with_mismatched_expirations() {
+    //     let mut deps = mock_dependencies_custom(&[]);
+    //     let env = mock_env();
+    //     let info = mock_info("owner", &[]);
+    //     let msg = InstantiateMsg { modules: None };
+    //     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let hook_msg = Cw721HookMsg::StartAuction {
-            start_time: Expiration::AtHeight(100),
-            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
-            coin_denom: "uusd".to_string(),
-            whitelist: None,
-            min_bid: None,
-        };
-        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
-            sender: MOCK_TOKEN_OWNER.to_owned(),
-            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-            msg: encode_binary(&hook_msg).unwrap(),
-        });
-        let mut env = mock_env();
-        env.block.height = 0;
+    //     let hook_msg = Cw721HookMsg::StartAuction {
+    //         start_time: Expiration::AtHeight(100),
+    //         end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+    //         coin_denom: "uusd".to_string(),
+    //         whitelist: None,
+    //         min_bid: None,
+    //     };
+    //     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+    //         sender: MOCK_TOKEN_OWNER.to_owned(),
+    //         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+    //         msg: encode_binary(&hook_msg).unwrap(),
+    //     });
+    //     let mut env = mock_env();
+    //     env.block.height = 0;
 
-        let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-        let res = execute(deps.as_mut(), env, info, msg);
+    //     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    //     let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(
-            ContractError::ExpirationsMustBeOfSameType {},
-            res.unwrap_err()
-        );
-    }
+    //     assert_eq!(
+    //         ContractError::ExpirationsMustBeOfSameType {},
+    //         res.unwrap_err()
+    //     );
+    // }
 
     #[test]
     fn execute_start_auction_start_time_in_past() {
@@ -1272,8 +1266,8 @@ mod tests {
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
-            start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
-            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+            start_time: 100000,
+            duration: 100000,
             coin_denom: "uusd".to_string(),
             whitelist: None,
             min_bid: None,
@@ -1291,7 +1285,7 @@ mod tests {
 
         assert_eq!(
             ContractError::StartTimeInThePast {
-                current_seconds: env.block.time.seconds(),
+                current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
                 current_block: env.block.height,
             },
             res.unwrap_err()
@@ -1299,7 +1293,7 @@ mod tests {
     }
 
     #[test]
-    fn execute_start_auction_start_time_after_end_time() {
+    fn execute_start_auction_zero_start_time() {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
@@ -1307,8 +1301,8 @@ mod tests {
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
-            start_time: Expiration::AtTime(Timestamp::from_seconds(200)),
-            end_time: Expiration::AtTime(Timestamp::from_seconds(100)),
+            start_time: 0,
+            duration: 1,
             coin_denom: "uusd".to_string(),
             whitelist: None,
             min_bid: None,
@@ -1324,11 +1318,11 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::StartTimeAfterEndTime {}, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpirationTime {}, res.unwrap_err());
     }
 
     #[test]
-    fn execute_start_auction_start_time_never() {
+    fn execute_start_auction_zero_duration() {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
@@ -1336,8 +1330,8 @@ mod tests {
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
-            start_time: Expiration::Never {},
-            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+            start_time: 100,
+            duration: 0,
             coin_denom: "uusd".to_string(),
             whitelist: None,
             min_bid: None,
@@ -1353,40 +1347,40 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_ADDR, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::ExpirationMustNotBeNever {}, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
     }
 
+    // #[test]
+    // fn execute_start_auction_end_time_never() {
+    //     let mut deps = mock_dependencies_custom(&[]);
+    //     let env = mock_env();
+    //     let info = mock_info("owner", &[]);
+    //     let msg = InstantiateMsg { modules: None };
+    //     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+    //     let hook_msg = Cw721HookMsg::StartAuction {
+    //         end_time: Expiration::Never {},
+    //         start_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+    //         coin_denom: "uusd".to_string(),
+    //         whitelist: None,
+    //         min_bid: None,
+    //     };
+    //     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+    //         sender: MOCK_TOKEN_OWNER.to_owned(),
+    //         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+    //         msg: encode_binary(&hook_msg).unwrap(),
+    //     });
+    //     let mut env = mock_env();
+    //     env.block.time = Timestamp::from_seconds(0);
+
+    //     let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    //     let res = execute(deps.as_mut(), env, info, msg);
+
+    //     assert_eq!(ContractError::ExpirationMustNotBeNever {}, res.unwrap_err());
+    // }
+
     #[test]
-    fn execute_start_auction_end_time_never() {
-        let mut deps = mock_dependencies_custom(&[]);
-        let env = mock_env();
-        let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg { modules: None };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        let hook_msg = Cw721HookMsg::StartAuction {
-            end_time: Expiration::Never {},
-            start_time: Expiration::AtTime(Timestamp::from_seconds(200)),
-            coin_denom: "uusd".to_string(),
-            whitelist: None,
-            min_bid: None,
-        };
-        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
-            sender: MOCK_TOKEN_OWNER.to_owned(),
-            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-            msg: encode_binary(&hook_msg).unwrap(),
-        });
-        let mut env = mock_env();
-        env.block.time = Timestamp::from_seconds(0);
-
-        let info = mock_info(MOCK_TOKEN_ADDR, &[]);
-        let res = execute(deps.as_mut(), env, info, msg);
-
-        assert_eq!(ContractError::ExpirationMustNotBeNever {}, res.unwrap_err());
-    }
-
-    #[test]
-    fn execute_update_auction_with_mismatched_expirations() {
+    fn execute_update_auction_zero_start() {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
@@ -1398,8 +1392,8 @@ mod tests {
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
             token_address: MOCK_TOKEN_ADDR.to_string(),
-            start_time: Expiration::AtHeight(100),
-            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+            start_time: 0,
+            duration: 1,
             coin_denom: "uusd".to_string(),
             whitelist: None,
             min_bid: None,
@@ -1411,10 +1405,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(
-            ContractError::ExpirationsMustBeOfSameType {},
-            res.unwrap_err()
-        );
+        assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
     }
 
     #[test]
@@ -1430,22 +1421,22 @@ mod tests {
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
             token_address: MOCK_TOKEN_ADDR.to_string(),
-            start_time: Expiration::AtHeight(100),
-            end_time: Expiration::AtHeight(200),
+            start_time: 1,
+            duration: 1,
             coin_denom: "uusd".to_string(),
             whitelist: None,
             min_bid: None,
         };
         let mut env = mock_env();
         env.block.height = 150;
-        env.block.time = Timestamp::from_seconds(0);
+        env.block.time = Timestamp::from_seconds(10);
 
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg);
 
         assert_eq!(
             ContractError::StartTimeInThePast {
-                current_seconds: env.block.time.seconds(),
+                current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
                 current_block: env.block.height,
             },
             res.unwrap_err()
@@ -1453,7 +1444,7 @@ mod tests {
     }
 
     #[test]
-    fn execute_update_auction_start_time_after_end_time() {
+    fn execute_update_auction_zero_duration() {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("owner", &[]);
@@ -1465,37 +1456,8 @@ mod tests {
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
             token_address: MOCK_TOKEN_ADDR.to_string(),
-            start_time: Expiration::AtHeight(200),
-            end_time: Expiration::AtHeight(100),
-            coin_denom: "uusd".to_string(),
-            whitelist: None,
-            min_bid: None,
-        };
-        let mut env = mock_env();
-        env.block.height = 0;
-        env.block.time = Timestamp::from_seconds(0);
-
-        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let res = execute(deps.as_mut(), env, info, msg);
-
-        assert_eq!(ContractError::StartTimeAfterEndTime {}, res.unwrap_err());
-    }
-
-    #[test]
-    fn execute_update_auction_start_time_never() {
-        let mut deps = mock_dependencies_custom(&[]);
-        let env = mock_env();
-        let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg { modules: None };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        start_auction(deps.as_mut(), None, None);
-
-        let msg = ExecuteMsg::UpdateAuction {
-            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-            token_address: MOCK_TOKEN_ADDR.to_string(),
-            start_time: Expiration::Never {},
-            end_time: Expiration::AtHeight(200),
+            start_time: 100000,
+            duration: 0,
             coin_denom: "uusd".to_string(),
             whitelist: None,
             min_bid: None,
@@ -1506,35 +1468,7 @@ mod tests {
         let info = mock_info(MOCK_TOKEN_OWNER, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
 
-        assert_eq!(ContractError::ExpirationMustNotBeNever {}, res.unwrap_err());
-    }
-
-    #[test]
-    fn execute_update_auction_end_time_never() {
-        let mut deps = mock_dependencies_custom(&[]);
-        let env = mock_env();
-        let info = mock_info("owner", &[]);
-        let msg = InstantiateMsg { modules: None };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        start_auction(deps.as_mut(), None, None);
-
-        let msg = ExecuteMsg::UpdateAuction {
-            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-            token_address: MOCK_TOKEN_ADDR.to_string(),
-            start_time: Expiration::AtHeight(100),
-            end_time: Expiration::Never {},
-            coin_denom: "uusd".to_string(),
-            whitelist: None,
-            min_bid: None,
-        };
-        let mut env = mock_env();
-        env.block.time = Timestamp::from_seconds(0);
-
-        let info = mock_info(MOCK_TOKEN_OWNER, &[]);
-        let res = execute(deps.as_mut(), env, info, msg);
-
-        assert_eq!(ContractError::ExpirationMustNotBeNever {}, res.unwrap_err());
+        assert_eq!(ContractError::InvalidExpiration {}, res.unwrap_err());
     }
 
     #[test]
@@ -1550,8 +1484,8 @@ mod tests {
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
             token_address: MOCK_TOKEN_ADDR.to_string(),
-            start_time: Expiration::AtHeight(100),
-            end_time: Expiration::AtHeight(200),
+            start_time: 100000,
+            duration: 100,
             coin_denom: "uluna".to_string(),
             whitelist: Some(vec![Addr::unchecked("user")]),
             min_bid: None,
@@ -1578,8 +1512,8 @@ mod tests {
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
             token_address: MOCK_TOKEN_ADDR.to_string(),
-            start_time: Expiration::AtHeight(100),
-            end_time: Expiration::AtHeight(200),
+            start_time: 100000,
+            duration: 100,
             coin_denom: "uluna".to_string(),
             whitelist: Some(vec![Addr::unchecked("user")]),
             min_bid: None,
@@ -1606,8 +1540,8 @@ mod tests {
         let msg = ExecuteMsg::UpdateAuction {
             token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
             token_address: MOCK_TOKEN_ADDR.to_string(),
-            start_time: Expiration::AtHeight(100),
-            end_time: Expiration::AtHeight(200),
+            start_time: 100000,
+            duration: 100000,
             coin_denom: "uluna".to_string(),
             whitelist: Some(vec![Addr::unchecked("user")]),
             min_bid: None,
@@ -1620,8 +1554,8 @@ mod tests {
         let _res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(
             TokenAuctionState {
-                start_time: Expiration::AtHeight(100),
-                end_time: Expiration::AtHeight(200),
+                start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
+                end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
                 high_bidder_addr: Addr::unchecked(""),
                 high_bidder_amount: Uint128::zero(),
                 coin_denom: "uluna".to_string(),
@@ -1650,8 +1584,8 @@ mod tests {
         start_auction(deps.as_mut(), None, None);
 
         let hook_msg = Cw721HookMsg::StartAuction {
-            start_time: Expiration::AtTime(Timestamp::from_seconds(300)),
-            end_time: Expiration::AtTime(Timestamp::from_seconds(400)),
+            start_time: 300000,
+            duration: 100000,
             coin_denom: "uusd".to_string(),
             whitelist: None,
             min_bid: None,
@@ -1712,7 +1646,7 @@ mod tests {
                 .add_attribute("action", "claim")
                 .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
                 .add_attribute("token_contract", MOCK_TOKEN_ADDR)
-                .add_attribute("recipient", "")
+                .add_attribute("recipient", MOCK_TOKEN_OWNER)
                 .add_attribute("winning_bid_amount", Uint128::zero())
                 .add_attribute("auction_id", "1"),
             res
@@ -1884,8 +1818,8 @@ mod tests {
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let hook_msg = Cw721HookMsg::StartAuction {
-            start_time: Expiration::AtTime(Timestamp::from_seconds(100)),
-            end_time: Expiration::AtTime(Timestamp::from_seconds(200)),
+            start_time: 100000,
+            duration: 100000,
             coin_denom: "uusd".to_string(),
             whitelist: None,
             min_bid: None,

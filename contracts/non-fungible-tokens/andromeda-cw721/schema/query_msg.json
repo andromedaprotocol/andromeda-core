@@ -48,7 +48,8 @@
             "token_id": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -89,7 +90,8 @@
                 "null"
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -102,7 +104,8 @@
       ],
       "properties": {
         "num_tokens": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -123,7 +126,8 @@
             "token_id": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -150,7 +154,8 @@
             "token_id": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -185,7 +190,8 @@
                 "null"
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -214,7 +220,8 @@
                 "null"
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -235,7 +242,8 @@
             "token_id": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -256,7 +264,8 @@
             "token_id": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -269,7 +278,8 @@
       ],
       "properties": {
         "module_info": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -282,7 +292,29 @@
       ],
       "properties": {
         "contract_info": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "extension"
+      ],
+      "properties": {
+        "extension": {
+          "type": "object",
+          "required": [
+            "msg"
+          ],
+          "properties": {
+            "msg": {
+              "$ref": "#/definitions/QueryMsg"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -310,7 +342,8 @@
                 "sender": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -338,7 +371,8 @@
                 "sender": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -366,7 +400,8 @@
                 "token_id": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -378,10 +413,10 @@
         {
           "type": "object",
           "required": [
-            "get"
+            "Get"
           ],
           "properties": {
-            "get": {
+            "Get": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Binary"
@@ -397,10 +432,10 @@
         {
           "type": "object",
           "required": [
-            "owner"
+            "Owner"
           ],
           "properties": {
-            "owner": {
+            "Owner": {
               "type": "object"
             }
           },
@@ -409,10 +444,10 @@
         {
           "type": "object",
           "required": [
-            "operators"
+            "Operators"
           ],
           "properties": {
-            "operators": {
+            "Operators": {
               "type": "object"
             }
           },
@@ -421,10 +456,10 @@
         {
           "type": "object",
           "required": [
-            "type"
+            "Type"
           ],
           "properties": {
-            "type": {
+            "Type": {
               "type": "object"
             }
           },
@@ -433,10 +468,10 @@
         {
           "type": "object",
           "required": [
-            "original_publisher"
+            "OriginalPublisher"
           ],
           "properties": {
-            "original_publisher": {
+            "OriginalPublisher": {
               "type": "object"
             }
           },
@@ -445,10 +480,10 @@
         {
           "type": "object",
           "required": [
-            "block_height_upon_creation"
+            "BlockHeightUponCreation"
           ],
           "properties": {
-            "block_height_upon_creation": {
+            "BlockHeightUponCreation": {
               "type": "object"
             }
           },
@@ -457,10 +492,10 @@
         {
           "type": "object",
           "required": [
-            "is_operator"
+            "IsOperator"
           ],
           "properties": {
-            "is_operator": {
+            "IsOperator": {
               "type": "object",
               "required": [
                 "address"
@@ -477,10 +512,10 @@
         {
           "type": "object",
           "required": [
-            "module"
+            "Module"
           ],
           "properties": {
-            "module": {
+            "Module": {
               "type": "object",
               "required": [
                 "id"
@@ -497,10 +532,10 @@
         {
           "type": "object",
           "required": [
-            "module_ids"
+            "ModuleIds"
           ],
           "properties": {
-            "module_ids": {
+            "ModuleIds": {
               "type": "object"
             }
           },
@@ -509,10 +544,10 @@
         {
           "type": "object",
           "required": [
-            "version"
+            "Version"
           ],
           "properties": {
-            "version": {
+            "Version": {
               "type": "object"
             }
           },
@@ -521,7 +556,7 @@
       ]
     },
     "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
     },
     "Coin": {
@@ -552,17 +587,18 @@
         "amount": {
           "$ref": "#/definitions/Uint128"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "Funds": {
       "oneOf": [
         {
           "type": "object",
           "required": [
-            "Native"
+            "native"
           ],
           "properties": {
-            "Native": {
+            "native": {
               "$ref": "#/definitions/Coin"
             }
           },
@@ -571,11 +607,332 @@
         {
           "type": "object",
           "required": [
-            "Cw20"
+            "cw20"
           ],
           "properties": {
-            "Cw20": {
+            "cw20": {
               "$ref": "#/definitions/Cw20Coin"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "QueryMsg": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "andr_query"
+          ],
+          "properties": {
+            "andr_query": {
+              "$ref": "#/definitions/AndromedaQuery"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "andr_hook"
+          ],
+          "properties": {
+            "andr_hook": {
+              "$ref": "#/definitions/AndromedaHook"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Owner of the given token by ID",
+          "type": "object",
+          "required": [
+            "owner_of"
+          ],
+          "properties": {
+            "owner_of": {
+              "type": "object",
+              "required": [
+                "token_id"
+              ],
+              "properties": {
+                "include_expired": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "token_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Approvals for a given address (paginated)",
+          "type": "object",
+          "required": [
+            "all_operators"
+          ],
+          "properties": {
+            "all_operators": {
+              "type": "object",
+              "required": [
+                "owner"
+              ],
+              "properties": {
+                "include_expired": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "limit": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "start_after": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Amount of tokens minted by the contract",
+          "type": "object",
+          "required": [
+            "num_tokens"
+          ],
+          "properties": {
+            "num_tokens": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The data of a token",
+          "type": "object",
+          "required": [
+            "nft_info"
+          ],
+          "properties": {
+            "nft_info": {
+              "type": "object",
+              "required": [
+                "token_id"
+              ],
+              "properties": {
+                "token_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The data of a token and any approvals assigned to it",
+          "type": "object",
+          "required": [
+            "all_nft_info"
+          ],
+          "properties": {
+            "all_nft_info": {
+              "type": "object",
+              "required": [
+                "token_id"
+              ],
+              "properties": {
+                "include_expired": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "token_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "All tokens minted by the contract owned by a given address (paginated)",
+          "type": "object",
+          "required": [
+            "tokens"
+          ],
+          "properties": {
+            "tokens": {
+              "type": "object",
+              "required": [
+                "owner"
+              ],
+              "properties": {
+                "limit": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "start_after": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "All tokens minted by the contract (paginated)",
+          "type": "object",
+          "required": [
+            "all_tokens"
+          ],
+          "properties": {
+            "all_tokens": {
+              "type": "object",
+              "properties": {
+                "limit": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "start_after": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "If the token is archived",
+          "type": "object",
+          "required": [
+            "is_archived"
+          ],
+          "properties": {
+            "is_archived": {
+              "type": "object",
+              "required": [
+                "token_id"
+              ],
+              "properties": {
+                "token_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The transfer agreement for the token",
+          "type": "object",
+          "required": [
+            "transfer_agreement"
+          ],
+          "properties": {
+            "transfer_agreement": {
+              "type": "object",
+              "required": [
+                "token_id"
+              ],
+              "properties": {
+                "token_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Info of any modules assigned to the contract",
+          "type": "object",
+          "required": [
+            "module_info"
+          ],
+          "properties": {
+            "module_info": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The current config of the contract",
+          "type": "object",
+          "required": [
+            "contract_info"
+          ],
+          "properties": {
+            "contract_info": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "extension"
+          ],
+          "properties": {
+            "extension": {
+              "type": "object",
+              "required": [
+                "msg"
+              ],
+              "properties": {
+                "msg": {
+                  "$ref": "#/definitions/QueryMsg"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

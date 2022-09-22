@@ -1,5 +1,5 @@
 {
-  "contract_name": "andromeda-cw721-offers",
+  "contract_name": "andromeda-cw721-bids",
   "contract_version": "0.1.0",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -27,22 +27,22 @@
       {
         "type": "object",
         "required": [
-          "place_offer"
+          "place_bid"
         ],
         "properties": {
-          "place_offer": {
+          "place_bid": {
             "type": "object",
             "required": [
+              "bid_amount",
               "expiration",
-              "offer_amount",
               "token_id"
             ],
             "properties": {
+              "bid_amount": {
+                "$ref": "#/definitions/Uint128"
+              },
               "expiration": {
                 "$ref": "#/definitions/Expiration"
-              },
-              "offer_amount": {
-                "$ref": "#/definitions/Uint128"
               },
               "token_id": {
                 "type": "string"
@@ -56,10 +56,10 @@
       {
         "type": "object",
         "required": [
-          "cancel_offer"
+          "cancel_bid"
         ],
         "properties": {
-          "cancel_offer": {
+          "cancel_bid": {
             "type": "object",
             "required": [
               "token_id"
@@ -78,10 +78,10 @@
         "description": "Restricted to Cw721 contract.",
         "type": "object",
         "required": [
-          "accept_offer"
+          "accept_bid"
         ],
         "properties": {
-          "accept_offer": {
+          "accept_bid": {
             "type": "object",
             "required": [
               "recipient",
@@ -141,7 +141,8 @@
             ],
             "properties": {
               "never": {
-                "type": "object"
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -185,10 +186,10 @@
       {
         "type": "object",
         "required": [
-          "offer"
+          "bid"
         ],
         "properties": {
-          "offer": {
+          "bid": {
             "type": "object",
             "required": [
               "token_id"
@@ -206,10 +207,10 @@
       {
         "type": "object",
         "required": [
-          "all_offers"
+          "all_bids"
         ],
         "properties": {
-          "all_offers": {
+          "all_bids": {
             "type": "object",
             "required": [
               "purchaser"
@@ -328,7 +329,7 @@
         ]
       },
       "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
       },
       "Coin": {
@@ -359,7 +360,8 @@
           "amount": {
             "$ref": "#/definitions/Uint128"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "Funds": {
         "oneOf": [
@@ -398,23 +400,55 @@
   "migrate": null,
   "sudo": null,
   "responses": {
-    "all_offers": {
+    "all_bids": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "AllOffersResponse",
+      "title": "AllBidsResponse",
       "type": "object",
       "required": [
-        "offers"
+        "bids"
       ],
       "properties": {
-        "offers": {
+        "bids": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/OfferResponse"
+            "$ref": "#/definitions/BidResponse"
           }
         }
       },
       "additionalProperties": false,
       "definitions": {
+        "BidResponse": {
+          "type": "object",
+          "required": [
+            "bid_amount",
+            "denom",
+            "expiration",
+            "purchaser",
+            "remaining_amount",
+            "tax_amount"
+          ],
+          "properties": {
+            "bid_amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            },
+            "expiration": {
+              "$ref": "#/definitions/Expiration"
+            },
+            "purchaser": {
+              "type": "string"
+            },
+            "remaining_amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "tax_amount": {
+              "$ref": "#/definitions/Uint128"
+            }
+          },
+          "additionalProperties": false
+        },
         "Expiration": {
           "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
           "oneOf": [
@@ -454,44 +488,13 @@
               ],
               "properties": {
                 "never": {
-                  "type": "object"
+                  "type": "object",
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
             }
           ]
-        },
-        "OfferResponse": {
-          "type": "object",
-          "required": [
-            "denom",
-            "expiration",
-            "offer_amount",
-            "purchaser",
-            "remaining_amount",
-            "tax_amount"
-          ],
-          "properties": {
-            "denom": {
-              "type": "string"
-            },
-            "expiration": {
-              "$ref": "#/definitions/Expiration"
-            },
-            "offer_amount": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "purchaser": {
-              "type": "string"
-            },
-            "remaining_amount": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "tax_amount": {
-              "$ref": "#/definitions/Uint128"
-            }
-          },
-          "additionalProperties": false
         },
         "Timestamp": {
           "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
@@ -601,7 +604,7 @@
       ],
       "definitions": {
         "Binary": {
-          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
           "type": "string"
         },
         "Coin": {
@@ -632,7 +635,8 @@
             "amount": {
               "$ref": "#/definitions/Uint128"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "Funds": {
           "oneOf": [
@@ -668,27 +672,27 @@
         }
       }
     },
-    "offer": {
+    "bid": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "OfferResponse",
+      "title": "BidResponse",
       "type": "object",
       "required": [
+        "bid_amount",
         "denom",
         "expiration",
-        "offer_amount",
         "purchaser",
         "remaining_amount",
         "tax_amount"
       ],
       "properties": {
+        "bid_amount": {
+          "$ref": "#/definitions/Uint128"
+        },
         "denom": {
           "type": "string"
         },
         "expiration": {
           "$ref": "#/definitions/Expiration"
-        },
-        "offer_amount": {
-          "$ref": "#/definitions/Uint128"
         },
         "purchaser": {
           "type": "string"
@@ -741,7 +745,8 @@
               ],
               "properties": {
                 "never": {
-                  "type": "object"
+                  "type": "object",
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false

@@ -2,6 +2,7 @@ use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
     error::ContractError,
+    expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Api, BlockInfo, Decimal, Decimal256, Uint128};
@@ -121,7 +122,7 @@ impl RewardTokenUnchecked {
                     init_timestamp >= block_info.time.seconds(),
                     ContractError::StartTimeInThePast {
                         current_block: block_info.height,
-                        current_seconds: block_info.time.seconds(),
+                        current_time: block_info.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
                     }
                 );
 

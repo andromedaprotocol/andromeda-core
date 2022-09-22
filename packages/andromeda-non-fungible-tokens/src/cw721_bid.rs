@@ -4,10 +4,10 @@ use cosmwasm_std::{Coin, Event, SubMsg, Uint128};
 use cw721::Expiration;
 
 #[cw_serde]
-pub struct Offer {
+pub struct Bid {
     pub denom: String,
     /// What the purchaser offers.
-    pub offer_amount: Uint128,
+    pub bid_amount: Uint128,
     /// What the owner of the token will get if they accept (royalties deducted).
     pub remaining_amount: Uint128,
     /// The amount of tax the purchaser paid.
@@ -18,11 +18,11 @@ pub struct Offer {
     pub events: Vec<Event>,
 }
 
-impl Offer {
+impl Bid {
     pub fn get_full_amount(&self) -> Coin {
         Coin {
             denom: self.denom.clone(),
-            amount: self.offer_amount + self.tax_amount,
+            amount: self.bid_amount + self.tax_amount,
         }
     }
 }
@@ -35,16 +35,16 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    PlaceOffer {
+    PlaceBid {
         token_id: String,
         expiration: Expiration,
-        offer_amount: Uint128,
+        bid_amount: Uint128,
     },
-    CancelOffer {
+    CancelBid {
         token_id: String,
     },
     /// Restricted to Cw721 contract.
-    AcceptOffer {
+    AcceptBid {
         token_id: String,
         recipient: String,
     },
@@ -55,10 +55,10 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(AndromedaHook)]
     AndrHook(AndromedaHook),
-    #[returns(OfferResponse)]
-    Offer { token_id: String },
-    #[returns(AllOffersResponse)]
-    AllOffers {
+    #[returns(BidResponse)]
+    Bid { token_id: String },
+    #[returns(AllBidsResponse)]
+    AllBids {
         purchaser: String,
         limit: Option<u32>,
         start_after: Option<String>,
@@ -66,9 +66,9 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct OfferResponse {
+pub struct BidResponse {
     pub denom: String,
-    pub offer_amount: Uint128,
+    pub bid_amount: Uint128,
     pub remaining_amount: Uint128,
     pub tax_amount: Uint128,
     pub expiration: Expiration,
@@ -76,19 +76,19 @@ pub struct OfferResponse {
 }
 
 #[cw_serde]
-pub struct AllOffersResponse {
-    pub offers: Vec<OfferResponse>,
+pub struct AllBidsResponse {
+    pub bids: Vec<BidResponse>,
 }
 
-impl From<Offer> for OfferResponse {
-    fn from(offer: Offer) -> OfferResponse {
-        OfferResponse {
-            denom: offer.denom,
-            offer_amount: offer.offer_amount,
-            remaining_amount: offer.remaining_amount,
-            tax_amount: offer.tax_amount,
-            expiration: offer.expiration,
-            purchaser: offer.purchaser,
+impl From<Bid> for BidResponse {
+    fn from(bid: Bid) -> BidResponse {
+        BidResponse {
+            denom: bid.denom,
+            bid_amount: bid.bid_amount,
+            remaining_amount: bid.remaining_amount,
+            tax_amount: bid.tax_amount,
+            expiration: bid.expiration,
+            purchaser: bid.purchaser,
         }
     }
 }
