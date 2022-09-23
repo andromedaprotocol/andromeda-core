@@ -3,8 +3,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, StdResult, Uint128, WasmMsg,
+    attr, ensure, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
@@ -22,9 +22,7 @@ use andromeda_fungible_tokens::airdrop::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, IsClaimedResponse, LatestStageResponse,
     MerkleRootResponse, MigrateMsg, QueryMsg, TotalClaimedResponse,
 };
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
-};
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 
 use semver::Version;
 
@@ -99,10 +97,10 @@ pub fn execute_register_merkle_root(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     // check merkle root length
     let mut root_buf: [u8; 32] = [0; 32];
@@ -142,16 +140,16 @@ pub fn execute_claim(
 
     // not expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    require(
+    ensure!(
         !expiration.is_expired(&env.block),
-        ContractError::StageExpired { stage, expiration },
-    )?;
+        ContractError::StageExpired { stage, expiration }
+    );
 
     // verify not claimed
-    require(
+    ensure!(
         !CLAIM.has(deps.storage, (&info.sender, stage)),
-        ContractError::Claimed {},
-    )?;
+        ContractError::Claimed {}
+    );
 
     let config = CONFIG.load(deps.storage)?;
     let merkle_root = MERKLE_ROOT.load(deps.storage, stage)?;
@@ -175,7 +173,7 @@ pub fn execute_claim(
 
     let mut root_buf: [u8; 32] = [0; 32];
     hex::decode_to_slice(merkle_root, &mut root_buf)?;
-    require(root_buf == hash, ContractError::VerificationFailed {})?;
+    ensure!(root_buf == hash, ContractError::VerificationFailed {});
 
     // Update claim index to the current stage
     CLAIM.save(deps.storage, (&info.sender, stage), &true)?;
@@ -217,27 +215,27 @@ pub fn execute_burn(
     info: MessageInfo,
     stage: u8,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     // make sure is expired
     let expiration = STAGE_EXPIRATION.load(deps.storage, stage)?;
-    require(
+    ensure!(
         expiration.is_expired(&env.block),
-        ContractError::StageNotExpired { stage, expiration },
-    )?;
+        ContractError::StageNotExpired { stage, expiration }
+    );
 
     // Get total amount per stage and total claimed
     let total_amount = STAGE_AMOUNT.load(deps.storage, stage)?;
     let claimed_amount = STAGE_AMOUNT_CLAIMED.load(deps.storage, stage)?;
 
     // impossible but who knows
-    require(
+    ensure!(
         claimed_amount <= total_amount,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     // Get balance
     let balance_to_burn = total_amount - claimed_amount;
@@ -342,20 +340,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

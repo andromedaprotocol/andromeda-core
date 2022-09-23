@@ -50,7 +50,7 @@ fn test_modules() {
         .add_attribute("action", "register_module")
         .add_attribute("module_idx", "1")
         .add_attribute("method", "instantiate")
-        .add_attribute("type", "weighted-splitter");
+        .add_attribute("type", "weighted-distribution-splitter");
     assert_eq!(expected_res, res);
 
     let msg = ExecuteMsg::Send {};
@@ -1725,7 +1725,7 @@ fn test_execute_send_error() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
     let expected_res = ContractError::InvalidFunds {
-        msg: "Require at least one coin to be sent".to_string(),
+        msg: "ensure! at least one coin to be sent".to_string(),
     };
 
     assert_eq!(res, expected_res);

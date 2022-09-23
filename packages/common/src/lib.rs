@@ -1,6 +1,7 @@
 pub mod ado_base;
 pub mod app;
 pub mod error;
+pub mod expiration;
 pub mod primitive;
 pub mod rates;
 pub mod response;
@@ -9,13 +10,17 @@ pub mod testing;
 pub mod withdraw;
 
 use crate::error::ContractError;
-use cosmwasm_std::{from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, SubMsg};
+use ado_base::{AndromedaQuery, QueryMsg};
+use cosmwasm_std::{
+    ensure, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, QueryRequest,
+    SubMsg, WasmQuery,
+};
 use cw20::Cw20Coin;
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum OrderBy {
     Asc,
@@ -46,9 +51,7 @@ where
 {
     match to_binary(val) {
         Ok(encoded_val) => Ok(encoded_val),
-        Err(err) => Err(ContractError::ParsingError {
-            err: err.to_string(),
-        }),
+        Err(err) => Err(err.into()),
     }
 }
 
@@ -59,25 +62,20 @@ pub fn unwrap_or_err<T>(val_opt: &Option<T>, err: ContractError) -> Result<&T, C
     }
 }
 
-/// A simple implementation of Solidity's "require" function. Takes a precondition and an error to return if the precondition is not met.
-///
-/// ## Arguments
-///
-/// * `precond` - The required precondition, will return provided "err" parameter if precondition is false
-/// * `err` - The error to return if the required precondition is false
-///
-/// ## Example
-/// ```
-/// use common::error::ContractError;
-/// use cosmwasm_std::StdError;
-/// use common::require;
-/// require(false, ContractError::Std(StdError::generic_err("Some boolean condition was not met")));
-/// ```
-pub fn require(precond: bool, err: ContractError) -> Result<bool, ContractError> {
-    match precond {
-        true => Ok(true),
-        false => Err(err),
-    }
+pub fn query_primitive<T>(
+    querier: QuerierWrapper,
+    contract_address: String,
+    key: Option<String>,
+) -> Result<T, ContractError>
+where
+    T: DeserializeOwned,
+{
+    let message = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(&key)?)));
+    let resp: T = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: contract_address,
+        msg: encode_binary(&message)?,
+    }))?;
+    Ok(resp)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -173,10 +171,10 @@ pub fn deduct_funds(coins: &mut [Coin], funds: &Coin) -> Result<bool, ContractEr
 
     match coin_amount {
         Some(c) => {
-            require(
+            ensure!(
                 c.amount >= funds.amount,
-                ContractError::InsufficientFunds {},
-            )?;
+                ContractError::InsufficientFunds {}
+            );
             c.amount -= funds.amount;
             Ok(true)
         }

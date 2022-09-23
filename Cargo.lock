@@ -20,7 +20,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-address-list"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "ado-base",
  "andromeda-modules",
@@ -65,16 +65,19 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "ado-base",
+ "andromeda-modules",
  "andromeda-non-fungible-tokens",
+ "andromeda-testing",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus",
  "cw-utils",
  "cw2",
+ "cw20",
  "cw721",
  "schemars",
  "semver",
@@ -141,7 +144,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw721"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ado-base",
  "andromeda-modules",
@@ -160,7 +163,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-cw721-offers"
+name = "andromeda-cw721-bids"
 version = "0.1.0"
 dependencies = [
  "ado-base",
@@ -181,6 +184,24 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw721-staking"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-non-fungible-tokens",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw721",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
+name = "andromeda-cw721-timelock"
 version = "0.1.0"
 dependencies = [
  "ado-base",
@@ -303,6 +324,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-marketplace"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-app",
+ "andromeda-modules",
+ "andromeda-non-fungible-tokens",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "cw721",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-merkle-airdrop"
 version = "0.1.0"
 dependencies = [
@@ -331,24 +374,6 @@ dependencies = [
  "common",
  "cosmwasm-std",
  "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-nft-timelock"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus",
- "cw-utils",
- "cw2",
- "cw721",
- "schemars",
- "semver",
  "serde",
 ]
 
@@ -403,7 +428,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rates"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "ado-base",
  "andromeda-modules",
@@ -422,7 +447,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-receipt"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "ado-base",
  "andromeda-modules",

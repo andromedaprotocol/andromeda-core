@@ -7,22 +7,22 @@ use andromeda_non_fungible_tokens::{
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
     gumball::{ExecuteMsg, InstantiateMsg, NumberOfNftsResponse, QueryMsg, StatusResponse},
 };
+
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
-    require,
 };
 use cosmwasm_std::{attr, entry_point, Binary, Storage};
 use cosmwasm_std::{
-    Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response, StdError, Uint128,
-    WasmMsg, WasmQuery,
+    ensure, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response, StdError,
+    Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
 
-const CONTRACT_NAME: &str = "crates.io:andromeda_gumball";
+const CONTRACT_NAME: &str = "crates.io:andromeda-gumball";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub(crate) const MAX_MINT_LIMIT: u32 = 100;
@@ -90,10 +90,10 @@ fn execute_update_required_coin(
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     REQUIRED_COIN.save(deps.storage, &new_coin)?;
 
@@ -107,13 +107,13 @@ fn execute_switch_status(deps: DepsMut, info: MessageInfo) -> Result<Response, C
 
     let contract = ADOContract::default();
     let mut status = STATUS.load(deps.storage)?;
-    require(
+    ensure!(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     // in case owner forgot to set the state, can't allow purchasing without the sale details set
     let state = STATE.may_load(deps.storage)?;
-    require(state.is_some(), ContractError::PriceNotSet {})?;
+    ensure!(state.is_some(), ContractError::PriceNotSet {});
     // Automatically switch to opposite status
     status = !status;
     STATUS.save(deps.storage, &status)?;
@@ -133,29 +133,29 @@ fn execute_sale_details(
     let contract = ADOContract::default();
     let status = STATUS.load(deps.storage)?;
     // Check status, can't change sale details while buying is allowed
-    require(!status, ContractError::Refilling {})?;
+    ensure!(!status, ContractError::Refilling {});
     // Check authority
-    require(
+    ensure!(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     // Check valid amount
-    require(!price.amount.is_zero(), ContractError::InvalidZeroAmount {})?;
+    ensure!(!price.amount.is_zero(), ContractError::InvalidZeroAmount {});
     // Check valid denomination
     let required_coin = REQUIRED_COIN.load(deps.storage)?;
-    require(
+    ensure!(
         price.denom == required_coin,
         ContractError::InvalidFunds {
             msg: "Please send the required coin".to_string(),
-        },
-    )?;
+        }
+    );
     // Check valid max amount per wallet
     let max_amount_per_wallet = max_amount_per_wallet.unwrap_or_else(|| Uint128::from(1u128));
 
-    require(
+    ensure!(
         !max_amount_per_wallet.is_zero(),
-        ContractError::InvalidZeroAmount {},
-    )?;
+        ContractError::InvalidZeroAmount {}
+    );
     // This is to prevent cloning price.
     let price_str = price.to_string();
 
@@ -188,21 +188,21 @@ fn execute_mint(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         mint_msgs.len() <= MAX_MINT_LIMIT as usize,
         ContractError::TooManyMintMessages {
             limit: MAX_MINT_LIMIT,
-        },
-    )?;
+        }
+    );
     let status = STATUS.load(deps.storage)?;
     // Can only mint when in "refill" mode, and that's when status is set to false.
-    require(!status, ContractError::NotInRefillMode {})?;
+    ensure!(!status, ContractError::NotInRefillMode {});
     let contract = ADOContract::default();
     // check authority
-    require(
+    ensure!(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let app_contract = contract.get_app_contract(deps.storage)?;
 
@@ -261,39 +261,40 @@ fn mint(
 fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let status = STATUS.load(deps.storage)?;
     // check gumball's status
-    require(status, ContractError::Refilling {})?;
+    ensure!(status, ContractError::Refilling {});
     let mut list = LIST.load(deps.storage)?;
     let n_of_nfts = list.len();
     // check if we still have any NFTs left
-    require(n_of_nfts > 0, ContractError::OutOfNFTs {})?;
+    ensure!(n_of_nfts > 0, ContractError::OutOfNFTs {});
     // check if more than one type of coin was sent
-    require(
+    ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
             msg: "Only one type of coin is allowed.".to_string(),
-        },
-    )?;
+        }
+    );
     let sent_funds = &info.funds[0];
     let required_coin = REQUIRED_COIN.load(deps.storage)?;
     // check for correct denomination
-    require(
+    ensure!(
         sent_funds.denom == required_coin,
         ContractError::InvalidFunds {
             msg: "Please send the required coin".to_string(),
-        },
-    )?;
+        }
+    );
 
     let state = STATE.load(deps.storage)?;
     // check for correct amount of funds
-    require(
+    ensure!(
         sent_funds.amount == state.price.amount,
-        ContractError::InsufficientFunds {},
-    )?;
+        ContractError::InsufficientFunds {}
+    );
     let randomness_source = RANDOMNESS_PROVIDER.load(deps.storage)?;
     let random_response: LatestRandomResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: randomness_source,
-            //msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
+            // msg: encode_binary(&terrand::msg::QueryMsg::LatestDrand {})?,
+            // Terrand hasn't upgraded to cosmwasm-std 1, it's still at 0.16
             msg: encode_binary(&"TODO")?,
         }))?;
     let randomness = Binary::to_base64(&random_response.randomness);
@@ -341,20 +342,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

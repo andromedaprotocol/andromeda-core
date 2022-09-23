@@ -4,13 +4,17 @@
   "type": "object",
   "required": [
     "andromeda_cw721_contract",
-    "randomness_source"
+    "randomness_source",
+    "required_coin"
   ],
   "properties": {
     "andromeda_cw721_contract": {
       "$ref": "#/definitions/AndrAddress"
     },
     "randomness_source": {
+      "type": "string"
+    },
+    "required_coin": {
       "type": "string"
     }
   },

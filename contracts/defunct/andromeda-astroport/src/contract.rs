@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    entry_point, from_binary, Addr, Api, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, QuerierWrapper, Response, SubMsg, Uint128, WasmMsg,
+    ensure, entry_point, from_binary, Addr, Api, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut,
+    Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128, WasmMsg,
 };
 
 use crate::{
@@ -31,7 +31,6 @@ use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
-    require,
 };
 
 use cw2::{get_contract_version, set_contract_version};
@@ -40,7 +39,7 @@ use cw_asset::{Asset, AssetInfo, AssetUnchecked};
 use std::cmp;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_astroport";
+const CONTRACT_NAME: &str = "crates.io:andromeda-astroport";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
@@ -139,10 +138,10 @@ fn execute_provide_liquidity(
     let sender = info.sender.as_str();
     let contract = ADOContract::default();
     let astroport_factory = contract.get_cached_address(deps.storage, ASTROPORT_FACTORY)?;
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, sender)?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let assets = [
         assets[0].check(deps.api, None)?,
@@ -228,10 +227,10 @@ fn execute_withdraw_liquidity(
 ) -> Result<Response, ContractError> {
     let sender = info.sender.as_str();
     let contract = ADOContract::default();
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, sender)?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(sender.to_owned()));
     let pair_info = query_pair_given_address(&deps.querier, pair_address)?;
     let lp_token_asset_info = AssetInfo::cw20(pair_info.liquidity_token.clone());
@@ -277,7 +276,7 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         !cw20_msg.amount.is_zero(),
         ContractError::InvalidFunds {
             msg: "Amount must be non-zero".to_string(),
@@ -452,7 +451,7 @@ pub fn execute_astroport_msg(
     contract_addr: String,
     msg_binary: Binary,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         funds.is_empty() || funds.len() == 1,
         ContractError::InvalidFunds {
             msg: "Astroport expects no funds or a single type of fund to be deposited.".to_string(),
@@ -479,7 +478,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
@@ -487,7 +486,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     )?;
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,

@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "andromeda_cw721_contract",
+    "valid_denom"
+  ],
+  "properties": {
+    "andromeda_cw721_contract": {
+      "type": "string"
+    },
+    "valid_denom": {
+      "type": "string"
+    }
+  }
+}

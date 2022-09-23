@@ -2,8 +2,8 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, from_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    SubMsg, Uint128, WasmMsg,
+    coins, ensure, from_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, SubMsg, Uint128, WasmMsg,
 };
 
 use crate::{
@@ -26,7 +26,6 @@ use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
-    require,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -97,7 +96,7 @@ pub fn execute(
         }
         ExecuteMsg::DepositCollateral {} => execute_deposit_collateral(deps, env, info),
         ExecuteMsg::DepositCollateralToAnchor { collateral_addr } => {
-            require(
+            ensure!(
                 info.sender == env.contract.address,
                 ContractError::Unauthorized {},
             )?;
@@ -150,7 +149,7 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         !cw20_msg.amount.is_zero(),
         ContractError::InvalidFunds {
             msg: "Amount must be non-zero".to_string(),
@@ -180,11 +179,11 @@ fn execute_deposit_collateral_to_anchor(
     let anchor_bluna_custody = contract.get_cached_address(deps.storage, ANCHOR_BLUNA_CUSTODY)?;
     let anchor_overseer = contract.get_cached_address(deps.storage, ANCHOR_OVERSEER)?;
 
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, &sender)? || sender == env.contract.address,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         token_address == anchor_bluna_token,
         ContractError::InvalidFunds {
             msg: "Only bLuna collateral supported".to_string(),
@@ -222,18 +221,18 @@ fn execute_deposit_collateral(
     let anchor_bluna_token = contract.get_cached_address(deps.storage, ANCHOR_BLUNA)?;
     let anchor_bluna_hub = contract.get_cached_address(deps.storage, ANCHOR_BLUNA_HUB)?;
 
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
             msg: "Must deposit exactly 1 type of native coin.".to_string(),
         },
     )?;
     let collateral = &info.funds[0];
-    require(
+    ensure!(
         collateral.denom == "uluna",
         ContractError::InvalidFunds {
             msg: "Only accept uluna as collateral".to_string(),
@@ -273,11 +272,11 @@ fn execute_withdraw_collateral(
     let anchor_bluna_hub = contract.get_cached_address(deps.storage, ANCHOR_BLUNA_HUB)?;
     let anchor_overseer = contract.get_cached_address(deps.storage, ANCHOR_OVERSEER)?;
 
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         collateral_addr == anchor_bluna_token,
         ContractError::InvalidFunds {
             msg: "Only bluna collateral supported".to_string(),
@@ -296,7 +295,7 @@ fn execute_withdraw_collateral(
 
             let collateral_info = collaterals.iter().find(|c| c.0 == collateral_addr);
 
-            require(collateral_info.is_some(), ContractError::InvalidAddress {})?;
+            ensure!(collateral_info.is_some(), ContractError::InvalidAddress {})?;
             collateral_info.unwrap().1
         }
     };
@@ -361,11 +360,11 @@ fn execute_borrow(
     let anchor_market = contract.get_cached_address(deps.storage, ANCHOR_MARKET)?;
     let anchor_oracle = contract.get_cached_address(deps.storage, ANCHOR_ORACLE)?;
 
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         desired_ltv_ratio < Decimal256::one(),
         ContractError::InvalidLtvRatio {
             msg: "Desired LTV ratio must be less than 1".to_string(),
@@ -399,7 +398,7 @@ fn execute_borrow(
 
     let current_ltv_ratio =
         Decimal256::from_uint256(loan_amount) / Decimal256::from_uint256(total_value);
-    require(
+    ensure!(
         desired_ltv_ratio > current_ltv_ratio,
         ContractError::InvalidLtvRatio {
             msg: "Desired LTV ratio lower than current".to_string(),
@@ -435,17 +434,17 @@ fn execute_repay_loan(
     let contract = ADOContract::default();
     let anchor_market = contract.get_cached_address(deps.storage, ANCHOR_MARKET)?;
 
-    require(
+    ensure!(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let borrower_info = query_borrower_info(
         &deps.querier,
         anchor_market.clone(),
         env.contract.address.to_string(),
     )?;
     let coin = info.funds.iter().find(|c| c.denom == "uusd");
-    require(
+    ensure!(
         coin.is_some(),
         ContractError::InvalidFunds {
             msg: "Must send uusd".to_string(),
@@ -477,10 +476,10 @@ fn execute_withdraw_unbonded(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
     let anchor_bluna_hub = contract.get_cached_address(deps.storage, ANCHOR_BLUNA_HUB)?;
 
@@ -512,10 +511,10 @@ fn execute_claim_anc(
     auto_stake: Option<bool>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let anchor_market = contract.get_cached_address(deps.storage, ANCHOR_MARKET)?;
     let res = Response::new()
         .add_attribute("action", "claim_anc_rewards")
@@ -546,10 +545,10 @@ fn execute_stake_anc(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let anchor_gov = contract.get_cached_address(deps.storage, ANCHOR_GOV)?;
     let anchor_anc = contract.get_cached_address(deps.storage, ANCHOR_ANC)?;
 
@@ -574,10 +573,10 @@ fn execute_unstake_anc(
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    require(
+    ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let anchor_gov = contract.get_cached_address(deps.storage, ANCHOR_GOV)?;
     let staker_response: StakerResponse = deps.querier.query_wasm_smart(
         anchor_gov.clone(),
@@ -623,7 +622,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
@@ -631,7 +630,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     )?;
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,

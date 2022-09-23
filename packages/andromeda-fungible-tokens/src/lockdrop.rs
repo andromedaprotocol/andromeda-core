@@ -1,16 +1,13 @@
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     /// The bootsrap contract to be used in the second phase.
-    pub bootstrap_contract: Option<AndrAddress>,
+    // pub bootstrap_contract: Option<AndrAddress>,
     /// Timestamp till when deposits can be made
     pub init_timestamp: u64,
     /// Number of seconds for which lockup deposits will be accepted
@@ -35,10 +32,6 @@ pub enum ExecuteMsg {
     WithdrawNative {
         amount: Option<Uint128>,
     },
-    /// Deposit TOKEN to bootstrap contract.
-    DepositToBootstrap {
-        amount: Uint128,
-    },
     /// Facilitates reward claim after claims are enabled.
     ClaimRewards {},
     /// Called by the bootstrap contract when liquidity is added to the TOKEN-NATIVE Pool to enable TOKEN withdrawals by users.
@@ -50,14 +43,14 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Cw20HookMsg {
     /// Increase the incentives for the deposited token. Sender must be the incentive token.
     IncreaseIncentives {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
@@ -76,10 +69,10 @@ pub enum QueryMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ConfigResponse {
     /// Bootstrap Contract address to which tokens can be delegated to for bootstrapping TOKEN-NATIVE Pool.
-    pub bootstrap_contract_address: Option<String>,
+    // pub bootstrap_contract_address: Option<String>,
     /// Timestamp till when deposits can be made.
     pub init_timestamp: u64,
     /// Number of seconds for which lockup deposits will be accepted.
@@ -94,24 +87,21 @@ pub struct ConfigResponse {
     pub native_denom: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct StateResponse {
     /// Total NATIVE deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window.
     pub total_native_locked: Uint128,
-    /// Number of Tokens deposited into the bootstrap contract.
-    pub total_delegated: Uint128,
     /// Boolean value indicating if the user can withdraw their token rewards or not.
     pub are_claims_allowed: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct UserInfoResponse {
     pub total_native_locked: Uint128,
     pub total_incentives: Uint128,
-    pub delegated_incentives: Uint128,
     pub is_lockdrop_claimed: bool,
     pub withdrawal_flag: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct MigrateMsg {}

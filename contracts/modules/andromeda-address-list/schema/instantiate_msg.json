@@ -3,18 +3,11 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "is_inclusive",
-    "operators"
+    "is_inclusive"
   ],
   "properties": {
     "is_inclusive": {
       "type": "boolean"
-    },
-    "operators": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
     }
   }
 }

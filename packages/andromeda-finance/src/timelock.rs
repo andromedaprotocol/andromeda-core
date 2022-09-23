@@ -1,4 +1,4 @@
-use cosmwasm_std::{Api, BlockInfo, Coin};
+use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use common::{
     ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    merge_coins, require,
+    merge_coins,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -39,31 +39,31 @@ impl Escrow {
     /// * The Escrow recipient must be a valid address
     /// * Expiration cannot be "Never" or before current time/block
     pub fn validate(&self, api: &dyn Api, block: &BlockInfo) -> Result<(), ContractError> {
-        require(
+        ensure!(
             !self.coins.is_empty(),
             ContractError::InvalidFunds {
-                msg: "Require at least one coin to be sent".to_string(),
-            },
-        )?;
-        require(
+                msg: "ensure! at least one coin to be sent".to_string(),
+            }
+        );
+        ensure!(
             api.addr_validate(&self.recipient_addr).is_ok(),
-            ContractError::InvalidAddress {},
-        )?;
+            ContractError::InvalidAddress {}
+        );
 
         if let Some(EscrowCondition::MinimumFunds(funds)) = &self.condition {
-            require(
+            ensure!(
                 !funds.is_empty(),
                 ContractError::InvalidFunds {
                     msg: "Minumum funds must not be empty".to_string(),
-                },
-            )?;
+                }
+            );
             let mut funds: Vec<Coin> = funds.clone();
             funds.sort_by(|a, b| a.denom.cmp(&b.denom));
             for i in 0..funds.len() - 1 {
-                require(
+                ensure!(
                     funds[i].denom != funds[i + 1].denom,
-                    ContractError::DuplicateCoinDenoms {},
-                )?;
+                    ContractError::DuplicateCoinDenoms {}
+                );
             }
             // Explicitly stop here as it is alright if the Escrow is unlocked in this case, ie,
             // the intially deposited funds are greater or equal to the minimum imposed by this
@@ -71,10 +71,10 @@ impl Escrow {
             return Ok(());
         }
 
-        require(
+        ensure!(
             self.is_locked(block)? || self.condition.is_none(),
-            ContractError::ExpirationInPast {},
-        )?;
+            ContractError::ExpirationInPast {}
+        );
         Ok(())
     }
 
@@ -120,7 +120,7 @@ impl Escrow {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     /// An optional vector of modules
     pub modules: Option<Vec<Module>>,
@@ -150,7 +150,7 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
@@ -243,7 +243,7 @@ mod tests {
             .unwrap_err();
         assert_eq!(
             ContractError::InvalidFunds {
-                msg: "Require at least one coin to be sent".to_string()
+                msg: "ensure! at least one coin to be sent".to_string()
             },
             resp
         );

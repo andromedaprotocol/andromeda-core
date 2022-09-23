@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        modules::{Module, ADDRESS_LIST, OFFERS, RATES, RECEIPT},
+        modules::{Module, ADDRESS_LIST, BIDS, RATES, RECEIPT},
         AndromedaMsg, AndromedaQuery,
     },
     app::AndrAddress,
@@ -21,13 +21,13 @@ use crate::{contract::*, state::ANDR_MINTER};
 use andromeda_modules::receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt};
 use andromeda_non_fungible_tokens::{
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
-    cw721_offers::ExecuteMsg as OffersExecuteMsg,
+    cw721_bid::ExecuteMsg as BidsExecuteMsg,
 };
 use andromeda_testing::testing::mock_querier::{
-    bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
+    bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_BIDS_CONTRACT,
     MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
 };
-use cw721::OwnerOfResponse;
+use cw721::{AllNftInfoResponse, OwnerOfResponse};
 use cw721_base::MintMsg;
 
 const MINTER: &str = "minter";
@@ -70,117 +70,6 @@ fn test_andr_query() {
     assert!(res.is_ok())
 }
 
-/*
- * TODO: Remove when we are happy with IstantiateType replacement.
- * #[test]
-fn test_instantiate_modules() {
-    let receipt_msg = to_binary(&ReceiptInstantiateMsg {
-        minter: "minter".to_string(),
-        operators: None,
-    })
-    .unwrap();
-    let rates_msg = to_binary(&RatesInstantiateMsg { rates: vec![] }).unwrap();
-    let addresslist_msg = to_binary(&AddressListInstantiateMsg {
-        operators: vec![],
-        is_inclusive: true,
-    })
-    .unwrap();
-    let modules: Vec<Module> = vec![
-        Module {
-            module_type: RECEIPT.to_owned(),
-            instantiate: InstantiateType::New(receipt_msg.clone()),
-            is_mutable: false,
-        },
-        Module {
-            module_type: RATES.to_owned(),
-            instantiate: InstantiateType::New(rates_msg.clone()),
-            is_mutable: false,
-        },
-        Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            instantiate: InstantiateType::New(addresslist_msg.clone()),
-            is_mutable: false,
-        },
-    ];
-    let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("sender", &[]);
-
-    let instantiate_msg = InstantiateMsg {
-        name: "Name".into(),
-        symbol: "Symbol".into(),
-        minter: AndrAddress {
-            identifier: "minter".to_string(),
-        },
-        modules: Some(modules),
-        primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-    };
-
-    let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
-
-    assert_eq!(
-        "sender",
-        ADOContract::default()
-            .owner
-            .load(deps.as_mut().storage)
-            .unwrap()
-    );
-    assert_eq!(
-        "cw721",
-        ADOContract::default()
-            .ado_type
-            .load(deps.as_mut().storage)
-            .unwrap()
-    );
-
-    let msgs: Vec<SubMsg> = vec![
-        SubMsg {
-            id: 1,
-            reply_on: ReplyOn::Always,
-            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                admin: None,
-                code_id: 1,
-                msg: receipt_msg,
-                funds: vec![],
-                label: "Instantiate: receipt".to_string(),
-            }),
-            gas_limit: None,
-        },
-        SubMsg {
-            id: 2,
-            reply_on: ReplyOn::Always,
-            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                admin: None,
-                code_id: 2,
-                msg: rates_msg,
-                funds: vec![],
-                label: "Instantiate: rates".to_string(),
-            }),
-            gas_limit: None,
-        },
-        SubMsg {
-            id: 3,
-            reply_on: ReplyOn::Always,
-            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                admin: None,
-                code_id: 3,
-                msg: addresslist_msg,
-                funds: vec![],
-                label: "Instantiate: address_list".to_string(),
-            }),
-            gas_limit: None,
-        },
-    ];
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "register_module")
-            .add_attribute("action", "register_module")
-            .add_attribute("action", "register_module")
-            .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw721")
-            .add_submessages(msgs),
-        res
-    );
-}*/
 #[test]
 fn test_transfer_nft() {
     let token_id = String::from("testtoken");
@@ -840,9 +729,9 @@ fn test_modules() {
 #[test]
 fn test_transfer_with_offer() {
     let modules: Vec<Module> = vec![Module {
-        module_type: OFFERS.to_owned(),
+        module_type: BIDS.to_owned(),
         address: AndrAddress {
-            identifier: MOCK_OFFERS_CONTRACT.to_owned(),
+            identifier: MOCK_BIDS_CONTRACT.to_owned(),
         },
         is_mutable: false,
     }];
@@ -878,9 +767,9 @@ fn test_transfer_with_offer() {
     let info = mock_info(&creator, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: MOCK_OFFERS_CONTRACT.to_owned(),
+        contract_addr: MOCK_BIDS_CONTRACT.to_owned(),
         funds: vec![],
-        msg: to_binary(&OffersExecuteMsg::AcceptOffer {
+        msg: to_binary(&BidsExecuteMsg::AcceptBid {
             token_id,
             recipient: creator,
         })
@@ -1032,4 +921,60 @@ fn test_update_app_contract_invalid_module() {
         },
         res.unwrap_err()
     );
+}
+
+#[test]
+fn test_batch_mint() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let info = mock_info(MINTER, &[]);
+    let inst_msg = InstantiateMsg {
+        name: NAME.to_string(),
+        symbol: SYMBOL.to_string(),
+        minter: AndrAddress {
+            identifier: MINTER.to_string(),
+        },
+        modules: None,
+    };
+    let owner = "owner";
+    let mut mint_msgs: Vec<MintMsg<TokenExtension>> = Vec::new();
+
+    let mut i: i32 = 0;
+    while i < 5 {
+        let mint_msg = MintMsg {
+            token_id: i.to_string(),
+            owner: owner.to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                name: format!("Token {}", i),
+                publisher: owner.to_string(),
+                description: None,
+                attributes: vec![],
+                image: "Some URL".to_string(),
+                image_data: None,
+                external_url: None,
+                youtube_url: None,
+                animation_url: None,
+            },
+        };
+        i += 1;
+        mint_msgs.push(mint_msg)
+    }
+
+    instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
+
+    let msg: ExecuteMsg = ExecuteMsg::BatchMint { tokens: mint_msgs };
+
+    let _resp = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let mut i: i32 = 0;
+    while i < 5 {
+        let query_msg = QueryMsg::AllNftInfo {
+            token_id: i.to_string(),
+            include_expired: None,
+        };
+        let query_resp = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let info: AllNftInfoResponse<TokenExtension> = from_binary(&query_resp).unwrap();
+        assert_eq!(info.access.owner, owner.to_string());
+        i += 1;
+    }
 }

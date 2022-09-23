@@ -27,6 +27,49 @@
       "additionalProperties": false
     },
     {
+      "description": "Update a specific recipient's weight. Only executable by the contract owner when the contract is not locked.",
+      "type": "object",
+      "required": [
+        "update_recipient_weight"
+      ],
+      "properties": {
+        "update_recipient_weight": {
+          "type": "object",
+          "required": [
+            "recipient"
+          ],
+          "properties": {
+            "recipient": {
+              "$ref": "#/definitions/AddressWeight"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Add a single recipient to the recipient list. Only executable by the contract owner when the contract is not locked.",
+      "type": "object",
+      "required": [
+        "add_recipient"
+      ],
+      "properties": {
+        "add_recipient": {
+          "type": "object",
+          "required": [
+            "recipient"
+          ],
+          "properties": {
+            "recipient": {
+              "$ref": "#/definitions/AddressWeight"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Remove a single recipient from the recipient list. Only executable by the contract owner when the contract is not locked.",
       "type": "object",
       "required": [
         "remove_recipient"
@@ -56,11 +99,13 @@
         "update_lock": {
           "type": "object",
           "required": [
-            "lock"
+            "lock_time"
           ],
           "properties": {
-            "lock": {
-              "type": "boolean"
+            "lock_time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           }
         }
@@ -389,7 +434,7 @@
       "type": "string"
     },
     "Module": {
-      "description": "Modules can be instantiated in two different ways New - Provide an instantiation message for the contract, a new contract will be instantiated and the address recorded Address - Provide an address for an already instantiated module contract A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
+      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
       "type": "object",
       "required": [
         "address",

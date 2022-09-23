@@ -1,16 +1,16 @@
-use crate::{error::ContractError, require};
-use cosmwasm_std::{Decimal, Uint128};
+use crate::error::ContractError;
+use cosmwasm_std::{ensure, Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Withdrawal {
     pub token: String,
     pub withdrawal_type: Option<WithdrawalType>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum WithdrawalType {
     Amount(Uint128),
@@ -32,7 +32,7 @@ impl WithdrawalType {
     pub fn get_amount(&self, balance: Uint128) -> Result<Uint128, ContractError> {
         match self {
             WithdrawalType::Percentage(percent) => {
-                require(*percent <= Decimal::one(), ContractError::InvalidRate {})?;
+                ensure!(*percent <= Decimal::one(), ContractError::InvalidRate {});
                 Ok(balance * *percent)
             }
             WithdrawalType::Amount(amount) => Ok(cmp::min(*amount, balance)),

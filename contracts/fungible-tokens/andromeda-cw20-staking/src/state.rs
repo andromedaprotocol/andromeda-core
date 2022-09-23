@@ -20,7 +20,7 @@ pub const REWARD_TOKENS: Map<&str, RewardToken> = Map::new("reward_tokens");
 pub const STAKER_REWARD_INFOS: Map<(&str, &str), StakerRewardInfo> =
     Map::new("staker_reward_infos");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
     /// The token accepted for staking.
     pub staking_token: AndrAddress,
@@ -28,19 +28,19 @@ pub struct Config {
     pub number_of_reward_tokens: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct State {
     /// The total share of the staking token in the contract.
     pub total_share: Uint128,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Staker {
     /// Total staked share.
     pub share: Uint128,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct StakerRewardInfo {
     /// The index of this particular reward.
     pub index: Decimal256,

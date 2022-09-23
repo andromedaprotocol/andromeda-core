@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Storage,
-    Uint128, WasmMsg,
+    ensure, from_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
+    Storage, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -14,15 +14,13 @@ use andromeda_ecosystem::mirror::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, MirrorLockExecuteMsg,
     MirrorMintCw20HookMsg, MirrorMintExecuteMsg, MirrorStakingExecuteMsg, QueryMsg,
 };
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
-};
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use terraswap::asset::AssetInfo as TerraSwapAssetInfo;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_mirror_wrapped_cdp";
+const CONTRACT_NAME: &str = "crates.io:andromeda-mirror-wrapped-cdp";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -246,7 +244,7 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         !cw20_msg.amount.is_zero(),
         ContractError::InvalidFunds {
             msg: "Amount must be non-zero".to_string(),
@@ -346,11 +344,11 @@ pub fn execute_mirror_msg(
     contract_addr: String,
     msg_binary: Binary,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
-    require(
+        ContractError::Unauthorized {}
+    );
+    ensure!(
         funds.is_empty() || funds.len() == 1,
         ContractError::InvalidFunds {
             msg: "Mirror expects zero or one coin to be sent".to_string(),
@@ -376,7 +374,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
@@ -384,7 +382,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     )?;
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,

@@ -8,9 +8,15 @@
   ],
   "properties": {
     "balance": {
-      "$ref": "#/definitions/Uint128"
+      "description": "Account balance, no need for denom since only one is allowed",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
     },
     "latest_withdrawal": {
+      "description": "Timestamp of latest withdrawal",
       "anyOf": [
         {
           "$ref": "#/definitions/Timestamp"

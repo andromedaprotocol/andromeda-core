@@ -12,14 +12,14 @@ use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
-    parse_message, require,
+    parse_message,
     response::get_reply_address,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, ReplyOn,
-    Response, StdError, Storage, SubMsg, WasmMsg,
+    ensure, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply,
+    ReplyOn, Response, StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -38,7 +38,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     APP_NAME.save(deps.storage, &msg.name)?;
-    require(msg.app.len() <= 50, ContractError::TooManyAppComponents {})?;
+    ensure!(msg.app.len() <= 50, ContractError::TooManyAppComponents {});
 
     let sender = info.sender.to_string();
     let resp = ADOContract::default()
@@ -81,7 +81,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     let addr_str = get_reply_address(msg)?;
     let addr = &deps.api.addr_validate(&addr_str)?;
     ADO_ADDRESSES.save(deps.storage, &descriptor.name, addr)?;
-    let assign_app = generate_assign_app_message(addr, &env.contract.address.to_string())?;
+    let assign_app = generate_assign_app_message(addr, env.contract.address.as_ref())?;
     Ok(Response::default().add_submessage(assign_app))
 }
 
@@ -114,13 +114,13 @@ fn execute_add_app_component(
     component: AppComponent,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    require(
+    ensure!(
         contract.is_contract_owner(storage, sender)?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let current_addr = ADO_ADDRESSES.may_load(storage, &component.name)?;
-    require(current_addr.is_none(), ContractError::NameAlreadyTaken {})?;
+    ensure!(current_addr.is_none(), ContractError::NameAlreadyTaken {});
 
     // This is a default value that will be overridden on `reply`.
     ADO_ADDRESSES.save(storage, &component.name, &Addr::unchecked(""))?;
@@ -147,10 +147,10 @@ fn execute_claim_ownership(
     sender: &str,
     name_opt: Option<String>,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(storage, sender)?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let mut msgs: Vec<SubMsg> = vec![];
     if let Some(name) = name_opt {
@@ -175,10 +175,10 @@ fn execute_message(
     msg: Binary,
 ) -> Result<Response, ContractError> {
     //Temporary until message sender attached to Andromeda Comms
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let addr = ADO_ADDRESSES.load(deps.storage, name.as_str())?;
     let proxy_msg = SubMsg {
@@ -213,10 +213,10 @@ fn execute_update_address(
     addr: String,
 ) -> Result<Response, ContractError> {
     let ado_addr = ADO_ADDRESSES.load(deps.storage, &name)?;
-    require(
+    ensure!(
         has_update_address_privilege(deps.storage, info.sender.as_str(), ado_addr.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     let new_addr = deps.api.addr_validate(&addr)?;
     ADO_ADDRESSES.save(deps.storage, &name, &new_addr)?;
@@ -238,20 +238,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

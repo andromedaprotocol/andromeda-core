@@ -11,13 +11,6 @@
     "withdrawal_window"
   ],
   "properties": {
-    "bootstrap_contract_address": {
-      "description": "Bootstrap Contract address to which tokens can be delegated to for bootstrapping TOKEN-NATIVE Pool.",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "deposit_window": {
       "description": "Number of seconds for which lockup deposits will be accepted.",
       "type": "integer",
@@ -29,7 +22,7 @@
       "type": "string"
     },
     "init_timestamp": {
-      "description": "Timestamp till when deposits can be made.",
+      "description": "Bootstrap Contract address to which tokens can be delegated to for bootstrapping TOKEN-NATIVE Pool. Timestamp till when deposits can be made.",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0

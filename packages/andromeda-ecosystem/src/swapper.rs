@@ -38,13 +38,13 @@ pub enum SwapperCw20HookMsg {
 }
 
 /// Instantiate Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     pub swapper_impl: SwapperImpl,
     pub primitive_contract: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SwapperImpl {
     /// Specifies the instantiation specification for the swapper impl.
@@ -53,7 +53,7 @@ pub enum SwapperImpl {
     Reference(AndrAddress),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateInfo {
     /// The instantiate message encoded in base64.
     pub msg: Binary,
@@ -89,7 +89,7 @@ pub enum Cw20HookMsg {
 }
 
 /// Query Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),

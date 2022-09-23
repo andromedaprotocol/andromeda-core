@@ -11,11 +11,11 @@ use common::{
     },
     deduct_funds, encode_binary,
     error::ContractError,
-    parse_message, require, Funds,
+    parse_message, Funds,
 };
 use cosmwasm_std::{
-    attr, coin, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response,
-    StdError, SubMsg,
+    attr, coin, ensure, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo,
+    Response, StdError, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
@@ -86,10 +86,10 @@ fn execute_update_rates(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let mut config = CONFIG.load(deps.storage)?;
     config.rates = rates;
     CONFIG.save(deps.storage, &config)?;
@@ -108,20 +108,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -152,7 +152,7 @@ fn handle_andromeda_query(
     match msg {
         AndromedaQuery::Get(data) => {
             let funds: Funds = parse_message(&data)?;
-            encode_binary(&query_deducted_funds(deps, funds)?)
+            encode_binary(&Some(query_deducted_funds(deps, funds)?))
         }
         _ => ADOContract::default().query(deps, env, msg, query),
     }
@@ -163,7 +163,7 @@ fn handle_andromeda_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, Contr
         AndromedaHook::OnFundsTransfer { amount, .. } => {
             encode_binary(&query_deducted_funds(deps, amount)?)
         }
-        _ => Err(ContractError::UnsupportedOperation {}),
+        _ => Ok(encode_binary(&None::<Response>)?),
     }
 }
 
@@ -201,7 +201,7 @@ fn query_deducted_funds(
             .rate
             .validate(deps.api, &deps.querier, app_contract)?;
         let fee = calculate_fee(rate, &coin)?;
-        for reciever in rate_info.receivers.iter() {
+        for reciever in rate_info.recipients.iter() {
             if !rate_info.is_additive {
                 deduct_funds(&mut leftover_funds, &fee)?;
                 event = event.add_attribute("deducted", fee.to_string());
@@ -281,7 +281,7 @@ mod tests {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: true,
                 description: Some("desc1".to_string()),
-                receivers: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::Addr("".into())],
             },
             RateInfo {
                 rate: Rate::Flat(Coin {
@@ -290,7 +290,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc2".to_string()),
-                receivers: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::Addr("".into())],
             },
         ];
         let msg = InstantiateMsg {
@@ -323,7 +323,7 @@ mod tests {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: true,
                 description: Some("desc1".to_string()),
-                receivers: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::Addr("".into())],
             },
             RateInfo {
                 rate: Rate::Flat(Coin {
@@ -332,7 +332,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc2".to_string()),
-                receivers: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::Addr("".into())],
             },
         ];
         let msg = InstantiateMsg { rates: vec![] };
@@ -362,13 +362,13 @@ mod tests {
                 }),
                 is_additive: true,
                 description: Some("desc2".to_string()),
-                receivers: vec![Recipient::Addr("1".into())],
+                recipients: vec![Recipient::Addr("1".into())],
             },
             RateInfo {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: false,
                 description: Some("desc1".to_string()),
-                receivers: vec![Recipient::Addr("2".into())],
+                recipients: vec![Recipient::Addr("2".into())],
             },
             RateInfo {
                 rate: Rate::External(PrimitivePointer {
@@ -379,7 +379,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc3".to_string()),
-                receivers: vec![Recipient::Addr("3".into())],
+                recipients: vec![Recipient::Addr("3".into())],
             },
         ];
         let msg = InstantiateMsg { rates };
@@ -450,13 +450,13 @@ mod tests {
                 }),
                 is_additive: true,
                 description: Some("desc2".to_string()),
-                receivers: vec![Recipient::Addr("1".into())],
+                recipients: vec![Recipient::Addr("1".into())],
             },
             RateInfo {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: false,
                 description: Some("desc1".to_string()),
-                receivers: vec![Recipient::Addr("2".into())],
+                recipients: vec![Recipient::Addr("2".into())],
             },
             RateInfo {
                 rate: Rate::External(PrimitivePointer {
@@ -467,7 +467,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc3".to_string()),
-                receivers: vec![Recipient::Addr("3".into())],
+                recipients: vec![Recipient::Addr("3".into())],
             },
         ];
         let msg = InstantiateMsg { rates };

@@ -1,14 +1,13 @@
 use common::{
     ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
-    require,
 };
-use cosmwasm_std::Decimal;
+use cosmwasm_std::{ensure, Decimal};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct AddressPercent {
     pub recipient: Recipient,
     pub percent: Decimal,
@@ -23,7 +22,7 @@ pub struct Splitter {
     pub lock: Expiration,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
@@ -39,7 +38,7 @@ impl InstantiateMsg {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
@@ -59,7 +58,7 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
@@ -77,10 +76,10 @@ pub struct GetSplitterConfigResponse {
 /// * Must include at least one recipient
 /// * The combined percentage of the recipients must not exceed 100
 pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> Result<bool, ContractError> {
-    require(
+    ensure!(
         !recipients.is_empty(),
-        ContractError::EmptyRecipientsList {},
-    )?;
+        ContractError::EmptyRecipientsList {}
+    );
 
     let mut percent_sum: Decimal = Decimal::zero();
     for rec in recipients {
@@ -88,10 +87,10 @@ pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> Result<bool, 
         percent_sum += rec.percent;
     }
 
-    require(
+    ensure!(
         percent_sum <= Decimal::one(),
-        ContractError::AmountExceededHundredPrecent {},
-    )?;
+        ContractError::AmountExceededHundredPrecent {}
+    );
 
     Ok(true)
 }

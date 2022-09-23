@@ -10,10 +10,10 @@ use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
-    parse_message, require,
+    parse_message,
 };
 use cosmwasm_std::{
-    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -91,10 +91,10 @@ pub fn create(
 ) -> Result<Response, ContractError> {
     //let config = read_config(deps.storage)?;
 
-    require(
+    ensure!(
         !is_address_defined(deps.storage, symbol)?,
-        ContractError::SymbolInUse {},
-    )?;
+        ContractError::SymbolInUse {}
+    );
     //TODO: make this work with new cw721
     Ok(Response::new())
 
@@ -177,11 +177,11 @@ pub fn update_address(
     symbol: String,
     new_address: String,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         is_creator(&deps, symbol.clone(), info.sender.to_string())?
             || ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     store_address(deps.storage, symbol, &new_address)?;
 
@@ -195,10 +195,10 @@ pub fn add_update_code_id(
     code_id_key: String,
     code_id: u64,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     store_code_id(deps.storage, &code_id_key, code_id)?;
 
     Ok(Response::default().add_attributes(vec![
@@ -219,20 +219,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

@@ -10,7 +10,7 @@ use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     /// Name of the NFT contract
@@ -34,7 +34,7 @@ pub struct TransferAgreement {
     pub purchaser: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub struct MetadataAttribute {
     /// The key for the attribute
     pub trait_type: String,
@@ -46,7 +46,7 @@ pub struct MetadataAttribute {
 
 /// https://docs.opensea.io/docs/metadata-standards
 /// Replicates OpenSea Metadata Standards
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub struct TokenExtension {
     /// The name of the token
     pub name: String,
@@ -118,6 +118,10 @@ pub enum ExecuteMsg {
     TransferAgreement {
         token_id: String,
         agreement: Option<TransferAgreement>,
+    },
+    /// Mint multiple tokens at a time
+    BatchMint {
+        tokens: Vec<MintMsg<TokenExtension>>,
     },
 }
 

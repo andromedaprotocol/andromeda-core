@@ -2,8 +2,8 @@
 // https://github.com/mars-protocol/mars-periphery/tree/main/contracts/lockdrop
 
 use cosmwasm_std::{
-    entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    Uint128,
+    ensure, entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
+    StdError, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -15,7 +15,8 @@ use andromeda_fungible_tokens::lockdrop::{
     UserInfoResponse,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError, require,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
 };
 
 use crate::state::{Config, State, CONFIG, STATE, USER_INFO};
@@ -40,24 +41,24 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // CHECK :: init_timestamp needs to be valid
-    require(
+    ensure!(
         msg.init_timestamp >= env.block.time.seconds(),
         ContractError::StartTimeInThePast {
-            current_seconds: env.block.time.seconds(),
+            current_time: env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO,
             current_block: env.block.height,
-        },
-    )?;
+        }
+    );
 
     // CHECK :: deposit_window,withdrawal_window need to be valid (withdrawal_window < deposit_window)
-    require(
+    ensure!(
         msg.deposit_window > 0
             && msg.withdrawal_window > 0
             && msg.withdrawal_window < msg.deposit_window,
-        ContractError::InvalidWindow {},
-    )?;
+        ContractError::InvalidWindow {}
+    );
 
     let config = Config {
-        bootstrap_contract_address: msg.bootstrap_contract,
+        // bootstrap_contract_address: msg.bootstrap_contract,
         init_timestamp: msg.init_timestamp,
         deposit_window: msg.deposit_window,
         withdrawal_window: msg.withdrawal_window,
@@ -98,9 +99,6 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::DepositNative {} => execute_deposit_native(deps, env, info),
         ExecuteMsg::WithdrawNative { amount } => execute_withdraw_native(deps, env, info, amount),
-        ExecuteMsg::DepositToBootstrap { amount } => {
-            execute_deposit_to_bootstrap(deps, env, info, amount)
-        }
         ExecuteMsg::EnableClaims {} => execute_enable_claims(deps, env, info),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
         ExecuteMsg::WithdrawProceeds { recipient } => {
@@ -120,20 +118,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -154,12 +152,12 @@ pub fn receive_cw20(
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     // CHECK :: Tokens sent > 0
-    require(
+    ensure!(
         !cw20_msg.amount.is_zero(),
         ContractError::InvalidFunds {
             msg: "Number of tokens should be > 0".to_string(),
-        },
-    )?;
+        }
+    );
 
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::IncreaseIncentives {} => {
@@ -195,17 +193,17 @@ pub fn execute_increase_incentives(
 ) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
 
-    require(
+    ensure!(
         info.sender == config.incentive_token,
         ContractError::InvalidFunds {
             msg: "Only incentive tokens are valid".to_string(),
-        },
-    )?;
+        }
+    );
 
-    require(
+    ensure!(
         is_withdraw_open(env.block.time.seconds(), &config),
-        ContractError::TokenAlreadyBeingDistributed {},
-    )?;
+        ContractError::TokenAlreadyBeingDistributed {}
+    );
 
     config.lockdrop_incentives += amount;
     CONFIG.save(deps.storage, &config)?;
@@ -226,34 +224,34 @@ pub fn execute_deposit_native(
     let depositor_address = info.sender;
 
     // CHECK :: Lockdrop deposit window open
-    require(
+    ensure!(
         is_deposit_open(env.block.time.seconds(), &config),
-        ContractError::DepositWindowClosed {},
-    )?;
+        ContractError::DepositWindowClosed {}
+    );
 
     // Check if multiple native coins sent by the user
-    require(
+    ensure!(
         info.funds.len() == 1,
         ContractError::InvalidFunds {
             msg: "Must deposit a single fund".to_string(),
-        },
-    )?;
+        }
+    );
 
     let native_token = info.funds.first().unwrap();
-    require(
+    ensure!(
         native_token.denom == config.native_denom,
         ContractError::InvalidFunds {
             msg: format!("Only {} accepted", config.native_denom),
-        },
-    )?;
+        }
+    );
 
     // CHECK ::: Amount needs to be valid
-    require(
+    ensure!(
         !native_token.amount.is_zero(),
         ContractError::InvalidFunds {
             msg: "Amount must be greater than 0".to_string(),
-        },
-    )?;
+        }
+    );
 
     // USER INFO :: RETRIEVE --> UPDATE
     let mut user_info = USER_INFO
@@ -291,36 +289,36 @@ pub fn execute_withdraw_native(
     let withdrawer_address = info.sender;
 
     // CHECK :: Lockdrop withdrawal window open
-    require(
+    ensure!(
         is_withdraw_open(env.block.time.seconds(), &config),
         ContractError::InvalidWithdrawal {
             msg: Some("Withdrawals not available".to_string()),
-        },
-    )?;
+        }
+    );
 
     // Check :: Amount should be within the allowed withdrawal limit bounds
     let max_withdrawal_percent = allowed_withdrawal_percent(env.block.time.seconds(), &config);
     let max_withdrawal_allowed = user_info.total_native_locked * max_withdrawal_percent;
     let withdraw_amount = withdraw_amount.unwrap_or(max_withdrawal_allowed);
-    require(
+    ensure!(
         withdraw_amount <= max_withdrawal_allowed,
         ContractError::InvalidWithdrawal {
             msg: Some(format!(
                 "Amount exceeds max allowed withdrawal limit of {}",
                 max_withdrawal_allowed
             )),
-        },
-    )?;
+        }
+    );
 
     // Update withdrawal flag after the deposit window
     if env.block.time.seconds() > config.init_timestamp + config.deposit_window {
         // CHECK :: Max 1 withdrawal allowed
-        require(
+        ensure!(
             !user_info.withdrawal_flag,
             ContractError::InvalidWithdrawal {
                 msg: Some("Max 1 withdrawal allowed".to_string()),
-            },
-        )?;
+            }
+        );
 
         user_info.withdrawal_flag = true;
     }
@@ -354,107 +352,38 @@ pub fn execute_enable_claims(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let contract = ADOContract::default();
+    // let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
-    // If bootstrap is specified then only it can enable claims.
-    if let Some(bootstrap_contract_address) = &config.bootstrap_contract_address {
-        let app_contract = contract.get_app_contract(deps.storage)?;
-        let bootstrap_contract_address =
-            bootstrap_contract_address.get_address(deps.api, &deps.querier, app_contract)?;
+    // // If bootstrap is specified then only it can enable claims.
+    // if let Some(bootstrap_contract_address) = &config.bootstrap_contract_address {
+    //     let app_contract = contract.get_app_contract(deps.storage)?;
+    //     let bootstrap_contract_address =
+    //         bootstrap_contract_address.get_address(deps.api, &deps.querier, app_contract)?;
 
-        // CHECK :: ONLY BOOTSTRAP CONTRACT CAN CALL THIS FUNCTION
-        require(
-            info.sender == bootstrap_contract_address,
-            ContractError::Unauthorized {},
-        )?;
-    }
+    //     // CHECK :: ONLY BOOTSTRAP CONTRACT CAN CALL THIS FUNCTION
+    //     ensure!(
+    //         info.sender == bootstrap_contract_address,
+    //         ContractError::Unauthorized {},
+    //     )?;
+    // }
 
     // CHECK :: Claims can only be enabled after the deposit / withdrawal windows are closed
-    require(
+    ensure!(
         !is_withdraw_open(env.block.time.seconds(), &config),
-        ContractError::PhaseOngoing {},
-    )?;
+        ContractError::PhaseOngoing {}
+    );
 
     // CHECK ::: Claims are only enabled once
-    require(
+    ensure!(
         !state.are_claims_allowed,
-        ContractError::ClaimsAlreadyAllowed {},
-    )?;
+        ContractError::ClaimsAlreadyAllowed {}
+    );
     state.are_claims_allowed = true;
 
     STATE.save(deps.storage, &state)?;
     Ok(Response::new().add_attribute("action", "enable_claims"))
-}
-
-/// @dev Function to delegate part of the token rewards to be used for LP Bootstrapping via
-/// bootstrap
-/// @param amount : Number of tokens to delegate
-pub fn execute_deposit_to_bootstrap(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let mut state = STATE.load(deps.storage)?;
-    let user_address = info.sender;
-
-    // CHECK :: Have the deposit / withdraw windows concluded
-    require(
-        !is_withdraw_open(env.block.time.seconds(), &config),
-        ContractError::PhaseOngoing {},
-    )?;
-
-    // CHECK :: Can users withdraw their tokens ? -> if so, then delegation is no longer allowed
-    require(
-        !state.are_claims_allowed,
-        ContractError::ClaimsAlreadyAllowed {},
-    )?;
-
-    // CHECK :: Bootstrap contract address should be set
-    require(
-        config.bootstrap_contract_address.is_some(),
-        ContractError::NoSavedBootstrapContract {},
-    )?;
-
-    let mut user_info = USER_INFO
-        .may_load(deps.storage, &user_address)?
-        .unwrap_or_default();
-
-    let total_incentives = config
-        .lockdrop_incentives
-        .multiply_ratio(user_info.total_native_locked, state.total_native_locked);
-
-    // CHECK :: token to delegate cannot exceed user's unclaimed token balance
-    let available_amount = total_incentives - user_info.delegated_incentives;
-    require(
-        amount <= available_amount,
-        ContractError::InvalidFunds {
-            msg: format!(
-                "Amount cannot exceed user's unclaimed token balance. Tokens to delegate = {}, Max delegatable tokens = {}",
-                amount,
-                available_amount
-            ),
-        },
-    )?;
-
-    // UPDATE STATE
-    user_info.delegated_incentives += amount;
-    state.total_delegated += amount;
-
-    // SAVE UPDATED STATE
-    STATE.save(deps.storage, &state)?;
-    USER_INFO.save(deps.storage, &user_address, &user_info)?;
-
-    // COSMOS_MSG ::Delegate tokens to the LP Bootstrapping via Bootstrap contract
-    // TODO: When Bootstrapping contract is created add this message.
-
-    Ok(Response::new()
-        .add_attribute("action", "deposit_to_bootstrap")
-        .add_attribute("user_address", user_address)
-        .add_attribute("delegated_amount", amount))
 }
 
 /// @dev Function to claim Rewards from lockdrop.
@@ -471,15 +400,15 @@ pub fn execute_claim_rewards(
         .may_load(deps.storage, &user_address)?
         .unwrap_or_default();
 
-    require(
+    ensure!(
         !user_info.lockdrop_claimed,
-        ContractError::LockdropAlreadyClaimed {},
-    )?;
-    require(
+        ContractError::LockdropAlreadyClaimed {}
+    );
+    ensure!(
         !user_info.total_native_locked.is_zero(),
-        ContractError::NoLockup {},
-    )?;
-    require(state.are_claims_allowed, ContractError::ClaimsNotAllowed {})?;
+        ContractError::NoLockup {}
+    );
+    ensure!(state.are_claims_allowed, ContractError::ClaimsNotAllowed {});
 
     let total_incentives = config
         .lockdrop_incentives
@@ -513,31 +442,31 @@ fn execute_withdraw_proceeds(
     let config = CONFIG.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
     // CHECK :: Only Owner can call this function
-    require(
+    ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
 
     // CHECK :: Lockdrop withdrawal window should be closed
     let current_timestamp = env.block.time.seconds();
-    require(
+    ensure!(
         current_timestamp >= config.init_timestamp && !is_withdraw_open(current_timestamp, &config),
         ContractError::InvalidWithdrawal {
             msg: Some("Lockdrop withdrawals haven't concluded yet".to_string()),
-        },
-    )?;
+        }
+    );
 
     let native_token = Asset::native(config.native_denom, state.total_native_locked);
 
     let balance = native_token
         .info
         .query_balance(&deps.querier, env.contract.address)?;
-    require(
+    ensure!(
         balance >= state.total_native_locked,
         ContractError::InvalidWithdrawal {
             msg: Some("Already withdrew funds".to_string()),
-        },
-    )?;
+        }
+    );
 
     let transfer_msg = native_token.transfer_msg(recipient)?;
 
@@ -555,16 +484,16 @@ fn execute_withdraw_proceeds(
 /// @dev Returns the contract's configuration
 pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let contract = ADOContract::default();
-    let app_contract = contract.get_app_contract(deps.storage)?;
-    let bootstrap_contract_address = config
-        .bootstrap_contract_address
-        .map(|a| a.get_address(deps.api, &deps.querier, app_contract))
-        // Flip Option<Result> to Result<Option>
-        .map_or(Ok(None), |v| v.map(Some));
+    // let contract = ADOContract::default();
+    // let app_contract = contract.get_app_contract(deps.storage)?;
+    // let bootstrap_contract_address = config
+    //     .bootstrap_contract_address
+    //     .map(|a| a.get_address(deps.api, &deps.querier, app_contract))
+    //     // Flip Option<Result> to Result<Option>
+    //     .map_or(Ok(None), |v| v.map(Some));
 
     Ok(ConfigResponse {
-        bootstrap_contract_address: bootstrap_contract_address?,
+        // bootstrap_contract_address: bootstrap_contract_address?,
         init_timestamp: config.init_timestamp,
         deposit_window: config.deposit_window,
         withdrawal_window: config.withdrawal_window,
@@ -579,7 +508,6 @@ pub fn query_state(deps: Deps) -> Result<StateResponse, ContractError> {
     let state: State = STATE.load(deps.storage)?;
     Ok(StateResponse {
         total_native_locked: state.total_native_locked,
-        total_delegated: state.total_delegated,
         are_claims_allowed: state.are_claims_allowed,
     })
 }
@@ -605,7 +533,6 @@ pub fn query_user_info(
     Ok(UserInfoResponse {
         total_native_locked: user_info.total_native_locked,
         total_incentives,
-        delegated_incentives: user_info.delegated_incentives,
         is_lockdrop_claimed: user_info.lockdrop_claimed,
         withdrawal_flag: user_info.withdrawal_flag,
     })
@@ -645,7 +572,7 @@ fn is_withdraw_open(current_timestamp: u64, config: &Config) -> bool {
 /// @dev Helper function to calculate maximum % of NATIVE deposited that can be withdrawn
 /// @params current_timestamp : Current block timestamp
 /// @params config : Contract configuration
-fn allowed_withdrawal_percent(current_timestamp: u64, config: &Config) -> Decimal {
+pub fn allowed_withdrawal_percent(current_timestamp: u64, config: &Config) -> Decimal {
     let withdrawal_cutoff_init_point = config.init_timestamp + config.deposit_window;
 
     // Deposit window :: 100% withdrawals allowed

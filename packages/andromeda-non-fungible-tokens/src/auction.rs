@@ -1,5 +1,5 @@
 use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
+    ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     OrderBy,
 };
 use cosmwasm_std::{Addr, Timestamp, Uint128};
@@ -7,8 +7,10 @@ use cw721::{Cw721ReceiveMsg, Expiration};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {}
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct InstantiateMsg {
+    pub modules: Option<Vec<Module>>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -29,13 +31,11 @@ pub enum ExecuteMsg {
     UpdateAuction {
         token_id: String,
         token_address: String,
-        start_time: Expiration,
-        end_time: Expiration,
+        start_time: u64,
+        duration: u64,
         coin_denom: String,
         whitelist: Option<Vec<Addr>>,
-    },
-    UpdateOwner {
-        address: String,
+        min_bid: Option<Uint128>,
     },
     CancelAuction {
         token_id: String,
@@ -43,20 +43,23 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Cw721HookMsg {
     /// Starts a new auction with the given parameters. The auction info can be modified before it
     /// has started but is immutable after that.
     StartAuction {
-        start_time: Expiration,
-        end_time: Expiration,
+        /// Start time in milliseconds since epoch
+        start_time: u64,
+        /// Duration in milliseconds
+        duration: u64,
         coin_denom: String,
+        min_bid: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
@@ -90,7 +93,7 @@ pub enum QueryMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Bid {
     pub bidder: String,
     pub amount: Uint128,
@@ -106,15 +109,16 @@ pub struct AuctionStateResponse {
     pub auction_id: Uint128,
     pub coin_denom: String,
     pub whitelist: Option<Vec<Addr>>,
+    pub min_bid: Option<Uint128>,
     pub is_cancelled: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub struct AuctionIdsResponse {
     pub auction_ids: Vec<Uint128>,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub struct BidsResponse {
     pub bids: Vec<Bid>,
 }

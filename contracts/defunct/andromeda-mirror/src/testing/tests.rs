@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    coin, coins, from_binary,
+    coin, coins, ensure, from_binary,
     testing::{mock_env, mock_info},
     to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, MessageInfo, Order, Response,
     Uint128, WasmMsg,

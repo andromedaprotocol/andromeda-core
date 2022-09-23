@@ -9,12 +9,11 @@ use common::{
     app::AndrAddress,
     encode_binary,
     error::ContractError,
-    require,
     response::get_reply_address,
 };
 use cosmwasm_std::{
-    entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, SubMsg, Uint128, WasmMsg,
+    ensure, entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Reply, Response, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -22,7 +21,7 @@ use cw_asset::AssetInfo;
 use semver::Version;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda_swapper";
+const CONTRACT_NAME: &str = "crates.io:andromeda-swapper";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[entry_point]
@@ -74,7 +73,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             msg.result.unwrap_err(),
         )));
     }
-    require(msg.id == 1, ContractError::InvalidReplyId {})?;
+    ensure!(msg.id == 1, ContractError::InvalidReplyId {});
 
     let addr = get_reply_address(msg)?;
     SWAPPER_IMPL_ADDR.save(deps.storage, &AndrAddress { identifier: addr })?;
@@ -112,18 +111,18 @@ fn execute_swap(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
-    require(
+    ensure!(
         info.funds.len() <= 1,
         ContractError::InvalidFunds {
             msg: "Must send at most one native coin".to_string(),
-        },
-    )?;
-    require(
+        }
+    );
+    ensure!(
         !info.funds.is_empty() && info.funds[0].amount > Uint128::zero(),
         ContractError::InvalidFunds {
             msg: "Must send funds to swap".to_string(),
-        },
-    )?;
+        }
+    );
 
     let coin = &info.funds[0];
     if let AssetInfo::Native(denom) = &ask_asset_info {
@@ -173,10 +172,10 @@ fn execute_send(
     ask_asset_info: AssetInfo,
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         info.sender == env.contract.address,
-        ContractError::Unauthorized {},
-    )?;
+        ContractError::Unauthorized {}
+    );
     let msg: SubMsg = match &ask_asset_info {
         AssetInfo::Native(denom) => {
             let amount = ask_asset_info.query_balance(&deps.querier, env.contract.address)?;
@@ -214,12 +213,12 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    require(
+    ensure!(
         !cw20_msg.amount.is_zero(),
         ContractError::InvalidFunds {
             msg: "Amount must be non-zero".to_string(),
-        },
-    )?;
+        }
+    );
 
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::Swap {
@@ -315,20 +314,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     let contract = ADOContract::default();
 
-    require(
+    ensure!(
         stored.contract == CONTRACT_NAME,
         ContractError::CannotMigrate {
             previous_contract: stored.contract,
-        },
-    )?;
+        }
+    );
 
     // New version has to be newer/greater than the old version
-    require(
+    ensure!(
         storage_version < version,
         ContractError::CannotMigrate {
             previous_contract: stored.version,
-        },
-    )?;
+        }
+    );
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
