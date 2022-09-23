@@ -39,6 +39,9 @@ pub enum AndromedaMsg {
     UpdateAppContract {
         address: String,
     },
+    UpdateProcessContract {
+        address: String,
+    },
     Withdraw {
         recipient: Option<Recipient>,
         tokens_to_withdraw: Option<Vec<Withdrawal>>,

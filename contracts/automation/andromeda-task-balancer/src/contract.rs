@@ -77,13 +77,13 @@ pub fn execute(
     }
 }
 
-fn remove_processs(
+fn remove_process(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     process_address: String,
 ) -> Result<Response, ContractError> {
-    CONTRACTS.remove(deps.storage, process_address)?;
+    CONTRACTS.remove(deps.storage, process_address.clone());
     Ok(Response::new()
         .add_attribute("action", "removed_process")
         .add_attribute("process", process_address))
