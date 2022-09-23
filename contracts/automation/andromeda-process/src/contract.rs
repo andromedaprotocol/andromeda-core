@@ -5,12 +5,11 @@ use crate::state::{
 };
 use ado_base::ADOContract;
 use andromeda_automation::process::{
-    ComponentAddress, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, ProcessComponent,
-    QueryMsg,
+    ComponentAddress, ConfigResponse, ExecuteMsg, FirstAdoResponse, InstantiateMsg, MigrateMsg,
+    ProcessComponent, QueryMsg,
 };
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    app::AndrAddress,
     encode_binary,
     error::ContractError,
     parse_message,
@@ -120,7 +119,7 @@ fn execute_fire(deps: DepsMut, info: MessageInfo, msg: Binary) -> Result<Respons
     // Check authority
     let contract = ADOContract::default();
     ensure!(
-        contract.is_contract_owner(deps.storage, &info.sender.to_string())?,
+        contract.is_contract_owner(deps.storage, info.sender.as_ref())?,
         ContractError::Unauthorized {}
     );
     // Load first ADO's name
@@ -308,7 +307,16 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::ComponentExists { name } => encode_binary(&query_component_exists(deps, name)),
+        QueryMsg::FirstAdo {} => encode_binary(&query_first_ado(deps)?),
     }
+}
+
+fn query_first_ado(deps: Deps) -> Result<FirstAdoResponse, ContractError> {
+    let name = FIRST_ADO.load(deps.storage)?;
+    Ok(FirstAdoResponse {
+        name: name.clone(),
+        address: ADO_ADDRESSES.load(deps.storage, &name)?.to_string(),
+    })
 }
 
 fn handle_andromeda_query(

@@ -177,10 +177,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         )?;
         msgs.push(msg);
     }
-    remainder_funds = remainder_funds
-        .into_iter()
-        .filter(|x| x.amount > Uint128::zero())
-        .collect();
+    remainder_funds.retain(|x| x.amount > Uint128::zero());
     // Who is the sender of this function?
     // Why does the remaining funds go the the sender of the executor of the splitter?
     // Is it considered tax(fee) or mistake?

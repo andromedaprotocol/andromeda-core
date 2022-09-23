@@ -1,6 +1,6 @@
 use crate::{
     contract::*,
-    state::{ADO_ADDRESSES, ADO_DESCRIPTORS},
+    state::{ADO_ADDRESSES, ADO_DESCRIPTORS, FIRST_ADO},
 };
 use andromeda_automation::process::{ExecuteMsg, InstantiateMsg, ProcessComponent};
 use andromeda_testing::{
@@ -186,7 +186,8 @@ fn test_add_process_component() {
         },
     };
 
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+
     assert_eq!(1, res.messages.len());
     let inst_submsg: SubMsg<Empty> = SubMsg {
         id: 1,
@@ -214,6 +215,18 @@ fn test_add_process_component() {
         Addr::unchecked(""),
         ADO_ADDRESSES.load(deps.as_ref().storage, "token").unwrap()
     );
+
+    let msg = ExecuteMsg::AddProcessComponent {
+        component: ProcessComponent {
+            name: "splitter".to_string(),
+            ado_type: "splitter-ado".to_string(),
+            instantiate_msg: to_binary(&true).unwrap(),
+        },
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    assert_eq!(FIRST_ADO.load(&deps.storage).unwrap(), "token".to_string())
 }
 
 #[test]

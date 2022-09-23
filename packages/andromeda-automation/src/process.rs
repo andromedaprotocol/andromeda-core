@@ -44,12 +44,20 @@ pub enum QueryMsg {
     GetAddresses {},
     #[returns(ConfigResponse)]
     Config {},
+    #[returns(FirstAdoResponse)]
+    FirstAdo {},
 }
 
 #[cw_serde]
 pub struct ConfigResponse {
     pub owner: String,
     pub name: String,
+}
+
+#[cw_serde]
+pub struct FirstAdoResponse {
+    pub name: String,
+    pub address: String,
 }
 
 #[cw_serde]
