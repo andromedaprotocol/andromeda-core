@@ -4,9 +4,11 @@ use crate::state::{
     ADO_ADDRESSES, ADO_DESCRIPTORS, FIRST_ADO, PROCESS_NAME,
 };
 use ado_base::ADOContract;
+use andromeda_automation::condition::ExecuteMsg::Interpret;
+use andromeda_automation::evaluation::ExecuteMsg::Evaluate;
 use andromeda_automation::process::{
-    ComponentAddress, ConfigResponse, ExecuteMsg, FirstAdoResponse, InstantiateMsg, MigrateMsg,
-    ProcessComponent, QueryMsg,
+    ComponentAddress, ConfigResponse, EvaluationParameters, ExecuteMsg, FirstAdoResponse,
+    InstantiateMsg, MigrateMsg, ProcessComponent, QueryMsg,
 };
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
@@ -109,13 +111,17 @@ pub fn execute(
         ExecuteMsg::ClaimOwnership { name } => {
             execute_claim_ownership(deps.storage, info.sender.as_str(), name)
         }
-        ExecuteMsg::Fire { msg } => execute_fire(deps, info, msg),
+        ExecuteMsg::Fire { parameters } => execute_fire(deps, info, parameters),
         ExecuteMsg::ProxyMessage { msg, name } => execute_message(deps, info, name, msg),
         ExecuteMsg::UpdateAddress { name, addr } => execute_update_address(deps, info, name, addr),
     }
 }
 
-fn execute_fire(deps: DepsMut, info: MessageInfo, msg: Binary) -> Result<Response, ContractError> {
+fn execute_fire(
+    deps: DepsMut,
+    info: MessageInfo,
+    parameters: Option<EvaluationParameters>,
+) -> Result<Response, ContractError> {
     // Check authority
     let contract = ADOContract::default();
     ensure!(
@@ -126,15 +132,35 @@ fn execute_fire(deps: DepsMut, info: MessageInfo, msg: Binary) -> Result<Respons
     let contract_name = FIRST_ADO.load(deps.storage)?;
     // Load first ADO's address
     let contract_addr = ADO_ADDRESSES.load(deps.storage, &contract_name)?;
-    // Send message to it
-    Ok(Response::new()
-        .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract_addr.to_string(),
-            msg,
-            funds: vec![],
-        })))
-        .add_attribute("action", "fire_ado")
-        .add_attribute("address", contract_addr.to_string()))
+
+    match contract_name.as_str() {
+        "evaluation" => {
+            if let Some(parameters) = parameters {
+                Ok(Response::new()
+                    .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: contract_addr.to_string(),
+                        msg: encode_binary(&Evaluate {
+                            user_value: parameters.user_value,
+                            operation: parameters.operation,
+                        })?,
+                        funds: vec![],
+                    })))
+                    .add_attribute("action", "fire_ado")
+                    .add_attribute("address", contract_addr.to_string()))
+            } else {
+                Err(ContractError::MissingParameters {})
+            }
+        }
+        "condition" => Ok(Response::new()
+            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: contract_addr.to_string(),
+                msg: encode_binary(&Interpret {})?,
+                funds: vec![],
+            })))
+            .add_attribute("action", "fire_ado")
+            .add_attribute("address", contract_addr.to_string())),
+        _ => Err(ContractError::UnsupportedOperation {}),
+    }
 }
 
 fn execute_add_process_component(

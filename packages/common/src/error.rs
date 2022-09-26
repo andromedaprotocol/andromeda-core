@@ -75,6 +75,9 @@ pub enum ContractError {
     #[error("NoResults")]
     NoResults {},
 
+    #[error("MissingParameters")]
+    MissingParameters {},
+
     #[error("OnlyOneSourceAllowed")]
     OnlyOneSourceAllowed {},
 
