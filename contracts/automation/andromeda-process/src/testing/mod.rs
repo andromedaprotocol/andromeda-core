@@ -2,16 +2,21 @@ use crate::{
     contract::*,
     state::{ADO_ADDRESSES, ADO_DESCRIPTORS, FIRST_ADO},
 };
-use andromeda_automation::process::{ExecuteMsg, InstantiateMsg, ProcessComponent};
+use andromeda_automation::evaluation::ExecuteMsg::Evaluate;
+use andromeda_automation::{condition::ExecuteMsg::Interpret, process::EvaluationParameters};
+use andromeda_automation::{
+    evaluation::Operators,
+    process::{ExecuteMsg, InstantiateMsg, ProcessComponent},
+};
 use andromeda_testing::{
     reply::MsgInstantiateContractResponse, testing::mock_querier::mock_dependencies_custom,
 };
-use common::{ado_base::AndromedaMsg, error::ContractError};
+use common::{ado_base::AndromedaMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
     attr,
     testing::{mock_dependencies, mock_env, mock_info},
     to_binary, Addr, CosmosMsg, Empty, Event, Reply, ReplyOn, Response, StdError, SubMsg,
-    SubMsgResponse, SubMsgResult, WasmMsg,
+    SubMsgResponse, SubMsgResult, Uint128, WasmMsg,
 };
 use prost::Message;
 
@@ -227,6 +232,315 @@ fn test_add_process_component() {
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(FIRST_ADO.load(&deps.storage).unwrap(), "token".to_string())
+}
+
+#[test]
+fn test_fire_unsupported_operation() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let inst_msg = InstantiateMsg {
+        process: vec![],
+        name: String::from("Some Process"),
+        primitive_contract: String::from("primitive_contract"),
+    };
+
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+
+    let msg = ExecuteMsg::AddProcessComponent {
+        component: ProcessComponent {
+            name: "token".to_string(),
+            ado_type: "cw721".to_string(),
+            instantiate_msg: to_binary(&true).unwrap(),
+        },
+    };
+
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+
+    assert_eq!(1, res.messages.len());
+    let inst_submsg: SubMsg<Empty> = SubMsg {
+        id: 1,
+        msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+            code_id: 4,
+            msg: to_binary(&true).unwrap(),
+            funds: vec![],
+            label: "Instantiate: cw721".to_string(),
+            admin: Some("creator".to_string()),
+        }),
+        reply_on: ReplyOn::Always,
+        gas_limit: None,
+    };
+    let expected = Response::new()
+        .add_submessage(inst_submsg)
+        .add_attributes(vec![
+            attr("method", "add_process_component"),
+            attr("name", "token"),
+            attr("type", "cw721"),
+        ]);
+
+    assert_eq!(expected, res);
+
+    assert_eq!(
+        Addr::unchecked(""),
+        ADO_ADDRESSES.load(deps.as_ref().storage, "token").unwrap()
+    );
+
+    let msg = ExecuteMsg::AddProcessComponent {
+        component: ProcessComponent {
+            name: "splitter".to_string(),
+            ado_type: "splitter-ado".to_string(),
+            instantiate_msg: to_binary(&true).unwrap(),
+        },
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(FIRST_ADO.load(&deps.storage).unwrap(), "token".to_string());
+    let msg = ExecuteMsg::Fire { parameters: None };
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::UnsupportedOperation {})
+}
+
+#[test]
+fn test_fire_condition_works() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let inst_msg = InstantiateMsg {
+        process: vec![],
+        name: String::from("Some Process"),
+        primitive_contract: String::from("primitive_contract"),
+    };
+
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+
+    let msg = ExecuteMsg::AddProcessComponent {
+        component: ProcessComponent {
+            name: "condition".to_string(),
+            ado_type: "condition".to_string(),
+            instantiate_msg: to_binary(&true).unwrap(),
+        },
+    };
+
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+
+    assert_eq!(1, res.messages.len());
+    let inst_submsg: SubMsg<Empty> = SubMsg {
+        id: 1,
+        msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+            code_id: 0,
+            msg: to_binary(&true).unwrap(),
+            funds: vec![],
+            label: "Instantiate: condition".to_string(),
+            admin: Some("creator".to_string()),
+        }),
+        reply_on: ReplyOn::Always,
+        gas_limit: None,
+    };
+    let expected = Response::new()
+        .add_submessage(inst_submsg)
+        .add_attributes(vec![
+            attr("method", "add_process_component"),
+            attr("name", "condition"),
+            attr("type", "condition"),
+        ]);
+
+    assert_eq!(expected, res);
+
+    assert_eq!(
+        Addr::unchecked(""),
+        ADO_ADDRESSES
+            .load(deps.as_ref().storage, "condition")
+            .unwrap()
+    );
+
+    let msg = ExecuteMsg::AddProcessComponent {
+        component: ProcessComponent {
+            name: "splitter".to_string(),
+            ado_type: "splitter-ado".to_string(),
+            instantiate_msg: to_binary(&true).unwrap(),
+        },
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        FIRST_ADO.load(&deps.storage).unwrap(),
+        "condition".to_string()
+    );
+    let msg = ExecuteMsg::Fire { parameters: None };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let expected_res = Response::new()
+        .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "".to_string(),
+            msg: encode_binary(&Interpret {}).unwrap(),
+            funds: vec![],
+        })))
+        .add_attribute("action", "fire_ado")
+        .add_attribute("address", "".to_string());
+    assert_eq!(res, expected_res);
+}
+
+#[test]
+fn test_fire_evaluation_missing_parameters() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let inst_msg = InstantiateMsg {
+        process: vec![],
+        name: String::from("Some Process"),
+        primitive_contract: String::from("primitive_contract"),
+    };
+
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+
+    let msg = ExecuteMsg::AddProcessComponent {
+        component: ProcessComponent {
+            name: "evaluation".to_string(),
+            ado_type: "evaluation".to_string(),
+            instantiate_msg: to_binary(&true).unwrap(),
+        },
+    };
+
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+
+    assert_eq!(1, res.messages.len());
+    let inst_submsg: SubMsg<Empty> = SubMsg {
+        id: 1,
+        msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+            code_id: 0,
+            msg: to_binary(&true).unwrap(),
+            funds: vec![],
+            label: "Instantiate: evaluation".to_string(),
+            admin: Some("creator".to_string()),
+        }),
+        reply_on: ReplyOn::Always,
+        gas_limit: None,
+    };
+    let expected = Response::new()
+        .add_submessage(inst_submsg)
+        .add_attributes(vec![
+            attr("method", "add_process_component"),
+            attr("name", "evaluation"),
+            attr("type", "evaluation"),
+        ]);
+
+    assert_eq!(expected, res);
+
+    assert_eq!(
+        Addr::unchecked(""),
+        ADO_ADDRESSES
+            .load(deps.as_ref().storage, "evaluation")
+            .unwrap()
+    );
+
+    let msg = ExecuteMsg::AddProcessComponent {
+        component: ProcessComponent {
+            name: "splitter".to_string(),
+            ado_type: "splitter-ado".to_string(),
+            instantiate_msg: to_binary(&true).unwrap(),
+        },
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        FIRST_ADO.load(&deps.storage).unwrap(),
+        "evaluation".to_string()
+    );
+    let msg = ExecuteMsg::Fire { parameters: None };
+    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    assert_eq!(err, ContractError::MissingParameters {})
+}
+
+#[test]
+fn test_fire_evaluation_works() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let inst_msg = InstantiateMsg {
+        process: vec![],
+        name: String::from("Some Process"),
+        primitive_contract: String::from("primitive_contract"),
+    };
+
+    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+
+    let msg = ExecuteMsg::AddProcessComponent {
+        component: ProcessComponent {
+            name: "evaluation".to_string(),
+            ado_type: "evaluation".to_string(),
+            instantiate_msg: to_binary(&true).unwrap(),
+        },
+    };
+
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+
+    assert_eq!(1, res.messages.len());
+    let inst_submsg: SubMsg<Empty> = SubMsg {
+        id: 1,
+        msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+            code_id: 0,
+            msg: to_binary(&true).unwrap(),
+            funds: vec![],
+            label: "Instantiate: evaluation".to_string(),
+            admin: Some("creator".to_string()),
+        }),
+        reply_on: ReplyOn::Always,
+        gas_limit: None,
+    };
+    let expected = Response::new()
+        .add_submessage(inst_submsg)
+        .add_attributes(vec![
+            attr("method", "add_process_component"),
+            attr("name", "evaluation"),
+            attr("type", "evaluation"),
+        ]);
+
+    assert_eq!(expected, res);
+
+    assert_eq!(
+        Addr::unchecked(""),
+        ADO_ADDRESSES
+            .load(deps.as_ref().storage, "evaluation")
+            .unwrap()
+    );
+
+    let msg = ExecuteMsg::AddProcessComponent {
+        component: ProcessComponent {
+            name: "splitter".to_string(),
+            ado_type: "splitter-ado".to_string(),
+            instantiate_msg: to_binary(&true).unwrap(),
+        },
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        FIRST_ADO.load(&deps.storage).unwrap(),
+        "evaluation".to_string()
+    );
+    let msg = ExecuteMsg::Fire {
+        parameters: Some(EvaluationParameters {
+            user_value: Uint128::zero(),
+            operation: Operators::Greater,
+        }),
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let expected_res = Response::new()
+        .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "".to_string(),
+            msg: encode_binary(&Evaluate {
+                user_value: Uint128::zero(),
+                operation: Operators::Greater,
+            })
+            .unwrap(),
+            funds: vec![],
+        })))
+        .add_attribute("action", "fire_ado")
+        .add_attribute("address", "".to_string());
+    assert_eq!(res, expected_res)
 }
 
 #[test]
