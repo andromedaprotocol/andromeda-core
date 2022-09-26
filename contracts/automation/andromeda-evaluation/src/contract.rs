@@ -349,14 +349,17 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
             .add_attribute("result", "true".to_string())
-            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "condition_address".to_string(),
-                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-                    result: true,
-                })
-                .unwrap(),
-                funds: vec![],
-            })));
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "condition_address".to_string(),
+                    msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                        result: true,
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                1,
+            ));
         assert_eq!(res, expected);
     }
 
@@ -392,14 +395,17 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
             .add_attribute("result", "false".to_string())
-            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "condition_address".to_string(),
-                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-                    result: false,
-                })
-                .unwrap(),
-                funds: vec![],
-            })));
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "condition_address".to_string(),
+                    msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                        result: false,
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                1,
+            ));
         assert_eq!(res, expected);
     }
 
@@ -435,14 +441,17 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected = Response::new()
             .add_attribute("result", "false".to_string())
-            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "condition_address".to_string(),
-                msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
-                    result: false,
-                })
-                .unwrap(),
-                funds: vec![],
-            })));
+            .add_submessage(SubMsg::reply_on_error(
+                CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: "condition_address".to_string(),
+                    msg: to_binary(&andromeda_automation::condition::ExecuteMsg::StoreResult {
+                        result: false,
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }),
+                1,
+            ));
         assert_eq!(res, expected);
     }
 
