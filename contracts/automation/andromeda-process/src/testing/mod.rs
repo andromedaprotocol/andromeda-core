@@ -370,7 +370,7 @@ fn test_fire_condition_works() {
     let expected_res = Response::new()
         .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "".to_string(),
-            msg: encode_binary(&ConditionExecuteMsg::GetResult {}).unwrap(),
+            msg: encode_binary(&ConditionExecuteMsg::GetResults {}).unwrap(),
             funds: vec![],
         })))
         .add_attribute("action", "fire_ado")

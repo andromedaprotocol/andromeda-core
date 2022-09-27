@@ -2,7 +2,6 @@ use ado_base::state::ADOContract;
 use andromeda_automation::evaluation::QueryMsg as EvaluationQueryMsg;
 use andromeda_automation::{
     condition::{ExecuteMsg, InstantiateMsg, LogicGate, MigrateMsg, QueryMsg},
-    evaluation::Operators,
     execute,
 };
 
@@ -12,13 +11,13 @@ use common::{
 };
 use cosmwasm_std::{
     ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QueryRequest, Reply, Response, StdError, Uint128, WasmMsg, WasmQuery,
+    QueryRequest, Reply, Response, StdError, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
 
-use crate::state::{EXECUTE_ADO, LOGIC_GATE, RESULTS, WHITELIST};
+use crate::state::{EXECUTE_ADO, LOGIC_GATE, WHITELIST};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-condition";
@@ -73,9 +72,8 @@ pub fn execute(
     let contract = ADOContract::default();
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        ExecuteMsg::Interpret {} => execute_interpret(deps, env, info),
-        ExecuteMsg::StoreResult { result } => execute_store_result(deps, env, info, result),
-        ExecuteMsg::GetResult {} => execute_get_result(deps, env, info),
+        ExecuteMsg::Interpret { results } => execute_interpret(deps, env, info, results),
+        ExecuteMsg::GetResults {} => execute_get_results(deps, env, info),
         ExecuteMsg::UpdateExecuteADO { address } => {
             execute_update_execute_ado(deps, env, info, address)
         }
@@ -144,7 +142,7 @@ fn execute_update_execute_ado(
         .add_attribute("new_address", address.identifier))
 }
 
-fn execute_get_result(
+fn execute_get_results(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -162,63 +160,21 @@ fn execute_get_result(
     let mut eval_results: Vec<bool> = vec![];
 
     for i in whitelist.into_iter() {
-        let mut result: bool = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        let result: bool = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: i,
             msg: to_binary(&EvaluationQueryMsg::Evaluation {})?,
         }))?;
         eval_results.push(result);
     }
 
-    RESULTS.save(deps.storage, &eval_results)?;
-    Ok(execute_interpret(deps, _env, info)?)
-}
-
-fn execute_store_result(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    result: bool,
-) -> Result<Response, ContractError> {
-    let whitelist = WHITELIST.load(deps.storage)?;
-    let contract = ADOContract::default();
-    // Check authority
-    ensure!(
-        whitelist.contains(&info.sender.to_string())
-            || contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    // There won't be any results to load at the beginning
-    let results = RESULTS.may_load(deps.storage)?;
-
-    // In case this isn't the first time we're storing results
-    let res = if let Some(mut results) = results {
-        results.push(result);
-        results
-    }
-    // In case we're storing our first result
-    else {
-        let results = vec![result];
-        results
-    };
-    RESULTS.save(deps.storage, &res)?;
-    let whitelist = WHITELIST.load(deps.storage)?;
-
-    // if the number of results equals the number of whitelisted addressses, interpret the results
-    if res.len() == whitelist.len() {
-        Ok(execute_interpret(deps, _env, info)?)
-    } else {
-        Ok(Response::new()
-            .add_attribute("action", "stored result")
-            .add_attribute("result", result.to_string())
-            .add_attribute("address", info.sender.to_string())
-            .add_attribute("result_count", res.len().to_string()))
-    }
+    Ok(execute_interpret(deps, _env, info, eval_results)?)
 }
 
 fn execute_interpret(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
+    res: Vec<bool>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     let contract = ADOContract::default();
@@ -227,7 +183,6 @@ fn execute_interpret(
     // Load logic gate
     let logic = LOGIC_GATE.load(deps.storage)?;
     // Load results
-    let res = RESULTS.load(deps.storage)?;
     ensure!(!res.is_empty(), ContractError::NoResults {});
 
     let contract_addr =
@@ -246,10 +201,6 @@ fn execute_interpret(
                 ContractError::UnmetCondition {}
             );
 
-            // Reset stored results after they meet our conditions
-            let new: Vec<bool> = vec![];
-            RESULTS.save(deps.storage, &new)?;
-
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
@@ -264,10 +215,6 @@ fn execute_interpret(
                 res.iter().any(|x| x == &true),
                 ContractError::UnmetCondition {}
             );
-
-            // Reset stored results after they meet our conditions
-            let new: Vec<bool> = vec![];
-            RESULTS.save(deps.storage, &new)?;
 
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -288,10 +235,6 @@ fn execute_interpret(
                 ContractError::UnmetCondition {}
             );
 
-            // Reset stored results after they meet our conditions
-            let new: Vec<bool> = vec![];
-            RESULTS.save(deps.storage, &new)?;
-
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
@@ -303,10 +246,6 @@ fn execute_interpret(
         // Only takes one input, takes false as true
         LogicGate::NOT => {
             ensure!(res.len() == 1 && !res[0], ContractError::UnmetCondition {});
-
-            // Reset stored results after they meet our conditions
-            let new: Vec<bool> = vec![];
-            RESULTS.save(deps.storage, &new)?;
 
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -325,9 +264,6 @@ fn execute_interpret(
                 !res.iter().all(|x| x == &true),
                 ContractError::UnmetCondition {}
             );
-            // Reset stored results after they meet our conditions
-            let new: Vec<bool> = vec![];
-            RESULTS.save(deps.storage, &new)?;
 
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -346,9 +282,6 @@ fn execute_interpret(
                 res.iter().all(|x| x == &false),
                 ContractError::UnmetCondition {}
             );
-            // Reset stored results after they meet our conditions
-            let new: Vec<bool> = vec![];
-            RESULTS.save(deps.storage, &new)?;
 
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -367,9 +300,6 @@ fn execute_interpret(
                 res.iter().all(|x| x == &false) || res.iter().all(|x| x == &true),
                 ContractError::UnmetCondition {}
             );
-            // Reset stored results after they meet our conditions
-            let new: Vec<bool> = vec![];
-            RESULTS.save(deps.storage, &new)?;
 
             Ok(Response::new()
                 .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -426,12 +356,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::LogicGate {} => encode_binary(&query_logic_gate(deps)?),
         QueryMsg::Whitelist {} => encode_binary(&query_whitelist(deps)?),
-        QueryMsg::Results {} => encode_binary(&query_results(deps)?),
     }
-}
-
-fn query_results(deps: Deps) -> Result<Vec<bool>, ContractError> {
-    Ok(RESULTS.load(deps.storage)?)
 }
 
 fn query_logic_gate(deps: Deps) -> Result<LogicGate, ContractError> {
@@ -445,12 +370,16 @@ fn query_whitelist(deps: Deps) -> Result<Vec<String>, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mock_querier::mock_dependencies_custom;
     use common::app::AndrAddress;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{mock_env, mock_info};
+
+    // legit_address1 always returns true
+    // legit_address2 always returns false
 
     #[test]
     fn test_instantiate_works() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -470,26 +399,8 @@ mod tests {
     }
 
     #[test]
-    fn test_store_results_unauthorized() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg {
-            logic_gate: LogicGate::AND,
-            whitelist: vec!["legit_address".to_string()],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
-        };
-        let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        assert_eq!(err, ContractError::Unauthorized {})
-    }
-
-    #[test]
-    fn test_store_results_works() {
-        let mut deps = mock_dependencies();
+    fn test_interpret_unauthorized() {
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -501,41 +412,29 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
+        let msg = ExecuteMsg::GetResults {};
         let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result)
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(ContractError::Unauthorized {}, err)
     }
 
     #[test]
     fn test_interpret_works_and() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::AND,
-            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result: Vec<bool> = vec![];
-        assert_eq!(result, expected_result);
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
@@ -550,31 +449,21 @@ mod tests {
 
     #[test]
     fn test_interpret_works_or_all_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::OR,
-            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result: Vec<bool> = vec![];
-        assert_eq!(result, expected_result);
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
@@ -589,7 +478,7 @@ mod tests {
 
     #[test]
     fn test_interpret_works_or_some_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -601,19 +490,9 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result: Vec<bool> = vec![];
-        assert_eq!(result, expected_result);
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
@@ -628,7 +507,7 @@ mod tests {
 
     #[test]
     fn test_interpret_works_xor_some_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -640,19 +519,9 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result: Vec<bool> = vec![];
-        assert_eq!(result, expected_result);
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
@@ -667,55 +536,42 @@ mod tests {
 
     #[test]
     fn test_interpret_xor_all_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::XOR,
-            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address2", &[]);
-        // Interpret gets fired off since the number of results == the number of whitelisted addresses
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, true];
-        assert_eq!(result, expected_result);
-        assert_eq!(err, ContractError::UnmetCondition {})
+
+        assert_eq!(ContractError::UnmetCondition {}, err)
     }
 
     #[test]
     fn test_interpret_works_not() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NOT,
-            whitelist: vec!["legit_address1".to_string()],
+            whitelist: vec!["legit_address2".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address1", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result: Vec<bool> = vec![];
-        assert_eq!(result, expected_result);
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
@@ -730,7 +586,7 @@ mod tests {
 
     #[test]
     fn test_interpret_not_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -742,8 +598,8 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
         assert_eq!(err, ContractError::UnmetCondition {});
@@ -751,7 +607,7 @@ mod tests {
 
     #[test]
     fn test_interpret_not_more_than_one_input() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -763,25 +619,16 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![false];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        let _result = RESULTS.load(&deps.storage).unwrap();
-        let _expected_result = vec![false, false];
 
-        assert_eq!(err, ContractError::UnmetCondition {});
+        assert_eq!(err, ContractError::UnmetCondition {})
     }
 
     #[test]
     fn test_interpret_works_nand_some_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -793,23 +640,9 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-        assert_eq!(
-            res,
-            Response::new().add_attribute("action", "stored result")
-        );
-
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address2", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result: Vec<bool> = vec![];
-        assert_eq!(result, expected_result);
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
@@ -824,101 +657,85 @@ mod tests {
 
     #[test]
     fn test_interpret_works_nand_all_false() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NAND,
-            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            whitelist: vec!["legit_address2".to_string(), "legit_address2".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![false];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result: Vec<bool> = vec![];
-        assert_eq!(result, expected_result);
-        println!("{:?}", res)
+
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by NAND".to_string());
+        assert_eq!(expected_response, res)
     }
 
     #[test]
     fn test_interpret_nand_all_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NAND,
-            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, true];
-        assert_eq!(result, expected_result);
-        assert_eq!(err, ContractError::UnmetCondition {});
+
+        assert_eq!(err, ContractError::UnmetCondition {})
     }
 
     #[test]
     fn test_interpret_works_nor_all_false() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NOR,
-            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            whitelist: vec!["legit_address2".to_string(), "legit_address2".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![false];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address2", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result: Vec<bool> = vec![];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::Interpret {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        let expected_response = ContractError::NoResults {};
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by NOR".to_string());
         assert_eq!(expected_response, res)
     }
 
     #[test]
     fn test_interpret_nor_some_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -930,79 +747,50 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, false];
-        assert_eq!(result, expected_result);
-        assert_eq!(err, ContractError::UnmetCondition {});
+
+        assert_eq!(err, ContractError::UnmetCondition {})
     }
 
     #[test]
     fn test_interpret_nor_all_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::NOR,
-            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, true];
-        assert_eq!(result, expected_result);
-        assert_eq!(err, ContractError::UnmetCondition {});
+
+        assert_eq!(err, ContractError::UnmetCondition {})
     }
 
     #[test]
     fn test_interpret_works_xnor_all_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::XNOR,
-            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result: Vec<bool> = vec![];
-        assert_eq!(result, expected_result);
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
@@ -1012,36 +800,26 @@ mod tests {
                 funds: vec![],
             }))
             .add_attribute("result", "sent by XNOR".to_string());
-        assert_eq!(expected_response, res);
+        assert_eq!(expected_response, res)
     }
 
     #[test]
     fn test_interpret_works_xnor_all_false() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::XNOR,
-            whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            whitelist: vec!["legit_address2".to_string(), "legit_address2".to_string()],
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![false];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result: Vec<bool> = vec![];
-        assert_eq!(result, expected_result);
 
         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
         let expected_response = Response::new()
@@ -1051,12 +829,12 @@ mod tests {
                 funds: vec![],
             }))
             .add_attribute("result", "sent by XNOR".to_string());
-        assert_eq!(expected_response, res);
+        assert_eq!(expected_response, res)
     }
 
     #[test]
     fn test_interpret_xnor_some_true() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
@@ -1068,19 +846,10 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        let msg = ExecuteMsg::StoreResult { result: true };
-        let info = mock_info("legit_address1", &[]);
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true];
-        assert_eq!(result, expected_result);
-
-        let msg = ExecuteMsg::StoreResult { result: false };
-        let info = mock_info("legit_address2", &[]);
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        let result = RESULTS.load(&deps.storage).unwrap();
-        let expected_result = vec![true, false];
-        assert_eq!(result, expected_result);
-        assert_eq!(err, ContractError::UnmetCondition {});
+
+        assert_eq!(err, ContractError::UnmetCondition {})
     }
 }

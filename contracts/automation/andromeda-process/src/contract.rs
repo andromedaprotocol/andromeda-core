@@ -129,7 +129,7 @@ fn execute_fire(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         "condition" => Ok(Response::new()
             .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.to_string(),
-                msg: encode_binary(&ConditionExecuteMsg::GetResult {})?,
+                msg: encode_binary(&ConditionExecuteMsg::GetResults {})?,
                 funds: vec![],
             })))
             .add_attribute("action", "fire_ado")

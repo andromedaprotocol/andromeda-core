@@ -17,11 +17,10 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Executes based off the evaluation ADO's bool
-    Interpret {},
-    StoreResult {
-        result: bool,
+    Interpret {
+        results: Vec<bool>,
     },
-    GetResult {},
+    GetResults {},
     UpdateExecuteADO {
         address: AndrAddress,
     },
@@ -43,7 +42,6 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     LogicGate {},
     Whitelist {},
-    Results {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
