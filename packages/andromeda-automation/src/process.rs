@@ -1,8 +1,6 @@
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, Uint128};
-
-use crate::evaluation::Operators;
+use cosmwasm_std::Binary;
 
 #[cw_serde]
 pub struct ProcessComponent {
@@ -21,30 +19,11 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    AddProcessComponent {
-        component: ProcessComponent,
-    },
-    ClaimOwnership {
-        name: Option<String>,
-    },
-    Fire {
-        // Used only in case the Evaluation ADO is the first contract
-        parameters: Option<EvaluationParameters>,
-    },
-    ProxyMessage {
-        name: String,
-        msg: Binary,
-    },
-    UpdateAddress {
-        name: String,
-        addr: String,
-    },
-}
-
-#[cw_serde]
-pub struct EvaluationParameters {
-    pub user_value: Uint128,
-    pub operation: Operators,
+    AddProcessComponent { component: ProcessComponent },
+    ClaimOwnership { name: Option<String> },
+    Fire {},
+    ProxyMessage { name: String, msg: Binary },
+    UpdateAddress { name: String, addr: String },
 }
 
 #[cw_serde]

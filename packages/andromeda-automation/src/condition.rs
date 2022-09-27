@@ -2,16 +2,13 @@ use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
 };
-use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use crate::evaluation::Operators;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     pub logic_gate: LogicGate,
-    pub whitelist: Vec<EvalDetails>,
+    pub whitelist: Vec<String>,
     pub execute_ado: AndrAddress,
 }
 
@@ -24,15 +21,12 @@ pub enum ExecuteMsg {
     StoreResult {
         result: bool,
     },
-    GetResult {
-        user_value: Uint128,
-        operation: Operators,
-    },
+    GetResult {},
     UpdateExecuteADO {
         address: AndrAddress,
     },
     UpdateWhitelist {
-        addresses: Vec<EvalDetails>,
+        addresses: Vec<String>,
     },
     UpdateLogicGate {
         logic_gate: LogicGate,
@@ -61,11 +55,4 @@ pub enum LogicGate {
     NAND,
     NOR,
     XNOR,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct EvalDetails {
-    pub contract_addr: String,
-    pub user_value: Uint128,
-    pub operation: Operators,
 }

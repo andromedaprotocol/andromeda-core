@@ -1,5 +1,4 @@
 use ado_base::state::ADOContract;
-use andromeda_automation::condition::EvalDetails;
 use andromeda_automation::evaluation::QueryMsg as EvaluationQueryMsg;
 use andromeda_automation::{
     condition::{ExecuteMsg, InstantiateMsg, LogicGate, MigrateMsg, QueryMsg},
@@ -76,10 +75,7 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::Interpret {} => execute_interpret(deps, env, info),
         ExecuteMsg::StoreResult { result } => execute_store_result(deps, env, info, result),
-        ExecuteMsg::GetResult {
-            user_value,
-            operation,
-        } => execute_get_result(deps, env, info, user_value, operation),
+        ExecuteMsg::GetResult {} => execute_get_result(deps, env, info),
         ExecuteMsg::UpdateExecuteADO { address } => {
             execute_update_execute_ado(deps, env, info, address)
         }
@@ -114,7 +110,7 @@ fn execute_update_whitelist(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    addresses: Vec<EvalDetails>,
+    addresses: Vec<String>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // Check authority
@@ -152,8 +148,6 @@ fn execute_get_result(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    user_value: Uint128,
-    operation: Operators,
 ) -> Result<Response, ContractError> {
     // Check authority
     let contract = ADOContract::default();
@@ -164,19 +158,13 @@ fn execute_get_result(
 
     let whitelist = WHITELIST.load(deps.storage)?;
 
-    // There won't be any results to load at the beginning
-    let results = RESULTS.may_load(deps.storage)?;
-
     // Query Eval for results
     let mut eval_results: Vec<bool> = vec![];
 
-    for i in whitelist.iter() {
+    for i in whitelist.into_iter() {
         let mut result: bool = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: i.contract_addr,
-            msg: to_binary(&EvaluationQueryMsg::Evaluation {
-                user_value: i.user_value,
-                operation: i.operation,
-            })?,
+            contract_addr: i,
+            msg: to_binary(&EvaluationQueryMsg::Evaluation {})?,
         }))?;
         eval_results.push(result);
     }

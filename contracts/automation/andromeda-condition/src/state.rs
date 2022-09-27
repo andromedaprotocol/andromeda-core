@@ -1,4 +1,4 @@
-use andromeda_automation::condition::{EvalDetails, LogicGate};
+use andromeda_automation::condition::LogicGate;
 use common::app::AndrAddress;
 use cw_storage_plus::Item;
 
@@ -9,7 +9,7 @@ pub const LOGIC_GATE: Item<LogicGate> = Item::new("logic_gate");
 pub const RESULTS: Item<Vec<bool>> = Item::new("results_from_evaluation_ado");
 
 // List of contracts you want to query results from
-pub const WHITELIST: Item<Vec<EvalDetails>> = Item::new("whitelist");
+pub const WHITELIST: Item<Vec<String>> = Item::new("whitelist");
 
 // Execute ADO's address
 pub const EXECUTE_ADO: Item<AndrAddress> = Item::new("execute_ado");
