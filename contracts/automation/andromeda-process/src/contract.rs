@@ -40,10 +40,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     PROCESS_NAME.save(deps.storage, &msg.name)?;
-    ensure!(
-        msg.process.len() <= 50,
-        ContractError::TooManyAppComponents {}
-    );
+    ensure!(msg.process.len() <= 50, ContractError::TooManyComponents {});
 
     let sender = info.sender.to_string();
     let resp = ADOContract::default()

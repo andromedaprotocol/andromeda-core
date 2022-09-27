@@ -121,7 +121,6 @@ version = "0.1.0"
 dependencies = [
  "ado-base",
  "andromeda-automation",
- "andromeda-finance",
  "andromeda-testing",
  "common",
  "cosmwasm-schema",
@@ -298,7 +297,6 @@ version = "0.1.0"
 dependencies = [
  "ado-base",
  "andromeda-automation",
- "andromeda-finance",
  "andromeda-testing",
  "common",
  "cosmwasm-schema",
@@ -318,7 +316,6 @@ version = "0.1.0"
 dependencies = [
  "ado-base",
  "andromeda-automation",
- "andromeda-finance",
  "andromeda-testing",
  "common",
  "cosmwasm-schema",
@@ -615,7 +612,6 @@ version = "0.1.0"
 dependencies = [
  "ado-base",
  "andromeda-automation",
- "andromeda-finance",
  "andromeda-testing",
  "common",
  "cosmwasm-schema",

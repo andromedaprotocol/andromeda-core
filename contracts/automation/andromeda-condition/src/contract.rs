@@ -1,6 +1,9 @@
 use ado_base::state::ADOContract;
+use andromeda_automation::condition::EvalDetails;
+use andromeda_automation::evaluation::QueryMsg as EvaluationQueryMsg;
 use andromeda_automation::{
     condition::{ExecuteMsg, InstantiateMsg, LogicGate, MigrateMsg, QueryMsg},
+    evaluation::Operators,
     execute,
 };
 
@@ -9,8 +12,8 @@ use common::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, WasmMsg,
+    ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QueryRequest, Reply, Response, StdError, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
@@ -73,11 +76,15 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::Interpret {} => execute_interpret(deps, env, info),
         ExecuteMsg::StoreResult { result } => execute_store_result(deps, env, info, result),
+        ExecuteMsg::GetResult {
+            user_value,
+            operation,
+        } => execute_get_result(deps, env, info, user_value, operation),
         ExecuteMsg::UpdateExecuteADO { address } => {
             execute_update_execute_ado(deps, env, info, address)
         }
         ExecuteMsg::UpdateWhitelist { addresses } => {
-            execute_update_whitelist_ado(deps, env, info, addresses)
+            execute_update_whitelist(deps, env, info, addresses)
         }
         ExecuteMsg::UpdateLogicGate { logic_gate } => {
             execute_update_logic_gate(deps, env, info, logic_gate)
@@ -103,11 +110,11 @@ fn execute_update_logic_gate(
     Ok(Response::new().add_attribute("action", "updated_logic_gate"))
 }
 
-fn execute_update_whitelist_ado(
+fn execute_update_whitelist(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    addresses: Vec<String>,
+    addresses: Vec<EvalDetails>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // Check authority
@@ -141,6 +148,43 @@ fn execute_update_execute_ado(
         .add_attribute("new_address", address.identifier))
 }
 
+fn execute_get_result(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    user_value: Uint128,
+    operation: Operators,
+) -> Result<Response, ContractError> {
+    // Check authority
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let whitelist = WHITELIST.load(deps.storage)?;
+
+    // There won't be any results to load at the beginning
+    let results = RESULTS.may_load(deps.storage)?;
+
+    // Query Eval for results
+    let mut eval_results: Vec<bool> = vec![];
+
+    for i in whitelist.iter() {
+        let mut result: bool = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: i.contract_addr,
+            msg: to_binary(&EvaluationQueryMsg::Evaluation {
+                user_value: i.user_value,
+                operation: i.operation,
+            })?,
+        }))?;
+        eval_results.push(result);
+    }
+
+    RESULTS.save(deps.storage, &eval_results)?;
+    Ok(execute_interpret(deps, _env, info)?)
+}
+
 fn execute_store_result(
     deps: DepsMut,
     _env: Env,
@@ -148,39 +192,38 @@ fn execute_store_result(
     result: bool,
 ) -> Result<Response, ContractError> {
     let whitelist = WHITELIST.load(deps.storage)?;
+    let contract = ADOContract::default();
     // Check authority
     ensure!(
-        whitelist.contains(&info.sender.to_string()),
+        whitelist.contains(&info.sender.to_string())
+            || contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
     // There won't be any results to load at the beginning
     let results = RESULTS.may_load(deps.storage)?;
 
     // In case this isn't the first time we're storing results
-    if let Some(mut results) = results {
+    let res = if let Some(mut results) = results {
         results.push(result);
-        RESULTS.save(deps.storage, &results)?;
-        let whitelist = WHITELIST.load(deps.storage)?;
-
-        // if the number of results equals the number of whitelisted addressses,
-        if results.len() == whitelist.len() {
-            Ok(execute_interpret(deps, _env, info)?)
-        } else {
-            Ok(Response::new().add_attribute("action", "stored result"))
-        }
-        // In case we're storing our first result
-    } else {
+        results
+    }
+    // In case we're storing our first result
+    else {
         let results = vec![result];
-        RESULTS.save(deps.storage, &results)?;
+        results
+    };
+    RESULTS.save(deps.storage, &res)?;
+    let whitelist = WHITELIST.load(deps.storage)?;
 
-        let whitelist = WHITELIST.load(deps.storage)?;
-
-        // if the number of results equals the number of whitelisted addressses, interpret the results
-        if results.len() == whitelist.len() {
-            Ok(execute_interpret(deps, _env, info)?)
-        } else {
-            Ok(Response::new().add_attribute("action", "stored result"))
-        }
+    // if the number of results equals the number of whitelisted addressses, interpret the results
+    if res.len() == whitelist.len() {
+        Ok(execute_interpret(deps, _env, info)?)
+    } else {
+        Ok(Response::new()
+            .add_attribute("action", "stored result")
+            .add_attribute("result", result.to_string())
+            .add_attribute("address", info.sender.to_string())
+            .add_attribute("result_count", res.len().to_string()))
     }
 }
 
@@ -659,8 +702,9 @@ mod tests {
         let info = mock_info("legit_address2", &[]);
         // Interpret gets fired off since the number of results == the number of whitelisted addresses
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        let _result = RESULTS.load(&deps.storage).unwrap();
-        let _expected_result = vec![true, true];
+        let result = RESULTS.load(&deps.storage).unwrap();
+        let expected_result = vec![true, true];
+        assert_eq!(result, expected_result);
         assert_eq!(err, ContractError::UnmetCondition {})
     }
 

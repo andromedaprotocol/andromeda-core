@@ -20,7 +20,7 @@ semver = "1"
 andromeda-finance = { version = "0.1.0", path = "../../../packages/andromeda-finance" }
 andromeda-automation = { version = "0.1.0", path = "../../../packages/andromeda-automation" }
 
-ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["modules"] }
+ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 
 [dev-dependencies]
