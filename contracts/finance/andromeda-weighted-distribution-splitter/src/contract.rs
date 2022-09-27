@@ -97,6 +97,7 @@ pub fn execute(
 
     // Do this before the hooks get fired off to ensure that there is no conflict with the app
     // contract not being whitelisted.
+    // Handled separately due to extra data required
     if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
         let splitter = SPLITTER.load(deps.storage)?;
         let mut andr_addresses: Vec<AndrAddress> = vec![];
@@ -106,6 +107,11 @@ pub fn execute(
             }
         }
         return contract.execute_update_app_contract(deps, info, address, Some(andr_addresses));
+    };
+
+    //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
+        return contract.execute(deps, env, info, andr_msg, execute);
     };
 
     contract.module_hook::<Response>(
