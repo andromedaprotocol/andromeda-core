@@ -12,7 +12,8 @@ pub const ADO_ADDRESSES: Map<&str, Addr> = Map::new("ado_addresses");
 pub const ADO_DESCRIPTORS: Map<&str, ProcessComponent> = Map::new("ado_descriptors");
 pub const ADO_IDX: Item<u64> = Item::new("ado_idx");
 pub const PROCESS_NAME: Item<String> = Item::new("process_name");
-pub const FIRST_ADO: Item<String> = Item::new("first_ado");
+// The fire function will send messages to the following addresses provided by our frontend
+pub const FIRST_ADOS: Item<Vec<String>> = Item::new("first_ados");
 
 // DEV NOTE: Very similar to CW721 module instantiation, possibly merge both implementations?
 pub fn add_process_component(

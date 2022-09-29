@@ -62,11 +62,17 @@ pub fn execute(
     let contract = ADOContract::default();
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        ExecuteMsg::Increment {} => execute_increment(deps, env, info),
+        ExecuteMsg::IncrementOne {} => execute_increment_one(deps, env, info),
+        ExecuteMsg::IncrementTwo {} => execute_increment_two(deps, env, info),
+        ExecuteMsg::Reset {} => execute_reset(deps, env, info),
     }
 }
 
-fn execute_increment(
+fn execute_reset(deps: DepsMut, _env: Env, _info: MessageInfo) -> Result<Response, ContractError> {
+    COUNT.save(deps.storage, &Uint128::zero())?;
+    Ok(Response::new().add_attribute("action", "reset_count"))
+}
+fn execute_increment_one(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
@@ -75,7 +81,20 @@ fn execute_increment(
     count += Uint128::new(1);
     COUNT.save(deps.storage, &count)?;
     Ok(Response::new()
-        .add_attribute("action", "increment_count")
+        .add_attribute("action", "increment_count_1")
+        .add_attribute("new_count", count))
+}
+
+fn execute_increment_two(
+    deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+) -> Result<Response, ContractError> {
+    let mut count = COUNT.load(deps.storage)?;
+    count += Uint128::new(2);
+    COUNT.save(deps.storage, &count)?;
+    Ok(Response::new()
+        .add_attribute("action", "increment_count_2")
         .add_attribute("new_count", count))
 }
 
@@ -151,7 +170,7 @@ mod tests {
     }
 
     #[test]
-    fn test_increment() {
+    fn test_increment_one() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {};
         let info = mock_info("creator", &[]);
@@ -164,10 +183,56 @@ mod tests {
         let count = COUNT.load(&deps.storage).unwrap();
         assert_eq!(count, Uint128::zero());
 
-        let msg = ExecuteMsg::Increment {};
+        let msg = ExecuteMsg::IncrementOne {};
         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let expected_count = Uint128::new(1);
         let count = COUNT.load(&deps.storage).unwrap();
         assert_eq!(count, expected_count)
+    }
+
+    #[test]
+    fn test_increment_two() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {};
+        let info = mock_info("creator", &[]);
+
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // make sure address was saved correctly
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, Uint128::zero());
+
+        let msg = ExecuteMsg::IncrementTwo {};
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_count = Uint128::new(2);
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, expected_count)
+    }
+
+    #[test]
+    fn test_reset() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {};
+        let info = mock_info("creator", &[]);
+
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // make sure address was saved correctly
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, Uint128::zero());
+
+        let msg = ExecuteMsg::IncrementOne {};
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let expected_count = Uint128::new(1);
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, expected_count);
+        let msg = ExecuteMsg::Reset {};
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, Uint128::zero())
     }
 }

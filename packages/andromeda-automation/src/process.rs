@@ -14,6 +14,7 @@ pub struct InstantiateMsg {
     pub process: Vec<ProcessComponent>,
     pub name: String,
     pub primitive_contract: String,
+    pub first_ados: Vec<String>,
 }
 
 #[cw_serde]
@@ -44,8 +45,8 @@ pub enum QueryMsg {
     GetAddresses {},
     #[returns(ConfigResponse)]
     Config {},
-    #[returns(FirstAdoResponse)]
-    FirstAdo {},
+    #[returns(FirstAdosResponse)]
+    FirstAdos {},
 }
 
 #[cw_serde]
@@ -55,9 +56,9 @@ pub struct ConfigResponse {
 }
 
 #[cw_serde]
-pub struct FirstAdoResponse {
-    pub name: String,
-    pub address: String,
+pub struct FirstAdosResponse {
+    pub names: Vec<String>,
+    pub addresses: Vec<String>,
 }
 
 #[cw_serde]

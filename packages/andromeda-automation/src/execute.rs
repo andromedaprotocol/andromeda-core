@@ -11,6 +11,8 @@ pub struct InstantiateMsg {
     pub target_address: AndrAddress,
     // Condition ADO's address
     pub condition_address: AndrAddress,
+    // Desired increment
+    pub increment: Increment,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -34,4 +36,9 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     ConditionADO {},
     TargetADO {},
+}
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub enum Increment {
+    One,
+    Two,
 }

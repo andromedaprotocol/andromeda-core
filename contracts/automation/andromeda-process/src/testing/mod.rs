@@ -1,6 +1,6 @@
 use crate::{
     contract::*,
-    state::{ADO_ADDRESSES, ADO_DESCRIPTORS, FIRST_ADO},
+    state::{ADO_ADDRESSES, ADO_DESCRIPTORS, FIRST_ADOS},
 };
 use andromeda_automation::condition::ExecuteMsg as ConditionExecuteMsg;
 use andromeda_automation::process::{ExecuteMsg, InstantiateMsg, ProcessComponent};
@@ -15,7 +15,6 @@ use cosmwasm_std::{
     SubMsgResponse, SubMsgResult, WasmMsg,
 };
 use prost::Message;
-
 #[test]
 fn test_empty_instantiation() {
     let mut deps = mock_dependencies();
@@ -24,6 +23,7 @@ fn test_empty_instantiation() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
     let info = mock_info("creator", &[]);
 
@@ -44,6 +44,7 @@ fn test_instantiation() {
         }],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
     let info = mock_info("creator", &[]);
 
@@ -97,6 +98,7 @@ fn test_instantiation_duplicate_components() {
         ],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
     let info = mock_info("creator", &[]);
 
@@ -113,6 +115,7 @@ fn test_add_process_component_unauthorized() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -143,6 +146,7 @@ fn test_add_process_component_duplicate_name() {
         }],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -175,6 +179,7 @@ fn test_add_process_component() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -227,74 +232,10 @@ fn test_add_process_component() {
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(FIRST_ADO.load(&deps.storage).unwrap(), "token".to_string())
-}
-
-#[test]
-fn test_fire_unsupported_operation() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
-    let info = mock_info("creator", &[]);
-    let inst_msg = InstantiateMsg {
-        process: vec![],
-        name: String::from("Some Process"),
-        primitive_contract: String::from("primitive_contract"),
-    };
-
-    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
-
-    let msg = ExecuteMsg::AddProcessComponent {
-        component: ProcessComponent {
-            name: "token".to_string(),
-            ado_type: "cw721".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
-        },
-    };
-
-    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
-
-    assert_eq!(1, res.messages.len());
-    let inst_submsg: SubMsg<Empty> = SubMsg {
-        id: 1,
-        msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-            code_id: 4,
-            msg: to_binary(&true).unwrap(),
-            funds: vec![],
-            label: "Instantiate: cw721".to_string(),
-            admin: Some("creator".to_string()),
-        }),
-        reply_on: ReplyOn::Always,
-        gas_limit: None,
-    };
-    let expected = Response::new()
-        .add_submessage(inst_submsg)
-        .add_attributes(vec![
-            attr("method", "add_process_component"),
-            attr("name", "token"),
-            attr("type", "cw721"),
-        ]);
-
-    assert_eq!(expected, res);
-
     assert_eq!(
-        Addr::unchecked(""),
-        ADO_ADDRESSES.load(deps.as_ref().storage, "token").unwrap()
-    );
-
-    let msg = ExecuteMsg::AddProcessComponent {
-        component: ProcessComponent {
-            name: "splitter".to_string(),
-            ado_type: "splitter-ado".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
-        },
-    };
-
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-    assert_eq!(FIRST_ADO.load(&deps.storage).unwrap(), "token".to_string());
-    let msg = ExecuteMsg::Fire {};
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(err, ContractError::UnsupportedOperation {})
+        FIRST_ADOS.load(&deps.storage).unwrap(),
+        vec!["condition_ado".to_string()]
+    )
 }
 
 #[test]
@@ -306,6 +247,7 @@ fn test_fire_condition_works() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -361,8 +303,8 @@ fn test_fire_condition_works() {
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     assert_eq!(
-        FIRST_ADO.load(&deps.storage).unwrap(),
-        "condition".to_string()
+        FIRST_ADOS.load(&deps.storage).unwrap(),
+        vec!["condition_ado".to_string()]
     );
     let msg = ExecuteMsg::Fire {};
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -379,78 +321,6 @@ fn test_fire_condition_works() {
 }
 
 #[test]
-fn test_fire_evaluation_works() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
-    let info = mock_info("creator", &[]);
-    let inst_msg = InstantiateMsg {
-        process: vec![],
-        name: String::from("Some Process"),
-        primitive_contract: String::from("primitive_contract"),
-    };
-
-    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
-
-    let msg = ExecuteMsg::AddProcessComponent {
-        component: ProcessComponent {
-            name: "evaluation".to_string(),
-            ado_type: "evaluation".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
-        },
-    };
-
-    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
-
-    assert_eq!(1, res.messages.len());
-    let inst_submsg: SubMsg<Empty> = SubMsg {
-        id: 1,
-        msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-            code_id: 0,
-            msg: to_binary(&true).unwrap(),
-            funds: vec![],
-            label: "Instantiate: evaluation".to_string(),
-            admin: Some("creator".to_string()),
-        }),
-        reply_on: ReplyOn::Always,
-        gas_limit: None,
-    };
-    let expected = Response::new()
-        .add_submessage(inst_submsg)
-        .add_attributes(vec![
-            attr("method", "add_process_component"),
-            attr("name", "evaluation"),
-            attr("type", "evaluation"),
-        ]);
-
-    assert_eq!(expected, res);
-
-    assert_eq!(
-        Addr::unchecked(""),
-        ADO_ADDRESSES
-            .load(deps.as_ref().storage, "evaluation")
-            .unwrap()
-    );
-
-    let msg = ExecuteMsg::AddProcessComponent {
-        component: ProcessComponent {
-            name: "splitter".to_string(),
-            ado_type: "splitter-ado".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
-        },
-    };
-
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-    assert_eq!(
-        FIRST_ADO.load(&deps.storage).unwrap(),
-        "evaluation".to_string()
-    );
-    let msg = ExecuteMsg::Fire {};
-    let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(err, ContractError::UnsupportedOperation {})
-}
-
-#[test]
 fn test_claim_ownership_unauth() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
@@ -459,6 +329,7 @@ fn test_claim_ownership_unauth() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -479,6 +350,7 @@ fn test_claim_ownership_not_found() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -505,6 +377,7 @@ fn test_claim_ownership_empty() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -524,6 +397,7 @@ fn test_claim_ownership_all() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -589,6 +463,7 @@ fn test_claim_ownership() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -643,6 +518,7 @@ fn test_proxy_message_unauth() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -666,6 +542,7 @@ fn test_proxy_message_not_found() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -693,6 +570,7 @@ fn test_proxy_message() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
     ADO_ADDRESSES
         .save(
@@ -739,6 +617,7 @@ fn test_update_address_unauth() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     ADO_ADDRESSES
@@ -769,6 +648,7 @@ fn test_update_address_not_found() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -796,6 +676,7 @@ fn test_update_address() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
+        first_ados: vec!["condition_ado".to_string()],
     };
 
     ADO_ADDRESSES

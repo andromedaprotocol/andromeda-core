@@ -54,7 +54,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: Deps, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
     // Load task balancer's address
     let contract_addr = TASK_BALANCER_ADDRESS.load(deps.storage)?;
     let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
@@ -300,7 +300,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         let msg = QueryMsg::Evaluation {};
 
         let res = query(deps.as_ref(), mock_env(), msg).unwrap();
@@ -332,7 +332,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
 
@@ -365,7 +365,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
 
@@ -398,7 +398,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
 
@@ -431,7 +431,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
 
@@ -464,7 +464,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
 
@@ -497,7 +497,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
         let res = query(deps.as_ref(), mock_env(), msg).unwrap();
@@ -530,7 +530,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
         let res = query(deps.as_ref(), mock_env(), msg).unwrap();
@@ -563,7 +563,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
         let res = query(deps.as_ref(), mock_env(), msg).unwrap();
@@ -596,7 +596,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
         let res = query(deps.as_ref(), mock_env(), msg).unwrap();
@@ -629,7 +629,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
 
@@ -663,7 +663,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
 
@@ -696,7 +696,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
 
@@ -729,7 +729,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
 
@@ -764,7 +764,7 @@ mod tests {
         };
         let info = mock_info("creator", &[]);
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = QueryMsg::Evaluation {};
 

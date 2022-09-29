@@ -16,6 +16,7 @@ cw2 = "0.15.0"
 schemars = "0.8.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 semver = "1"
+prost = "0.9.0"
 
 andromeda-automation = { version = "0.1.0", path = "../../../packages/andromeda-automation" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features=["instantiate"] }
@@ -23,4 +24,3 @@ common = { version = "0.1.0", path = "../../../packages/common" }
 
 [dev-dependencies]
 andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }
-prost = "0.9"

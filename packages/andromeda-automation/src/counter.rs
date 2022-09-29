@@ -10,7 +10,9 @@ pub struct InstantiateMsg {}
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Evaluates 2 pieces of data
-    Increment {},
+    IncrementOne {},
+    IncrementTwo {},
+    Reset {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

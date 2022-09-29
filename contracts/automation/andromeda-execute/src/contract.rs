@@ -1,10 +1,10 @@
 use std::env;
 
-use crate::state::{CONDITION_ADO_ADDRESS, TARGET_ADO_ADDRESS};
+use crate::state::{CONDITION_ADO_ADDRESS, INCREMENT_MESSAGE, TARGET_ADO_ADDRESS};
 use ado_base::state::ADOContract;
 use andromeda_automation::{
     counter,
-    execute::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    execute::{ExecuteMsg, Increment, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
@@ -33,6 +33,7 @@ pub fn instantiate(
 
     TARGET_ADO_ADDRESS.save(deps.storage, &msg.target_address)?;
     CONDITION_ADO_ADDRESS.save(deps.storage, &msg.condition_address)?;
+    INCREMENT_MESSAGE.save(deps.storage, &msg.increment)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -70,7 +71,7 @@ pub fn execute(
     let contract = ADOContract::default();
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        ExecuteMsg::Execute {} => execute_execute(deps, env, info),
+        ExecuteMsg::Execute {} => execute_target(deps, env, info),
         ExecuteMsg::UpdateConditionAddress { condition_address } => {
             execute_update_condition_address(deps, env, info, condition_address)
         }
@@ -95,7 +96,7 @@ fn execute_update_condition_address(
     Ok(Response::new().add_attribute("action", "updated_condition_address"))
 }
 
-fn execute_execute(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+fn execute_target(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let app_contract = contract.get_app_contract(deps.storage)?;
 
@@ -113,14 +114,23 @@ fn execute_execute(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respon
         app_contract,
     )?;
 
-    Ok(Response::new().add_submessage(SubMsg::reply_on_error(
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr,
-            msg: to_binary(&counter::ExecuteMsg::Increment {})?,
-            funds: vec![],
-        }),
-        2,
-    )))
+    let increment = INCREMENT_MESSAGE.load(deps.storage)?;
+    match increment {
+        Increment::One => Ok(Response::new().add_submessage(SubMsg::new(CosmosMsg::Wasm(
+            WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&counter::ExecuteMsg::IncrementOne {})?,
+                funds: vec![],
+            },
+        )))),
+        Increment::Two => Ok(Response::new().add_submessage(SubMsg::new(CosmosMsg::Wasm(
+            WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&counter::ExecuteMsg::IncrementTwo {})?,
+                funds: vec![],
+            },
+        )))),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -183,6 +193,7 @@ fn query_execute_ado(deps: Deps) -> Result<String, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_automation::execute::Increment;
     use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
@@ -199,6 +210,7 @@ mod tests {
         let msg = InstantiateMsg {
             target_address,
             condition_address,
+            increment: Increment::One,
         };
         let info = mock_info("creator", &[]);
 
@@ -229,6 +241,7 @@ mod tests {
         let msg = InstantiateMsg {
             target_address,
             condition_address,
+            increment: Increment::One,
         };
         let info = mock_info("creator", &[]);
 
@@ -264,6 +277,7 @@ mod tests {
         let msg = InstantiateMsg {
             target_address,
             condition_address,
+            increment: Increment::One,
         };
         let info = mock_info("creator", &[]);
 
@@ -286,7 +300,7 @@ mod tests {
         println!("{:?}", res.messages);
         let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "target_address".to_string(),
-            msg: to_binary(&counter::ExecuteMsg::Increment {}).unwrap(),
+            msg: to_binary(&counter::ExecuteMsg::IncrementOne {}).unwrap(),
             funds: vec![],
         }));
         assert_eq!(res.messages, vec![expected])

@@ -1,12 +1,12 @@
 use crate::state::{
     add_process_component, generate_assign_process_message, generate_ownership_message,
     load_component_addresses, load_component_addresses_with_name, load_component_descriptors,
-    ADO_ADDRESSES, ADO_DESCRIPTORS, FIRST_ADO, PROCESS_NAME,
+    ADO_ADDRESSES, ADO_DESCRIPTORS, FIRST_ADOS, PROCESS_NAME,
 };
 use ado_base::ADOContract;
 use andromeda_automation::condition::ExecuteMsg as ConditionExecuteMsg;
 use andromeda_automation::process::{
-    ComponentAddress, ConfigResponse, ExecuteMsg, FirstAdoResponse, InstantiateMsg, MigrateMsg,
+    ComponentAddress, ConfigResponse, ExecuteMsg, FirstAdosResponse, InstantiateMsg, MigrateMsg,
     ProcessComponent, QueryMsg,
 };
 use common::{
@@ -24,6 +24,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 
+use prost::alloc::vec;
 use semver::Version;
 
 // version info for migration info
@@ -39,6 +40,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     PROCESS_NAME.save(deps.storage, &msg.name)?;
+
+    FIRST_ADOS.save(deps.storage, &msg.first_ados)?;
     ensure!(msg.process.len() <= 50, ContractError::TooManyComponents {});
 
     let sender = info.sender.to_string();
@@ -121,21 +124,52 @@ fn execute_fire(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         ContractError::Unauthorized {}
     );
     // Load first ADO's name
-    let contract_name = FIRST_ADO.load(deps.storage)?;
+    let contract_names = FIRST_ADOS.load(deps.storage)?;
+    let mut contract_addrs = Vec::new();
     // Load first ADO's address
-    let contract_addr = ADO_ADDRESSES.load(deps.storage, &contract_name)?;
-
-    match contract_name.as_str() {
-        "condition" => Ok(Response::new()
-            .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: contract_addr.to_string(),
-                msg: encode_binary(&ConditionExecuteMsg::GetResults {})?,
-                funds: vec![],
-            })))
-            .add_attribute("action", "fire_ado")
-            .add_attribute("address", contract_addr.to_string())),
-        _ => Err(ContractError::UnsupportedOperation {}),
+    for i in contract_names.into_iter() {
+        let addrs = ADO_ADDRESSES.load(deps.storage, &i)?;
+        contract_addrs.push(addrs.to_string());
     }
+
+    // collect SubMsgs for each contract
+    let mut sub_msgs: Vec<SubMsg> = Vec::new();
+
+    // collect Attributes for each contract
+    let mut attributes = vec![];
+
+    for contract_addr in contract_addrs.into_iter() {
+        let msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: contract_addr.clone(),
+            msg: encode_binary(&ConditionExecuteMsg::GetResults {})?,
+            funds: Vec::new(),
+        }));
+        let attr = ("address", contract_addr);
+        sub_msgs.push(msg);
+        attributes.push(attr);
+
+        // How we may support different ado types
+        // Load the descriptors to have access to the ado type
+        // let ty = ADO_DESCRIPTORS.load(deps.storage, &contract_addr)?;
+        // match ty.ado_type.as_str() {
+        //     "condition" => {
+        //         let msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //             contract_addr: contract_addr.clone(),
+        //             msg: encode_binary(&ConditionExecuteMsg::GetResults {})?,
+        //             funds: Vec::new(),
+        //         }));
+        //         let attr = ("address", contract_addr);
+        //         sub_msgs.push(msg);
+        //         attributes.push(attr);
+        //     }
+        //     // Placeholder until we add support for different ado types
+        //     _ => (),
+    }
+
+    Ok(Response::new()
+        .add_submessages(sub_msgs)
+        .add_attributes(attributes)
+        .add_attribute("action", "fire_ado"))
 }
 
 fn execute_add_process_component(
@@ -157,9 +191,7 @@ fn execute_add_process_component(
     ADO_ADDRESSES.save(storage, &component.name, &Addr::unchecked(""))?;
 
     let idx = add_process_component(storage, &component)?;
-    if idx == 1 {
-        FIRST_ADO.save(storage, &component.name)?;
-    }
+
     let inst_msg = contract.generate_instantiate_msg(
         storage,
         querier,
@@ -308,15 +340,23 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::ComponentExists { name } => encode_binary(&query_component_exists(deps, name)),
-        QueryMsg::FirstAdo {} => encode_binary(&query_first_ado(deps)?),
+        QueryMsg::FirstAdos {} => encode_binary(&query_first_ado(deps)?),
     }
 }
 
-fn query_first_ado(deps: Deps) -> Result<FirstAdoResponse, ContractError> {
-    let name = FIRST_ADO.load(deps.storage)?;
-    Ok(FirstAdoResponse {
-        name: name.clone(),
-        address: ADO_ADDRESSES.load(deps.storage, &name)?.to_string(),
+fn query_first_ado(deps: Deps) -> Result<FirstAdosResponse, ContractError> {
+    // Load first ADO's name
+    let contract_names = FIRST_ADOS.load(deps.storage)?;
+    let mut contract_addrs = Vec::new();
+    // Load first ADO's address
+    for i in contract_names.clone().into_iter() {
+        let addrs = ADO_ADDRESSES.load(deps.storage, &i)?;
+        contract_addrs.push(addrs.to_string());
+    }
+
+    Ok(FirstAdosResponse {
+        names: contract_names,
+        addresses: contract_addrs,
     })
 }
 

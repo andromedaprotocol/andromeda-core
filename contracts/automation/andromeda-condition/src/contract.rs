@@ -167,7 +167,7 @@ fn execute_get_results(
         eval_results.push(result);
     }
 
-    Ok(execute_interpret(deps, _env, info, eval_results)?)
+    execute_interpret(deps, _env, info, eval_results)
 }
 
 fn execute_interpret(
