@@ -1,9 +1,14 @@
-use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use common::{
+    ado_base::{AndromedaMsg, AndromedaQuery},
+    app::AndrAddress,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub whitelist: Vec<AndrAddress>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
