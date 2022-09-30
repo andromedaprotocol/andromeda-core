@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     pub logic_gate: LogicGate,
-    pub whitelist: Vec<String>,
+    pub whitelist: Vec<AndrAddress>,
     pub execute_ado: AndrAddress,
 }
 
@@ -25,7 +25,7 @@ pub enum ExecuteMsg {
         address: AndrAddress,
     },
     UpdateWhitelist {
-        addresses: Vec<String>,
+        addresses: Vec<AndrAddress>,
     },
     UpdateLogicGate {
         logic_gate: LogicGate,
