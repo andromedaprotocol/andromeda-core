@@ -247,7 +247,7 @@ fn test_fire_condition_works() {
         process: vec![],
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
-        first_ados: vec!["condition_ado".to_string()],
+        first_ados: vec!["condition".to_string()],
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -304,7 +304,7 @@ fn test_fire_condition_works() {
 
     assert_eq!(
         FIRST_ADOS.load(&deps.storage).unwrap(),
-        vec!["condition_ado".to_string()]
+        vec!["condition".to_string()]
     );
     let msg = ExecuteMsg::Fire {};
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -315,8 +315,8 @@ fn test_fire_condition_works() {
             msg: encode_binary(&ConditionExecuteMsg::GetResults {}).unwrap(),
             funds: vec![],
         })))
-        .add_attribute("action", "fire_ado")
-        .add_attribute("address", "".to_string());
+        .add_attribute("address", "".to_string())
+        .add_attribute("action", "fire_ado");
     assert_eq!(res, expected_res);
 }
 

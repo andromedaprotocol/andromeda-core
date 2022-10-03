@@ -40,8 +40,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     PROCESS_NAME.save(deps.storage, &msg.name)?;
-
     FIRST_ADOS.save(deps.storage, &msg.first_ados)?;
+    
     ensure!(msg.process.len() <= 50, ContractError::TooManyComponents {});
 
     let sender = info.sender.to_string();
