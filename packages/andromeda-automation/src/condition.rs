@@ -2,18 +2,16 @@ use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub logic_gate: LogicGate,
     pub whitelist: Vec<AndrAddress>,
     pub execute_ado: AndrAddress,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Executes based off the evaluation ADO's bool
@@ -32,19 +30,22 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(LogicGate)]
     LogicGate {},
+    #[returns(Vec<AndrAddress>)]
     Whitelist {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub enum LogicGate {
     AND,
     OR,

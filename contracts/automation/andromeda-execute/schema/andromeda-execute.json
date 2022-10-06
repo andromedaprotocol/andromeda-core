@@ -1,5 +1,5 @@
 {
-  "contract_name": "andromeda-process",
+  "contract_name": "andromeda-execute",
   "contract_version": "0.1.0",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -7,56 +7,41 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "first_ados",
-      "name",
-      "primitive_contract",
-      "process"
+      "condition_address",
+      "increment",
+      "target_address"
     ],
     "properties": {
-      "first_ados": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
+      "condition_address": {
+        "$ref": "#/definitions/AndrAddress"
       },
-      "name": {
-        "type": "string"
+      "increment": {
+        "$ref": "#/definitions/Increment"
       },
-      "primitive_contract": {
-        "type": "string"
-      },
-      "process": {
-        "type": "array",
-        "items": {
-          "$ref": "#/definitions/ProcessComponent"
-        }
+      "target_address": {
+        "$ref": "#/definitions/AndrAddress"
       }
     },
     "additionalProperties": false,
     "definitions": {
-      "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-        "type": "string"
-      },
-      "ProcessComponent": {
+      "AndrAddress": {
         "type": "object",
         "required": [
-          "ado_type",
-          "instantiate_msg",
-          "name"
+          "identifier"
         ],
         "properties": {
-          "ado_type": {
-            "type": "string"
-          },
-          "instantiate_msg": {
-            "$ref": "#/definitions/Binary"
-          },
-          "name": {
+          "identifier": {
+            "description": "Can be either an address or identifier of an ADO in a app.",
             "type": "string"
           }
-        },
-        "additionalProperties": false
+        }
+      },
+      "Increment": {
+        "type": "string",
+        "enum": [
+          "one",
+          "two"
+        ]
       }
     }
   },
@@ -77,103 +62,33 @@
         "additionalProperties": false
       },
       {
+        "description": "Evaluates 2 pieces of data",
         "type": "object",
         "required": [
-          "add_process_component"
+          "execute"
         ],
         "properties": {
-          "add_process_component": {
+          "execute": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_condition_address"
+        ],
+        "properties": {
+          "update_condition_address": {
             "type": "object",
             "required": [
-              "component"
+              "condition_address"
             ],
             "properties": {
-              "component": {
-                "$ref": "#/definitions/ProcessComponent"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "claim_ownership"
-        ],
-        "properties": {
-          "claim_ownership": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "fire"
-        ],
-        "properties": {
-          "fire": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "proxy_message"
-        ],
-        "properties": {
-          "proxy_message": {
-            "type": "object",
-            "required": [
-              "msg",
-              "name"
-            ],
-            "properties": {
-              "msg": {
-                "$ref": "#/definitions/Binary"
-              },
-              "name": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "update_address"
-        ],
-        "properties": {
-          "update_address": {
-            "type": "object",
-            "required": [
-              "addr",
-              "name"
-            ],
-            "properties": {
-              "addr": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
+              "condition_address": {
+                "$ref": "#/definitions/AndrAddress"
               }
             },
             "additionalProperties": false
@@ -502,26 +417,6 @@
           }
         }
       },
-      "ProcessComponent": {
-        "type": "object",
-        "required": [
-          "ado_type",
-          "instantiate_msg",
-          "name"
-        ],
-        "properties": {
-          "ado_type": {
-            "type": "string"
-          },
-          "instantiate_msg": {
-            "$ref": "#/definitions/Binary"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
       "Recipient": {
         "oneOf": [
           {
@@ -629,31 +524,10 @@
       {
         "type": "object",
         "required": [
-          "get_address"
+          "condition_a_d_o"
         ],
         "properties": {
-          "get_address": {
-            "type": "object",
-            "required": [
-              "name"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "get_components"
-        ],
-        "properties": {
-          "get_components": {
+          "condition_a_d_o": {
             "type": "object",
             "additionalProperties": false
           }
@@ -663,57 +537,10 @@
       {
         "type": "object",
         "required": [
-          "component_exists"
+          "target_a_d_o"
         ],
         "properties": {
-          "component_exists": {
-            "type": "object",
-            "required": [
-              "name"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "get_addresses"
-        ],
-        "properties": {
-          "get_addresses": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "config"
-        ],
-        "properties": {
-          "config": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "first_ados"
-        ],
-        "properties": {
-          "first_ados": {
+          "target_a_d_o": {
             "type": "object",
             "additionalProperties": false
           }
@@ -1041,117 +868,15 @@
         }
       }
     },
-    "component_exists": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Boolean",
-      "type": "boolean"
-    },
-    "config": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ConfigResponse",
-      "type": "object",
-      "required": [
-        "name",
-        "owner"
-      ],
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "owner": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "first_ados": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "FirstAdosResponse",
-      "type": "object",
-      "required": [
-        "addresses",
-        "names"
-      ],
-      "properties": {
-        "addresses": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "names": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "get_address": {
+    "condition_a_d_o": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "String",
       "type": "string"
     },
-    "get_addresses": {
+    "target_a_d_o": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Array_of_ComponentAddress",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ComponentAddress"
-      },
-      "definitions": {
-        "ComponentAddress": {
-          "type": "object",
-          "required": [
-            "address",
-            "name"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      }
-    },
-    "get_components": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Array_of_ProcessComponent",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ProcessComponent"
-      },
-      "definitions": {
-        "Binary": {
-          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-          "type": "string"
-        },
-        "ProcessComponent": {
-          "type": "object",
-          "required": [
-            "ado_type",
-            "instantiate_msg",
-            "name"
-          ],
-          "properties": {
-            "ado_type": {
-              "type": "string"
-            },
-            "instantiate_msg": {
-              "$ref": "#/definitions/Binary"
-            },
-            "name": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      }
+      "title": "String",
+      "type": "string"
     }
   }
 }

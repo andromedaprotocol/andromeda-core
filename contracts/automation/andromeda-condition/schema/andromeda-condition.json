@@ -1,5 +1,5 @@
 {
-  "contract_name": "andromeda-process",
+  "contract_name": "andromeda-condition",
   "contract_version": "0.1.0",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -7,56 +7,49 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "first_ados",
-      "name",
-      "primitive_contract",
-      "process"
+      "execute_ado",
+      "logic_gate",
+      "whitelist"
     ],
     "properties": {
-      "first_ados": {
+      "execute_ado": {
+        "$ref": "#/definitions/AndrAddress"
+      },
+      "logic_gate": {
+        "$ref": "#/definitions/LogicGate"
+      },
+      "whitelist": {
         "type": "array",
         "items": {
-          "type": "string"
-        }
-      },
-      "name": {
-        "type": "string"
-      },
-      "primitive_contract": {
-        "type": "string"
-      },
-      "process": {
-        "type": "array",
-        "items": {
-          "$ref": "#/definitions/ProcessComponent"
+          "$ref": "#/definitions/AndrAddress"
         }
       }
     },
     "additionalProperties": false,
     "definitions": {
-      "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-        "type": "string"
-      },
-      "ProcessComponent": {
+      "AndrAddress": {
         "type": "object",
         "required": [
-          "ado_type",
-          "instantiate_msg",
-          "name"
+          "identifier"
         ],
         "properties": {
-          "ado_type": {
-            "type": "string"
-          },
-          "instantiate_msg": {
-            "$ref": "#/definitions/Binary"
-          },
-          "name": {
+          "identifier": {
+            "description": "Can be either an address or identifier of an ADO in a app.",
             "type": "string"
           }
-        },
-        "additionalProperties": false
+        }
+      },
+      "LogicGate": {
+        "type": "string",
+        "enum": [
+          "a_n_d",
+          "o_r",
+          "x_o_r",
+          "n_o_t",
+          "n_a_n_d",
+          "n_o_r",
+          "x_n_o_r"
+        ]
       }
     }
   },
@@ -77,19 +70,23 @@
         "additionalProperties": false
       },
       {
+        "description": "Executes based off the evaluation ADO's bool",
         "type": "object",
         "required": [
-          "add_process_component"
+          "interpret"
         ],
         "properties": {
-          "add_process_component": {
+          "interpret": {
             "type": "object",
             "required": [
-              "component"
+              "results"
             ],
             "properties": {
-              "component": {
-                "$ref": "#/definitions/ProcessComponent"
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "boolean"
+                }
               }
             },
             "additionalProperties": false
@@ -100,17 +97,30 @@
       {
         "type": "object",
         "required": [
-          "claim_ownership"
+          "get_results"
         ],
         "properties": {
-          "claim_ownership": {
+          "get_results": {
             "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_execute_a_d_o"
+        ],
+        "properties": {
+          "update_execute_a_d_o": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
             "properties": {
-              "name": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+              "address": {
+                "$ref": "#/definitions/AndrAddress"
               }
             },
             "additionalProperties": false
@@ -121,34 +131,20 @@
       {
         "type": "object",
         "required": [
-          "fire"
+          "update_whitelist"
         ],
         "properties": {
-          "fire": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "proxy_message"
-        ],
-        "properties": {
-          "proxy_message": {
+          "update_whitelist": {
             "type": "object",
             "required": [
-              "msg",
-              "name"
+              "addresses"
             ],
             "properties": {
-              "msg": {
-                "$ref": "#/definitions/Binary"
-              },
-              "name": {
-                "type": "string"
+              "addresses": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AndrAddress"
+                }
               }
             },
             "additionalProperties": false
@@ -159,21 +155,17 @@
       {
         "type": "object",
         "required": [
-          "update_address"
+          "update_logic_gate"
         ],
         "properties": {
-          "update_address": {
+          "update_logic_gate": {
             "type": "object",
             "required": [
-              "addr",
-              "name"
+              "logic_gate"
             ],
             "properties": {
-              "addr": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
+              "logic_gate": {
+                "$ref": "#/definitions/LogicGate"
               }
             },
             "additionalProperties": false
@@ -482,6 +474,18 @@
         "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
         "type": "string"
       },
+      "LogicGate": {
+        "type": "string",
+        "enum": [
+          "a_n_d",
+          "o_r",
+          "x_o_r",
+          "n_o_t",
+          "n_a_n_d",
+          "n_o_r",
+          "x_n_o_r"
+        ]
+      },
       "Module": {
         "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
         "type": "object",
@@ -501,26 +505,6 @@
             "type": "string"
           }
         }
-      },
-      "ProcessComponent": {
-        "type": "object",
-        "required": [
-          "ado_type",
-          "instantiate_msg",
-          "name"
-        ],
-        "properties": {
-          "ado_type": {
-            "type": "string"
-          },
-          "instantiate_msg": {
-            "$ref": "#/definitions/Binary"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
       },
       "Recipient": {
         "oneOf": [
@@ -629,31 +613,10 @@
       {
         "type": "object",
         "required": [
-          "get_address"
+          "logic_gate"
         ],
         "properties": {
-          "get_address": {
-            "type": "object",
-            "required": [
-              "name"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "get_components"
-        ],
-        "properties": {
-          "get_components": {
+          "logic_gate": {
             "type": "object",
             "additionalProperties": false
           }
@@ -663,57 +626,10 @@
       {
         "type": "object",
         "required": [
-          "component_exists"
+          "whitelist"
         ],
         "properties": {
-          "component_exists": {
-            "type": "object",
-            "required": [
-              "name"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "get_addresses"
-        ],
-        "properties": {
-          "get_addresses": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "config"
-        ],
-        "properties": {
-          "config": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "first_ados"
-        ],
-        "properties": {
-          "first_ados": {
+          "whitelist": {
             "type": "object",
             "additionalProperties": false
           }
@@ -1041,115 +957,39 @@
         }
       }
     },
-    "component_exists": {
+    "logic_gate": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Boolean",
-      "type": "boolean"
+      "title": "LogicGate",
+      "type": "string",
+      "enum": [
+        "a_n_d",
+        "o_r",
+        "x_o_r",
+        "n_o_t",
+        "n_a_n_d",
+        "n_o_r",
+        "x_n_o_r"
+      ]
     },
-    "config": {
+    "whitelist": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ConfigResponse",
-      "type": "object",
-      "required": [
-        "name",
-        "owner"
-      ],
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "owner": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "first_ados": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "FirstAdosResponse",
-      "type": "object",
-      "required": [
-        "addresses",
-        "names"
-      ],
-      "properties": {
-        "addresses": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "names": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "get_address": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "String",
-      "type": "string"
-    },
-    "get_addresses": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Array_of_ComponentAddress",
+      "title": "Array_of_AndrAddress",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/ComponentAddress"
+        "$ref": "#/definitions/AndrAddress"
       },
       "definitions": {
-        "ComponentAddress": {
+        "AndrAddress": {
           "type": "object",
           "required": [
-            "address",
-            "name"
+            "identifier"
           ],
           "properties": {
-            "address": {
-              "type": "string"
-            },
-            "name": {
+            "identifier": {
+              "description": "Can be either an address or identifier of an ADO in a app.",
               "type": "string"
             }
-          },
-          "additionalProperties": false
-        }
-      }
-    },
-    "get_components": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Array_of_ProcessComponent",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ProcessComponent"
-      },
-      "definitions": {
-        "Binary": {
-          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-          "type": "string"
-        },
-        "ProcessComponent": {
-          "type": "object",
-          "required": [
-            "ado_type",
-            "instantiate_msg",
-            "name"
-          ],
-          "properties": {
-            "ado_type": {
-              "type": "string"
-            },
-            "instantiate_msg": {
-              "$ref": "#/definitions/Binary"
-            },
-            "name": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+          }
         }
       }
     }

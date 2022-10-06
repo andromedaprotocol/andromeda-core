@@ -2,11 +2,10 @@ use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     // Condition ADO's address
     pub condition_address: AndrAddress,
@@ -24,28 +23,30 @@ pub struct InstantiateMsg {
     pub operation: Operators,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     ChangeConditionAddress { address: AndrAddress },
     ChangeQueryAddress { address: AndrAddress },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(String)]
     ConditionADO {},
+    #[returns(bool)]
     Evaluation {},
+    #[returns(String)]
     QueryADO {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+#[cw_serde]
 pub enum Operators {
     Greater,
     GreaterEqual,
