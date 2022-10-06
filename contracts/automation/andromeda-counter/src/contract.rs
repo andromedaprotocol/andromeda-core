@@ -173,90 +173,113 @@ fn query_count(deps: Deps) -> Result<Uint128, ContractError> {
     Ok(count)
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use common::app::AndrAddress;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
-//     #[test]
-//     fn test_initialization() {
-//         let mut deps = mock_dependencies();
-//         let msg = InstantiateMsg {};
-//         let info = mock_info("creator", &[]);
+    #[test]
+    fn test_initialization() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            whitelist: vec![AndrAddress {
+                identifier: "address".to_string(),
+            }],
+        };
+        let info = mock_info("creator", &[]);
 
-//         // we can just call .unwrap() to assert this was a success
-//         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//         // make sure address was saved correctly
-//         let count = COUNT.load(&deps.storage).unwrap();
-//         assert_eq!(count, Uint128::zero())
-//     }
+        // make sure address was saved correctly
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, Uint128::zero())
+    }
 
-//     #[test]
-//     fn test_increment_one() {
-//         let mut deps = mock_dependencies();
-//         let msg = InstantiateMsg {};
-//         let info = mock_info("creator", &[]);
+    #[test]
+    fn test_increment_one() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            whitelist: vec![AndrAddress {
+                identifier: "address".to_string(),
+            }],
+        };
+        let info = mock_info("creator", &[]);
 
-//         // we can just call .unwrap() to assert this was a success
-//         let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//         // make sure address was saved correctly
-//         let count = COUNT.load(&deps.storage).unwrap();
-//         assert_eq!(count, Uint128::zero());
+        // make sure address was saved correctly
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, Uint128::zero());
+        let info = mock_info("address", &[]);
 
-//         let msg = ExecuteMsg::IncrementOne {};
-//         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected_count = Uint128::new(1);
-//         let count = COUNT.load(&deps.storage).unwrap();
-//         assert_eq!(count, expected_count)
-//     }
+        let msg = ExecuteMsg::IncrementOne {};
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_count = Uint128::new(1);
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, expected_count)
+    }
 
-//     #[test]
-//     fn test_increment_two() {
-//         let mut deps = mock_dependencies();
-//         let msg = InstantiateMsg {};
-//         let info = mock_info("creator", &[]);
+    #[test]
+    fn test_increment_two() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            whitelist: vec![AndrAddress {
+                identifier: "address".to_string(),
+            }],
+        };
+        let info = mock_info("creator", &[]);
 
-//         // we can just call .unwrap() to assert this was a success
-//         let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//         // make sure address was saved correctly
-//         let count = COUNT.load(&deps.storage).unwrap();
-//         assert_eq!(count, Uint128::zero());
+        // make sure address was saved correctly
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, Uint128::zero());
 
-//         let msg = ExecuteMsg::IncrementTwo {};
-//         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let expected_count = Uint128::new(2);
-//         let count = COUNT.load(&deps.storage).unwrap();
-//         assert_eq!(count, expected_count)
-//     }
+        let info = mock_info("address", &[]);
 
-//     #[test]
-//     fn test_reset() {
-//         let mut deps = mock_dependencies();
-//         let msg = InstantiateMsg {};
-//         let info = mock_info("creator", &[]);
+        let msg = ExecuteMsg::IncrementTwo {};
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_count = Uint128::new(2);
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, expected_count)
+    }
 
-//         // we can just call .unwrap() to assert this was a success
-//         let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+    #[test]
+    fn test_reset() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            whitelist: vec![AndrAddress {
+                identifier: "address".to_string(),
+            }],
+        };
+        let info = mock_info("creator", &[]);
 
-//         // make sure address was saved correctly
-//         let count = COUNT.load(&deps.storage).unwrap();
-//         assert_eq!(count, Uint128::zero());
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-//         let msg = ExecuteMsg::IncrementOne {};
-//         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-//         let expected_count = Uint128::new(1);
-//         let count = COUNT.load(&deps.storage).unwrap();
-//         assert_eq!(count, expected_count);
-//         let msg = ExecuteMsg::Reset {};
-//         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         let count = COUNT.load(&deps.storage).unwrap();
-//         assert_eq!(count, Uint128::zero())
-//     }
-// }
+        // make sure address was saved correctly
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, Uint128::zero());
+        let info = mock_info("address", &[]);
+
+        let msg = ExecuteMsg::IncrementOne {};
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_count = Uint128::new(1);
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, expected_count);
+        let info = mock_info("address", &[]);
+
+        let msg = ExecuteMsg::Reset {};
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let count = COUNT.load(&deps.storage).unwrap();
+        assert_eq!(count, Uint128::zero())
+    }
+}

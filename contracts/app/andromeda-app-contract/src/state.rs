@@ -12,6 +12,7 @@ pub const ADO_ADDRESSES: Map<&str, Addr> = Map::new("ado_addresses");
 pub const ADO_DESCRIPTORS: Map<&str, AppComponent> = Map::new("ado_descriptors");
 pub const ADO_IDX: Item<u64> = Item::new("ado_idx");
 pub const APP_NAME: Item<String> = Item::new("app_name");
+pub const TARGET_ADOS: Item<Vec<String>> = Item::new("target_ados");
 
 // DEV NOTE: Very similar to CW721 module instantiation, possibly merge both implementations?
 pub fn add_app_component(

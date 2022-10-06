@@ -199,118 +199,113 @@ fn execute_interpret(
             // At least two results should be available
             ensure!(res.len() > 1_usize, ContractError::NotEnoughResults {});
 
-            ensure!(
-                !res.iter().any(|x| x == &false),
-                ContractError::UnmetCondition {}
-            );
-
-            Ok(Response::new()
-                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr,
-                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
-                    funds: vec![],
-                }))
-                .add_attribute("result", "sent by AND".to_string()))
+            if res.iter().any(|x| x == &false) {
+                Ok(Response::new().add_attribute("result", "AND unmet condition".to_string()))
+            } else {
+                Ok(Response::new()
+                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr,
+                        msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                        funds: vec![],
+                    }))
+                    .add_attribute("result", "sent by AND".to_string()))
+            }
         }
         // Just one result being true meets our condition
         LogicGate::OR => {
-            ensure!(
-                res.iter().any(|x| x == &true),
-                ContractError::UnmetCondition {}
-            );
-
-            Ok(Response::new()
-                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr,
-                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
-                    funds: vec![],
-                }))
-                .add_attribute("result", "sent by OR".to_string()))
+            if !res.iter().any(|x| x == &true) {
+                Ok(Response::new().add_attribute("result", "OR unmet condition".to_string()))
+            } else {
+                Ok(Response::new()
+                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr,
+                        msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                        funds: vec![],
+                    }))
+                    .add_attribute("result", "sent by OR".to_string()))
+            }
         }
         // At least one result should be true, but not all of them
         LogicGate::XOR => {
             // At least two results should be available
             ensure!(res.len() > 1_usize, ContractError::NotEnoughResults {});
-
-            ensure!(
-                !res.iter()
-                    .all(|x| x == &true && res.iter().any(|x| x == &true)),
-                ContractError::UnmetCondition {}
-            );
-
-            Ok(Response::new()
-                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr,
-                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
-                    funds: vec![],
-                }))
-                .add_attribute("result", "sent by XOR".to_string()))
+            if res
+                .iter()
+                .all(|x| x == &true || !res.iter().any(|x| x == &true))
+            {
+                Ok(Response::new().add_attribute("result", "XOR unmet condition".to_string()))
+            } else {
+                Ok(Response::new()
+                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr,
+                        msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                        funds: vec![],
+                    }))
+                    .add_attribute("result", "sent by XOR".to_string()))
+            }
         }
+
         // Only takes one input, takes false as true
         LogicGate::NOT => {
-            ensure!(res.len() == 1 && !res[0], ContractError::UnmetCondition {});
-
-            Ok(Response::new()
-                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr,
-                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
-                    funds: vec![],
-                }))
-                .add_attribute("result", "sent by NOT".to_string()))
+            if res.len() != 1 || res[0] {
+                Ok(Response::new().add_attribute("result", "NOT unmet condition".to_string()))
+            } else {
+                Ok(Response::new()
+                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr,
+                        msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                        funds: vec![],
+                    }))
+                    .add_attribute("result", "sent by NOT".to_string()))
+            }
         }
         // Any input is valid unless they're all true
         LogicGate::NAND => {
             // At least two results should be available
-            ensure!(res.len() > 1_usize, ContractError::NotEnoughResults {});
 
-            ensure!(
-                !res.iter().all(|x| x == &true),
-                ContractError::UnmetCondition {}
-            );
-
-            Ok(Response::new()
-                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr,
-                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
-                    funds: vec![],
-                }))
-                .add_attribute("result", "sent by NAND".to_string()))
+            if res.len() <= 1_usize || res.iter().all(|x| x == &true) {
+                Ok(Response::new().add_attribute("result", "NAND unmet condition".to_string()))
+            } else {
+                Ok(Response::new()
+                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr,
+                        msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                        funds: vec![],
+                    }))
+                    .add_attribute("result", "sent by NAND".to_string()))
+            }
         }
         // All input should be false
         LogicGate::NOR => {
             // At least two results should be available
-            ensure!(res.len() > 1_usize, ContractError::NotEnoughResults {});
-
-            ensure!(
-                res.iter().all(|x| x == &false),
-                ContractError::UnmetCondition {}
-            );
-
-            Ok(Response::new()
-                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr,
-                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
-                    funds: vec![],
-                }))
-                .add_attribute("result", "sent by NOR".to_string()))
+            if res.len() <= 1_usize || !res.iter().all(|x| x == &false) {
+                Ok(Response::new().add_attribute("result", "NOR unmet condition".to_string()))
+            } else {
+                Ok(Response::new()
+                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr,
+                        msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                        funds: vec![],
+                    }))
+                    .add_attribute("result", "sent by NOR".to_string()))
+            }
         }
         // Input should be all false or all true
         LogicGate::XNOR => {
             // At least two results should be available
-            ensure!(res.len() > 1_usize, ContractError::NotEnoughResults {});
-
-            ensure!(
-                res.iter().all(|x| x == &false) || res.iter().all(|x| x == &true),
-                ContractError::UnmetCondition {}
-            );
-
-            Ok(Response::new()
-                .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr,
-                    msg: to_binary(&execute::ExecuteMsg::Execute {})?,
-                    funds: vec![],
-                }))
-                .add_attribute("result", "sent by XNOR".to_string()))
+            if res.len() <= 1_usize
+                || !res.iter().all(|x| x == &false) && !res.iter().all(|x| x == &true)
+            {
+                Ok(Response::new().add_attribute("result", "XNOR unmet condition".to_string()))
+            } else {
+                Ok(Response::new()
+                    .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr,
+                        msg: to_binary(&execute::ExecuteMsg::Execute {})?,
+                        funds: vec![],
+                    }))
+                    .add_attribute("result", "sent by XNOR".to_string()))
+            }
         }
     }
 }
@@ -370,489 +365,617 @@ fn query_whitelist(deps: Deps) -> Result<Vec<AndrAddress>, ContractError> {
     Ok(WHITELIST.load(deps.storage)?)
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::mock_querier::mock_dependencies_custom;
-//     use common::app::AndrAddress;
-//     use cosmwasm_std::testing::{mock_env, mock_info};
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mock_querier::mock_dependencies_custom;
+    use common::app::AndrAddress;
+    use cosmwasm_std::testing::{mock_env, mock_info};
 
-//     // legit_address1 always returns true
-//     // legit_address2 always returns false
+    // legit_address1 always returns true
+    // legit_address2 always returns false
 
-//     #[test]
-//     fn test_instantiate_works() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::AND,
-//             whitelist: vec!["legit_address".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
-//         assert_eq!(
-//             WHITELIST.load(&deps.storage).unwrap(),
-//             vec!["legit_address".to_string()]
-//         );
-//         assert_eq!(LOGIC_GATE.load(&deps.storage).unwrap(), LogicGate::AND)
-//     }
+    #[test]
+    fn test_instantiate_works() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::AND,
+            whitelist: vec![AndrAddress {
+                identifier: "legit_address".to_string(),
+            }],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let whitelist = WHITELIST.load(&deps.storage).unwrap();
+        assert_eq!(
+            whitelist[0],
+            AndrAddress {
+                identifier: "legit_address".to_string(),
+            }
+        );
+        assert_eq!(LOGIC_GATE.load(&deps.storage).unwrap(), LogicGate::AND)
+    }
 
-//     #[test]
-//     fn test_interpret_unauthorized() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::AND,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_unauthorized() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::AND,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("legit_address1", &[]);
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-//         assert_eq!(ContractError::Unauthorized {}, err)
-//     }
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("legit_address1", &[]);
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(ContractError::Unauthorized {}, err)
+    }
 
-//     #[test]
-//     fn test_interpret_works_and() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::AND,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_works_and() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::AND,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-//         let expected_response = Response::new()
-//             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr,
-//                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-//                 funds: vec![],
-//             }))
-//             .add_attribute("result", "sent by AND".to_string());
-//         assert_eq!(expected_response, res)
-//     }
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by AND".to_string());
+        assert_eq!(expected_response, res)
+    }
 
-//     #[test]
-//     fn test_interpret_works_or_all_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::OR,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_works_or_all_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::OR,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-//         let expected_response = Response::new()
-//             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr,
-//                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-//                 funds: vec![],
-//             }))
-//             .add_attribute("result", "sent by OR".to_string());
-//         assert_eq!(expected_response, res)
-//     }
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by OR".to_string());
+        assert_eq!(expected_response, res)
+    }
 
-//     #[test]
-//     fn test_interpret_works_or_some_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::OR,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_works_or_some_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::OR,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-//         let expected_response = Response::new()
-//             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr,
-//                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-//                 funds: vec![],
-//             }))
-//             .add_attribute("result", "sent by OR".to_string());
-//         assert_eq!(expected_response, res)
-//     }
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by OR".to_string());
+        assert_eq!(expected_response, res)
+    }
 
-//     #[test]
-//     fn test_interpret_works_xor_some_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::XOR,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_works_xor_some_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::XOR,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-//         let expected_response = Response::new()
-//             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr,
-//                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-//                 funds: vec![],
-//             }))
-//             .add_attribute("result", "sent by XOR".to_string());
-//         assert_eq!(expected_response, res)
-//     }
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by XOR".to_string());
+        assert_eq!(expected_response, res)
+    }
 
-//     #[test]
-//     fn test_interpret_xor_all_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::XOR,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_xor_all_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::XOR,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_res = Response::new().add_attribute("result", "XOR unmet condition");
 
-//         assert_eq!(ContractError::UnmetCondition {}, err)
-//     }
+        assert_eq!(expected_res, res)
+    }
 
-//     #[test]
-//     fn test_interpret_works_not() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::NOT,
-//             whitelist: vec!["legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_works_not() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOT,
+            whitelist: vec![AndrAddress {
+                identifier: "legit_address2".to_string(),
+            }],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-//         let expected_response = Response::new()
-//             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr,
-//                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-//                 funds: vec![],
-//             }))
-//             .add_attribute("result", "sent by NOT".to_string());
-//         assert_eq!(expected_response, res)
-//     }
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by NOT".to_string());
+        assert_eq!(expected_response, res)
+    }
 
-//     #[test]
-//     fn test_interpret_not_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::NOT,
-//             whitelist: vec!["legit_address1".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_not_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOT,
+            whitelist: vec![AndrAddress {
+                identifier: "legit_address1".to_string(),
+            }],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_res = Response::new().add_attribute("result", "NOT unmet condition");
 
-//         assert_eq!(err, ContractError::UnmetCondition {});
-//     }
+        assert_eq!(expected_res, res)
+    }
 
-//     #[test]
-//     fn test_interpret_not_more_than_one_input() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::NOT,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_not_more_than_one_input() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOT,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_res = Response::new().add_attribute("result", "NOT unmet condition");
 
-//         assert_eq!(err, ContractError::UnmetCondition {})
-//     }
+        assert_eq!(expected_res, res)
+    }
 
-//     #[test]
-//     fn test_interpret_works_nand_some_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::NAND,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_works_nand_some_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NAND,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-//         let expected_response = Response::new()
-//             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr,
-//                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-//                 funds: vec![],
-//             }))
-//             .add_attribute("result", "sent by NAND".to_string());
-//         assert_eq!(expected_response, res)
-//     }
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by NAND".to_string());
+        assert_eq!(expected_response, res)
+    }
 
-//     #[test]
-//     fn test_interpret_works_nand_all_false() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::NAND,
-//             whitelist: vec!["legit_address2".to_string(), "legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_works_nand_all_false() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NAND,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-//         let expected_response = Response::new()
-//             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr,
-//                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-//                 funds: vec![],
-//             }))
-//             .add_attribute("result", "sent by NAND".to_string());
-//         assert_eq!(expected_response, res)
-//     }
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by NAND".to_string());
+        assert_eq!(expected_response, res)
+    }
 
-//     #[test]
-//     fn test_interpret_nand_all_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::NAND,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_nand_all_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NAND,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_res = Response::new().add_attribute("result", "NAND unmet condition");
 
-//         assert_eq!(err, ContractError::UnmetCondition {})
-//     }
+        assert_eq!(expected_res, res)
+    }
 
-//     #[test]
-//     fn test_interpret_works_nor_all_false() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::NOR,
-//             whitelist: vec!["legit_address2".to_string(), "legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    #[test]
+    fn test_interpret_works_nor_all_false() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOR,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-//         let expected_response = Response::new()
-//             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr,
-//                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-//                 funds: vec![],
-//             }))
-//             .add_attribute("result", "sent by NOR".to_string());
-//         assert_eq!(expected_response, res)
-//     }
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by NOR".to_string());
+        assert_eq!(expected_response, res)
+    }
 
-//     #[test]
-//     fn test_interpret_nor_some_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::NOR,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_nor_some_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOR,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_res = Response::new().add_attribute("result", "NOR unmet condition");
 
-//         assert_eq!(err, ContractError::UnmetCondition {})
-//     }
+        assert_eq!(expected_res, res)
+    }
 
-//     #[test]
-//     fn test_interpret_nor_all_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::NOR,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_nor_all_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::NOR,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_res = Response::new().add_attribute("result", "NOR unmet condition");
 
-//         assert_eq!(err, ContractError::UnmetCondition {})
-//     }
+        assert_eq!(expected_res, res)
+    }
 
-//     #[test]
-//     fn test_interpret_works_xnor_all_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::XNOR,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address1".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    #[test]
+    fn test_interpret_works_xnor_all_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::XNOR,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-//         let expected_response = Response::new()
-//             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr,
-//                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-//                 funds: vec![],
-//             }))
-//             .add_attribute("result", "sent by XNOR".to_string());
-//         assert_eq!(expected_response, res)
-//     }
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by XNOR".to_string());
+        assert_eq!(expected_response, res)
+    }
 
-//     #[test]
-//     fn test_interpret_works_xnor_all_false() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::XNOR,
-//             whitelist: vec!["legit_address2".to_string(), "legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_works_xnor_all_false() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::XNOR,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-//         let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
-//         let expected_response = Response::new()
-//             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr,
-//                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
-//                 funds: vec![],
-//             }))
-//             .add_attribute("result", "sent by XNOR".to_string());
-//         assert_eq!(expected_response, res)
-//     }
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let expected_response = Response::new()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
+                funds: vec![],
+            }))
+            .add_attribute("result", "sent by XNOR".to_string());
+        assert_eq!(expected_response, res)
+    }
 
-//     #[test]
-//     fn test_interpret_xnor_some_true() {
-//         let mut deps = mock_dependencies_custom(&[]);
-//         let env = mock_env();
-//         let info = mock_info("creator", &[]);
-//         let msg = InstantiateMsg {
-//             logic_gate: LogicGate::XNOR,
-//             whitelist: vec!["legit_address1".to_string(), "legit_address2".to_string()],
-//             execute_ado: AndrAddress {
-//                 identifier: "execute_ado".to_string(),
-//             },
-//         };
-//         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    #[test]
+    fn test_interpret_xnor_some_true() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            logic_gate: LogicGate::XNOR,
+            whitelist: vec![
+                AndrAddress {
+                    identifier: "legit_address1".to_string(),
+                },
+                AndrAddress {
+                    identifier: "legit_address2".to_string(),
+                },
+            ],
+            execute_ado: AndrAddress {
+                identifier: "execute_ado".to_string(),
+            },
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//         let msg = ExecuteMsg::GetResults {};
-//         let info = mock_info("creator", &[]);
-//         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let msg = ExecuteMsg::GetResults {};
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let expected_res = Response::new().add_attribute("result", "XNOR unmet condition");
 
-//         assert_eq!(err, ContractError::UnmetCondition {})
-//     }
-// }
+        assert_eq!(expected_res, res)
+    }
+}

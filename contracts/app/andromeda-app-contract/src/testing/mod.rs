@@ -23,6 +23,7 @@ fn test_empty_instantiation() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
     let info = mock_info("creator", &[]);
 
@@ -43,6 +44,7 @@ fn test_instantiation() {
         }],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
     let info = mock_info("creator", &[]);
 
@@ -96,6 +98,7 @@ fn test_instantiation_duplicate_components() {
         ],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
     let info = mock_info("creator", &[]);
 
@@ -112,6 +115,7 @@ fn test_add_app_component_unauthorized() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -142,6 +146,7 @@ fn test_add_app_component_duplicate_name() {
         }],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -174,6 +179,7 @@ fn test_add_app_component() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -225,6 +231,7 @@ fn test_claim_ownership_unauth() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -245,6 +252,7 @@ fn test_claim_ownership_not_found() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -271,6 +279,7 @@ fn test_claim_ownership_empty() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -290,6 +299,7 @@ fn test_claim_ownership_all() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -355,6 +365,7 @@ fn test_claim_ownership() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -409,6 +420,7 @@ fn test_proxy_message_unauth() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -432,6 +444,7 @@ fn test_proxy_message_not_found() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -459,6 +472,7 @@ fn test_proxy_message() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
     ADO_ADDRESSES
         .save(
@@ -505,6 +519,7 @@ fn test_update_address_unauth() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     ADO_ADDRESSES
@@ -535,6 +550,7 @@ fn test_update_address_not_found() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -562,6 +578,7 @@ fn test_update_address() {
         app: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
+        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
     };
 
     ADO_ADDRESSES

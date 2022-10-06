@@ -51,6 +51,7 @@ version = "0.1.0"
 dependencies = [
  "ado-base",
  "andromeda-app",
+ "andromeda-automation",
  "andromeda-testing",
  "common",
  "cosmwasm-schema",

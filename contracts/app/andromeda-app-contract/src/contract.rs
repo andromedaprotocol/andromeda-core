@@ -1,13 +1,14 @@
 use crate::state::{
     add_app_component, generate_assign_app_message, generate_ownership_message,
     load_component_addresses, load_component_addresses_with_name, load_component_descriptors,
-    ADO_ADDRESSES, ADO_DESCRIPTORS, APP_NAME,
+    ADO_ADDRESSES, ADO_DESCRIPTORS, APP_NAME, TARGET_ADOS,
 };
 use ado_base::ADOContract;
 use andromeda_app::app::{
     AppComponent, ComponentAddress, ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
     QueryMsg,
 };
+use andromeda_automation::condition::ExecuteMsg as ConditionExecuteMsg;
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
@@ -38,6 +39,9 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     APP_NAME.save(deps.storage, &msg.name)?;
+    if let Some(target_ados) = msg.target_ados {
+        TARGET_ADOS.save(deps.storage, &target_ados)?;
+    }
     ensure!(msg.app.len() <= 50, ContractError::TooManyAppComponents {});
 
     let sender = info.sender.to_string();
@@ -102,9 +106,66 @@ pub fn execute(
         ExecuteMsg::ClaimOwnership { name } => {
             execute_claim_ownership(deps.storage, info.sender.as_str(), name)
         }
+        ExecuteMsg::Fire {} => execute_fire(deps, env, info),
         ExecuteMsg::ProxyMessage { msg, name } => execute_message(deps, info, name, msg),
         ExecuteMsg::UpdateAddress { name, addr } => execute_update_address(deps, info, name, addr),
     }
+}
+
+fn execute_fire(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+    // Check authority
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(deps.storage, info.sender.as_ref())?,
+        ContractError::Unauthorized {}
+    );
+    // Load first ADO's name
+    let contract_names = TARGET_ADOS.load(deps.storage)?;
+    let mut contract_addrs = Vec::new();
+    // Load first ADO's address
+    for i in contract_names.into_iter() {
+        let addrs = ADO_ADDRESSES.load(deps.storage, &i)?;
+        contract_addrs.push(addrs.to_string());
+    }
+
+    // collect SubMsgs for each contract
+    let mut sub_msgs: Vec<SubMsg> = Vec::new();
+
+    // collect Attributes for each contract
+    let mut attributes = vec![];
+
+    for contract_addr in contract_addrs.into_iter() {
+        let msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: contract_addr.clone(),
+            msg: encode_binary(&ConditionExecuteMsg::GetResults {})?,
+            funds: Vec::new(),
+        }));
+        let attr = ("address", contract_addr);
+        sub_msgs.push(msg);
+        attributes.push(attr);
+
+        // How we may support different ado types
+        // Load the descriptors to have access to the ado type
+        // let ty = ADO_DESCRIPTORS.load(deps.storage, &contract_addr)?;
+        // match ty.ado_type.as_str() {
+        //     "condition" => {
+        //         let msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //             contract_addr: contract_addr.clone(),
+        //             msg: encode_binary(&ConditionExecuteMsg::GetResults {})?,
+        //             funds: Vec::new(),
+        //         }));
+        //         let attr = ("address", contract_addr);
+        //         sub_msgs.push(msg);
+        //         attributes.push(attr);
+        //     }
+        //     // Placeholder until we add support for different ado types
+        //     _ => (),
+    }
+
+    Ok(Response::new()
+        .add_submessages(sub_msgs)
+        .add_attributes(attributes)
+        .add_attribute("action", "fire_ado"))
 }
 
 fn execute_add_app_component(
