@@ -20,8 +20,8 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = "1.1.2"
-cosmwasm-schema = "1.1.2"
+cosmwasm-std = "1.1.4"
+cosmwasm-schema = "1.1.4"
 cw-storage-plus = "0.15.0"
 schemars = "0.8.10"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }

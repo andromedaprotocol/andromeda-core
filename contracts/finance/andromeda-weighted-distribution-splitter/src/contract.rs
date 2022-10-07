@@ -299,10 +299,7 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         )?;
         msgs.push(msg);
     }
-    remainder_funds = remainder_funds
-        .into_iter()
-        .filter(|x| x.amount > Uint128::zero())
-        .collect();
+    remainder_funds.retain(|x| x.amount > Uint128::zero());
 
     if !remainder_funds.is_empty() {
         msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {

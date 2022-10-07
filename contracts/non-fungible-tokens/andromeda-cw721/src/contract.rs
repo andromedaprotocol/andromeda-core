@@ -66,7 +66,7 @@ pub fn instantiate(
             ado_type: "cw721".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: msg.modules.clone(),
+            modules: msg.modules,
             primitive_contract: None,
         },
     )
