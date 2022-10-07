@@ -3,9 +3,9 @@ pub mod app;
 pub mod error;
 pub mod expiration;
 pub mod primitive;
+pub mod queries;
 pub mod rates;
 pub mod response;
-pub mod queries;
 #[cfg(test)]
 pub mod testing;
 pub mod withdraw;
