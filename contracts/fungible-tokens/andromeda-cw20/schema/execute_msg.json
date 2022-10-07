@@ -22,7 +22,8 @@
             "recipient": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -43,7 +44,8 @@
             "amount": {
               "$ref": "#/definitions/Uint128"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -72,7 +74,8 @@
             "msg": {
               "$ref": "#/definitions/Binary"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -107,7 +110,8 @@
             "spender": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -142,7 +146,8 @@
             "spender": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -171,7 +176,8 @@
             "recipient": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -204,7 +210,8 @@
             "owner": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -229,7 +236,8 @@
             "owner": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -254,7 +262,8 @@
             "recipient": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -290,7 +299,8 @@
                 "null"
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -347,7 +357,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "AndrAddress": {
       "type": "object",
@@ -359,7 +370,8 @@
           "description": "Can be either an address or identifier of an ADO in a app.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "AndromedaMsg": {
       "oneOf": [
@@ -398,7 +410,8 @@
                 "address": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -421,7 +434,8 @@
                     "type": "string"
                   }
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -441,7 +455,8 @@
                 "address": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -474,7 +489,8 @@
                     "$ref": "#/definitions/Withdrawal"
                   }
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -494,7 +510,8 @@
                 "module": {
                   "$ref": "#/definitions/Module"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -514,7 +531,8 @@
                 "module_idx": {
                   "$ref": "#/definitions/Uint64"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -538,7 +556,8 @@
                 "module_idx": {
                   "$ref": "#/definitions/Uint64"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -558,7 +577,8 @@
                 "contract": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -586,7 +606,8 @@
                     "null"
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -594,7 +615,7 @@
       ]
     },
     "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
     },
     "Decimal": {
@@ -671,7 +692,8 @@
           ],
           "properties": {
             "never": {
-              "type": "object"
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -727,7 +749,8 @@
         "module_type": {
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "Recipient": {
       "oneOf": [
@@ -793,7 +816,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "WithdrawalType": {
       "oneOf": [

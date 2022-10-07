@@ -95,7 +95,7 @@
         "additionalProperties": false
       },
       "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
       },
       "Decimal": {
@@ -534,7 +534,7 @@
         ]
       },
       "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
       },
       "Decimal": {
@@ -688,10 +688,10 @@
           {
             "type": "object",
             "required": [
-              "get"
+              "Get"
             ],
             "properties": {
-              "get": {
+              "Get": {
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Binary"
@@ -707,12 +707,11 @@
           {
             "type": "object",
             "required": [
-              "owner"
+              "Owner"
             ],
             "properties": {
-              "owner": {
-                "type": "object",
-                "additionalProperties": false
+              "Owner": {
+                "type": "object"
               }
             },
             "additionalProperties": false
@@ -720,12 +719,11 @@
           {
             "type": "object",
             "required": [
-              "operators"
+              "Operators"
             ],
             "properties": {
-              "operators": {
-                "type": "object",
-                "additionalProperties": false
+              "Operators": {
+                "type": "object"
               }
             },
             "additionalProperties": false
@@ -733,12 +731,11 @@
           {
             "type": "object",
             "required": [
-              "type"
+              "Type"
             ],
             "properties": {
-              "type": {
-                "type": "object",
-                "additionalProperties": false
+              "Type": {
+                "type": "object"
               }
             },
             "additionalProperties": false
@@ -746,12 +743,11 @@
           {
             "type": "object",
             "required": [
-              "original_publisher"
+              "OriginalPublisher"
             ],
             "properties": {
-              "original_publisher": {
-                "type": "object",
-                "additionalProperties": false
+              "OriginalPublisher": {
+                "type": "object"
               }
             },
             "additionalProperties": false
@@ -759,12 +755,11 @@
           {
             "type": "object",
             "required": [
-              "block_height_upon_creation"
+              "BlockHeightUponCreation"
             ],
             "properties": {
-              "block_height_upon_creation": {
-                "type": "object",
-                "additionalProperties": false
+              "BlockHeightUponCreation": {
+                "type": "object"
               }
             },
             "additionalProperties": false
@@ -772,10 +767,10 @@
           {
             "type": "object",
             "required": [
-              "is_operator"
+              "IsOperator"
             ],
             "properties": {
-              "is_operator": {
+              "IsOperator": {
                 "type": "object",
                 "required": [
                   "address"
@@ -784,8 +779,7 @@
                   "address": {
                     "type": "string"
                   }
-                },
-                "additionalProperties": false
+                }
               }
             },
             "additionalProperties": false
@@ -793,10 +787,10 @@
           {
             "type": "object",
             "required": [
-              "module"
+              "Module"
             ],
             "properties": {
-              "module": {
+              "Module": {
                 "type": "object",
                 "required": [
                   "id"
@@ -805,8 +799,7 @@
                   "id": {
                     "$ref": "#/definitions/Uint64"
                   }
-                },
-                "additionalProperties": false
+                }
               }
             },
             "additionalProperties": false
@@ -814,12 +807,11 @@
           {
             "type": "object",
             "required": [
-              "module_ids"
+              "ModuleIds"
             ],
             "properties": {
-              "module_ids": {
-                "type": "object",
-                "additionalProperties": false
+              "ModuleIds": {
+                "type": "object"
               }
             },
             "additionalProperties": false
@@ -827,12 +819,11 @@
           {
             "type": "object",
             "required": [
-              "version"
+              "Version"
             ],
             "properties": {
-              "version": {
-                "type": "object",
-                "additionalProperties": false
+              "Version": {
+                "type": "object"
               }
             },
             "additionalProperties": false
@@ -840,7 +831,7 @@
         ]
       },
       "Binary": {
-        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
       },
       "Uint64": {
@@ -859,10 +850,10 @@
         {
           "type": "object",
           "required": [
-            "get"
+            "Get"
           ],
           "properties": {
-            "get": {
+            "Get": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Binary"
@@ -878,12 +869,11 @@
         {
           "type": "object",
           "required": [
-            "owner"
+            "Owner"
           ],
           "properties": {
-            "owner": {
-              "type": "object",
-              "additionalProperties": false
+            "Owner": {
+              "type": "object"
             }
           },
           "additionalProperties": false
@@ -891,12 +881,11 @@
         {
           "type": "object",
           "required": [
-            "operators"
+            "Operators"
           ],
           "properties": {
-            "operators": {
-              "type": "object",
-              "additionalProperties": false
+            "Operators": {
+              "type": "object"
             }
           },
           "additionalProperties": false
@@ -904,12 +893,11 @@
         {
           "type": "object",
           "required": [
-            "type"
+            "Type"
           ],
           "properties": {
-            "type": {
-              "type": "object",
-              "additionalProperties": false
+            "Type": {
+              "type": "object"
             }
           },
           "additionalProperties": false
@@ -917,12 +905,11 @@
         {
           "type": "object",
           "required": [
-            "original_publisher"
+            "OriginalPublisher"
           ],
           "properties": {
-            "original_publisher": {
-              "type": "object",
-              "additionalProperties": false
+            "OriginalPublisher": {
+              "type": "object"
             }
           },
           "additionalProperties": false
@@ -930,12 +917,11 @@
         {
           "type": "object",
           "required": [
-            "block_height_upon_creation"
+            "BlockHeightUponCreation"
           ],
           "properties": {
-            "block_height_upon_creation": {
-              "type": "object",
-              "additionalProperties": false
+            "BlockHeightUponCreation": {
+              "type": "object"
             }
           },
           "additionalProperties": false
@@ -943,10 +929,10 @@
         {
           "type": "object",
           "required": [
-            "is_operator"
+            "IsOperator"
           ],
           "properties": {
-            "is_operator": {
+            "IsOperator": {
               "type": "object",
               "required": [
                 "address"
@@ -955,8 +941,7 @@
                 "address": {
                   "type": "string"
                 }
-              },
-              "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false
@@ -964,10 +949,10 @@
         {
           "type": "object",
           "required": [
-            "module"
+            "Module"
           ],
           "properties": {
-            "module": {
+            "Module": {
               "type": "object",
               "required": [
                 "id"
@@ -976,8 +961,7 @@
                 "id": {
                   "$ref": "#/definitions/Uint64"
                 }
-              },
-              "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false
@@ -985,12 +969,11 @@
         {
           "type": "object",
           "required": [
-            "module_ids"
+            "ModuleIds"
           ],
           "properties": {
-            "module_ids": {
-              "type": "object",
-              "additionalProperties": false
+            "ModuleIds": {
+              "type": "object"
             }
           },
           "additionalProperties": false
@@ -998,12 +981,11 @@
         {
           "type": "object",
           "required": [
-            "version"
+            "Version"
           ],
           "properties": {
-            "version": {
-              "type": "object",
-              "additionalProperties": false
+            "Version": {
+              "type": "object"
             }
           },
           "additionalProperties": false
@@ -1011,7 +993,7 @@
       ],
       "definitions": {
         "Binary": {
-          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
           "type": "string"
         },
         "Uint64": {
@@ -1091,7 +1073,7 @@
           "additionalProperties": false
         },
         "Binary": {
-          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
           "type": "string"
         },
         "Decimal": {
@@ -1137,7 +1119,8 @@
               ],
               "properties": {
                 "never": {
-                  "type": "object"
+                  "type": "object",
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
