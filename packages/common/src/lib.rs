@@ -5,6 +5,7 @@ pub mod expiration;
 pub mod primitive;
 pub mod rates;
 pub mod response;
+pub mod queries;
 #[cfg(test)]
 pub mod testing;
 pub mod withdraw;
