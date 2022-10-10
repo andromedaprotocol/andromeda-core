@@ -39,13 +39,3 @@ pub enum LoopQueryMsg {
 pub struct GetSizeResponse {
     pub size: Uint128,
 }
-
-#[cw_serde]
-pub enum StorageExecuteMsg {
-    Store { contract: String },
-}
-
-#[cw_serde]
-pub struct StorageInstantiateMsg {
-    pub contract: String,
-}

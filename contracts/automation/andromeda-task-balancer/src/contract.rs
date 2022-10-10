@@ -1,8 +1,9 @@
 use crate::state::{State, CONTRACTS, STATE};
 use ado_base::state::ADOContract;
+use andromeda_automation::storage::ExecuteMsg as StorageExecuteMsg;
+use andromeda_automation::storage::InstantiateMsg as StorageInstantiateMsg;
 use andromeda_automation::task_balancer::{
     ExecuteMsg, GetSizeResponse, InstantiateMsg, LoopQueryMsg, MigrateMsg, QueryMsg,
-    StorageExecuteMsg, StorageInstantiateMsg,
 };
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
@@ -93,11 +94,14 @@ fn try_add(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    contract: String,
+    process: String,
 ) -> Result<Response, ContractError> {
     // Not anyone should be allowed to add tasks to tree
     let state = STATE.load(deps.storage)?;
     ensure!(info.sender == state.admin, ContractError::Unauthorized {});
+
+    // Validate the process's address
+    let process = deps.api.addr_validate(&process)?;
 
     // Task balancing variable creation
     let mut num = Uint128::from(env.block.height) % state.contracts;
@@ -125,7 +129,10 @@ fn try_add(
             let msg = CosmosMsg::Wasm(WasmMsg::Instantiate {
                 admin: None,
                 code_id: state.storage_code_id,
-                msg: to_binary(&StorageInstantiateMsg { contract })?,
+                msg: to_binary(&StorageInstantiateMsg {
+                    task_balancer: env.contract.address,
+                    process,
+                })?,
                 funds: vec![],
                 label: "storage".to_string(),
             });
@@ -144,7 +151,7 @@ fn try_add(
             // Execute addition of task contract to a storage contract
             let msg = CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: address,
-                msg: to_binary(&StorageExecuteMsg::Store { contract })?,
+                msg: to_binary(&StorageExecuteMsg::Store { process })?,
                 funds: vec![],
             });
             return Ok(Response::new()
