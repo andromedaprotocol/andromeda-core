@@ -1,8 +1,8 @@
 use std::env::current_dir;
 
-use cosmwasm_schema::{write_api, schema_for, export_schema_with_title};
+use cosmwasm_schema::{export_schema_with_title, schema_for, write_api};
 
-use andromeda_non_fungible_tokens::auction::{ExecuteMsg, InstantiateMsg, QueryMsg, Cw721HookMsg};
+use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
