@@ -175,4 +175,5 @@ pub struct BidsResponse {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}

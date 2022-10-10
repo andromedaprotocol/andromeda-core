@@ -49,6 +49,7 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct ConfigResponse {
     pub asset_info: AssetInfo,
 }

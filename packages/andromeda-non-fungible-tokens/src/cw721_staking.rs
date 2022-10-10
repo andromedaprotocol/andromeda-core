@@ -45,6 +45,7 @@ pub enum Cw721HookMsg {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
 #[cw_serde]

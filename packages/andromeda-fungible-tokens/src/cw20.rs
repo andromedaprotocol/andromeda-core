@@ -183,6 +183,7 @@ impl From<ExecuteMsg> for Cw20ExecuteMsg {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

@@ -24,6 +24,7 @@ pub enum StrategyType {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct YieldStrategy {
     pub strategy_type: StrategyType,
     pub address: AndrAddress,

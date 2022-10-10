@@ -34,6 +34,7 @@ pub enum SwapperCw20HookMsg {
 
 /// Instantiate Message for Swapper contract.
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     pub swapper_impl: SwapperImpl,
     pub primitive_contract: String,
@@ -48,6 +49,7 @@ pub enum SwapperImpl {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct InstantiateInfo {
     /// The instantiate message encoded in base64.
     pub msg: Binary,
@@ -91,4 +93,5 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}

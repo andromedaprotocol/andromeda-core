@@ -12,6 +12,7 @@ pub use cw721_base::MintMsg;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     /// Name of the NFT contract
     pub name: String,
@@ -281,4 +282,5 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}

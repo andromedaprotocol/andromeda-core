@@ -144,6 +144,7 @@ pub enum ExecuteMsg {
     },
 }
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
 #[cw_serde]
@@ -164,11 +165,13 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct GetLockedFundsResponse {
     pub funds: Option<Escrow>,
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct GetLockedFundsForRecipientResponse {
     pub funds: Vec<Escrow>,
 }

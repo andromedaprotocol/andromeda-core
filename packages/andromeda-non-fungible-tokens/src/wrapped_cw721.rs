@@ -9,6 +9,7 @@ pub enum InstantiateType {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct Cw721Specification {
     pub name: String,
     pub symbol: String,
@@ -46,4 +47,5 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}

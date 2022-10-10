@@ -65,6 +65,7 @@ pub struct StatusResponse {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct LatestRandomResponse {
     pub round: u64,
     pub randomness: Binary,
@@ -72,6 +73,7 @@ pub struct LatestRandomResponse {
 }
 
 #[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct GumballMintMsg {
     /// Unique ID of the NFT
     pub token_id: String,
