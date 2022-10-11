@@ -13,6 +13,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     Add { contract: String },
+    // Sends message to storage contract for removal of process
     RemoveProcess { process_address: String },
     UpdateAdmin { new_admin: String },
 }

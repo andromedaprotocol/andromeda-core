@@ -15,3 +15,5 @@ pub struct State {
 pub const STATE: Item<State> = Item::new("state");
 // Specify KV Pair
 pub const CONTRACTS: Map<String, String> = Map::new("contracts");
+
+pub const STORAGE_CONTRACT: Item<String> = Item::new("storage_contract");

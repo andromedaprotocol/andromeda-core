@@ -13,10 +13,10 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    /// Evaluates 2 pieces of data
-    Store {
-        process: Addr,
-    },
+    // Stores process
+    Store { process: String },
+    // Removes process
+    Remove { process: String },
 }
 
 #[cw_serde]

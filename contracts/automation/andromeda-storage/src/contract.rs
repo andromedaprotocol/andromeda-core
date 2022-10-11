@@ -3,16 +3,12 @@ use std::env;
 use crate::state::{PROCESSES, TASK_BALANCER};
 use ado_base::state::ADOContract;
 use andromeda_automation::storage::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError,
-};
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
-    ensure, entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg, WasmMsg,
+    ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_utils::nonpayable;
+
 use semver::Version;
 
 // version info for migration info
@@ -28,7 +24,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let mut process_vec: Vec<Addr> = Vec::new();
+    let mut process_vec: Vec<Addr> = vec![];
     process_vec.push(msg.process);
 
     PROCESSES.save(deps.storage, &process_vec)?;
@@ -71,6 +67,34 @@ pub fn execute(
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::Store { process } => execute_store(deps, env, info, process),
+        ExecuteMsg::Remove { process } => execute_remove(deps, env, info, process),
+    }
+}
+
+fn execute_remove(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    process: String,
+) -> Result<Response, ContractError> {
+    // Check authority, only task balancer is allowed to remove processes
+    let task_balancer = TASK_BALANCER.load(deps.storage)?;
+    ensure!(info.sender == task_balancer, ContractError::Unauthorized {});
+
+    // Load existing processes
+    let mut processes = PROCESSES.load(deps.storage)?;
+
+    // Find process's index
+    let i = processes.iter().position(|x| x == &process);
+
+    if let Some(index) = i {
+        processes.swap_remove(index);
+        PROCESSES.save(deps.storage, &processes)?;
+        Ok(Response::new()
+            .add_attribute("action", "removed_process")
+            .add_attribute("process", process.to_string()))
+    } else {
+        Err(ContractError::ProcessNotFound {})
     }
 }
 
@@ -78,7 +102,7 @@ fn execute_store(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    process: Addr,
+    process: String,
 ) -> Result<Response, ContractError> {
     // Check authority, only task balancer is allowed to store processes
     let task_balancer = TASK_BALANCER.load(deps.storage)?;
@@ -86,6 +110,9 @@ fn execute_store(
 
     // Load existing processes
     let mut processes = PROCESSES.load(deps.storage)?;
+
+    // Validate process
+    let process = deps.api.addr_validate(&process)?;
 
     // Check for duplicates
     ensure!(
@@ -202,7 +229,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = ExecuteMsg::Store {
-            process: Addr::unchecked("process".to_string()),
+            process: "process".to_string(),
         };
         let info = mock_info("not_task_balancer", &[]);
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
@@ -223,7 +250,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = ExecuteMsg::Store {
-            process: Addr::unchecked("process".to_string()),
+            process: "process".to_string(),
         };
         let info = mock_info("task_balancer", &[]);
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
@@ -244,7 +271,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = ExecuteMsg::Store {
-            process: Addr::unchecked("process2".to_string()),
+            process: "process".to_string(),
         };
         let info = mock_info("task_balancer", &[]);
         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();

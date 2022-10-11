@@ -43,11 +43,15 @@ pub enum ContractError {
     #[error("UserNotFound")]
     UserNotFound {},
 
+    #[error("ProcessNotFound")]
+    ProcessNotFound {},
+
     #[error("UnsupportedNFT")]
     UnsupportedNFT {},
 
     #[error("AlreadyUnbonded")]
     AlreadyUnbonded {},
+
     #[error("NFTNotFound")]
     NFTNotFound {},
 
