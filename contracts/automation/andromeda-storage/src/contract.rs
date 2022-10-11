@@ -92,7 +92,7 @@ fn execute_remove(
         PROCESSES.save(deps.storage, &processes)?;
         Ok(Response::new()
             .add_attribute("action", "removed_process")
-            .add_attribute("process", process.to_string()))
+            .add_attribute("process", process))
     } else {
         Err(ContractError::ProcessNotFound {})
     }
