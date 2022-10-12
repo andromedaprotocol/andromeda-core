@@ -24,8 +24,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let mut process_vec: Vec<Addr> = vec![];
-    process_vec.push(msg.process);
+    let process_vec: Vec<Addr> = vec![msg.process];
 
     PROCESSES.save(deps.storage, &process_vec)?;
     TASK_BALANCER.save(deps.storage, &msg.task_balancer)?;
