@@ -1,11 +1,11 @@
-use crate::state::STORAGE_CONTRACT;
-use crate::state::{State, CONTRACTS, STATE};
+use crate::state::{State, CONTRACTS, STATE, STORAGE_CONTRACT};
 use ado_base::state::ADOContract;
 use andromeda_automation::storage::ExecuteMsg as StorageExecuteMsg;
 use andromeda_automation::storage::InstantiateMsg as StorageInstantiateMsg;
 
 use andromeda_automation::task_balancer::{
-    ExecuteMsg, GetSizeResponse, InstantiateMsg, LoopQueryMsg, MigrateMsg, QueryMsg,
+    ExecuteMsg, GetSizeResponse, GetStorageResponse, InstantiateMsg, LoopQueryMsg, MigrateMsg,
+    QueryMsg,
 };
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
@@ -54,10 +54,12 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     let response = msg.result;
+    // We only get a reply on success, so it's safe to assume there's an event
+    // There's also only one event resulting from instantiation, so we access the first (and only) event
     let address = &response.unwrap().events[0];
-    let attr = &address.attributes[0];
-    let contract_address = &attr.value;
-    println!("{:?}", address);
+    // According to the raw logs, the first key value pair holds the instantiated contract's address
+    let attribute = &address.attributes[0];
+    let contract_address = &attribute.value;
 
     match msg.id {
         1 => {
@@ -239,7 +241,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::GetSize {} => encode_binary(&query_count(deps)?),
+        QueryMsg::Storage {} => encode_binary(&query_storage(deps)?),
     }
+}
+
+fn query_storage(deps: Deps) -> Result<GetStorageResponse, ContractError> {
+    let storage_address = STORAGE_CONTRACT.load(deps.storage)?;
+    Ok(GetStorageResponse { storage_address })
 }
 
 fn query_count(deps: Deps) -> Result<GetSizeResponse, ContractError> {

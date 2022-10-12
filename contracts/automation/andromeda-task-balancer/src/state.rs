@@ -4,7 +4,7 @@ use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
 pub struct State {
-    // Total number of contracts branched from the router
+    // Number of storage contracts
     pub contracts: Uint128,
     // MAX of each size of MAP in each branch contract
     pub max: u64,
@@ -13,6 +13,7 @@ pub struct State {
 }
 
 pub const STATE: Item<State> = Item::new("state");
+
 // Specify KV Pair
 pub const CONTRACTS: Map<String, String> = Map::new("contracts");
 

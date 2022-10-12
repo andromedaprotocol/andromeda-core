@@ -39,9 +39,11 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     APP_NAME.save(deps.storage, &msg.name)?;
+
     if let Some(target_ados) = msg.target_ados {
         TARGET_ADOS.save(deps.storage, &target_ados)?;
     }
+
     ensure!(msg.app.len() <= 50, ContractError::TooManyAppComponents {});
 
     let sender = info.sender.to_string();

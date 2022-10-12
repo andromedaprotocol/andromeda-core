@@ -28,6 +28,8 @@ pub enum QueryMsg {
     AndrQuery(AndromedaQuery),
     #[returns(GetSizeResponse)]
     GetSize {},
+    #[returns(GetStorageResponse)]
+    Storage {},
 }
 
 #[cw_serde]
@@ -39,4 +41,9 @@ pub enum LoopQueryMsg {
 #[cw_serde]
 pub struct GetSizeResponse {
     pub size: Uint128,
+}
+
+#[cw_serde]
+pub struct GetStorageResponse {
+    pub storage_address: String,
 }

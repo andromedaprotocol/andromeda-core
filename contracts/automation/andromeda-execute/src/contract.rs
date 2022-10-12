@@ -1,7 +1,8 @@
 use std::env;
 
-use crate::state::{CONDITION_ADO_ADDRESS, INCREMENT_MESSAGE, TARGET_ADO_ADDRESS};
+use crate::state::{CONDITION_ADO_ADDRESS, INCREMENT_MESSAGE, TARGET_ADO_ADDRESS, TASK_BALANCER};
 use ado_base::state::ADOContract;
+use andromeda_automation::task_balancer::ExecuteMsg as TaskBalancerExecuteMsg;
 use andromeda_automation::{
     counter,
     execute::{ExecuteMsg, Increment, InstantiateMsg, MigrateMsg, QueryMsg},
@@ -10,6 +11,7 @@ use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
     error::ContractError,
 };
+
 use cosmwasm_std::{
     ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
     Response, StdError, SubMsg, WasmMsg,
@@ -34,6 +36,9 @@ pub fn instantiate(
     TARGET_ADO_ADDRESS.save(deps.storage, &msg.target_address)?;
     CONDITION_ADO_ADDRESS.save(deps.storage, &msg.condition_address)?;
     INCREMENT_MESSAGE.save(deps.storage, &msg.increment)?;
+    // Validate task balancer address
+    let task_balancer = deps.api.addr_validate(&msg.task_balancer)?;
+    TASK_BALANCER.save(deps.storage, &task_balancer)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -51,14 +56,28 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.result.is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            msg.result.unwrap_err(),
-        )));
-    }
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    let app_contract = contract.get_app_contract(deps.storage)?;
 
-    Ok(Response::default())
+    if msg.id == 1 {
+        Ok(Response::new().add_submessage(SubMsg::reply_on_error(
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: TASK_BALANCER.load(deps.storage)?.to_string(),
+                msg: to_binary(&TaskBalancerExecuteMsg::RemoveProcess {
+                    process_address: app_contract.unwrap().to_string(),
+                })?,
+                funds: vec![],
+            }),
+            1,
+        )))
+    } else if msg.result.is_err() {
+        Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )))
+    } else {
+        Ok(Response::default())
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -116,20 +135,22 @@ fn execute_target(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respons
 
     let increment = INCREMENT_MESSAGE.load(deps.storage)?;
     match increment {
-        Increment::One => Ok(Response::new().add_submessage(SubMsg::new(CosmosMsg::Wasm(
-            WasmMsg::Execute {
+        Increment::One => Ok(Response::new().add_submessage(SubMsg::reply_on_error(
+            CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
                 msg: to_binary(&counter::ExecuteMsg::IncrementOne {})?,
                 funds: vec![],
-            },
-        )))),
-        Increment::Two => Ok(Response::new().add_submessage(SubMsg::new(CosmosMsg::Wasm(
-            WasmMsg::Execute {
+            }),
+            1,
+        ))),
+        Increment::Two => Ok(Response::new().add_submessage(SubMsg::reply_on_error(
+            CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
                 msg: to_binary(&counter::ExecuteMsg::IncrementTwo {})?,
                 funds: vec![],
-            },
-        )))),
+            }),
+            1,
+        ))),
     }
 }
 
@@ -211,6 +232,7 @@ mod tests {
             target_address,
             condition_address,
             increment: Increment::One,
+            task_balancer: "task_balancer".to_string(),
         };
         let info = mock_info("creator", &[]);
 
@@ -242,6 +264,7 @@ mod tests {
             target_address,
             condition_address,
             increment: Increment::One,
+            task_balancer: "task_balancer".to_string(),
         };
         let info = mock_info("creator", &[]);
 
@@ -278,6 +301,7 @@ mod tests {
             target_address,
             condition_address,
             increment: Increment::One,
+            task_balancer: "task_balancer".to_string(),
         };
         let info = mock_info("creator", &[]);
 

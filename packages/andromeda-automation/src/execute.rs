@@ -12,6 +12,7 @@ pub struct InstantiateMsg {
     pub condition_address: AndrAddress,
     // Desired increment
     pub increment: Increment,
+    pub task_balancer: String,
 }
 
 #[cw_serde]
