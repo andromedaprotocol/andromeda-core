@@ -271,7 +271,7 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let msg = ExecuteMsg::Store {
-            process: "process".to_string(),
+            process: "process2".to_string(),
         };
         let info = mock_info("task_balancer", &[]);
         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
