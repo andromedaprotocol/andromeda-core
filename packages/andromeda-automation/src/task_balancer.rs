@@ -14,7 +14,7 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     Add { contract: String },
     // Sends message to storage contract for removal of process
-    RemoveProcess { process_address: String },
+    RemoveProcess { process: String },
     UpdateAdmin { new_admin: String },
 }
 
@@ -30,11 +30,6 @@ pub enum QueryMsg {
     GetSize {},
     #[returns(GetStorageResponse)]
     Storage {},
-}
-
-#[cw_serde]
-pub enum LoopQueryMsg {
-    GetSize {},
 }
 
 // We define a custom struct for each query response

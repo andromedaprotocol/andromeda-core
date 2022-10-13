@@ -66,7 +66,7 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
                 WasmMsg::Execute {
                     contract_addr,
                     msg: to_binary(&RemoveProcess {
-                        process_address: app_address.into_string(),
+                        process: app_address.into_string(),
                     })?,
                     funds: vec![],
                 },

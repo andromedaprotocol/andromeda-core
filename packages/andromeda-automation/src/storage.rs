@@ -8,6 +8,8 @@ pub struct InstantiateMsg {
     pub task_balancer: Addr,
     // Processes address
     pub process: Addr,
+    // Max number of processes
+    pub max_processes: u64,
 }
 
 #[cw_serde]
@@ -31,4 +33,8 @@ pub enum QueryMsg {
     TaskBalancer {},
     #[returns(Vec<Addr>)]
     Processes {},
+    #[returns(bool)]
+    FreeSpace {},
+    #[returns(bool)]
+    HasProcess { process: Addr },
 }

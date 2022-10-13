@@ -6,7 +6,7 @@ use cw_storage_plus::{Item, Map};
 pub struct State {
     // Number of storage contracts
     pub contracts: Uint128,
-    // MAX of each size of MAP in each branch contract
+    // MAX of each size of MAP in each storage contract
     pub max: u64,
     pub storage_code_id: u64,
     pub admin: String,
@@ -14,7 +14,7 @@ pub struct State {
 
 pub const STATE: Item<State> = Item::new("state");
 
-// Specify KV Pair
-pub const CONTRACTS: Map<String, String> = Map::new("contracts");
+// Storage contracts
+pub const STORAGE_CONTRACTS: Map<String, String> = Map::new("contracts");
 
 pub const STORAGE_CONTRACT: Item<String> = Item::new("storage_contract");
