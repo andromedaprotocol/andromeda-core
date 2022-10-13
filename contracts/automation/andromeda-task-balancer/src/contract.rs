@@ -61,18 +61,10 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     let contract_address = &attribute.value;
 
     let state = STATE.load(deps.storage)?;
-    let mut contracts = state.contracts;
-    contracts += Uint128::new(1);
-    let new_state = State {
-        contracts,
-        max: state.max,
-        storage_code_id: state.storage_code_id,
-        admin: state.admin,
-    };
+    let contracts = state.contracts;
 
     match msg.id {
         1 => {
-            STATE.save(deps.storage, &new_state)?;
             STORAGE_CONTRACTS.save(
                 deps.storage,
                 contract_address.to_owned(),
@@ -152,7 +144,8 @@ fn try_add(
     let process = deps.api.addr_validate(&process)?;
 
     // Task balancing variable creation
-    let mut num = Uint128::from(env.block.height) % state.contracts;
+    // This divides by zero since state.contracts always starts at 0, so we add 1
+    let mut num = Uint128::from(env.block.height) % (state.contracts + Uint128::new(1));
     let mut count = Uint128::zero();
 
     loop {

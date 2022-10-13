@@ -90,6 +90,10 @@ fn execute_increment_one(
         ContractError::Unauthorized {}
     );
     let mut count = COUNT.load(deps.storage)?;
+
+    // Error to test process removal
+    ensure!(count < Uint128::new(3), ContractError::CannotExceedCap {});
+
     count += Uint128::new(1);
     COUNT.save(deps.storage, &count)?;
     Ok(Response::new()
@@ -115,6 +119,7 @@ fn execute_increment_two(
         ContractError::Unauthorized {}
     );
     let mut count = COUNT.load(deps.storage)?;
+
     count += Uint128::new(2);
     COUNT.save(deps.storage, &count)?;
     Ok(Response::new()
