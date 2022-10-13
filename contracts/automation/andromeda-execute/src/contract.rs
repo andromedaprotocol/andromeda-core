@@ -322,11 +322,14 @@ mod tests {
         let info = mock_info("condition_address", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         println!("{:?}", res.messages);
-        let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "target_address".to_string(),
-            msg: to_binary(&counter::ExecuteMsg::IncrementOne {}).unwrap(),
-            funds: vec![],
-        }));
+        let expected = SubMsg::reply_on_error(
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "target_address".to_string(),
+                msg: to_binary(&counter::ExecuteMsg::IncrementOne {}).unwrap(),
+                funds: vec![],
+            }),
+            1,
+        );
         assert_eq!(res.messages, vec![expected])
     }
 }
