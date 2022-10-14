@@ -1,4 +1,4 @@
-use crate::state::{State, STATE, STORAGE_CONTRACT, STORAGE_CONTRACTS};
+use crate::state::{State, STATE, STORAGE_CONTRACT, STORAGE_CONTRACTS, UP_NEXT};
 use ado_base::state::ADOContract;
 use andromeda_automation::storage::ExecuteMsg as StorageExecuteMsg;
 use andromeda_automation::storage::InstantiateMsg as StorageInstantiateMsg;
@@ -62,14 +62,12 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
     let state = STATE.load(deps.storage)?;
     let contracts = state.contracts;
+    let mut storage_contracts = STORAGE_CONTRACTS.load(deps.storage)?;
 
     match msg.id {
         1 => {
-            STORAGE_CONTRACTS.save(
-                deps.storage,
-                contract_address.to_owned(),
-                &contracts.to_string(),
-            )?;
+            storage_contracts.push(contract_address.to_string());
+            STORAGE_CONTRACTS.save(deps.storage, &storage_contracts)?;
             Ok(Response::new()
                 .add_attribute("action", "stored_storage_contract_address")
                 .add_attribute("storage_address", contract_address)
@@ -103,31 +101,47 @@ fn remove_process(
 ) -> Result<Response, ContractError> {
     // Identify which storage contract a certain process belongs to
     // Get storage address that holds the process
-    let mut num = Uint128::new(0);
+    let mut num = 0;
+    let contract_addr = STORAGE_CONTRACTS.load(deps.storage)?;
+
     let storage_address = loop {
-        let contract_addr = STORAGE_CONTRACTS.load(deps.storage, num.to_string())?;
         let has_process = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: contract_addr.clone(),
+            contract_addr: contract_addr[num as usize].clone(),
             msg: to_binary(&StorageQueryMsg::HasProcess {
                 process: deps.api.addr_validate(&process)?,
             })?,
         }))?;
         if has_process {
-            break contract_addr;
+            break &contract_addr[num as usize];
         }
-        num += Uint128::new(1)
+        num += 1;
+
+        if num as usize >= (contract_addr.len()) {
+            return Err(ContractError::ProcessNotFound {});
+        }
     };
+    // Mark that storage contract by adding it to the UP_NEXT vector, which allows us to fill that empty space in the future
+    let up_next = UP_NEXT.may_load(deps.storage)?;
+
+    if let Some(mut up_next) = up_next {
+        up_next.push(storage_address.clone());
+        UP_NEXT.save(deps.storage, &up_next)?;
+    } else {
+        let up_next = vec![storage_address.clone()];
+        UP_NEXT.save(deps.storage, &up_next)?;
+    }
 
     Ok(Response::new()
         .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: storage_address,
+            contract_addr: storage_address.clone(),
             msg: to_binary(&StorageExecuteMsg::Remove {
                 process: process.to_string(),
             })?,
             funds: vec![],
         })))
         .add_attribute("action", "removed_process")
-        .add_attribute("process", process))
+        .add_attribute("process", process)
+        .add_attribute("up_next", storage_address))
 }
 
 fn try_add(
@@ -143,65 +157,102 @@ fn try_add(
     // Validate the process's address
     let process = deps.api.addr_validate(&process)?;
 
-    // Task balancing variable creation
-    // This divides by zero since state.contracts always starts at 0, so we add 1
-    let mut num = Uint128::from(env.block.height) % (state.contracts + Uint128::new(1));
-    let mut count = Uint128::zero();
+    // In case no storage contracts have been instantiated yet
+    if state.contracts == Uint128::zero() {
+        STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+            state.contracts += Uint128::from(1u64);
+            Ok(state)
+        })?;
+        let state = STATE.load(deps.storage)?;
+        let msg = CosmosMsg::Wasm(WasmMsg::Instantiate {
+            admin: None,
+            code_id: state.storage_code_id,
+            msg: to_binary(&StorageInstantiateMsg {
+                task_balancer: env.contract.address,
+                process,
+                max_processes: state.max,
+            })?,
+            funds: vec![],
+            label: "storage".to_string(),
+        });
+        return Ok(Response::new()
+            .add_attribute("action", "try_add")
+            .add_submessage(SubMsg::reply_on_success(msg, 1)));
+    }
 
-    loop {
-        // Get contract address from MAP
-        let storage_address = STORAGE_CONTRACTS.load(deps.storage, num.to_string())?;
+    // Check if there are any earlier storage contracts with free space
+    let up_next = UP_NEXT.may_load(deps.storage)?;
 
-        // queries specified contract to find if full
-        // Checks if contract is full or not
-        let total: bool = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: storage_address.clone(),
-            msg: to_binary(&StorageQueryMsg::FreeSpace {})?,
-        }))?;
-        if count > state.contracts {
-            // Instantiate new contract and add to storage
-            // break from loop
-            // Instantiation of contract should  directly store with it the task contract in question
-            STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-                state.contracts += Uint128::from(1u64);
-                Ok(state)
-            })?;
-            let state = STATE.load(deps.storage)?;
-            let msg = CosmosMsg::Wasm(WasmMsg::Instantiate {
-                admin: None,
-                code_id: state.storage_code_id,
-                msg: to_binary(&StorageInstantiateMsg {
-                    task_balancer: env.contract.address,
-                    process,
-                    max_processes: state.max,
-                })?,
-                funds: vec![],
-                label: "storage".to_string(),
-            });
-            return Ok(Response::new()
-                .add_attribute("action", "try_add")
-                .add_submessage(SubMsg::reply_on_success(msg, 1)));
-        }
-        if !total {
-            num += Uint128::from(1u64);
-            count += Uint128::from(1u64);
-            // Repeat num for total number of contracts
-            num %= state.contracts;
-            continue;
-        }
-        if total {
-            // Execute addition of task contract to a storage contract
-            let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: storage_address,
-                msg: to_binary(&StorageExecuteMsg::Store {
-                    process: process.to_string(),
-                })?,
-                funds: vec![],
-            });
-            return Ok(Response::new()
-                .add_attribute("action", "try_add")
-                .add_message(msg));
-        }
+    if let Some(mut up_next) = up_next {
+        // We access index 0 since it was the earliest storage contract to join the list
+        let contract_addr = &up_next[0];
+
+        // Execute addition of task contract to a storage contract
+        let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: contract_addr.to_string(),
+            msg: to_binary(&StorageExecuteMsg::Store {
+                process: process.to_string(),
+            })?,
+            funds: vec![],
+        });
+
+        // Remove storage contract from up next
+        up_next.remove(0);
+        UP_NEXT.save(deps.storage, &up_next)?;
+
+        return Ok(Response::new()
+            .add_attribute("action", "try_add")
+            .add_message(msg));
+    };
+
+    let storage_contracts = STORAGE_CONTRACTS.load(deps.storage)?;
+    let number_of_contracts = storage_contracts.len();
+    // Get latest contract
+    let storage_address = &storage_contracts[number_of_contracts - 1_usize];
+
+    // queries specified contract to find if full
+    // Checks if contract is full or not
+    let free_space: bool = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: storage_address.clone(),
+        msg: to_binary(&StorageQueryMsg::FreeSpace {})?,
+    }))?;
+
+    // In case there's no free space in the latest contract, instatiate a new one
+    if !free_space {
+        // Instantiate new contract and add to storage
+        // break from loop
+        // Instantiation of contract should  directly store with it the task contract in question
+        STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+            state.contracts += Uint128::from(1u64);
+            Ok(state)
+        })?;
+        let state = STATE.load(deps.storage)?;
+        let msg = CosmosMsg::Wasm(WasmMsg::Instantiate {
+            admin: None,
+            code_id: state.storage_code_id,
+            msg: to_binary(&StorageInstantiateMsg {
+                task_balancer: env.contract.address,
+                process,
+                max_processes: state.max,
+            })?,
+            funds: vec![],
+            label: "storage".to_string(),
+        });
+        Ok(Response::new()
+            .add_attribute("action", "try_add")
+            .add_submessage(SubMsg::reply_on_success(msg, 1)))
+    } else {
+        // Execute addition of task contract to a storage contract
+        let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: storage_address.to_string(),
+            msg: to_binary(&StorageExecuteMsg::Store {
+                process: process.to_string(),
+            })?,
+            funds: vec![],
+        });
+        Ok(Response::new()
+            .add_attribute("action", "try_add")
+            .add_message(msg))
     }
 }
 
