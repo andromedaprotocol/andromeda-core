@@ -62,12 +62,16 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
     let state = STATE.load(deps.storage)?;
     let contracts = state.contracts;
-    let mut storage_contracts = STORAGE_CONTRACTS.load(deps.storage)?;
+    let storage_contracts = STORAGE_CONTRACTS.may_load(deps.storage)?;
 
     match msg.id {
         1 => {
-            storage_contracts.push(contract_address.to_string());
-            STORAGE_CONTRACTS.save(deps.storage, &storage_contracts)?;
+            if let Some(mut storage_contracts) = storage_contracts {
+                storage_contracts.push(contract_address.to_string());
+                STORAGE_CONTRACTS.save(deps.storage, &storage_contracts)?;
+            } else {
+                STORAGE_CONTRACTS.save(deps.storage, &vec![contract_address.to_string()])?;
+            }
             Ok(Response::new()
                 .add_attribute("action", "stored_storage_contract_address")
                 .add_attribute("storage_address", contract_address)
