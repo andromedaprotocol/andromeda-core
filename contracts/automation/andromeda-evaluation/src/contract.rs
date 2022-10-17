@@ -6,7 +6,7 @@ use andromeda_automation::counter::QueryMsg as CounterQueryMsg;
 use andromeda_automation::evaluation::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, Operators, QueryMsg,
 };
-use andromeda_automation::task_balancer::ExecuteMsg::RemoveProcess;
+use andromeda_automation::task_balancer::ExecuteMsg::Remove;
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
     error::ContractError,
@@ -65,7 +65,7 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
             1 => Ok(Response::new().add_submessage(SubMsg::new(CosmosMsg::Wasm(
                 WasmMsg::Execute {
                     contract_addr,
-                    msg: to_binary(&RemoveProcess {
+                    msg: to_binary(&Remove {
                         process: app_address.into_string(),
                     })?,
                     funds: vec![],

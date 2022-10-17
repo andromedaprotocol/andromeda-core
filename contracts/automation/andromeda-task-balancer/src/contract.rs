@@ -91,9 +91,9 @@ pub fn execute(
     let contract = ADOContract::default();
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        ExecuteMsg::Add { contract } => try_add(deps, env, info, contract),
+        ExecuteMsg::Add { process } => try_add(deps, env, info, process),
         ExecuteMsg::UpdateAdmin { new_admin } => try_update(deps, info, new_admin),
-        ExecuteMsg::RemoveProcess { process } => remove_process(deps, env, info, process),
+        ExecuteMsg::Remove { process } => remove_process(deps, env, info, process),
     }
 }
 
@@ -188,25 +188,28 @@ fn try_add(
     let up_next = UP_NEXT.may_load(deps.storage)?;
 
     if let Some(mut up_next) = up_next {
-        // We access index 0 since it was the earliest storage contract to join the list
-        let contract_addr = &up_next[0];
+        if up_next.is_empty() {
+        } else {
+            // We access index 0 since it was the earliest storage contract to join the list
+            let contract_addr = &up_next[0];
 
-        // Execute addition of task contract to a storage contract
-        let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract_addr.to_string(),
-            msg: to_binary(&StorageExecuteMsg::Store {
-                process: process.to_string(),
-            })?,
-            funds: vec![],
-        });
+            // Execute addition of task contract to a storage contract
+            let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: contract_addr.to_string(),
+                msg: to_binary(&StorageExecuteMsg::Store {
+                    process: process.to_string(),
+                })?,
+                funds: vec![],
+            });
 
-        // Remove storage contract from up next
-        up_next.remove(0);
-        UP_NEXT.save(deps.storage, &up_next)?;
+            // Remove storage contract from up next
+            up_next.remove(0);
+            UP_NEXT.save(deps.storage, &up_next)?;
 
-        return Ok(Response::new()
-            .add_attribute("action", "try_add")
-            .add_message(msg));
+            return Ok(Response::new()
+                .add_attribute("action", "try_add")
+                .add_message(msg));
+        }
     };
 
     let storage_contracts = STORAGE_CONTRACTS.load(deps.storage)?;
@@ -318,7 +321,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::GetSize {} => encode_binary(&query_count(deps)?),
         QueryMsg::Storage {} => encode_binary(&query_storage(deps)?),
+        QueryMsg::UpNext {} => encode_binary(&query_up_next(deps)?),
     }
+}
+
+fn query_up_next(deps: Deps) -> Result<Vec<String>, ContractError> {
+    let up_next = UP_NEXT.load(deps.storage)?;
+    Ok(up_next)
 }
 
 fn query_storage(deps: Deps) -> Result<GetStorageResponse, ContractError> {

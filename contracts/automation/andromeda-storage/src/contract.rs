@@ -171,7 +171,7 @@ fn from_semver(err: semver::Error) -> StdError {
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
-        QueryMsg::Processes {} => encode_binary(&query_execute_ado(deps)?),
+        QueryMsg::Processes {} => encode_binary(&query_processes(deps)?),
         QueryMsg::TaskBalancer {} => encode_binary(&query_task_balancer(deps)?),
         QueryMsg::FreeSpace {} => encode_binary(&query_free_space(deps)?),
         QueryMsg::HasProcess { process } => encode_binary(&query_has_process(deps, process)?),
@@ -197,7 +197,7 @@ fn query_task_balancer(deps: Deps) -> Result<Addr, ContractError> {
     Ok(address)
 }
 
-fn query_execute_ado(deps: Deps) -> Result<Vec<Addr>, ContractError> {
+fn query_processes(deps: Deps) -> Result<Vec<Addr>, ContractError> {
     let addresses = PROCESSES.load(deps.storage)?;
     Ok(addresses)
 }

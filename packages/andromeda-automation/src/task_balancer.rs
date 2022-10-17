@@ -12,9 +12,9 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    Add { contract: String },
+    Add { process: String },
     // Sends message to storage contract for removal of process
-    RemoveProcess { process: String },
+    Remove { process: String },
     UpdateAdmin { new_admin: String },
 }
 
@@ -30,6 +30,8 @@ pub enum QueryMsg {
     GetSize {},
     #[returns(GetStorageResponse)]
     Storage {},
+    #[returns(Vec<String>)]
+    UpNext {},
 }
 
 // We define a custom struct for each query response

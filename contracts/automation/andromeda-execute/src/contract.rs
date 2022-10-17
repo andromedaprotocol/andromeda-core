@@ -64,7 +64,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         Ok(Response::new().add_submessage(SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: TASK_BALANCER.load(deps.storage)?.to_string(),
-                msg: to_binary(&TaskBalancerExecuteMsg::RemoveProcess {
+                msg: to_binary(&TaskBalancerExecuteMsg::Remove {
                     process: app_contract.unwrap().to_string(),
                 })?,
                 funds: vec![],
