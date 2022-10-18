@@ -193,14 +193,14 @@ fn execute_interpret(
             .load(deps.storage)?
             .get_address(deps.api, &deps.querier, app_contract)?;
     match logic {
-        LogicGate::AND =>
+        LogicGate::And =>
         // We don't want to find a false bool, so we want it to return false
         {
             // At least two results should be available
             ensure!(res.len() > 1_usize, ContractError::NotEnoughResults {});
 
             if res.iter().any(|x| x == &false) {
-                Ok(Response::new().add_attribute("result", "AND unmet condition".to_string()))
+                Ok(Response::new().add_attribute("result", "And unmet condition".to_string()))
             } else {
                 Ok(Response::new()
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -208,13 +208,13 @@ fn execute_interpret(
                         msg: to_binary(&execute::ExecuteMsg::Execute {})?,
                         funds: vec![],
                     }))
-                    .add_attribute("result", "sent by AND".to_string()))
+                    .add_attribute("result", "sent by And".to_string()))
             }
         }
         // Just one result being true meets our condition
-        LogicGate::OR => {
+        LogicGate::Or => {
             if !res.iter().any(|x| x == &true) {
-                Ok(Response::new().add_attribute("result", "OR unmet condition".to_string()))
+                Ok(Response::new().add_attribute("result", "Or unmet condition".to_string()))
             } else {
                 Ok(Response::new()
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -222,18 +222,18 @@ fn execute_interpret(
                         msg: to_binary(&execute::ExecuteMsg::Execute {})?,
                         funds: vec![],
                     }))
-                    .add_attribute("result", "sent by OR".to_string()))
+                    .add_attribute("result", "sent by Or".to_string()))
             }
         }
         // At least one result should be true, but not all of them
-        LogicGate::XOR => {
+        LogicGate::Xor => {
             // At least two results should be available
             ensure!(res.len() > 1_usize, ContractError::NotEnoughResults {});
             if res
                 .iter()
                 .all(|x| x == &true || !res.iter().any(|x| x == &true))
             {
-                Ok(Response::new().add_attribute("result", "XOR unmet condition".to_string()))
+                Ok(Response::new().add_attribute("result", "Xor unmet condition".to_string()))
             } else {
                 Ok(Response::new()
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -241,14 +241,14 @@ fn execute_interpret(
                         msg: to_binary(&execute::ExecuteMsg::Execute {})?,
                         funds: vec![],
                     }))
-                    .add_attribute("result", "sent by XOR".to_string()))
+                    .add_attribute("result", "sent by Xor".to_string()))
             }
         }
 
         // Only takes one input, takes false as true
-        LogicGate::NOT => {
+        LogicGate::Not => {
             if res.len() != 1 || res[0] {
-                Ok(Response::new().add_attribute("result", "NOT unmet condition".to_string()))
+                Ok(Response::new().add_attribute("result", "Not unmet condition".to_string()))
             } else {
                 Ok(Response::new()
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -256,15 +256,15 @@ fn execute_interpret(
                         msg: to_binary(&execute::ExecuteMsg::Execute {})?,
                         funds: vec![],
                     }))
-                    .add_attribute("result", "sent by NOT".to_string()))
+                    .add_attribute("result", "sent by Not".to_string()))
             }
         }
         // Any input is valid unless they're all true
-        LogicGate::NAND => {
+        LogicGate::Nand => {
             // At least two results should be available
 
             if res.len() <= 1_usize || res.iter().all(|x| x == &true) {
-                Ok(Response::new().add_attribute("result", "NAND unmet condition".to_string()))
+                Ok(Response::new().add_attribute("result", "Nand unmet condition".to_string()))
             } else {
                 Ok(Response::new()
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -272,14 +272,14 @@ fn execute_interpret(
                         msg: to_binary(&execute::ExecuteMsg::Execute {})?,
                         funds: vec![],
                     }))
-                    .add_attribute("result", "sent by NAND".to_string()))
+                    .add_attribute("result", "sent by Nand".to_string()))
             }
         }
         // All input should be false
-        LogicGate::NOR => {
+        LogicGate::Nor => {
             // At least two results should be available
             if res.len() <= 1_usize || !res.iter().all(|x| x == &false) {
-                Ok(Response::new().add_attribute("result", "NOR unmet condition".to_string()))
+                Ok(Response::new().add_attribute("result", "Nor unmet condition".to_string()))
             } else {
                 Ok(Response::new()
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -287,16 +287,16 @@ fn execute_interpret(
                         msg: to_binary(&execute::ExecuteMsg::Execute {})?,
                         funds: vec![],
                     }))
-                    .add_attribute("result", "sent by NOR".to_string()))
+                    .add_attribute("result", "sent by Nor".to_string()))
             }
         }
         // Input should be all false or all true
-        LogicGate::XNOR => {
+        LogicGate::Xnor => {
             // At least two results should be available
             if res.len() <= 1_usize
                 || !res.iter().all(|x| x == &false) && !res.iter().all(|x| x == &true)
             {
-                Ok(Response::new().add_attribute("result", "XNOR unmet condition".to_string()))
+                Ok(Response::new().add_attribute("result", "Xnor unmet condition".to_string()))
             } else {
                 Ok(Response::new()
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -304,7 +304,7 @@ fn execute_interpret(
                         msg: to_binary(&execute::ExecuteMsg::Execute {})?,
                         funds: vec![],
                     }))
-                    .add_attribute("result", "sent by XNOR".to_string()))
+                    .add_attribute("result", "sent by Xnor".to_string()))
             }
         }
     }
@@ -381,7 +381,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::AND,
+            logic_gate: LogicGate::And,
             whitelist: vec![AndrAddress {
                 identifier: "legit_address".to_string(),
             }],
@@ -398,7 +398,7 @@ mod tests {
                 identifier: "legit_address".to_string(),
             }
         );
-        assert_eq!(LOGIC_GATE.load(&deps.storage).unwrap(), LogicGate::AND)
+        assert_eq!(LOGIC_GATE.load(&deps.storage).unwrap(), LogicGate::And)
     }
 
     #[test]
@@ -407,7 +407,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::AND,
+            logic_gate: LogicGate::And,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -434,7 +434,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::AND,
+            logic_gate: LogicGate::And,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -460,7 +460,7 @@ mod tests {
                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
                 funds: vec![],
             }))
-            .add_attribute("result", "sent by AND".to_string());
+            .add_attribute("result", "sent by And".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -470,7 +470,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::OR,
+            logic_gate: LogicGate::Or,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -496,7 +496,7 @@ mod tests {
                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
                 funds: vec![],
             }))
-            .add_attribute("result", "sent by OR".to_string());
+            .add_attribute("result", "sent by Or".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -506,7 +506,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::OR,
+            logic_gate: LogicGate::Or,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -532,7 +532,7 @@ mod tests {
                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
                 funds: vec![],
             }))
-            .add_attribute("result", "sent by OR".to_string());
+            .add_attribute("result", "sent by Or".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -542,7 +542,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::XOR,
+            logic_gate: LogicGate::Xor,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -568,7 +568,7 @@ mod tests {
                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
                 funds: vec![],
             }))
-            .add_attribute("result", "sent by XOR".to_string());
+            .add_attribute("result", "sent by Xor".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -578,7 +578,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::XOR,
+            logic_gate: LogicGate::Xor,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -596,7 +596,7 @@ mod tests {
         let msg = ExecuteMsg::GetResults {};
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_res = Response::new().add_attribute("result", "XOR unmet condition");
+        let expected_res = Response::new().add_attribute("result", "Xor unmet condition");
 
         assert_eq!(expected_res, res)
     }
@@ -607,7 +607,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::NOT,
+            logic_gate: LogicGate::Not,
             whitelist: vec![AndrAddress {
                 identifier: "legit_address2".to_string(),
             }],
@@ -628,7 +628,7 @@ mod tests {
                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
                 funds: vec![],
             }))
-            .add_attribute("result", "sent by NOT".to_string());
+            .add_attribute("result", "sent by Not".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -638,7 +638,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::NOT,
+            logic_gate: LogicGate::Not,
             whitelist: vec![AndrAddress {
                 identifier: "legit_address1".to_string(),
             }],
@@ -651,7 +651,7 @@ mod tests {
         let msg = ExecuteMsg::GetResults {};
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_res = Response::new().add_attribute("result", "NOT unmet condition");
+        let expected_res = Response::new().add_attribute("result", "Not unmet condition");
 
         assert_eq!(expected_res, res)
     }
@@ -662,7 +662,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::NOT,
+            logic_gate: LogicGate::Not,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -680,7 +680,7 @@ mod tests {
         let msg = ExecuteMsg::GetResults {};
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_res = Response::new().add_attribute("result", "NOT unmet condition");
+        let expected_res = Response::new().add_attribute("result", "Not unmet condition");
 
         assert_eq!(expected_res, res)
     }
@@ -691,7 +691,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::NAND,
+            logic_gate: LogicGate::Nand,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -717,7 +717,7 @@ mod tests {
                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
                 funds: vec![],
             }))
-            .add_attribute("result", "sent by NAND".to_string());
+            .add_attribute("result", "sent by Nand".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -727,7 +727,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::NAND,
+            logic_gate: LogicGate::Nand,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address2".to_string(),
@@ -753,7 +753,7 @@ mod tests {
                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
                 funds: vec![],
             }))
-            .add_attribute("result", "sent by NAND".to_string());
+            .add_attribute("result", "sent by Nand".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -763,7 +763,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::NAND,
+            logic_gate: LogicGate::Nand,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -781,7 +781,7 @@ mod tests {
         let msg = ExecuteMsg::GetResults {};
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_res = Response::new().add_attribute("result", "NAND unmet condition");
+        let expected_res = Response::new().add_attribute("result", "Nand unmet condition");
 
         assert_eq!(expected_res, res)
     }
@@ -792,7 +792,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::NOR,
+            logic_gate: LogicGate::Nor,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address2".to_string(),
@@ -817,7 +817,7 @@ mod tests {
                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
                 funds: vec![],
             }))
-            .add_attribute("result", "sent by NOR".to_string());
+            .add_attribute("result", "sent by Nor".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -827,7 +827,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::NOR,
+            logic_gate: LogicGate::Nor,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -845,7 +845,7 @@ mod tests {
         let msg = ExecuteMsg::GetResults {};
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_res = Response::new().add_attribute("result", "NOR unmet condition");
+        let expected_res = Response::new().add_attribute("result", "Nor unmet condition");
 
         assert_eq!(expected_res, res)
     }
@@ -856,7 +856,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::NOR,
+            logic_gate: LogicGate::Nor,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -874,7 +874,7 @@ mod tests {
         let msg = ExecuteMsg::GetResults {};
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_res = Response::new().add_attribute("result", "NOR unmet condition");
+        let expected_res = Response::new().add_attribute("result", "Nor unmet condition");
 
         assert_eq!(expected_res, res)
     }
@@ -885,7 +885,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::XNOR,
+            logic_gate: LogicGate::Xnor,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -910,7 +910,7 @@ mod tests {
                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
                 funds: vec![],
             }))
-            .add_attribute("result", "sent by XNOR".to_string());
+            .add_attribute("result", "sent by Xnor".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -920,7 +920,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::XNOR,
+            logic_gate: LogicGate::Xnor,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address2".to_string(),
@@ -946,7 +946,7 @@ mod tests {
                 msg: to_binary(&execute::ExecuteMsg::Execute {}).unwrap(),
                 funds: vec![],
             }))
-            .add_attribute("result", "sent by XNOR".to_string());
+            .add_attribute("result", "sent by Xnor".to_string());
         assert_eq!(expected_response, res)
     }
 
@@ -956,7 +956,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            logic_gate: LogicGate::XNOR,
+            logic_gate: LogicGate::Xnor,
             whitelist: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
@@ -974,7 +974,7 @@ mod tests {
         let msg = ExecuteMsg::GetResults {};
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let expected_res = Response::new().add_attribute("result", "XNOR unmet condition");
+        let expected_res = Response::new().add_attribute("result", "Xnor unmet condition");
 
         assert_eq!(expected_res, res)
     }

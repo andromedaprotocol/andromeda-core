@@ -121,10 +121,10 @@ fn execute_fire(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response,
         contract.is_contract_owner(deps.storage, info.sender.as_ref())?,
         ContractError::Unauthorized {}
     );
-    // Load first ADO's name
+    // Load target ADO's name
     let contract_names = TARGET_ADOS.load(deps.storage)?;
     let mut contract_addrs = Vec::new();
-    // Load first ADO's address
+    // Load target ADO's address
     for i in contract_names.into_iter() {
         let addrs = ADO_ADDRESSES.load(deps.storage, &i)?;
         contract_addrs.push(addrs.to_string());

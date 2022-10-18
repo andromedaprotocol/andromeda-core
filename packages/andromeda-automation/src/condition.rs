@@ -47,11 +47,11 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub enum LogicGate {
-    AND,
-    OR,
-    XOR,
-    NOT,
-    NAND,
-    NOR,
-    XNOR,
+    And,
+    Or,
+    Xor,
+    Not,
+    Nand,
+    Nor,
+    Xnor,
 }
