@@ -9,7 +9,8 @@
     "required": [
       "condition_address",
       "increment",
-      "target_address"
+      "target_address",
+      "task_balancer"
     ],
     "properties": {
       "condition_address": {
@@ -20,6 +21,9 @@
       },
       "target_address": {
         "$ref": "#/definitions/AndrAddress"
+      },
+      "task_balancer": {
+        "type": "string"
       }
     },
     "additionalProperties": false,

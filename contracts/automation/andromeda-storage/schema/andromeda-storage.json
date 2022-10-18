@@ -1,5 +1,5 @@
 {
-  "contract_name": "andromeda-execute",
+  "contract_name": "andromeda-storage",
   "contract_version": "0.1.0",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -7,41 +7,28 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "condition_address",
-      "increment",
-      "target_address"
+      "max_processes",
+      "process",
+      "task_balancer"
     ],
     "properties": {
-      "condition_address": {
-        "$ref": "#/definitions/AndrAddress"
+      "max_processes": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
       },
-      "increment": {
-        "$ref": "#/definitions/Increment"
+      "process": {
+        "$ref": "#/definitions/Addr"
       },
-      "target_address": {
-        "$ref": "#/definitions/AndrAddress"
+      "task_balancer": {
+        "$ref": "#/definitions/Addr"
       }
     },
     "additionalProperties": false,
     "definitions": {
-      "AndrAddress": {
-        "type": "object",
-        "required": [
-          "identifier"
-        ],
-        "properties": {
-          "identifier": {
-            "description": "Can be either an address or identifier of an ADO in a app.",
-            "type": "string"
-          }
-        }
-      },
-      "Increment": {
-        "type": "string",
-        "enum": [
-          "one",
-          "two"
-        ]
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
       }
     }
   },
@@ -62,14 +49,21 @@
         "additionalProperties": false
       },
       {
-        "description": "Evaluates 2 pieces of data",
         "type": "object",
         "required": [
-          "execute"
+          "store"
         ],
         "properties": {
-          "execute": {
+          "store": {
             "type": "object",
+            "required": [
+              "process"
+            ],
+            "properties": {
+              "process": {
+                "type": "string"
+              }
+            },
             "additionalProperties": false
           }
         },
@@ -78,17 +72,17 @@
       {
         "type": "object",
         "required": [
-          "update_condition_address"
+          "remove"
         ],
         "properties": {
-          "update_condition_address": {
+          "remove": {
             "type": "object",
             "required": [
-              "condition_address"
+              "process"
             ],
             "properties": {
-              "condition_address": {
-                "$ref": "#/definitions/AndrAddress"
+              "process": {
+                "type": "string"
               }
             },
             "additionalProperties": false
@@ -524,10 +518,10 @@
       {
         "type": "object",
         "required": [
-          "condition_a_d_o"
+          "task_balancer"
         ],
         "properties": {
-          "condition_a_d_o": {
+          "task_balancer": {
             "type": "object",
             "additionalProperties": false
           }
@@ -537,11 +531,45 @@
       {
         "type": "object",
         "required": [
-          "target_a_d_o"
+          "processes"
         ],
         "properties": {
-          "target_a_d_o": {
+          "processes": {
             "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "free_space"
+        ],
+        "properties": {
+          "free_space": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "has_process"
+        ],
+        "properties": {
+          "has_process": {
+            "type": "object",
+            "required": [
+              "process"
+            ],
+            "properties": {
+              "process": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
             "additionalProperties": false
           }
         },
@@ -549,6 +577,10 @@
       }
     ],
     "definitions": {
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
+      },
       "AndromedaQuery": {
         "oneOf": [
           {
@@ -868,14 +900,34 @@
         }
       }
     },
-    "condition_a_d_o": {
+    "free_space": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "String",
-      "type": "string"
+      "title": "Boolean",
+      "type": "boolean"
     },
-    "target_a_d_o": {
+    "has_process": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "String",
+      "title": "Boolean",
+      "type": "boolean"
+    },
+    "processes": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Addr",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Addr"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
+    "task_balancer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Addr",
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
       "type": "string"
     }
   }

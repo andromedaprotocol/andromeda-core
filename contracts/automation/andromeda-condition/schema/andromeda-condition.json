@@ -42,13 +42,13 @@
       "LogicGate": {
         "type": "string",
         "enum": [
-          "a_n_d",
-          "o_r",
-          "x_o_r",
-          "n_o_t",
-          "n_a_n_d",
-          "n_o_r",
-          "x_n_o_r"
+          "and",
+          "or",
+          "xor",
+          "not",
+          "nand",
+          "nor",
+          "xnor"
         ]
       }
     }
@@ -477,13 +477,13 @@
       "LogicGate": {
         "type": "string",
         "enum": [
-          "a_n_d",
-          "o_r",
-          "x_o_r",
-          "n_o_t",
-          "n_a_n_d",
-          "n_o_r",
-          "x_n_o_r"
+          "and",
+          "or",
+          "xor",
+          "not",
+          "nand",
+          "nor",
+          "xnor"
         ]
       },
       "Module": {
@@ -962,13 +962,13 @@
       "title": "LogicGate",
       "type": "string",
       "enum": [
-        "a_n_d",
-        "o_r",
-        "x_o_r",
-        "n_o_t",
-        "n_a_n_d",
-        "n_o_r",
-        "x_n_o_r"
+        "and",
+        "or",
+        "xor",
+        "not",
+        "nand",
+        "nor",
+        "xnor"
       ]
     },
     "whitelist": {
