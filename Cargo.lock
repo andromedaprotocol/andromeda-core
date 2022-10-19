@@ -480,6 +480,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-oracle"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-automation",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.13.2",
+ "cw-utils",
+ "cw2 0.13.2",
+ "cw20",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-primitive"
 version = "0.1.0"
 dependencies = [
