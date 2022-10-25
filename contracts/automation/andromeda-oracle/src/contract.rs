@@ -1,8 +1,10 @@
 use crate::state::{QUERY_MSG, TARGET_ADO_ADDRESS};
 use ado_base::state::ADOContract;
 use andromeda_automation::oracle::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use base64;
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
-use serde::Deserialize;
+use schemars::JsonSchema;
+
 use std::env;
 
 use cosmwasm_std::{
@@ -10,6 +12,7 @@ use cosmwasm_std::{
     StdError, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
+use std::fmt::Debug;
 
 use semver::Version;
 
@@ -105,7 +108,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::CurrentTarget {} => encode_binary(&query_current_target(deps)?),
         QueryMsg::Target {} => encode_binary(&query_target(deps)?),
+        QueryMsg::StoredMessage {} => encode_binary(&query_stored_message(deps)?),
     }
+}
+
+fn query_stored_message(deps: Deps) -> Result<String, ContractError> {
+    let message = QUERY_MSG.load(deps.storage)?;
+    Ok(message)
 }
 
 fn query_current_target(deps: Deps) -> Result<String, ContractError> {
@@ -115,10 +124,24 @@ fn query_current_target(deps: Deps) -> Result<String, ContractError> {
 
 fn query_target<T>(deps: Deps) -> Result<T, ContractError>
 where
-    T: for<'a> Deserialize<'a>,
+    T: Copy
+        + Clone
+        + Default
+        + Debug
+        + PartialEq
+        + Eq
+        + PartialOrd
+        + Ord
+        + JsonSchema
+        + for<'de> serde::Deserialize<'de>,
 {
     let contract_addr = TARGET_ADO_ADDRESS.load(deps.storage)?.identifier;
-    let msg = QUERY_MSG.load(deps.storage)?;
+    println!("Target ADO{:?}", contract_addr);
+    let stored_msg = QUERY_MSG.load(deps.storage)?;
+    println!("The stored message{:?}", stored_msg);
+
+    let decoded_string = base64::decode(stored_msg).unwrap();
+    let msg = Binary::from(decoded_string);
 
     let response: T = deps
         .querier
@@ -129,25 +152,34 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mock_querier::{mock_dependencies_custom, MOCK_COUNTER_CONTRACT};
     use common::app::AndrAddress;
     use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env, mock_info},
-        to_binary,
+        testing::{mock_env, mock_info},
+        to_binary, Uint128,
     };
 
     #[test]
     fn test_initialization() {
-        let mut deps = mock_dependencies();
+        let mut deps = mock_dependencies_custom(&[]);
         let target_address = AndrAddress {
-            identifier: "target_address".to_string(),
+            identifier: MOCK_COUNTER_CONTRACT.to_string(),
         };
-        let message_binary = to_binary(&"binary").unwrap();
+        // receive encoded the json as base64
+        let binary = "eyJjb3VudCI6e319";
+        // turn base64 into string
+        let decoded_binary = base64::decode(binary).unwrap();
+        let vec_bin = Binary::from(decoded_binary);
+        print!("from binary{:?}", vec_bin);
 
         let msg = InstantiateMsg {
             target_address,
-            message_binary: message_binary.clone(),
+            message_binary: "eyJjb3VudCI6e319".to_string(),
         };
         let info = mock_info("creator", &[]);
+
+        let actual_binary = to_binary(&QueryMsg::CurrentTarget {}).unwrap();
+        println!("Actual binary: {:?}", actual_binary);
 
         // we can just call .unwrap() to assert this was a success
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -158,10 +190,12 @@ mod tests {
         assert_eq!(
             addr,
             AndrAddress {
-                identifier: "target_address".to_string(),
+                identifier: MOCK_COUNTER_CONTRACT.to_string(),
             }
         );
         let message = QUERY_MSG.load(&deps.storage).unwrap();
-        assert_eq!(message, message_binary)
+        assert_eq!(message, "eyJjb3VudCI6e319".to_string());
+        let res: Uint128 = query_target(deps.as_ref()).unwrap();
+        println!("{:?}", res)
     }
 }

@@ -182,7 +182,10 @@ fn query_count(deps: Deps) -> Result<Uint128, ContractError> {
 mod tests {
     use super::*;
     use common::app::AndrAddress;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env, mock_info},
+        to_binary,
+    };
 
     #[test]
     fn test_initialization() {
@@ -200,7 +203,13 @@ mod tests {
 
         // make sure address was saved correctly
         let count = COUNT.load(&deps.storage).unwrap();
-        assert_eq!(count, Uint128::zero())
+        assert_eq!(count, Uint128::zero());
+
+        let actual_binary = to_binary(&QueryMsg::Count {}).unwrap();
+        let variable_binary = "eyJjb3VudCI6e319";
+        let dec = base64::decode(variable_binary).unwrap();
+        let my_messsage = Binary::from(dec);
+        assert_eq!(actual_binary, my_messsage)
     }
 
     #[test]

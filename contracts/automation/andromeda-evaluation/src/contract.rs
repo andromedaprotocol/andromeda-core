@@ -1,11 +1,11 @@
 use crate::state::{
-    CONDITION_ADO_ADDRESS, OPERATION, QUERY_ADO_ADDRESS, TASK_BALANCER_ADDRESS, VALUE,
+    CONDITION_ADO_ADDRESS, OPERATION, ORACLE_ADO_ADDRESS, TASK_BALANCER_ADDRESS, VALUE,
 };
 use ado_base::state::ADOContract;
-use andromeda_automation::counter::QueryMsg as CounterQueryMsg;
 use andromeda_automation::evaluation::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, Operators, QueryMsg,
 };
+use andromeda_automation::oracle::QueryMsg as OracleQueryMsg;
 use andromeda_automation::task_balancer::ExecuteMsg::Remove;
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
@@ -33,9 +33,13 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     CONDITION_ADO_ADDRESS.save(deps.storage, &msg.condition_address)?;
-    QUERY_ADO_ADDRESS.save(deps.storage, &msg.query_address)?;
+    ORACLE_ADO_ADDRESS.save(deps.storage, &msg.oracle_address)?;
     TASK_BALANCER_ADDRESS.save(deps.storage, &msg.task_balancer)?;
-    VALUE.save(deps.storage, &msg.user_value)?;
+    if let Some(user_value) = msg.user_value {
+        VALUE.save(deps.storage, &Some(user_value))?;
+    } else {
+        VALUE.save(deps.storage, &None)?;
+    }
     OPERATION.save(deps.storage, &msg.operation)?;
 
     ADOContract::default().instantiate(
@@ -109,9 +113,9 @@ fn execute_change_query_address(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    QUERY_ADO_ADDRESS.save(deps.storage, &address)?;
+    ORACLE_ADO_ADDRESS.save(deps.storage, &address)?;
     Ok(Response::new()
-        .add_attribute("action", "changed_query_ado_address")
+        .add_attribute("action", "changed_ORACLE_ADO_ADDRESS")
         .add_attribute("new_address", address.identifier))
 }
 
@@ -185,33 +189,44 @@ fn query_evaluation(deps: Deps, _env: Env) -> Result<bool, ContractError> {
     let contract = ADOContract::default();
     let app_contract = contract.get_app_contract(deps.storage)?;
 
-    // Get the address of the oracle contract that will provide data to be compared with the user's data
-    let query_addr =
-        QUERY_ADO_ADDRESS
-            .load(deps.storage)?
-            .get_address(deps.api, &deps.querier, app_contract)?;
-
-    // Placeholder until we connect an Oracle to the process
-    let oracle_value: Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: query_addr,
-        msg: to_binary(&CounterQueryMsg::Count {})?,
-    }))?;
-
     let operation = OPERATION.load(deps.storage)?;
     let user_value = VALUE.load(deps.storage)?;
 
-    let result = match operation {
-        Operators::Greater => oracle_value > user_value,
-        Operators::GreaterEqual => oracle_value >= user_value,
-        Operators::Equal => oracle_value == user_value,
-        Operators::LessEqual => oracle_value <= user_value,
-        Operators::Less => oracle_value < user_value,
+    // Get the address of the oracle contract that will provide data to be compared with the user's data
+    let query_addr = ORACLE_ADO_ADDRESS.load(deps.storage)?.get_address(
+        deps.api,
+        &deps.querier,
+        app_contract,
+    )?;
+
+    let result = if let Some(user_value) = user_value {
+        // Placeholder until we connect an Oracle to the process
+        let oracle_value: Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: query_addr,
+            msg: to_binary(&OracleQueryMsg::Target {})?,
+        }))?;
+
+        match operation {
+            Operators::Greater => oracle_value > user_value,
+            Operators::GreaterEqual => oracle_value >= user_value,
+            Operators::Equal => oracle_value == user_value,
+            Operators::LessEqual => oracle_value <= user_value,
+            Operators::Less => oracle_value < user_value,
+        }
+        // If the user didn't provide a value, we assume the query ADO returns a bool
+    } else {
+        let result: bool = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: query_addr,
+            msg: to_binary(&OracleQueryMsg::Target {})?,
+        }))?;
+        result
     };
+
     Ok(result)
 }
 
 fn query_query_ado(deps: Deps) -> Result<String, ContractError> {
-    let address = QUERY_ADO_ADDRESS.load(deps.storage)?;
+    let address = ORACLE_ADO_ADDRESS.load(deps.storage)?;
     Ok(address.identifier)
 }
 
@@ -236,18 +251,18 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
 
-        let user_value = Uint128::from(10u32);
+        let user_value = Some(Uint128::from(10u32));
         let operation = Operators::Greater;
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -267,7 +282,7 @@ mod tests {
             }
         );
 
-        let addr = QUERY_ADO_ADDRESS.load(&deps.storage).unwrap();
+        let addr = ORACLE_ADO_ADDRESS.load(&deps.storage).unwrap();
         assert_eq!(
             addr,
             AndrAddress {
@@ -283,17 +298,17 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
         let operation = Operators::Greater;
-        let user_value = Uint128::from(30u32);
+        let user_value = Some(Uint128::from(30u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -315,17 +330,17 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
         let operation = Operators::Greater;
-        let user_value = Uint128::from(130u32);
+        let user_value = Some(Uint128::from(130u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -348,17 +363,17 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
         let operation = Operators::Greater;
-        let user_value = Uint128::from(40u32);
+        let user_value = Some(Uint128::from(40u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -382,16 +397,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(40u32);
+        let user_value = Some(Uint128::from(40u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -415,16 +430,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(30u32);
+        let user_value = Some(Uint128::from(30u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -448,16 +463,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(140u32);
+        let user_value = Some(Uint128::from(140u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -481,16 +496,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(40u32);
+        let user_value = Some(Uint128::from(40u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -514,16 +529,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(30u32);
+        let user_value = Some(Uint128::from(30u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -547,16 +562,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(1140u32);
+        let user_value = Some(Uint128::from(1140u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -580,16 +595,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(1140u32);
+        let user_value = Some(Uint128::from(1140u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -613,16 +628,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(40u32);
+        let user_value = Some(Uint128::from(40u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -647,16 +662,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(30u32);
+        let user_value = Some(Uint128::from(30u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -680,16 +695,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(30u32);
+        let user_value = Some(Uint128::from(30u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -713,16 +728,16 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
         let task_balancer = AndrAddress {
             identifier: "task_balancer_address".to_string(),
         };
-        let user_value = Uint128::from(40u32);
+        let user_value = Some(Uint128::from(40u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -746,7 +761,7 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
 
@@ -754,10 +769,10 @@ mod tests {
             identifier: "task_balancer_address".to_string(),
         };
 
-        let user_value = Uint128::from(140u32);
+        let user_value = Some(Uint128::from(140u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -780,7 +795,7 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
 
@@ -789,10 +804,10 @@ mod tests {
         };
         let operation = Operators::Less;
 
-        let user_value = Uint128::from(30u32);
+        let user_value = Some(Uint128::from(30u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,
@@ -818,7 +833,7 @@ mod tests {
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
         };
-        let query_address = AndrAddress {
+        let oracle_address = AndrAddress {
             identifier: MOCK_QUERY_CONTRACT.to_string(),
         };
 
@@ -828,10 +843,10 @@ mod tests {
 
         let operation = Operators::Less;
 
-        let user_value = Uint128::from(30u32);
+        let user_value = Some(Uint128::from(30u32));
         let msg = InstantiateMsg {
             condition_address,
-            query_address,
+            oracle_address,
             task_balancer,
             user_value,
             operation,

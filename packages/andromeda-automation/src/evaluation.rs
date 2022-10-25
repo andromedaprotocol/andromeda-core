@@ -10,14 +10,14 @@ pub struct InstantiateMsg {
     // Condition ADO's address
     pub condition_address: AndrAddress,
 
-    // Query ADO's address
-    pub query_address: AndrAddress,
+    // Oracle ADO's address
+    pub oracle_address: AndrAddress,
 
     // Task balancer ADO's address
     pub task_balancer: AndrAddress,
 
-    // The value we want to compare with the oracle's
-    pub user_value: Uint128,
+    // The value we want to compare with the oracle's, if absent, we assume that the oracle is returning a bool
+    pub user_value: Option<Uint128>,
 
     // Sets the way we want to compare the Oracle's value to the other's. Either greater, less ...
     pub operation: Operators,

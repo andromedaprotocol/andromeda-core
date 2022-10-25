@@ -1,11 +1,11 @@
+use andromeda_automation::counter::QueryMsg;
 use cosmwasm_std::{
     from_binary, from_slice,
-    testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
+    testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, Uint128, WasmQuery,
 };
-
-pub const MOCK_QUERY_CONTRACT: &str = "query_contract";
+pub const MOCK_COUNTER_CONTRACT: &str = "mock_counter_contract";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -23,6 +23,8 @@ pub fn mock_dependencies_custom(
 
 pub struct WasmMockQuerier {
     base: MockQuerier,
+    pub contract_address: String,
+    pub tokens_left_to_burn: usize,
 }
 
 impl Querier for WasmMockQuerier {
@@ -46,7 +48,7 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
-                    MOCK_QUERY_CONTRACT => self.handle_counter_query(msg),
+                    MOCK_COUNTER_CONTRACT => self.handle_counter_query(msg),
                     _ => panic!("Unknown Contract Address {}", contract_addr),
                 }
             }
@@ -56,16 +58,18 @@ impl WasmMockQuerier {
 
     fn handle_counter_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            andromeda_automation::oracle::QueryMsg::Target {} => {
-                let res = Uint128::new(40);
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            QueryMsg::Count {} => {
+                SystemResult::Ok(ContractResult::Ok(to_binary(&Uint128::new(1)).unwrap()))
             }
-
-            _ => panic!("Unsupported Query"),
+            _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
         }
     }
 
-    pub fn new(base: MockQuerier<cosmwasm_std::Empty>) -> Self {
-        WasmMockQuerier { base }
+    pub fn new(base: MockQuerier) -> Self {
+        WasmMockQuerier {
+            base,
+            contract_address: mock_env().contract.address.to_string(),
+            tokens_left_to_burn: 2,
+        }
     }
 }

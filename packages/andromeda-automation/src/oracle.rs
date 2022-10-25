@@ -3,14 +3,13 @@ use common::{
     app::AndrAddress,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Binary;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     // The contract which we'll query data from
     pub target_address: AndrAddress,
     // The query message's binary
-    pub message_binary: Binary,
+    pub message_binary: String,
 }
 
 #[cw_serde]
@@ -30,14 +29,6 @@ pub enum QueryMsg {
     CurrentTarget {},
     #[returns(String)]
     Target {},
-}
-
-#[cw_serde]
-pub enum ExpectedValueType {
-    Uint128,
-    VecUint128,
-    String,
-    VecString,
-    Bool,
-    VecBool,
+    #[returns(String)]
+    StoredMessage {},
 }
