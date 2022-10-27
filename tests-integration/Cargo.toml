@@ -1,0 +1,20 @@
+[package]
+name = "tests-integration"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dev-dependencies]
+andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721" }
+andromeda-rates = { path = "../contracts/modules/andromeda-rates" }
+andromeda-modules = { path = "../packages/andromeda-modules" }
+andromeda-non-fungible-tokens = { path = "../packages/andromeda-non-fungible-tokens" }
+common = { version = "0.1.0", path = "../packages/common" }
+
+cw-multi-test = "0.16.0"
+cosmwasm-std = "1.1.4"
+cw721-base = { version = "0.15.0", features = ["library"] }
+cw721 = "0.15.0"
+
+[[test]]
+name = "cw721"

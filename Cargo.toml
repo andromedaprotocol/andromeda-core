@@ -8,7 +8,10 @@ members = [
     "contracts/app/*",
     "contracts/finance/*",
     "contracts/automation/*",
-    "contracts/modules/*"
+    "contracts/modules/*",
+
+    #Internal
+    "tests-integration"
 ]
 
 [profile.release.package.andromeda-protocol]
