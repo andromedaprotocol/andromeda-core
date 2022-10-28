@@ -36,6 +36,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-adodb"
+version = "0.1.1"
+dependencies = [
+ "ado-base",
+ "andromeda-app",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.15.0",
+ "cw2",
+ "cw721",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-app"
 version = "0.1.0"
 dependencies = [
@@ -330,24 +348,6 @@ dependencies = [
  "cw-utils 0.15.0",
  "cw2",
  "cw20 0.15.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-factory"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-app",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.15.0",
- "cw2",
- "cw721",
  "schemars",
  "semver",
  "serde",

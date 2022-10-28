@@ -8,7 +8,7 @@ use common::{
     Funds,
 };
 
-use andromeda_app::{app::QueryMsg as MissionQueryMsg, factory::QueryMsg as FactoryQueryMsg};
+use andromeda_app::{adodb::QueryMsg as FactoryQueryMsg, app::QueryMsg as MissionQueryMsg};
 use andromeda_modules::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     rates::QueryMsg as RatesQueryMsg,
@@ -406,7 +406,7 @@ impl WasmMockQuerier {
                         key,
                         value: Primitive::Coin(coin(100, "uusd")),
                     },
-                    "factory" => GetValueResponse {
+                    "adodb" => GetValueResponse {
                         key,
                         value: Primitive::String(MOCK_FACTORY_CONTRACT.to_owned()),
                     },
