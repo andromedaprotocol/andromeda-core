@@ -304,6 +304,8 @@ mod tests {
         let parsed_result: bool = res.parse().unwrap();
 
         println!("Parsed result: {:?}", parsed_result);
-        assert_eq!(parsed_result, true)
+
+        // The mock querier always returns true
+        assert!(parsed_result)
     }
 }
