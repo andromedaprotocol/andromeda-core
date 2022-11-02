@@ -1,7 +1,6 @@
 use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
-    primitive::Primitive,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
