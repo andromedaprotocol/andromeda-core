@@ -6,7 +6,7 @@ use cw_storage_plus::Item;
 pub const LOGIC_GATE: Item<LogicGate> = Item::new("logic_gate");
 
 // List of contracts you want to query results from
-pub const WHITELIST: Item<Vec<AndrAddress>> = Item::new("whitelist");
+pub const EVAL_ADOS: Item<Vec<AndrAddress>> = Item::new("whitelist");
 
 // Execute ADO's address
 pub const EXECUTE_ADO: Item<AndrAddress> = Item::new("execute_ado");

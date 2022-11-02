@@ -7,22 +7,22 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
+      "eval_ados",
       "execute_ado",
-      "logic_gate",
-      "whitelist"
+      "logic_gate"
     ],
     "properties": {
+      "eval_ados": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/AndrAddress"
+        }
+      },
       "execute_ado": {
         "$ref": "#/definitions/AndrAddress"
       },
       "logic_gate": {
         "$ref": "#/definitions/LogicGate"
-      },
-      "whitelist": {
-        "type": "array",
-        "items": {
-          "$ref": "#/definitions/AndrAddress"
-        }
       }
     },
     "additionalProperties": false,
@@ -286,26 +286,6 @@
             ],
             "properties": {
               "update_app_contract": {
-                "type": "object",
-                "required": [
-                  "address"
-                ],
-                "properties": {
-                  "address": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "update_process_contract"
-            ],
-            "properties": {
-              "update_process_contract": {
                 "type": "object",
                 "required": [
                   "address"
@@ -626,10 +606,10 @@
       {
         "type": "object",
         "required": [
-          "whitelist"
+          "eval_ados"
         ],
         "properties": {
-          "whitelist": {
+          "eval_ados": {
             "type": "object",
             "additionalProperties": false
           }
@@ -957,21 +937,7 @@
         }
       }
     },
-    "logic_gate": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "LogicGate",
-      "type": "string",
-      "enum": [
-        "and",
-        "or",
-        "xor",
-        "not",
-        "nand",
-        "nor",
-        "xnor"
-      ]
-    },
-    "whitelist": {
+    "eval_ados": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Array_of_AndrAddress",
       "type": "array",
@@ -992,6 +958,20 @@
           }
         }
       }
+    },
+    "logic_gate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LogicGate",
+      "type": "string",
+      "enum": [
+        "and",
+        "or",
+        "xor",
+        "not",
+        "nand",
+        "nor",
+        "xnor"
+      ]
     }
   }
 }

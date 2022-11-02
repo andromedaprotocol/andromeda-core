@@ -1,5 +1,5 @@
 {
-  "contract_name": "andromeda-execute",
+  "contract_name": "andromeda-oracle",
   "contract_version": "0.1.0",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -7,23 +7,19 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "condition_address",
-      "increment",
-      "target_address",
-      "task_balancer"
+      "expected_type",
+      "message_binary",
+      "target_address"
     ],
     "properties": {
-      "condition_address": {
-        "$ref": "#/definitions/AndrAddress"
+      "expected_type": {
+        "$ref": "#/definitions/Types"
       },
-      "increment": {
-        "$ref": "#/definitions/Increment"
+      "message_binary": {
+        "type": "string"
       },
       "target_address": {
         "$ref": "#/definitions/AndrAddress"
-      },
-      "task_balancer": {
-        "type": "string"
       }
     },
     "additionalProperties": false,
@@ -40,11 +36,12 @@
           }
         }
       },
-      "Increment": {
+      "Types": {
         "type": "string",
         "enum": [
-          "one",
-          "two"
+          "string",
+          "bool",
+          "uint128"
         ]
       }
     }
@@ -61,41 +58,6 @@
         "properties": {
           "andr_receive": {
             "$ref": "#/definitions/AndromedaMsg"
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Evaluates 2 pieces of data",
-        "type": "object",
-        "required": [
-          "execute"
-        ],
-        "properties": {
-          "execute": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "update_condition_address"
-        ],
-        "properties": {
-          "update_condition_address": {
-            "type": "object",
-            "required": [
-              "condition_address"
-            ],
-            "properties": {
-              "condition_address": {
-                "$ref": "#/definitions/AndrAddress"
-              }
-            },
-            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -213,26 +175,6 @@
             ],
             "properties": {
               "update_app_contract": {
-                "type": "object",
-                "required": [
-                  "address"
-                ],
-                "properties": {
-                  "address": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "update_process_contract"
-            ],
-            "properties": {
-              "update_process_contract": {
                 "type": "object",
                 "required": [
                   "address"
@@ -528,10 +470,10 @@
       {
         "type": "object",
         "required": [
-          "condition_a_d_o"
+          "current_target"
         ],
         "properties": {
-          "condition_a_d_o": {
+          "current_target": {
             "type": "object",
             "additionalProperties": false
           }
@@ -541,10 +483,23 @@
       {
         "type": "object",
         "required": [
-          "target_a_d_o"
+          "target"
         ],
         "properties": {
-          "target_a_d_o": {
+          "target": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "stored_message"
+        ],
+        "properties": {
+          "stored_message": {
             "type": "object",
             "additionalProperties": false
           }
@@ -872,12 +827,17 @@
         }
       }
     },
-    "condition_a_d_o": {
+    "current_target": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "String",
       "type": "string"
     },
-    "target_a_d_o": {
+    "stored_message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "String",
+      "type": "string"
+    },
+    "target": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "String",
       "type": "string"

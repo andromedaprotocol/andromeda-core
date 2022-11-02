@@ -7,17 +7,19 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub logic_gate: LogicGate,
-    pub whitelist: Vec<AndrAddress>,
+    pub eval_ados: Vec<AndrAddress>,
     pub execute_ado: AndrAddress,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+
     /// Executes based off the evaluation ADO's bool
     Interpret {
         results: Vec<bool>,
     },
+
     GetResults {},
     UpdateExecuteADO {
         address: AndrAddress,
@@ -42,7 +44,7 @@ pub enum QueryMsg {
     #[returns(LogicGate)]
     LogicGate {},
     #[returns(Vec<AndrAddress>)]
-    Whitelist {},
+    EvalAdos {},
 }
 
 #[cw_serde]

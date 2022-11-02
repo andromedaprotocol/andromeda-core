@@ -88,11 +88,9 @@ pub fn generate_assign_process_message(
     addr: &Addr,
     process_addr: &str,
 ) -> Result<SubMsg, ContractError> {
-    let msg = to_binary(&ExecuteMsg::AndrReceive(
-        AndromedaMsg::UpdateProcessContract {
-            address: process_addr.to_string(),
-        },
-    ))?;
+    let msg = to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+        address: process_addr.to_string(),
+    }))?;
     Ok(SubMsg {
         id: 103,
         reply_on: ReplyOn::Error,

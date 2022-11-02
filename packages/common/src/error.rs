@@ -52,6 +52,9 @@ pub enum ContractError {
     #[error("UnsupportedNFT")]
     UnsupportedNFT {},
 
+    #[error("UnsupportedReturnType")]
+    UnsupportedReturnType {},
+
     #[error("AlreadyUnbonded")]
     AlreadyUnbonded {},
 

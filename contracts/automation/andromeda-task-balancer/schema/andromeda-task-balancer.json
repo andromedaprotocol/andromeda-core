@@ -232,26 +232,6 @@
           {
             "type": "object",
             "required": [
-              "update_process_contract"
-            ],
-            "properties": {
-              "update_process_contract": {
-                "type": "object",
-                "required": [
-                  "address"
-                ],
-                "properties": {
-                  "address": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
               "withdraw"
             ],
             "properties": {

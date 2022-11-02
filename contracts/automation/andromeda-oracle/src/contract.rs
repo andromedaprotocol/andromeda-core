@@ -1,18 +1,16 @@
-use crate::state::{QUERY_MSG, TARGET_ADO_ADDRESS};
+use crate::state::{EXPECTED_TYPE, QUERY_MSG, TARGET_ADO_ADDRESS};
 use ado_base::state::ADOContract;
-use andromeda_automation::oracle::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_automation::oracle::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, Types};
 use base64;
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
-use schemars::JsonSchema;
 
 use std::env;
 
 use cosmwasm_std::{
     ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Reply, Response,
-    StdError, WasmQuery,
+    StdError, Uint128, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
-use std::fmt::Debug;
 
 use semver::Version;
 
@@ -30,6 +28,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     QUERY_MSG.save(deps.storage, &msg.message_binary)?;
     TARGET_ADO_ADDRESS.save(deps.storage, &msg.target_address)?;
+    EXPECTED_TYPE.save(deps.storage, &msg.expected_type)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -122,37 +121,41 @@ fn query_current_target(deps: Deps) -> Result<String, ContractError> {
     Ok(address.identifier)
 }
 
-fn query_target<T>(deps: Deps) -> Result<T, ContractError>
-where
-    T: Copy
-        + Clone
-        + Default
-        + Debug
-        + PartialEq
-        + Eq
-        + PartialOrd
-        + Ord
-        + JsonSchema
-        + for<'de> serde::Deserialize<'de>,
-{
+fn query_target(deps: Deps) -> Result<String, ContractError> {
     let contract_addr = TARGET_ADO_ADDRESS.load(deps.storage)?.identifier;
-    println!("Target ADO{:?}", contract_addr);
     let stored_msg = QUERY_MSG.load(deps.storage)?;
-    println!("The stored message{:?}", stored_msg);
 
     let decoded_string = base64::decode(stored_msg).unwrap();
     let msg = Binary::from(decoded_string);
 
-    let response: T = deps
-        .querier
-        .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
-    Ok(response)
+    let ty = EXPECTED_TYPE.load(deps.storage)?;
+
+    if ty == Types::Bool {
+        let response: bool = deps
+            .querier
+            .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
+        Ok(response.to_string())
+    } else if ty == Types::Uint128 {
+        let response: Uint128 = deps
+            .querier
+            .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
+        Ok(response.to_string())
+    } else if ty == Types::String {
+        let response: String = deps
+            .querier
+            .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
+        Ok(response)
+    } else {
+        Err(ContractError::UnsupportedReturnType {})
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock_querier::{mock_dependencies_custom, MOCK_COUNTER_CONTRACT};
+    use crate::mock_querier::{
+        mock_dependencies_custom, MOCK_BOOL_CONTRACT, MOCK_COUNTER_CONTRACT,
+    };
     use common::app::AndrAddress;
     use cosmwasm_std::{
         testing::{mock_env, mock_info},
@@ -165,21 +168,46 @@ mod tests {
         let target_address = AndrAddress {
             identifier: MOCK_COUNTER_CONTRACT.to_string(),
         };
-        // receive encoded the json as base64
-        let binary = "eyJjb3VudCI6e319";
-        // turn base64 into string
-        let decoded_binary = base64::decode(binary).unwrap();
-        let vec_bin = Binary::from(decoded_binary);
-        print!("from binary{:?}", vec_bin);
 
         let msg = InstantiateMsg {
             target_address,
             message_binary: "eyJjb3VudCI6e319".to_string(),
+            expected_type: Types::Uint128,
         };
         let info = mock_info("creator", &[]);
 
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+    }
+
+    #[test]
+    fn test_binary_conversion() {
+        // receive encoded the json as base64
+        let binary = "eyJjdXJyZW50X3RhcmdldCI6e319";
+
+        // turn base64 into string
+        let decoded_binary = base64::decode(binary).unwrap();
+        let vec_bin = Binary::from(decoded_binary);
+
         let actual_binary = to_binary(&QueryMsg::CurrentTarget {}).unwrap();
-        println!("Actual binary: {:?}", actual_binary);
+
+        assert_eq!(actual_binary, vec_bin)
+    }
+
+    #[test]
+    fn test_uint128() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let target_address = AndrAddress {
+            identifier: MOCK_COUNTER_CONTRACT.to_string(),
+        };
+
+        let msg = InstantiateMsg {
+            target_address,
+            message_binary: "eyJjb3VudCI6e319".to_string(),
+            expected_type: Types::Uint128,
+        };
+        let info = mock_info("creator", &[]);
 
         // we can just call .unwrap() to assert this was a success
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -195,7 +223,87 @@ mod tests {
         );
         let message = QUERY_MSG.load(&deps.storage).unwrap();
         assert_eq!(message, "eyJjb3VudCI6e319".to_string());
-        let res: Uint128 = query_target(deps.as_ref()).unwrap();
-        println!("{:?}", res)
+        let res = query_target(deps.as_ref()).unwrap();
+
+        println!("Pre-parsed result: {:?}", res);
+        let parsed_result: Uint128 = res.parse().unwrap();
+
+        println!("Parsed result: {:?}", parsed_result);
+        assert_eq!(parsed_result, Uint128::new(1))
+    }
+
+    #[test]
+    fn test_u32() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let target_address = AndrAddress {
+            identifier: MOCK_COUNTER_CONTRACT.to_string(),
+        };
+
+        let msg = InstantiateMsg {
+            target_address,
+            message_binary: "eyJjb3VudCI6e319".to_string(),
+            expected_type: Types::Uint128,
+        };
+        let info = mock_info("creator", &[]);
+
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // make sure address was saved correctly
+        let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
+        assert_eq!(
+            addr,
+            AndrAddress {
+                identifier: MOCK_COUNTER_CONTRACT.to_string(),
+            }
+        );
+        let message = QUERY_MSG.load(&deps.storage).unwrap();
+        assert_eq!(message, "eyJjb3VudCI6e319".to_string());
+        let res = query_target(deps.as_ref()).unwrap();
+
+        println!("Pre-parsed result: {:?}", res);
+        let parsed_result: i32 = res.parse().unwrap();
+
+        println!("Parsed result: {:?}", parsed_result);
+        assert_eq!(parsed_result, 1)
+        // We can now assume that we can parse into any type of number
+    }
+
+    #[test]
+    fn test_bool() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let target_address = AndrAddress {
+            identifier: MOCK_BOOL_CONTRACT.to_string(),
+        };
+
+        let msg = InstantiateMsg {
+            target_address,
+            message_binary: "eyJjb3VudCI6e319".to_string(),
+            expected_type: Types::Bool,
+        };
+        let info = mock_info("creator", &[]);
+
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // make sure address was saved correctly
+        let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
+        assert_eq!(
+            addr,
+            AndrAddress {
+                identifier: MOCK_BOOL_CONTRACT.to_string(),
+            }
+        );
+        let message = QUERY_MSG.load(&deps.storage).unwrap();
+        assert_eq!(message, "eyJjb3VudCI6e319".to_string());
+        let res = query_target(deps.as_ref()).unwrap();
+
+        println!("Pre-parsed result: {:?}", res);
+        let parsed_result: bool = res.parse().unwrap();
+
+        println!("Parsed result: {:?}", parsed_result);
+        assert_eq!(parsed_result, true)
     }
 }

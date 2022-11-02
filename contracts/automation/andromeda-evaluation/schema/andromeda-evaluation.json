@@ -9,9 +9,8 @@
     "required": [
       "condition_address",
       "operation",
-      "query_address",
-      "task_balancer",
-      "user_value"
+      "oracle_address",
+      "task_balancer"
     ],
     "properties": {
       "condition_address": {
@@ -20,14 +19,21 @@
       "operation": {
         "$ref": "#/definitions/Operators"
       },
-      "query_address": {
+      "oracle_address": {
         "$ref": "#/definitions/AndrAddress"
       },
       "task_balancer": {
         "$ref": "#/definitions/AndrAddress"
       },
       "user_value": {
-        "$ref": "#/definitions/Uint128"
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Uint128"
+          },
+          {
+            "type": "null"
+          }
+        ]
       }
     },
     "additionalProperties": false,
@@ -231,26 +237,6 @@
             ],
             "properties": {
               "update_app_contract": {
-                "type": "object",
-                "required": [
-                  "address"
-                ],
-                "properties": {
-                  "address": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "update_process_contract"
-            ],
-            "properties": {
-              "update_process_contract": {
                 "type": "object",
                 "required": [
                   "address"

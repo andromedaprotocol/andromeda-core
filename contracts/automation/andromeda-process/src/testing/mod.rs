@@ -763,11 +763,9 @@ fn test_reply_assign_process() {
         id: 103,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "tokenaddress".to_string(),
-            msg: to_binary(&ExecuteMsg::AndrReceive(
-                AndromedaMsg::UpdateProcessContract {
-                    address: env.contract.address.to_string(),
-                },
-            ))
+            msg: to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+                address: env.contract.address.to_string(),
+            }))
             .unwrap(),
             funds: vec![],
         }),

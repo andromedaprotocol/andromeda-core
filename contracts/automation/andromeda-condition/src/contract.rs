@@ -17,7 +17,7 @@ use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
 
-use crate::state::{EXECUTE_ADO, LOGIC_GATE, WHITELIST};
+use crate::state::{EVAL_ADOS, EXECUTE_ADO, LOGIC_GATE};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-condition";
@@ -33,7 +33,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     LOGIC_GATE.save(deps.storage, &msg.logic_gate)?;
-    WHITELIST.save(deps.storage, &msg.whitelist)?;
+    EVAL_ADOS.save(deps.storage, &msg.eval_ados)?;
     EXECUTE_ADO.save(deps.storage, &msg.execute_ado)?;
 
     ADOContract::default().instantiate(
@@ -117,7 +117,7 @@ fn execute_update_whitelist(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    WHITELIST.save(deps.storage, &addresses)?;
+    EVAL_ADOS.save(deps.storage, &addresses)?;
 
     Ok(Response::new().add_attribute("action", "updated_whitelist"))
 }
@@ -154,12 +154,12 @@ fn execute_get_results(
         ContractError::Unauthorized {}
     );
 
-    let whitelist = WHITELIST.load(deps.storage)?;
+    let eval_ados = EVAL_ADOS.load(deps.storage)?;
 
     // Query Eval for results
     let mut eval_results: Vec<bool> = vec![];
 
-    for i in whitelist.into_iter() {
+    for i in eval_ados.into_iter() {
         // Get the address
         let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
         let contract_addr = i.get_address(deps.api, &deps.querier, app_contract)?;
@@ -353,7 +353,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::LogicGate {} => encode_binary(&query_logic_gate(deps)?),
-        QueryMsg::Whitelist {} => encode_binary(&query_whitelist(deps)?),
+        QueryMsg::EvalAdos {} => encode_binary(&query_whitelist(deps)?),
     }
 }
 
@@ -362,7 +362,7 @@ fn query_logic_gate(deps: Deps) -> Result<LogicGate, ContractError> {
 }
 
 fn query_whitelist(deps: Deps) -> Result<Vec<AndrAddress>, ContractError> {
-    Ok(WHITELIST.load(deps.storage)?)
+    Ok(EVAL_ADOS.load(deps.storage)?)
 }
 
 #[cfg(test)]
@@ -382,7 +382,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::And,
-            whitelist: vec![AndrAddress {
+            eval_ados: vec![AndrAddress {
                 identifier: "legit_address".to_string(),
             }],
             execute_ado: AndrAddress {
@@ -391,9 +391,9 @@ mod tests {
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
-        let whitelist = WHITELIST.load(&deps.storage).unwrap();
+        let eval_ados = EVAL_ADOS.load(&deps.storage).unwrap();
         assert_eq!(
-            whitelist[0],
+            eval_ados[0],
             AndrAddress {
                 identifier: "legit_address".to_string(),
             }
@@ -408,7 +408,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::And,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -435,7 +435,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::And,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -471,7 +471,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Or,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -507,7 +507,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Or,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -543,7 +543,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Xor,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -579,7 +579,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Xor,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -608,7 +608,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Not,
-            whitelist: vec![AndrAddress {
+            eval_ados: vec![AndrAddress {
                 identifier: "legit_address2".to_string(),
             }],
             execute_ado: AndrAddress {
@@ -639,7 +639,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Not,
-            whitelist: vec![AndrAddress {
+            eval_ados: vec![AndrAddress {
                 identifier: "legit_address1".to_string(),
             }],
             execute_ado: AndrAddress {
@@ -663,7 +663,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Not,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -692,7 +692,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nand,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -728,7 +728,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nand,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address2".to_string(),
                 },
@@ -764,7 +764,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nand,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -793,7 +793,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nor,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address2".to_string(),
                 },
@@ -828,7 +828,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nor,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -857,7 +857,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nor,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -886,7 +886,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Xnor,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },
@@ -921,7 +921,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Xnor,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address2".to_string(),
                 },
@@ -957,7 +957,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Xnor,
-            whitelist: vec![
+            eval_ados: vec![
                 AndrAddress {
                     identifier: "legit_address1".to_string(),
                 },

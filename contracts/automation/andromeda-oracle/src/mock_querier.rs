@@ -6,6 +6,8 @@ use cosmwasm_std::{
     SystemError, SystemResult, Uint128, WasmQuery,
 };
 pub const MOCK_COUNTER_CONTRACT: &str = "mock_counter_contract";
+pub const MOCK_BOOL_CONTRACT: &str = "mock_bool_contract";
+pub const MOCK_BINARY_CONTRACT: &str = "mock_binary_contract";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -49,6 +51,8 @@ impl WasmMockQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_COUNTER_CONTRACT => self.handle_counter_query(msg),
+                    MOCK_BOOL_CONTRACT => self.handle_bool_query(msg),
+                    MOCK_BINARY_CONTRACT => self.handle_binary_query(msg),
                     _ => panic!("Unknown Contract Address {}", contract_addr),
                 }
             }
@@ -61,6 +65,22 @@ impl WasmMockQuerier {
             QueryMsg::Count {} => {
                 SystemResult::Ok(ContractResult::Ok(to_binary(&Uint128::new(1)).unwrap()))
             }
+            _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+        }
+    }
+
+    fn handle_bool_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            QueryMsg::Count {} => SystemResult::Ok(ContractResult::Ok(to_binary(&true).unwrap())),
+            _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
+        }
+    }
+
+    fn handle_binary_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            QueryMsg::Count {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&to_binary("data").unwrap()).unwrap(),
+            )),
             _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
         }
     }
