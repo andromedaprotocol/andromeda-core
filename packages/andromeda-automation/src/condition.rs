@@ -24,7 +24,7 @@ pub enum ExecuteMsg {
     UpdateExecuteADO {
         address: AndrAddress,
     },
-    UpdateWhitelist {
+    UpdateEvalAdos {
         addresses: Vec<AndrAddress>,
     },
     UpdateLogicGate {
@@ -41,8 +41,10 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+
     #[returns(LogicGate)]
     LogicGate {},
+
     #[returns(Vec<AndrAddress>)]
     EvalAdos {},
 }

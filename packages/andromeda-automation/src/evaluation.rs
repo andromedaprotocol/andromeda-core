@@ -38,10 +38,13 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+
     #[returns(String)]
     ConditionADO {},
+
     #[returns(bool)]
     Evaluation {},
+    
     #[returns(String)]
     QueryADO {},
 }

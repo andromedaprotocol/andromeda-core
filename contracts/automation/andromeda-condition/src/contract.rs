@@ -77,7 +77,7 @@ pub fn execute(
         ExecuteMsg::UpdateExecuteADO { address } => {
             execute_update_execute_ado(deps, env, info, address)
         }
-        ExecuteMsg::UpdateWhitelist { addresses } => {
+        ExecuteMsg::UpdateEvalAdos { addresses } => {
             execute_update_whitelist(deps, env, info, addresses)
         }
         ExecuteMsg::UpdateLogicGate { logic_gate } => {

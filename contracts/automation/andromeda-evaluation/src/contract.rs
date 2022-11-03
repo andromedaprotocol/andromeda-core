@@ -205,6 +205,8 @@ fn query_evaluation(deps: Deps, _env: Env) -> Result<bool, ContractError> {
             contract_addr: query_addr,
             msg: to_binary(&OracleQueryMsg::Target {})?,
         }))?;
+
+        // In the future, user will set the expected value during instantiation and parse it accordingly
         let parsed_oracle_value: Uint128 = oracle_value.parse()?;
 
         match operation {
@@ -216,11 +218,14 @@ fn query_evaluation(deps: Deps, _env: Env) -> Result<bool, ContractError> {
         }
         // If the user didn't provide a value, we assume the query ADO returns a bool
     } else {
-        let result: bool = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        let oracle_value: String = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: query_addr,
             msg: to_binary(&OracleQueryMsg::Target {})?,
         }))?;
-        result
+
+        let parsed_oracle_value: bool = oracle_value.parse()?;
+
+        parsed_oracle_value
     };
 
     Ok(result)

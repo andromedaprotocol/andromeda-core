@@ -3,6 +3,7 @@ use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_utils::{Expiration, ParseReplyError, PaymentError};
 use std::convert::From;
+use std::str::ParseBoolError;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 
@@ -69,6 +70,9 @@ pub enum ContractError {
 
     #[error("StillBonded")]
     StillBonded {},
+
+    #[error("ParseBoolError")]
+    ParseBoolError {},
 
     #[error("InsufficientBondedTime")]
     InsufficientBondedTime {},
@@ -518,6 +522,12 @@ impl From<Cw20ContractError> for ContractError {
                 ContractError::DuplicateInitialBalanceAddresses {}
             }
         }
+    }
+}
+
+impl From<ParseBoolError> for ContractError {
+    fn from(_err: ParseBoolError) -> Self {
+        ContractError::ParseBoolError {}
     }
 }
 
