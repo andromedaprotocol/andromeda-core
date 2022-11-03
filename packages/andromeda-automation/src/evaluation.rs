@@ -44,7 +44,7 @@ pub enum QueryMsg {
 
     #[returns(bool)]
     Evaluation {},
-    
+
     #[returns(String)]
     QueryADO {},
 }
