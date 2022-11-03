@@ -230,6 +230,7 @@ pub enum QueryMsg {
     Extension {
         msg: Box<QueryMsg>,
     },
+    Minter {},
 }
 
 impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
@@ -276,6 +277,7 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
                 Cw721QueryMsg::AllTokens { start_after, limit }
             }
             QueryMsg::Extension { msg } => Cw721QueryMsg::Extension { msg: *msg },
+            QueryMsg::Minter {} => Cw721QueryMsg::Minter {},
             _ => panic!("Unsupported message"),
         }
     }

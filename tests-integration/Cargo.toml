@@ -5,12 +5,32 @@ edition = "2018"
 publish = false
 
 [dev-dependencies]
-andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721" }
-andromeda-rates = { path = "../contracts/modules/andromeda-rates" }
-andromeda-modules = { path = "../packages/andromeda-modules" }
-andromeda-non-fungible-tokens = { path = "../packages/andromeda-non-fungible-tokens" }
-common = { version = "0.1.0", path = "../packages/common" }
+#App
+andromeda-app = { path = "../packages/andromeda-app" }
+andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract" }
 
+#NFT Contracts
+andromeda-non-fungible-tokens = { path = "../packages/andromeda-non-fungible-tokens" }
+andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721" }
+andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund" }
+
+#Modules
+andromeda-modules = { path = "../packages/andromeda-modules" }
+andromeda-rates = { path = "../contracts/modules/andromeda-rates" }
+
+#Ecosystem
+andromeda-ecosystem = {  path = "../packages/andromeda-ecosystem" }
+andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault" }
+
+#Finance
+andromeda-finance = { path = "../packages/andromeda-finance"}
+andromeda-splitter = { path = "../contracts/finance/andromeda-splitter" }
+
+#Other Crates
+common = { version = "0.1.0", path = "../packages/common" }
+andromeda-testing = { path = "../packages/andromeda-testing" }
+
+#Cosmwasm Crates
 cw-multi-test = "0.16.0"
 cosmwasm-std = "1.1.4"
 cw721-base = { version = "0.15.0", features = ["library"] }
@@ -18,3 +38,6 @@ cw721 = "0.15.0"
 
 [[test]]
 name = "cw721"
+
+[[test]]
+name = "crowdfund_app"

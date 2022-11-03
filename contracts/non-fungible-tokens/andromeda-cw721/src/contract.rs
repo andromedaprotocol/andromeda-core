@@ -431,6 +431,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::TransferAgreement { token_id } => {
             Ok(to_binary(&query_transfer_agreement(deps, token_id)?)?)
         }
+        QueryMsg::Minter {} => Ok(to_binary(&query_minter(deps)?)?),
         _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
     }
 }
@@ -440,6 +441,14 @@ pub fn query_transfer_agreement(
     token_id: String,
 ) -> Result<Option<TransferAgreement>, ContractError> {
     Ok(TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?)
+}
+
+pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let minter = ANDR_MINTER.load(deps.storage)?;
+    let addr = minter.get_address(deps.api, &deps.querier, app_contract)?;
+
+    Ok(addr)
 }
 
 fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {

@@ -11,7 +11,7 @@ pub struct AppComponent {
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub app: Vec<AppComponent>,
+    pub app_components: Vec<AppComponent>,
     pub name: String,
     pub primitive_contract: String,
 }
