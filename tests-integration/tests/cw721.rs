@@ -143,12 +143,7 @@ fn cw721_rates_module() {
         token_id,
     };
     let _ = router
-        .execute_contract(
-            buyer,
-            cw721_addr,
-            &xfer_msg,
-            &[coin(200, "uandr")],
-        )
+        .execute_contract(buyer, cw721_addr, &xfer_msg, &[coin(200, "uandr")])
         .unwrap();
 
     // Check balances post tx

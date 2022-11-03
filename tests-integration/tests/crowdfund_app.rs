@@ -288,12 +288,7 @@ fn test_crowdfund_app() {
         )
         .unwrap();
     router
-        .execute_contract(
-            owner,
-            Addr::unchecked(crowdfund_addr),
-            &end_sale_msg,
-            &[],
-        )
+        .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
         .unwrap();
 
     // Check final state
