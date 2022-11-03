@@ -218,7 +218,7 @@ fn test_crowdfund_app() {
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
-            &mock_get_address_msg(crowdfund_app_component.clone().name),
+            &mock_get_address_msg(crowdfund_app_component.name),
         )
         .unwrap();
 
@@ -237,7 +237,7 @@ fn test_crowdfund_app() {
     let token_price = coin(100, "uandr");
     let sale_recipient = Recipient::ADO(ADORecipient {
         address: AndrAddress {
-            identifier: splitter_app_component.clone().name,
+            identifier: splitter_app_component.name,
         },
         msg: Some(to_binary(&mock_splitter_send_msg()).unwrap()),
     });
@@ -258,7 +258,7 @@ fn test_crowdfund_app() {
         .unwrap();
 
     // Buy Tokens
-    let buyers = vec![buyer_one.clone(), buyer_two.clone(), buyer_three.clone()];
+    let buyers = vec![buyer_one, buyer_two, buyer_three];
     for buyer in buyers.clone() {
         let purchase_msg = mock_purchase_msg(Some(1));
         router
@@ -266,7 +266,7 @@ fn test_crowdfund_app() {
                 buyer,
                 Addr::unchecked(crowdfund_addr.clone()),
                 &purchase_msg,
-                &vec![token_price.clone()],
+                &[token_price.clone()],
             )
             .unwrap();
     }
@@ -289,8 +289,8 @@ fn test_crowdfund_app() {
         .unwrap();
     router
         .execute_contract(
-            owner.clone(),
-            Addr::unchecked(crowdfund_addr.clone()),
+            owner,
+            Addr::unchecked(crowdfund_addr),
             &end_sale_msg,
             &[],
         )
@@ -302,7 +302,7 @@ fn test_crowdfund_app() {
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
-            &mock_get_address_msg(cw721_component.clone().name),
+            &mock_get_address_msg(cw721_component.name),
         )
         .unwrap();
     for (i, buyer) in buyers.iter().enumerate() {
@@ -320,7 +320,7 @@ fn test_crowdfund_app() {
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
-            &mock_get_address_msg(vault_one_app_component.clone().name),
+            &mock_get_address_msg(vault_one_app_component.name),
         )
         .unwrap();
     let balance_one: Vec<Coin> = router
@@ -340,8 +340,8 @@ fn test_crowdfund_app() {
     let vault_two_addr: String = router
         .wrap()
         .query_wasm_smart(
-            app_addr.clone(),
-            &mock_get_address_msg(vault_two_app_component.clone().name),
+            app_addr,
+            &mock_get_address_msg(vault_two_app_component.name),
         )
         .unwrap();
     let balance_two: Vec<Coin> = router

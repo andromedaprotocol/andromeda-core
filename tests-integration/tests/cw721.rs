@@ -119,7 +119,7 @@ fn cw721_rates_module() {
     let xfer_agreement_msg = CW721ExecuteMsg::TransferAgreement {
         token_id: token_id.clone(),
         agreement: Some(TransferAgreement {
-            amount: Value::Raw(agreement_amount.clone()),
+            amount: Value::Raw(agreement_amount),
             purchaser: buyer.to_string(),
         }),
     };
@@ -140,12 +140,12 @@ fn cw721_rates_module() {
     // Transfer Token
     let xfer_msg = CW721ExecuteMsg::TransferNft {
         recipient: buyer.to_string(),
-        token_id: token_id.to_string(),
+        token_id,
     };
     let _ = router
         .execute_contract(
-            buyer.clone(),
-            cw721_addr.clone(),
+            buyer,
+            cw721_addr,
             &xfer_msg,
             &[coin(200, "uandr")],
         )
