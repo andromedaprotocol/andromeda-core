@@ -118,11 +118,11 @@ fn query_stored_message(deps: Deps) -> Result<String, ContractError> {
 
 fn query_current_target(deps: Deps) -> Result<String, ContractError> {
     let address = TARGET_ADO_ADDRESS.load(deps.storage)?;
-    Ok(address.identifier)
+    Ok(address)
 }
 
 fn query_target(deps: Deps) -> Result<String, ContractError> {
-    let contract_addr = TARGET_ADO_ADDRESS.load(deps.storage)?.identifier;
+    let contract_addr = TARGET_ADO_ADDRESS.load(deps.storage)?;
     let stored_msg = QUERY_MSG.load(deps.storage)?;
 
     let decoded_string = base64::decode(stored_msg).unwrap();
@@ -156,7 +156,6 @@ mod tests {
     use crate::mock_querier::{
         mock_dependencies_custom, MOCK_BOOL_CONTRACT, MOCK_COUNTER_CONTRACT,
     };
-    use common::app::AndrAddress;
     use cosmwasm_std::{
         testing::{mock_env, mock_info},
         to_binary, Uint128,
@@ -165,9 +164,7 @@ mod tests {
     #[test]
     fn test_initialization() {
         let mut deps = mock_dependencies_custom(&[]);
-        let target_address = AndrAddress {
-            identifier: MOCK_COUNTER_CONTRACT.to_string(),
-        };
+        let target_address = MOCK_COUNTER_CONTRACT.to_string();
 
         let msg = InstantiateMsg {
             target_address,
@@ -198,9 +195,7 @@ mod tests {
     #[test]
     fn test_uint128() {
         let mut deps = mock_dependencies_custom(&[]);
-        let target_address = AndrAddress {
-            identifier: MOCK_COUNTER_CONTRACT.to_string(),
-        };
+        let target_address = MOCK_COUNTER_CONTRACT.to_string();
 
         let msg = InstantiateMsg {
             target_address,
@@ -215,12 +210,7 @@ mod tests {
 
         // make sure address was saved correctly
         let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
-        assert_eq!(
-            addr,
-            AndrAddress {
-                identifier: MOCK_COUNTER_CONTRACT.to_string(),
-            }
-        );
+        assert_eq!(addr, MOCK_COUNTER_CONTRACT.to_string());
         let message = QUERY_MSG.load(&deps.storage).unwrap();
         assert_eq!(message, "eyJjb3VudCI6e319".to_string());
         let res = query_target(deps.as_ref()).unwrap();
@@ -235,9 +225,7 @@ mod tests {
     #[test]
     fn test_u32() {
         let mut deps = mock_dependencies_custom(&[]);
-        let target_address = AndrAddress {
-            identifier: MOCK_COUNTER_CONTRACT.to_string(),
-        };
+        let target_address = MOCK_COUNTER_CONTRACT.to_string();
 
         let msg = InstantiateMsg {
             target_address,
@@ -252,12 +240,7 @@ mod tests {
 
         // make sure address was saved correctly
         let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
-        assert_eq!(
-            addr,
-            AndrAddress {
-                identifier: MOCK_COUNTER_CONTRACT.to_string(),
-            }
-        );
+        assert_eq!(addr, MOCK_COUNTER_CONTRACT.to_string());
         let message = QUERY_MSG.load(&deps.storage).unwrap();
         assert_eq!(message, "eyJjb3VudCI6e319".to_string());
         let res = query_target(deps.as_ref()).unwrap();
@@ -273,9 +256,7 @@ mod tests {
     #[test]
     fn test_bool() {
         let mut deps = mock_dependencies_custom(&[]);
-        let target_address = AndrAddress {
-            identifier: MOCK_BOOL_CONTRACT.to_string(),
-        };
+        let target_address = MOCK_BOOL_CONTRACT.to_string();
 
         let msg = InstantiateMsg {
             target_address,
@@ -290,12 +271,7 @@ mod tests {
 
         // make sure address was saved correctly
         let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
-        assert_eq!(
-            addr,
-            AndrAddress {
-                identifier: MOCK_BOOL_CONTRACT.to_string(),
-            }
-        );
+        assert_eq!(addr, MOCK_BOOL_CONTRACT.to_string());
         let message = QUERY_MSG.load(&deps.storage).unwrap();
         assert_eq!(message, "eyJjb3VudCI6e319".to_string());
         let res = query_target(deps.as_ref()).unwrap();

@@ -24,6 +24,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    // Store process in a vector
     let process_vec: Vec<Addr> = vec![msg.process];
 
     MAX_PROCESSES.save(deps.storage, &msg.max_processes)?;
@@ -87,6 +88,7 @@ fn execute_remove(
     // Find process's index
     let i = processes.iter().position(|x| x == &process);
 
+    // Remove the process if found, else return an error
     if let Some(index) = i {
         processes.swap_remove(index);
         PROCESSES.save(deps.storage, &processes)?;

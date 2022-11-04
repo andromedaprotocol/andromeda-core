@@ -4,9 +4,9 @@ use cosmwasm_std::Addr;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // Task balancer ADO's address
+    // Task balancer ADO's address, we can use Addr instead of String since the task balancer instantiates the contract
     pub task_balancer: Addr,
-    // Processes address
+    // Processes address, we can use Addr instead of String since the task balancer validates the process's address
     pub process: Addr,
     // Max number of processes
     pub max_processes: u64,

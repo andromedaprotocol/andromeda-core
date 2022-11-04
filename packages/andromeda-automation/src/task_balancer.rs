@@ -4,6 +4,7 @@ use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    // The maximum number of processes that our storage contracts will store
     pub max: u64,
     // Code IDS are u64
     pub storage_code_id: u64,
@@ -12,6 +13,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    // Adds process to storage contract
     Add { process: String },
     // Sends message to storage contract for removal of process
     Remove { process: String },

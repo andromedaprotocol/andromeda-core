@@ -6,12 +6,13 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // Target ADO's address
+    // The contract we'll send the ExecuteMsg to
     pub target_address: AndrAddress,
     // Condition ADO's address
     pub condition_address: AndrAddress,
     // Desired increment
     pub increment: Increment,
+    // Task balancer's address
     pub task_balancer: String,
 }
 

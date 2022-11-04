@@ -1,13 +1,10 @@
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     // The contract which we'll query data from
-    pub target_address: AndrAddress,
+    pub target_address: String,
 
     // The query message's binary
     pub message_binary: String,
@@ -40,6 +37,7 @@ pub enum QueryMsg {
     StoredMessage {},
 }
 
+// Type of response we expect from our query
 #[cw_serde]
 pub enum Types {
     String,
