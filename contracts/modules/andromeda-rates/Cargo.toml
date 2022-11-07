@@ -18,7 +18,7 @@ cw2 = "0.15.0"
 cw20 = "0.15.0"
 semver = "1"
 cw-utils = "0.15.0"
-cw-multi-test = "0.16.0"
+cw-multi-test = { version = "0.16.0", optional = true }
 
 andromeda-modules = { path = "../../../packages/andromeda-modules" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }

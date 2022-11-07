@@ -37,7 +37,7 @@ common = { version = "0.1.0", path = "../packages/common" }
 andromeda-testing = { path = "../packages/andromeda-testing" }
 
 #Cosmwasm Crates
-cw-multi-test = "0.16.0"
+cw-multi-test = { version = "0.16.0" }
 cosmwasm-std = "1.1.4"
 cw721-base = { version = "0.15.0", features = ["library"] }
 cw721 = "0.15.0"
