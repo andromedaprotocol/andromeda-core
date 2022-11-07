@@ -9,8 +9,8 @@ pub struct InstantiateMsg {
     // The query message's binary
     pub message_binary: String,
 
-    // The query's expected return type
-    pub expected_type: Types,
+    // The query's expected return type (u64, bool ...) or (CountResponse, PriceResponse ...)
+    pub return_type: TypeOfResponse,
 }
 
 #[cw_serde]
@@ -43,4 +43,18 @@ pub enum Types {
     String,
     Bool,
     Uint128,
+}
+
+// Response type we expect from our query and the specific element we want to access, support for additional response types will be added down the line
+#[cw_serde]
+pub enum ResponseTypes {
+    CounterResponseCount,
+    CounterResponsePreviousCount,
+    PriceResponse,
+}
+
+#[cw_serde]
+pub enum TypeOfResponse {
+    Types(Types),
+    ResponseTypes(ResponseTypes),
 }

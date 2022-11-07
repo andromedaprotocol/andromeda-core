@@ -2,7 +2,9 @@ use std::env;
 
 use crate::state::{COUNT, WHITELIST};
 use ado_base::state::ADOContract;
-use andromeda_automation::counter::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_automation::counter::{
+    CounterResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
     ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
@@ -173,9 +175,23 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-fn query_count(deps: Deps) -> Result<Uint128, ContractError> {
+fn query_count(deps: Deps) -> Result<CounterResponse, ContractError> {
     let count = COUNT.load(deps.storage)?;
-    Ok(count)
+    let response = if count == Uint128::zero() {
+        
+        CounterResponse {
+            count,
+            previous_count: Uint128::new(0),
+        }
+    } else {
+        
+        CounterResponse {
+            count,
+            previous_count: count - Uint128::new(1),
+        }
+    };
+
+    Ok(response)
 }
 
 #[cfg(test)]

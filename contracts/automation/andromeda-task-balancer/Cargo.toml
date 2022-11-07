@@ -24,5 +24,5 @@ common = { version = "0.1.0", path = "../../../packages/common" }
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"
-
+cw-multi-test = "0.16.0"
 andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }

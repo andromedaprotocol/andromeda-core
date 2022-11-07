@@ -30,3 +30,9 @@ pub enum QueryMsg {
     #[returns(Uint128)]
     Count {},
 }
+
+#[cw_serde]
+pub struct CounterResponse {
+    pub count: Uint128,
+    pub previous_count: Uint128,
+}

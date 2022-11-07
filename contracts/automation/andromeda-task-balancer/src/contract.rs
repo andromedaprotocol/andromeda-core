@@ -263,7 +263,7 @@ fn try_add(
     }
 }
 
-pub fn try_update(
+fn try_update(
     deps: DepsMut,
     info: MessageInfo,
     new_admin: String,
@@ -345,6 +345,7 @@ fn query_count(deps: Deps) -> Result<GetSizeResponse, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::contract::{execute, instantiate};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]

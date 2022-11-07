@@ -156,7 +156,7 @@ fn execute_start_auction(
         ContractError::ExpirationMustNotBeNever {}
     );
     ensure!(
-        start_time.partial_cmp(&end_time) != None,
+        start_time.partial_cmp(&end_time).is_some(),
         ContractError::ExpirationsMustBeOfSameType {}
     );
     ensure!(
@@ -235,7 +235,7 @@ fn execute_update_auction(
         ContractError::ExpirationMustNotBeNever {}
     );
     ensure!(
-        start_time.partial_cmp(&end_time) != None,
+        start_time.partial_cmp(&end_time).is_some(),
         ContractError::ExpirationsMustBeOfSameType {}
     );
     ensure!(

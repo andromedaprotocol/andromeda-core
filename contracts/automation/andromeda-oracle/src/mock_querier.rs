@@ -1,4 +1,4 @@
-use andromeda_automation::counter::QueryMsg;
+use andromeda_automation::counter::{CounterResponse, QueryMsg};
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
@@ -8,6 +8,7 @@ use cosmwasm_std::{
 pub const MOCK_COUNTER_CONTRACT: &str = "mock_counter_contract";
 pub const MOCK_BOOL_CONTRACT: &str = "mock_bool_contract";
 pub const MOCK_BINARY_CONTRACT: &str = "mock_binary_contract";
+pub const MOCK_RESPONSE_COUNTER_CONTRACT: &str = "mock_response_counter_contract";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -53,10 +54,24 @@ impl WasmMockQuerier {
                     MOCK_COUNTER_CONTRACT => self.handle_counter_query(msg),
                     MOCK_BOOL_CONTRACT => self.handle_bool_query(msg),
                     MOCK_BINARY_CONTRACT => self.handle_binary_query(msg),
+                    MOCK_RESPONSE_COUNTER_CONTRACT => self.handle_response_counter_query(msg),
                     _ => panic!("Unknown Contract Address {}", contract_addr),
                 }
             }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_response_counter_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            QueryMsg::Count {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&CounterResponse {
+                    count: Uint128::new(1),
+                    previous_count: Uint128::zero(),
+                })
+                .unwrap(),
+            )),
+            _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
         }
     }
 
