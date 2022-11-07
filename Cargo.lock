@@ -76,6 +76,7 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-multi-test",
  "cw-storage-plus 0.15.0",
  "cw-utils 0.15.0",
  "cw2 0.15.0",
@@ -1631,6 +1632,7 @@ version = "0.1.0"
 dependencies = [
  "andromeda-app",
  "andromeda-app-contract",
+ "andromeda-auction",
  "andromeda-crowdfund",
  "andromeda-cw721",
  "andromeda-ecosystem",

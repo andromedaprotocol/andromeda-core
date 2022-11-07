@@ -9,6 +9,16 @@ pub struct AppComponent {
     pub instantiate_msg: Binary,
 }
 
+impl AppComponent {
+    pub fn new(name: String, ado_type: String, instantiate_msg: Binary) -> AppComponent {
+        AppComponent {
+            name,
+            ado_type,
+            instantiate_msg,
+        }
+    }
+}
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub app_components: Vec<AppComponent>,

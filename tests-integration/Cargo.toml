@@ -13,6 +13,7 @@ andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract" }
 andromeda-non-fungible-tokens = { path = "../packages/andromeda-non-fungible-tokens" }
 andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721" }
 andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund" }
+andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction" }
 
 #Modules
 andromeda-modules = { path = "../packages/andromeda-modules" }
