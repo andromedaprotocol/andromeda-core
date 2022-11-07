@@ -103,7 +103,7 @@ fn test_auction_app() {
             owner.clone(),
             &app_init_msg,
             &[],
-            "Crowdfund App",
+            "Auction App",
             Some(owner.to_string()),
         )
         .unwrap();

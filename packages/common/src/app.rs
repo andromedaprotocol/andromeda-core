@@ -31,6 +31,11 @@ impl AndrAddress {
             },
         }
     }
+
+    /// Generates an AndrAddress from string input
+    pub fn from_string(identifier: String) -> AndrAddress {
+        AndrAddress { identifier }
+    }
 }
 
 #[cfg(test)]

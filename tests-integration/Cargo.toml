@@ -9,11 +9,16 @@ publish = false
 andromeda-app = { path = "../packages/andromeda-app" }
 andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract" }
 
-#NFT Contracts
+#Non-Fungible Tokens
 andromeda-non-fungible-tokens = { path = "../packages/andromeda-non-fungible-tokens" }
 andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721" }
 andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund" }
 andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction" }
+
+#Fungible Tokens
+andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
+andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20" }
+andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking" }
 
 #Modules
 andromeda-modules = { path = "../packages/andromeda-modules" }
@@ -36,9 +41,17 @@ cw-multi-test = "0.16.0"
 cosmwasm-std = "1.1.4"
 cw721-base = { version = "0.15.0", features = ["library"] }
 cw721 = "0.15.0"
+cw20 = "0.15.0"
+cw20-base = "0.15.0"
 
 [[test]]
 name = "cw721"
 
 [[test]]
 name = "crowdfund_app"
+
+[[test]]
+name = "auction_app"
+
+[[test]]
+name = "cw20_staking_app"
