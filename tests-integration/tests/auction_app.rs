@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
     mock_andromeda_app, mock_app_instantiate_msg, mock_get_address_msg, mock_get_components_msg,
@@ -92,7 +90,7 @@ fn test_auction_app() {
     );
 
     // Create App
-    let app_components = vec![cw721_component.clone(), auction_component.clone()];
+    let app_components = vec![cw721_component.clone(), auction_component];
     let app_init_msg = mock_app_instantiate_msg(
         "Auction App".to_string(),
         app_components.clone(),
@@ -122,7 +120,7 @@ fn test_auction_app() {
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
-            &mock_get_address_msg(cw721_component.clone().name),
+            &mock_get_address_msg(cw721_component.name),
         )
         .unwrap();
     let mint_msg = mock_quick_mint_msg(1, owner.to_string());
@@ -138,10 +136,10 @@ fn test_auction_app() {
     // Send Token to Auction
     let auction_addr: String = router
         .wrap()
-        .query_wasm_smart(app_addr.clone(), &mock_get_address_msg("2".to_string()))
+        .query_wasm_smart(app_addr, &mock_get_address_msg("2".to_string()))
         .unwrap();
     let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
-    let receive_msg = mock_start_auction(start_time.clone(), 1000, "uandr".to_string(), None, None);
+    let receive_msg = mock_start_auction(start_time, 1000, "uandr".to_string(), None, None);
     let send_msg = mock_send_nft(
         auction_addr.clone(),
         "0".to_string(),
@@ -189,7 +187,7 @@ fn test_auction_app() {
             buyer_one.clone(),
             Addr::unchecked(auction_addr.clone()),
             &bid_msg,
-            &vec![coin(50, "uandr")],
+            &[coin(50, "uandr")],
         )
         .unwrap();
 
@@ -209,7 +207,7 @@ fn test_auction_app() {
             buyer_two.clone(),
             Addr::unchecked(auction_addr.clone()),
             &bid_msg,
-            &vec![coin(100, "uandr")],
+            &[coin(100, "uandr")],
         )
         .unwrap();
 
@@ -253,7 +251,7 @@ fn test_auction_app() {
 
     let seller_post_balance = router
         .wrap()
-        .query_balance(owner.clone(), "uandr".to_string())
+        .query_balance(owner, "uandr".to_string())
         .unwrap();
     assert_eq!(
         seller_pre_balance.amount,
