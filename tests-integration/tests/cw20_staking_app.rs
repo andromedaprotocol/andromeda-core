@@ -140,14 +140,14 @@ fn test_cw20_staking_app() {
         .wrap()
         .query_wasm_smart(
             app_addr.to_string(),
-            &mock_get_address_msg(cw20_component.clone().name),
+            &mock_get_address_msg(cw20_component.name),
         )
         .unwrap();
     let cw20_staking_addr: String = router
         .wrap()
         .query_wasm_smart(
             app_addr.to_string(),
-            &mock_get_address_msg(cw20_staking_component.clone().name),
+            &mock_get_address_msg(cw20_staking_component.name),
         )
         .unwrap();
 
@@ -201,12 +201,7 @@ fn test_cw20_staking_app() {
     // Transfer Tokens for Reward
     let transfer_msg = mock_cw20_transfer(cw20_staking_addr.clone(), Uint128::from(3000u128));
     router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(cw20_addr.clone()),
-            &transfer_msg,
-            &[],
-        )
+        .execute_contract(owner, Addr::unchecked(cw20_addr), &transfer_msg, &[])
         .unwrap();
 
     // Check staking status
@@ -223,7 +218,7 @@ fn test_cw20_staking_app() {
     let staker_two_info: StakerResponse = router
         .wrap()
         .query_wasm_smart(
-            cw20_staking_addr.clone(),
+            cw20_staking_addr,
             &mock_cw20_get_staker(staker_two.to_string()),
         )
         .unwrap();

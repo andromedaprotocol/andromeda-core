@@ -1,10 +1,10 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_fungible_tokens::cw20_staking::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
-use common::{ado_base::modules::Module, app::AndrAddress};
-use cosmwasm_std::{Addr, Empty, Uint128};
-use cw20::MinterResponse;
+use andromeda_fungible_tokens::cw20_staking::{Cw20HookMsg, InstantiateMsg, QueryMsg};
+use common::app::AndrAddress;
+use cosmwasm_std::Empty;
+
 use cw_multi_test::{Contract, ContractWrapper};
 
 pub fn mock_andromeda_cw20_staking() -> Box<dyn Contract<Empty>> {
