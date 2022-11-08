@@ -3,5 +3,5 @@ mod state;
 #[cfg(test)]
 pub mod testing;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 pub mod mock;

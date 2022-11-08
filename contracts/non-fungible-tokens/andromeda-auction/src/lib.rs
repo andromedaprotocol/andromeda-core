@@ -3,5 +3,5 @@ pub mod contract;
 pub mod mock_querier;
 pub mod state;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 pub mod mock;

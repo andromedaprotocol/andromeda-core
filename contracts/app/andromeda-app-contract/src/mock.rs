@@ -1,5 +1,4 @@
-#![cfg(not(target_arch = "wasm32"))]
-
+#![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_std::Empty;

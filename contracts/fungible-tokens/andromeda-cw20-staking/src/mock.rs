@@ -1,4 +1,4 @@
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20_staking::{Cw20HookMsg, InstantiateMsg, QueryMsg};

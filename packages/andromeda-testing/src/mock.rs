@@ -1,4 +1,4 @@
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use andromeda_factory::mock::{
     mock_andromeda_factory, mock_factory_instantiate_msg, mock_get_code_id_msg,

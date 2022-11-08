@@ -1,4 +1,4 @@
 pub mod contract;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 pub mod mock;
 pub mod state;

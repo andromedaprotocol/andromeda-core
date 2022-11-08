@@ -7,42 +7,45 @@ publish = false
 [dev-dependencies]
 #App
 andromeda-app = { path = "../packages/andromeda-app" }
-andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract" }
+andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = ["testing"] }
 
 #Non-Fungible Tokens
 andromeda-non-fungible-tokens = { path = "../packages/andromeda-non-fungible-tokens" }
-andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721" }
-andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund" }
-andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction" }
+andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = ["testing"] }
+andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = ["testing"] }
+andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction", features = ["testing"] }
 
 #Fungible Tokens
 andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
-andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20" }
-andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking" }
+andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", features = ["testing"] }
+andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = ["testing"] }
 
 #Modules
 andromeda-modules = { path = "../packages/andromeda-modules" }
-andromeda-rates = { path = "../contracts/modules/andromeda-rates" }
+andromeda-rates = { path = "../contracts/modules/andromeda-rates", features = ["testing"] }
 
 #Ecosystem
 andromeda-ecosystem = {  path = "../packages/andromeda-ecosystem" }
-andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault" }
+andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault", features = ["testing"] }
 
 #Finance
 andromeda-finance = { path = "../packages/andromeda-finance"}
-andromeda-splitter = { path = "../contracts/finance/andromeda-splitter" }
+andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = ["testing"] }
 
 #Other Crates
 common = { version = "0.1.0", path = "../packages/common" }
-andromeda-testing = { path = "../packages/andromeda-testing" }
+andromeda-testing = { path = "../packages/andromeda-testing", features = ["testing"] }
 
 #Cosmwasm Crates
-cw-multi-test = { version = "0.16.0" }
 cosmwasm-std = "1.1.4"
 cw721-base = { version = "0.15.0", features = ["library"] }
 cw721 = "0.15.0"
 cw20 = "0.15.0"
 cw20-base = "0.15.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-multi-test = { version = "0.16.0" }
+
 
 [[test]]
 name = "cw721"
