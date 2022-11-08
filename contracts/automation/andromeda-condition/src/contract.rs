@@ -72,7 +72,6 @@ pub fn execute(
     let contract = ADOContract::default();
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        ExecuteMsg::Interpret { results } => execute_interpret(deps, env, info, results),
         ExecuteMsg::GetResults {} => execute_get_results(deps, env, info),
         ExecuteMsg::UpdateExecuteADO { address } => {
             execute_update_execute_ado(deps, env, info, address)

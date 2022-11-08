@@ -178,13 +178,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 fn query_count(deps: Deps) -> Result<CounterResponse, ContractError> {
     let count = COUNT.load(deps.storage)?;
     let response = if count == Uint128::zero() {
-        
         CounterResponse {
             count,
-            previous_count: Uint128::new(0),
+            previous_count: Uint128::zero(),
         }
     } else {
-        
         CounterResponse {
             count,
             previous_count: count - Uint128::new(1),

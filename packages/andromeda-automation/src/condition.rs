@@ -14,23 +14,11 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-
-    /// Executes based off the evaluation ADO's bool, it's automatically triggered by GetResults. This may be removed in the future
-    Interpret {
-        results: Vec<bool>,
-    },
     // Gets the results from the Eval ADOs and then interprets them based off the selected logic gate
     GetResults {},
-
-    UpdateExecuteADO {
-        address: AndrAddress,
-    },
-    UpdateEvalAdos {
-        addresses: Vec<AndrAddress>,
-    },
-    UpdateLogicGate {
-        logic_gate: LogicGate,
-    },
+    UpdateExecuteADO { address: AndrAddress },
+    UpdateEvalAdos { addresses: Vec<AndrAddress> },
+    UpdateLogicGate { logic_gate: LogicGate },
 }
 
 #[cw_serde]
