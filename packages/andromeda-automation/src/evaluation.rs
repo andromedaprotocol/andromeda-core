@@ -46,7 +46,7 @@ pub enum QueryMsg {
     Evaluation {},
 
     #[returns(String)]
-    QueryADO {},
+    OracleADO {},
 }
 
 #[cw_serde]

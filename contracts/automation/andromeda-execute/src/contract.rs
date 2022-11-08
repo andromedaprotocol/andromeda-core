@@ -59,7 +59,7 @@ pub fn instantiate(
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
     let app_contract = contract.get_app_contract(deps.storage)?;
-
+    // Execute errors warrant the removal of the process from the storage contract
     if msg.id == 1 {
         Ok(Response::new().add_submessage(SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
@@ -127,6 +127,7 @@ fn execute_target(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respons
 
     ensure!(info.sender == condition_ado, ContractError::Unauthorized {});
 
+    // Target contract's address
     let contract_addr = TARGET_ADO_ADDRESS.load(deps.storage)?.get_address(
         deps.api,
         &deps.querier,

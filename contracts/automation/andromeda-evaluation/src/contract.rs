@@ -35,11 +35,14 @@ pub fn instantiate(
     CONDITION_ADO_ADDRESS.save(deps.storage, &msg.condition_address)?;
     ORACLE_ADO_ADDRESS.save(deps.storage, &msg.oracle_address)?;
     TASK_BALANCER_ADDRESS.save(deps.storage, &msg.task_balancer)?;
+
+    // If the user doesn't provide a value, we assume that the oracle ADO will be returning a boolean
     if let Some(user_value) = msg.user_value {
         VALUE.save(deps.storage, &Some(user_value))?;
     } else {
         VALUE.save(deps.storage, &None)?;
     }
+
     OPERATION.save(deps.storage, &msg.operation)?;
 
     ADOContract::default().instantiate(
@@ -181,7 +184,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::ConditionADO {} => encode_binary(&query_condition_ado(deps)?),
         QueryMsg::Evaluation {} => encode_binary(&query_evaluation(deps, env)?),
-        QueryMsg::QueryADO {} => encode_binary(&query_query_ado(deps)?),
+        QueryMsg::OracleADO {} => encode_binary(&query_oracle_ado(deps)?),
     }
 }
 
@@ -193,16 +196,15 @@ fn query_evaluation(deps: Deps, _env: Env) -> Result<bool, ContractError> {
     let user_value = VALUE.load(deps.storage)?;
 
     // Get the address of the oracle contract that will provide data to be compared with the user's data
-    let query_addr = ORACLE_ADO_ADDRESS.load(deps.storage)?.get_address(
+    let oracle_addr = ORACLE_ADO_ADDRESS.load(deps.storage)?.get_address(
         deps.api,
         &deps.querier,
         app_contract,
     )?;
 
     let result = if let Some(user_value) = user_value {
-        // Placeholder until we connect an Oracle to the process
         let oracle_value: String = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: query_addr,
+            contract_addr: oracle_addr,
             msg: to_binary(&OracleQueryMsg::Target {})?,
         }))?;
 
@@ -219,7 +221,7 @@ fn query_evaluation(deps: Deps, _env: Env) -> Result<bool, ContractError> {
         // If the user didn't provide a value, we assume the query ADO returns a bool
     } else {
         let oracle_value: String = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: query_addr,
+            contract_addr: oracle_addr,
             msg: to_binary(&OracleQueryMsg::Target {})?,
         }))?;
 
@@ -231,7 +233,7 @@ fn query_evaluation(deps: Deps, _env: Env) -> Result<bool, ContractError> {
     Ok(result)
 }
 
-fn query_query_ado(deps: Deps) -> Result<String, ContractError> {
+fn query_oracle_ado(deps: Deps) -> Result<String, ContractError> {
     let address = ORACLE_ADO_ADDRESS.load(deps.storage)?;
     Ok(address.identifier)
 }

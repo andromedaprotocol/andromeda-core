@@ -12,8 +12,8 @@ pub const ORACLE_ADO_ADDRESS: Item<AndrAddress> = Item::new("query_ado_address")
 // Task balancer ADO address
 pub const TASK_BALANCER_ADDRESS: Item<AndrAddress> = Item::new("task_balancer_address");
 
-// The value we want to compare with the oracle's
+// The value we want to compare with the oracle's. Ff none is provided we assume the oracle ADO will be returning a boolean
 pub const VALUE: Item<Option<Uint128>> = Item::new("stored_value");
 
-// Sets the way we want to compare the Oracle's value to the other's. Either greater, less ...
+// Sets the way we want to compare the Oracle's value to the other's. Either greater, less, less or equal ...
 pub const OPERATION: Item<Operators> = Item::new("operation");

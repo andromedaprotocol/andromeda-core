@@ -1,4 +1,4 @@
-use crate::state::{State, STATE, STORAGE_CONTRACT, STORAGE_CONTRACTS, UP_NEXT};
+use crate::state::{State, STATE, STORAGE_CONTRACTS, UP_NEXT};
 use ado_base::state::ADOContract;
 use andromeda_automation::storage::ExecuteMsg as StorageExecuteMsg;
 use andromeda_automation::storage::InstantiateMsg as StorageInstantiateMsg;
@@ -56,6 +56,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     // We only get a reply on success, so it's safe to assume there's an event
     // There's also only one event resulting from instantiation, so we access the first (and only) event
     let address = &response.unwrap().events[0];
+
     // According to the raw logs, the first key value pair holds the instantiated contract's address
     let attribute = &address.attributes[0];
     let contract_address = &attribute.value;
@@ -103,6 +104,8 @@ fn remove_process(
     _info: MessageInfo,
     process: String,
 ) -> Result<Response, ContractError> {
+    // Add permission for removal of processes
+
     // Identify which storage contract a certain process belongs to
     // Get storage address that holds the process
     let mut num = 0;
@@ -320,7 +323,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::GetSize {} => encode_binary(&query_count(deps)?),
-        QueryMsg::Storage {} => encode_binary(&query_storage(deps)?),
+        QueryMsg::Storage {} => encode_binary(&query_storage_contracts(deps)?),
         QueryMsg::UpNext {} => encode_binary(&query_up_next(deps)?),
     }
 }
@@ -330,9 +333,9 @@ fn query_up_next(deps: Deps) -> Result<Vec<String>, ContractError> {
     Ok(up_next)
 }
 
-fn query_storage(deps: Deps) -> Result<GetStorageResponse, ContractError> {
-    let storage_address = STORAGE_CONTRACT.load(deps.storage)?;
-    Ok(GetStorageResponse { storage_address })
+fn query_storage_contracts(deps: Deps) -> Result<GetStorageResponse, ContractError> {
+    let storage_addresses = STORAGE_CONTRACTS.load(deps.storage)?;
+    Ok(GetStorageResponse { storage_addresses })
 }
 
 fn query_count(deps: Deps) -> Result<GetSizeResponse, ContractError> {

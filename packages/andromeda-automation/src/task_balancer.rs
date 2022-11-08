@@ -44,5 +44,5 @@ pub struct GetSizeResponse {
 
 #[cw_serde]
 pub struct GetStorageResponse {
-    pub storage_address: String,
+    pub storage_addresses: Vec<String>,
 }
