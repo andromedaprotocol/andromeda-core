@@ -42,8 +42,9 @@ pub enum Cw721HookMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(AndromedaQuery)]
-    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(String)]
+    NFTContractAddress {},
 }
 
 #[cw_serde]

@@ -14,6 +14,7 @@ andromeda-non-fungible-tokens = { path = "../packages/andromeda-non-fungible-tok
 andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = ["testing"] }
 andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = ["testing"] }
 andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction", features = ["testing"] }
+andromeda-wrapped-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-wrapped-cw721", features = ["testing"] }
 
 #Fungible Tokens
 andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
@@ -58,3 +59,6 @@ name = "auction_app"
 
 [[test]]
 name = "cw20_staking_app"
+
+[[test]]
+name = "wrapped_cw721_app"

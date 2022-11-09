@@ -134,10 +134,6 @@ fn execute_wrap(
     wrapped_token_id: Option<String>,
 ) -> Result<Response, ContractError> {
     ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
-    ensure!(
         token_address != env.contract.address,
         ContractError::CannotDoubleWrapToken {}
     );
@@ -246,8 +242,15 @@ fn get_original_nft_data(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::NFTContractAddress {} => encode_binary(&query_nft_contract_address(deps)?),
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
+}
+
+pub fn query_nft_contract_address(deps: Deps) -> Result<String, ContractError> {
+    let addr = ANDROMEDA_CW721_ADDR.load(deps.storage)?;
+
+    Ok(addr)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

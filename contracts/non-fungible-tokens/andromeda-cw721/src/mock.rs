@@ -1,9 +1,11 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_non_fungible_tokens::cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension};
-use common::{ado_base::modules::Module, app::AndrAddress};
-use cosmwasm_std::{Binary, Empty};
+use andromeda_non_fungible_tokens::cw721::{
+    ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement,
+};
+use common::{ado_base::modules::Module, app::AndrAddress, primitive::Value};
+use cosmwasm_std::{Binary, Coin, Empty};
 use cw721_base::MintMsg;
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -74,5 +76,26 @@ pub fn mock_send_nft(contract: String, token_id: String, msg: Binary) -> Execute
         contract,
         token_id,
         msg,
+    }
+}
+
+pub fn mock_transfer_nft(recipient: String, token_id: String) -> ExecuteMsg {
+    ExecuteMsg::TransferNft {
+        recipient,
+        token_id,
+    }
+}
+
+pub fn mock_transfer_agreement(amount: Value<Coin>, purchaser: String) -> TransferAgreement {
+    TransferAgreement { amount, purchaser }
+}
+
+pub fn mock_create_transfer_agreement_msg(
+    token_id: String,
+    agreement: Option<TransferAgreement>,
+) -> ExecuteMsg {
+    ExecuteMsg::TransferAgreement {
+        token_id,
+        agreement,
     }
 }
