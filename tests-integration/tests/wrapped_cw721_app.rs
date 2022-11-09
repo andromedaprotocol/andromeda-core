@@ -120,14 +120,14 @@ fn test_wrapped_cw721_app() {
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
-            &mock_get_address_msg(cw721_component.clone().name),
+            &mock_get_address_msg(cw721_component.name),
         )
         .unwrap();
     let wrapped_cw721_addr: String = router
         .wrap()
         .query_wasm_smart(
-            app_addr.clone(),
-            &mock_get_address_msg(wrapped_cw721_component.clone().name),
+            app_addr,
+            &mock_get_address_msg(wrapped_cw721_component.name),
         )
         .unwrap();
     let wrapped_sub_cw721_addr: String = router
@@ -176,7 +176,7 @@ fn test_wrapped_cw721_app() {
     );
     router
         .execute_contract(
-            owner.clone(),
+            owner,
             Addr::unchecked(wrapped_sub_cw721_addr.clone()),
             &xfer_agreement_msg,
             &[],
@@ -190,20 +190,20 @@ fn test_wrapped_cw721_app() {
             buyer.clone(),
             Addr::unchecked(wrapped_sub_cw721_addr.clone()),
             &xfer_msg,
-            &vec![agreement_amount.clone()],
+            &[agreement_amount],
         )
         .unwrap();
 
     // Unwrap Token
     let unwrap_msg = mock_send_nft(
-        wrapped_cw721_addr.clone(),
+        wrapped_cw721_addr,
         token_id.to_string(),
         to_binary(&mock_unwrap_nft_msg()).unwrap(),
     );
     router
         .execute_contract(
             buyer.clone(),
-            Addr::unchecked(wrapped_sub_cw721_addr.clone()),
+            Addr::unchecked(wrapped_sub_cw721_addr),
             &unwrap_msg,
             &[],
         )
