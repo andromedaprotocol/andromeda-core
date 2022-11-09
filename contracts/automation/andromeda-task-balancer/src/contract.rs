@@ -92,8 +92,8 @@ pub fn execute(
     let contract = ADOContract::default();
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
-        ExecuteMsg::Add { process } => try_add(deps, env, info, process),
-        ExecuteMsg::UpdateAdmin { new_admin } => try_update(deps, info, new_admin),
+        ExecuteMsg::Add { process } => add_process(deps, env, info, process),
+        ExecuteMsg::UpdateAdmin { new_admin } => update_admin(deps, info, new_admin),
         ExecuteMsg::Remove { process } => remove_process(deps, env, info, process),
     }
 }
@@ -101,10 +101,11 @@ pub fn execute(
 fn remove_process(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     process: String,
 ) -> Result<Response, ContractError> {
     // Add permission for removal of processes
+    // Sender should be part of an already existing process, and can't request the removal of another process
 
     // Identify which storage contract a certain process belongs to
     // Get storage address that holds the process
@@ -151,7 +152,7 @@ fn remove_process(
         .add_attribute("up_next", storage_address))
 }
 
-fn try_add(
+fn add_process(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -266,7 +267,7 @@ fn try_add(
     }
 }
 
-fn try_update(
+fn update_admin(
     deps: DepsMut,
     info: MessageInfo,
     new_admin: String,
@@ -274,10 +275,12 @@ fn try_update(
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
         ensure!(info.sender == state.admin, ContractError::Unauthorized {});
 
-        state.admin = new_admin;
+        state.admin = new_admin.clone();
         Ok(state)
     })?;
-    Ok(Response::new().add_attribute("action", "new_admin"))
+    Ok(Response::new()
+        .add_attribute("action", "updated_admin")
+        .add_attribute("new_admin", new_admin))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
