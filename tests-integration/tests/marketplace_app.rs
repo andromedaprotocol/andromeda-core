@@ -16,17 +16,11 @@ use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg, mock_start_sale,
 };
 use andromeda_modules::rates::{Rate, RateInfo};
-use andromeda_non_fungible_tokens::{
-    auction::{AuctionIdsResponse, AuctionStateResponse, BidsResponse},
-    marketplace,
-};
+
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_testing::mock::MockAndromeda;
-use common::{
-    ado_base::{modules::Module, recipient::Recipient},
-    expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
-};
-use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Timestamp, Uint128};
+use common::ado_base::{modules::Module, recipient::Recipient};
+use cosmwasm_std::{coin, to_binary, Addr, Uint128};
 use cw721::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
 
@@ -120,7 +114,7 @@ fn test_auction_app() {
     // Create App
     let app_components = vec![
         cw721_component.clone(),
-        rates_component.clone(),
+        rates_component,
         address_list_component.clone(),
         marketplace_component.clone(),
     ];
@@ -169,15 +163,12 @@ fn test_auction_app() {
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
-            &mock_get_address_msg(marketplace_component.clone().name),
+            &mock_get_address_msg(marketplace_component.name),
         )
         .unwrap();
     let address_list_addr: String = router
         .wrap()
-        .query_wasm_smart(
-            app_addr.clone(),
-            &mock_get_address_msg(address_list_component.clone().name),
-        )
+        .query_wasm_smart(app_addr, &mock_get_address_msg(address_list_component.name))
         .unwrap();
 
     // Mint Tokens
@@ -219,7 +210,7 @@ fn test_auction_app() {
     );
     router
         .execute_contract(
-            owner.clone(),
+            owner,
             Addr::unchecked(cw721_addr.clone()),
             &send_nft_msg,
             &[],
@@ -227,13 +218,13 @@ fn test_auction_app() {
         .unwrap();
 
     // Buy Token
-    let buy_msg = mock_buy_token(cw721_addr.clone(), token_id.clone());
+    let buy_msg = mock_buy_token(cw721_addr.clone(), token_id);
     router
         .execute_contract(
             buyer.clone(),
-            Addr::unchecked(marketplace_addr.clone()),
+            Addr::unchecked(marketplace_addr),
             &buy_msg,
-            &vec![coin(200, "uandr")],
+            &[coin(200, "uandr")],
         )
         .unwrap();
 

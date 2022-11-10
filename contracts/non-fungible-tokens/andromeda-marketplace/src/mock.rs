@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::marketplace::{
-    Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
+    Cw721HookMsg, ExecuteMsg, InstantiateMsg,
 };
 use common::ado_base::modules::Module;
 use cosmwasm_std::{Empty, Uint128};
