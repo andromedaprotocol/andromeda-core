@@ -18,6 +18,20 @@ pub struct Module {
 }
 
 impl Module {
+    pub fn new(
+        module_type: impl Into<String>,
+        address: impl Into<String>,
+        is_mutable: bool,
+    ) -> Module {
+        Module {
+            module_type: module_type.into(),
+            address: AndrAddress {
+                identifier: address.into(),
+            },
+            is_mutable,
+        }
+    }
+
     /// Validates `self` by checking that it is unique, does not conflict with any other module,
     /// and does not conflict with the creating ADO.
     pub fn validate(&self, modules: &[Module], ado_type: &str) -> Result<(), ContractError> {

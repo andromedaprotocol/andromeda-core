@@ -15,6 +15,7 @@ andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", f
 andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = ["testing"] }
 andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction", features = ["testing"] }
 andromeda-wrapped-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-wrapped-cw721", features = ["testing"] }
+andromeda-marketplace = { path = "../contracts/non-fungible-tokens/andromeda-marketplace", features = ["testing"] }
 
 #Fungible Tokens
 andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
@@ -24,6 +25,7 @@ andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-s
 #Modules
 andromeda-modules = { path = "../packages/andromeda-modules" }
 andromeda-rates = { path = "../contracts/modules/andromeda-rates", features = ["testing"] }
+andromeda-address-list = { path = "../contracts/modules/andromeda-address-list", features = ["testing"] }
 
 #Ecosystem
 andromeda-ecosystem = {  path = "../packages/andromeda-ecosystem" }

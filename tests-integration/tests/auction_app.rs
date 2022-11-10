@@ -67,9 +67,9 @@ fn test_auction_app() {
     let cw721_code_id = router.store_code(mock_andromeda_cw721());
     let auction_code_id = router.store_code(mock_andromeda_auction());
     let app_code_id = router.store_code(mock_andromeda_app());
-    andr.store_code_id(&mut router, "cw721".to_string(), cw721_code_id);
-    andr.store_code_id(&mut router, "auction".to_string(), auction_code_id);
-    andr.store_code_id(&mut router, "app".to_string(), app_code_id);
+    andr.store_code_id(&mut router, "cw721", cw721_code_id);
+    andr.store_code_id(&mut router, "auction", auction_code_id);
+    andr.store_code_id(&mut router, "app", app_code_id);
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(

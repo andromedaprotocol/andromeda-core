@@ -7,7 +7,7 @@ use andromeda_non_fungible_tokens::auction::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenAuctionState,
 };
 use common::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
     expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
@@ -59,6 +59,16 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+
+    // Do this before the hooks get fired off to ensure that there are no errors from the app
+    // address not being fully setup yet.
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+            return contract.execute_update_app_contract(deps, info, address, None);
+        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+            return contract.execute_update_owner(deps, info, address);
+        }
+    }
 
     contract.module_hook::<Response>(
         deps.storage,

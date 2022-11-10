@@ -27,6 +27,7 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-multi-test",
  "cw-storage-plus 0.15.0",
  "cw-utils 0.15.0",
  "cw2 0.15.0",
@@ -438,6 +439,7 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-multi-test",
  "cw-storage-plus 0.15.0",
  "cw-utils 0.15.0",
  "cw2 0.15.0",
@@ -1633,6 +1635,7 @@ dependencies = [
 name = "tests-integration"
 version = "0.1.0"
 dependencies = [
+ "andromeda-address-list",
  "andromeda-app",
  "andromeda-app-contract",
  "andromeda-auction",
@@ -1643,6 +1646,7 @@ dependencies = [
  "andromeda-ecosystem",
  "andromeda-finance",
  "andromeda-fungible-tokens",
+ "andromeda-marketplace",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
  "andromeda-rates",

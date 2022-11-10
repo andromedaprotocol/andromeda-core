@@ -62,13 +62,9 @@ fn test_cw20_staking_app() {
     let cw20_code_id = router.store_code(mock_andromeda_cw20());
     let cw20_staking_code_id = router.store_code(mock_andromeda_cw20_staking());
     let app_code_id = router.store_code(mock_andromeda_app());
-    andr.store_code_id(&mut router, "cw20".to_string(), cw20_code_id);
-    andr.store_code_id(
-        &mut router,
-        "cw20-staking".to_string(),
-        cw20_staking_code_id,
-    );
-    andr.store_code_id(&mut router, "app".to_string(), app_code_id);
+    andr.store_code_id(&mut router, "cw20", cw20_code_id);
+    andr.store_code_id(&mut router, "cw20-staking", cw20_staking_code_id);
+    andr.store_code_id(&mut router, "app", app_code_id);
 
     // Create App Components
     let initial_balances = vec![

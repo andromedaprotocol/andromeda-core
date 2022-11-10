@@ -10,10 +10,14 @@ pub struct AppComponent {
 }
 
 impl AppComponent {
-    pub fn new(name: String, ado_type: String, instantiate_msg: Binary) -> AppComponent {
+    pub fn new(
+        name: impl Into<String>,
+        ado_type: impl Into<String>,
+        instantiate_msg: Binary,
+    ) -> AppComponent {
         AppComponent {
-            name,
-            ado_type,
+            name: name.into(),
+            ado_type: ado_type.into(),
             instantiate_msg,
         }
     }

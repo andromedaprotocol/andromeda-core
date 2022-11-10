@@ -55,13 +55,9 @@ fn test_wrapped_cw721_app() {
     let cw721_code_id = router.store_code(mock_andromeda_cw721());
     let wrapped_cw721_code_id = router.store_code(mock_andromeda_wrapped_cw721());
     let app_code_id = router.store_code(mock_andromeda_app());
-    andr.store_code_id(&mut router, "cw721".to_string(), cw721_code_id);
-    andr.store_code_id(
-        &mut router,
-        "wrapped-cw721".to_string(),
-        wrapped_cw721_code_id,
-    );
-    andr.store_code_id(&mut router, "app".to_string(), app_code_id);
+    andr.store_code_id(&mut router, "cw721", cw721_code_id);
+    andr.store_code_id(&mut router, "wrapped-cw721", wrapped_cw721_code_id);
+    andr.store_code_id(&mut router, "app", app_code_id);
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(

@@ -86,8 +86,8 @@ impl MockAndromeda {
     }
 
     /// Stores a given Code ID under the given key in the ADO DB contract
-    pub fn store_code_id(&self, app: &mut App, key: String, code_id: u64) {
-        let msg = mock_store_code_id_msg(key, code_id);
+    pub fn store_code_id(&self, app: &mut App, key: &str, code_id: u64) {
+        let msg = mock_store_code_id_msg(key.to_string(), code_id);
 
         app.execute_contract(
             self.admin_address.clone(),

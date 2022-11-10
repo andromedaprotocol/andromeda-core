@@ -88,11 +88,11 @@ fn test_crowdfund_app() {
     let vault_code_id = router.store_code(mock_andromeda_vault());
     let splitter_code_id = router.store_code(mock_andromeda_splitter());
     let app_code_id = router.store_code(mock_andromeda_app());
-    andr.store_code_id(&mut router, "cw721".to_string(), cw721_code_id);
-    andr.store_code_id(&mut router, "crowdfund".to_string(), crowdfund_code_id);
-    andr.store_code_id(&mut router, "vault".to_string(), vault_code_id);
-    andr.store_code_id(&mut router, "splitter".to_string(), splitter_code_id);
-    andr.store_code_id(&mut router, "app".to_string(), app_code_id);
+    andr.store_code_id(&mut router, "cw721", cw721_code_id);
+    andr.store_code_id(&mut router, "crowdfund", crowdfund_code_id);
+    andr.store_code_id(&mut router, "vault", vault_code_id);
+    andr.store_code_id(&mut router, "splitter", splitter_code_id);
+    andr.store_code_id(&mut router, "app", app_code_id);
 
     // Generate App Components
     // App component names must be less than 3 characters or longer than 54 characters to force them to be 'invalid' as the MockApi struct used within the CosmWasm App struct only contains those two validation checks
