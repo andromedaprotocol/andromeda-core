@@ -1,9 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_non_fungible_tokens::marketplace::{
-    Cw721HookMsg, ExecuteMsg, InstantiateMsg,
-};
+use andromeda_non_fungible_tokens::marketplace::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
 use common::ado_base::modules::Module;
 use cosmwasm_std::{Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
