@@ -1,16 +1,16 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_app::factory::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_app::adodb::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 
-pub fn mock_andromeda_factory() -> Box<dyn Contract<Empty>> {
+pub fn mock_andromeda_adodb() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
     Box::new(contract)
 }
 
-pub fn mock_factory_instantiate_msg() -> InstantiateMsg {
+pub fn mock_adodb_instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {}
 }
 

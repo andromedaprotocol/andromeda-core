@@ -1,8 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
-use andromeda_factory::mock::{
-    mock_andromeda_factory, mock_factory_instantiate_msg, mock_get_code_id_msg,
-    mock_store_code_id_msg,
+use andromeda_adodb::mock::{
+    mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_get_code_id_msg, mock_store_code_id_msg,
 };
 use andromeda_primitive::mock::{
     mock_andromeda_primitive, mock_primitive_instantiate_msg, mock_store_address_msgs,
@@ -19,11 +18,11 @@ pub struct MockAndromeda {
 impl MockAndromeda {
     pub fn new(app: &mut App, admin_address: &Addr) -> MockAndromeda {
         // Store contract codes
-        let adodb_code_id = app.store_code(mock_andromeda_factory());
+        let adodb_code_id = app.store_code(mock_andromeda_adodb());
         let primitive_code_id = app.store_code(mock_andromeda_primitive());
 
         // Init ADO DB
-        let adodb_init_msg = mock_factory_instantiate_msg();
+        let adodb_init_msg = mock_adodb_instantiate_msg();
         let adodb_address = app
             .instantiate_contract(
                 adodb_code_id,

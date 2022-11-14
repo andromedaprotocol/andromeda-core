@@ -23,7 +23,7 @@ common = { path = "../common", version = "0.1.0" }
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../andromeda-non-fungible-tokens" }
 andromeda-app = { version = "0.1.0", path = "../andromeda-app" }
 andromeda-modules = { version = "0.1.0", path = "../andromeda-modules" }
-andromeda-factory = { path = "../../contracts/app/andromeda-factory", features = ["testing"] }
+andromeda-adodb = { path = "../../contracts/app/andromeda-adodb", features = ["testing"] }
 andromeda-primitive = { path = "../../contracts/data-storage/andromeda-primitive", features = ["testing"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
