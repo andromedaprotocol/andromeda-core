@@ -105,6 +105,16 @@ pub fn execute(
         );
     }
 
+    contract.module_hook::<Response>(
+        execute_env.deps.storage,
+        execute_env.deps.api,
+        execute_env.deps.querier,
+        AndromedaHook::OnExecute {
+            sender: execute_env.info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+
     match msg {
         ExecuteMsg::Mint(_) => execute_mint(execute_env, msg),
         ExecuteMsg::BatchMint { tokens } => execute_batch_mint(execute_env, tokens),

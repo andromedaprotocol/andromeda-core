@@ -404,19 +404,7 @@ mod tests {
 
         init(deps.as_mut());
 
-        let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
-            sender: "not_owner".to_string(),
-            token_id: token_id.clone(),
-            msg: encode_binary(&Cw721HookMsg::Wrap {
-                wrapped_token_id: None,
-            })
-            .unwrap(),
-        });
-
         let info = mock_info(&token_address, &[]);
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
-        assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
-
         let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
             sender: owner.clone(),
             token_id: token_id.clone(),
