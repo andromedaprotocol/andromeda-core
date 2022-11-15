@@ -50,7 +50,7 @@ impl MockAndromeda {
         // Add Code IDs
         let store_primitive_code_id_msg =
             mock_store_code_id_msg("primitive".to_string(), primitive_code_id);
-        let store_adodb_code_id_msg = mock_store_code_id_msg("factory".to_string(), adodb_code_id); //Dev Note: In future change this to "adodb" for the key
+        let store_adodb_code_id_msg = mock_store_code_id_msg("adodb".to_string(), adodb_code_id); //Dev Note: In future change this to "adodb" for the key
         app.execute_contract(
             admin_address.clone(),
             adodb_address.clone(),
@@ -68,7 +68,7 @@ impl MockAndromeda {
 
         // Store ADO DB address
         let store_adodb_addr_msg =
-            mock_store_address_msgs("factory".to_string(), adodb_address.to_string());
+            mock_store_address_msgs("adodb".to_string(), adodb_address.to_string());
         app.execute_contract(
             admin_address.clone(),
             registry_address.clone(),
