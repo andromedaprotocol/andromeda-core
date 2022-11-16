@@ -1,0 +1,66 @@
+[package]
+name = "tests-integration"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dev-dependencies]
+#App
+andromeda-app = { path = "../packages/andromeda-app" }
+andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = ["testing"] }
+
+#Non-Fungible Tokens
+andromeda-non-fungible-tokens = { path = "../packages/andromeda-non-fungible-tokens" }
+andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = ["testing"] }
+andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = ["testing"] }
+andromeda-auction = { path = "../contracts/non-fungible-tokens/andromeda-auction", features = ["testing"] }
+andromeda-wrapped-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-wrapped-cw721", features = ["testing"] }
+andromeda-marketplace = { path = "../contracts/non-fungible-tokens/andromeda-marketplace", features = ["testing"] }
+
+#Fungible Tokens
+andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
+andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", features = ["testing"] }
+andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = ["testing"] }
+
+#Modules
+andromeda-modules = { path = "../packages/andromeda-modules" }
+andromeda-rates = { path = "../contracts/modules/andromeda-rates", features = ["testing"] }
+andromeda-address-list = { path = "../contracts/modules/andromeda-address-list", features = ["testing"] }
+
+#Ecosystem
+andromeda-ecosystem = {  path = "../packages/andromeda-ecosystem" }
+andromeda-vault = { path = "../contracts/ecosystem/andromeda-vault", features = ["testing"] }
+
+#Finance
+andromeda-finance = { path = "../packages/andromeda-finance"}
+andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = ["testing"] }
+
+#Other Crates
+common = { version = "0.1.0", path = "../packages/common" }
+andromeda-testing = { path = "../packages/andromeda-testing", features = ["testing"] }
+
+#Cosmwasm Crates
+cosmwasm-std = "1.1.4"
+cw721-base = { version = "0.15.0", features = ["library"] }
+cw721 = "0.15.0"
+cw20 = "0.15.0"
+cw20-base = "0.15.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-multi-test = { version = "0.16.0" }
+
+
+[[test]]
+name = "cw721"
+
+[[test]]
+name = "crowdfund_app"
+
+[[test]]
+name = "auction_app"
+
+[[test]]
+name = "cw20_staking_app"
+
+[[test]]
+name = "wrapped_cw721_app"

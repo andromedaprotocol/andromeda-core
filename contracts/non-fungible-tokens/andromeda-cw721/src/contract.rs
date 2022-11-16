@@ -84,15 +84,19 @@ pub fn execute(
 
     // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
-        let andr_minter = ANDR_MINTER.load(execute_env.deps.storage)?;
-        return contract.execute_update_app_contract(
-            execute_env.deps,
-            execute_env.info,
-            address,
-            Some(vec![andr_minter]),
-        );
-    };
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+            let andr_minter = ANDR_MINTER.load(execute_env.deps.storage)?;
+            return contract.execute_update_app_contract(
+                execute_env.deps,
+                execute_env.info,
+                address,
+                Some(vec![andr_minter]),
+            );
+        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+            return contract.execute_update_owner(execute_env.deps, execute_env.info, address);
+        }
+    }
 
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
@@ -101,46 +105,35 @@ pub fn execute(
         );
     }
 
+    contract.module_hook::<Response>(
+        execute_env.deps.storage,
+        execute_env.deps.api,
+        execute_env.deps.querier,
+        AndromedaHook::OnExecute {
+            sender: execute_env.info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+
     match msg {
-        ExecuteMsg::AndrReceive(msg) => contract.execute(
+        ExecuteMsg::Mint(_) => execute_mint(execute_env, msg),
+        ExecuteMsg::BatchMint { tokens } => execute_batch_mint(execute_env, tokens),
+        ExecuteMsg::TransferNft {
+            recipient,
+            token_id,
+        } => execute_transfer(execute_env, recipient, token_id),
+        ExecuteMsg::TransferAgreement {
+            token_id,
+            agreement,
+        } => execute_update_transfer_agreement(execute_env, token_id, agreement),
+        ExecuteMsg::Archive { token_id } => execute_archive(execute_env, token_id),
+        ExecuteMsg::Burn { token_id } => execute_burn(execute_env, token_id),
+        _ => Ok(AndrCW721Contract::default().execute(
             execute_env.deps,
             execute_env.env,
             execute_env.info,
-            msg,
-            execute,
-        ),
-        _ => {
-            contract.module_hook::<Response>(
-                execute_env.deps.storage,
-                execute_env.deps.api,
-                execute_env.deps.querier,
-                AndromedaHook::OnExecute {
-                    sender: execute_env.info.sender.to_string(),
-                    payload: encode_binary(&msg)?,
-                },
-            )?;
-
-            match msg {
-                ExecuteMsg::Mint(_) => execute_mint(execute_env, msg),
-                ExecuteMsg::BatchMint { tokens } => execute_batch_mint(execute_env, tokens),
-                ExecuteMsg::TransferNft {
-                    recipient,
-                    token_id,
-                } => execute_transfer(execute_env, recipient, token_id),
-                ExecuteMsg::TransferAgreement {
-                    token_id,
-                    agreement,
-                } => execute_update_transfer_agreement(execute_env, token_id, agreement),
-                ExecuteMsg::Archive { token_id } => execute_archive(execute_env, token_id),
-                ExecuteMsg::Burn { token_id } => execute_burn(execute_env, token_id),
-                _ => Ok(AndrCW721Contract::default().execute(
-                    execute_env.deps,
-                    execute_env.env,
-                    execute_env.info,
-                    msg.into(),
-                )?),
-            }
-        }
+            msg.into(),
+        )?),
     }
 }
 
@@ -431,6 +424,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::TransferAgreement { token_id } => {
             Ok(to_binary(&query_transfer_agreement(deps, token_id)?)?)
         }
+        QueryMsg::Minter {} => Ok(to_binary(&query_minter(deps)?)?),
         _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
     }
 }
@@ -440,6 +434,14 @@ pub fn query_transfer_agreement(
     token_id: String,
 ) -> Result<Option<TransferAgreement>, ContractError> {
     Ok(TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?)
+}
+
+pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let minter = ANDR_MINTER.load(deps.storage)?;
+    let addr = minter.get_address(deps.api, &deps.querier, app_contract)?;
+
+    Ok(addr)
 }
 
 fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {

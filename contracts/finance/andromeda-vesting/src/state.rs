@@ -48,7 +48,7 @@ pub fn batches<'a>() -> IndexedMap<'a, u64, Batch, BatchIndexes<'a>> {
             |_pk: &[u8], b: &Batch| {
                 let all_claimed = b.amount - b.amount_claimed == Uint128::zero();
                 // Allows us to skip batches that have been already fully claimed.
-                let all_claimed = if all_claimed { 1u8 } else { 0u8 };
+                let all_claimed = u8::from(all_claimed);
                 (all_claimed, b.lockup_end)
             },
             "batch",

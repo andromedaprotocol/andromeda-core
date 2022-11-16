@@ -20,7 +20,7 @@ fn test_empty_instantiation() {
     let mut deps = mock_dependencies();
 
     let msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -36,7 +36,7 @@ fn test_instantiation() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let msg = InstantiateMsg {
-        app: vec![AppComponent {
+        app_components: vec![AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
@@ -82,7 +82,7 @@ fn test_instantiation_duplicate_components() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let msg = InstantiateMsg {
-        app: vec![
+        app_components: vec![
             AppComponent {
                 name: "component".to_string(),
                 ado_type: "cw721".to_string(),
@@ -109,7 +109,7 @@ fn test_add_app_component_unauthorized() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -135,7 +135,7 @@ fn test_add_app_component_duplicate_name() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![AppComponent {
+        app_components: vec![AppComponent {
             name: "token".to_string(),
             ado_type: "cw721".to_string(),
             instantiate_msg: to_binary(&true).unwrap(),
@@ -171,7 +171,7 @@ fn test_add_app_component() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -222,7 +222,7 @@ fn test_claim_ownership_unauth() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -242,7 +242,7 @@ fn test_claim_ownership_not_found() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -268,7 +268,7 @@ fn test_claim_ownership_empty() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -287,7 +287,7 @@ fn test_claim_ownership_all() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -352,7 +352,7 @@ fn test_claim_ownership() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -406,7 +406,7 @@ fn test_proxy_message_unauth() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -429,7 +429,7 @@ fn test_proxy_message_not_found() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -456,7 +456,7 @@ fn test_proxy_message() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -502,7 +502,7 @@ fn test_update_address_unauth() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -532,7 +532,7 @@ fn test_update_address_not_found() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };
@@ -559,7 +559,7 @@ fn test_update_address() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let inst_msg = InstantiateMsg {
-        app: vec![],
+        app_components: vec![],
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
     };

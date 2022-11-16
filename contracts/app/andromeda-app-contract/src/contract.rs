@@ -38,7 +38,10 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     APP_NAME.save(deps.storage, &msg.name)?;
-    ensure!(msg.app.len() <= 50, ContractError::TooManyAppComponents {});
+    ensure!(
+        msg.app_components.len() <= 50,
+        ContractError::TooManyAppComponents {}
+    );
 
     let sender = info.sender.to_string();
     let resp = ADOContract::default()
@@ -59,7 +62,7 @@ pub fn instantiate(
         .add_attribute("andr_app", msg.name);
 
     let mut msgs: Vec<SubMsg> = vec![];
-    for component in msg.app {
+    for component in msg.app_components {
         let comp_resp = execute_add_app_component(&deps.querier, deps.storage, &sender, component)?;
         msgs.extend(comp_resp.messages);
     }

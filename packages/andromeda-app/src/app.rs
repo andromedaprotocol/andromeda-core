@@ -9,9 +9,23 @@ pub struct AppComponent {
     pub instantiate_msg: Binary,
 }
 
+impl AppComponent {
+    pub fn new(
+        name: impl Into<String>,
+        ado_type: impl Into<String>,
+        instantiate_msg: Binary,
+    ) -> AppComponent {
+        AppComponent {
+            name: name.into(),
+            ado_type: ado_type.into(),
+            instantiate_msg,
+        }
+    }
+}
+
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub app: Vec<AppComponent>,
+    pub app_components: Vec<AppComponent>,
     pub name: String,
     pub primitive_contract: String,
 }
