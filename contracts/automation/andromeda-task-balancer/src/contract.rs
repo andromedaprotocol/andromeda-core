@@ -6,6 +6,7 @@ use andromeda_automation::storage::QueryMsg as StorageQueryMsg;
 use andromeda_automation::task_balancer::{
     ExecuteMsg, GetSizeResponse, GetStorageResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };
+use common::response::get_reply_address;
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
     ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
@@ -18,6 +19,7 @@ use std::env;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-task-balancer";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+const INSTANTIATED_CONTRACT: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -30,7 +32,6 @@ pub fn instantiate(
         contracts: Uint128::zero(),
         max: msg.max,
         storage_code_id: msg.storage_code_id,
-        admin: info.sender.to_string(),
     };
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -52,21 +53,14 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    let response = msg.result;
-    // We only get a reply on success, so it's safe to assume there's an event
-    // There's also only one event resulting from instantiation, so we access the first (and only) event
-    let address = &response.unwrap().events[0];
-
-    // According to the raw logs, the first key value pair holds the instantiated contract's address
-    let attribute = &address.attributes[0];
-    let contract_address = &attribute.value;
+    let contract_address = get_reply_address(msg.clone())?;
 
     let state = STATE.load(deps.storage)?;
     let contracts = state.contracts;
     let storage_contracts = STORAGE_CONTRACTS.may_load(deps.storage)?;
 
     match msg.id {
-        1 => {
+        INSTANTIATED_CONTRACT => {
             if let Some(mut storage_contracts) = storage_contracts {
                 storage_contracts.push(contract_address.to_string());
                 STORAGE_CONTRACTS.save(deps.storage, &storage_contracts)?;
@@ -93,7 +87,6 @@ pub fn execute(
     match msg {
         ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::Add { process } => add_process(deps, env, info, process),
-        ExecuteMsg::UpdateAdmin { new_admin } => update_admin(deps, info, new_admin),
         ExecuteMsg::Remove { process } => remove_process(deps, env, info, process),
     }
 }
@@ -101,7 +94,7 @@ pub fn execute(
 fn remove_process(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     process: String,
 ) -> Result<Response, ContractError> {
     // Add permission for removal of processes
@@ -159,13 +152,16 @@ fn add_process(
     process: String,
 ) -> Result<Response, ContractError> {
     // Not anyone should be allowed to add tasks to tree
-    let state = STATE.load(deps.storage)?;
-    ensure!(info.sender == state.admin, ContractError::Unauthorized {});
-
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
     // Validate the process's address
     let process = deps.api.addr_validate(&process)?;
 
     // In case no storage contracts have been instantiated yet
+    let state = STATE.load(deps.storage)?;
     if state.contracts == Uint128::zero() {
         STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
             state.contracts += Uint128::from(1u64);
@@ -185,15 +181,14 @@ fn add_process(
         });
         return Ok(Response::new()
             .add_attribute("action", "try_add")
-            .add_submessage(SubMsg::reply_on_success(msg, 1)));
+            .add_submessage(SubMsg::reply_on_success(msg, INSTANTIATED_CONTRACT)));
     }
 
     // Check if there are any earlier storage contracts with free space
     let up_next = UP_NEXT.may_load(deps.storage)?;
 
     if let Some(mut up_next) = up_next {
-        if up_next.is_empty() {
-        } else {
+        if !up_next.is_empty() {
             // We access index 0 since it was the earliest storage contract to join the list
             let contract_addr = &up_next[0];
 
@@ -228,7 +223,7 @@ fn add_process(
         msg: to_binary(&StorageQueryMsg::FreeSpace {})?,
     }))?;
 
-    // In case there's no free space in the latest contract, instatiate a new one
+    // In case there's no free space in the latest contract, instantiate a new one
     if !free_space {
         // Instantiate new contract and add to storage
         // break from loop
@@ -251,7 +246,7 @@ fn add_process(
         });
         Ok(Response::new()
             .add_attribute("action", "try_add")
-            .add_submessage(SubMsg::reply_on_success(msg, 1)))
+            .add_submessage(SubMsg::reply_on_success(msg, INSTANTIATED_CONTRACT)))
     } else {
         // Execute addition of task contract to a storage contract
         let msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -265,22 +260,6 @@ fn add_process(
             .add_attribute("action", "try_add")
             .add_message(msg))
     }
-}
-
-fn update_admin(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_admin: String,
-) -> Result<Response, ContractError> {
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        ensure!(info.sender == state.admin, ContractError::Unauthorized {});
-
-        state.admin = new_admin.clone();
-        Ok(state)
-    })?;
-    Ok(Response::new()
-        .add_attribute("action", "updated_admin")
-        .add_attribute("new_admin", new_admin))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -351,7 +330,7 @@ fn query_count(deps: Deps) -> Result<GetSizeResponse, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contract::{execute, instantiate};
+    use crate::contract::instantiate;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
@@ -373,55 +352,6 @@ mod tests {
             contracts: Uint128::zero(),
             max: 5,
             storage_code_id: 1,
-            admin: "creator".to_string(),
-        };
-        assert_eq!(state, expected_state)
-    }
-
-    #[test]
-    fn test_update_unauthorized() {
-        let mut deps = mock_dependencies();
-        let msg = InstantiateMsg {
-            max: 5,
-            storage_code_id: 1,
-        };
-        let info = mock_info("creator", &[]);
-
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        let msg = ExecuteMsg::UpdateAdmin {
-            new_admin: "new_admin".to_string(),
-        };
-        let info = mock_info("random", &[]);
-        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        assert_eq!(err, ContractError::Unauthorized {})
-    }
-
-    #[test]
-    fn test_update_works() {
-        let mut deps = mock_dependencies();
-        let msg = InstantiateMsg {
-            max: 5,
-            storage_code_id: 1,
-        };
-        let info = mock_info("creator", &[]);
-
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        let msg = ExecuteMsg::UpdateAdmin {
-            new_admin: "new_admin".to_string(),
-        };
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        let state = STATE.load(&deps.storage).unwrap();
-        let expected_state = State {
-            contracts: Uint128::zero(),
-            max: 5,
-            storage_code_id: 1,
-            admin: "new_admin".to_string(),
         };
         assert_eq!(state, expected_state)
     }

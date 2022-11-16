@@ -10,13 +10,11 @@ pub struct State {
     pub max: u64,
     // Code ID of the storage contract's that the task balancer will be instantiating
     pub storage_code_id: u64,
-    // Task balancer's admin
-    pub admin: String,
 }
 
 pub const STATE: Item<State> = Item::new("state");
 
-// Storage contracts that have been instanitated by the task balancer
+// Storage contracts that have been instantiated by the task balancer
 pub const STORAGE_CONTRACTS: Item<Vec<String>> = Item::new("storage_contracts");
 
 // Older storage contracts with empty space

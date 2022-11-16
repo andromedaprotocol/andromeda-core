@@ -17,7 +17,6 @@ pub enum ExecuteMsg {
     Add { process: String },
     // Sends message to storage contract for removal of process
     Remove { process: String },
-    UpdateAdmin { new_admin: String },
 }
 
 #[cw_serde]

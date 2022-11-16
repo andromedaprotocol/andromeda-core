@@ -1,5 +1,4 @@
 use andromeda_automation::oracle::TypeOfResponse;
-
 use cw_storage_plus::Item;
 
 // The target ADO we want to querry
