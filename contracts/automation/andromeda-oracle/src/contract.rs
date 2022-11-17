@@ -8,6 +8,7 @@ use andromeda_automation::{
 };
 use base64;
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use serde_json_wasm::to_string as json_string;
 
 use std::env;
 
@@ -140,12 +141,12 @@ fn query_target(deps: Deps) -> Result<String, ContractError> {
         let response: bool = deps
             .querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
-        Ok(response.to_string())
+        Ok(json_string(&response).unwrap())
     } else if ty == TypeOfResponse::Types(Types::Uint128) {
         let response: Uint128 = deps
             .querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
-        Ok(response.to_string())
+        Ok(json_string(&response).unwrap())
     } else if ty == TypeOfResponse::Types(Types::String) {
         let response: String = deps
             .querier
@@ -180,6 +181,7 @@ mod tests {
         testing::{mock_env, mock_info},
         to_binary, Uint128,
     };
+    use serde_json_wasm::from_str as from_json;
 
     #[test]
     fn test_initialization() {
@@ -238,7 +240,7 @@ mod tests {
         let res = query_target(deps.as_ref()).unwrap();
 
         println!("Pre-parsed result: {:?}", res);
-        let parsed_result: Uint128 = res.parse().unwrap();
+        let parsed_result: Uint128 = from_json(&res).unwrap();
 
         println!("Parsed result: {:?}", parsed_result);
         assert_eq!(parsed_result, Uint128::new(1))

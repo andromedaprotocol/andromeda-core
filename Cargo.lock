@@ -498,6 +498,7 @@ dependencies = [
  "schemars",
  "semver",
  "serde",
+ "serde-json-wasm",
 ]
 
 [[package]]
