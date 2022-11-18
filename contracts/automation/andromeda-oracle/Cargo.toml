@@ -16,8 +16,6 @@ cw20 = "0.13.4"
 cw-utils = "0.13.4"
 semver = "1"
 base64 = "0.13.1"
-serde-json-wasm = "0.4.1"
-
 
 andromeda-automation = { version = "0.1.0", path = "../../../packages/andromeda-automation" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }

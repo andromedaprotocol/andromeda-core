@@ -1,5 +1,6 @@
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Binary;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -7,7 +8,7 @@ pub struct InstantiateMsg {
     pub target_address: String,
 
     // The query message's binary
-    pub message_binary: String,
+    pub message_binary: Binary,
 
     // The query's expected return type (u64, bool ...) or (CountResponse, PriceResponse ...)
     pub return_type: TypeOfResponse,

@@ -6,15 +6,14 @@ use andromeda_automation::{
         ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ResponseTypes, TypeOfResponse, Types,
     },
 };
-use base64;
+
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
-use serde_json_wasm::to_string as json_string;
 
 use std::env;
 
 use cosmwasm_std::{
-    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Reply, Response,
-    StdError, Uint128, WasmQuery,
+    ensure, entry_point, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Reply,
+    Response, StdError, Uint128, WasmQuery,
 };
 
 use cw2::{get_contract_version, set_contract_version};
@@ -118,7 +117,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-fn query_stored_message(deps: Deps) -> Result<String, ContractError> {
+fn query_stored_message(deps: Deps) -> Result<Binary, ContractError> {
     let message = QUERY_MSG.load(deps.storage)?;
     Ok(message)
 }
@@ -132,21 +131,19 @@ fn query_target(deps: Deps) -> Result<String, ContractError> {
     let contract_addr = TARGET_ADO_ADDRESS.load(deps.storage)?;
     let stored_msg = QUERY_MSG.load(deps.storage)?;
 
-    let decoded_string = base64::decode(stored_msg).unwrap();
-    let msg = Binary::from(decoded_string);
-
+    let msg = from_binary(&stored_msg)?;
     let ty = EXPECTED_TYPE_RESPONSE.load(deps.storage)?;
 
     if ty == TypeOfResponse::Types(Types::Bool) {
         let response: bool = deps
             .querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
-        Ok(json_string(&response).unwrap())
+        Ok(response.to_string())
     } else if ty == TypeOfResponse::Types(Types::Uint128) {
         let response: Uint128 = deps
             .querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
-        Ok(json_string(&response).unwrap())
+        Ok(response.to_string())
     } else if ty == TypeOfResponse::Types(Types::String) {
         let response: String = deps
             .querier
@@ -178,10 +175,10 @@ mod tests {
     };
     use andromeda_automation::oracle::TypeOfResponse;
     use cosmwasm_std::{
+        from_binary,
         testing::{mock_env, mock_info},
         to_binary, Uint128,
     };
-    use serde_json_wasm::from_str as from_json;
 
     #[test]
     fn test_initialization() {
@@ -190,7 +187,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             target_address,
-            message_binary: "eyJjb3VudCI6e319".to_string(),
+            message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
             return_type: TypeOfResponse::Types(Types::Uint128),
         };
         let info = mock_info("creator", &[]);
@@ -203,11 +200,11 @@ mod tests {
     #[test]
     fn test_binary_conversion() {
         // receive encoded the json as base64
-        let binary = "eyJjdXJyZW50X3RhcmdldCI6e319";
+        let binary = to_binary("eyJjdXJyZW50X3RhcmdldCI6e319").unwrap();
 
         // turn base64 into string
-        let decoded_binary = base64::decode(binary).unwrap();
-        let vec_bin = Binary::from(decoded_binary);
+        // let decoded_binary = base64::decode(binary).unwrap();
+        let vec_bin: Binary = from_binary(&binary).unwrap();
 
         let actual_binary = to_binary(&QueryMsg::CurrentTarget {}).unwrap();
 
@@ -221,7 +218,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             target_address,
-            message_binary: "eyJjb3VudCI6e319".to_string(),
+            message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
             return_type: TypeOfResponse::Types(Types::Uint128),
         };
         let info = mock_info("creator", &[]);
@@ -235,12 +232,12 @@ mod tests {
         assert_eq!(addr, MOCK_COUNTER_CONTRACT.to_string());
 
         let message = QUERY_MSG.load(&deps.storage).unwrap();
-        assert_eq!(message, "eyJjb3VudCI6e319".to_string());
+        assert_eq!(message, to_binary("eyJjb3VudCI6e319").unwrap());
 
         let res = query_target(deps.as_ref()).unwrap();
 
         println!("Pre-parsed result: {:?}", res);
-        let parsed_result: Uint128 = from_json(&res).unwrap();
+        let parsed_result: Uint128 = res.parse().unwrap();
 
         println!("Parsed result: {:?}", parsed_result);
         assert_eq!(parsed_result, Uint128::new(1))
@@ -253,7 +250,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             target_address,
-            message_binary: "eyJjb3VudCI6e319".to_string(),
+            message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
             return_type: TypeOfResponse::Types(Types::Uint128),
         };
         let info = mock_info("creator", &[]);
@@ -266,7 +263,7 @@ mod tests {
         let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
         assert_eq!(addr, MOCK_COUNTER_CONTRACT.to_string());
         let message = QUERY_MSG.load(&deps.storage).unwrap();
-        assert_eq!(message, "eyJjb3VudCI6e319".to_string());
+        assert_eq!(message, to_binary("eyJjb3VudCI6e319").unwrap());
         let res = query_target(deps.as_ref()).unwrap();
 
         println!("Pre-parsed result: {:?}", res);
@@ -284,7 +281,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             target_address,
-            message_binary: "eyJjb3VudCI6e319".to_string(),
+            message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
             return_type: TypeOfResponse::Types(Types::Bool),
         };
         let info = mock_info("creator", &[]);
@@ -298,7 +295,7 @@ mod tests {
         assert_eq!(addr, MOCK_BOOL_CONTRACT.to_string());
 
         let message = QUERY_MSG.load(&deps.storage).unwrap();
-        assert_eq!(message, "eyJjb3VudCI6e319".to_string());
+        assert_eq!(message, to_binary("eyJjb3VudCI6e319").unwrap());
 
         let res = query_target(deps.as_ref()).unwrap();
 
@@ -318,7 +315,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             target_address,
-            message_binary: "eyJjb3VudCI6e319".to_string(),
+            message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
             return_type: TypeOfResponse::ResponseTypes(ResponseTypes::CounterResponseCount),
         };
         let info = mock_info("creator", &[]);
@@ -345,7 +342,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             target_address,
-            message_binary: "eyJjb3VudCI6e319".to_string(),
+            message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
             return_type: TypeOfResponse::ResponseTypes(ResponseTypes::CounterResponsePreviousCount),
         };
         let info = mock_info("creator", &[]);
