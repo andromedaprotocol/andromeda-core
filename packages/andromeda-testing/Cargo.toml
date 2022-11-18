@@ -13,8 +13,8 @@ testing = ["cw-multi-test"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = "1.1.4"
-cosmwasm-schema = "1.1.4"
+cosmwasm-std = "1.1.6"
+cosmwasm-schema = "1.1.6"
 cw721 = "0.15.0"
 cw20 = "0.15.0"
 prost = "0.9.0"
