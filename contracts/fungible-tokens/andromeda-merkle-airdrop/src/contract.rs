@@ -196,6 +196,7 @@ pub fn execute_claim(
             to_address: info.sender.to_string(),
             amount: vec![Coin { amount, denom }],
         }),
+        _ => todo!(),
     };
 
     let res = Response::new()
@@ -255,6 +256,7 @@ pub fn execute_burn(
                 denom,
             }],
         }),
+        _ => todo!(),
     };
 
     // Burn the tokens and response
