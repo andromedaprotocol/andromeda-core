@@ -13,11 +13,11 @@ cosmwasm-std = "1.1.6"
 cosmwasm-schema = "1.1.6"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 schemars = "0.8.10"
-cw-storage-plus = "0.15.0"
-cw2 = "0.15.0"
-cw20 = "0.15.0"
+cw-storage-plus = "0.16.0"
+cw2 = "0.16.0"
+cw20 = "0.16.0"
 semver = "1"
-cw-utils = "0.15.0"
+cw-utils = "0.16.0"
 
 andromeda-modules = { path = "../../../packages/andromeda-modules" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }

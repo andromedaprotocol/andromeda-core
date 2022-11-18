@@ -11,13 +11,13 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 cosmwasm-std = "1.1.6"
 cosmwasm-schema = "1.1.6"
-cw-storage-plus = "0.15.0"
-cw2 = "0.15.0"
+cw-storage-plus = "0.16.0"
+cw2 = "0.16.0"
 schemars = "0.8.10"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 mirror-protocol = "2.1.1"
 terraswap = {version = "2.4.0"}
-cw20 = "0.15.0"
+cw20 = "0.16.0"
 cw-asset = "2.0.0"
 
 andromeda-ecosystem = { version = "0.1.0", path = "../../../packages/andromeda-ecosystem" }

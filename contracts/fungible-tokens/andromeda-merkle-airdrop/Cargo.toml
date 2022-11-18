@@ -24,10 +24,10 @@ library = []
 [dependencies]
 cosmwasm-std = "1.1.6"
 cosmwasm-schema = "1.1.6"
-cw-storage-plus = "0.15.0"
-cw-utils = "0.15.0"
-cw2 = "0.15.0"
-cw20 = "0.15.0"
+cw-storage-plus = "0.16.0"
+cw-utils = "0.16.0"
+cw2 = "0.16.0"
+cw20 = "0.16.0"
 semver = "1"
 
 schemars = "0.8.10"

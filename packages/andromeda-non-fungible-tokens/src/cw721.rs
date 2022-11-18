@@ -5,8 +5,7 @@ use common::{
 };
 use cosmwasm_schema::cw_serde;
 
-use ::cw721::CustomMsg;
-use cosmwasm_std::{Binary, Coin};
+use cosmwasm_std::{Binary, Coin, CustomMsg};
 use cw721::Expiration;
 pub use cw721_base::MintMsg;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};

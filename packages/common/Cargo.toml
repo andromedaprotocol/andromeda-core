@@ -15,14 +15,14 @@ cosmwasm-std = "1.1.6"
 cosmwasm-schema = "1.1.6"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 schemars = "0.8.10"
-cw-storage-plus = "0.15.0"
-cw-utils = "0.15.0"
+cw-storage-plus = "0.16.0"
+cw-utils = "0.16.0"
 thiserror = { version = "1.0.21" }
 hex = "0.4"
-cw1155 = "0.15.0"
-cw1155-base = "0.15.0"
+cw1155 = "0.16.0"
+cw1155-base = "0.16.0"
 
-cw20 = { version = "0.15.0" }
-cw20-base = { version = "0.15.0", features=["library"]}
-cw721-base = { version = "0.15.0", features=["library"]}
+cw20 = { version = "0.16.0" }
+cw20-base = { version = "0.16.0", features=["library"]}
+cw721-base = { version = "0.16.0", features=["library"]}
 cw-asset = { version = "2.0.0" }
