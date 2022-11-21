@@ -1,20 +1,19 @@
 use std::env;
 
-use crate::state::{CONDITION_ADO_ADDRESS, INCREMENT_MESSAGE, TARGET_ADO_ADDRESS, TASK_BALANCER};
-use ado_base::state::ADOContract;
-use andromeda_automation::task_balancer::ExecuteMsg as TaskBalancerExecuteMsg;
-use andromeda_automation::{
-    counter,
-    execute::{ExecuteMsg, Increment, InstantiateMsg, MigrateMsg, QueryMsg},
+use crate::state::{
+    CONDITION_ADO_ADDRESS, INCREMENT_MESSAGE, TARGET_ADO_ADDRESS, TARGET_MSG, TASK_BALANCER,
 };
+use ado_base::state::ADOContract;
+use andromeda_automation::execute::{ExecuteMsg, Increment, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_automation::task_balancer::ExecuteMsg as TaskBalancerExecuteMsg;
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
     error::ContractError,
 };
 
 use cosmwasm_std::{
-    ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, SubMsg, WasmMsg,
+    ensure, entry_point, from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
@@ -36,6 +35,7 @@ pub fn instantiate(
     TARGET_ADO_ADDRESS.save(deps.storage, &msg.target_address)?;
     CONDITION_ADO_ADDRESS.save(deps.storage, &msg.condition_address)?;
     INCREMENT_MESSAGE.save(deps.storage, &msg.increment)?;
+    TARGET_MSG.save(deps.storage, &msg.target_message)?;
     // Validate task balancer address
     let task_balancer = deps.api.addr_validate(&msg.task_balancer)?;
     TASK_BALANCER.save(deps.storage, &task_balancer)?;
@@ -134,12 +134,16 @@ fn execute_target(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respons
         app_contract,
     )?;
 
+    // Load the stored Target Message
+    let stored_msg = TARGET_MSG.load(deps.storage)?;
+    let msg: Binary = from_binary(&stored_msg)?;
+
     let increment = INCREMENT_MESSAGE.load(deps.storage)?;
     match increment {
         Increment::One => Ok(Response::new().add_submessage(SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
-                msg: to_binary(&counter::ExecuteMsg::IncrementOne {})?,
+                msg: to_binary(&msg)?,
                 funds: vec![],
             }),
             1,
@@ -147,7 +151,7 @@ fn execute_target(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respons
         Increment::Two => Ok(Response::new().add_submessage(SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
-                msg: to_binary(&counter::ExecuteMsg::IncrementTwo {})?,
+                msg: to_binary(&msg)?,
                 funds: vec![],
             }),
             1,
@@ -215,6 +219,7 @@ fn query_execute_ado(deps: Deps) -> Result<String, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use andromeda_automation::counter;
     use andromeda_automation::execute::Increment;
     use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -234,6 +239,7 @@ mod tests {
             condition_address,
             increment: Increment::One,
             task_balancer: "task_balancer".to_string(),
+            target_message: to_binary(&"something").unwrap(),
         };
         let info = mock_info("creator", &[]);
 
@@ -266,6 +272,7 @@ mod tests {
             condition_address,
             increment: Increment::One,
             task_balancer: "task_balancer".to_string(),
+            target_message: to_binary(&"something").unwrap(),
         };
         let info = mock_info("creator", &[]);
 
@@ -303,6 +310,7 @@ mod tests {
             condition_address,
             increment: Increment::One,
             task_balancer: "task_balancer".to_string(),
+            target_message: to_binary(&"something").unwrap(),
         };
         let info = mock_info("creator", &[]);
 

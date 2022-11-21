@@ -3,6 +3,7 @@ use common::{
     app::AndrAddress,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Binary;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -14,6 +15,8 @@ pub struct InstantiateMsg {
     pub increment: Increment,
     // Task balancer's address
     pub task_balancer: String,
+    // Target ADO's Execute Msg
+    pub target_message: Binary,
 }
 
 #[cw_serde]
