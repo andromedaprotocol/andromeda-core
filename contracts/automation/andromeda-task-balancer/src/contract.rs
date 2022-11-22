@@ -1,5 +1,6 @@
 use crate::state::{State, STATE, STORAGE_CONTRACTS, UP_NEXT};
 use ado_base::state::ADOContract;
+use andromeda_app::app::QueryMsg::GetAddresses;
 use andromeda_automation::storage::ExecuteMsg as StorageExecuteMsg;
 use andromeda_automation::storage::InstantiateMsg as StorageInstantiateMsg;
 use andromeda_automation::storage::QueryMsg as StorageQueryMsg;
@@ -8,6 +9,7 @@ use andromeda_automation::task_balancer::{
 };
 use common::response::get_reply_address;
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use cosmwasm_std::Addr;
 use cosmwasm_std::{
     ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     QueryRequest, Reply, Response, StdError, SubMsg, Uint128, WasmMsg, WasmQuery,
@@ -94,11 +96,19 @@ pub fn execute(
 fn remove_process(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     process: String,
 ) -> Result<Response, ContractError> {
     // Add permission for removal of processes
     // Sender should be part of an already existing process, and can't request the removal of another process
+    let app_addresses: Vec<Addr> = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: process.clone(),
+        msg: to_binary(&GetAddresses {})?,
+    }))?;
+    ensure!(
+        app_addresses.contains(&info.sender),
+        ContractError::Unauthorized {}
+    );
 
     // Identify which storage contract a certain process belongs to
     // Get storage address that holds the process

@@ -21,6 +21,7 @@ andromeda-automation = { version = "0.1.0", path = "../../../packages/andromeda-
 
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0"}
 common = { version = "0.1.0", path = "../../../packages/common" }
+andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"

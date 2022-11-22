@@ -41,6 +41,7 @@ pub enum QueryMsg {
     GetAddress { name: String },
     GetComponents {},
     ComponentExists { name: String },
+    GetAddressesWithName {},
     GetAddresses {},
     Config {},
 }

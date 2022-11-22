@@ -333,6 +333,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::GetAddress { name } => encode_binary(&query_component_address(deps, name)?),
+        QueryMsg::GetAddressesWithName {} => {
+            encode_binary(&query_component_addresses_with_name(deps)?)
+        }
         QueryMsg::GetAddresses {} => encode_binary(&query_component_addresses(deps)?),
         QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
@@ -374,8 +377,13 @@ fn query_component_exists(deps: Deps, name: String) -> bool {
     ADO_ADDRESSES.has(deps.storage, &name)
 }
 
-fn query_component_addresses(deps: Deps) -> Result<Vec<ComponentAddress>, ContractError> {
+fn query_component_addresses_with_name(deps: Deps) -> Result<Vec<ComponentAddress>, ContractError> {
     let value = load_component_addresses_with_name(deps.storage)?;
+    Ok(value)
+}
+
+fn query_component_addresses(deps: Deps) -> Result<Vec<Addr>, ContractError> {
+    let value = load_component_addresses(deps.storage)?;
     Ok(value)
 }
 
