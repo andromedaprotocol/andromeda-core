@@ -41,7 +41,9 @@ pub fn instantiate(
     APP_NAME.save(deps.storage, &msg.name)?;
 
     if let Some(target_ados) = msg.target_ados {
-        TARGET_ADOS.save(deps.storage, &target_ados)?;
+        TARGET_ADOS.save(deps.storage, &Some(target_ados))?;
+    } else {
+        TARGET_ADOS.save(deps.storage, &None)?;
     }
 
     ensure!(msg.app.len() <= 50, ContractError::TooManyAppComponents {});
@@ -123,13 +125,18 @@ fn execute_fire(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response,
     );
     // Load target ADO's name
     let contract_names = TARGET_ADOS.load(deps.storage)?;
-    let mut contract_addrs = Vec::new();
-    // Load target ADO's address
-    for i in contract_names.into_iter() {
-        let addrs = ADO_ADDRESSES.load(deps.storage, &i)?;
-        contract_addrs.push(addrs.to_string());
-    }
 
+    let mut contract_addrs = Vec::new();
+
+    if let Some(contract_names) = contract_names {
+        // Load target ADO's address
+        for i in contract_names.into_iter() {
+            let addrs = ADO_ADDRESSES.load(deps.storage, &i)?;
+            contract_addrs.push(addrs.to_string());
+        }
+    } else {
+        ContractError::NoTargetADOs {};
+    }
     // collect SubMsgs for each contract
     let mut sub_msgs: Vec<SubMsg> = Vec::new();
 

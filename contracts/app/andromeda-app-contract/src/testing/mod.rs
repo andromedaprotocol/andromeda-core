@@ -541,7 +541,7 @@ fn test_fire_condition_works() {
 
     assert_eq!(
         TARGET_ADOS.load(&deps.storage).unwrap(),
-        vec!["condition1".to_string(), "condition2".to_string()]
+        Some(vec!["condition1".to_string(), "condition2".to_string()])
     );
     let msg = ExecuteMsg::Fire {};
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();

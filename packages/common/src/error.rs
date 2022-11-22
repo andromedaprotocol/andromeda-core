@@ -203,6 +203,9 @@ pub enum ContractError {
     #[error("SaleNotOpen")]
     SaleNotOpen {},
 
+    #[error("NoTargetADOs")]
+    NoTargetADOs {},
+
     #[error("TokenOwnerCannotBid")]
     TokenOwnerCannotBid {},
 
