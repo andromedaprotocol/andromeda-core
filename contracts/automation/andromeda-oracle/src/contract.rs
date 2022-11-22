@@ -201,9 +201,6 @@ mod tests {
     fn test_binary_conversion() {
         // receive encoded the json as base64
         let binary = to_binary("eyJjdXJyZW50X3RhcmdldCI6e319").unwrap();
-
-        // turn base64 into string
-        // let decoded_binary = base64::decode(binary).unwrap();
         let vec_bin: Binary = from_binary(&binary).unwrap();
 
         let actual_binary = to_binary(&QueryMsg::CurrentTarget {}).unwrap();

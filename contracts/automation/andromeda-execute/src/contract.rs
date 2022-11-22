@@ -1,5 +1,3 @@
-use std::env;
-
 use crate::state::{
     CONDITION_ADO_ADDRESS, INCREMENT_MESSAGE, TARGET_ADO_ADDRESS, TARGET_MSG, TASK_BALANCER,
 };
@@ -10,6 +8,7 @@ use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
     error::ContractError,
 };
+use std::env;
 
 use cosmwasm_std::{
     ensure, entry_point, from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env,
@@ -22,6 +21,8 @@ use semver::Version;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-execute";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+// Constant for reply_on_error
+const REMOVE_PROCESS: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -60,7 +61,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     let contract = ADOContract::default();
     let app_contract = contract.get_app_contract(deps.storage)?;
     // Execute errors warrant the removal of the process from the storage contract
-    if msg.id == 1 {
+    if msg.id == REMOVE_PROCESS {
         Ok(Response::new().add_submessage(SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: TASK_BALANCER.load(deps.storage)?.to_string(),
@@ -146,7 +147,7 @@ fn execute_target(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respons
                 msg: to_binary(&msg)?,
                 funds: vec![],
             }),
-            1,
+            REMOVE_PROCESS,
         ))),
         Increment::Two => Ok(Response::new().add_submessage(SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
@@ -154,7 +155,7 @@ fn execute_target(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respons
                 msg: to_binary(&msg)?,
                 funds: vec![],
             }),
-            1,
+            REMOVE_PROCESS,
         ))),
     }
 }
@@ -219,8 +220,7 @@ fn query_execute_ado(deps: Deps) -> Result<String, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_automation::counter;
-    use andromeda_automation::execute::Increment;
+    use andromeda_automation::counter::ExecuteMsg::IncrementOne;
     use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
@@ -228,7 +228,7 @@ mod tests {
     fn test_initialization() {
         let mut deps = mock_dependencies();
         let target_address = AndrAddress {
-            identifier: "target_address".to_string(),
+            identifier: "MOCK_COUNTER_CONTRACT".to_string(),
         };
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
@@ -239,7 +239,7 @@ mod tests {
             condition_address,
             increment: Increment::One,
             task_balancer: "task_balancer".to_string(),
-            target_message: to_binary(&"something").unwrap(),
+            target_message: to_binary("eyJpbmNyZW1lbnRfb25lIjp7fX0=").unwrap(),
         };
         let info = mock_info("creator", &[]);
 
@@ -252,16 +252,27 @@ mod tests {
         assert_eq!(
             addr,
             AndrAddress {
-                identifier: "target_address".to_string(),
+                identifier: "MOCK_COUNTER_CONTRACT".to_string(),
             }
         )
+    }
+
+    #[test]
+    fn test_binary_conversion() {
+        // receive encoded the json as base64
+        let binary = to_binary("eyJpbmNyZW1lbnRfb25lIjp7fX0=").unwrap();
+        let vec_bin: Binary = from_binary(&binary).unwrap();
+
+        let actual_binary = to_binary(&IncrementOne {}).unwrap();
+
+        assert_eq!(actual_binary, vec_bin)
     }
 
     #[test]
     fn test_execute_unauthorized() {
         let mut deps = mock_dependencies();
         let target_address = AndrAddress {
-            identifier: "target_address".to_string(),
+            identifier: "MOCK_COUNTER_CONTRACT".to_string(),
         };
         let condition_address = AndrAddress {
             identifier: "condition_address".to_string(),
@@ -272,7 +283,7 @@ mod tests {
             condition_address,
             increment: Increment::One,
             task_balancer: "task_balancer".to_string(),
-            target_message: to_binary(&"something").unwrap(),
+            target_message: to_binary("eyJpbmNyZW1lbnRfb25lIjp7fX0=").unwrap(),
         };
         let info = mock_info("creator", &[]);
 
@@ -285,7 +296,7 @@ mod tests {
         assert_eq!(
             addr,
             AndrAddress {
-                identifier: "target_address".to_string(),
+                identifier: "MOCK_COUNTER_CONTRACT".to_string(),
             }
         );
 
@@ -293,52 +304,5 @@ mod tests {
         let info = mock_info("not_condition_address", &[]);
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized {})
-    }
-
-    #[test]
-    fn test_execute() {
-        let mut deps = mock_dependencies();
-        let target_address = AndrAddress {
-            identifier: "target_address".to_string(),
-        };
-        let condition_address = AndrAddress {
-            identifier: "condition_address".to_string(),
-        };
-
-        let msg = InstantiateMsg {
-            target_address,
-            condition_address,
-            increment: Increment::One,
-            task_balancer: "task_balancer".to_string(),
-            target_message: to_binary(&"something").unwrap(),
-        };
-        let info = mock_info("creator", &[]);
-
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // make sure address was saved correctly
-        let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
-        assert_eq!(
-            addr,
-            AndrAddress {
-                identifier: "target_address".to_string(),
-            }
-        );
-
-        let msg = ExecuteMsg::Execute {};
-        let info = mock_info("condition_address", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-        println!("{:?}", res.messages);
-        let expected = SubMsg::reply_on_error(
-            CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "target_address".to_string(),
-                msg: to_binary(&counter::ExecuteMsg::IncrementOne {}).unwrap(),
-                funds: vec![],
-            }),
-            1,
-        );
-        assert_eq!(res.messages, vec![expected])
     }
 }
