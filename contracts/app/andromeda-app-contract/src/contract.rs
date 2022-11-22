@@ -125,6 +125,7 @@ fn execute_fire(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response,
     );
     // Load target ADO's name
     let contract_names = TARGET_ADOS.load(deps.storage)?;
+    ensure!(contract_names.is_some(), ContractError::NoTargetADOs {});
 
     let mut contract_addrs = Vec::new();
 
@@ -134,9 +135,8 @@ fn execute_fire(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response,
             let addrs = ADO_ADDRESSES.load(deps.storage, &i)?;
             contract_addrs.push(addrs.to_string());
         }
-    } else {
-        ContractError::NoTargetADOs {};
     }
+
     // collect SubMsgs for each contract
     let mut sub_msgs: Vec<SubMsg> = Vec::new();
 
