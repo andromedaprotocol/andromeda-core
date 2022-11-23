@@ -12,6 +12,9 @@ pub struct InstantiateMsg {
 
     // The query's expected return type (u64, bool ...) or (CountResponse, PriceResponse ...)
     pub return_type: TypeOfResponse,
+
+    // The specific element in a query's response
+    pub response: String,
 }
 
 #[cw_serde]

@@ -10,3 +10,6 @@ pub const QUERY_MSG: Item<Binary> = Item::new("query_message");
 
 // The query's expected response type, either (u64, bool...) or (CountResponse, PriceResponse...)
 pub const EXPECTED_TYPE_RESPONSE: Item<TypeOfResponse> = Item::new("expected_type_of_response");
+
+// Desired response element, like "price" in a PriceResponse struct
+pub const RESPONSE: Item<String> = Item::new("desired_response");
