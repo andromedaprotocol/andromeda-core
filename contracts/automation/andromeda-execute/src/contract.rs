@@ -22,7 +22,7 @@ use semver::Version;
 const CONTRACT_NAME: &str = "crates.io:andromeda-execute";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // Constant for reply_on_error
-const REMOVE_PROCESS: u64 = 1;
+const REMOVE_PROCESS_REPLY_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -61,7 +61,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     let contract = ADOContract::default();
     let app_contract = contract.get_app_contract(deps.storage)?;
     // Execute errors warrant the removal of the process from the storage contract
-    if msg.id == REMOVE_PROCESS {
+    if msg.id == REMOVE_PROCESS_REPLY_ID {
         Ok(Response::new().add_submessage(SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: TASK_BALANCER.load(deps.storage)?.to_string(),
@@ -147,7 +147,7 @@ fn execute_target(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respons
                 msg: to_binary(&msg)?,
                 funds: vec![],
             }),
-            REMOVE_PROCESS,
+            REMOVE_PROCESS_REPLY_ID,
         ))),
         Increment::Two => Ok(Response::new().add_submessage(SubMsg::reply_on_error(
             CosmosMsg::Wasm(WasmMsg::Execute {
@@ -155,7 +155,7 @@ fn execute_target(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respons
                 msg: to_binary(&msg)?,
                 funds: vec![],
             }),
-            REMOVE_PROCESS,
+            REMOVE_PROCESS_REPLY_ID,
         ))),
     }
 }

@@ -21,7 +21,7 @@ use std::env;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-task-balancer";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const INSTANTIATED_CONTRACT: u64 = 1;
+const INSTANTIATED_CONTRACT_REPLY_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -62,7 +62,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     let storage_contracts = STORAGE_CONTRACTS.may_load(deps.storage)?;
 
     match msg.id {
-        INSTANTIATED_CONTRACT => {
+        INSTANTIATED_CONTRACT_REPLY_ID => {
             if let Some(mut storage_contracts) = storage_contracts {
                 storage_contracts.push(contract_address.to_string());
                 STORAGE_CONTRACTS.save(deps.storage, &storage_contracts)?;
@@ -191,7 +191,10 @@ fn add_process(
         });
         return Ok(Response::new()
             .add_attribute("action", "try_add")
-            .add_submessage(SubMsg::reply_on_success(msg, INSTANTIATED_CONTRACT)));
+            .add_submessage(SubMsg::reply_on_success(
+                msg,
+                INSTANTIATED_CONTRACT_REPLY_ID,
+            )));
     }
 
     // Check if there are any earlier storage contracts with free space
@@ -256,7 +259,10 @@ fn add_process(
         });
         Ok(Response::new()
             .add_attribute("action", "try_add")
-            .add_submessage(SubMsg::reply_on_success(msg, INSTANTIATED_CONTRACT)))
+            .add_submessage(SubMsg::reply_on_success(
+                msg,
+                INSTANTIATED_CONTRACT_REPLY_ID,
+            )))
     } else {
         // Execute addition of task contract to a storage contract
         let msg = CosmosMsg::Wasm(WasmMsg::Execute {
