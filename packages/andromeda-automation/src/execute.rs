@@ -11,8 +11,6 @@ pub struct InstantiateMsg {
     pub target_address: AndrAddress,
     // Condition ADO's address
     pub condition_address: AndrAddress,
-    // Desired increment
-    pub increment: Increment,
     // Task balancer's address
     pub task_balancer: String,
     // Target ADO's Execute Msg

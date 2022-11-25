@@ -172,6 +172,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::Count {} => encode_binary(&query_count(deps)?),
+        QueryMsg::CurrentCount {} => encode_binary(&query_current_count(deps)?),
+        QueryMsg::IsZero {} => encode_binary(&query_is_zero(deps)?),
     }
 }
 
@@ -190,6 +192,16 @@ fn query_count(deps: Deps) -> Result<CounterResponse, ContractError> {
     };
 
     Ok(response)
+}
+
+fn query_current_count(deps: Deps) -> Result<Uint128, ContractError> {
+    let count = COUNT.load(deps.storage)?;
+    Ok(count)
+}
+
+fn query_is_zero(deps: Deps) -> Result<bool, ContractError> {
+    let count = COUNT.load(deps.storage)?;
+    Ok(count == Uint128::zero())
 }
 
 #[cfg(test)]

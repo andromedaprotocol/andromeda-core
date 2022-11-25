@@ -52,7 +52,6 @@ impl WasmMockQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_COUNTER_CONTRACT => self.handle_counter_query(msg),
-                    MOCK_BOOL_CONTRACT => self.handle_bool_query(msg),
                     MOCK_BINARY_CONTRACT => self.handle_binary_query(msg),
                     MOCK_RESPONSE_COUNTER_CONTRACT => self.handle_response_counter_query(msg),
                     _ => panic!("Unknown Contract Address {}", contract_addr),
@@ -77,16 +76,17 @@ impl WasmMockQuerier {
 
     fn handle_counter_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            QueryMsg::Count {} => {
+            QueryMsg::Count {} => SystemResult::Ok(ContractResult::Ok(
+                to_binary(&CounterResponse {
+                    count: Uint128::new(1),
+                    previous_count: Uint128::zero(),
+                })
+                .unwrap(),
+            )),
+            QueryMsg::CurrentCount {} => {
                 SystemResult::Ok(ContractResult::Ok(to_binary(&Uint128::new(1)).unwrap()))
             }
-            _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
-        }
-    }
-
-    fn handle_bool_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            QueryMsg::Count {} => SystemResult::Ok(ContractResult::Ok(to_binary(&true).unwrap())),
+            QueryMsg::IsZero {} => SystemResult::Ok(ContractResult::Ok(to_binary(&false).unwrap())),
             _ => SystemResult::Ok(ContractResult::Err("UnsupportedOperation".to_string())),
         }
     }

@@ -1,9 +1,9 @@
-use crate::state::{EXPECTED_TYPE_RESPONSE, QUERY_MSG, RESPONSE, TARGET_ADO_ADDRESS};
+use crate::state::{QUERY_MSG, QUERY_RESPONSE, RESPONSE_ELEMENT, TARGET_ADO_ADDRESS};
 use ado_base::state::ADOContract;
 use andromeda_automation::{
     counter::CounterResponse,
     oracle::{
-        ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ResponseTypes, TypeOfResponse, Types,
+        CustomTypes, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RegularTypes, TypeOfResponse,
     },
 };
 
@@ -13,7 +13,8 @@ use cosmwasm_std::{
     ensure, entry_point, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Reply,
     Response, StdError, Uint128, WasmQuery,
 };
-use serde_json_wasm;
+use serde_json::Value;
+use serde_json::{from_str, to_string};
 use std::env;
 
 use cw2::{get_contract_version, set_contract_version};
@@ -34,8 +35,11 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     QUERY_MSG.save(deps.storage, &msg.message_binary)?;
     TARGET_ADO_ADDRESS.save(deps.storage, &msg.target_address)?;
-    EXPECTED_TYPE_RESPONSE.save(deps.storage, &msg.return_type)?;
-    RESPONSE.save(deps.storage, &msg.response)?;
+
+    if let Some(response_element) = msg.response_element {
+        RESPONSE_ELEMENT.save(deps.storage, &response_element)?;
+    }
+    QUERY_RESPONSE.save(deps.storage, &msg.return_type)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -133,35 +137,38 @@ fn query_target(deps: Deps) -> Result<String, ContractError> {
     let stored_msg = QUERY_MSG.load(deps.storage)?;
 
     let msg = from_binary(&stored_msg)?;
-    let ty = EXPECTED_TYPE_RESPONSE.load(deps.storage)?;
+    let expected_response = QUERY_RESPONSE.load(deps.storage)?;
+    let response_element = RESPONSE_ELEMENT.may_load(deps.storage)?;
 
-    if ty == TypeOfResponse::Types(Types::Bool) {
+    if expected_response == TypeOfResponse::RegularType(RegularTypes::Bool) {
         let response: bool = deps
             .querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
         Ok(response.to_string())
-    } else if ty == TypeOfResponse::Types(Types::Uint128) {
+    } else if expected_response == TypeOfResponse::RegularType(RegularTypes::Uint128) {
         let response: Uint128 = deps
             .querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
         Ok(response.to_string())
-    } else if ty == TypeOfResponse::Types(Types::String) {
+    } else if expected_response == TypeOfResponse::RegularType(RegularTypes::String) {
         let response: String = deps
             .querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
         Ok(response)
-    } else if ty == TypeOfResponse::ResponseTypes(ResponseTypes::CounterResponseCount) {
-        let response: CounterResponse = deps
+    } else if expected_response == TypeOfResponse::CustomType(CustomTypes::CounterResponse) {
+        let query_response: CounterResponse = deps
             .querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
-        let count = response.count.to_string();
-        Ok(count)
-    } else if ty == TypeOfResponse::ResponseTypes(ResponseTypes::CounterResponsePreviousCount) {
-        let response: CounterResponse = deps
-            .querier
-            .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
-        let previous_count = response.previous_count.to_string();
-        Ok(previous_count)
+
+        let json = to_string(&query_response).unwrap();
+        let from_json: Value = from_str(&json).unwrap();
+
+        if let Some(response_element) = response_element {
+            let response = &from_json[response_element];
+            Ok(response.to_string())
+        } else {
+            Err(ContractError::ResponseElementRequired {})
+        }
     } else {
         Err(ContractError::UnsupportedReturnType {})
     }
@@ -169,13 +176,11 @@ fn query_target(deps: Deps) -> Result<String, ContractError> {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use crate::mock_querier::{
-        mock_dependencies_custom, MOCK_BOOL_CONTRACT, MOCK_COUNTER_CONTRACT,
-        MOCK_RESPONSE_COUNTER_CONTRACT,
+        mock_dependencies_custom, MOCK_COUNTER_CONTRACT, MOCK_RESPONSE_COUNTER_CONTRACT,
     };
-    use andromeda_automation::oracle::TypeOfResponse;
-    use common::primitive::Primitive;
     use cosmwasm_std::{
         from_binary,
         testing::{mock_env, mock_info},
@@ -183,199 +188,220 @@ mod tests {
     };
     use serde_json::{self, from_str, to_string, Value};
 
-    //     #[test]
-    //     fn test_initialization() {
-    //         let mut deps = mock_dependencies_custom(&[]);
-    //         let target_address = MOCK_COUNTER_CONTRACT.to_string();
+    #[test]
+    fn test_initialization() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let target_address = MOCK_COUNTER_CONTRACT.to_string();
 
-    //         let msg = InstantiateMsg {
-    //             target_address,
-    //             message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
-    //             return_type: TypeOfResponse::Types(Types::Uint128),
-    //         };
-    //         let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            target_address,
+            message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
+            return_type: TypeOfResponse::CustomType(CustomTypes::CounterResponse),
+            response_element: Some("count".to_string()),
+        };
+        let info = mock_info("creator", &[]);
 
-    //         // we can just call .unwrap() to assert this was a success
-    //         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    //         assert_eq!(0, res.messages.len());
-    //     }
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+    }
 
     #[test]
     fn test_binary_conversion() {
         // receive encoded the json as base64
         let binary = to_binary("eyJjdXJyZW50X3RhcmdldCI6e319").unwrap();
         let vec_bin: Binary = from_binary(&binary).unwrap();
-
         let actual_binary = to_binary(&QueryMsg::CurrentTarget {}).unwrap();
 
         assert_eq!(actual_binary, vec_bin);
+    }
+
+    #[test]
+    fn test_json_conversion() {
         let query_response = CounterResponse {
             count: Uint128::new(1),
             previous_count: Uint128::zero(),
         };
         let json = to_string(&query_response).unwrap();
-
-        println!("{:?}", json);
+        println!("JSON to_string: {:?}", json);
 
         let from_json: Value = from_str(&json).unwrap();
+        println!("From String: {:?}", from_json["count"]);
 
-        println!("{:?}", from_json["count"]);
         let count = &from_json["count"];
         let string_count = count.to_string();
         println!("String version: {:?}", string_count);
+
         let from_stringg: Uint128 = from_str(&string_count).unwrap();
         println!("From String version: {:?}", from_stringg);
+
         assert_eq!(from_stringg, Uint128::new(1));
     }
 
-    //     #[test]
-    //     fn test_uint128() {
-    //         let mut deps = mock_dependencies_custom(&[]);
-    //         let target_address = MOCK_COUNTER_CONTRACT.to_string();
+    #[test]
+    fn test_uint128() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let target_address = MOCK_COUNTER_CONTRACT.to_string();
 
-    //         let msg = InstantiateMsg {
-    //             target_address,
-    //             message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
-    //             return_type: TypeOfResponse::Types(Types::Uint128),
-    //         };
-    //         let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            target_address,
+            // Current Count msg
+            message_binary: to_binary("eyJjdXJyZW50X2NvdW50Ijp7fX0=").unwrap(),
+            return_type: TypeOfResponse::RegularType(RegularTypes::Uint128),
+            response_element: None,
+        };
+        let info = mock_info("creator", &[]);
 
-    //         // we can just call .unwrap() to assert this was a success
-    //         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    //         assert_eq!(0, res.messages.len());
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-    //         // make sure address was saved correctly
-    //         let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
-    //         assert_eq!(addr, MOCK_COUNTER_CONTRACT.to_string());
+        // make sure address was saved correctly
+        let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
+        assert_eq!(addr, MOCK_COUNTER_CONTRACT.to_string());
 
-    //         let message = QUERY_MSG.load(&deps.storage).unwrap();
-    //         assert_eq!(message, to_binary("eyJjb3VudCI6e319").unwrap());
+        let res = query_target(deps.as_ref()).unwrap();
+        println!("Response: {:?}", res);
 
-    //         let res = query_target(deps.as_ref()).unwrap();
+        let from_stringg: Uint128 = res.parse().unwrap();
+        println!("Parsed version: {:?}", from_stringg);
+        assert_eq!(from_stringg, Uint128::new(1))
+    }
 
-    //         println!("Pre-parsed result: {:?}", res);
-    //         let parsed_result: Uint128 = res.parse().unwrap();
+    #[test]
+    fn test_u32() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let target_address = MOCK_COUNTER_CONTRACT.to_string();
 
-    //         println!("Parsed result: {:?}", parsed_result);
-    //         assert_eq!(parsed_result, Uint128::new(1))
-    //     }
+        let msg = InstantiateMsg {
+            target_address,
+            // Current Count msg
+            message_binary: to_binary("eyJjdXJyZW50X2NvdW50Ijp7fX0=").unwrap(),
+            return_type: TypeOfResponse::RegularType(RegularTypes::Uint128),
+            response_element: None,
+        };
+        let info = mock_info("creator", &[]);
 
-    //     #[test]
-    //     fn test_u32() {
-    //         let mut deps = mock_dependencies_custom(&[]);
-    //         let target_address = MOCK_COUNTER_CONTRACT.to_string();
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-    //         let msg = InstantiateMsg {
-    //             target_address,
-    //             message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
-    //             return_type: TypeOfResponse::Types(Types::Uint128),
-    //         };
-    //         let info = mock_info("creator", &[]);
+        // make sure address was saved correctly
+        let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
+        assert_eq!(addr, MOCK_COUNTER_CONTRACT.to_string());
 
-    //         // we can just call .unwrap() to assert this was a success
-    //         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    //         assert_eq!(0, res.messages.len());
+        let res = query_target(deps.as_ref()).unwrap();
+        println!("Response: {:?}", res);
 
-    //         // make sure address was saved correctly
-    //         let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
-    //         assert_eq!(addr, MOCK_COUNTER_CONTRACT.to_string());
-    //         let message = QUERY_MSG.load(&deps.storage).unwrap();
-    //         assert_eq!(message, to_binary("eyJjb3VudCI6e319").unwrap());
-    //         let res = query_target(deps.as_ref()).unwrap();
+        let from_stringg: u32 = res.parse().unwrap();
+        println!("Parsed version: {:?}", from_stringg);
+        assert_eq!(from_stringg, 1)
+        // We can now assume that we can parse into any type of number
+    }
 
-    //         println!("Pre-parsed result: {:?}", res);
-    //         let parsed_result: i32 = res.parse().unwrap();
+    #[test]
+    fn test_bool() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let target_address = MOCK_COUNTER_CONTRACT.to_string();
 
-    //         println!("Parsed result: {:?}", parsed_result);
-    //         assert_eq!(parsed_result, 1)
-    //         // We can now assume that we can parse into any type of number
-    //     }
+        let msg = InstantiateMsg {
+            target_address,
+            // Is Zero msg
+            message_binary: to_binary("eyJpc196ZXJvIjp7fX0=").unwrap(),
+            return_type: TypeOfResponse::RegularType(RegularTypes::Bool),
+            response_element: None,
+        };
+        let info = mock_info("creator", &[]);
 
-    //     #[test]
-    //     fn test_bool() {
-    //         let mut deps = mock_dependencies_custom(&[]);
-    //         let target_address = MOCK_BOOL_CONTRACT.to_string();
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-    //         let msg = InstantiateMsg {
-    //             target_address,
-    //             message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
-    //             return_type: TypeOfResponse::Types(Types::Bool),
-    //         };
-    //         let info = mock_info("creator", &[]);
+        let res: String = query_target(deps.as_ref()).unwrap();
 
-    //         // we can just call .unwrap() to assert this was a success
-    //         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    //         assert_eq!(0, res.messages.len());
+        println!("Pre-parsed result: {:?}", res);
+        let parsed_result: bool = res.parse().unwrap();
 
-    //         // make sure address was saved correctly
-    //         let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
-    //         assert_eq!(addr, MOCK_BOOL_CONTRACT.to_string());
+        println!("Parsed result: {:?}", parsed_result);
 
-    //         let message = QUERY_MSG.load(&deps.storage).unwrap();
-    //         assert_eq!(message, to_binary("eyJjb3VudCI6e319").unwrap());
+        // The mock querier always returns false
+        assert!(!parsed_result)
+    }
 
-    //         let res = query_target(deps.as_ref()).unwrap();
+    #[test]
+    fn test_counter_response_count() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let target_address = MOCK_RESPONSE_COUNTER_CONTRACT.to_string();
 
-    //         println!("Pre-parsed result: {:?}", res);
-    //         let parsed_result: bool = res.parse().unwrap();
+        let msg = InstantiateMsg {
+            target_address,
+            // Count msg
+            message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
+            return_type: TypeOfResponse::CustomType(CustomTypes::CounterResponse),
+            response_element: Some("count".to_string()),
+        };
+        let info = mock_info("creator", &[]);
 
-    //         println!("Parsed result: {:?}", parsed_result);
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-    //         // The mock querier always returns true
-    //         assert!(parsed_result)
-    //     }
+        let res: String = query_target(deps.as_ref()).unwrap();
 
-    //     #[test]
-    //     fn test_counter_response_count() {
-    //         let mut deps = mock_dependencies_custom(&[]);
-    //         let target_address = MOCK_RESPONSE_COUNTER_CONTRACT.to_string();
+        println!("Pre-parsed result: {:?}", res);
 
-    //         let msg = InstantiateMsg {
-    //             target_address,
-    //             message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
-    //             return_type: TypeOfResponse::ResponseTypes(ResponseTypes::CounterResponseCount),
-    //         };
-    //         let info = mock_info("creator", &[]);
+        let from_stringg: Uint128 = from_str(&res).unwrap();
+        println!("From String version: {:?}", from_stringg);
 
-    //         // we can just call .unwrap() to assert this was a success
-    //         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    //         assert_eq!(0, res.messages.len());
+        assert_eq!(from_stringg, Uint128::new(1));
+    }
 
-    //         let res = query_target(deps.as_ref()).unwrap();
+    #[test]
+    fn test_counter_response_count_no_response_element() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let target_address = MOCK_RESPONSE_COUNTER_CONTRACT.to_string();
 
-    //         println!("Pre-parsed result: {:?}", res);
-    //         let parsed_result: Uint128 = res.parse().unwrap();
+        let msg = InstantiateMsg {
+            target_address,
+            // Count msg
+            message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
+            return_type: TypeOfResponse::CustomType(CustomTypes::CounterResponse),
+            response_element: None,
+        };
+        let info = mock_info("creator", &[]);
 
-    //         println!("Parsed result: {:?}", parsed_result);
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-    //         // Count is always 1
-    //         assert_eq!(parsed_result, Uint128::new(1))
-    //     }
+        let err = query_target(deps.as_ref()).unwrap_err();
+        assert_eq!(err, ContractError::ResponseElementRequired {});
+    }
 
-    //     #[test]
-    //     fn test_counter_response_previous_count() {
-    //         let mut deps = mock_dependencies_custom(&[]);
-    //         let target_address = MOCK_RESPONSE_COUNTER_CONTRACT.to_string();
+    #[test]
+    fn test_counter_response_previous_count() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let target_address = MOCK_RESPONSE_COUNTER_CONTRACT.to_string();
 
-    //         let msg = InstantiateMsg {
-    //             target_address,
-    //             message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
-    //             return_type: TypeOfResponse::ResponseTypes(ResponseTypes::CounterResponsePreviousCount),
-    //         };
-    //         let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            target_address,
+            // Count msg
+            message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
+            return_type: TypeOfResponse::CustomType(CustomTypes::CounterResponse),
+            response_element: Some("previous_count".to_string()),
+        };
+        let info = mock_info("creator", &[]);
 
-    //         // we can just call .unwrap() to assert this was a success
-    //         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    //         assert_eq!(0, res.messages.len());
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-    //         let res = query_target(deps.as_ref()).unwrap();
+        let res = query_target(deps.as_ref()).unwrap();
 
-    //         println!("Pre-parsed result: {:?}", res);
-    //         let parsed_result: Uint128 = res.parse().unwrap();
+        println!("Pre-parsed result: {:?}", res);
+        let from_stringg: Uint128 = from_str(&res).unwrap();
+        println!("From String version: {:?}", from_stringg);
 
-    //         println!("Parsed result: {:?}", parsed_result);
-
-    //         // Previous count is always 0
-    //         assert_eq!(parsed_result, Uint128::zero())
-    //     }
+        assert_eq!(from_stringg, Uint128::zero());
+    }
 }

@@ -74,6 +74,12 @@ pub enum ContractError {
     #[error("ParseBoolError")]
     ParseBoolError {},
 
+    #[error("NoResponseElementNeeded")]
+    NoResponseElementNeeded {},
+
+    #[error("ResponseElementRequired")]
+    ResponseElementRequired {},
+
     #[error("InsufficientBondedTime")]
     InsufficientBondedTime {},
 

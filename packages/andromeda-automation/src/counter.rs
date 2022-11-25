@@ -27,8 +27,15 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
-    #[returns(Uint128)]
+
+    #[returns(CounterResponse)]
     Count {},
+
+    #[returns(Uint128)]
+    CurrentCount {},
+
+    #[returns(bool)]
+    IsZero {},
 }
 
 #[cw_serde]

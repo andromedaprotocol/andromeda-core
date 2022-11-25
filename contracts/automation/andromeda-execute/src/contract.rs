@@ -1,8 +1,6 @@
-use crate::state::{
-    CONDITION_ADO_ADDRESS, INCREMENT_MESSAGE, TARGET_ADO_ADDRESS, TARGET_MSG, TASK_BALANCER,
-};
+use crate::state::{CONDITION_ADO_ADDRESS, TARGET_ADO_ADDRESS, TARGET_MSG, TASK_BALANCER};
 use ado_base::state::ADOContract;
-use andromeda_automation::execute::{ExecuteMsg, Increment, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_automation::execute::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_automation::task_balancer::ExecuteMsg as TaskBalancerExecuteMsg;
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
@@ -35,7 +33,6 @@ pub fn instantiate(
 
     TARGET_ADO_ADDRESS.save(deps.storage, &msg.target_address)?;
     CONDITION_ADO_ADDRESS.save(deps.storage, &msg.condition_address)?;
-    INCREMENT_MESSAGE.save(deps.storage, &msg.increment)?;
     TARGET_MSG.save(deps.storage, &msg.target_message)?;
     // Validate task balancer address
     let task_balancer = deps.api.addr_validate(&msg.task_balancer)?;
@@ -139,25 +136,14 @@ fn execute_target(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respons
     let stored_msg = TARGET_MSG.load(deps.storage)?;
     let msg: Binary = from_binary(&stored_msg)?;
 
-    let increment = INCREMENT_MESSAGE.load(deps.storage)?;
-    match increment {
-        Increment::One => Ok(Response::new().add_submessage(SubMsg::reply_on_error(
-            CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr,
-                msg: to_binary(&msg)?,
-                funds: vec![],
-            }),
-            REMOVE_PROCESS_REPLY_ID,
-        ))),
-        Increment::Two => Ok(Response::new().add_submessage(SubMsg::reply_on_error(
-            CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr,
-                msg: to_binary(&msg)?,
-                funds: vec![],
-            }),
-            REMOVE_PROCESS_REPLY_ID,
-        ))),
-    }
+    Ok(Response::new().add_submessage(SubMsg::reply_on_error(
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr,
+            msg: to_binary(&msg)?,
+            funds: vec![],
+        }),
+        REMOVE_PROCESS_REPLY_ID,
+    )))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -237,7 +223,6 @@ mod tests {
         let msg = InstantiateMsg {
             target_address,
             condition_address,
-            increment: Increment::One,
             task_balancer: "task_balancer".to_string(),
             target_message: to_binary("eyJpbmNyZW1lbnRfb25lIjp7fX0=").unwrap(),
         };
@@ -281,7 +266,6 @@ mod tests {
         let msg = InstantiateMsg {
             target_address,
             condition_address,
-            increment: Increment::One,
             task_balancer: "task_balancer".to_string(),
             target_message: to_binary("eyJpbmNyZW1lbnRfb25lIjp7fX0=").unwrap(),
         };
