@@ -101,7 +101,6 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(AndromedaQuery)]
-    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
 }
 

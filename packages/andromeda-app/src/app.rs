@@ -46,7 +46,6 @@ pub struct MigrateMsg {}
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(AndromedaQuery)]
-    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
     #[returns(String)]
     GetAddress { name: String },
