@@ -18,6 +18,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
+use serde_json::from_str;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-evaluation";
@@ -209,7 +210,7 @@ fn query_evaluation(deps: Deps, _env: Env) -> Result<bool, ContractError> {
         }))?;
 
         // In the future, user will set the expected value during instantiation and parse it accordingly
-        let parsed_oracle_value: Uint128 = oracle_value.parse()?;
+        let parsed_oracle_value: Uint128 = from_str(&oracle_value)?;
 
         match operation {
             Operators::Greater => parsed_oracle_value > user_value,

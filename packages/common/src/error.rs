@@ -2,12 +2,13 @@ use cosmwasm_std::{OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
 use cw_utils::{Expiration, ParseReplyError, PaymentError};
+
+use hex::FromHexError;
+use serde_json::Error;
 use std::convert::From;
 use std::str::ParseBoolError;
 use std::string::FromUtf8Error;
 use thiserror::Error;
-
-use hex::FromHexError;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -501,6 +502,9 @@ pub enum ContractError {
     #[error("App contract not specified")]
     AppContractNotSpecified {},
 
+    #[error("JsonError")]
+    JsonError {},
+
     #[error("Invalid component: {name}")]
     InvalidComponent { name: String },
 
@@ -563,5 +567,11 @@ impl From<FromUtf8Error> for ContractError {
 impl From<OverflowError> for ContractError {
     fn from(_err: OverflowError) -> Self {
         ContractError::Overflow {}
+    }
+}
+
+impl From<Error> for ContractError {
+    fn from(_err: serde_json::Error) -> Self {
+        ContractError::JsonError {}
     }
 }
