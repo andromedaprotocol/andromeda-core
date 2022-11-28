@@ -12,13 +12,19 @@ use crate::{
     error::ContractError,
     withdraw::Withdrawal,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, Uint64, WasmQuery};
 
 use serde::de::DeserializeOwned;
+
+use self::{
+    ado_type::TypeResponse,
+    block_height::BlockHeightResponse,
+    operators::{IsOperatorResponse, OperatorsResponse},
+    ownership::{ContractOwnerResponse, PublisherResponse},
+    version::VersionResponse,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -65,28 +71,28 @@ pub enum AndromedaMsg {
     },
 }
 
-// #[cw_serde]
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum AndromedaQuery {
-    // #[returns(Option<Binary>)]
+    #[returns(Option<Binary>)]
     Get(Option<Binary>),
-    // #[returns(ContractOwnerResponse)]
+    #[returns(ContractOwnerResponse)]
     Owner {},
-    // #[returns(OperatorsResponse)]
+    #[returns(OperatorsResponse)]
     Operators {},
-    // #[returns(TypeResponse)]
+    #[returns(TypeResponse)]
     Type {},
-    // #[returns(PublisherResponse)]
+    #[returns(PublisherResponse)]
     OriginalPublisher {},
-    // #[returns(BlockHeightResponse)]
+    #[returns(BlockHeightResponse)]
     BlockHeightUponCreation {},
-    // #[returns(IsOperatorResponse)]
+    #[returns(IsOperatorResponse)]
     IsOperator { address: String },
-    // #[returns(Module)]
+    #[returns(Module)]
     Module { id: Uint64 },
-    // #[returns(Vec<String>)]
+    #[returns(Vec<String>)]
     ModuleIds {},
-    // #[returns(VersionResponse)]
+    #[returns(VersionResponse)]
     Version {},
 }
 
