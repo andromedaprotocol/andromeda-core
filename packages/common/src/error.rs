@@ -4,7 +4,6 @@ use cw721_base::ContractError as Cw721ContractError;
 use cw_utils::{Expiration, ParseReplyError, PaymentError};
 
 use hex::FromHexError;
-use serde_json::Error;
 use std::convert::From;
 use std::str::ParseBoolError;
 use std::string::FromUtf8Error;
@@ -567,11 +566,5 @@ impl From<FromUtf8Error> for ContractError {
 impl From<OverflowError> for ContractError {
     fn from(_err: OverflowError) -> Self {
         ContractError::Overflow {}
-    }
-}
-
-impl From<Error> for ContractError {
-    fn from(_err: serde_json::Error) -> Self {
-        ContractError::JsonError {}
     }
 }

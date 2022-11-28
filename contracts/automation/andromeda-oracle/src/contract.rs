@@ -10,11 +10,11 @@ use andromeda_automation::{
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 
 use cosmwasm_std::{
-    ensure, entry_point, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Reply,
-    Response, StdError, Uint128, WasmQuery,
+    ensure, entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo,
+    QueryRequest, Reply, Response, StdError, Uint128, WasmQuery,
 };
-use serde_json::Value;
-use serde_json::{from_str, to_string};
+use serde_json_value_wasm::Value;
+use serde_json_wasm::from_slice;
 use std::env;
 
 use cw2::{get_contract_version, set_contract_version};
@@ -160,12 +160,18 @@ fn query_target(deps: Deps) -> Result<String, ContractError> {
             .querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))?;
 
-        let json = to_string(&query_response).unwrap();
-        let from_json: Value = from_str(&json).unwrap();
+        let binary_response = to_binary(&query_response).unwrap();
+        let response_value: Value = from_slice(&binary_response).unwrap();
 
         if let Some(response_element) = response_element {
-            let response = &from_json[response_element];
-            Ok(response.to_string())
+            let json_map: String = match response_value.as_object() {
+                Some(obj) => {
+                    let string_obj = obj[&response_element].as_str().unwrap().to_string();
+                    string_obj
+                }
+                None => "Couldn't parse result".to_string(),
+            };
+            Ok(json_map)
         } else {
             Err(ContractError::ResponseElementRequired {})
         }
@@ -186,8 +192,8 @@ mod tests {
         testing::{mock_env, mock_info},
         to_binary, Uint128,
     };
-    use serde_json::{self, from_str, to_string, Value};
 
+    use serde_json_value_wasm::Value;
     #[test]
     fn test_initialization() {
         let mut deps = mock_dependencies_custom(&[]);
@@ -222,20 +228,27 @@ mod tests {
             count: Uint128::new(1),
             previous_count: Uint128::zero(),
         };
-        let json = to_string(&query_response).unwrap();
-        println!("JSON to_string: {:?}", json);
+        let user_value = "count".to_string();
 
-        let from_json: Value = from_str(&json).unwrap();
-        println!("From String: {:?}", from_json["count"]);
+        let binary = to_binary(&query_response).unwrap();
+        let json_value: Value = serde_json_wasm::from_slice(&binary).unwrap();
+        println!("The JSON value as object is: {:?}", json_value.as_object());
 
-        let count = &from_json["count"];
-        let string_count = count.to_string();
-        println!("String version: {:?}", string_count);
-
-        let from_stringg: Uint128 = from_str(&string_count).unwrap();
-        println!("From String version: {:?}", from_stringg);
-
-        assert_eq!(from_stringg, Uint128::new(1));
+        let json_map: String = match json_value.as_object() {
+            Some(obj) => {
+                assert!(
+                    obj.keys().len() == 2,
+                    "Unexpected: too many top-level items in JSON"
+                );
+                let string_obj = obj[&user_value].as_str().unwrap().to_string();
+                string_obj
+            }
+            None => {
+                panic!("Unable to get JSON object");
+            }
+        };
+        let parsed_result: Uint128 = json_map.parse().unwrap();
+        assert_eq!(parsed_result, Uint128::new(1));
     }
 
     #[test]
@@ -350,10 +363,10 @@ mod tests {
 
         println!("Pre-parsed result: {:?}", res);
 
-        let from_stringg: Uint128 = from_str(&res).unwrap();
-        println!("From String version: {:?}", from_stringg);
+        let parsed_result: Uint128 = res.parse().unwrap();
+        println!("From String version: {:?}", parsed_result);
 
-        assert_eq!(from_stringg, Uint128::new(1));
+        assert_eq!(parsed_result, Uint128::new(1));
     }
 
     #[test]
@@ -399,9 +412,9 @@ mod tests {
         let res = query_target(deps.as_ref()).unwrap();
 
         println!("Pre-parsed result: {:?}", res);
-        let from_stringg: Uint128 = from_str(&res).unwrap();
-        println!("From String version: {:?}", from_stringg);
+        let parsed_result: Uint128 = res.parse().unwrap();
+        println!("From String version: {:?}", parsed_result);
 
-        assert_eq!(from_stringg, Uint128::zero());
+        assert_eq!(parsed_result, Uint128::zero());
     }
 }

@@ -17,7 +17,7 @@ cw-utils = "0.13.4"
 semver = "1"
 base64 = "0.13.1"
 serde-json-wasm = "0.4.1"
-serde_json = "1.0.89"
+serde-json-value-wasm = { git = "https://github.com/chris-ricketts/serde-json-value-wasm" }
 
 andromeda-automation = { version = "0.1.0", path = "../../../packages/andromeda-automation" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }
