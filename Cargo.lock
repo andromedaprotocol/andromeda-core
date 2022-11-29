@@ -487,7 +487,6 @@ dependencies = [
  "ado-base",
  "andromeda-automation",
  "andromeda-testing",
- "base64",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
