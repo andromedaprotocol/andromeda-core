@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        modules::{Module, ADDRESS_LIST, OFFERS, RATES, RECEIPT},
+        modules::{Module, ADDRESS_LIST, BIDS, RATES, RECEIPT},
         AndromedaMsg, AndromedaQuery,
     },
     app::AndrAddress,
@@ -21,10 +21,10 @@ use crate::{contract::*, state::ANDR_MINTER};
 use andromeda_modules::receipt::{ExecuteMsg as ReceiptExecuteMsg, Receipt};
 use andromeda_non_fungible_tokens::{
     cw721::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement},
-    cw721_offers::ExecuteMsg as OffersExecuteMsg,
+    cw721_bid::ExecuteMsg as BidsExecuteMsg,
 };
 use andromeda_testing::testing::mock_querier::{
-    bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_OFFERS_CONTRACT,
+    bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_BIDS_CONTRACT,
     MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
 };
 use cw721::{AllNftInfoResponse, OwnerOfResponse};
@@ -729,9 +729,9 @@ fn test_modules() {
 #[test]
 fn test_transfer_with_offer() {
     let modules: Vec<Module> = vec![Module {
-        module_type: OFFERS.to_owned(),
+        module_type: BIDS.to_owned(),
         address: AndrAddress {
-            identifier: MOCK_OFFERS_CONTRACT.to_owned(),
+            identifier: MOCK_BIDS_CONTRACT.to_owned(),
         },
         is_mutable: false,
     }];
@@ -767,9 +767,9 @@ fn test_transfer_with_offer() {
     let info = mock_info(&creator, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: MOCK_OFFERS_CONTRACT.to_owned(),
+        contract_addr: MOCK_BIDS_CONTRACT.to_owned(),
         funds: vec![],
-        msg: to_binary(&OffersExecuteMsg::AcceptOffer {
+        msg: to_binary(&BidsExecuteMsg::AcceptBid {
             token_id,
             recipient: creator,
         })

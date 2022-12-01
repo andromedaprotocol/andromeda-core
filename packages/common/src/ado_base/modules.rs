@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub const RATES: &str = "rates";
-pub const OFFERS: &str = "offers";
+pub const BIDS: &str = "bids";
 pub const ADDRESS_LIST: &str = "address_list";
 pub const AUCTION: &str = "auction";
 pub const RECEIPT: &str = "receipt";

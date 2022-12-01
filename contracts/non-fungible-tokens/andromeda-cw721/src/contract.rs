@@ -84,6 +84,7 @@ pub fn execute(
 
     // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
+    // Handled separately due to extra data required
     if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
         let andr_minter = ANDR_MINTER.load(execute_env.deps.storage)?;
         return contract.execute_update_app_contract(
@@ -94,6 +95,17 @@ pub fn execute(
         );
     };
 
+    //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
+        return contract.execute(
+            execute_env.deps,
+            execute_env.env,
+            execute_env.info,
+            andr_msg,
+            execute,
+        );
+    };
+
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
             !is_archived(execute_env.deps.storage, token_id)?,
@@ -101,46 +113,35 @@ pub fn execute(
         );
     }
 
+    contract.module_hook::<Response>(
+        execute_env.deps.storage,
+        execute_env.deps.api,
+        execute_env.deps.querier,
+        AndromedaHook::OnExecute {
+            sender: execute_env.info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+
     match msg {
-        ExecuteMsg::AndrReceive(msg) => contract.execute(
+        ExecuteMsg::Mint(_) => execute_mint(execute_env, msg),
+        ExecuteMsg::BatchMint { tokens } => execute_batch_mint(execute_env, tokens),
+        ExecuteMsg::TransferNft {
+            recipient,
+            token_id,
+        } => execute_transfer(execute_env, recipient, token_id),
+        ExecuteMsg::TransferAgreement {
+            token_id,
+            agreement,
+        } => execute_update_transfer_agreement(execute_env, token_id, agreement),
+        ExecuteMsg::Archive { token_id } => execute_archive(execute_env, token_id),
+        ExecuteMsg::Burn { token_id } => execute_burn(execute_env, token_id),
+        _ => Ok(AndrCW721Contract::default().execute(
             execute_env.deps,
             execute_env.env,
             execute_env.info,
-            msg,
-            execute,
-        ),
-        _ => {
-            contract.module_hook::<Response>(
-                execute_env.deps.storage,
-                execute_env.deps.api,
-                execute_env.deps.querier,
-                AndromedaHook::OnExecute {
-                    sender: execute_env.info.sender.to_string(),
-                    payload: encode_binary(&msg)?,
-                },
-            )?;
-
-            match msg {
-                ExecuteMsg::Mint(_) => execute_mint(execute_env, msg),
-                ExecuteMsg::BatchMint { tokens } => execute_batch_mint(execute_env, tokens),
-                ExecuteMsg::TransferNft {
-                    recipient,
-                    token_id,
-                } => execute_transfer(execute_env, recipient, token_id),
-                ExecuteMsg::TransferAgreement {
-                    token_id,
-                    agreement,
-                } => execute_update_transfer_agreement(execute_env, token_id, agreement),
-                ExecuteMsg::Archive { token_id } => execute_archive(execute_env, token_id),
-                ExecuteMsg::Burn { token_id } => execute_burn(execute_env, token_id),
-                _ => Ok(AndrCW721Contract::default().execute(
-                    execute_env.deps,
-                    execute_env.env,
-                    execute_env.info,
-                    msg.into(),
-                )?),
-            }
-        }
+            msg.into(),
+        )?),
     }
 }
 

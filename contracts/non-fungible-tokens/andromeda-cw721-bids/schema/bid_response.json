@@ -1,24 +1,24 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OfferResponse",
+  "title": "BidResponse",
   "type": "object",
   "required": [
+    "bid_amount",
     "denom",
     "expiration",
-    "offer_amount",
     "purchaser",
     "remaining_amount",
     "tax_amount"
   ],
   "properties": {
+    "bid_amount": {
+      "$ref": "#/definitions/Uint128"
+    },
     "denom": {
       "type": "string"
     },
     "expiration": {
       "$ref": "#/definitions/Expiration"
-    },
-    "offer_amount": {
-      "$ref": "#/definitions/Uint128"
     },
     "purchaser": {
       "type": "string"

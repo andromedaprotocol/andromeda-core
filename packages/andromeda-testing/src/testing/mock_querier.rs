@@ -16,7 +16,7 @@ use andromeda_modules::{
 };
 use andromeda_non_fungible_tokens::{
     cw721::{MetadataAttribute, QueryMsg as Cw721QueryMsg, TokenExtension, TransferAgreement},
-    cw721_offers::{ExecuteMsg as OffersExecuteMsg, OfferResponse, QueryMsg as OffersQueryMsg},
+    cw721_bid::{BidResponse, ExecuteMsg as BidsExecuteMsg, QueryMsg as BidsQueryMsg},
 };
 use cosmwasm_std::{
     coin, coins, from_binary, from_slice,
@@ -39,7 +39,7 @@ pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_RECEIPT_CONTRACT: &str = "receipt_contract";
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
-pub const MOCK_OFFERS_CONTRACT: &str = "offers_contract";
+pub const MOCK_BIDS_CONTRACT: &str = "bids_contract";
 
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 pub const MOCK_TOKEN_TRANSFER_AGREEMENT: &str = "token_transfer_agreement";
@@ -107,7 +107,7 @@ impl WasmMockQuerier {
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
-                    MOCK_OFFERS_CONTRACT => self.handle_offers_query(msg),
+                    MOCK_BIDS_CONTRACT => self.handle_bids_query(msg),
                     MOCK_RECEIPT_CONTRACT => self.handle_receipt_query(msg),
                     MOCK_FACTORY_CONTRACT => self.handle_factory_query(msg),
                     MOCK_APP_CONTRACT => self.handle_app_query(msg),
@@ -194,9 +194,9 @@ impl WasmMockQuerier {
         }
     }
 
-    fn handle_offers_query(&self, msg: &Binary) -> QuerierResult {
+    fn handle_bids_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            OffersQueryMsg::AndrHook(msg) => match msg {
+            BidsQueryMsg::AndrHook(msg) => match msg {
                 AndromedaHook::OnTransfer {
                     recipient,
                     token_id,
@@ -204,9 +204,9 @@ impl WasmMockQuerier {
                 } => {
                     if recipient == "purchaser" {
                         let msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: MOCK_OFFERS_CONTRACT.to_owned(),
+                            contract_addr: MOCK_BIDS_CONTRACT.to_owned(),
                             funds: vec![],
-                            msg: to_binary(&OffersExecuteMsg::AcceptOffer {
+                            msg: to_binary(&BidsExecuteMsg::AcceptBid {
                                 token_id,
                                 recipient: sender,
                             })
@@ -219,10 +219,10 @@ impl WasmMockQuerier {
                 }
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },
-            OffersQueryMsg::Offer { .. } => {
-                let response = OfferResponse {
+            BidsQueryMsg::Bid { .. } => {
+                let response = BidResponse {
                     denom: "uusd".to_string(),
-                    offer_amount: Uint128::zero(),
+                    bid_amount: Uint128::zero(),
                     tax_amount: Uint128::zero(),
                     remaining_amount: Uint128::zero(),
                     expiration: Expiration::Never {},

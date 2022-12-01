@@ -7,7 +7,7 @@ use andromeda_non_fungible_tokens::marketplace::{
     SaleStateResponse, Status,
 };
 use common::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
     rates::get_tax_amount,
@@ -58,6 +58,12 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+
+    // Do this before the hooks get fired off to ensure that there are no errors from the app
+    // address not being fully setup yet.
+    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
+        return contract.execute_update_app_contract(deps, info, address, None);
+    };
 
     contract.module_hook::<Response>(
         deps.storage,
