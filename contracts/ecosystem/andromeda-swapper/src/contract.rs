@@ -201,6 +201,7 @@ fn execute_send(
                 },
             )?
         }
+        _ => todo!(),
     };
     Ok(Response::new()
         .add_attribute("action", "send")

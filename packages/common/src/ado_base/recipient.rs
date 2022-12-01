@@ -127,6 +127,7 @@ impl Recipient {
                     amount: asset.amount,
                 }],
             ),
+            _ => todo!(),
         }
     }
 }

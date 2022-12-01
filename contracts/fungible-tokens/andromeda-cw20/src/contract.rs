@@ -114,6 +114,7 @@ fn execute_transfer(
             recipient: recipient.clone(),
         })?,
     )?;
+
     let remaining_amount = match remainder {
         Funds::Native(..) => amount, //What do we do in the case that the rates returns remaining amount as native funds?
         Funds::Cw20(coin) => coin.amount,

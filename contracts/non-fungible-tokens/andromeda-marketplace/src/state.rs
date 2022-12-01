@@ -19,7 +19,7 @@ pub struct TokenSaleState {
     pub status: Status,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Purchase {
     /// The token id being purchased.
     pub token_id: String,

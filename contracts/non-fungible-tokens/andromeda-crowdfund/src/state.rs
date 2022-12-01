@@ -24,7 +24,7 @@ pub const AVAILABLE_TOKENS: Map<&str, bool> = Map::new("available_tokens");
 /// config.can_mint_after_sale is false.
 pub const SALE_CONDUCTED: Item<bool> = Item::new("sale_conducted");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Purchase {
     /// The token id being purchased.
     pub token_id: String,
