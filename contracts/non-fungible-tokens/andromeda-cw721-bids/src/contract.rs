@@ -69,7 +69,27 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+
+    //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
+        return contract.execute(deps, env, info, andr_msg, execute);
+    };
+
+    contract.module_hook::<Response>(
+        deps.storage,
+        deps.api,
+        deps.querier,
+        AndromedaHook::OnExecute {
+            sender: info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+
     match msg {
+        ExecuteMsg::AndrReceive(msg) => {
+            ADOContract::default().execute(deps, env, info, msg, execute)
+        }
         ExecuteMsg::PlaceBid {
             token_id,
             expiration,
@@ -328,6 +348,7 @@ fn from_semver(err: semver::Error) -> StdError {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::AndrHook(msg) => handle_andr_hook(deps, env, msg),
         QueryMsg::Bid { token_id } => encode_binary(&query_bid(deps, token_id)?),
         QueryMsg::AllBids {

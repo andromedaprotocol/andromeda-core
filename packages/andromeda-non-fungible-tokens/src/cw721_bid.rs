@@ -1,4 +1,4 @@
-use common::ado_base::hooks::AndromedaHook;
+use common::ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery};
 use cosmwasm_std::{Coin, Event, SubMsg, Uint128};
 use cw721::Expiration;
 use schemars::JsonSchema;
@@ -38,6 +38,8 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
+
     PlaceBid {
         token_id: String,
         expiration: Expiration,
@@ -56,6 +58,7 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    AndrQuery(AndromedaQuery),
     AndrHook(AndromedaHook),
     Bid {
         token_id: String,
