@@ -98,6 +98,17 @@ pub fn execute(
         }
     }
 
+    //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
+        return contract.execute(
+            execute_env.deps,
+            execute_env.env,
+            execute_env.info,
+            andr_msg,
+            execute,
+        );
+    };
+
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
             !is_archived(execute_env.deps.storage, token_id)?,

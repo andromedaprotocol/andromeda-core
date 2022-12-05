@@ -8,14 +8,41 @@
     "type": "object",
     "required": [
       "condition_address",
+<<<<<<< HEAD
       "query_address"
+=======
+      "operation",
+      "oracle_address",
+      "task_balancer"
+>>>>>>> development
     ],
     "properties": {
       "condition_address": {
         "$ref": "#/definitions/AndrAddress"
       },
+<<<<<<< HEAD
       "query_address": {
         "$ref": "#/definitions/AndrAddress"
+=======
+      "operation": {
+        "$ref": "#/definitions/Operators"
+      },
+      "oracle_address": {
+        "$ref": "#/definitions/AndrAddress"
+      },
+      "task_balancer": {
+        "$ref": "#/definitions/AndrAddress"
+      },
+      "user_value": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Uint128"
+          },
+          {
+            "type": "null"
+          }
+        ]
+>>>>>>> development
       }
     },
     "additionalProperties": false,
@@ -30,8 +57,26 @@
             "description": "Can be either an address or identifier of an ADO in a app.",
             "type": "string"
           }
+<<<<<<< HEAD
         },
         "additionalProperties": false
+=======
+        }
+      },
+      "Operators": {
+        "type": "string",
+        "enum": [
+          "greater",
+          "greater_equal",
+          "equal",
+          "less_equal",
+          "less"
+        ]
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+>>>>>>> development
       }
     }
   },
@@ -52,6 +97,7 @@
         "additionalProperties": false
       },
       {
+<<<<<<< HEAD
         "description": "Evaluates 2 pieces of data",
         "type": "object",
         "required": [
@@ -78,6 +124,8 @@
         "additionalProperties": false
       },
       {
+=======
+>>>>>>> development
         "type": "object",
         "required": [
           "change_condition_address"
@@ -146,8 +194,12 @@
               }
             ]
           }
+<<<<<<< HEAD
         },
         "additionalProperties": false
+=======
+        }
+>>>>>>> development
       },
       "AndrAddress": {
         "type": "object",
@@ -159,8 +211,12 @@
             "description": "Can be either an address or identifier of an ADO in a app.",
             "type": "string"
           }
+<<<<<<< HEAD
         },
         "additionalProperties": false
+=======
+        }
+>>>>>>> development
       },
       "AndromedaMsg": {
         "oneOf": [
@@ -199,8 +255,12 @@
                   "address": {
                     "type": "string"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -223,8 +283,12 @@
                       "type": "string"
                     }
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -244,8 +308,12 @@
                   "address": {
                     "type": "string"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -278,8 +346,12 @@
                       "$ref": "#/definitions/Withdrawal"
                     }
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -299,8 +371,12 @@
                   "module": {
                     "$ref": "#/definitions/Module"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -320,8 +396,12 @@
                   "module_idx": {
                     "$ref": "#/definitions/Uint64"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -345,8 +425,12 @@
                   "module_idx": {
                     "$ref": "#/definitions/Uint64"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -366,8 +450,12 @@
                   "contract": {
                     "type": "string"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -395,8 +483,12 @@
                       "null"
                     ]
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -404,7 +496,11 @@
         ]
       },
       "Binary": {
+<<<<<<< HEAD
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+=======
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+>>>>>>> development
         "type": "string"
       },
       "Decimal": {
@@ -429,6 +525,7 @@
           "module_type": {
             "type": "string"
           }
+<<<<<<< HEAD
         },
         "additionalProperties": false
       },
@@ -441,6 +538,9 @@
           "LessEqual",
           "Less"
         ]
+=======
+        }
+>>>>>>> development
       },
       "Recipient": {
         "oneOf": [
@@ -498,8 +598,12 @@
               }
             ]
           }
+<<<<<<< HEAD
         },
         "additionalProperties": false
+=======
+        }
+>>>>>>> development
       },
       "WithdrawalType": {
         "oneOf": [
@@ -563,6 +667,22 @@
       {
         "type": "object",
         "required": [
+<<<<<<< HEAD
+=======
+          "evaluation"
+        ],
+        "properties": {
+          "evaluation": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+>>>>>>> development
           "query_a_d_o"
         ],
         "properties": {
@@ -603,8 +723,12 @@
             ],
             "properties": {
               "owner": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -616,8 +740,12 @@
             ],
             "properties": {
               "operators": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -629,8 +757,12 @@
             ],
             "properties": {
               "type": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -642,8 +774,12 @@
             ],
             "properties": {
               "original_publisher": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -655,8 +791,12 @@
             ],
             "properties": {
               "block_height_upon_creation": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -676,8 +816,12 @@
                   "address": {
                     "type": "string"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -697,8 +841,12 @@
                   "id": {
                     "$ref": "#/definitions/Uint64"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -710,8 +858,12 @@
             ],
             "properties": {
               "module_ids": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -723,8 +875,12 @@
             ],
             "properties": {
               "version": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -732,7 +888,11 @@
         ]
       },
       "Binary": {
+<<<<<<< HEAD
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+=======
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+>>>>>>> development
         "type": "string"
       },
       "Uint64": {
@@ -774,8 +934,12 @@
           ],
           "properties": {
             "owner": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -787,8 +951,12 @@
           ],
           "properties": {
             "operators": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -800,8 +968,12 @@
           ],
           "properties": {
             "type": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -813,8 +985,12 @@
           ],
           "properties": {
             "original_publisher": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -826,8 +1002,12 @@
           ],
           "properties": {
             "block_height_upon_creation": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -847,8 +1027,12 @@
                 "address": {
                   "type": "string"
                 }
+<<<<<<< HEAD
               },
               "additionalProperties": false
+=======
+              }
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -868,8 +1052,12 @@
                 "id": {
                   "$ref": "#/definitions/Uint64"
                 }
+<<<<<<< HEAD
               },
               "additionalProperties": false
+=======
+              }
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -881,8 +1069,12 @@
           ],
           "properties": {
             "module_ids": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -894,8 +1086,12 @@
           ],
           "properties": {
             "version": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -903,7 +1099,11 @@
       ],
       "definitions": {
         "Binary": {
+<<<<<<< HEAD
           "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+=======
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+>>>>>>> development
           "type": "string"
         },
         "Uint64": {
@@ -917,6 +1117,14 @@
       "title": "String",
       "type": "string"
     },
+<<<<<<< HEAD
+=======
+    "evaluation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
+    },
+>>>>>>> development
     "query_a_d_o": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "String",

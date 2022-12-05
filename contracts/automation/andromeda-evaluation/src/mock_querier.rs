@@ -56,7 +56,7 @@ impl WasmMockQuerier {
 
     fn handle_counter_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            andromeda_automation::counter::QueryMsg::Count {} => {
+            andromeda_automation::oracle::QueryMsg::Target {} => {
                 let res = Uint128::new(40);
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }

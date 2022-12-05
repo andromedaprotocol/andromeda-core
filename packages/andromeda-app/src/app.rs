@@ -28,6 +28,8 @@ pub struct InstantiateMsg {
     pub app_components: Vec<AppComponent>,
     pub name: String,
     pub primitive_contract: String,
+    // Used for automation
+    pub target_ados: Option<Vec<String>>,
 }
 
 #[cw_serde]
@@ -35,6 +37,7 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     AddAppComponent { component: AppComponent },
     ClaimOwnership { name: Option<String> },
+    Fire {},
     ProxyMessage { name: String, msg: Binary },
     UpdateAddress { name: String, addr: String },
 }
@@ -54,7 +57,7 @@ pub enum QueryMsg {
     #[returns(bool)]
     ComponentExists { name: String },
     #[returns(Vec<AppComponent>)]
-    GetAddresses {},
+    GetAddressesWithNames {},
     #[returns(ConfigResponse)]
     Config {},
 }

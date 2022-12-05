@@ -3,13 +3,18 @@ use common::{
     app::AndrAddress,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Binary;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // Target ADO's address
+    // The contract we'll send the ExecuteMsg to
     pub target_address: AndrAddress,
     // Condition ADO's address
     pub condition_address: AndrAddress,
+    // Task balancer's address
+    pub task_balancer: String,
+    // Target ADO's Execute Msg
+    pub target_message: Binary,
 }
 
 #[cw_serde]
@@ -34,4 +39,9 @@ pub enum QueryMsg {
     ConditionADO {},
     #[returns(String)]
     TargetADO {},
+}
+#[cw_serde]
+pub enum Increment {
+    One,
+    Two,
 }

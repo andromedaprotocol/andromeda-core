@@ -112,6 +112,11 @@ pub fn execute(
         }
     }
 
+    //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
+        return contract.execute(deps, env, info, andr_msg, execute);
+    };
+
     contract.module_hook::<Response>(
         deps.storage,
         deps.api,

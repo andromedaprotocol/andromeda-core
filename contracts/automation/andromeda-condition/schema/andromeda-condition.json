@@ -7,22 +7,39 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
+<<<<<<< HEAD
       "execute_ado",
       "logic_gate",
       "whitelist"
     ],
     "properties": {
+=======
+      "eval_ados",
+      "execute_ado",
+      "logic_gate"
+    ],
+    "properties": {
+      "eval_ados": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/AndrAddress"
+        }
+      },
+>>>>>>> development
       "execute_ado": {
         "$ref": "#/definitions/AndrAddress"
       },
       "logic_gate": {
         "$ref": "#/definitions/LogicGate"
+<<<<<<< HEAD
       },
       "whitelist": {
         "type": "array",
         "items": {
           "type": "string"
         }
+=======
+>>>>>>> development
       }
     },
     "additionalProperties": false,
@@ -37,12 +54,17 @@
             "description": "Can be either an address or identifier of an ADO in a app.",
             "type": "string"
           }
+<<<<<<< HEAD
         },
         "additionalProperties": false
+=======
+        }
+>>>>>>> development
       },
       "LogicGate": {
         "type": "string",
         "enum": [
+<<<<<<< HEAD
           "a_n_d",
           "o_r",
           "x_o_r",
@@ -50,6 +72,15 @@
           "n_a_n_d",
           "n_o_r",
           "x_n_o_r"
+=======
+          "and",
+          "or",
+          "xor",
+          "not",
+          "nand",
+          "nor",
+          "xnor"
+>>>>>>> development
         ]
       }
     }
@@ -79,6 +110,20 @@
         "properties": {
           "interpret": {
             "type": "object",
+<<<<<<< HEAD
+=======
+            "required": [
+              "results"
+            ],
+            "properties": {
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "boolean"
+                }
+              }
+            },
+>>>>>>> development
             "additionalProperties": false
           }
         },
@@ -87,6 +132,7 @@
       {
         "type": "object",
         "required": [
+<<<<<<< HEAD
           "store_result"
         ],
         "properties": {
@@ -100,6 +146,13 @@
                 "type": "boolean"
               }
             },
+=======
+          "get_results"
+        ],
+        "properties": {
+          "get_results": {
+            "type": "object",
+>>>>>>> development
             "additionalProperties": false
           }
         },
@@ -141,7 +194,11 @@
               "addresses": {
                 "type": "array",
                 "items": {
+<<<<<<< HEAD
                   "type": "string"
+=======
+                  "$ref": "#/definitions/AndrAddress"
+>>>>>>> development
                 }
               }
             },
@@ -198,8 +255,12 @@
               }
             ]
           }
+<<<<<<< HEAD
         },
         "additionalProperties": false
+=======
+        }
+>>>>>>> development
       },
       "AndrAddress": {
         "type": "object",
@@ -211,8 +272,12 @@
             "description": "Can be either an address or identifier of an ADO in a app.",
             "type": "string"
           }
+<<<<<<< HEAD
         },
         "additionalProperties": false
+=======
+        }
+>>>>>>> development
       },
       "AndromedaMsg": {
         "oneOf": [
@@ -251,8 +316,12 @@
                   "address": {
                     "type": "string"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -275,8 +344,12 @@
                       "type": "string"
                     }
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -296,8 +369,12 @@
                   "address": {
                     "type": "string"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -330,8 +407,12 @@
                       "$ref": "#/definitions/Withdrawal"
                     }
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -351,8 +432,12 @@
                   "module": {
                     "$ref": "#/definitions/Module"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -372,8 +457,12 @@
                   "module_idx": {
                     "$ref": "#/definitions/Uint64"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -397,8 +486,12 @@
                   "module_idx": {
                     "$ref": "#/definitions/Uint64"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -418,8 +511,12 @@
                   "contract": {
                     "type": "string"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -447,8 +544,12 @@
                       "null"
                     ]
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -456,7 +557,11 @@
         ]
       },
       "Binary": {
+<<<<<<< HEAD
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+=======
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+>>>>>>> development
         "type": "string"
       },
       "Decimal": {
@@ -466,6 +571,7 @@
       "LogicGate": {
         "type": "string",
         "enum": [
+<<<<<<< HEAD
           "a_n_d",
           "o_r",
           "x_o_r",
@@ -473,6 +579,15 @@
           "n_a_n_d",
           "n_o_r",
           "x_n_o_r"
+=======
+          "and",
+          "or",
+          "xor",
+          "not",
+          "nand",
+          "nor",
+          "xnor"
+>>>>>>> development
         ]
       },
       "Module": {
@@ -493,8 +608,12 @@
           "module_type": {
             "type": "string"
           }
+<<<<<<< HEAD
         },
         "additionalProperties": false
+=======
+        }
+>>>>>>> development
       },
       "Recipient": {
         "oneOf": [
@@ -552,8 +671,12 @@
               }
             ]
           }
+<<<<<<< HEAD
         },
         "additionalProperties": false
+=======
+        }
+>>>>>>> development
       },
       "WithdrawalType": {
         "oneOf": [
@@ -617,6 +740,7 @@
       {
         "type": "object",
         "required": [
+<<<<<<< HEAD
           "whitelist"
         ],
         "properties": {
@@ -634,6 +758,12 @@
         ],
         "properties": {
           "results": {
+=======
+          "eval_ados"
+        ],
+        "properties": {
+          "eval_ados": {
+>>>>>>> development
             "type": "object",
             "additionalProperties": false
           }
@@ -670,8 +800,12 @@
             ],
             "properties": {
               "owner": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -683,8 +817,12 @@
             ],
             "properties": {
               "operators": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -696,8 +834,12 @@
             ],
             "properties": {
               "type": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -709,8 +851,12 @@
             ],
             "properties": {
               "original_publisher": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -722,8 +868,12 @@
             ],
             "properties": {
               "block_height_upon_creation": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -743,8 +893,12 @@
                   "address": {
                     "type": "string"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -764,8 +918,12 @@
                   "id": {
                     "$ref": "#/definitions/Uint64"
                   }
+<<<<<<< HEAD
                 },
                 "additionalProperties": false
+=======
+                }
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -777,8 +935,12 @@
             ],
             "properties": {
               "module_ids": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -790,8 +952,12 @@
             ],
             "properties": {
               "version": {
+<<<<<<< HEAD
                 "type": "object",
                 "additionalProperties": false
+=======
+                "type": "object"
+>>>>>>> development
               }
             },
             "additionalProperties": false
@@ -799,7 +965,11 @@
         ]
       },
       "Binary": {
+<<<<<<< HEAD
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+=======
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+>>>>>>> development
         "type": "string"
       },
       "Uint64": {
@@ -841,8 +1011,12 @@
           ],
           "properties": {
             "owner": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -854,8 +1028,12 @@
           ],
           "properties": {
             "operators": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -867,8 +1045,12 @@
           ],
           "properties": {
             "type": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -880,8 +1062,12 @@
           ],
           "properties": {
             "original_publisher": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -893,8 +1079,12 @@
           ],
           "properties": {
             "block_height_upon_creation": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -914,8 +1104,12 @@
                 "address": {
                   "type": "string"
                 }
+<<<<<<< HEAD
               },
               "additionalProperties": false
+=======
+              }
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -935,8 +1129,12 @@
                 "id": {
                   "$ref": "#/definitions/Uint64"
                 }
+<<<<<<< HEAD
               },
               "additionalProperties": false
+=======
+              }
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -948,8 +1146,12 @@
           ],
           "properties": {
             "module_ids": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -961,8 +1163,12 @@
           ],
           "properties": {
             "version": {
+<<<<<<< HEAD
               "type": "object",
               "additionalProperties": false
+=======
+              "type": "object"
+>>>>>>> development
             }
           },
           "additionalProperties": false
@@ -970,7 +1176,11 @@
       ],
       "definitions": {
         "Binary": {
+<<<<<<< HEAD
           "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+=======
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+>>>>>>> development
           "type": "string"
         },
         "Uint64": {
@@ -979,11 +1189,37 @@
         }
       }
     },
+<<<<<<< HEAD
+=======
+    "eval_ados": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_AndrAddress",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AndrAddress"
+      },
+      "definitions": {
+        "AndrAddress": {
+          "type": "object",
+          "required": [
+            "identifier"
+          ],
+          "properties": {
+            "identifier": {
+              "description": "Can be either an address or identifier of an ADO in a app.",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+>>>>>>> development
     "logic_gate": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "LogicGate",
       "type": "string",
       "enum": [
+<<<<<<< HEAD
         "a_n_d",
         "o_r",
         "x_o_r",
@@ -1008,6 +1244,16 @@
       "items": {
         "type": "string"
       }
+=======
+        "and",
+        "or",
+        "xor",
+        "not",
+        "nand",
+        "nor",
+        "xnor"
+      ]
+>>>>>>> development
     }
   }
 }

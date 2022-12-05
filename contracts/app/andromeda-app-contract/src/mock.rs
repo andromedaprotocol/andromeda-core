@@ -18,6 +18,7 @@ pub fn mock_app_instantiate_msg(
         app_components,
         name,
         primitive_contract,
+        target_ados: None,
     }
 }
 

@@ -202,13 +202,7 @@ fn execute_send(
                 },
             )?
         }
-        _ => recipient.generate_msg_from_asset(
-            deps.api,
-            &deps.querier,
-            ADOContract::default().get_app_contract(deps.storage)?,
-            ask_asset_info,
-            info.funds,
-        )?,
+        _ => todo!(),
     };
     Ok(Response::new()
         .add_attribute("action", "send")

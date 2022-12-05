@@ -6,6 +6,5 @@ fn main() {
         instantiate: InstantiateMsg,
         query: QueryMsg,
         execute: ExecuteMsg,
-
     }
 }
