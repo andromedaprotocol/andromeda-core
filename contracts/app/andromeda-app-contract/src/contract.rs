@@ -391,11 +391,6 @@ fn query_component_addresses_with_name(deps: Deps) -> Result<Vec<ComponentAddres
     Ok(value)
 }
 
-// fn query_component_addresses(deps: Deps) -> Result<Vec<Addr>, ContractError> {
-//     let value = load_component_addresses(deps.storage)?;
-//     Ok(value)
-// }
-
 fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let name = APP_NAME.load(deps.storage)?;
     let owner = ADOContract::default().query_contract_owner(deps)?.owner;
