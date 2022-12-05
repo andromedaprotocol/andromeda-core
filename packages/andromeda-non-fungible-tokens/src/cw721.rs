@@ -3,12 +3,15 @@ use common::{
     app::AndrAddress,
     primitive::Value,
 };
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use cosmwasm_std::{Binary, Coin, CustomMsg};
-use cw721::Expiration;
+use cw721::{
+    AllNftInfoResponse, ContractInfoResponse, Expiration, NftInfoResponse, NumTokensResponse,
+    OperatorsResponse, OwnerOfResponse, TokensResponse,
+};
 pub use cw721_base::MintMsg;
-use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
+use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MinterResponse, QueryMsg as Cw721QueryMsg};
 
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
@@ -176,16 +179,21 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
 }
 
 #[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(AndromedaHook)]
     AndrHook(AndromedaHook),
 
     /// Owner of the given token by ID
+    #[returns(OwnerOfResponse)]
     OwnerOf {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// Approvals for a given address (paginated)
+    #[returns(OperatorsResponse)]
     AllOperators {
         owner: String,
         include_expired: Option<bool>,
@@ -193,42 +201,42 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Amount of tokens minted by the contract
+    #[returns(NumTokensResponse)]
     NumTokens {},
     /// The data of a token
-    NftInfo {
-        token_id: String,
-    },
+    #[returns(NftInfoResponse<TokenExtension>)]
+    NftInfo { token_id: String },
     /// The data of a token and any approvals assigned to it
+    #[returns(AllNftInfoResponse<TokenExtension>)]
     AllNftInfo {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// All tokens minted by the contract owned by a given address (paginated)
+    #[returns(TokensResponse)]
     Tokens {
         owner: String,
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// All tokens minted by the contract (paginated)
+    #[returns(TokensResponse)]
     AllTokens {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// If the token is archived
-    IsArchived {
-        token_id: String,
-    },
+    #[returns(bool)]
+    IsArchived { token_id: String },
     /// The transfer agreement for the token
-    TransferAgreement {
-        token_id: String,
-    },
-    /// Info of any modules assigned to the contract
-    ModuleInfo {},
+    #[returns(Option<TransferAgreement>)]
+    TransferAgreement { token_id: String },
     /// The current config of the contract
+    #[returns(ContractInfoResponse)]
     ContractInfo {},
-    Extension {
-        msg: Box<QueryMsg>,
-    },
+    #[returns(TokenExtension)]
+    Extension { msg: Box<QueryMsg> },
+    #[returns(MinterResponse)]
     Minter {},
 }
 

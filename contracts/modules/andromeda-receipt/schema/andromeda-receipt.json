@@ -390,7 +390,7 @@
         "type": "string"
       },
       "Event": {
-        "description": "A full [*Cosmos SDK* event].\n\nThis version uses string attributes (similar to [*Cosmos SDK* StringEvent]), which then get magically converted to bytes for Tendermint somewhere between the Rust-Go interface, JSON deserialization and the `NewEvent` call in Cosmos SDK.\n\n[*Cosmos SDK* event]: https://docs.cosmos.network/master/core/events.html [*Cosmos SDK* StringEvent]: https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/base/abci/v1beta1/abci.proto#L56-L70",
+        "description": "A full [*Cosmos SDK* event].\n\nThis version uses string attributes (similar to [*Cosmos SDK* StringEvent]), which then get magically converted to bytes for Tendermint somewhere between the Rust-Go interface, JSON deserialization and the `NewEvent` call in Cosmos SDK.\n\n[*Cosmos SDK* event]: https://docs.cosmos.network/main/core/events.html [*Cosmos SDK* StringEvent]: https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/base/abci/v1beta1/abci.proto#L56-L70",
         "type": "object",
         "required": [
           "attributes",
@@ -398,7 +398,7 @@
         ],
         "properties": {
           "attributes": {
-            "description": "The attributes to be included in the event.\n\nYou can learn more about these from [*Cosmos SDK* docs].\n\n[*Cosmos SDK* docs]: https://docs.cosmos.network/master/core/events.html",
+            "description": "The attributes to be included in the event.\n\nYou can learn more about these from [*Cosmos SDK* docs].\n\n[*Cosmos SDK* docs]: https://docs.cosmos.network/main/core/events.html",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
@@ -695,10 +695,10 @@
           {
             "type": "object",
             "required": [
-              "Get"
+              "get"
             ],
             "properties": {
-              "Get": {
+              "get": {
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Binary"
@@ -714,11 +714,12 @@
           {
             "type": "object",
             "required": [
-              "Owner"
+              "owner"
             ],
             "properties": {
-              "Owner": {
-                "type": "object"
+              "owner": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -726,11 +727,12 @@
           {
             "type": "object",
             "required": [
-              "Operators"
+              "operators"
             ],
             "properties": {
-              "Operators": {
-                "type": "object"
+              "operators": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -738,11 +740,12 @@
           {
             "type": "object",
             "required": [
-              "Type"
+              "type"
             ],
             "properties": {
-              "Type": {
-                "type": "object"
+              "type": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -750,11 +753,12 @@
           {
             "type": "object",
             "required": [
-              "OriginalPublisher"
+              "original_publisher"
             ],
             "properties": {
-              "OriginalPublisher": {
-                "type": "object"
+              "original_publisher": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -762,11 +766,12 @@
           {
             "type": "object",
             "required": [
-              "BlockHeightUponCreation"
+              "block_height_upon_creation"
             ],
             "properties": {
-              "BlockHeightUponCreation": {
-                "type": "object"
+              "block_height_upon_creation": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -774,10 +779,10 @@
           {
             "type": "object",
             "required": [
-              "IsOperator"
+              "is_operator"
             ],
             "properties": {
-              "IsOperator": {
+              "is_operator": {
                 "type": "object",
                 "required": [
                   "address"
@@ -786,7 +791,8 @@
                   "address": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -794,10 +800,10 @@
           {
             "type": "object",
             "required": [
-              "Module"
+              "module"
             ],
             "properties": {
-              "Module": {
+              "module": {
                 "type": "object",
                 "required": [
                   "id"
@@ -806,7 +812,8 @@
                   "id": {
                     "$ref": "#/definitions/Uint64"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -814,11 +821,12 @@
           {
             "type": "object",
             "required": [
-              "ModuleIds"
+              "module_ids"
             ],
             "properties": {
-              "ModuleIds": {
-                "type": "object"
+              "module_ids": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -826,11 +834,12 @@
           {
             "type": "object",
             "required": [
-              "Version"
+              "version"
             ],
             "properties": {
-              "Version": {
-                "type": "object"
+              "version": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1078,10 +1087,10 @@
         {
           "type": "object",
           "required": [
-            "Get"
+            "get"
           ],
           "properties": {
-            "Get": {
+            "get": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Binary"
@@ -1097,11 +1106,12 @@
         {
           "type": "object",
           "required": [
-            "Owner"
+            "owner"
           ],
           "properties": {
-            "Owner": {
-              "type": "object"
+            "owner": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1109,11 +1119,12 @@
         {
           "type": "object",
           "required": [
-            "Operators"
+            "operators"
           ],
           "properties": {
-            "Operators": {
-              "type": "object"
+            "operators": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1121,11 +1132,12 @@
         {
           "type": "object",
           "required": [
-            "Type"
+            "type"
           ],
           "properties": {
-            "Type": {
-              "type": "object"
+            "type": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1133,11 +1145,12 @@
         {
           "type": "object",
           "required": [
-            "OriginalPublisher"
+            "original_publisher"
           ],
           "properties": {
-            "OriginalPublisher": {
-              "type": "object"
+            "original_publisher": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1145,11 +1158,12 @@
         {
           "type": "object",
           "required": [
-            "BlockHeightUponCreation"
+            "block_height_upon_creation"
           ],
           "properties": {
-            "BlockHeightUponCreation": {
-              "type": "object"
+            "block_height_upon_creation": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1157,10 +1171,10 @@
         {
           "type": "object",
           "required": [
-            "IsOperator"
+            "is_operator"
           ],
           "properties": {
-            "IsOperator": {
+            "is_operator": {
               "type": "object",
               "required": [
                 "address"
@@ -1169,7 +1183,8 @@
                 "address": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1177,10 +1192,10 @@
         {
           "type": "object",
           "required": [
-            "Module"
+            "module"
           ],
           "properties": {
-            "Module": {
+            "module": {
               "type": "object",
               "required": [
                 "id"
@@ -1189,7 +1204,8 @@
                 "id": {
                   "$ref": "#/definitions/Uint64"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1197,11 +1213,12 @@
         {
           "type": "object",
           "required": [
-            "ModuleIds"
+            "module_ids"
           ],
           "properties": {
-            "ModuleIds": {
-              "type": "object"
+            "module_ids": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1209,11 +1226,12 @@
         {
           "type": "object",
           "required": [
-            "Version"
+            "version"
           ],
           "properties": {
-            "Version": {
-              "type": "object"
+            "version": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1290,7 +1308,7 @@
           }
         },
         "Event": {
-          "description": "A full [*Cosmos SDK* event].\n\nThis version uses string attributes (similar to [*Cosmos SDK* StringEvent]), which then get magically converted to bytes for Tendermint somewhere between the Rust-Go interface, JSON deserialization and the `NewEvent` call in Cosmos SDK.\n\n[*Cosmos SDK* event]: https://docs.cosmos.network/master/core/events.html [*Cosmos SDK* StringEvent]: https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/base/abci/v1beta1/abci.proto#L56-L70",
+          "description": "A full [*Cosmos SDK* event].\n\nThis version uses string attributes (similar to [*Cosmos SDK* StringEvent]), which then get magically converted to bytes for Tendermint somewhere between the Rust-Go interface, JSON deserialization and the `NewEvent` call in Cosmos SDK.\n\n[*Cosmos SDK* event]: https://docs.cosmos.network/main/core/events.html [*Cosmos SDK* StringEvent]: https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/base/abci/v1beta1/abci.proto#L56-L70",
           "type": "object",
           "required": [
             "attributes",
@@ -1298,7 +1316,7 @@
           ],
           "properties": {
             "attributes": {
-              "description": "The attributes to be included in the event.\n\nYou can learn more about these from [*Cosmos SDK* docs].\n\n[*Cosmos SDK* docs]: https://docs.cosmos.network/master/core/events.html",
+              "description": "The attributes to be included in the event.\n\nYou can learn more about these from [*Cosmos SDK* docs].\n\n[*Cosmos SDK* docs]: https://docs.cosmos.network/main/core/events.html",
               "type": "array",
               "items": {
                 "$ref": "#/definitions/Attribute"

@@ -7,12 +7,12 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "app",
+      "app_components",
       "name",
       "primitive_contract"
     ],
     "properties": {
-      "app": {
+      "app_components": {
         "type": "array",
         "items": {
           "$ref": "#/definitions/AppComponent"
@@ -23,6 +23,15 @@
       },
       "primitive_contract": {
         "type": "string"
+      },
+      "target_ados": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "type": "string"
+        }
       }
     },
     "additionalProperties": false,
@@ -106,6 +115,19 @@
                 ]
               }
             },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "fire"
+        ],
+        "properties": {
+          "fire": {
+            "type": "object",
             "additionalProperties": false
           }
         },
@@ -657,10 +679,10 @@
       {
         "type": "object",
         "required": [
-          "get_addresses"
+          "get_addresses_with_names"
         ],
         "properties": {
-          "get_addresses": {
+          "get_addresses_with_names": {
             "type": "object",
             "additionalProperties": false
           }
@@ -687,10 +709,10 @@
           {
             "type": "object",
             "required": [
-              "Get"
+              "get"
             ],
             "properties": {
-              "Get": {
+              "get": {
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Binary"
@@ -706,11 +728,12 @@
           {
             "type": "object",
             "required": [
-              "Owner"
+              "owner"
             ],
             "properties": {
-              "Owner": {
-                "type": "object"
+              "owner": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -718,11 +741,12 @@
           {
             "type": "object",
             "required": [
-              "Operators"
+              "operators"
             ],
             "properties": {
-              "Operators": {
-                "type": "object"
+              "operators": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -730,11 +754,12 @@
           {
             "type": "object",
             "required": [
-              "Type"
+              "type"
             ],
             "properties": {
-              "Type": {
-                "type": "object"
+              "type": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -742,11 +767,12 @@
           {
             "type": "object",
             "required": [
-              "OriginalPublisher"
+              "original_publisher"
             ],
             "properties": {
-              "OriginalPublisher": {
-                "type": "object"
+              "original_publisher": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -754,11 +780,12 @@
           {
             "type": "object",
             "required": [
-              "BlockHeightUponCreation"
+              "block_height_upon_creation"
             ],
             "properties": {
-              "BlockHeightUponCreation": {
-                "type": "object"
+              "block_height_upon_creation": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -766,10 +793,10 @@
           {
             "type": "object",
             "required": [
-              "IsOperator"
+              "is_operator"
             ],
             "properties": {
-              "IsOperator": {
+              "is_operator": {
                 "type": "object",
                 "required": [
                   "address"
@@ -778,7 +805,8 @@
                   "address": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -786,10 +814,10 @@
           {
             "type": "object",
             "required": [
-              "Module"
+              "module"
             ],
             "properties": {
-              "Module": {
+              "module": {
                 "type": "object",
                 "required": [
                   "id"
@@ -798,7 +826,8 @@
                   "id": {
                     "$ref": "#/definitions/Uint64"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -806,11 +835,12 @@
           {
             "type": "object",
             "required": [
-              "ModuleIds"
+              "module_ids"
             ],
             "properties": {
-              "ModuleIds": {
-                "type": "object"
+              "module_ids": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -818,11 +848,12 @@
           {
             "type": "object",
             "required": [
-              "Version"
+              "version"
             ],
             "properties": {
-              "Version": {
-                "type": "object"
+              "version": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -849,10 +880,10 @@
         {
           "type": "object",
           "required": [
-            "Get"
+            "get"
           ],
           "properties": {
-            "Get": {
+            "get": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Binary"
@@ -868,11 +899,12 @@
         {
           "type": "object",
           "required": [
-            "Owner"
+            "owner"
           ],
           "properties": {
-            "Owner": {
-              "type": "object"
+            "owner": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -880,11 +912,12 @@
         {
           "type": "object",
           "required": [
-            "Operators"
+            "operators"
           ],
           "properties": {
-            "Operators": {
-              "type": "object"
+            "operators": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -892,11 +925,12 @@
         {
           "type": "object",
           "required": [
-            "Type"
+            "type"
           ],
           "properties": {
-            "Type": {
-              "type": "object"
+            "type": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -904,11 +938,12 @@
         {
           "type": "object",
           "required": [
-            "OriginalPublisher"
+            "original_publisher"
           ],
           "properties": {
-            "OriginalPublisher": {
-              "type": "object"
+            "original_publisher": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -916,11 +951,12 @@
         {
           "type": "object",
           "required": [
-            "BlockHeightUponCreation"
+            "block_height_upon_creation"
           ],
           "properties": {
-            "BlockHeightUponCreation": {
-              "type": "object"
+            "block_height_upon_creation": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -928,10 +964,10 @@
         {
           "type": "object",
           "required": [
-            "IsOperator"
+            "is_operator"
           ],
           "properties": {
-            "IsOperator": {
+            "is_operator": {
               "type": "object",
               "required": [
                 "address"
@@ -940,7 +976,8 @@
                 "address": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -948,10 +985,10 @@
         {
           "type": "object",
           "required": [
-            "Module"
+            "module"
           ],
           "properties": {
-            "Module": {
+            "module": {
               "type": "object",
               "required": [
                 "id"
@@ -960,7 +997,8 @@
                 "id": {
                   "$ref": "#/definitions/Uint64"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -968,11 +1006,12 @@
         {
           "type": "object",
           "required": [
-            "ModuleIds"
+            "module_ids"
           ],
           "properties": {
-            "ModuleIds": {
-              "type": "object"
+            "module_ids": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -980,11 +1019,12 @@
         {
           "type": "object",
           "required": [
-            "Version"
+            "version"
           ],
           "properties": {
-            "Version": {
-              "type": "object"
+            "version": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1029,7 +1069,7 @@
       "title": "String",
       "type": "string"
     },
-    "get_addresses": {
+    "get_addresses_with_names": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Array_of_AppComponent",
       "type": "array",

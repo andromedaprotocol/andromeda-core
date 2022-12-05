@@ -943,10 +943,10 @@
           {
             "type": "object",
             "required": [
-              "Get"
+              "get"
             ],
             "properties": {
-              "Get": {
+              "get": {
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Binary"
@@ -962,11 +962,12 @@
           {
             "type": "object",
             "required": [
-              "Owner"
+              "owner"
             ],
             "properties": {
-              "Owner": {
-                "type": "object"
+              "owner": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -974,11 +975,12 @@
           {
             "type": "object",
             "required": [
-              "Operators"
+              "operators"
             ],
             "properties": {
-              "Operators": {
-                "type": "object"
+              "operators": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -986,11 +988,12 @@
           {
             "type": "object",
             "required": [
-              "Type"
+              "type"
             ],
             "properties": {
-              "Type": {
-                "type": "object"
+              "type": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -998,11 +1001,12 @@
           {
             "type": "object",
             "required": [
-              "OriginalPublisher"
+              "original_publisher"
             ],
             "properties": {
-              "OriginalPublisher": {
-                "type": "object"
+              "original_publisher": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1010,11 +1014,12 @@
           {
             "type": "object",
             "required": [
-              "BlockHeightUponCreation"
+              "block_height_upon_creation"
             ],
             "properties": {
-              "BlockHeightUponCreation": {
-                "type": "object"
+              "block_height_upon_creation": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1022,10 +1027,10 @@
           {
             "type": "object",
             "required": [
-              "IsOperator"
+              "is_operator"
             ],
             "properties": {
-              "IsOperator": {
+              "is_operator": {
                 "type": "object",
                 "required": [
                   "address"
@@ -1034,7 +1039,8 @@
                   "address": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1042,10 +1048,10 @@
           {
             "type": "object",
             "required": [
-              "Module"
+              "module"
             ],
             "properties": {
-              "Module": {
+              "module": {
                 "type": "object",
                 "required": [
                   "id"
@@ -1054,7 +1060,8 @@
                   "id": {
                     "$ref": "#/definitions/Uint64"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1062,11 +1069,12 @@
           {
             "type": "object",
             "required": [
-              "ModuleIds"
+              "module_ids"
             ],
             "properties": {
-              "ModuleIds": {
-                "type": "object"
+              "module_ids": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1074,11 +1082,12 @@
           {
             "type": "object",
             "required": [
-              "Version"
+              "version"
             ],
             "properties": {
-              "Version": {
-                "type": "object"
+              "version": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1105,10 +1114,10 @@
         {
           "type": "object",
           "required": [
-            "Get"
+            "get"
           ],
           "properties": {
-            "Get": {
+            "get": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Binary"
@@ -1124,11 +1133,12 @@
         {
           "type": "object",
           "required": [
-            "Owner"
+            "owner"
           ],
           "properties": {
-            "Owner": {
-              "type": "object"
+            "owner": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1136,11 +1146,12 @@
         {
           "type": "object",
           "required": [
-            "Operators"
+            "operators"
           ],
           "properties": {
-            "Operators": {
-              "type": "object"
+            "operators": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1148,11 +1159,12 @@
         {
           "type": "object",
           "required": [
-            "Type"
+            "type"
           ],
           "properties": {
-            "Type": {
-              "type": "object"
+            "type": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1160,11 +1172,12 @@
         {
           "type": "object",
           "required": [
-            "OriginalPublisher"
+            "original_publisher"
           ],
           "properties": {
-            "OriginalPublisher": {
-              "type": "object"
+            "original_publisher": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1172,11 +1185,12 @@
         {
           "type": "object",
           "required": [
-            "BlockHeightUponCreation"
+            "block_height_upon_creation"
           ],
           "properties": {
-            "BlockHeightUponCreation": {
-              "type": "object"
+            "block_height_upon_creation": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1184,10 +1198,10 @@
         {
           "type": "object",
           "required": [
-            "IsOperator"
+            "is_operator"
           ],
           "properties": {
-            "IsOperator": {
+            "is_operator": {
               "type": "object",
               "required": [
                 "address"
@@ -1196,7 +1210,8 @@
                 "address": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1204,10 +1219,10 @@
         {
           "type": "object",
           "required": [
-            "Module"
+            "module"
           ],
           "properties": {
-            "Module": {
+            "module": {
               "type": "object",
               "required": [
                 "id"
@@ -1216,7 +1231,8 @@
                 "id": {
                   "$ref": "#/definitions/Uint64"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1224,11 +1240,12 @@
         {
           "type": "object",
           "required": [
-            "ModuleIds"
+            "module_ids"
           ],
           "properties": {
-            "ModuleIds": {
-              "type": "object"
+            "module_ids": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -1236,11 +1253,12 @@
         {
           "type": "object",
           "required": [
-            "Version"
+            "version"
           ],
           "properties": {
-            "Version": {
-              "type": "object"
+            "version": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

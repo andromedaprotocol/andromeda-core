@@ -1,6 +1,6 @@
 {
-  "contract_name": "andromeda-factory",
-  "contract_version": "0.1.0",
+  "contract_name": "andromeda-adodb",
+  "contract_version": "0.1.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -25,32 +25,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Create new token",
-        "type": "object",
-        "required": [
-          "create"
-        ],
-        "properties": {
-          "create": {
-            "type": "object",
-            "required": [
-              "name",
-              "symbol"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "symbol": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
         "type": "object",
         "required": [
           "update_code_id"
@@ -69,32 +43,6 @@
                 "minimum": 0.0
               },
               "code_id_key": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Update token contract address by symbol",
-        "type": "object",
-        "required": [
-          "update_address"
-        ],
-        "properties": {
-          "update_address": {
-            "type": "object",
-            "required": [
-              "new_address",
-              "symbol"
-            ],
-            "properties": {
-              "new_address": {
-                "type": "string"
-              },
-              "symbol": {
                 "type": "string"
               }
             },
@@ -522,28 +470,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Query token contract address by its symbol",
-        "type": "object",
-        "required": [
-          "get_address"
-        ],
-        "properties": {
-          "get_address": {
-            "type": "object",
-            "required": [
-              "symbol"
-            ],
-            "properties": {
-              "symbol": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
         "description": "All code IDs for Andromeda contracts",
         "type": "object",
         "required": [
@@ -572,10 +498,10 @@
           {
             "type": "object",
             "required": [
-              "Get"
+              "get"
             ],
             "properties": {
-              "Get": {
+              "get": {
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Binary"
@@ -591,11 +517,12 @@
           {
             "type": "object",
             "required": [
-              "Owner"
+              "owner"
             ],
             "properties": {
-              "Owner": {
-                "type": "object"
+              "owner": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -603,11 +530,12 @@
           {
             "type": "object",
             "required": [
-              "Operators"
+              "operators"
             ],
             "properties": {
-              "Operators": {
-                "type": "object"
+              "operators": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -615,11 +543,12 @@
           {
             "type": "object",
             "required": [
-              "Type"
+              "type"
             ],
             "properties": {
-              "Type": {
-                "type": "object"
+              "type": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -627,11 +556,12 @@
           {
             "type": "object",
             "required": [
-              "OriginalPublisher"
+              "original_publisher"
             ],
             "properties": {
-              "OriginalPublisher": {
-                "type": "object"
+              "original_publisher": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -639,11 +569,12 @@
           {
             "type": "object",
             "required": [
-              "BlockHeightUponCreation"
+              "block_height_upon_creation"
             ],
             "properties": {
-              "BlockHeightUponCreation": {
-                "type": "object"
+              "block_height_upon_creation": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -651,10 +582,10 @@
           {
             "type": "object",
             "required": [
-              "IsOperator"
+              "is_operator"
             ],
             "properties": {
-              "IsOperator": {
+              "is_operator": {
                 "type": "object",
                 "required": [
                   "address"
@@ -663,7 +594,8 @@
                   "address": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -671,10 +603,10 @@
           {
             "type": "object",
             "required": [
-              "Module"
+              "module"
             ],
             "properties": {
-              "Module": {
+              "module": {
                 "type": "object",
                 "required": [
                   "id"
@@ -683,7 +615,8 @@
                   "id": {
                     "$ref": "#/definitions/Uint64"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -691,11 +624,12 @@
           {
             "type": "object",
             "required": [
-              "ModuleIds"
+              "module_ids"
             ],
             "properties": {
-              "ModuleIds": {
-                "type": "object"
+              "module_ids": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -703,11 +637,12 @@
           {
             "type": "object",
             "required": [
-              "Version"
+              "version"
             ],
             "properties": {
-              "Version": {
-                "type": "object"
+              "version": {
+                "type": "object",
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -734,10 +669,10 @@
         {
           "type": "object",
           "required": [
-            "Get"
+            "get"
           ],
           "properties": {
-            "Get": {
+            "get": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Binary"
@@ -753,11 +688,12 @@
         {
           "type": "object",
           "required": [
-            "Owner"
+            "owner"
           ],
           "properties": {
-            "Owner": {
-              "type": "object"
+            "owner": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -765,11 +701,12 @@
         {
           "type": "object",
           "required": [
-            "Operators"
+            "operators"
           ],
           "properties": {
-            "Operators": {
-              "type": "object"
+            "operators": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -777,11 +714,12 @@
         {
           "type": "object",
           "required": [
-            "Type"
+            "type"
           ],
           "properties": {
-            "Type": {
-              "type": "object"
+            "type": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -789,11 +727,12 @@
         {
           "type": "object",
           "required": [
-            "OriginalPublisher"
+            "original_publisher"
           ],
           "properties": {
-            "OriginalPublisher": {
-              "type": "object"
+            "original_publisher": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -801,11 +740,12 @@
         {
           "type": "object",
           "required": [
-            "BlockHeightUponCreation"
+            "block_height_upon_creation"
           ],
           "properties": {
-            "BlockHeightUponCreation": {
-              "type": "object"
+            "block_height_upon_creation": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -813,10 +753,10 @@
         {
           "type": "object",
           "required": [
-            "IsOperator"
+            "is_operator"
           ],
           "properties": {
-            "IsOperator": {
+            "is_operator": {
               "type": "object",
               "required": [
                 "address"
@@ -825,7 +765,8 @@
                 "address": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -833,10 +774,10 @@
         {
           "type": "object",
           "required": [
-            "Module"
+            "module"
           ],
           "properties": {
-            "Module": {
+            "module": {
               "type": "object",
               "required": [
                 "id"
@@ -845,7 +786,8 @@
                 "id": {
                   "$ref": "#/definitions/Uint64"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -853,11 +795,12 @@
         {
           "type": "object",
           "required": [
-            "ModuleIds"
+            "module_ids"
           ],
           "properties": {
-            "ModuleIds": {
-              "type": "object"
+            "module_ids": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -865,11 +808,12 @@
         {
           "type": "object",
           "required": [
-            "Version"
+            "version"
           ],
           "properties": {
-            "Version": {
-              "type": "object"
+            "version": {
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -892,20 +836,6 @@
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
-    },
-    "get_address": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "AddressResponse",
-      "type": "object",
-      "required": [
-        "address"
-      ],
-      "properties": {
-        "address": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
     }
   }
 }
