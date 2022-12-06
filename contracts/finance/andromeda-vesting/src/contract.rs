@@ -12,7 +12,9 @@ use semver::Version;
 use std::cmp;
 
 use ado_base::ADOContract;
-use andromeda_finance::vesting::{BatchResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_finance::vesting::{
+    BatchResponse, Config, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
     withdraw::WithdrawalType,
@@ -20,7 +22,7 @@ use common::{
 
 use crate::state::{
     batches, get_all_batches_with_ids, get_claimable_batches_with_ids, save_new_batch, Batch,
-    Config, CONFIG,
+    CONFIG,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";

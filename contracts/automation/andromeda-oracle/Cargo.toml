@@ -13,7 +13,7 @@ schemars = "0.8.3"
 cw-storage-plus = "0.13.4"
 cw2 = "0.13.4"
 cw20 = "0.13.4"
-cw-utils = "0.13.4"
+cw-utils = "0.16.0"
 semver = "1"
 serde-json-wasm = "0.4.1"
 serde-json-value-wasm = { git = "https://github.com/chris-ricketts/serde-json-value-wasm" }

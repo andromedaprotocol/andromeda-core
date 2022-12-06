@@ -1,7 +1,6 @@
 use crate::{app::AndrAddress, error::ContractError};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::ensure;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 pub const RATES: &str = "rates";
 pub const BIDS: &str = "bids";
@@ -11,8 +10,7 @@ pub const RECEIPT: &str = "receipt";
 pub const OTHER: &str = "other";
 
 /// A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct Module {
     pub module_type: String,
     pub address: AndrAddress,
@@ -20,6 +18,20 @@ pub struct Module {
 }
 
 impl Module {
+    pub fn new(
+        module_type: impl Into<String>,
+        address: impl Into<String>,
+        is_mutable: bool,
+    ) -> Module {
+        Module {
+            module_type: module_type.into(),
+            address: AndrAddress {
+                identifier: address.into(),
+            },
+            is_mutable,
+        }
+    }
+
     /// Validates `self` by checking that it is unique, does not conflict with any other module,
     /// and does not conflict with the creating ADO.
     pub fn validate(&self, modules: &[Module], ado_type: &str) -> Result<(), ContractError> {

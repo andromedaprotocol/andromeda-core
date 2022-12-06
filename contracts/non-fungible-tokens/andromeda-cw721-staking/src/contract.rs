@@ -1,7 +1,7 @@
-use crate::state::{StakedNft, ALLOWED_CONTRACTS, REWARD, STAKED_NFTS, UNBONDING_PERIOD};
+use crate::state::{ALLOWED_CONTRACTS, REWARD, STAKED_NFTS, UNBONDING_PERIOD};
 use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721_staking::{
-    Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakedNft,
 };
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{

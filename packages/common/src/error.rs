@@ -493,6 +493,9 @@ pub enum ContractError {
     #[error("Token not available")]
     TokenNotAvailable {},
 
+    #[error("Invalid expiration")]
+    InvalidExpiration {},
+
     #[error("Too many mint messages, limit is {limit}")]
     TooManyMintMessages { limit: u32 },
 
@@ -534,6 +537,7 @@ impl From<Cw20ContractError> for ContractError {
             Cw20ContractError::DuplicateInitialBalanceAddresses {} => {
                 ContractError::DuplicateInitialBalanceAddresses {}
             }
+            Cw20ContractError::InvalidExpiration {} => ContractError::InvalidExpiration {},
         }
     }
 }

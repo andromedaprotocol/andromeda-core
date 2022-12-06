@@ -3,14 +3,17 @@ use common::{
     app::AndrAddress,
     primitive::Value,
 };
-use cosmwasm_std::{Binary, Coin};
-use cw721::Expiration;
-pub use cw721_base::MintMsg;
-use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+use cosmwasm_std::{Binary, Coin, CustomMsg};
+use cw721::{
+    AllNftInfoResponse, ContractInfoResponse, Expiration, NftInfoResponse, NumTokensResponse,
+    OperatorsResponse, OwnerOfResponse, TokensResponse,
+};
+pub use cw721_base::MintMsg;
+use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MinterResponse, QueryMsg as Cw721QueryMsg};
+
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     /// Name of the NFT contract
@@ -25,7 +28,7 @@ pub struct InstantiateMsg {
     pub modules: Option<Vec<Module>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 /// A struct used to represent an agreed transfer of a token. The `purchaser` may use the `Transfer` message for this token as long as funds are provided equalling the `amount` defined in the agreement.
 pub struct TransferAgreement {
     /// The amount required for the purchaser to transfer ownership of the token
@@ -34,7 +37,7 @@ pub struct TransferAgreement {
     pub purchaser: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct MetadataAttribute {
     /// The key for the attribute
     pub trait_type: String,
@@ -46,7 +49,8 @@ pub struct MetadataAttribute {
 
 /// https://docs.opensea.io/docs/metadata-standards
 /// Replicates OpenSea Metadata Standards
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
+#[derive(Default)]
 pub struct TokenExtension {
     /// The name of the token
     pub name: String,
@@ -64,12 +68,14 @@ pub struct TokenExtension {
     pub external_url: Option<String>,
     /// A URL to any multi-media attachments
     pub animation_url: Option<String>,
-    /// A URL to a related YouTube video
+    /// A URL to a related YouTube videos
     pub youtube_url: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+impl CustomMsg for ExecuteMsg {}
+impl CustomMsg for QueryMsg {}
+
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Mints a token
@@ -123,9 +129,12 @@ pub enum ExecuteMsg {
     BatchMint {
         tokens: Vec<MintMsg<TokenExtension>>,
     },
+    Extension {
+        msg: Box<ExecuteMsg>,
+    },
 }
 
-impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
+impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
     fn from(msg: ExecuteMsg) -> Self {
         match msg {
             ExecuteMsg::TransferNft {
@@ -161,22 +170,30 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension> {
             }
             ExecuteMsg::RevokeAll { operator } => Cw721ExecuteMsg::RevokeAll { operator },
             ExecuteMsg::Mint(msg) => Cw721ExecuteMsg::Mint(*msg),
+            ExecuteMsg::Burn { token_id } => Cw721ExecuteMsg::Burn { token_id },
+            ExecuteMsg::Extension { msg } => Cw721ExecuteMsg::Extension { msg: *msg },
+
             _ => panic!("Unsupported message"),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(AndromedaHook)]
     AndrHook(AndromedaHook),
+
     /// Owner of the given token by ID
+    #[returns(OwnerOfResponse)]
     OwnerOf {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// Approvals for a given address (paginated)
+    #[returns(OperatorsResponse)]
     AllOperators {
         owner: String,
         include_expired: Option<bool>,
@@ -184,42 +201,46 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Amount of tokens minted by the contract
+    #[returns(NumTokensResponse)]
     NumTokens {},
     /// The data of a token
-    NftInfo {
-        token_id: String,
-    },
+    #[returns(NftInfoResponse<TokenExtension>)]
+    NftInfo { token_id: String },
     /// The data of a token and any approvals assigned to it
+    #[returns(AllNftInfoResponse<TokenExtension>)]
     AllNftInfo {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// All tokens minted by the contract owned by a given address (paginated)
+    #[returns(TokensResponse)]
     Tokens {
         owner: String,
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// All tokens minted by the contract (paginated)
+    #[returns(TokensResponse)]
     AllTokens {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// If the token is archived
-    IsArchived {
-        token_id: String,
-    },
+    #[returns(bool)]
+    IsArchived { token_id: String },
     /// The transfer agreement for the token
-    TransferAgreement {
-        token_id: String,
-    },
-    /// Info of any modules assigned to the contract
-    ModuleInfo {},
+    #[returns(Option<TransferAgreement>)]
+    TransferAgreement { token_id: String },
     /// The current config of the contract
+    #[returns(ContractInfoResponse)]
     ContractInfo {},
+    #[returns(TokenExtension)]
+    Extension { msg: Box<QueryMsg> },
+    #[returns(MinterResponse)]
+    Minter {},
 }
 
-impl From<QueryMsg> for Cw721QueryMsg {
+impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
     fn from(msg: QueryMsg) -> Self {
         match msg {
             QueryMsg::OwnerOf {
@@ -262,11 +283,13 @@ impl From<QueryMsg> for Cw721QueryMsg {
             QueryMsg::AllTokens { start_after, limit } => {
                 Cw721QueryMsg::AllTokens { start_after, limit }
             }
+            QueryMsg::Extension { msg } => Cw721QueryMsg::Extension { msg: *msg },
+            QueryMsg::Minter {} => Cw721QueryMsg::Minter {},
             _ => panic!("Unsupported message"),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}

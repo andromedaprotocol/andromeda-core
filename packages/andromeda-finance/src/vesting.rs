@@ -2,12 +2,11 @@ use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     withdraw::WithdrawalType,
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Uint128, VoteOption};
 use cw_utils::Duration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// The recipient of all funds locked in this contract.
     pub recipient: Recipient,
@@ -19,8 +18,7 @@ pub struct InstantiateMsg {
     pub unbonding_duration: Duration,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     /// Claim the number of batches specified starting from the beginning. If not
@@ -74,24 +72,38 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
     /// Queries the config.
+    #[returns(Config)]
     Config {},
     /// Queries the batch with the given id.
-    Batch {
-        id: u64,
-    },
+    #[returns(BatchResponse)]
+    Batch { id: u64 },
     /// Queries the batches with pagination.
+    #[returns(Vec<BatchResponse>)]
     Batches {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
+pub struct Config {
+    /// The recipient of each batch.
+    pub recipient: Recipient,
+    /// Whether or not multiple batches are supported.
+    pub is_multi_batch_enabled: bool,
+    /// The denom of the coin being vested.
+    pub denom: String,
+    /// The unbonding duration of the native staking module.
+    pub unbonding_duration: Duration,
+}
+
+#[cw_serde]
 pub struct BatchResponse {
     /// The id.
     pub id: u64,
@@ -114,6 +126,6 @@ pub struct BatchResponse {
     pub last_claimed_release_time: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}

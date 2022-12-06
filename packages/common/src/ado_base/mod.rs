@@ -12,11 +12,21 @@ use crate::{
     error::ContractError,
     withdraw::Withdrawal,
 };
-use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, Uint64, WasmQuery};
-use schemars::JsonSchema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, Uint64, WasmQuery};
+
+use serde::de::DeserializeOwned;
+
+use self::{
+    ado_type::TypeResponse,
+    block_height::BlockHeightResponse,
+    operators::{IsOperatorResponse, OperatorsResponse},
+    ownership::{ContractOwnerResponse, PublisherResponse},
+    version::VersionResponse,
+};
+
+#[cw_serde]
 pub struct InstantiateMsg {
     pub ado_type: String,
     pub ado_version: String,
@@ -25,8 +35,7 @@ pub struct InstantiateMsg {
     pub primitive_contract: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum AndromedaMsg {
     /// Standard Messages
     Receive(Option<Binary>),
@@ -62,32 +71,42 @@ pub enum AndromedaMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum AndromedaQuery {
+    #[returns(Option<Binary>)]
     Get(Option<Binary>),
+    #[returns(ContractOwnerResponse)]
     Owner {},
+    #[returns(OperatorsResponse)]
     Operators {},
+    #[returns(TypeResponse)]
     Type {},
+    #[returns(PublisherResponse)]
     OriginalPublisher {},
+    #[returns(BlockHeightResponse)]
     BlockHeightUponCreation {},
+    #[returns(IsOperatorResponse)]
     IsOperator { address: String },
+    #[returns(Module)]
     Module { id: Uint64 },
+    #[returns(Vec<String>)]
     ModuleIds {},
+    #[returns(VersionResponse)]
     Version {},
 }
 
 /// Helper enum for serialization
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
 }
 
 /// Helper enum for serialization
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
 }
 

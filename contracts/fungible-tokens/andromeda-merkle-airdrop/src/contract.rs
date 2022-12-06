@@ -3,12 +3,12 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    attr, ensure, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
     MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
-use cw_asset::AssetInfo;
+use cw_asset::AssetInfoBase;
 use cw_utils::{nonpayable, Expiration};
 use sha2::Digest;
 use std::convert::TryInto;
@@ -184,7 +184,11 @@ pub fn execute_claim(
     STAGE_AMOUNT_CLAIMED.save(deps.storage, stage, &claimed_amount)?;
 
     let transfer_msg: CosmosMsg = match config.asset_info {
-        AssetInfo::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
+        AssetInfoBase::Native(denom) => CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec![Coin { amount, denom }],
+        }),
+        AssetInfoBase::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: address.to_string(),
             funds: vec![],
             msg: to_binary(&Cw20ExecuteMsg::Transfer {
@@ -192,11 +196,7 @@ pub fn execute_claim(
                 amount,
             })?,
         }),
-        AssetInfo::Native(denom) => CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![Coin { amount, denom }],
-        }),
-        _ => todo!(),
+        _ => CosmosMsg::Custom(Empty {}),
     };
 
     let res = Response::new()
@@ -243,20 +243,20 @@ pub fn execute_burn(
 
     let config = CONFIG.load(deps.storage)?;
     let burn_msg = match config.asset_info {
-        AssetInfo::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
+        AssetInfoBase::Native(denom) => CosmosMsg::Bank(BankMsg::Burn {
+            amount: vec![Coin {
+                amount: balance_to_burn,
+                denom,
+            }],
+        }),
+        AssetInfoBase::Cw20(address) => CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: address.to_string(),
             funds: vec![],
             msg: to_binary(&Cw20ExecuteMsg::Burn {
                 amount: balance_to_burn,
             })?,
         }),
-        AssetInfo::Native(denom) => CosmosMsg::Bank(BankMsg::Burn {
-            amount: vec![Coin {
-                amount: balance_to_burn,
-                denom,
-            }],
-        }),
-        _ => todo!(),
+        _ => CosmosMsg::Custom(Empty {}),
     };
 
     // Burn the tokens and response
@@ -398,7 +398,7 @@ mod tests {
             .is_contract_owner(deps.as_ref().storage, "owner0000")
             .unwrap());
         assert_eq!(
-            AssetInfo::cw20(Addr::unchecked("anchor0000")),
+            AssetInfoBase::cw20(Addr::unchecked("anchor0000")),
             config.asset_info
         );
 

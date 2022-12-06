@@ -1,17 +1,17 @@
 use std::env::current_dir;
-use std::fs::create_dir_all;
 
-use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-
-use andromeda_non_fungible_tokens::marketplace::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_non_fungible_tokens::marketplace::{
+    Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
+};
+use cosmwasm_schema::{export_schema_with_title, schema_for, write_api};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
     out_dir.push("schema");
-    create_dir_all(&out_dir).unwrap();
-    remove_schemas(&out_dir).unwrap();
-
-    export_schema(&schema_for!(InstantiateMsg), &out_dir);
-    export_schema(&schema_for!(ExecuteMsg), &out_dir);
-    export_schema(&schema_for!(QueryMsg), &out_dir);
+    write_api! {
+        instantiate: InstantiateMsg,
+        query: QueryMsg,
+        execute: ExecuteMsg,
+    };
+    export_schema_with_title(&schema_for!(Cw721HookMsg), &out_dir, "cw721receive");
 }

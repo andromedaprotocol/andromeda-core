@@ -1,6 +1,6 @@
 use crate::state::{State, STATE, STORAGE_CONTRACTS, UP_NEXT};
 use ado_base::state::ADOContract;
-use andromeda_app::app::QueryMsg::GetAddresses;
+use andromeda_app::app::QueryMsg::GetAddressesWithNames;
 use andromeda_automation::storage::ExecuteMsg as StorageExecuteMsg;
 use andromeda_automation::storage::InstantiateMsg as StorageInstantiateMsg;
 use andromeda_automation::storage::QueryMsg as StorageQueryMsg;
@@ -103,7 +103,7 @@ fn remove_process(
     // Sender should be part of an already existing process, and can't request the removal of another process
     let app_addresses: Vec<Addr> = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: process.clone(),
-        msg: to_binary(&GetAddresses {})?,
+        msg: to_binary(&GetAddressesWithNames {})?,
     }))?;
     ensure!(
         app_addresses.contains(&info.sender),

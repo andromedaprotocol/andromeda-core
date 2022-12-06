@@ -26,7 +26,7 @@ use common::{
 use cw721::ContractInfoResponse;
 use cw721_base::{state::TokenInfo, Cw721Contract, MintMsg};
 
-pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty>;
+pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -84,16 +84,19 @@ pub fn execute(
 
     // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
-    // Handled separately due to extra data required
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
-        let andr_minter = ANDR_MINTER.load(execute_env.deps.storage)?;
-        return contract.execute_update_app_contract(
-            execute_env.deps,
-            execute_env.info,
-            address,
-            Some(vec![andr_minter]),
-        );
-    };
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+            let andr_minter = ANDR_MINTER.load(execute_env.deps.storage)?;
+            return contract.execute_update_app_contract(
+                execute_env.deps,
+                execute_env.info,
+                address,
+                Some(vec![andr_minter]),
+            );
+        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+            return contract.execute_update_owner(execute_env.deps, execute_env.info, address);
+        }
+    }
 
     //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
     if let ExecuteMsg::AndrReceive(andr_msg) = msg {
@@ -432,6 +435,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::TransferAgreement { token_id } => {
             Ok(to_binary(&query_transfer_agreement(deps, token_id)?)?)
         }
+        QueryMsg::Minter {} => Ok(to_binary(&query_minter(deps)?)?),
         _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
     }
 }
@@ -441,6 +445,14 @@ pub fn query_transfer_agreement(
     token_id: String,
 ) -> Result<Option<TransferAgreement>, ContractError> {
     Ok(TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?)
+}
+
+pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let minter = ANDR_MINTER.load(deps.storage)?;
+    let addr = minter.get_address(deps.api, &deps.querier, app_contract)?;
+
+    Ok(addr)
 }
 
 fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {

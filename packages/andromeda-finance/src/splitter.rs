@@ -2,18 +2,19 @@ use common::{
     ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Decimal};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct AddressPercent {
     pub recipient: Recipient,
     pub percent: Decimal,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 /// A config struct for a `Splitter` contract.
 pub struct Splitter {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
@@ -22,7 +23,7 @@ pub struct Splitter {
     pub lock: Expiration,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
@@ -38,8 +39,7 @@ impl InstantiateMsg {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     UpdateRecipients {
@@ -54,15 +54,17 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
     /// The current config of the Splitter contract
+    #[returns(GetSplitterConfigResponse)]
     GetSplitterConfig {},
 }
 

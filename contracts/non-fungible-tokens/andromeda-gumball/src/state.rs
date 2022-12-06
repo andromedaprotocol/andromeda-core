@@ -1,8 +1,7 @@
 use common::{ado_base::recipient::Recipient, app::AndrAddress};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Coin, Uint128};
 use cw_storage_plus::Item;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 // Decided to put the token IDs in a vector
 // We'll use the length on the vector to determine the number of available NFTs
@@ -13,7 +12,7 @@ pub const RANDOMNESS_PROVIDER: Item<String> = Item::new("source of randomness");
 pub const STATE: Item<State> = Item::new("state");
 pub const STATUS: Item<bool> = Item::new("status");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct State {
     /// The price of each token.
     pub price: Coin,
