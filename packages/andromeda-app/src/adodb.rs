@@ -21,4 +21,9 @@ pub enum QueryMsg {
     /// All code IDs for Andromeda contracts
     #[returns(u64)]
     CodeId { key: String },
+    #[returns(Vec<String>)]
+    AdoTypes {
+        limit: Option<u32>,
+        start_after: Option<String>,
+    },
 }
