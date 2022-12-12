@@ -136,6 +136,6 @@ rustup toolchain install nightly
 ```sh
 cargo clippy --all --all-targets -- -D warnings
 ```
-##Licensing
+## Licensing
 
 [Terms and Conditions](https://github.com/andromedaprotocol/andromeda-core/blob/Add-Licensing/LICENSE/LICENSE.md)
