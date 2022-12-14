@@ -1,8 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    attr, ensure, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
-};
+use cosmwasm_std::{attr, ensure, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 use cw2::{get_contract_version, set_contract_version};
 
 use crate::state::{add_address, includes_address, remove_address, IS_INCLUSIVE};

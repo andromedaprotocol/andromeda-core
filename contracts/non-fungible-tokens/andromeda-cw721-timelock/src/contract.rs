@@ -8,7 +8,8 @@ use common::{
     error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
-    ensure, entry_point, from_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, WasmMsg,
+    ensure, entry_point, from_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
+    WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg, Expiration};

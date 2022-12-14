@@ -16,8 +16,7 @@ use common::{
     parse_message,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response,
-    Uint128,
+    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;

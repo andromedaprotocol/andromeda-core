@@ -2,7 +2,8 @@
 // https://github.com/mars-protocol/mars-periphery/tree/main/contracts/lockdrop
 
 use cosmwasm_std::{
-    ensure, entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
+    ensure, entry_point, from_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
+    Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;

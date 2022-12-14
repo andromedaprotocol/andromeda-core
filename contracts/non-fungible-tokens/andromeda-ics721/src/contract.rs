@@ -61,7 +61,8 @@ pub fn instantiate(
                 modules: None,
                 primitive_contract: None,
             },
-        ).map(|_| Response::new().add_submessages(proxy_instantiate))
+        )
+        .map(|_| Response::new().add_submessages(proxy_instantiate))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

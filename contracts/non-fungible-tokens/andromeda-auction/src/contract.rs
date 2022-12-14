@@ -16,8 +16,8 @@ use common::{
 };
 use cosmwasm_std::{
     attr, coins, ensure, entry_point, from_binary, Addr, Api, BankMsg, Binary, BlockInfo, Coin,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response,
-    Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
+    SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};

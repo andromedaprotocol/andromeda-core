@@ -2,7 +2,7 @@ use crate::{
     ado_base::{AndromedaMsg, ExecuteMsg},
     app::AndrAddress,
     encode_binary,
-    error::{ContractError},
+    error::ContractError,
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg, WasmMsg};

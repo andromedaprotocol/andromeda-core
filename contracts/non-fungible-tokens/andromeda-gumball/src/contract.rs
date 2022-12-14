@@ -15,8 +15,8 @@ use common::{
 };
 use cosmwasm_std::{attr, entry_point, Binary, Storage};
 use cosmwasm_std::{
-    ensure, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
-    Uint128, WasmMsg, WasmQuery,
+    ensure, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response, Uint128,
+    WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
