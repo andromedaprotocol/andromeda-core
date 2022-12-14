@@ -221,3 +221,26 @@ pub enum MigrateMsg {
         proxy: Option<String>,
     },
 }
+
+#[cw_serde]
+#[serde(rename_all = "camelCase")]
+pub struct NonFungibleTokenPacketData {
+    /// Uniquely identifies the collection which the tokens being
+    /// transfered belong to on the sending chain.
+    pub class_id: String,
+    /// URL that points to metadata about the collection. This is not
+    /// validated.
+    pub class_uri: Option<String>,
+    /// Uniquely identifies the tokens in the NFT collection being
+    /// transfered.
+    pub token_ids: Vec<String>,
+    /// URL that points to metadata for each token being
+    /// transfered. `tokenUris[N]` should hold the metadata for
+    /// `tokenIds[N]` and both lists should have the same length.
+    pub token_uris: Vec<String>,
+    /// The address sending the tokens on the sending chain.
+    pub sender: String,
+    /// The address that should receive the tokens on the receiving
+    /// chain.
+    pub receiver: String,
+}

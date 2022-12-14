@@ -448,7 +448,6 @@ dependencies = [
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-ics721-bridge",
  "cw-pause-once",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
@@ -1085,26 +1084,6 @@ source = "git+https://github.com/public-awesome/ics721.git#52852e07446c91983a914
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
-]
-
-[[package]]
-name = "cw-ics721-bridge"
-version = "0.0.1"
-source = "git+https://github.com/public-awesome/ics721.git#52852e07446c91983a91495e85103370f49814a7"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-cii",
- "cw-paginate",
- "cw-pause-once",
- "cw-storage-plus 0.15.1",
- "cw-utils 0.15.1",
- "cw2 0.15.1",
- "cw721 0.15.0",
- "cw721-base 0.15.0",
- "cw721-proxy-derive",
- "serde",
- "thiserror",
 ]
 
 [[package]]

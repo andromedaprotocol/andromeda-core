@@ -19,7 +19,6 @@ cw721-base = "0.16.0"
 cw2 = "0.16.0"
 semver = "1"
 cw-utils ="0.16.0"
-cw-ics721-bridge = { git = "https://github.com/public-awesome/ics721.git" }
 cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
 
 andromeda-ibc = { version = "0.1.0", path = "../../../packages/andromeda-ibc" }

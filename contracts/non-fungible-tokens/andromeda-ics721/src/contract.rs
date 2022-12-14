@@ -9,11 +9,10 @@ use cosmwasm_std::{
     StdResult, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_ics721_bridge::ibc::NonFungibleTokenPacketData;
 
 use andromeda_ibc::ics721::{
-    CallbackMsg, ExecuteMsg, IbcOutgoingMsg, InstantiateMsg, MigrateMsg, NewTokenInfo, QueryMsg,
-    TransferInfo,
+    CallbackMsg, ExecuteMsg, IbcOutgoingMsg, InstantiateMsg, MigrateMsg, NewTokenInfo,
+    NonFungibleTokenPacketData, QueryMsg, TransferInfo,
 };
 use semver::Version;
 
