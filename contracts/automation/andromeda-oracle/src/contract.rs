@@ -7,11 +7,15 @@ use andromeda_automation::{
     },
 };
 
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
+};
 
 use cosmwasm_std::{
     ensure, entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo,
-    QueryRequest, Reply, Response, StdError, Uint128, WasmQuery,
+    QueryRequest, Reply, Response, Uint128, WasmQuery,
 };
 use serde_json_value_wasm::Value;
 use serde_json_wasm::from_slice;
@@ -106,10 +110,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

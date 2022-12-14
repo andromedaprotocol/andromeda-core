@@ -22,7 +22,7 @@ use common::{
     },
     app::AndrAddress,
     encode_binary,
-    error::ContractError,
+    error::{ContractError},
 };
 use cosmwasm_std::{
     coin, coins, from_binary,

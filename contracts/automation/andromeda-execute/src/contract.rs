@@ -3,8 +3,10 @@ use ado_base::state::ADOContract;
 use andromeda_automation::execute::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_automation::task_balancer::ExecuteMsg as TaskBalancerExecuteMsg;
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError,
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    app::AndrAddress,
+    encode_binary,
+    error::{from_semver, ContractError},
 };
 use std::env;
 
@@ -178,10 +180,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

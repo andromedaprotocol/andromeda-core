@@ -5,7 +5,11 @@ use ado_base::state::ADOContract;
 use andromeda_automation::counter::{
     CounterResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
+};
 use cosmwasm_std::{
     ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
     Uint128,
@@ -161,10 +165,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

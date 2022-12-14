@@ -60,7 +60,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -113,7 +113,7 @@ dependencies = [
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -184,7 +184,7 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -245,8 +245,8 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
- "cw721",
- "cw721-base",
+ "cw721 0.16.0",
+ "cw721-base 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -265,8 +265,8 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw721",
- "cw721-base",
+ "cw721 0.16.0",
+ "cw721-base 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -284,7 +284,7 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -302,7 +302,7 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -412,7 +412,49 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw721",
+ "cw721 0.16.0",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
+name = "andromeda-ibc"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-cii",
+ "cw-paginate",
+ "cw-storage-plus 0.15.1",
+ "cw-utils 0.15.1",
+ "cw2 0.15.1",
+ "cw721 0.15.0",
+ "cw721-base 0.15.0",
+ "cw721-proxy-derive",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "andromeda-ics721"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-ibc",
+ "andromeda-non-fungible-tokens",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-ics721-bridge",
+ "cw-pause-once",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw721 0.15.0",
+ "cw721-base 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -454,7 +496,7 @@ dependencies = [
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -501,8 +543,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-utils 0.16.0",
- "cw721",
- "cw721-base",
+ "cw721 0.16.0",
+ "cw721-base 0.16.0",
  "schemars",
  "serde",
 ]
@@ -713,7 +755,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw20 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "prost",
 ]
 
@@ -729,7 +771,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -803,8 +845,8 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
- "cw721",
- "cw721-base",
+ "cw721 0.16.0",
+ "cw721-base 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -877,15 +919,17 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
+ "cw-pause-once",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw1155",
  "cw1155-base",
  "cw20 0.16.0",
  "cw20-base",
- "cw721-base",
+ "cw721-base 0.16.0",
  "hex",
  "schemars",
+ "semver",
  "serde",
  "thiserror",
 ]
@@ -1035,6 +1079,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-cii"
+version = "0.0.1"
+source = "git+https://github.com/public-awesome/ics721.git#52852e07446c91983a91495e85103370f49814a7"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+]
+
+[[package]]
+name = "cw-ics721-bridge"
+version = "0.0.1"
+source = "git+https://github.com/public-awesome/ics721.git#52852e07446c91983a91495e85103370f49814a7"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-cii",
+ "cw-paginate",
+ "cw-pause-once",
+ "cw-storage-plus 0.15.1",
+ "cw-utils 0.15.1",
+ "cw2 0.15.1",
+ "cw721 0.15.0",
+ "cw721-base 0.15.0",
+ "cw721-proxy-derive",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-multi-test"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1050,6 +1123,29 @@ dependencies = [
  "prost",
  "schemars",
  "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-paginate"
+version = "2.0.0-beta"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v2.0.0-beta#74bd3881fdd86829e5e8b132b9952dd64f2d0737"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.16.0",
+ "serde",
+]
+
+[[package]]
+name = "cw-pause-once"
+version = "0.0.1"
+source = "git+https://github.com/public-awesome/ics721.git#52852e07446c91983a91495e85103370f49814a7"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.15.1",
+ "cw-utils 0.15.1",
  "thiserror",
 ]
 
@@ -1094,6 +1190,21 @@ checksum = "9dbaecb78c8e8abfd6b4258c7f4fbeb5c49a5e45ee4d910d3240ee8e1d714e1b"
 dependencies = [
  "cosmwasm-std",
  "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-utils"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ae0b69fa7679de78825b4edeeec045066aa2b2c4b6e063d80042e565bb4da5c"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw2 0.15.1",
+ "schemars",
+ "semver",
  "serde",
  "thiserror",
 ]
@@ -1226,6 +1337,19 @@ dependencies = [
 
 [[package]]
 name = "cw721"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20dfe04f86e5327956b559ffcc86d9a43167391f37402afd8bf40b0be16bee4d"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 0.15.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw721"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94a1ea6e6277bdd6dfc043a9b1380697fe29d6e24b072597439523658d21d791"
@@ -1239,6 +1363,23 @@ dependencies = [
 
 [[package]]
 name = "cw721-base"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62c3ee3b669fc2a8094301a73fd7be97a7454d4df2650c33599f737e8f254d24"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.15.1",
+ "cw-utils 0.15.1",
+ "cw2 0.15.1",
+ "cw721 0.15.0",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw721-base"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77518e27431d43214cff4cdfbd788a7508f68d9b1f32389e6fce513e7eaccbef"
@@ -1248,10 +1389,21 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw721",
+ "cw721 0.16.0",
  "schemars",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "cw721-proxy-derive"
+version = "0.0.1"
+source = "git+https://github.com/0xekez/cw721-proxy.git#eb53b55290d3ffbe4c355b27ea1113468aaa0635"
+dependencies = [
+ "cw721 0.15.0",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1753,8 +1905,8 @@ dependencies = [
  "cw-multi-test",
  "cw20 0.16.0",
  "cw20-base",
- "cw721",
- "cw721-base",
+ "cw721 0.16.0",
+ "cw721-base 0.16.0",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+    attr, ensure, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -13,7 +13,7 @@ use andromeda_modules::address_list::{
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     parse_message,
 };
 use cw_utils::nonpayable;
@@ -133,10 +133,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

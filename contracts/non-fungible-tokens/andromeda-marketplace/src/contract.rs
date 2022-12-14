@@ -9,13 +9,13 @@ use andromeda_non_fungible_tokens::marketplace::{
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     rates::get_tax_amount,
     Funds,
 };
 use cosmwasm_std::{
     attr, ensure, entry_point, from_binary, has_coins, Api, BankMsg, Binary, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, Storage, SubMsg,
+    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage, SubMsg,
     Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -534,10 +534,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg(test)]

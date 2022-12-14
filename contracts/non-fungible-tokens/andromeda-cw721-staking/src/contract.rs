@@ -3,10 +3,14 @@ use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721_staking::{
     Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakedNft,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
+};
 use cosmwasm_std::{
     attr, ensure, entry_point, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdError, Uint128, WasmMsg,
+    MessageInfo, Response, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
@@ -413,10 +417,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg(test)]

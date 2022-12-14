@@ -11,11 +11,11 @@ use common::{
     },
     app::AndrAddress,
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
 };
 use cosmwasm_std::{
     attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, SubMsg, Timestamp, Uint128,
+    Response, SubMsg, Timestamp, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::{nonpayable, Expiration};
@@ -314,10 +314,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[entry_point]

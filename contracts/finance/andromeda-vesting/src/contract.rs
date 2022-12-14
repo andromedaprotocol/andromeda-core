@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     ensure, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env, GovMsg, MessageInfo,
-    QuerierWrapper, Response, StakingMsg, StdError, Uint128, VoteOption,
+    QuerierWrapper, Response, StakingMsg, Uint128, VoteOption,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_asset::AssetInfo;
@@ -16,7 +16,9 @@ use andromeda_finance::vesting::{
     BatchResponse, Config, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
     withdraw::WithdrawalType,
 };
 
@@ -552,10 +554,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
