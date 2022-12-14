@@ -138,4 +138,4 @@ cargo clippy --all --all-targets -- -D warnings
 ```
 ## Licensing
 
-[Terms and Conditions](https://github.com/andromedaprotocol/andromeda-core/blob/Add-Licensing/LICENSE/LICENSE.md)
+[Terms and Conditions](https://github.com/andromedaprotocol/andromeda-core/blob/development/LICENSE/LICENSE.md)
