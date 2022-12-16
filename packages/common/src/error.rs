@@ -24,6 +24,9 @@ pub enum ContractError {
     #[error("{0}")]
     PauseError(#[from] PauseError),
 
+    #[error("{0}")]
+    ParseReplyError(#[from] ParseReplyError),
+
     #[error("Unauthorized")]
     Unauthorized {},
 
@@ -68,9 +71,6 @@ pub enum ContractError {
 
     #[error("UnrecognisedReplyId")]
     UnrecognisedReplyId {},
-
-    #[error("ParseReplyError")]
-    ParseReplyError {},
 
     #[error("ImbalancedTokenInfo")]
     ImbalancedTokenInfo {},
@@ -596,12 +596,6 @@ impl From<FromUtf8Error> for ContractError {
 impl From<OverflowError> for ContractError {
     fn from(_err: OverflowError) -> Self {
         ContractError::Overflow {}
-    }
-}
-
-impl From<ParseReplyError> for ContractError {
-    fn from(_err: ParseReplyError) -> Self {
-        ContractError::ParseReplyError {}
     }
 }
 

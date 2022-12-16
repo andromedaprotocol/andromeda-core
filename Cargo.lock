@@ -428,6 +428,7 @@ dependencies = [
  "cw-asset",
  "cw-cii",
  "cw-paginate",
+ "cw-pause-once",
  "cw-storage-plus 0.15.1",
  "cw-utils 0.15.1",
  "cw2 0.15.1",
