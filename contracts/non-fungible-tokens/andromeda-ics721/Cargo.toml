@@ -8,22 +8,32 @@ edition = "2018"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+testing = ["cw-multi-test"]
+
 [dependencies]
 cosmwasm-std = "1.1.6"
 cosmwasm-schema = "1.1.6"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 schemars = "0.8.10"
 cw-storage-plus = "0.16.0"
-cw721 = "0.15"
+cw721 = "0.16"
 cw721-base = "0.16.0"
 cw2 = "0.16.0"
 semver = "1"
 cw-utils ="0.16.0"
 cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
+cw-cii = { git = "https://github.com/public-awesome/ics721.git" }
 
 andromeda-ibc = { version = "0.1.0", path = "../../../packages/andromeda-ibc" }
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-non-fungible-tokens" }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-multi-test = { version = "0.16.0", optional = true }
 
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0"}
