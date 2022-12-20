@@ -1,18 +1,8 @@
-use cosmwasm_std::{Coin, Timestamp};
-use cw_storage_plus::{Item, Map};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use andromeda_non_fungible_tokens::cw721_staking::StakedNft;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct StakedNft {
-    pub owner: String,
-    pub id: String,
-    pub contract_address: String,
-    pub time_of_staking: Timestamp,
-    pub time_of_unbonding: Option<Timestamp>,
-    pub reward: Coin,
-    pub accrued_reward: Option<Coin>,
-}
+use cosmwasm_std::Coin;
+use cw_storage_plus::{Item, Map};
+
 // list of cw721 contracts that we allow NFTs from
 pub const ALLOWED_CONTRACTS: Item<Vec<String>> = Item::new("allowed_contracts");
 

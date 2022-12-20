@@ -13,14 +13,14 @@ use std::str::FromStr;
 use crate::{
     allocated_rewards::update_allocated_index,
     state::{
-        get_stakers, Config, Staker, StakerRewardInfo, State, CONFIG, MAX_REWARD_TOKENS,
-        REWARD_TOKENS, STAKERS, STAKER_REWARD_INFOS, STATE,
+        get_stakers, Staker, StakerRewardInfo, CONFIG, MAX_REWARD_TOKENS, REWARD_TOKENS, STAKERS,
+        STAKER_REWARD_INFOS, STATE,
     },
 };
 use ado_base::ADOContract;
 use andromeda_fungible_tokens::cw20_staking::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardToken,
-    RewardTokenUnchecked, RewardType, StakerResponse,
+    Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardToken,
+    RewardTokenUnchecked, RewardType, StakerResponse, State,
 };
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cw_utils::nonpayable;

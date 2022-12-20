@@ -1,11 +1,10 @@
 use andromeda_modules::rates::RateInfo;
+use cosmwasm_schema::cw_serde;
 use cw_storage_plus::Item;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Config {
     pub rates: Vec<RateInfo>,
 }

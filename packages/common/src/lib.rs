@@ -3,6 +3,7 @@ pub mod app;
 pub mod error;
 pub mod expiration;
 pub mod primitive;
+pub mod queries;
 pub mod rates;
 pub mod response;
 #[cfg(test)]
@@ -16,12 +17,12 @@ use cosmwasm_std::{
     SubMsg, WasmQuery,
 };
 use cw20::Cw20Coin;
-use schemars::JsonSchema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+use serde::{de::DeserializeOwned, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+use cosmwasm_schema::cw_serde;
+#[cw_serde]
 pub enum OrderBy {
     Asc,
     Desc,
@@ -78,7 +79,7 @@ where
     Ok(resp)
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub enum Funds {
     Native(Coin),
     Cw20(Cw20Coin),
@@ -189,7 +190,7 @@ mod test {
 
     use super::*;
 
-    #[derive(Deserialize, Serialize)]
+    #[cw_serde]
     struct TestStruct {
         name: String,
         expiration: Expiration,

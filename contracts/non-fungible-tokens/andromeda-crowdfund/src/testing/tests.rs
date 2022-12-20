@@ -1,8 +1,8 @@
 use crate::{
     contract::{execute, instantiate, query, MAX_MINT_LIMIT},
     state::{
-        Config, Purchase, State, AVAILABLE_TOKENS, CONFIG, NUMBER_OF_TOKENS_AVAILABLE, PURCHASES,
-        SALE_CONDUCTED, STATE,
+        Purchase, AVAILABLE_TOKENS, CONFIG, NUMBER_OF_TOKENS_AVAILABLE, PURCHASES, SALE_CONDUCTED,
+        STATE,
     },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_APP_CONTRACT,
@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use andromeda_non_fungible_tokens::{
-    crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg},
+    crowdfund::{Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg, State},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
 };
 use common::{

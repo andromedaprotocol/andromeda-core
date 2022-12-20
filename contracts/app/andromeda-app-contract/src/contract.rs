@@ -46,7 +46,10 @@ pub fn instantiate(
         TARGET_ADOS.save(deps.storage, &None)?;
     }
 
-    ensure!(msg.app.len() <= 50, ContractError::TooManyAppComponents {});
+    ensure!(
+        msg.app_components.len() <= 50,
+        ContractError::TooManyAppComponents {}
+    );
 
     let sender = info.sender.to_string();
     let resp = ADOContract::default()
@@ -67,7 +70,7 @@ pub fn instantiate(
         .add_attribute("andr_app", msg.name);
 
     let mut msgs: Vec<SubMsg> = vec![];
-    for component in msg.app {
+    for component in msg.app_components {
         let comp_resp = execute_add_app_component(&deps.querier, deps.storage, &sender, component)?;
         msgs.extend(comp_resp.messages);
     }
@@ -340,10 +343,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
         QueryMsg::GetAddress { name } => encode_binary(&query_component_address(deps, name)?),
-        QueryMsg::GetAddressesWithName {} => {
+        QueryMsg::GetAddressesWithNames {} => {
             encode_binary(&query_component_addresses_with_name(deps)?)
         }
-        QueryMsg::GetAddresses {} => encode_binary(&query_component_addresses(deps)?),
         QueryMsg::GetComponents {} => encode_binary(&query_component_descriptors(deps)?),
         QueryMsg::Config {} => encode_binary(&query_config(deps)?),
         QueryMsg::ComponentExists { name } => encode_binary(&query_component_exists(deps, name)),
@@ -386,11 +388,6 @@ fn query_component_exists(deps: Deps, name: String) -> bool {
 
 fn query_component_addresses_with_name(deps: Deps) -> Result<Vec<ComponentAddress>, ContractError> {
     let value = load_component_addresses_with_name(deps.storage)?;
-    Ok(value)
-}
-
-fn query_component_addresses(deps: Deps) -> Result<Vec<Addr>, ContractError> {
-    let value = load_component_addresses(deps.storage)?;
     Ok(value)
 }
 

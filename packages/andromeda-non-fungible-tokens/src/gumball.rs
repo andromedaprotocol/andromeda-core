@@ -1,22 +1,19 @@
+use crate::cw721::TokenExtension;
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-use crate::cw721::TokenExtension;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub andromeda_cw721_contract: AndrAddress,
     pub randomness_source: String,
     pub required_coin: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     Mint(Vec<GumballMintMsg>),
@@ -38,41 +35,45 @@ pub enum ExecuteMsg {
     SwitchStatus {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(NumberOfNftsResponse)]
     NumberOfNfts {},
+    #[returns(crate::crowdfund::QueryMsg)]
     SaleDetails {},
+    #[returns(StatusResponse)]
     Status {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum RandQueryMsg {
     LatestDrand {},
     GetRandomness { round: u64 },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct NumberOfNftsResponse {
     pub number: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct StatusResponse {
     pub status: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct LatestRandomResponse {
     pub round: u64,
     pub randomness: Binary,
     pub worker: String,
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+
+#[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct GumballMintMsg {
     /// Unique ID of the NFT
     pub token_id: String,
@@ -86,6 +87,5 @@ pub struct GumballMintMsg {
     pub extension: TokenExtension,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}

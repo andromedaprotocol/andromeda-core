@@ -2,8 +2,7 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
 // use common::app::AndrAddress;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cosmwasm_schema::cw_serde;
 
 pub const CONFIG_KEY: &str = "config";
 pub const CONFIG: Item<Config> = Item::new(CONFIG_KEY);
@@ -13,7 +12,7 @@ pub const STATE: Item<State> = Item::new(STATE_KEY);
 
 pub const USER_INFO: Map<&Addr, UserInfo> = Map::new("users");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Config {
     /// Bootstrap Contract address to which incentive tokens can be deposited for bootstrapping TOKEN-NATIVE Pool
     // pub bootstrap_contract_address: Option<AndrAddress>,
@@ -31,7 +30,8 @@ pub struct Config {
     pub native_denom: String,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
+#[derive(Default)]
 pub struct State {
     /// Total NATIVE deposited at the end of Lockdrop window. This value remains unchanged post the lockdrop window
     pub total_native_locked: Uint128,
@@ -41,7 +41,9 @@ pub struct State {
     pub are_claims_allowed: bool,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
+#[derive(Default)]
+
 pub struct UserInfo {
     /// Total UST amount deposited by the user across all his lockup positions
     pub total_native_locked: Uint128,

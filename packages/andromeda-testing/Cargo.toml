@@ -6,19 +6,26 @@ edition = "2018"
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
+testing = ["cw-multi-test"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = "1.0.0"
-cw721 = "0.13.2"
-cw20 = "0.13.2"
+cosmwasm-std = "1.1.6"
+cosmwasm-schema = "1.1.6"
+cw721 = "0.16.0"
+cw20 = "0.16.0"
 prost = "0.9.0"
 
 common = { path = "../common", version = "0.1.0" }
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../andromeda-non-fungible-tokens" }
 andromeda-app = { version = "0.1.0", path = "../andromeda-app" }
 andromeda-modules = { version = "0.1.0", path = "../andromeda-modules" }
+andromeda-adodb = { path = "../../contracts/app/andromeda-adodb", features = ["testing"] }
+andromeda-primitive = { path = "../../contracts/data-storage/andromeda-primitive", features = ["testing"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-multi-test = { version = "0.16.0", optional = true }
 

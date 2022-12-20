@@ -1,9 +1,8 @@
-use common::{ado_base::recipient::Recipient, error::ContractError, withdraw::WithdrawalType};
+use andromeda_finance::vesting::Config;
+use common::{error::ContractError, withdraw::WithdrawalType};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Order, Storage, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, MultiIndex};
-use cw_utils::Duration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 /// The config.
 pub const CONFIG: Item<Config> = Item::new("config");
@@ -11,19 +10,7 @@ pub const CONFIG: Item<Config> = Item::new("config");
 /// The next ID to use for a newly added batch.
 pub const NEXT_ID: Item<u64> = Item::new("next_id");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Config {
-    /// The recipient of each batch.
-    pub recipient: Recipient,
-    /// Whether or not multiple batches are supported.
-    pub is_multi_batch_enabled: bool,
-    /// The denom of the coin being vested.
-    pub denom: String,
-    /// The unbonding duration of the native staking module.
-    pub unbonding_duration: Duration,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Batch {
     /// The amount of tokens in the batch
     pub amount: Uint128,
@@ -58,7 +45,7 @@ impl<'a> IndexList<Batch> for BatchIndexes<'a> {
 pub fn batches<'a>() -> IndexedMap<'a, u64, Batch, BatchIndexes<'a>> {
     let indexes = BatchIndexes {
         claim_time: MultiIndex::new(
-            |b: &Batch| {
+            |_pk: &[u8], b: &Batch| {
                 let all_claimed = b.amount - b.amount_claimed == Uint128::zero();
                 // Allows us to skip batches that have been already fully claimed.
                 let all_claimed = u8::from(all_claimed);

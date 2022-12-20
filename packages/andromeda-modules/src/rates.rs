@@ -3,40 +3,41 @@ use common::{
     error::ContractError,
     primitive::{Primitive, PrimitivePointer},
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, Api, Coin, Decimal, Fraction, QuerierWrapper};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub rates: Vec<RateInfo>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     UpdateRates { rates: Vec<RateInfo> },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(AndromedaHook)]
     AndrHook(AndromedaHook),
+    #[returns(PaymentsResponse)]
     Payments {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct PaymentsResponse {
     pub payments: Vec<RateInfo>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct RateInfo {
     pub rate: Rate,
     pub is_additive: bool,
@@ -44,8 +45,7 @@ pub struct RateInfo {
     pub recipients: Vec<Recipient>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 /// An enum used to define various types of fees
 pub enum Rate {
     /// A flat rate fee
@@ -55,9 +55,8 @@ pub enum Rate {
     External(PrimitivePointer),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-// This is added such that both Rate::Flat and Rate::Percent have the same level of nesting which
-// makes it easier to work with on the frontend.
+#[cw_serde] // This is added such that both Rate::Flat and Rate::Percent have the same level of nesting which
+            // makes it easier to work with on the frontend.
 pub struct PercentRate {
     pub percent: Decimal,
 }

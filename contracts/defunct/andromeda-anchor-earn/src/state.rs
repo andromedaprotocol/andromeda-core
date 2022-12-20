@@ -1,4 +1,5 @@
 use common::ado_base::recipient::Recipient;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Uint128;
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
@@ -9,7 +10,7 @@ pub const PREV_AUST_BALANCE: Item<Uint128> = Item::new("prev_aust_balance");
 pub const PREV_UUSD_BALANCE: Item<Uint128> = Item::new("prev_uusd_balance");
 pub const RECIPIENT_ADDR: Item<String> = Item::new("recipient_addr");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Position {
     pub recipient: Recipient,
     pub aust_amount: Uint128,

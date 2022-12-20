@@ -8,10 +8,10 @@ use cw_utils::Duration;
 
 use crate::{
     contract::{execute, instantiate, query},
-    state::{batches, Batch, Config, CONFIG, NEXT_ID},
+    state::{batches, Batch, CONFIG, NEXT_ID},
 };
 
-use andromeda_finance::vesting::{BatchResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
 use common::{ado_base::recipient::Recipient, error::ContractError, withdraw::WithdrawalType};
 
 const DEFAULT_VALIDATOR: &str = "validator";
