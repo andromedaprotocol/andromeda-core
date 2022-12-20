@@ -1,12 +1,10 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Addr, Api, Deps, QuerierWrapper, Storage};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::ADOContract;
 use common::{app::AndrAddress, error::ContractError};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 enum AppQueryMsg {
     ComponentExists { name: String },
 }

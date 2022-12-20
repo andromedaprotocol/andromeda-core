@@ -1,10 +1,9 @@
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
-use cosmwasm_std::Coin;
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{Coin, Timestamp};
 use cw721::Cw721ReceiveMsg;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     // The cw721 contract(s) that you want to allow NFTs from
     pub nft_contract: Vec<String>,
@@ -12,8 +11,7 @@ pub struct InstantiateMsg {
     pub reward: Coin,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     ReceiveNft(Cw721ReceiveMsg),
@@ -40,23 +38,38 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Cw721HookMsg {
     /// Stakes NFT
     Stake {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(StakedNft)]
     StakedNft { key: String },
+    #[returns(Vec<String>)]
     AllowedContracts {},
+    #[returns(u64)]
     UnbondingPeriod {},
+    #[returns(Coin)]
     Reward {},
+}
+
+#[cw_serde]
+pub struct StakedNft {
+    pub owner: String,
+    pub id: String,
+    pub contract_address: String,
+    pub time_of_staking: Timestamp,
+    pub time_of_unbonding: Option<Timestamp>,
+    pub reward: Coin,
+    pub accrued_reward: Option<Coin>,
 }

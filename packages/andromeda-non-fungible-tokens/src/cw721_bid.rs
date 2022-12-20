@@ -1,10 +1,9 @@
 use common::ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Event, SubMsg, Uint128};
 use cw721::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Bid {
     pub denom: String,
     /// What the purchaser offers.
@@ -28,15 +27,14 @@ impl Bid {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     pub andromeda_cw721_contract: String,
     pub valid_denom: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
 
@@ -55,14 +53,16 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(AndromedaHook)]
     AndrHook(AndromedaHook),
-    Bid {
-        token_id: String,
-    },
+    #[returns(BidResponse)]
+    Bid { token_id: String },
+    #[returns(AllBidsResponse)]
     AllBids {
         purchaser: String,
         limit: Option<u32>,
@@ -70,7 +70,7 @@ pub enum QueryMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct BidResponse {
     pub denom: String,
     pub bid_amount: Uint128,
@@ -80,7 +80,7 @@ pub struct BidResponse {
     pub purchaser: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct AllBidsResponse {
     pub bids: Vec<BidResponse>,
 }
@@ -98,6 +98,5 @@ impl From<Bid> for BidResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}

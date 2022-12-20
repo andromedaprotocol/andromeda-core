@@ -1,9 +1,8 @@
 use crate::{ado_base::query_get, encode_binary, error::ContractError};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, QuerierWrapper};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct AndrAddress {
     /// Can be either an address or identifier of an ADO in a app.
     pub identifier: String,
@@ -31,6 +30,11 @@ impl AndrAddress {
                 None => Err(ContractError::InvalidAddress {}),
             },
         }
+    }
+
+    /// Generates an AndrAddress from string input
+    pub fn from_string(identifier: String) -> AndrAddress {
+        AndrAddress { identifier }
     }
 }
 

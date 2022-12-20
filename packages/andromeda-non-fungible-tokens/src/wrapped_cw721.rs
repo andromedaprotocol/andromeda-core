@@ -1,16 +1,14 @@
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw721::Cw721ReceiveMsg;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum InstantiateType {
     New(Cw721Specification),
     Address(String),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct Cw721Specification {
     pub name: String,
@@ -18,7 +16,7 @@ pub struct Cw721Specification {
     pub modules: Option<Vec<Module>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub primitive_contract: String,
     /// The cw721 contract can be instantiated or an existing address can be used. In the case that
@@ -28,26 +26,27 @@ pub struct InstantiateMsg {
     pub can_unwrap: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
     AndrReceive(AndromedaMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Cw721HookMsg {
     Wrap { wrapped_token_id: Option<String> },
     Unwrap {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(String)]
+    NFTContractAddress {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}

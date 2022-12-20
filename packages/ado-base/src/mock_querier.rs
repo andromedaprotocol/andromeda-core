@@ -2,6 +2,7 @@ use common::{
     ado_base::{AndromedaQuery, QueryMsg},
     primitive::{GetValueResponse, Primitive},
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
@@ -9,17 +10,17 @@ use cosmwasm_std::{
     SystemError, SystemResult, WasmQuery,
 };
 use cw20::{BalanceResponse, Cw20QueryMsg};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 enum MissionQuery {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(QuerierResult)]
     ComponentExists { name: String },
 }
 

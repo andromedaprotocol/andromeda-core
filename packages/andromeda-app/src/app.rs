@@ -1,26 +1,38 @@
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct AppComponent {
     pub name: String,
     pub ado_type: String,
     pub instantiate_msg: Binary,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+impl AppComponent {
+    pub fn new(
+        name: impl Into<String>,
+        ado_type: impl Into<String>,
+        instantiate_msg: Binary,
+    ) -> AppComponent {
+        AppComponent {
+            name: name.into(),
+            ado_type: ado_type.into(),
+            instantiate_msg,
+        }
+    }
+}
+
+#[cw_serde]
 pub struct InstantiateMsg {
-    pub app: Vec<AppComponent>,
+    pub app_components: Vec<AppComponent>,
     pub name: String,
     pub primitive_contract: String,
     // Used for automation
     pub target_ados: Option<Vec<String>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     AddAppComponent { component: AppComponent },
@@ -30,29 +42,33 @@ pub enum ExecuteMsg {
     UpdateAddress { name: String, addr: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(String)]
     GetAddress { name: String },
+    #[returns(AppComponent)]
     GetComponents {},
+    #[returns(bool)]
     ComponentExists { name: String },
-    GetAddressesWithName {},
-    GetAddresses {},
+    #[returns(Vec<AppComponent>)]
+    GetAddressesWithNames {},
+    #[returns(ConfigResponse)]
     Config {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct ConfigResponse {
     pub owner: String,
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct ComponentAddress {
     pub name: String,
     pub address: String,

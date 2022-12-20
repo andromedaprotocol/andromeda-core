@@ -61,9 +61,13 @@ pub fn execute(
 
     // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract { address }) = msg {
-        return contract.execute_update_app_contract(deps, info, address, None);
-    };
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+            return contract.execute_update_app_contract(deps, info, address, None);
+        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+            return contract.execute_update_owner(deps, info, address);
+        }
+    }
 
     contract.module_hook::<Response>(
         deps.storage,
@@ -74,6 +78,7 @@ pub fn execute(
             payload: encode_binary(&msg)?,
         },
     )?;
+
     match msg {
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)

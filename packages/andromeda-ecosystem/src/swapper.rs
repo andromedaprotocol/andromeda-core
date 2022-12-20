@@ -2,14 +2,12 @@ use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum SwapperMsg {
     Swap {
         offer_asset_info: AssetInfo,
@@ -18,34 +16,31 @@ pub enum SwapperMsg {
 }
 
 /// Helper enum for calling contracts that implement the Swapper interface.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum SwapperImplExecuteMsg {
     Swapper(SwapperMsg),
 }
 
 /// Helper enum for calling contracts that implement the Swapper interface.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum SwapperImplCw20HookMsg {
     Swapper(SwapperCw20HookMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum SwapperCw20HookMsg {
     Swap { ask_asset_info: AssetInfo },
 }
 
 /// Instantiate Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     pub swapper_impl: SwapperImpl,
     pub primitive_contract: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum SwapperImpl {
     /// Specifies the instantiation specification for the swapper impl.
     New(InstantiateInfo),
@@ -53,7 +48,8 @@ pub enum SwapperImpl {
     Reference(AndrAddress),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
+#[serde(rename_all = "snake_case")]
 pub struct InstantiateInfo {
     /// The instantiate message encoded in base64.
     pub msg: Binary,
@@ -62,8 +58,7 @@ pub struct InstantiateInfo {
 }
 
 /// Execute Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     Receive(Cw20ReceiveMsg),
@@ -79,8 +74,7 @@ pub enum ExecuteMsg {
 }
 
 /// Cw20 Hook Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Cw20HookMsg {
     Swap {
         ask_asset_info: AssetInfo,
@@ -89,13 +83,15 @@ pub enum Cw20HookMsg {
 }
 
 /// Query Message for Swapper contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(AndrAddress)]
     SwapperImpl {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}

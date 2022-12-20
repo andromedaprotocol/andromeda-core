@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use ado_base::ADOContract;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     error::ContractError,
     Funds,
 };
@@ -62,10 +62,15 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
 
-    //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
-        return contract.execute(deps, env, info, andr_msg, execute);
-    };
+    // Do this before the hooks get fired off to ensure that there are no errors from the app
+    // address not being fully setup yet.
+    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+            return contract.execute_update_app_contract(deps, info, address, None);
+        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+            return contract.execute_update_owner(deps, info, address);
+        }
+    }
 
     contract.module_hook::<Response>(
         deps.storage,

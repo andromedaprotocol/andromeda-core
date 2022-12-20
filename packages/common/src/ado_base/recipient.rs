@@ -4,23 +4,22 @@ use crate::{
     encode_binary,
     error::ContractError,
 };
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg, WasmMsg};
+
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
-use cw_asset::{Asset, AssetInfo};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cw_asset::{AssetInfo, AssetInfoBase};
 
 /// ADOs use a default Receive message for handling funds,
 /// this struct states that the recipient is an ADO and may attach the data field to the Receive message
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct ADORecipient {
     /// Addr can also be a human-readable identifier used in a app contract.
     pub address: AndrAddress,
     pub msg: Option<Binary>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Recipient {
     /// An address that is not another ADO. It is assumed that it is a valid address.
     Addr(String),
@@ -106,28 +105,25 @@ impl Recipient {
         api: &dyn Api,
         querier: &QuerierWrapper,
         app_contract: Option<Addr>,
-        asset: Asset,
+        asset: AssetInfo,
+        funds: Vec<Coin>,
     ) -> Result<SubMsg, ContractError> {
-        match asset.info {
-            AssetInfo::Cw20(contract_addr) => self.generate_msg_cw20(
+        match asset {
+            AssetInfoBase::Cw20(ref contract_addr) => self.generate_msg_cw20(
                 api,
                 querier,
                 app_contract,
                 Cw20Coin {
                     address: contract_addr.to_string(),
-                    amount: asset.amount,
+                    amount: asset.query_balance(querier, contract_addr)?,
                 },
             ),
-            AssetInfo::Native(denom) => self.generate_msg_native(
-                api,
-                querier,
-                app_contract,
-                vec![Coin {
-                    denom,
-                    amount: asset.amount,
-                }],
-            ),
-            _ => todo!(),
+            AssetInfoBase::Native(_denom) => {
+                self.generate_msg_native(api, querier, app_contract, funds)
+            }
+            _ => Err(ContractError::InvalidAsset {
+                asset: asset.to_string(),
+            }),
         }
     }
 }

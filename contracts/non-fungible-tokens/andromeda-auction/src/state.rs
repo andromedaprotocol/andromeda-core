@@ -1,63 +1,14 @@
-use andromeda_non_fungible_tokens::auction::{AuctionStateResponse, Bid};
+use andromeda_non_fungible_tokens::auction::{AuctionInfo, Bid, TokenAuctionState};
 use common::{error::ContractError, OrderBy};
-use cosmwasm_std::{Addr, Order, StdResult, Storage, Uint128};
-use cw721::Expiration;
+
+use cosmwasm_std::{Order, StdResult, Storage, Uint128};
+
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+
 use std::cmp;
 
 const MAX_LIMIT: u64 = 30;
 const DEFAULT_LIMIT: u64 = 10;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct TokenAuctionState {
-    pub start_time: Expiration,
-    pub end_time: Expiration,
-    pub high_bidder_addr: Addr,
-    pub high_bidder_amount: Uint128,
-    pub coin_denom: String,
-    pub auction_id: Uint128,
-    pub whitelist: Option<Vec<Addr>>,
-    pub min_bid: Option<Uint128>,
-    pub owner: String,
-    pub token_id: String,
-    pub token_address: String,
-    pub is_cancelled: bool,
-}
-
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct AuctionInfo {
-    pub auction_ids: Vec<Uint128>,
-    pub token_address: String,
-    pub token_id: String,
-}
-
-impl AuctionInfo {
-    pub fn last(&self) -> Option<&Uint128> {
-        self.auction_ids.last()
-    }
-
-    pub fn push(&mut self, e: Uint128) {
-        self.auction_ids.push(e)
-    }
-}
-
-impl From<TokenAuctionState> for AuctionStateResponse {
-    fn from(token_auction_state: TokenAuctionState) -> AuctionStateResponse {
-        AuctionStateResponse {
-            start_time: token_auction_state.start_time,
-            end_time: token_auction_state.end_time,
-            high_bidder_addr: token_auction_state.high_bidder_addr.to_string(),
-            high_bidder_amount: token_auction_state.high_bidder_amount,
-            coin_denom: token_auction_state.coin_denom,
-            auction_id: token_auction_state.auction_id,
-            whitelist: token_auction_state.whitelist,
-            is_cancelled: token_auction_state.is_cancelled,
-            min_bid: token_auction_state.min_bid,
-        }
-    }
-}
 
 pub const NEXT_AUCTION_ID: Item<Uint128> = Item::new("next_auction_id");
 
@@ -80,7 +31,11 @@ impl<'a> IndexList<AuctionInfo> for AuctionIdIndices<'a> {
 
 pub fn auction_infos<'a>() -> IndexedMap<'a, &'a str, AuctionInfo, AuctionIdIndices<'a>> {
     let indexes = AuctionIdIndices {
-        token: MultiIndex::new(|r| r.token_address.clone(), "ownership", "token_index"),
+        token: MultiIndex::new(
+            |_pk: &[u8], r| r.token_address.clone(),
+            "ownership",
+            "token_index",
+        ),
     };
     IndexedMap::new("ownership", indexes)
 }
