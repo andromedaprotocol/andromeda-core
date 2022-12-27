@@ -41,10 +41,9 @@ pub struct InstantiateMsg {}
 #[cw721_proxy]
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Receives a NFT to be IBC transfered away. The `msg` field must
+    /// Receives a NFT to be IBC transfered away. The `outgoing_msg` field must
     /// be a binary encoded `IbcOutgoingMsg`.
     ReceiveMessage {
-        target: String,
         outgoing_msg: Binary,
         user_msg: Binary,
     },

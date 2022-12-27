@@ -56,10 +56,9 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::ReceiveMessage {
-            target,
             outgoing_msg,
             user_msg,
-        } => execute_receive_message(deps, info, target, outgoing_msg, user_msg),
+        } => execute_receive_message(deps, info, outgoing_msg, user_msg),
         ExecuteMsg::Callback(msg) => execute_callback(deps, env, info, msg),
         _ => Err(ContractError::ExecuteError {}),
     }
@@ -85,7 +84,6 @@ fn execute_callback(
 fn execute_receive_message(
     deps: DepsMut,
     info: MessageInfo,
-    target: String,
     outgoing_msg: Binary,
     user_msg: Binary,
 ) -> Result<Response, ContractError> {
@@ -94,13 +92,12 @@ fn execute_receive_message(
         info.sender == authorized_user,
         ContractError::Unauthorized {}
     );
-    do_receive_message(deps, info, target, outgoing_msg, user_msg)
+    do_receive_message(deps, info, outgoing_msg, user_msg)
 }
 
 fn do_receive_message(
     _deps: DepsMut,
     info: MessageInfo,
-    target: String,
     outgoing_msg: Binary,
     user_msg: Binary,
 ) -> Result<Response, ContractError> {
@@ -110,7 +107,7 @@ fn do_receive_message(
     let final_target_message: Binary = from_binary(&target_message)?;
 
     let packet_data = MessageBridgePacketData {
-        target,
+        target: outgoing_msg.clone().receiver,
         message: final_target_message,
         sender: info.sender.to_string(),
     };
@@ -232,9 +229,7 @@ mod tests {
         let outgoing_msg = to_binary(&"outgoingmsg").unwrap();
         let user_msg = to_binary(&"usermsg").unwrap();
 
-        let target = "target_address".to_string();
         let msg = ExecuteMsg::ReceiveMessage {
-            target,
             outgoing_msg,
             user_msg,
         };
