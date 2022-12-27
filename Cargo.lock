@@ -526,6 +526,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-message-bridge"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "andromeda-ibc",
+ "andromeda-non-fungible-tokens",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-cii",
+ "cw-multi-test",
+ "cw-pause-once",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw721",
+ "cw721-base",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-modules"
 version = "0.1.0"
 dependencies = [
