@@ -1,13 +1,10 @@
 use common::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, CosmosMsg, DepsMut, Empty, Env, IbcPacket,
-    IbcPacketReceiveMsg, IbcReceiveResponse, IbcTimeout, WasmMsg,
+    from_binary, to_binary, Binary, CosmosMsg, DepsMut, Empty, Env, IbcPacket, IbcPacketReceiveMsg,
+    IbcReceiveResponse, IbcTimeout, WasmMsg,
 };
 use cw721_proxy_derive::cw721_proxy;
-use cw_cii::ContractInstantiateInfo;
-use cw_pause_once::PauseOrchestrator;
-use cw_storage_plus::{Item, Map};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -39,14 +36,7 @@ mod tests {
 }
 
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub proxy: Option<ContractInstantiateInfo>,
-    /// Address that may pause the contract. PAUSER may pause the
-    /// contract a single time; in pausing the contract they burn the
-    /// right to do so again. A new pauser may be later nominated by
-    /// the CosmWasm level admin via a migration.
-    pub pauser: Option<String>,
-}
+pub struct InstantiateMsg {}
 
 #[cw721_proxy]
 #[cw_serde]

@@ -26,7 +26,7 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: InstantiateMsg,
+    _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -185,17 +185,54 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {}
 }
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{
-        testing::{mock_dependencies, mock_info, MockQuerier},
-        ContractResult, CosmosMsg, Empty, IbcTimeout, QuerierResult, SubMsg, Timestamp, WasmQuery,
-    };
-    use cw721::NftInfoResponse;
+
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     use super::*;
+
+    fn init(deps: DepsMut) -> Response {
+        let msg = InstantiateMsg {};
+
+        instantiate(deps, mock_env(), mock_info("sender", &[]), msg).unwrap()
+    }
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+        let res = init(deps.as_mut());
+
+        assert_eq!(
+            Response::new()
+                .add_attribute("method", "instantiate")
+                .add_attribute("type", "message-bridge"),
+            res
+        );
+
+        let authorized_user = AUTHORIZED_USER.load(&deps.storage).unwrap();
+        assert_eq!("sender".to_string(), authorized_user.to_string())
+    }
+
+    #[test]
+    fn test_receive_msg_unauthorized() {
+        let mut deps = mock_dependencies();
+        let _res = init(deps.as_mut());
+        let outgoing_msg = to_binary(&"outgoingmsg").unwrap();
+        let user_msg = to_binary(&"usermsg").unwrap();
+
+        let target = "target_address".to_string();
+        let msg = ExecuteMsg::ReceiveMessage {
+            target,
+            outgoing_msg,
+            user_msg,
+        };
+        let info = mock_info("not_sender", &[]);
+        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {})
+    }
 }
