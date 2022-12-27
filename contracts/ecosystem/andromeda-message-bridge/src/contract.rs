@@ -1,12 +1,12 @@
 use ado_base::state::ADOContract;
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
     error::{from_semver, ContractError},
 };
-use cosmwasm_std::{ensure, entry_point, CosmosMsg};
+use cosmwasm_std::{ensure, entry_point, Addr, CosmosMsg};
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Deps, DepsMut, Env, IbcMsg, MessageInfo, Response, StdResult,
-    WasmMsg,
+    from_binary, to_binary, Binary, Deps, DepsMut, Env, IbcMsg, MessageInfo, Response, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -185,8 +185,15 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {}
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::AuthorizedUser {} => encode_binary(&query_authorized_user(deps)?),
+    }
+}
+
+fn query_authorized_user(deps: Deps) -> Result<Addr, ContractError> {
+    let authorized_user = AUTHORIZED_USER.load(deps.storage)?;
+    Ok(authorized_user)
 }
 
 #[cfg(test)]

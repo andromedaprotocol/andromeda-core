@@ -1,8 +1,8 @@
 use common::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, CosmosMsg, DepsMut, Empty, Env, IbcPacket, IbcPacketReceiveMsg,
-    IbcReceiveResponse, IbcTimeout, WasmMsg,
+    from_binary, to_binary, Addr, Binary, CosmosMsg, DepsMut, Empty, Env, IbcPacket,
+    IbcPacketReceiveMsg, IbcReceiveResponse, IbcTimeout, WasmMsg,
 };
 use cw721_proxy_derive::cw721_proxy;
 use serde::Deserialize;
@@ -76,7 +76,10 @@ pub struct IbcOutgoingMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    #[returns(Addr)]
+    AuthorizedUser {},
+}
 
 #[cw_serde]
 pub enum MigrateMsg {
