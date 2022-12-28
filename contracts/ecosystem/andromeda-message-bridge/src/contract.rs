@@ -103,8 +103,7 @@ fn do_receive_message(
 ) -> Result<Response, ContractError> {
     let outgoing_msg: IbcOutgoingMsg = from_binary(&outgoing_msg)?;
 
-    let target_message = to_binary(&user_msg)?;
-    let final_target_message: Binary = from_binary(&target_message)?;
+    let final_target_message: Binary = from_binary(&user_msg)?;
 
     let packet_data = MessageBridgePacketData {
         target: outgoing_msg.clone().receiver,
@@ -195,11 +194,8 @@ fn query_authorized_user(deps: Deps) -> Result<Addr, ContractError> {
 
 #[cfg(test)]
 mod tests {
-
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-
     use super::*;
-
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     fn init(deps: DepsMut) -> Response {
         let msg = InstantiateMsg {};
 
