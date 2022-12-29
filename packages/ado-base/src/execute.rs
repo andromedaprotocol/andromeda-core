@@ -191,7 +191,7 @@ impl<'a> ADOContract<'a> {
             .save(deps.storage, &env!("CARGO_PKG_VERSION").to_string())?;
         Ok(Response::new()
             .add_attribute("action", "update_version")
-            .add_attribute("version", &env!("CARGO_PKG_VERSION").to_string()))
+            .add_attribute("version", env!("CARGO_PKG_VERSION").to_string()))
     }
 }
 
