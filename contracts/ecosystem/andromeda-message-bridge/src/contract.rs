@@ -103,11 +103,9 @@ fn do_receive_message(
 ) -> Result<Response, ContractError> {
     let outgoing_msg: IbcOutgoingMsg = from_binary(&outgoing_msg)?;
 
-    let final_target_message: Binary = from_binary(&user_msg)?;
-
     let packet_data = MessageBridgePacketData {
         target: outgoing_msg.clone().receiver,
-        message: final_target_message,
+        message: user_msg,
         sender: info.sender.to_string(),
     };
 
