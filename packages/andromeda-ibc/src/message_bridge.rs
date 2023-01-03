@@ -1,8 +1,8 @@
 use common::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, CosmosMsg, DepsMut, Empty, Env, IbcPacket,
-    IbcPacketReceiveMsg, IbcReceiveResponse, IbcTimeout, StdResult, SubMsg, WasmMsg,
+    from_binary, to_binary, Addr, Binary, DepsMut, Empty, Env, IbcPacket, IbcPacketReceiveMsg,
+    IbcReceiveResponse, IbcTimeout, StdResult, SubMsg, WasmMsg,
 };
 use cw721_proxy_derive::cw721_proxy;
 use serde::Deserialize;
