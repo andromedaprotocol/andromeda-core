@@ -128,11 +128,6 @@ fn execute_handle_packet_receive(
     receiver: String,
     msg: Binary,
 ) -> Result<Response, ContractError> {
-    ensure!(
-        info.sender == env.contract.address,
-        ContractError::Unauthorized {}
-    );
-
     let receiver = deps.api.addr_validate(&receiver)?;
 
     Ok(Response::default()

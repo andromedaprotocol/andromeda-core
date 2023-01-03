@@ -2,10 +2,12 @@ use common::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, CosmosMsg, DepsMut, Empty, Env, IbcPacket,
-    IbcPacketReceiveMsg, IbcReceiveResponse, IbcTimeout, WasmMsg,
+    IbcPacketReceiveMsg, IbcReceiveResponse, IbcTimeout, StdResult, SubMsg, WasmMsg,
 };
 use cw721_proxy_derive::cw721_proxy;
 use serde::Deserialize;
+
+use crate::ibc::ACK_AND_DO_NOTHING;
 
 #[derive(Deserialize)]
 pub struct UniversalNftInfoResponse {
@@ -121,18 +123,25 @@ pub fn ibc_packet_receive(
 }
 
 pub fn do_ibc_packet_receive(
-    _deps: DepsMut,
-    _env: Env,
+    deps: DepsMut,
+    env: Env,
     packet: IbcPacket,
 ) -> Result<IbcReceiveResponse, ContractError> {
     let packet_data: MessageBridgePacketData = from_binary(&packet.data)?;
 
+    // The address of the target bridge contract
+    let contract = env.contract.address;
+
+    // The address of the contract we're sending a message to
+    let receiver = deps.api.addr_validate(&packet_data.target)?;
+
+    // The message we're sending
+    let msg = packet_data.clone().message;
+
+    let submessage = into_submessage(contract, receiver, msg)?;
+
     Ok(IbcReceiveResponse::default()
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: packet_data.clone().target,
-            msg: packet_data.clone().message,
-            funds: vec![],
-        }))
+        .add_submessage(submessage)
         .add_attribute("method", "do_ibc_packet_receive")
         .add_attribute("local_channel", packet.dest.channel_id)
         .add_attribute("counterparty_channel", packet.src.channel_id)
@@ -149,4 +158,18 @@ pub struct MessageBridgePacketData {
     pub message: Binary,
     /// The address that initiated the transction from the chain of origin.
     pub sender: String,
+}
+
+fn into_submessage(contract: Addr, receiver: Addr, msg: Binary) -> StdResult<SubMsg<Empty>> {
+    Ok(SubMsg::reply_always(
+        WasmMsg::Execute {
+            contract_addr: contract.into_string(),
+            msg: to_binary(&ExecuteMsg::Callback(CallbackMsg::HandlePacketReceive {
+                receiver: receiver.into_string(),
+                msg,
+            }))?,
+            funds: vec![],
+        },
+        ACK_AND_DO_NOTHING,
+    ))
 }
