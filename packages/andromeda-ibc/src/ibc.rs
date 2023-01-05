@@ -106,7 +106,6 @@ pub fn ibc_channel_close(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_receive(
     deps: DepsMut,
     env: Env,
@@ -170,7 +169,6 @@ pub fn ibc_packet_ack(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_timeout(
     deps: DepsMut,
     _env: Env,

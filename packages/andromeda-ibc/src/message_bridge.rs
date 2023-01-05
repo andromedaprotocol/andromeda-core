@@ -1,13 +1,12 @@
 use common::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, DepsMut, Empty, Env, IbcPacket, IbcPacketReceiveMsg,
-    IbcReceiveResponse, IbcTimeout, StdResult, SubMsg, WasmMsg,
+    entry_point, from_binary, to_binary, Addr, Binary, DepsMut, Empty, Env, IbcBasicResponse,
+    IbcPacket, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, IbcTimeout, StdResult,
+    SubMsg, WasmMsg,
 };
 use cw721_proxy_derive::cw721_proxy;
 use serde::Deserialize;
-
-use crate::ibc::ACK_AND_DO_NOTHING;
 
 #[derive(Deserialize)]
 pub struct UniversalNftInfoResponse {
@@ -105,6 +104,7 @@ pub fn make_ack_fail(err: String) -> Binary {
     to_binary(&res).unwrap()
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_receive(
     deps: DepsMut,
     env: Env,
@@ -120,6 +120,34 @@ pub fn ibc_packet_receive(
             .add_attribute("error", error.to_string())
             .set_ack(make_ack_fail(error.to_string()))),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn ibc_packet_timeout(
+    deps: DepsMut,
+    _env: Env,
+    msg: IbcPacketTimeoutMsg,
+) -> Result<IbcBasicResponse, ContractError> {
+    handle_packet_fail(deps, msg.packet, "timeout")
+}
+
+fn handle_packet_fail(
+    _deps: DepsMut,
+    packet: IbcPacket,
+    error: &str,
+) -> Result<IbcBasicResponse, ContractError> {
+    let message: MessageBridgePacketData = from_binary(&packet.data)?;
+    let target = message.target;
+    let sender = message.sender;
+    let user_msg = message.message;
+
+    Ok(IbcBasicResponse::new()
+        .add_attribute("method", "handle_packet_fail")
+        .add_attribute("target_contract", target)
+        .add_attribute("original_sender", sender)
+        .add_attribute("channel_id", packet.src.channel_id)
+        .add_attribute("user_msg", user_msg.to_string())
+        .add_attribute("error", error))
 }
 
 pub fn do_ibc_packet_receive(
@@ -170,6 +198,6 @@ fn into_submessage(contract: Addr, receiver: Addr, msg: Binary) -> StdResult<Sub
             }))?,
             funds: vec![],
         },
-        ACK_AND_DO_NOTHING,
+        1,
     ))
 }

@@ -123,8 +123,8 @@ fn do_receive_message(
 
 fn execute_handle_packet_receive(
     deps: Deps,
-    env: Env,
-    info: MessageInfo,
+    _env: Env,
+    _info: MessageInfo,
     receiver: String,
     msg: Binary,
 ) -> Result<Response, ContractError> {
