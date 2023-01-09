@@ -3,7 +3,7 @@ use common::{
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Decimal};
+use cosmwasm_std::{ensure, Binary, Decimal};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,7 @@ pub struct InstantiateMsg {
     pub recipients: Vec<AddressPercent>,
     pub lock_time: Option<u64>,
     pub modules: Option<Vec<Module>>,
+    pub kernel_address: String,
 }
 
 impl InstantiateMsg {
@@ -51,6 +52,16 @@ pub enum ExecuteMsg {
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
+
+    SendKernel {
+        recipient: String,
+        msg: Binary,
+    },
+    Analyze {
+        recipient: String,
+        msg: Binary,
+    },
+
     AndrReceive(AndromedaMsg),
 }
 

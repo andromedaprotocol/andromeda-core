@@ -37,6 +37,7 @@ fn test_modules() {
             percent: Decimal::percent(100),
         }],
         lock_time: Some(100_000),
+        kernel_address: "kernel_address".to_string(),
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let expected_res = Response::new()
@@ -104,6 +105,7 @@ fn test_update_app_contract() {
             },
         ],
         lock_time: None,
+        kernel_address: "kernel_address".to_string(),
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -147,6 +149,7 @@ fn test_update_app_contract_invalid_recipient() {
             percent: Decimal::percent(100),
         }],
         lock_time: None,
+        kernel_address: "kernel_address".to_string(),
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();

@@ -1,4 +1,4 @@
-use crate::state::SPLITTER;
+use crate::state::{KERNEL_ADDRESS, SPLITTER};
 use ado_base::ADOContract;
 use andromeda_finance::splitter::{
     validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
@@ -14,8 +14,8 @@ use common::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, SubMsg, Timestamp, Uint128,
+    attr, ensure, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdError, SubMsg, Timestamp, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::{nonpayable, Expiration};
@@ -38,11 +38,13 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     msg.validate()?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     // Max 100 recipients
     ensure!(
         msg.recipients.len() <= 100,
         ContractError::ReachedRecipientLimit {}
     );
+
     let current_time = env.block.time.seconds();
     let splitter = match msg.lock_time {
         Some(lock_time) => {
@@ -65,6 +67,9 @@ pub fn instantiate(
             }
         }
     };
+    // Save kernel address after validating it
+    let validated_address = deps.api.addr_validate(&msg.kernel_address)?;
+    KERNEL_ADDRESS.save(deps.storage, &validated_address)?;
 
     SPLITTER.save(deps.storage, &splitter)?;
 
@@ -130,8 +135,32 @@ pub fn execute(
         }
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
         ExecuteMsg::Send {} => execute_send(deps, info),
+        ExecuteMsg::SendKernel { recipient, msg } => {
+            execute_send_kernel(deps, info, msg, recipient)
+        }
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
     }
+}
+
+fn execute_send_kernel(
+    deps: DepsMut,
+    _info: MessageInfo,
+    msg: Binary,
+    recipient: String,
+) -> Result<Response, ContractError> {
+    let kernel_address = KERNEL_ADDRESS.load(deps.storage)?;
+
+    Ok(Response::new()
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: kernel_address.into_string(),
+            msg: to_binary(&ExecuteMsg::Analyze {
+                recipient,
+                msg: msg.clone(),
+            })?,
+            funds: vec![],
+        }))
+        .add_attribute("action", "send_kernel")
+        .add_attribute("message", msg.to_string()))
 }
 
 pub fn execute_andromeda(
@@ -352,6 +381,7 @@ mod tests {
             }],
             modules: None,
             lock_time: Some(100_000),
+            kernel_address: "kernel_address".to_string(),
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
