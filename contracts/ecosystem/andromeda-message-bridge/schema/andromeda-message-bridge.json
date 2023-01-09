@@ -13,66 +13,27 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
-        "description": "Receives a NFT to be IBC transfered away. The `msg` field must be a binary encoded `IbcOutgoingMsg`.",
         "type": "object",
         "required": [
-          "receive_message"
+          "send_message"
         ],
         "properties": {
-          "receive_message": {
+          "send_message": {
             "type": "object",
             "required": [
-              "outgoing_msg",
-              "target",
-              "user_msg"
+              "channel",
+              "message",
+              "target"
             ],
             "properties": {
-              "outgoing_msg": {
+              "channel": {
+                "type": "string"
+              },
+              "message": {
                 "$ref": "#/definitions/Binary"
               },
               "target": {
                 "type": "string"
-              },
-              "user_msg": {
-                "$ref": "#/definitions/Binary"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Mesages used internally by the contract. These may only be called by the contract itself.",
-        "type": "object",
-        "required": [
-          "callback"
-        ],
-        "properties": {
-          "callback": {
-            "$ref": "#/definitions/CallbackMsg"
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "receive_proxy_nft"
-        ],
-        "properties": {
-          "receive_proxy_nft": {
-            "type": "object",
-            "required": [
-              "eyeball",
-              "msg"
-            ],
-            "properties": {
-              "eyeball": {
-                "type": "string"
-              },
-              "msg": {
-                "$ref": "#/definitions/Cw721ReceiveMsg"
               }
             },
             "additionalProperties": false
@@ -85,92 +46,11 @@
       "Binary": {
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
-      },
-      "CallbackMsg": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "handle_packet_receive"
-            ],
-            "properties": {
-              "handle_packet_receive": {
-                "type": "object",
-                "required": [
-                  "msg",
-                  "receiver"
-                ],
-                "properties": {
-                  "msg": {
-                    "description": "The message for the target contract.",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Binary"
-                      }
-                    ]
-                  },
-                  "receiver": {
-                    "description": "The target contract's address.",
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
-      "Cw721ReceiveMsg": {
-        "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
-        "type": "object",
-        "required": [
-          "msg",
-          "sender",
-          "token_id"
-        ],
-        "properties": {
-          "msg": {
-            "$ref": "#/definitions/Binary"
-          },
-          "sender": {
-            "type": "string"
-          },
-          "token_id": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
       }
     }
   },
-  "query": {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "QueryMsg",
-    "oneOf": [
-      {
-        "type": "object",
-        "required": [
-          "authorized_user"
-        ],
-        "properties": {
-          "authorized_user": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      }
-    ]
-  },
+  "query": null,
   "migrate": null,
   "sudo": null,
-  "responses": {
-    "authorized_user": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Addr",
-      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
-      "type": "string"
-    }
-  }
+  "responses": null
 }
