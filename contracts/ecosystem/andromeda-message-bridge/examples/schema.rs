@@ -1,4 +1,4 @@
-use andromeda_ibc::message_bridge::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_ibc::message_bridge::{ExecuteMsg, InstantiateMsg};
 use cosmwasm_schema::write_api;
 
 fn main() {

@@ -72,6 +72,6 @@ pub fn try_wasm_msg(_deps: DepsMut, target: String, message: Binary) -> Result<W
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {}
 }
