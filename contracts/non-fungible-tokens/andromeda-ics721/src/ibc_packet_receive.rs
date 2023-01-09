@@ -6,10 +6,10 @@ use cosmwasm_std::{
 use crate::{
     ibc::{NonFungibleTokenPacketData, ACK_AND_DO_NOTHING},
     ibc_helpers::{get_endpoint_prefix, try_pop_source_prefix},
-    ics721::{
-        CallbackMsg, ExecuteMsg, NewTokenInfo, TransferInfo, INCOMING_CLASS_TOKEN_TO_CHANNEL,
-        OUTGOING_CLASS_TOKEN_TO_CHANNEL, PO,
-    },
+};
+use andromeda_ibc::ics721::{
+    CallbackMsg, ExecuteMsg, NewTokenInfo, TransferInfo, INCOMING_CLASS_TOKEN_TO_CHANNEL,
+    OUTGOING_CLASS_TOKEN_TO_CHANNEL, PO,
 };
 use common::error::ContractError;
 

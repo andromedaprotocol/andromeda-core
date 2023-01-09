@@ -12,11 +12,9 @@ use cw_utils::parse_reply_instantiate_data;
 use crate::{
     ibc_helpers::{ack_fail, ack_success, try_get_ack_error, validate_order_and_version},
     ibc_packet_receive::do_ibc_packet_receive,
-    ics721::{
-        CLASS_ID_TO_NFT_CONTRACT, INCOMING_CLASS_TOKEN_TO_CHANNEL, NFT_CONTRACT_TO_CLASS_ID,
-        OUTGOING_CLASS_TOKEN_TO_CHANNEL, PROXY,
-    },
+    state::{CLASS_ID_TO_NFT_CONTRACT, NFT_CONTRACT_TO_CLASS_ID, PROXY},
 };
+use andromeda_ibc::ics721::{INCOMING_CLASS_TOKEN_TO_CHANNEL, OUTGOING_CLASS_TOKEN_TO_CHANNEL};
 use common::error::{ContractError, Never};
 
 /// Submessage reply ID used for instantiating cw721 contracts.

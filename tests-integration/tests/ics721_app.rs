@@ -1,10 +1,12 @@
-use andromeda_ics721::contract::{execute, instantiate, migrate, query};
+use andromeda_ics721::{
+    contract::{execute, instantiate, migrate, query},
+    ibc::reply,
+};
 use cosmwasm_std::{to_binary, Addr, Empty, IbcTimeout, IbcTimeoutBlock};
 use cw_cii::{Admin, ContractInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_pause_once::PauseError;
 
-use andromeda_ibc::ibc::reply;
 use andromeda_ibc::ics721::{
     CallbackMsg, ExecuteMsg, IbcOutgoingMsg, InstantiateMsg, QueryMsg, TransferInfo,
 };

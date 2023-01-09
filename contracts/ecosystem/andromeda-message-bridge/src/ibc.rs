@@ -7,9 +7,9 @@ use common::error::{ContractError, Never};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
-    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse,
+    ensure, from_binary, Binary, DepsMut, Env, Ibc3ChannelOpenResponse, IbcBasicResponse,
+    IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder,
+    IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
 };
 
 pub const IBC_VERSION: &str = "message-bridge-1";
@@ -20,7 +20,7 @@ pub fn ibc_channel_open(
     _deps: DepsMut,
     _env: Env,
     msg: IbcChannelOpenMsg,
-) -> Result<(), ContractError> {
+) -> Result<Option<Ibc3ChannelOpenResponse>, ContractError> {
     validate_order_and_version(msg.channel(), msg.counterparty_version())
 }
 
@@ -131,7 +131,7 @@ pub fn ibc_packet_timeout(
 pub fn validate_order_and_version(
     channel: &IbcChannel,
     counterparty_version: Option<&str>,
-) -> Result<(), ContractError> {
+) -> Result<Option<Ibc3ChannelOpenResponse>, ContractError> {
     // We expect an unordered channel here. Ordered channels have the
     // property that if a message is lost the entire channel will stop
     // working until you start it again.
@@ -165,5 +165,7 @@ pub fn validate_order_and_version(
         );
     }
 
-    Ok(())
+    Ok(Some(Ibc3ChannelOpenResponse {
+        version: channel.version.to_string(),
+    }))
 }
