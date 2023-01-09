@@ -136,7 +136,7 @@ pub fn execute(
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
         ExecuteMsg::Send {} => execute_send(deps, info),
         ExecuteMsg::SendKernel { recipient, msg } => {
-            execute_send_kernel(deps, info, msg, recipient)
+            execute_send_kernel(deps, info, recipient, msg)
         }
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
     }
@@ -145,8 +145,8 @@ pub fn execute(
 fn execute_send_kernel(
     deps: DepsMut,
     _info: MessageInfo,
-    msg: Binary,
     recipient: String,
+    msg: Binary,
 ) -> Result<Response, ContractError> {
     let kernel_address = KERNEL_ADDRESS.load(deps.storage)?;
 
