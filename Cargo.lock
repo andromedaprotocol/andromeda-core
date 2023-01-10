@@ -435,6 +435,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-kernel"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "amp",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 0.16.0",
+ "cw2 0.16.0",
+ "cw721",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-lockdrop"
 version = "1.0.0"
 dependencies = [

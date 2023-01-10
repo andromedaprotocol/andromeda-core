@@ -1,15 +1,7 @@
-use crate::contract::{execute, instantiate, query};
+use crate::contract::instantiate;
 
-use crate::state::CODE_ID;
-use ado_base::ADOContract;
-use andromeda_app::adodb::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
-use common::{ado_base::AndromedaQuery, error::ContractError};
-use cosmwasm_std::{
-    attr, from_binary,
-    testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Response,
-};
+use amp::kernel::InstantiateMsg;
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 #[test]
 fn proper_initialization() {

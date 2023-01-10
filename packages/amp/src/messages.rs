@@ -1,6 +1,13 @@
 use common::error::ContractError;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Api, Binary, Coin, CosmosMsg, QuerierWrapper, ReplyOn, SubMsg, WasmMsg};
+use cosmwasm_std::{
+    to_binary, Addr, Api, Binary, Coin, CosmosMsg, QuerierWrapper, ReplyOn, SubMsg, WasmMsg,
+};
+
+#[cw_serde]
+pub enum ExecuteMsg {
+    Receive(AMPPkt),
+}
 
 #[cw_serde]
 /// This struct defines how the kernel parses and relays messages between ADOs
@@ -22,7 +29,7 @@ pub struct AMPMsg {
 }
 
 impl AMPMsg {
-    /// Creates a new AMPMessage
+    /// Creates a new AMPMsg
     pub fn new(
         recipient: impl Into<String>,
         message: Binary,
@@ -66,16 +73,20 @@ impl AMPMsg {
         &self,
         api: &dyn Api,
         querier: &QuerierWrapper,
+        origin: String,
+        previous_sender: String,
         namespacing_contract: Option<Addr>,
         id: u64,
     ) -> Result<SubMsg, ContractError> {
+        let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()]);
+        let msg = to_binary(&ExecuteMsg::Receive(pkt))?;
         Ok(SubMsg {
             id,
             reply_on: self.reply_on.clone(),
             gas_limit: self.gas_limit,
             msg: CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: self.get_recipient_address(api, querier, namespacing_contract)?,
-                msg: self.message.clone(),
+                msg,
                 funds: self.funds.to_vec(),
             }),
         })
@@ -116,12 +127,34 @@ impl AMPPkt {
     }
 
     /// Gets the original sender of a message
-    pub fn get_origin(self) -> String {
-        self.origin
+    pub fn get_origin(&self) -> String {
+        self.origin.clone()
     }
 
     /// Gets the previous sender of a message
-    pub fn get_previous_sender(self) -> String {
-        self.previous_sender
+    pub fn get_previous_sender(&self) -> String {
+        self.previous_sender.clone()
+    }
+
+    /// Gets all unique recipients for messages
+    pub fn get_unique_recipients(&self) -> Vec<String> {
+        let mut recipients: Vec<String> = self
+            .messages
+            .to_vec()
+            .into_iter()
+            .map(|msg| msg.recipient)
+            .collect();
+        recipients.sort_unstable();
+        recipients.dedup();
+        recipients
+    }
+
+    /// Gets all messages for a given recipient
+    pub fn get_messages_for_recipient(&self, recipient: String) -> Vec<AMPMsg> {
+        self.messages
+            .to_vec()
+            .into_iter()
+            .filter(|msg| msg.recipient == recipient.clone())
+            .collect()
     }
 }

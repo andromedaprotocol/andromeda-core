@@ -1,14 +1,14 @@
-use crate::state::{read_code_id, store_code_id};
 use ado_base::state::ADOContract;
-use andromeda_app::adodb::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use amp::{
+    kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    messages::AMPPkt,
+};
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
     error::ContractError,
-    parse_message,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -51,6 +51,12 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     Ok(Response::default())
 }
 
+pub struct ExecuteEnv<'a> {
+    deps: DepsMut<'a>,
+    pub env: Env,
+    pub info: MessageInfo,
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -58,35 +64,38 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let execute_env = ExecuteEnv { deps, env, info };
+
     match msg {
-        ExecuteMsg::UpdateCodeId {
-            code_id_key,
-            code_id,
-        } => add_update_code_id(deps, env, info, code_id_key, code_id),
-        ExecuteMsg::AndrReceive(msg) => {
-            ADOContract::default().execute(deps, env, info, msg, execute)
-        }
+        ExecuteMsg::Receive(packet) => handle_amp_packet(execute_env, packet),
+        _ => Ok(Response::default()),
     }
 }
 
-pub fn add_update_code_id(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    code_id_key: String,
-    code_id: u64,
+pub fn handle_amp_packet(
+    execute_env: ExecuteEnv,
+    packet: AMPPkt,
 ) -> Result<Response, ContractError> {
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    store_code_id(deps.storage, &code_id_key, code_id)?;
+    //TODO: Sender authorisation
+    let mut res = Response::default();
+    let message_recipients = packet.get_unique_recipients();
+    for recipient in message_recipients {
+        let messages = packet.get_messages_for_recipient(recipient);
+        for message in messages {
+            let sub_msg = message.generate_message(
+                execute_env.deps.api,
+                &execute_env.deps.querier,
+                packet.get_origin(),
+                packet.get_previous_sender(),
+                None,
+                1,
+            )?;
 
-    Ok(Response::default().add_attributes(vec![
-        attr("action", "add_update_code_id"),
-        attr("code_id_key", code_id_key),
-        attr("code_id", code_id.to_string()),
-    ]))
+            res = res.add_submessage(sub_msg);
+        }
+    }
+
+    Ok(res)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -130,7 +139,6 @@ fn from_semver(err: semver::Error) -> StdError {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
 }
@@ -141,15 +149,6 @@ fn handle_andromeda_query(
     msg: AndromedaQuery,
 ) -> Result<Binary, ContractError> {
     match msg {
-        AndromedaQuery::Get(data) => {
-            let code_id_key: String = parse_message(&data)?;
-            encode_binary(&query_code_id(deps, code_id_key)?)
-        }
         _ => ADOContract::default().query(deps, env, msg, query),
     }
-}
-
-fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
-    let code_id = read_code_id(deps.storage, &key)?;
-    Ok(code_id)
 }
