@@ -20,7 +20,16 @@ pub struct ADORecipient {
 }
 
 #[cw_serde]
-pub struct KernelMessage {}
+pub enum MessagePath {
+    Direct(MessageComponents),
+    Kernel(String),
+}
+
+#[cw_serde]
+pub struct MessageComponents {
+    pub recipient: String,
+    pub message: Binary,
+}
 
 #[cw_serde]
 pub enum Recipient {
