@@ -2,8 +2,9 @@ use crate::state::{KERNEL_ADDRESS, SPLITTER};
 use ado_base::ADOContract;
 use andromeda_finance::splitter::{
     validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
-    MigrateMsg, QueryMsg, Splitter,
+    KernelExecuteMsg, MigrateMsg, QueryMsg, Splitter,
 };
+
 use common::{
     ado_base::{
         hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
@@ -138,14 +139,13 @@ pub fn execute(
         ExecuteMsg::SendKernel { recipient, msg } => {
             execute_send_kernel(deps, info, recipient, msg)
         }
-        ExecuteMsg::Analyze { recipient, msg } => todo!(),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
     }
 }
 
 fn execute_send_kernel(
     deps: DepsMut,
-    _info: MessageInfo,
+    info: MessageInfo,
     recipient: String,
     msg: Binary,
 ) -> Result<Response, ContractError> {
@@ -154,11 +154,11 @@ fn execute_send_kernel(
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: kernel_address.into_string(),
-            msg: to_binary(&ExecuteMsg::Analyze {
+            msg: to_binary(&KernelExecuteMsg::Receive {
                 recipient,
-                msg: msg.clone(),
+                msg: to_binary(&ExecuteMsg::Send {})?,
             })?,
-            funds: vec![],
+            funds: info.funds,
         }))
         .add_attribute("action", "send_kernel")
         .add_attribute("message", msg.to_string()))

@@ -20,9 +20,7 @@ pub struct ADORecipient {
 }
 
 #[cw_serde]
-pub enum KernelMessage {}
-
-const DEFAULT: u32 = 1;
+pub struct KernelMessage {}
 
 #[cw_serde]
 pub enum Recipient {

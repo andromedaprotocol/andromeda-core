@@ -41,6 +41,11 @@ impl InstantiateMsg {
 }
 
 #[cw_serde]
+pub enum KernelExecuteMsg {
+    Receive { recipient: String, msg: Binary },
+}
+
+#[cw_serde]
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     UpdateRecipients {
@@ -54,10 +59,6 @@ pub enum ExecuteMsg {
     Send {},
 
     SendKernel {
-        recipient: String,
-        msg: Binary,
-    },
-    Analyze {
         recipient: String,
         msg: Binary,
     },
