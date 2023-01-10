@@ -1,14 +1,15 @@
 use ado_base::state::ADOContract;
 use amp::{
     kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    messages::AMPPkt,
+    messages::{AMPPkt, ExecuteMsg},
 };
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     error::ContractError,
 };
 use cosmwasm_std::{
-    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    ensure, entry_point, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, Reply, Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -84,16 +85,25 @@ pub fn handle_amp_packet(
     //     // Contract address is resolved here to reduce gas costs for repeated recipients
     //     let contract_addr = recipient.clone(); //TODO: ADD NAMESPACING RESOLVER
     //     let messages = packet.get_messages_for_recipient(recipient);
-    //     for message in messages {
-    //         let sub_msg = message.generate_message(
-    //             contract_addr.clone(),
-    //             packet.get_origin(),
-    //             packet.get_previous_sender(),
-    //             1,
-    //         )?;
+    //     // for message in messages {
+    //     //     let sub_msg = message.generate_message(
+    //     //         contract_addr.clone(),
+    //     //         packet.get_origin(),
+    //     //         packet.get_previous_sender(),
+    //     //         1,
+    //     //     )?;
 
-    //         res = res.add_submessage(sub_msg);
-    //     }
+    //     //     res = res.add_submessage(sub_msg);
+    //     // }
+    //     let amp_pkt = AMPPkt::new(packet.get_origin(), packet.get_previous_sender(), messages);
+    //     let sub_msg = SubMsg::reply_always(
+    //         CosmosMsg::Wasm::<Empty>(WasmMsg::Execute {
+    //             contract_addr,
+    //             msg: to_binary(&ExecuteMsg::Receive(amp_pkt))?,
+    //             funds: vec![], //TODO: CALCULATE FUNDS
+    //         }),
+    //         1,
+    //     );
     // }
 
     for message in packet.messages.to_vec() {
