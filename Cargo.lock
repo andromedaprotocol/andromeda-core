@@ -30,6 +30,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "amp"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 0.16.0",
+ "cw2 0.16.0",
+ "cw20 0.16.0",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-address-list"
 version = "0.1.3"
 dependencies = [
