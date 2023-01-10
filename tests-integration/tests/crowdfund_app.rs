@@ -167,7 +167,9 @@ fn test_crowdfund_app() {
         },
     ];
 
-    let splitter_init_msg = mock_splitter_instantiate_msg(splitter_recipients, None);
+    let kernel_address = "kernel_address".to_string();
+    let splitter_init_msg =
+        mock_splitter_instantiate_msg(splitter_recipients, kernel_address, None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
         instantiate_msg: to_binary(&splitter_init_msg).unwrap(),

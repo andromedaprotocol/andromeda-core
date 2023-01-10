@@ -138,6 +138,7 @@ pub fn execute(
         ExecuteMsg::SendKernel { recipient, msg } => {
             execute_send_kernel(deps, info, recipient, msg)
         }
+        ExecuteMsg::Analyze { recipient, msg } => todo!(),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
     }
 }
