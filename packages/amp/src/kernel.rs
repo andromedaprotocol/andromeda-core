@@ -1,12 +1,15 @@
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
+use crate::messages::AMPPkt;
+
 #[cw_serde]
 pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
+    /// Receives an AMP Packet for relaying
+    Receive(AMPPkt),
 }
 
 #[cw_serde]

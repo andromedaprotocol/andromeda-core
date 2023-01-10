@@ -1,8 +1,6 @@
 use common::error::ContractError;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    Addr, Api, Binary, Coin, CosmosMsg, QuerierWrapper, Reply, ReplyOn, SubMsg, WasmMsg,
-};
+use cosmwasm_std::{Addr, Api, Binary, Coin, CosmosMsg, QuerierWrapper, ReplyOn, SubMsg, WasmMsg};
 
 #[cw_serde]
 /// This struct defines how the kernel parses and relays messages between ADOs
