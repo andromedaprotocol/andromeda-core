@@ -7,8 +7,9 @@ use andromeda_finance::splitter::{
 
 use common::{
     ado_base::{
-        hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
-        InstantiateMsg as BaseInstantiateMsg,
+        hooks::AndromedaHook,
+        recipient::{MessagePath, Recipient},
+        AndromedaMsg, InstantiateMsg as BaseInstantiateMsg,
     },
     app::AndrAddress,
     encode_binary,
@@ -140,6 +141,7 @@ pub fn execute(
             execute_send_kernel(deps, info, recipient, msg)
         }
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
+        ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
     }
 }
 
@@ -162,6 +164,23 @@ fn execute_send_kernel(
         }))
         .add_attribute("action", "send_kernel")
         .add_attribute("message", msg.to_string()))
+}
+
+pub fn execute_receive(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: MessagePath,
+) -> Result<Response, ContractError> {
+    match msg {
+        MessagePath::Direct() => execute_send(deps, info),
+        MessagePath::Kernel(message_components) => execute_send_kernel(
+            deps,
+            info,
+            message_components.recipient,
+            message_components.message,
+        ),
+    }
 }
 
 pub fn execute_andromeda(

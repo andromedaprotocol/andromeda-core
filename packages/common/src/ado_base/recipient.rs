@@ -21,8 +21,8 @@ pub struct ADORecipient {
 
 #[cw_serde]
 pub enum MessagePath {
-    Direct(MessageComponents),
-    Kernel(String),
+    Direct(),
+    Kernel(MessageComponents),
 }
 
 #[cw_serde]

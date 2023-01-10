@@ -1,5 +1,9 @@
 use common::{
-    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    ado_base::{
+        modules::Module,
+        recipient::{MessagePath, Recipient},
+        AndromedaMsg, AndromedaQuery,
+    },
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -64,6 +68,8 @@ pub enum ExecuteMsg {
     },
 
     AndrReceive(AndromedaMsg),
+
+    Receive(MessagePath),
 }
 
 #[cw_serde]
