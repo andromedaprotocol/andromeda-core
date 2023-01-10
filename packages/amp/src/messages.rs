@@ -71,11 +71,11 @@ impl AMPMsg {
     /// Generates a sub message for the given AMP Message
     pub fn generate_message(
         &self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
+        // api: &dyn Api,
+        // querier: &QuerierWrapper,
+        contract_addr: String,
         origin: String,
         previous_sender: String,
-        namespacing_contract: Option<Addr>,
         id: u64,
     ) -> Result<SubMsg, ContractError> {
         let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()]);
@@ -85,7 +85,7 @@ impl AMPMsg {
             reply_on: self.reply_on.clone(),
             gas_limit: self.gas_limit,
             msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: self.get_recipient_address(api, querier, namespacing_contract)?,
+                contract_addr,
                 msg,
                 funds: self.funds.to_vec(),
             }),

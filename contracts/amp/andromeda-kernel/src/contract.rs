@@ -78,21 +78,35 @@ pub fn handle_amp_packet(
 ) -> Result<Response, ContractError> {
     //TODO: Sender authorisation
     let mut res = Response::default();
-    let message_recipients = packet.get_unique_recipients();
-    for recipient in message_recipients {
-        let messages = packet.get_messages_for_recipient(recipient);
-        for message in messages {
-            let sub_msg = message.generate_message(
-                execute_env.deps.api,
-                &execute_env.deps.querier,
-                packet.get_origin(),
-                packet.get_previous_sender(),
-                None,
-                1,
-            )?;
+    // Batched message implementation
+    // let message_recipients = packet.get_unique_recipients();
+    // for recipient in message_recipients {
+    //     // Contract address is resolved here to reduce gas costs for repeated recipients
+    //     let contract_addr = recipient.clone(); //TODO: ADD NAMESPACING RESOLVER
+    //     let messages = packet.get_messages_for_recipient(recipient);
+    //     for message in messages {
+    //         let sub_msg = message.generate_message(
+    //             contract_addr.clone(),
+    //             packet.get_origin(),
+    //             packet.get_previous_sender(),
+    //             1,
+    //         )?;
 
-            res = res.add_submessage(sub_msg);
-        }
+    //         res = res.add_submessage(sub_msg);
+    //     }
+    // }
+
+    for message in packet.messages.to_vec() {
+        let contract_addr =
+            message.get_recipient_address(execute_env.deps.api, &execute_env.deps.querier, None)?;
+        let msg = message.generate_message(
+            contract_addr,
+            packet.get_origin(),
+            packet.get_previous_sender(),
+            1,
+        )?;
+
+        res = res.add_submessage(msg)
     }
 
     Ok(res)
