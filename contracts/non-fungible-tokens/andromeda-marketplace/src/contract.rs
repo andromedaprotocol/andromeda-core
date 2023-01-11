@@ -293,7 +293,7 @@ fn execute_buy(
         .add_attribute("action", "buy")
         .add_attribute("token_id", token_id)
         .add_attribute("token_contract", token_sale_state.token_address)
-        .add_attribute("recipient", &info.sender.to_string())
+        .add_attribute("recipient", info.sender.to_string())
         .add_attribute("sale_id", token_sale_state.sale_id))
 }
 
