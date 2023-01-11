@@ -19,3 +19,6 @@ schemars = "0.8.10"
 cw-utils = "0.16.0"
 
 common = { path = "../common", version = "0.1.0" }
+amp = { path = "../amp", version = "0.1.0" }
+
+

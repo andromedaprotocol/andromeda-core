@@ -2,14 +2,17 @@ use crate::state::{KERNEL_ADDRESS, SPLITTER};
 use ado_base::ADOContract;
 use andromeda_finance::splitter::{
     validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
-    KernelExecuteMsg, MigrateMsg, QueryMsg, Splitter,
+    MigrateMsg, QueryMsg, Splitter,
 };
 
+use amp::{
+    kernel::ExecuteMsg as KernelExecuteMsg,
+    messages::{AMPMsg, AMPPkt, MessagePath},
+};
 use common::{
     ado_base::{
-        hooks::AndromedaHook,
-        recipient::{MessagePath, Recipient},
-        AndromedaMsg, InstantiateMsg as BaseInstantiateMsg,
+        hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
+        InstantiateMsg as BaseInstantiateMsg,
     },
     app::AndrAddress,
     encode_binary,
@@ -137,9 +140,7 @@ pub fn execute(
         }
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
         ExecuteMsg::Send {} => execute_send(deps, info),
-        ExecuteMsg::SendKernel { recipient, msg } => {
-            execute_send_kernel(deps, info, recipient, msg)
-        }
+        ExecuteMsg::SendKernel { amp_message } => execute_send_kernel(deps, info, amp_message),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
     }
@@ -148,22 +149,34 @@ pub fn execute(
 fn execute_send_kernel(
     deps: DepsMut,
     info: MessageInfo,
-    recipient: String,
-    msg: Binary,
+    amp_message: AMPMsg,
 ) -> Result<Response, ContractError> {
     let kernel_address = KERNEL_ADDRESS.load(deps.storage)?;
+    let origin = info.sender.to_string();
+    let previous_sender = info.sender.to_string();
 
+    let messages = AMPMsg {
+        recipient: amp_message.recipient.clone(),
+        message: amp_message.message.clone(),
+        funds: info.funds.clone(),
+        reply_on: amp_message.reply_on,
+        gas_limit: amp_message.gas_limit,
+    };
+
+    let amp_packet = AMPPkt::new(origin, previous_sender, vec![messages]);
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: kernel_address.into_string(),
-            msg: to_binary(&KernelExecuteMsg::Receive {
-                recipient,
-                msg: to_binary(&ExecuteMsg::Send {})?,
-            })?,
+            msg: to_binary(&KernelExecuteMsg::Receive(amp_packet))?,
             funds: info.funds,
         }))
         .add_attribute("action", "send_kernel")
-        .add_attribute("message", msg.to_string()))
+        .add_attribute("message", amp_message.message.to_string())
+        .add_attribute("recipient", amp_message.recipient.to_string())
+        .add_attribute(
+            "gas_limit",
+            amp_message.gas_limit.expect("None").to_string(),
+        ))
 }
 
 pub fn execute_receive(
@@ -174,12 +187,9 @@ pub fn execute_receive(
 ) -> Result<Response, ContractError> {
     match msg {
         MessagePath::Direct() => execute_send(deps, info),
-        MessagePath::Kernel(message_components) => execute_send_kernel(
-            deps,
-            info,
-            message_components.recipient,
-            message_components.message,
-        ),
+        MessagePath::Kernel(message_components) => {
+            execute_send_kernel(deps, info, message_components)
+        }
     }
 }
 

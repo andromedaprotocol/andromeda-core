@@ -20,18 +20,6 @@ pub struct ADORecipient {
 }
 
 #[cw_serde]
-pub enum MessagePath {
-    Direct(),
-    Kernel(MessageComponents),
-}
-
-#[cw_serde]
-pub struct MessageComponents {
-    pub recipient: String,
-    pub message: Binary,
-}
-
-#[cw_serde]
 pub enum Recipient {
     /// An address that is not another ADO. It is assumed that it is a valid address.
     Addr(String),

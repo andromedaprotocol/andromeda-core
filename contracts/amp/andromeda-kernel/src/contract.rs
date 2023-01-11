@@ -1,7 +1,7 @@
 use ado_base::state::ADOContract;
 use amp::{
     kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    messages::{AMPPkt, ExecuteMsg},
+    messages::AMPPkt,
 };
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},

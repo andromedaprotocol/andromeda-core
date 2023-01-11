@@ -1,9 +1,6 @@
+use amp::messages::{AMPMsg, MessagePath};
 use common::{
-    ado_base::{
-        modules::Module,
-        recipient::{MessagePath, Recipient},
-        AndromedaMsg, AndromedaQuery,
-    },
+    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -45,11 +42,6 @@ impl InstantiateMsg {
 }
 
 #[cw_serde]
-pub enum KernelExecuteMsg {
-    Receive { recipient: String, msg: Binary },
-}
-
-#[cw_serde]
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     UpdateRecipients {
@@ -63,8 +55,7 @@ pub enum ExecuteMsg {
     Send {},
 
     SendKernel {
-        recipient: String,
-        msg: Binary,
+        amp_message: AMPMsg,
     },
 
     AndrReceive(AndromedaMsg),

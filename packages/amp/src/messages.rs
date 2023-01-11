@@ -94,6 +94,13 @@ impl AMPMsg {
 }
 
 #[cw_serde]
+/// Allows the user to choose between bypassing or using the kernel
+pub enum MessagePath {
+    Direct(),
+    Kernel(AMPMsg),
+}
+
+#[cw_serde]
 /// An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating
 /// It contains an original sender, if used for authorisation the sender must be authorised
 /// The previous sender is the one who sent the message

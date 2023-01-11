@@ -391,6 +391,7 @@ dependencies = [
 name = "andromeda-finance"
 version = "0.1.0"
 dependencies = [
+ "amp",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -660,6 +661,7 @@ name = "andromeda-splitter"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "amp",
  "andromeda-finance",
  "andromeda-testing",
  "common",
