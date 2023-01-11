@@ -140,7 +140,7 @@ pub fn execute(
         }
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
         ExecuteMsg::Send {} => execute_send(deps, info),
-        ExecuteMsg::SendKernel { amp_message } => execute_send_kernel(deps, info, amp_message),
+        ExecuteMsg::SendKernel { amp_message } => execute_send_kernel(deps, env, info, amp_message),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
     }
@@ -148,12 +148,13 @@ pub fn execute(
 
 fn execute_send_kernel(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     amp_message: AMPMsg,
 ) -> Result<Response, ContractError> {
     let kernel_address = KERNEL_ADDRESS.load(deps.storage)?;
     let origin = info.sender.to_string();
-    let previous_sender = info.sender.to_string();
+    let previous_sender = env.contract.address;
 
     let messages = AMPMsg {
         recipient: amp_message.recipient.clone(),
@@ -181,14 +182,14 @@ fn execute_send_kernel(
 
 pub fn execute_receive(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: MessagePath,
 ) -> Result<Response, ContractError> {
     match msg {
         MessagePath::Direct() => execute_send(deps, info),
         MessagePath::Kernel(message_components) => {
-            execute_send_kernel(deps, info, message_components)
+            execute_send_kernel(deps, env, info, message_components)
         }
     }
 }

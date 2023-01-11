@@ -4,7 +4,7 @@ use common::{
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Binary, Decimal};
+use cosmwasm_std::{ensure, Decimal};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
