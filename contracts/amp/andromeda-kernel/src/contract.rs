@@ -8,8 +8,7 @@ use common::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    ensure, entry_point, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdError, SubMsg, WasmMsg,
+    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
