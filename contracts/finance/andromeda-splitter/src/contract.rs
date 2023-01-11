@@ -152,10 +152,16 @@ fn execute_send_kernel(
     info: MessageInfo,
     amp_message: AMPMsg,
 ) -> Result<Response, ContractError> {
+    // The kernel address has been validated and saved during instantiation
     let kernel_address = KERNEL_ADDRESS.load(deps.storage)?;
+
+    // The original sender of the message is the user in this case
     let origin = info.sender.to_string();
+
+    // The previous sender of the message is the contract in this case since it will be the one sending the message to the kernel
     let previous_sender = env.contract.address;
 
+    // Construct the amp packet's message
     let messages = AMPMsg {
         recipient: amp_message.recipient.clone(),
         message: amp_message.message.clone(),
@@ -164,7 +170,9 @@ fn execute_send_kernel(
         gas_limit: amp_message.gas_limit,
     };
 
+    // Construct the amp packet
     let amp_packet = AMPPkt::new(origin, previous_sender, vec![messages]);
+
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: kernel_address.into_string(),

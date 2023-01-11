@@ -12,7 +12,7 @@ pub enum ExecuteMsg {
 #[cw_serde]
 /// This struct defines how the kernel parses and relays messages between ADOs
 /// It contains a simple recipient string which may use our namespacing implementation or a simple contract address
-/// If the desired recipient is via IBC then namespacing must be employeed
+/// If the desired recipient is via IBC then namespacing must be employed
 /// The attached message must be a binary encoded execute message for the receiving ADO
 /// Funds can be attached for an individual message and will be attached accordingly
 pub struct AMPMsg {
