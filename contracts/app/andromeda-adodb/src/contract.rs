@@ -159,8 +159,8 @@ fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
     Ok(code_id)
 }
 
-const DEFAULT_LIMIT: u32 = 25u32;
-const MAX_LIMIT: u32 = 100u32;
+const DEFAULT_LIMIT: u32 = 25;
+const MAX_LIMIT: u32 = 100;
 
 fn query_ado_types(
     deps: Deps,
