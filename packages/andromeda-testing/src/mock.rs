@@ -3,6 +3,7 @@
 use andromeda_adodb::mock::{
     mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_get_code_id_msg, mock_store_code_id_msg,
 };
+use andromeda_kernel::mock::{mock_andromeda_kernel, mock_kernel_instantiate_message};
 use andromeda_primitive::mock::{
     mock_andromeda_primitive, mock_primitive_instantiate_msg, mock_store_address_msgs,
 };
@@ -13,6 +14,7 @@ pub struct MockAndromeda {
     pub admin_address: Addr,
     pub adodb_address: Addr,
     pub registry_address: Addr,
+    pub kernel_address: Addr,
 }
 
 impl MockAndromeda {
@@ -20,6 +22,7 @@ impl MockAndromeda {
         // Store contract codes
         let adodb_code_id = app.store_code(mock_andromeda_adodb());
         let primitive_code_id = app.store_code(mock_andromeda_primitive());
+        let kernel_code_id = app.store_code(mock_andromeda_kernel());
 
         // Init ADO DB
         let adodb_init_msg = mock_adodb_instantiate_msg();
@@ -47,10 +50,24 @@ impl MockAndromeda {
             )
             .unwrap();
 
+        // Init Kernel
+        let kernel_init_msg = mock_kernel_instantiate_message();
+        let kernel_address = app
+            .instantiate_contract(
+                kernel_code_id,
+                admin_address.clone(),
+                &kernel_init_msg,
+                &[],
+                "Kernel",
+                Some(admin_address.to_string()),
+            )
+            .unwrap();
+
         // Add Code IDs
         let store_primitive_code_id_msg =
             mock_store_code_id_msg("primitive".to_string(), primitive_code_id);
         let store_adodb_code_id_msg = mock_store_code_id_msg("adodb".to_string(), adodb_code_id); //Dev Note: In future change this to "adodb" for the key
+        let store_kernel_code_id_msg = mock_store_code_id_msg("kernel".to_string(), kernel_code_id);
         app.execute_contract(
             admin_address.clone(),
             adodb_address.clone(),
@@ -62,6 +79,13 @@ impl MockAndromeda {
             admin_address.clone(),
             adodb_address.clone(),
             &store_adodb_code_id_msg,
+            &[],
+        )
+        .unwrap();
+        app.execute_contract(
+            admin_address.clone(),
+            adodb_address.clone(),
+            &store_kernel_code_id_msg,
             &[],
         )
         .unwrap();
@@ -81,6 +105,7 @@ impl MockAndromeda {
             adodb_address,
             registry_address,
             admin_address: admin_address.clone(),
+            kernel_address,
         }
     }
 

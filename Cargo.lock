@@ -742,6 +742,7 @@ version = "0.1.0"
 dependencies = [
  "andromeda-adodb",
  "andromeda-app",
+ "andromeda-kernel",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
  "andromeda-primitive",
