@@ -146,6 +146,20 @@ pub fn execute(
     }
 }
 
+pub fn execute_receive(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: MessagePath,
+) -> Result<Response, ContractError> {
+    match msg {
+        MessagePath::Direct() => execute_send(deps, info),
+        MessagePath::Kernel(message_components) => {
+            execute_send_kernel(deps, env, info, message_components)
+        }
+    }
+}
+
 fn execute_send_kernel(
     deps: DepsMut,
     env: Env,
@@ -161,17 +175,8 @@ fn execute_send_kernel(
     // The previous sender of the message is the contract in this case since it will be the one sending the message to the kernel
     let previous_sender = env.contract.address;
 
-    // Construct the amp packet's message
-    let messages = AMPMsg {
-        recipient: amp_message.recipient.clone(),
-        message: amp_message.message.clone(),
-        funds: info.funds.clone(),
-        reply_on: amp_message.reply_on,
-        gas_limit: amp_message.gas_limit,
-    };
-
     // Construct the amp packet
-    let amp_packet = AMPPkt::new(origin, previous_sender, vec![messages]);
+    let amp_packet = AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]);
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -186,20 +191,6 @@ fn execute_send_kernel(
             "gas_limit",
             amp_message.gas_limit.expect("None").to_string(),
         ))
-}
-
-pub fn execute_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: MessagePath,
-) -> Result<Response, ContractError> {
-    match msg {
-        MessagePath::Direct() => execute_send(deps, info),
-        MessagePath::Kernel(message_components) => {
-            execute_send_kernel(deps, env, info, message_components)
-        }
-    }
 }
 
 pub fn execute_andromeda(
