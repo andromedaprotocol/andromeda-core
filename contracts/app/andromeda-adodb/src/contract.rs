@@ -1,4 +1,4 @@
-use crate::state::{read_code_id, store_code_id};
+use crate::state::{read_code_id, store_code_id, ADO_TYPE};
 use ado_base::state::ADOContract;
 use andromeda_app::adodb::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
@@ -131,6 +131,7 @@ fn from_semver(err: semver::Error) -> StdError {
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
+        QueryMsg::ADOType { code_id } => encode_binary(&query_ado_type(deps, code_id)?),
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
 }
@@ -152,4 +153,8 @@ fn handle_andromeda_query(
 fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
     let code_id = read_code_id(deps.storage, &key)?;
     Ok(code_id)
+}
+
+fn query_ado_type(deps: Deps, code_id: u64) -> Result<Option<String>, ContractError> {
+    Ok(ADO_TYPE.may_load(deps.storage, code_id)?)
 }

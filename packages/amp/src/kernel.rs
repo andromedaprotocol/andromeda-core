@@ -1,5 +1,6 @@
 use common::ado_base::AndromedaQuery;
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Addr;
 
 use crate::messages::AMPPkt;
 
@@ -10,8 +11,8 @@ pub struct InstantiateMsg {}
 pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
     Receive(AMPPkt),
-    /// Adds a key address to the kernel, restricted to the owner of the kernel
-    AddKeyAddress { key: String, value: String },
+    /// Upserts a key address to the kernel, restricted to the owner of the kernel
+    UpsertKeyAddress { key: String, value: String },
 }
 
 #[cw_serde]
@@ -22,4 +23,8 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(Addr)]
+    KeyAddress { key: String },
+    #[returns(bool)]
+    VerifyAddress { address: String },
 }
