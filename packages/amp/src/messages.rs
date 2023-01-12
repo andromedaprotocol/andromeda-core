@@ -40,7 +40,7 @@ impl AMPMsg {
         AMPMsg {
             recipient: recipient.into(),
             message,
-            funds: funds.unwrap_or(vec![]),
+            funds: funds.unwrap_or_default(),
             reply_on: reply_on.unwrap_or(ReplyOn::Always),
             gas_limit,
         }
@@ -51,20 +51,12 @@ impl AMPMsg {
         &self,
         api: &dyn Api,
         _querier: &QuerierWrapper,
-        namespacing_contract: Option<Addr>,
+        _namespacing_contract: Option<Addr>,
     ) -> Result<String, ContractError> {
         let addr = api.addr_validate(&self.recipient);
         match addr {
             Ok(addr) => Ok(addr.to_string()),
-            Err(_) => match namespacing_contract {
-                // Some(namespacing_contract) => query_get::<String>(
-                //     Some(encode_binary(&self.identifier)?),
-                //     app_contract.to_string(),
-                //     querier,
-                // ),
-                // TODO: Add Namespacing here, will need to include IBC
-                _ => Err(ContractError::InvalidAddress {}),
-            },
+            Err(_) => Err(ContractError::InvalidAddress {}),
         }
     }
 

@@ -208,9 +208,7 @@ fn handle_andromeda_query(
     env: Env,
     msg: AndromedaQuery,
 ) -> Result<Binary, ContractError> {
-    match msg {
-        _ => ADOContract::default().query(deps, env, msg, query),
-    }
+    ADOContract::default().query(deps, env, msg, query)
 }
 
 fn query_key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
