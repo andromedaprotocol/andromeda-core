@@ -86,7 +86,7 @@ pub fn handle_amp_packet(
             execute_env.deps.as_ref(),
             execute_env.info.sender.to_string(),
         )?,
-        ContractError::Unauthorized {},
+        ContractError::Unauthorized {}
     );
     let mut res = Response::default();
     // Batched message implementation

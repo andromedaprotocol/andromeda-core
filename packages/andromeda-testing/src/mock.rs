@@ -3,7 +3,9 @@
 use andromeda_adodb::mock::{
     mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_get_code_id_msg, mock_store_code_id_msg,
 };
-use andromeda_kernel::mock::{mock_andromeda_kernel, mock_kernel_instantiate_message};
+use andromeda_kernel::mock::{
+    mock_andromeda_kernel, mock_kernel_instantiate_message, mock_upsert_key_address,
+};
 use andromeda_primitive::mock::{
     mock_andromeda_primitive, mock_primitive_instantiate_msg, mock_store_address_msgs,
 };
@@ -96,6 +98,16 @@ impl MockAndromeda {
         app.execute_contract(
             admin_address.clone(),
             registry_address.clone(),
+            &store_adodb_addr_msg,
+            &[],
+        )
+        .unwrap();
+
+        let store_adodb_addr_msg =
+            mock_upsert_key_address("adodb".to_string(), adodb_address.to_string());
+        app.execute_contract(
+            admin_address.clone(),
+            kernel_address.clone(),
             &store_adodb_addr_msg,
             &[],
         )

@@ -20,3 +20,9 @@ pub fn mock_upsert_key_address(key: impl Into<String>, value: impl Into<String>)
         value: value.into(),
     }
 }
+
+pub fn mock_verify_address(address: impl Into<String>) -> QueryMsg {
+    QueryMsg::VerifyAddress {
+        address: address.into(),
+    }
+}
