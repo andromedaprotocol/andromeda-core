@@ -1,8 +1,9 @@
 use crate::state::{KERNEL_ADDRESS, SPLITTER, UPDATED_SPLITTER};
 use ado_base::ADOContract;
 use andromeda_finance::splitter::{
-    validate_recipient_list, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg, MigrateMsg,
-    QueryMsg, UpdatedAddressPercent, UpdatedGetSplitterConfigResponse, UpdatedSplitter,
+    generate_msg_native_kernel, validate_recipient_list, ExecuteMsg, GetSplitterConfigResponse,
+    InstantiateMsg, MigrateMsg, QueryMsg, UpdatedAddressPercent, UpdatedGetSplitterConfigResponse,
+    UpdatedRecipient, UpdatedSplitter,
 };
 
 use amp::messages::{AMPMsg, MessagePath, ReplyGas};
@@ -180,6 +181,7 @@ fn execute_send_kernel(
 
     let splitter = UPDATED_SPLITTER.load(deps.storage)?;
     let mut msgs: Vec<SubMsg> = Vec::new();
+    let mut amp_msgs: Vec<AMPMsg> = Vec::new();
 
     let mut remainder_funds = info.funds.clone();
     // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS.
@@ -207,22 +209,23 @@ fn execute_send_kernel(
             .updated_get_message()?
             .unwrap_or(Binary::default());
 
-        let amp_msg = AMPMsg {
+        let amp_msg = AMPMsg::new(
             recipient,
             message,
-            funds: vec_coin.clone(),
-            reply_on: reply_gas.reply_on.clone().unwrap_or(ReplyOn::Always),
-            gas_limit: Some(reply_gas.gas_limit.unwrap_or(0)),
-        };
+            Some(vec_coin.clone()),
+            Some(reply_gas.reply_on.clone().unwrap_or(ReplyOn::Always)),
+            Some(reply_gas.gas_limit.unwrap_or(0)),
+        );
 
-        let msg = recipient_addr.recipient.updated_generate_msg_native(
-            vec_coin,
-            origin.clone(),
-            previous_sender.clone().into_string(),
-            vec![amp_msg],
-            kernel_address.clone().into_string(),
-        )?;
-        msgs.push(msg);
+        match &recipient_addr.recipient {
+            UpdatedRecipient::Addr(addr) => {
+                msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: addr.clone(),
+                    amount: vec_coin,
+                })))
+            }
+            UpdatedRecipient::ADO(_) => amp_msgs.push(amp_msg),
+        }
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
     // Who is the sender of this function?
@@ -237,6 +240,18 @@ fn execute_send_kernel(
             amount: remainder_funds,
         })));
     }
+    // TODO send the correct amount of funds for the kernel
+    let mut kernel_funds: Vec<Coin> = Vec::new();
+
+    // Generates the SubMsg intended for the kernel
+    let msg = generate_msg_native_kernel(
+        info.funds,
+        origin.clone(),
+        previous_sender.into_string(),
+        amp_msgs,
+        kernel_address.into_string(),
+    )?;
+    msgs.push(msg);
 
     Ok(Response::new()
         .add_submessages(msgs)

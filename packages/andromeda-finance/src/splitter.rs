@@ -55,6 +55,24 @@ pub enum UpdatedRecipient {
     ADO(UpdatedADORecipient),
 }
 
+pub fn generate_msg_native_kernel(
+    funds: Vec<Coin>,
+    origin: String,
+    previous_sender: String,
+    messages: Vec<AMPMsg>,
+    kernel_address: String,
+) -> Result<SubMsg, ContractError> {
+    Ok(SubMsg::new(WasmMsg::Execute {
+        contract_addr: kernel_address,
+        msg: encode_binary(&KernelExecuteMsg::Receive(AMPPkt::new(
+            origin,
+            previous_sender,
+            messages,
+        )))?,
+        funds,
+    }))
+}
+
 impl UpdatedRecipient {
     /// Creates an Addr Recipient from the given string
     pub fn from_string(addr: String) -> UpdatedRecipient {
