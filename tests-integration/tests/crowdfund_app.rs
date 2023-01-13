@@ -12,7 +12,9 @@ use andromeda_crowdfund::mock::{
 use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of,
 };
-use andromeda_finance::splitter::AddressPercent;
+use andromeda_finance::splitter::{
+    AddressPercent, UpdatedADORecipient, UpdatedAddressPercent, UpdatedRecipient,
+};
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
@@ -143,13 +145,12 @@ fn test_crowdfund_app() {
             .unwrap(),
         ),
     });
-    let vault_two_recipient = Recipient::ADO(ADORecipient {
-        address: AndrAddress {
-            identifier: vault_two_app_component.clone().name,
-        },
+    let vault_two_recipient = UpdatedRecipient::ADO(UpdatedADORecipient {
+        address: vault_two_app_component.clone().name,
+
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
-                Some(Recipient::Addr(vault_two_recipient_addr.to_string())),
+                Some(UpdatedRecipient::Addr(vault_two_recipient_addr.to_string())),
                 None,
                 None,
             ))
@@ -157,11 +158,11 @@ fn test_crowdfund_app() {
         ),
     });
     let splitter_recipients = vec![
-        AddressPercent {
+        UpdatedAddressPercent {
             recipient: vault_one_recipient,
             percent: Decimal::from_str("0.5").unwrap(),
         },
-        AddressPercent {
+        UpdatedAddressPercent {
             recipient: vault_two_recipient,
             percent: Decimal::from_str("0.5").unwrap(),
         },

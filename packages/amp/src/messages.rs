@@ -89,7 +89,13 @@ impl AMPMsg {
 /// Allows the user to choose between bypassing or using the kernel
 pub enum MessagePath {
     Direct(),
-    Kernel(AMPMsg),
+    Kernel(ReplyGas),
+}
+
+#[cw_serde]
+pub struct ReplyGas {
+    pub reply_on: Option<ReplyOn>,
+    pub gas_limit: Option<u64>,
 }
 
 #[cw_serde]

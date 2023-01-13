@@ -5,16 +5,14 @@ use cosmwasm_std::{
 };
 
 use crate::contract::{execute, instantiate};
-use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg};
+use andromeda_finance::splitter::{
+    ExecuteMsg, InstantiateMsg, UpdatedADORecipient, UpdatedAddressPercent, UpdatedRecipient,
+};
 use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT,
 };
 use common::{
-    ado_base::{
-        modules::Module,
-        recipient::{ADORecipient, Recipient},
-        AndromedaMsg,
-    },
+    ado_base::{modules::Module, AndromedaMsg},
     app::AndrAddress,
     error::ContractError,
 };
@@ -32,8 +30,8 @@ fn test_modules() {
                 identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
             },
         }]),
-        recipients: vec![AddressPercent {
-            recipient: Recipient::from_string(String::from("Some Address")),
+        recipients: vec![UpdatedAddressPercent {
+            recipient: UpdatedRecipient::from_string(String::from("Some Address")),
             percent: Decimal::percent(100),
         }],
         lock_time: Some(100_000),
@@ -90,15 +88,13 @@ fn test_update_app_contract() {
     let msg = InstantiateMsg {
         modules: Some(modules),
         recipients: vec![
-            AddressPercent {
-                recipient: Recipient::from_string(String::from("Some Address")),
+            UpdatedAddressPercent {
+                recipient: UpdatedRecipient::from_string(String::from("Some Address")),
                 percent: Decimal::percent(50),
             },
-            AddressPercent {
-                recipient: Recipient::ADO(ADORecipient {
-                    address: AndrAddress {
-                        identifier: "e".to_string(),
-                    },
+            UpdatedAddressPercent {
+                recipient: UpdatedRecipient::ADO(UpdatedADORecipient {
+                    address: "e".to_string(),
                     msg: None,
                 }),
                 percent: Decimal::percent(50),
@@ -139,11 +135,9 @@ fn test_update_app_contract_invalid_recipient() {
     let info = mock_info("app_contract", &[]);
     let msg = InstantiateMsg {
         modules: Some(modules),
-        recipients: vec![AddressPercent {
-            recipient: Recipient::ADO(ADORecipient {
-                address: AndrAddress {
-                    identifier: "z".to_string(),
-                },
+        recipients: vec![UpdatedAddressPercent {
+            recipient: UpdatedRecipient::ADO(UpdatedADORecipient {
+                address: "z".to_string(),
                 msg: None,
             }),
             percent: Decimal::percent(100),

@@ -1,14 +1,11 @@
-use crate::state::{KERNEL_ADDRESS, SPLITTER};
+use crate::state::{KERNEL_ADDRESS, SPLITTER, UPDATED_SPLITTER};
 use ado_base::ADOContract;
 use andromeda_finance::splitter::{
-    validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
-    MigrateMsg, QueryMsg, Splitter,
+    validate_recipient_list, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg, MigrateMsg,
+    QueryMsg, UpdatedAddressPercent, UpdatedGetSplitterConfigResponse, UpdatedSplitter,
 };
 
-use amp::{
-    kernel::ExecuteMsg as KernelExecuteMsg,
-    messages::{AMPMsg, AMPPkt, MessagePath},
-};
+use amp::messages::{AMPMsg, MessagePath, ReplyGas};
 use common::{
     ado_base::{
         hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
@@ -19,8 +16,8 @@ use common::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdError, SubMsg, Timestamp, Uint128, WasmMsg,
+    attr, ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    ReplyOn, Response, StdError, SubMsg, Timestamp, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::{nonpayable, Expiration};
@@ -59,13 +56,13 @@ pub fn instantiate(
             // New lock time can't be too long
             ensure!(lock_time <= ONE_YEAR, ContractError::LockTimeTooLong {});
 
-            Splitter {
+            UpdatedSplitter {
                 recipients: msg.recipients,
                 lock: Expiration::AtTime(Timestamp::from_seconds(lock_time + current_time)),
             }
         }
         None => {
-            Splitter {
+            UpdatedSplitter {
                 recipients: msg.recipients,
                 // If locking isn't desired upon instantiation, it's automatically set to 0
                 lock: Expiration::AtTime(Timestamp::from_seconds(current_time)),
@@ -76,7 +73,7 @@ pub fn instantiate(
     let validated_address = deps.api.addr_validate(&msg.kernel_address)?;
     KERNEL_ADDRESS.save(deps.storage, &validated_address)?;
 
-    SPLITTER.save(deps.storage, &splitter)?;
+    UPDATED_SPLITTER.save(deps.storage, &splitter)?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -140,7 +137,7 @@ pub fn execute(
         }
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
         ExecuteMsg::Send {} => execute_send(deps, info),
-        ExecuteMsg::SendKernel { amp_message } => execute_send_kernel(deps, env, info, amp_message),
+        ExecuteMsg::SendKernel { reply_gas } => execute_send_kernel(deps, env, info, reply_gas),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
     }
@@ -154,9 +151,7 @@ pub fn execute_receive(
 ) -> Result<Response, ContractError> {
     match msg {
         MessagePath::Direct() => execute_send(deps, info),
-        MessagePath::Kernel(message_components) => {
-            execute_send_kernel(deps, env, info, message_components)
-        }
+        MessagePath::Kernel(reply_gas) => execute_send_kernel(deps, env, info, reply_gas),
     }
 }
 
@@ -164,7 +159,7 @@ fn execute_send_kernel(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    amp_message: AMPMsg,
+    reply_gas: ReplyGas,
 ) -> Result<Response, ContractError> {
     // The kernel address has been validated and saved during instantiation
     let kernel_address = KERNEL_ADDRESS.load(deps.storage)?;
@@ -175,22 +170,77 @@ fn execute_send_kernel(
     // The previous sender of the message is the contract in this case since it will be the one sending the message to the kernel
     let previous_sender = env.contract.address;
 
-    // Construct the amp packet
-    let amp_packet = AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]);
+    let sent_funds: Vec<Coin> = info.funds.clone();
+    ensure!(
+        !sent_funds.is_empty(),
+        ContractError::InvalidFunds {
+            msg: "ensure! at least one coin to be sent".to_string(),
+        }
+    );
+
+    let splitter = UPDATED_SPLITTER.load(deps.storage)?;
+    let mut msgs: Vec<SubMsg> = Vec::new();
+
+    let mut remainder_funds = info.funds.clone();
+    // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS.
+    // Would like to understand more about why we loop through funds and what it exactly stored in it.
+    // From there we could look into HashMaps, or other methods to break the nested loops and avoid Denial of Service.
+    // [ACK-04] Limit number of coins sent to 5.
+    ensure!(
+        info.funds.len() < 5,
+        ContractError::ExceedsMaxAllowedCoins {}
+    );
+    for recipient_addr in &splitter.recipients {
+        let recipient_percent = recipient_addr.percent;
+        let mut vec_coin: Vec<Coin> = Vec::new();
+        for (i, coin) in sent_funds.iter().enumerate() {
+            let mut recip_coin: Coin = coin.clone();
+            recip_coin.amount = coin.amount * recipient_percent;
+            remainder_funds[i].amount -= recip_coin.amount;
+            vec_coin.push(recip_coin);
+        }
+        // ADO receivers must use AndromedaMsg::Receive to execute their functionality
+        // Others may just receive the funds
+        let recipient = recipient_addr.recipient.updated_get_addr()?;
+        let message = recipient_addr
+            .recipient
+            .updated_get_message()?
+            .unwrap_or(Binary::default());
+
+        let amp_msg = AMPMsg {
+            recipient,
+            message,
+            funds: vec_coin.clone(),
+            reply_on: reply_gas.reply_on.clone().unwrap_or(ReplyOn::Always),
+            gas_limit: Some(reply_gas.gas_limit.unwrap_or(0)),
+        };
+
+        let msg = recipient_addr.recipient.updated_generate_msg_native(
+            vec_coin,
+            origin.clone(),
+            previous_sender.clone().into_string(),
+            vec![amp_msg],
+            kernel_address.clone().into_string(),
+        )?;
+        msgs.push(msg);
+    }
+    remainder_funds.retain(|x| x.amount > Uint128::zero());
+    // Who is the sender of this function?
+    // Why does the remaining funds go the the sender of the executor of the splitter?
+    // Is it considered tax(fee) or mistake?
+    // Discussion around caller of splitter function in andromeda_splitter smart contract.
+    // From tests, it looks like owner of smart contract (Andromeda) will recieve the rest of funds.
+    // If so, should be documented
+    if !remainder_funds.is_empty() {
+        msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: remainder_funds,
+        })));
+    }
 
     Ok(Response::new()
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: kernel_address.into_string(),
-            msg: to_binary(&KernelExecuteMsg::Receive(amp_packet))?,
-            funds: info.funds,
-        }))
-        .add_attribute("action", "send_kernel")
-        .add_attribute("message", amp_message.message.to_string())
-        .add_attribute("recipient", amp_message.recipient.to_string())
-        .add_attribute(
-            "gas_limit",
-            amp_message.gas_limit.expect("None").to_string(),
-        ))
+        .add_submessages(msgs)
+        .add_attribute("action", "send_kernel"))
 }
 
 pub fn execute_andromeda(
@@ -268,7 +318,7 @@ fn execute_update_recipients(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    recipients: Vec<AddressPercent>,
+    recipients: Vec<UpdatedAddressPercent>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -279,7 +329,7 @@ fn execute_update_recipients(
 
     validate_recipient_list(recipients.clone())?;
 
-    let mut splitter = SPLITTER.load(deps.storage)?;
+    let mut splitter = UPDATED_SPLITTER.load(deps.storage)?;
     // Can't call this function while the lock isn't expired
 
     ensure!(
@@ -293,7 +343,7 @@ fn execute_update_recipients(
     );
 
     splitter.recipients = recipients;
-    SPLITTER.save(deps.storage, &splitter)?;
+    UPDATED_SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))
 }
@@ -383,6 +433,7 @@ fn from_semver(err: semver::Error) -> StdError {
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetSplitterConfig {} => encode_binary(&query_splitter(deps)?),
+        QueryMsg::UpdatedGetSplitterConfig {} => encode_binary(&query_updated_splitter(deps)?),
         QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
     }
 }
@@ -392,10 +443,16 @@ fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError
 
     Ok(GetSplitterConfigResponse { config: splitter })
 }
+
+fn query_updated_splitter(deps: Deps) -> Result<UpdatedGetSplitterConfigResponse, ContractError> {
+    let splitter = UPDATED_SPLITTER.load(deps.storage)?;
+
+    Ok(UpdatedGetSplitterConfigResponse { config: splitter })
+}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::ado_base::recipient::Recipient;
+    use andromeda_finance::splitter::UpdatedRecipient;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{from_binary, Coin, Decimal};
 
@@ -405,8 +462,8 @@ mod tests {
         let env = mock_env();
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
-            recipients: vec![AddressPercent {
-                recipient: Recipient::from_string(String::from("Some Address")),
+            recipients: vec![UpdatedAddressPercent {
+                recipient: UpdatedRecipient::from_string(String::from("Some Address")),
                 percent: Decimal::one(),
             }],
             modules: None,
@@ -428,12 +485,14 @@ mod tests {
         let owner = "creator";
 
         // Start off with an expiration that's behind current time (expired)
-        let splitter = Splitter {
+        let splitter = UpdatedSplitter {
             recipients: vec![],
             lock: Expiration::AtTime(Timestamp::from_seconds(current_time - 1)),
         };
 
-        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+        UPDATED_SPLITTER
+            .save(deps.as_mut().storage, &splitter)
+            .unwrap();
 
         let msg = ExecuteMsg::UpdateLock { lock_time };
         let deps_mut = deps.as_mut();
@@ -479,12 +538,12 @@ mod tests {
         let owner = "creator";
 
         let recipient = vec![
-            AddressPercent {
-                recipient: Recipient::from_string(String::from("addr1")),
+            UpdatedAddressPercent {
+                recipient: UpdatedRecipient::from_string(String::from("addr1")),
                 percent: Decimal::percent(40),
             },
-            AddressPercent {
-                recipient: Recipient::from_string(String::from("addr1")),
+            UpdatedAddressPercent {
+                recipient: UpdatedRecipient::from_string(String::from("addr1")),
                 percent: Decimal::percent(60),
             },
         ];
@@ -492,12 +551,14 @@ mod tests {
             recipients: recipient.clone(),
         };
 
-        let splitter = Splitter {
+        let splitter = UpdatedSplitter {
             recipients: vec![],
             lock: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
-        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+        UPDATED_SPLITTER
+            .save(deps.as_mut().storage, &splitter)
+            .unwrap();
 
         let deps_mut = deps.as_mut();
         ADOContract::default()
@@ -528,7 +589,7 @@ mod tests {
         );
 
         //check result
-        let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
+        let splitter = UPDATED_SPLITTER.load(deps.as_ref().storage).unwrap();
         assert_eq!(splitter.recipients, recipient);
     }
 
@@ -548,23 +609,25 @@ mod tests {
         let recip_percent2 = 20; // 20%
 
         let recipient = vec![
-            AddressPercent {
-                recipient: Recipient::from_string(recip_address1.clone()),
+            UpdatedAddressPercent {
+                recipient: UpdatedRecipient::from_string(recip_address1.clone()),
                 percent: Decimal::percent(recip_percent1),
             },
-            AddressPercent {
-                recipient: Recipient::from_string(recip_address2.clone()),
+            UpdatedAddressPercent {
+                recipient: UpdatedRecipient::from_string(recip_address2.clone()),
                 percent: Decimal::percent(recip_percent2),
             },
         ];
         let msg = ExecuteMsg::Send {};
 
-        let splitter = Splitter {
+        let splitter = UpdatedSplitter {
             recipients: recipient,
             lock: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
-        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+        UPDATED_SPLITTER
+            .save(deps.as_mut().storage, &splitter)
+            .unwrap();
 
         let deps_mut = deps.as_mut();
         ADOContract::default()
@@ -612,16 +675,18 @@ mod tests {
     fn test_query_splitter() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let splitter = Splitter {
+        let splitter = UpdatedSplitter {
             recipients: vec![],
             lock: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
-        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+        UPDATED_SPLITTER
+            .save(deps.as_mut().storage, &splitter)
+            .unwrap();
 
         let query_msg = QueryMsg::GetSplitterConfig {};
         let res = query(deps.as_ref(), env, query_msg).unwrap();
-        let val: GetSplitterConfigResponse = from_binary(&res).unwrap();
+        let val: UpdatedGetSplitterConfigResponse = from_binary(&res).unwrap();
 
         assert_eq!(val.config, splitter);
     }
@@ -653,23 +718,25 @@ mod tests {
         let recip_percent2 = 20; // 20%
 
         let recipient = vec![
-            AddressPercent {
-                recipient: Recipient::from_string(recip_address1),
+            UpdatedAddressPercent {
+                recipient: UpdatedRecipient::from_string(recip_address1),
                 percent: Decimal::percent(recip_percent1),
             },
-            AddressPercent {
-                recipient: Recipient::from_string(recip_address2),
+            UpdatedAddressPercent {
+                recipient: UpdatedRecipient::from_string(recip_address2),
                 percent: Decimal::percent(recip_percent2),
             },
         ];
         let msg = ExecuteMsg::Send {};
 
-        let splitter = Splitter {
+        let splitter = UpdatedSplitter {
             recipients: recipient,
             lock: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
 
-        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+        UPDATED_SPLITTER
+            .save(deps.as_mut().storage, &splitter)
+            .unwrap();
 
         let deps_mut = deps.as_mut();
         ADOContract::default()
