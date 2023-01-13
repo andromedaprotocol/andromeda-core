@@ -243,9 +243,15 @@ fn execute_send_kernel(
     // TODO send the correct amount of funds for the kernel
     let mut kernel_funds: Vec<Coin> = Vec::new();
 
+    for amp_msg in amp_msgs.iter() {
+        for x in &amp_msg.funds {
+            kernel_funds.push(x.to_owned())
+        }
+    }
+
     // Generates the SubMsg intended for the kernel
     let msg = generate_msg_native_kernel(
-        info.funds,
+        kernel_funds,
         origin.clone(),
         previous_sender.into_string(),
         amp_msgs,
