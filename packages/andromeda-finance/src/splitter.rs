@@ -1,12 +1,12 @@
 use amp::kernel::ExecuteMsg as KernelExecuteMsg;
-use amp::messages::{AMPMsg, AMPPkt, MessagePath, ReplyGas};
+use amp::messages::{AMPMsg, AMPPkt, ReplyGas};
 use common::{
     ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     encode_binary,
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, BankMsg, Binary, Coin, CosmosMsg, Decimal, ReplyOn, SubMsg, WasmMsg};
+use cosmwasm_std::{ensure, BankMsg, Binary, Coin, CosmosMsg, Decimal, SubMsg, WasmMsg};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -105,7 +105,7 @@ impl UpdatedRecipient {
         kernel_address: String,
     ) -> Result<SubMsg, ContractError> {
         Ok(match &self {
-            UpdatedRecipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
+            UpdatedRecipient::ADO(_recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: kernel_address,
                 msg: encode_binary(&KernelExecuteMsg::Receive(AMPPkt::new(
                     origin,
@@ -209,8 +209,6 @@ pub enum ExecuteMsg {
     },
 
     AndrReceive(AndromedaMsg),
-
-    Receive(MessagePath),
 }
 
 #[cw_serde]

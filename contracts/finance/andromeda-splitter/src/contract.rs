@@ -6,7 +6,7 @@ use andromeda_finance::splitter::{
     UpdatedRecipient, UpdatedSplitter,
 };
 
-use amp::messages::{AMPMsg, MessagePath, ReplyGas};
+use amp::messages::{AMPMsg, ReplyGas};
 use common::{
     ado_base::{
         hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
@@ -140,21 +140,21 @@ pub fn execute(
         ExecuteMsg::Send {} => execute_send(deps, info),
         ExecuteMsg::SendKernel { reply_gas } => execute_send_kernel(deps, env, info, reply_gas),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
-        ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
     }
 }
 
-pub fn execute_receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: MessagePath,
-) -> Result<Response, ContractError> {
-    match msg {
-        MessagePath::Direct() => execute_send(deps, info),
-        MessagePath::Kernel(reply_gas) => execute_send_kernel(deps, env, info, reply_gas),
-    }
-}
+// The nature of the saved recipient dictates the message's path
+// pub fn execute_receive(
+//     deps: DepsMut,
+//     env: Env,
+//     info: MessageInfo,
+//     msg: MessagePath,
+// ) -> Result<Response, ContractError> {
+//     match msg {
+//         MessagePath::Direct() => execute_send(deps, info),
+//         MessagePath::Kernel(reply_gas) => execute_send_kernel(deps, env, info, reply_gas),
+//     }
+// }
 
 fn execute_send_kernel(
     deps: DepsMut,
