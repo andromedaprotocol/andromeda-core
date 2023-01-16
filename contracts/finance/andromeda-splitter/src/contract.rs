@@ -182,6 +182,7 @@ fn execute_send_kernel(
     let splitter = UPDATED_SPLITTER.load(deps.storage)?;
     let mut msgs: Vec<SubMsg> = Vec::new();
     let mut amp_msgs: Vec<AMPMsg> = Vec::new();
+    let mut kernel_funds: Vec<Coin> = Vec::new();
 
     let mut remainder_funds = info.funds.clone();
     // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS.
@@ -209,14 +210,6 @@ fn execute_send_kernel(
             .updated_get_message()?
             .unwrap_or(Binary::default());
 
-        let amp_msg = AMPMsg::new(
-            recipient,
-            message,
-            Some(vec_coin.clone()),
-            Some(reply_gas.reply_on.clone().unwrap_or(ReplyOn::Always)),
-            Some(reply_gas.gas_limit.unwrap_or(0)),
-        );
-
         match &recipient_addr.recipient {
             UpdatedRecipient::Addr(addr) => {
                 msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -224,7 +217,19 @@ fn execute_send_kernel(
                     amount: vec_coin,
                 })))
             }
-            UpdatedRecipient::ADO(_) => amp_msgs.push(amp_msg),
+            UpdatedRecipient::ADO(_) => {
+                amp_msgs.push(AMPMsg::new(
+                    recipient,
+                    message,
+                    Some(vec_coin.clone()),
+                    Some(reply_gas.reply_on.clone().unwrap_or(ReplyOn::Always)),
+                    Some(reply_gas.gas_limit.unwrap_or(0)),
+                ));
+                // Add the coins intended for the kernel
+                for x in &vec_coin {
+                    kernel_funds.push(x.to_owned())
+                }
+            }
         }
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
@@ -239,14 +244,6 @@ fn execute_send_kernel(
             to_address: info.sender.to_string(),
             amount: remainder_funds,
         })));
-    }
-    // TODO send the correct amount of funds for the kernel
-    let mut kernel_funds: Vec<Coin> = Vec::new();
-
-    for amp_msg in amp_msgs.iter() {
-        for x in &amp_msg.funds {
-            kernel_funds.push(x.to_owned())
-        }
     }
 
     // Generates the SubMsg intended for the kernel
