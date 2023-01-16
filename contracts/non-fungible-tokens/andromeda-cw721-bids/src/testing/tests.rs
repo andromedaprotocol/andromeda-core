@@ -23,6 +23,7 @@ fn init(deps: DepsMut, info: MessageInfo) -> Result<(), ContractError> {
         InstantiateMsg {
             valid_denom: "uusd".to_string(),
             andromeda_cw721_contract: MOCK_CW721_CONTRACT.to_owned(),
+            kernel_address: None,
         },
     )
     .unwrap();

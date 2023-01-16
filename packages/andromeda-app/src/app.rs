@@ -28,6 +28,7 @@ pub struct InstantiateMsg {
     pub app_components: Vec<AppComponent>,
     pub name: String,
     pub primitive_contract: String,
+    pub kernel_address: Option<String>,
     // Used for automation
     pub target_ados: Option<Vec<String>>,
 }

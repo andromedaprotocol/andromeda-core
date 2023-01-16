@@ -44,6 +44,7 @@ fn test_modules() {
             weight: Uint128::new(100),
         }],
         lock_time: None,
+        kernel_address: None,
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let expected_res = Response::new()
@@ -111,6 +112,7 @@ fn test_update_app_contract() {
             },
         ],
         lock_time: None,
+        kernel_address: None,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -154,6 +156,7 @@ fn test_update_app_contract_invalid_recipient() {
             weight: Uint128::new(100),
         }],
         lock_time: Some(100_000),
+        kernel_address: None,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -184,6 +187,7 @@ fn test_instantiate() {
         }],
         modules: None,
         lock_time: None,
+        kernel_address: None,
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(0, res.messages.len());
@@ -221,6 +225,7 @@ fn test_execute_update_lock() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -274,6 +279,7 @@ fn test_execute_update_lock_too_short() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -315,6 +321,7 @@ fn test_execute_update_lock_too_long() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -356,6 +363,7 @@ fn test_execute_update_lock_already_locked() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -397,6 +405,7 @@ fn test_execute_update_lock_unauthorized() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -441,6 +450,7 @@ fn test_execute_remove_recipient() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -532,6 +542,7 @@ fn test_execute_remove_recipient_not_on_list() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -594,6 +605,7 @@ fn test_execute_remove_recipient_contract_locked() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -664,6 +676,7 @@ fn test_execute_remove_recipient_unauthorized() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -710,6 +723,7 @@ fn test_update_recipient_weight() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -805,6 +819,7 @@ fn test_update_recipient_weight_locked_contract() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -878,6 +893,7 @@ fn test_update_recipient_weight_user_not_found() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -949,6 +965,7 @@ fn test_update_recipient_weight_invalid_weight() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -1016,6 +1033,7 @@ fn test_execute_add_recipient() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -1120,6 +1138,7 @@ fn test_execute_add_recipient_duplicate_recipient() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -1197,6 +1216,7 @@ fn test_execute_add_recipient_invalid_weight() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -1266,6 +1286,7 @@ fn test_execute_add_recipient_locked_contract() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -1318,6 +1339,7 @@ fn test_execute_add_recipient_unauthorized() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -1353,6 +1375,7 @@ fn test_execute_update_recipients() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -1423,6 +1446,7 @@ fn test_execute_update_recipients_invalid_weight() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -1477,6 +1501,7 @@ fn test_execute_update_recipients_contract_locked() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -1529,6 +1554,7 @@ fn test_execute_update_recipients_unauthorized() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -1584,6 +1610,7 @@ fn test_execute_send() {
                 operators: None,
                 modules: None,
                 primitive_contract: None,
+                kernel_address: None,
             },
         )
         .unwrap();

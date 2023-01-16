@@ -9,6 +9,7 @@ pub struct InstantiateMsg {
     pub logic_gate: LogicGate,
     pub eval_ados: Vec<AndrAddress>,
     pub execute_ado: AndrAddress,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

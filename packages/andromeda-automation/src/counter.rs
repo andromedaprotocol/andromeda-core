@@ -8,6 +8,7 @@ use cosmwasm_std::Uint128;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub whitelist: Vec<AndrAddress>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

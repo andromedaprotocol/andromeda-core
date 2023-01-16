@@ -92,6 +92,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
         },
         modules,
         can_mint_after_sale: true,
+        kernel_address: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -219,6 +220,7 @@ fn test_mint_sale_conducted_cant_mint_after_sale() {
         },
         modules: None,
         can_mint_after_sale: false,
+        kernel_address: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -1747,6 +1749,7 @@ fn test_validate_andr_addresses_nonexisting_module() {
             },
         }]),
         can_mint_after_sale: true,
+        kernel_address: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -1775,6 +1778,7 @@ fn test_update_app_contract_nonexisting_address() {
         },
         modules: None,
         can_mint_after_sale: true,
+        kernel_address: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -1802,6 +1806,7 @@ fn test_validate_andr_addresses_regular_address() {
         },
         modules: None,
         can_mint_after_sale: true,
+        kernel_address: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -1837,6 +1842,7 @@ fn test_addresslist() {
         },
         modules: Some(modules),
         can_mint_after_sale: true,
+        kernel_address: None,
     };
 
     let info = mock_info("app_contract", &[]);

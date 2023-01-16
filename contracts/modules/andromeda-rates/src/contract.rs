@@ -47,6 +47,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -295,6 +296,7 @@ mod tests {
         ];
         let msg = InstantiateMsg {
             rates: rates.clone(),
+            kernel_address: None,
         };
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -335,7 +337,10 @@ mod tests {
                 recipients: vec![Recipient::Addr("".into())],
             },
         ];
-        let msg = InstantiateMsg { rates: vec![] };
+        let msg = InstantiateMsg {
+            rates: vec![],
+            kernel_address: None,
+        };
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         let msg =
@@ -382,7 +387,10 @@ mod tests {
                 recipients: vec![Recipient::Addr("3".into())],
             },
         ];
-        let msg = InstantiateMsg { rates };
+        let msg = InstantiateMsg {
+            rates,
+            kernel_address: None,
+        };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let res: OnFundsTransferResponse = from_binary(
@@ -470,7 +478,10 @@ mod tests {
                 recipients: vec![Recipient::Addr("3".into())],
             },
         ];
-        let msg = InstantiateMsg { rates };
+        let msg = InstantiateMsg {
+            rates,
+            kernel_address: None,
+        };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         let res: OnFundsTransferResponse = from_binary(

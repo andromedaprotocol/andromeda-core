@@ -15,6 +15,7 @@ pub struct InstantiateMsg {
     pub name: String,
     pub primitive_contract: String,
     pub first_ados: Vec<String>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

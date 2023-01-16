@@ -39,6 +39,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -220,6 +221,7 @@ mod tests {
             whitelist: vec![AndrAddress {
                 identifier: "address".to_string(),
             }],
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -245,6 +247,7 @@ mod tests {
             whitelist: vec![AndrAddress {
                 identifier: "address".to_string(),
             }],
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -271,6 +274,7 @@ mod tests {
             whitelist: vec![AndrAddress {
                 identifier: "address".to_string(),
             }],
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -298,6 +302,7 @@ mod tests {
             whitelist: vec![AndrAddress {
                 identifier: "address".to_string(),
             }],
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 

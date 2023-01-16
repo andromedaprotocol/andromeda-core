@@ -4,7 +4,9 @@ use cw721::Cw721ReceiveMsg;
 use cw_utils::Expiration;
 
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub kernel_address: Option<String>,
+}
 
 #[cw_serde]
 pub enum ExecuteMsg {

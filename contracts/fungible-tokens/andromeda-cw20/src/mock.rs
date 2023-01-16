@@ -32,6 +32,7 @@ pub fn mock_cw20_instantiate_msg(
         mint,
         marketing: None,
         modules,
+        kernel_address: None,
     }
 }
 

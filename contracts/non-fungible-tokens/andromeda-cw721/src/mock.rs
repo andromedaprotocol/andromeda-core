@@ -25,6 +25,7 @@ pub fn mock_cw721_instantiate_msg(
         symbol,
         minter: AndrAddress { identifier: minter },
         modules,
+        kernel_address: None,
     }
 }
 

@@ -4,6 +4,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub is_inclusive: bool,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

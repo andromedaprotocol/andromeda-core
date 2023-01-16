@@ -58,6 +58,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -383,6 +384,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("anchor0000"),
+            kernel_address: None,
         };
 
         let env = mock_env();
@@ -413,6 +415,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("anchor0000"),
+            kernel_address: None,
         };
 
         let env = mock_env();
@@ -482,6 +485,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("token0000"),
+            kernel_address: None,
         };
 
         let env = mock_env();
@@ -644,6 +648,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::native("uusd"),
+            kernel_address: None,
         };
 
         let env = mock_env();
@@ -728,6 +733,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("token0000"),
+            kernel_address: None,
         };
 
         let env = mock_env();
@@ -796,6 +802,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("anchor0000"),
+            kernel_address: None,
         };
 
         let env = mock_env();
@@ -837,6 +844,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("token0000"),
+            kernel_address: None,
         };
 
         let env = mock_env();
@@ -875,6 +883,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::cw20("token0000"),
+            kernel_address: None,
         };
 
         let mut env = mock_env();
@@ -957,6 +966,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             asset_info: AssetInfoUnchecked::native("uusd"),
+            kernel_address: None,
         };
 
         let mut env = mock_env();

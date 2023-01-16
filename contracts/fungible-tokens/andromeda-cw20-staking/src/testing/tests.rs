@@ -37,6 +37,7 @@ fn init(
             identifier: MOCK_STAKING_TOKEN.to_owned(),
         },
         additional_rewards,
+        kernel_address: None,
     };
 
     instantiate(deps, mock_env(), info, msg)

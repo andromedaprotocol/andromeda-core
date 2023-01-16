@@ -2,7 +2,9 @@ use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub kernel_address: Option<String>,
+}
 
 #[cw_serde]
 pub enum ExecuteMsg {

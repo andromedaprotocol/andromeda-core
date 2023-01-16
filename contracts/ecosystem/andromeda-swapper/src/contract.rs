@@ -44,6 +44,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: Some(msg.primitive_contract),
+            kernel_address: msg.kernel_address,
         },
     )?;
     let mut msgs: Vec<SubMsg> = vec![];

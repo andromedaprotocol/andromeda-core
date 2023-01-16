@@ -53,6 +53,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -439,6 +440,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -457,6 +459,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -479,6 +482,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         let res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -502,6 +506,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("anyone", &[]);
@@ -525,6 +530,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -548,6 +554,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -576,6 +583,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -599,6 +607,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -630,6 +639,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -665,6 +675,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -713,6 +724,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -751,6 +763,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -797,6 +810,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -845,6 +859,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -897,6 +912,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
 
         instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -956,6 +972,7 @@ mod tests {
             },
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
+            kernel_address: None,
         };
         instantiate(deps.as_mut(), env, info, msg).unwrap();
         let info = mock_info("owner", &[]);

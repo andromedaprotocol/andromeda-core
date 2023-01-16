@@ -81,6 +81,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }

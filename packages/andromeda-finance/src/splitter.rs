@@ -181,7 +181,7 @@ pub struct InstantiateMsg {
     pub recipients: Vec<UpdatedAddressPercent>,
     pub lock_time: Option<u64>,
     pub modules: Option<Vec<Module>>,
-    pub kernel_address: String,
+    pub kernel_address: Option<String>,
 }
 
 impl InstantiateMsg {

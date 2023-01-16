@@ -12,7 +12,9 @@ pub fn mock_andromeda_primitive() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_primitive_instantiate_msg() -> InstantiateMsg {
-    InstantiateMsg {}
+    InstantiateMsg {
+        kernel_address: None,
+    }
 }
 
 /// Used to generate a message to store a primitive value

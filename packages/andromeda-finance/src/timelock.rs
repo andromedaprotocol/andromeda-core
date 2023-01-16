@@ -122,6 +122,7 @@ impl Escrow {
 pub struct InstantiateMsg {
     /// An optional vector of modules
     pub modules: Option<Vec<Module>>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

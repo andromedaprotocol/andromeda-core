@@ -11,6 +11,7 @@ pub struct InstantiateMsg {
     pub andromeda_cw721_contract: AndrAddress,
     pub randomness_source: String,
     pub required_coin: String,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

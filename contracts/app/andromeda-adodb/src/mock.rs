@@ -11,7 +11,9 @@ pub fn mock_andromeda_adodb() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_adodb_instantiate_msg() -> InstantiateMsg {
-    InstantiateMsg {}
+    InstantiateMsg {
+        kernel_address: Some("kernel_address".to_string()),
+    }
 }
 
 /// Used to generate a message to store a Code ID

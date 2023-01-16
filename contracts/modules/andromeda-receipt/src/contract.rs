@@ -47,6 +47,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -208,6 +209,7 @@ mod tests {
         let info = mock_info(owner, &[]);
         let msg = InstantiateMsg {
             minter: owner.to_string(),
+            kernel_address: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -227,6 +229,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 minter: owner.to_string(),
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -263,6 +266,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 minter: owner.to_string(),
+                kernel_address: None,
             },
         )
         .unwrap();
@@ -322,6 +326,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 minter: owner.to_string(),
+                kernel_address: None,
             },
         )
         .unwrap();

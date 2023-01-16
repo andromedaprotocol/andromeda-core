@@ -12,7 +12,10 @@ pub fn mock_andromeda_auction() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_auction_instantiate_msg(modules: Option<Vec<Module>>) -> InstantiateMsg {
-    InstantiateMsg { modules }
+    InstantiateMsg {
+        modules,
+        kernel_address: None,
+    }
 }
 
 pub fn mock_start_auction(

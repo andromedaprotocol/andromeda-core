@@ -32,6 +32,7 @@ impl Bid {
 pub struct InstantiateMsg {
     pub andromeda_cw721_contract: String,
     pub valid_denom: String,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

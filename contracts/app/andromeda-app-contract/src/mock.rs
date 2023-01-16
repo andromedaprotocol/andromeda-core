@@ -19,6 +19,7 @@ pub fn mock_app_instantiate_msg(
         name,
         primitive_contract,
         target_ados: None,
+        kernel_address: None,
     }
 }
 

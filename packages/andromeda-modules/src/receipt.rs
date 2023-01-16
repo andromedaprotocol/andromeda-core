@@ -23,6 +23,7 @@ pub struct Receipt {
 pub struct InstantiateMsg {
     /// The address authorized to mint new receipts
     pub minter: String,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

@@ -16,6 +16,7 @@ pub fn mock_cw20_staking_instantiate_msg(staking_token: String) -> InstantiateMs
     InstantiateMsg {
         staking_token: AndrAddress::from_string(staking_token),
         additional_rewards: None,
+        kernel_address: None,
     }
 }
 

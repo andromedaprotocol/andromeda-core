@@ -49,6 +49,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -185,6 +186,7 @@ fn add_process(
                 task_balancer: env.contract.address,
                 process,
                 max_processes: state.max,
+                kernel_address: None,
             })?,
             funds: vec![],
             label: "storage".to_string(),
@@ -253,6 +255,7 @@ fn add_process(
                 task_balancer: env.contract.address,
                 process,
                 max_processes: state.max,
+                kernel_address: None,
             })?,
             funds: vec![],
             label: "storage".to_string(),
@@ -355,6 +358,7 @@ mod tests {
         let msg = InstantiateMsg {
             max: 5,
             storage_code_id: 1,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 

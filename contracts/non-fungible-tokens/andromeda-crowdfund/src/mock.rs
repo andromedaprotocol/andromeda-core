@@ -29,6 +29,7 @@ pub fn mock_crowdfund_instantiate_msg(
         },
         can_mint_after_sale,
         modules,
+        kernel_address: None,
     }
 }
 

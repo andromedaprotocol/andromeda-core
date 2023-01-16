@@ -1,4 +1,4 @@
-use crate::state::{KERNEL_ADDRESS, SPLITTER, UPDATED_SPLITTER};
+use crate::state::{SPLITTER, UPDATED_SPLITTER};
 use ado_base::ADOContract;
 use andromeda_finance::splitter::{
     generate_msg_native_kernel, validate_recipient_list, ExecuteMsg, GetSplitterConfigResponse,
@@ -71,8 +71,6 @@ pub fn instantiate(
         }
     };
     // Save kernel address after validating it
-    let validated_address = deps.api.addr_validate(&msg.kernel_address)?;
-    KERNEL_ADDRESS.save(deps.storage, &validated_address)?;
 
     UPDATED_SPLITTER.save(deps.storage, &splitter)?;
 
@@ -87,6 +85,7 @@ pub fn instantiate(
             operators: None,
             modules: msg.modules,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -163,7 +162,9 @@ fn execute_send_kernel(
     reply_gas: ReplyGas,
 ) -> Result<Response, ContractError> {
     // The kernel address has been validated and saved during instantiation
-    let kernel_address = KERNEL_ADDRESS.load(deps.storage)?;
+    let contract = ADOContract::default();
+
+    let kernel_address = contract.kernel_address().load(deps.storage)?;
 
     // The original sender of the message is the user in this case
     let origin = info.sender.to_string();
@@ -486,7 +487,7 @@ mod tests {
             }],
             modules: None,
             lock_time: Some(100_000),
-            kernel_address: "kernel_address".to_string(),
+            kernel_address: Some("kernel_address".to_string()),
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -526,6 +527,7 @@ mod tests {
                     operators: None,
                     modules: None,
                     primitive_contract: None,
+                    kernel_address: None,
                 },
             )
             .unwrap();
@@ -591,6 +593,7 @@ mod tests {
                     operators: None,
                     modules: None,
                     primitive_contract: None,
+                    kernel_address: None,
                 },
             )
             .unwrap();
@@ -660,6 +663,7 @@ mod tests {
                     operators: None,
                     modules: None,
                     primitive_contract: None,
+                    kernel_address: None,
                 },
             )
             .unwrap();
@@ -769,6 +773,7 @@ mod tests {
                     operators: None,
                     modules: None,
                     primitive_contract: None,
+                    kernel_address: None,
                 },
             )
             .unwrap();

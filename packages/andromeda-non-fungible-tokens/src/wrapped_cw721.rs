@@ -24,6 +24,7 @@ pub struct InstantiateMsg {
     pub cw721_instantiate_type: InstantiateType,
     /// Whether or not the cw721 token can be unwrapped once it is wrapped.
     pub can_unwrap: bool,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

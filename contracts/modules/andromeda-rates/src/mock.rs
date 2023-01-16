@@ -11,5 +11,8 @@ pub fn mock_andromeda_rates() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_rates_instantiate_msg(rates: Vec<RateInfo>) -> InstantiateMsg {
-    InstantiateMsg { rates }
+    InstantiateMsg {
+        rates,
+        kernel_address: None,
+    }
 }

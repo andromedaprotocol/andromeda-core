@@ -29,6 +29,10 @@ impl<'a> ADOContract<'a> {
         self.block_height.save(storage, &env.block.height)?;
         self.ado_type.save(storage, &msg.ado_type)?;
         self.version.save(storage, &msg.ado_version)?;
+        if let Some(kernel_address) = msg.kernel_address {
+            self.primitive_contract
+                .save(storage, &api.addr_validate(&kernel_address)?)?;
+        }
         let attributes = [attr("method", "instantiate"), attr("type", &msg.ado_type)];
         #[cfg(feature = "primitive")]
         if let Some(primitive_contract) = msg.primitive_contract {
@@ -233,6 +237,7 @@ mod tests {
                     operators: None,
                     primitive_contract: None,
                     ado_version: "version".to_string(),
+                    kernel_address: None,
                 },
             )
             .unwrap();
@@ -288,6 +293,7 @@ mod tests {
                     }]),
                     operators: None,
                     primitive_contract: None,
+                    kernel_address: None,
                 },
             )
             .unwrap();
@@ -339,6 +345,7 @@ mod tests {
                     modules: None,
                     operators: None,
                     primitive_contract: None,
+                    kernel_address: None,
                 },
             )
             .unwrap();
@@ -386,6 +393,7 @@ mod tests {
                     }]),
                     operators: None,
                     primitive_contract: None,
+                    kernel_address: None,
                 },
             )
             .unwrap();

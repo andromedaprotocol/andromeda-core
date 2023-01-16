@@ -9,6 +9,7 @@ use cw721::{Cw721ReceiveMsg, Expiration};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub modules: Option<Vec<Module>>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

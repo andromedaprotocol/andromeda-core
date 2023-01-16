@@ -44,6 +44,7 @@ pub fn instantiate(
             operators: None,
             modules: msg.modules.clone(),
             primitive_contract: None,
+            kernel_address: msg.clone().kernel_address,
         },
     )?;
     let cw20_resp = cw20_instantiate(deps, env, info, msg.into())?;

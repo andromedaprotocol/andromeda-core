@@ -45,6 +45,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -441,6 +442,8 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+
+            kernel_address: None,
         };
 
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -459,6 +462,8 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+
+            kernel_address: None,
         };
 
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -483,6 +488,8 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+
+            kernel_address: None,
         };
 
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -509,6 +516,8 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -533,6 +542,8 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -559,6 +570,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+
             accrued_reward: None,
         };
         let details = STAKED_NFTS
@@ -581,6 +593,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -608,6 +621,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -637,6 +651,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -667,6 +682,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -742,6 +758,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -785,6 +802,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -828,6 +846,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -871,6 +890,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -914,6 +934,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -955,6 +976,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -998,6 +1020,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -1021,6 +1044,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -1046,6 +1070,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -1069,6 +1094,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -1093,6 +1119,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -1119,6 +1146,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -1142,6 +1170,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -1165,6 +1194,7 @@ mod tests {
                 denom: "ujuno".to_string(),
                 amount: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 

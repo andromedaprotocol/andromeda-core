@@ -12,14 +12,14 @@ pub fn mock_andromeda_splitter() -> Box<dyn Contract<Empty>> {
 
 pub fn mock_splitter_instantiate_msg(
     recipients: Vec<UpdatedAddressPercent>,
-    kernel_address: String,
+    _kernel_address: String,
     lock_time: Option<u64>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         recipients,
         lock_time,
         modules: None,
-        kernel_address,
+        kernel_address: None,
     }
 }
 

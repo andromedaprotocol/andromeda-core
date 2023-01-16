@@ -15,6 +15,7 @@ pub struct InstantiateMsg {
     pub task_balancer: String,
     // Target ADO's Execute Msg
     pub target_message: Binary,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

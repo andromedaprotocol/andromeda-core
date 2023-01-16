@@ -70,7 +70,9 @@ impl fmt::Display for StrategyType {
 }
 
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub kernel_address: Option<String>,
+}
 
 #[cw_serde]
 pub enum ExecuteMsg {

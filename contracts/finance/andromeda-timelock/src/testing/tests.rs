@@ -29,6 +29,7 @@ fn test_modules() {
                 identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
             },
         }]),
+        kernel_address: None,
     };
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -81,6 +82,7 @@ fn test_update_app_contract() {
     let info = mock_info("app_contract", &[]);
     let msg = InstantiateMsg {
         modules: Some(modules),
+        kernel_address: None,
     };
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 

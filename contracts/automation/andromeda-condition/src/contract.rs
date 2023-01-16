@@ -47,6 +47,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -387,6 +388,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -418,6 +420,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -445,6 +448,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -481,6 +485,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -517,6 +522,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -553,6 +559,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -589,6 +596,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -613,6 +621,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -644,6 +653,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -673,6 +683,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -702,6 +713,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -738,6 +750,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -774,6 +787,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -803,6 +817,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let msg = ExecuteMsg::GetResults {};
@@ -838,6 +853,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -867,6 +883,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -896,6 +913,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let msg = ExecuteMsg::GetResults {};
@@ -931,6 +949,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
@@ -967,6 +986,7 @@ mod tests {
             execute_ado: AndrAddress {
                 identifier: "execute_ado".to_string(),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 

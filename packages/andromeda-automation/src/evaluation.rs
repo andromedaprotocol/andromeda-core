@@ -21,6 +21,8 @@ pub struct InstantiateMsg {
 
     // Sets the way we want to compare the Oracle's value to the other's. Either greater, less ...
     pub operation: Operators,
+
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

@@ -39,6 +39,7 @@ pub struct InstantiateMsg {
     pub allowed_coin: CoinAndLimit,
     pub minimal_withdrawal_frequency: MinimumFrequency,
     pub modules: Option<Vec<Module>>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

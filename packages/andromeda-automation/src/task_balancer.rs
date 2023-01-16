@@ -8,6 +8,7 @@ pub struct InstantiateMsg {
     pub max: u64,
     // Code IDS are u64
     pub storage_code_id: u64,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

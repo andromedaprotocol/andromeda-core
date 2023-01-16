@@ -12,6 +12,7 @@ pub struct InstantiateMsg {
     pub token_address: AndrAddress,
     pub can_mint_after_sale: bool,
     pub modules: Option<Vec<Module>>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

@@ -23,7 +23,9 @@ use self::mock_querier::{MOCK_ANCHOR_CONTRACT, MOCK_VAULT_CONTRACT};
 
 #[test]
 fn test_instantiate() {
-    let inst_msg = InstantiateMsg {};
+    let inst_msg = InstantiateMsg {
+        kernel_address: None,
+    };
     let env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies();
@@ -74,7 +76,9 @@ fn test_execute_update_strategy() {
     let mut env = mock_env();
     let depositor = "depositor".to_string();
     let mut deps = mock_dependencies_custom(&[]);
-    let inst_msg = InstantiateMsg {};
+    let inst_msg = InstantiateMsg {
+        kernel_address: None,
+    };
     let info = mock_info(&depositor, &[]);
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
     env.contract.address = Addr::unchecked(MOCK_VAULT_CONTRACT);
@@ -106,7 +110,9 @@ fn test_execute_update_strategy_not_operator() {
     let mut env = mock_env();
     let depositor = "depositor".to_string();
     let mut deps = mock_dependencies_custom(&[]);
-    let inst_msg = InstantiateMsg {};
+    let inst_msg = InstantiateMsg {
+        kernel_address: None,
+    };
     let info = mock_info(&depositor, &[]);
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
     env.contract.address = Addr::unchecked("someinvalidvaultaddress");
@@ -169,7 +175,9 @@ fn test_deposit_strategy() {
             identifier: MOCK_ANCHOR_CONTRACT.to_string(),
         },
     };
-    let inst_msg = InstantiateMsg {};
+    let inst_msg = InstantiateMsg {
+        kernel_address: None,
+    };
     let mut env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies_custom(&[]);
@@ -242,7 +250,9 @@ fn test_deposit_strategy_partial_amount() {
             identifier: MOCK_ANCHOR_CONTRACT.to_string(),
         },
     };
-    let inst_msg = InstantiateMsg {};
+    let inst_msg = InstantiateMsg {
+        kernel_address: None,
+    };
     let mut env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies_custom(&[]);
@@ -331,7 +341,9 @@ fn test_deposit_strategy_insufficient_partial_amount() {
             identifier: "terra1anchoraddress".to_string(),
         },
     };
-    let inst_msg = InstantiateMsg {};
+    let inst_msg = InstantiateMsg {
+        kernel_address: None,
+    };
     let env = mock_env();
     let info = mock_info("minter", &[]);
     let mut deps = mock_dependencies();

@@ -30,6 +30,7 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
         withdrawal_window: WITHDRAWAL_WINDOW,
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
+        kernel_address: None,
     };
 
     instantiate(deps, env, info, msg)
@@ -91,6 +92,7 @@ fn test_instantiate_init_timestamp_past() {
         withdrawal_window: 2,
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
+        kernel_address: None,
     };
 
     let res = instantiate(deps.as_mut(), env.clone(), info, msg);
@@ -117,6 +119,7 @@ fn test_instantiate_init_deposit_window_zero() {
         withdrawal_window: 2,
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
+        kernel_address: None,
     };
 
     let res = instantiate(deps.as_mut(), env, info, msg);
@@ -137,6 +140,7 @@ fn test_instantiate_init_withdrawal_window_zero() {
         withdrawal_window: 0,
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
+        kernel_address: None,
     };
 
     let res = instantiate(deps.as_mut(), env, info, msg);
@@ -157,6 +161,7 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
         withdrawal_window: 5,
         incentive_token: MOCK_INCENTIVE_TOKEN.to_owned(),
         native_denom: "uusd".to_string(),
+        kernel_address: None,
     };
 
     let res = instantiate(deps.as_mut(), env, info, msg);

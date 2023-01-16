@@ -10,6 +10,7 @@ pub struct InstantiateMsg {
     pub process: Addr,
     // Max number of processes
     pub max_processes: u64,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

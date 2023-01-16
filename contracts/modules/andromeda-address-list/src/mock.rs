@@ -11,7 +11,10 @@ pub fn mock_andromeda_address_list() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_address_list_instantiate_msg(is_inclusive: bool) -> InstantiateMsg {
-    InstantiateMsg { is_inclusive }
+    InstantiateMsg {
+        is_inclusive,
+        kernel_address: None,
+    }
 }
 
 pub fn mock_add_address_msg(address: impl Into<String>) -> ExecuteMsg {

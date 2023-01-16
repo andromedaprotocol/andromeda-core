@@ -35,6 +35,7 @@ fn test_andr_query() {
         mint: None,
         marketing: None,
         modules: None,
+        kernel_address: None,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
@@ -85,6 +86,7 @@ fn test_transfer() {
         mint: None,
         marketing: None,
         modules: Some(modules),
+        kernel_address: None,
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
@@ -212,6 +214,7 @@ fn test_send() {
         mint: None,
         marketing: None,
         modules: Some(modules),
+        kernel_address: None,
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
@@ -333,6 +336,7 @@ fn test_update_app_contract() {
         mint: None,
         marketing: None,
         modules: Some(modules),
+        kernel_address: None,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();

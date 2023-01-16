@@ -16,6 +16,7 @@ pub struct InstantiateMsg {
     pub denom: String,
     /// The unbonding duration of the native staking module.
     pub unbonding_duration: Duration,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

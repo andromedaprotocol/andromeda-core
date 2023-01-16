@@ -18,6 +18,7 @@ pub struct InstantiateMsg {
     pub staking_token: AndrAddress,
     /// Any rewards in addition to the staking token. This list cannot include the staking token.
     pub additional_rewards: Option<Vec<RewardTokenUnchecked>>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

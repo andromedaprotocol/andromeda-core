@@ -7,7 +7,9 @@ use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 fn proper_initialization() {
     let mut deps = mock_dependencies();
     let info = mock_info("creator", &[]);
-    let msg = InstantiateMsg {};
+    let msg = InstantiateMsg {
+        kernel_address: None,
+    };
     let env = mock_env();
 
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();

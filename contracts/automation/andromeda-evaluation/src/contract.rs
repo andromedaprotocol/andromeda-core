@@ -57,6 +57,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -275,6 +276,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -321,6 +323,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -353,6 +356,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -386,6 +390,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -419,6 +424,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -452,6 +458,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -485,6 +492,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -518,6 +526,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -551,6 +560,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -584,6 +594,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -617,6 +628,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -650,6 +662,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -684,6 +697,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -717,6 +731,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -750,6 +765,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -785,6 +801,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -820,6 +837,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -859,6 +877,7 @@ mod tests {
             task_balancer,
             user_value,
             operation,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 

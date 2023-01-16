@@ -21,6 +21,7 @@ pub fn mock_wrapped_cw721_instantiate_msg(
         primitive_contract,
         cw721_instantiate_type,
         can_unwrap,
+        kernel_address: None,
     }
 }
 

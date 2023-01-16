@@ -23,6 +23,7 @@ fn init(deps: DepsMut) -> Response {
         is_multi_batch_enabled: true,
         denom: "uusd".to_string(),
         unbonding_duration: Duration::Height(UNBONDING_BLOCK_DURATION),
+        kernel_address: None,
     };
 
     let info = mock_info("owner", &[]);
@@ -360,6 +361,7 @@ fn test_create_batch_multi_batch_not_supported() {
         is_multi_batch_enabled: false,
         denom: "uusd".to_string(),
         unbonding_duration: Duration::Height(0u64),
+        kernel_address: None,
     };
 
     let info = mock_info("owner", &[]);

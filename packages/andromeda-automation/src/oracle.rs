@@ -15,6 +15,8 @@ pub struct InstantiateMsg {
 
     // Specific element in the custom return struct
     pub response_element: Option<String>,
+
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

@@ -1,6 +1,7 @@
 pub mod ado_type;
 pub mod block_height;
 pub mod hooks;
+pub mod kernel_address;
 pub mod modules;
 pub mod operators;
 pub mod ownership;
@@ -21,6 +22,7 @@ use serde::de::DeserializeOwned;
 use self::{
     ado_type::TypeResponse,
     block_height::BlockHeightResponse,
+    kernel_address::KernelAddressResponse,
     operators::{IsOperatorResponse, OperatorsResponse},
     ownership::{ContractOwnerResponse, PublisherResponse},
     version::VersionResponse,
@@ -33,6 +35,7 @@ pub struct InstantiateMsg {
     pub operators: Option<Vec<String>>,
     pub modules: Option<Vec<Module>>,
     pub primitive_contract: Option<String>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]
@@ -82,6 +85,8 @@ pub enum AndromedaQuery {
     Operators {},
     #[returns(TypeResponse)]
     Type {},
+    #[returns(KernelAddressResponse)]
+    KernelAddress {},
     #[returns(PublisherResponse)]
     OriginalPublisher {},
     #[returns(BlockHeightResponse)]

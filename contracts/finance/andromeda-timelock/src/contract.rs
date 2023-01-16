@@ -43,6 +43,7 @@ pub fn instantiate(
             operators: None,
             modules: msg.modules,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -309,7 +310,10 @@ mod tests {
         let env = mock_env();
         let owner = "owner";
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg { modules: None };
+        let msg = InstantiateMsg {
+            modules: None,
+            kernel_address: None,
+        };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         assert_eq!(0, res.messages.len());

@@ -9,6 +9,7 @@ pub struct InstantiateMsg {
     pub nft_contract: Vec<String>,
     pub unbonding_period: u64,
     pub reward: Coin,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

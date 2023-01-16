@@ -43,6 +43,7 @@ fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
             identifier: MINTER.to_string(),
         },
         modules,
+        kernel_address: None,
     };
 
     instantiate(deps, env, info, inst_msg).unwrap();
@@ -813,6 +814,7 @@ fn test_update_app_contract() {
             identifier: "e".to_string(),
         },
         modules: Some(modules),
+        kernel_address: None,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
@@ -860,6 +862,7 @@ fn test_update_app_contract_invalid_minter() {
             identifier: "k".to_string(),
         },
         modules: Some(modules),
+        kernel_address: None,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
@@ -906,6 +909,7 @@ fn test_update_app_contract_invalid_module() {
             identifier: MINTER.to_string(),
         },
         modules: Some(modules),
+        kernel_address: None,
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
@@ -934,6 +938,7 @@ fn test_batch_mint() {
             identifier: MINTER.to_string(),
         },
         modules: None,
+        kernel_address: None,
     };
     let owner = "owner";
     let mut mint_msgs: Vec<MintMsg<TokenExtension>> = Vec::new();

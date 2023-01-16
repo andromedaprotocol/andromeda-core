@@ -18,6 +18,7 @@ pub struct InstantiateMsg {
     pub incentive_token: String,
     /// The native token being deposited.
     pub native_denom: String,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

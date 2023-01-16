@@ -12,7 +12,9 @@ pub fn mock_andromeda_vault() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_vault_instantiate_msg() -> InstantiateMsg {
-    InstantiateMsg {}
+    InstantiateMsg {
+        kernel_address: None,
+    }
 }
 
 /// Used to generate a deposit message for a vault

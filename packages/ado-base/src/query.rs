@@ -3,6 +3,7 @@ use common::{
     ado_base::{
         ado_type::TypeResponse,
         block_height::BlockHeightResponse,
+        kernel_address::KernelAddressResponse,
         operators::{IsOperatorResponse, OperatorsResponse},
         ownership::{ContractOwnerResponse, PublisherResponse},
         version::VersionResponse,
@@ -47,6 +48,7 @@ impl<'a> ADOContract<'a> {
             AndromedaQuery::IsOperator { address } => {
                 encode_binary(&self.query_is_operator(deps, &address)?)
             }
+            AndromedaQuery::KernelAddress {} => encode_binary(&self.query_kernel_address(deps)?),
             AndromedaQuery::Version {} => encode_binary(&self.query_version(deps)?),
             #[cfg(feature = "modules")]
             AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
@@ -74,6 +76,11 @@ impl<'a> ADOContract<'a> {
         Ok(IsOperatorResponse {
             is_operator: self.operators.has(deps.storage, addr),
         })
+    }
+
+    pub fn query_kernel_address(&self, deps: Deps) -> Result<KernelAddressResponse, ContractError> {
+        let kernel_address = self.kernel_address.load(deps.storage)?;
+        Ok(KernelAddressResponse { kernel_address })
     }
 
     pub fn query_operators(&self, deps: Deps) -> Result<OperatorsResponse, ContractError> {

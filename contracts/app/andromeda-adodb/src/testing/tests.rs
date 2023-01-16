@@ -15,7 +15,9 @@ use cosmwasm_std::{
 fn proper_initialization() {
     let mut deps = mock_dependencies();
     let info = mock_info("creator", &[]);
-    let msg = InstantiateMsg {};
+    let msg = InstantiateMsg {
+        kernel_address: None,
+    };
     let env = mock_env();
 
     let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -33,7 +35,9 @@ fn test_update_code_id() {
         deps.as_mut(),
         mock_env(),
         mock_info(&owner, &[]),
-        InstantiateMsg {},
+        InstantiateMsg {
+            kernel_address: None,
+        },
     )
     .unwrap();
 
@@ -64,7 +68,9 @@ fn test_update_code_id_operator() {
         deps.as_mut(),
         mock_env(),
         mock_info(&owner, &[]),
-        InstantiateMsg {},
+        InstantiateMsg {
+            kernel_address: None,
+        },
     )
     .unwrap();
 
@@ -100,7 +106,9 @@ fn test_update_code_id_unauthorized() {
         deps.as_mut(),
         mock_env(),
         mock_info(&owner, &[]),
-        InstantiateMsg {},
+        InstantiateMsg {
+            kernel_address: None,
+        },
     )
     .unwrap();
 

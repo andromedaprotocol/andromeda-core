@@ -75,6 +75,7 @@ mod tests {
                     operators: None,
                     modules: None,
                     primitive_contract: None,
+                    kernel_address: None,
                 },
             )
             .unwrap();

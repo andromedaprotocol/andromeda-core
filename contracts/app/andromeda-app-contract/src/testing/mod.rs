@@ -26,6 +26,7 @@ fn test_empty_instantiation() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
     let info = mock_info("creator", &[]);
 
@@ -47,6 +48,7 @@ fn test_instantiation() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
     let info = mock_info("creator", &[]);
 
@@ -101,6 +103,7 @@ fn test_instantiation_duplicate_components() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
     let info = mock_info("creator", &[]);
 
@@ -118,6 +121,7 @@ fn test_add_app_component_unauthorized() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -149,6 +153,7 @@ fn test_add_app_component_duplicate_name() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -182,6 +187,7 @@ fn test_add_app_component() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -234,6 +240,7 @@ fn test_claim_ownership_unauth() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -255,6 +262,7 @@ fn test_claim_ownership_not_found() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -282,6 +290,7 @@ fn test_claim_ownership_empty() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -302,6 +311,7 @@ fn test_claim_ownership_all() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -368,6 +378,7 @@ fn test_claim_ownership() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -423,6 +434,7 @@ fn test_proxy_message_unauth() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
@@ -447,6 +459,7 @@ fn test_proxy_message_not_found() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -475,6 +488,7 @@ fn test_fire_condition_works() {
         name: String::from("Some Process"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -574,6 +588,7 @@ fn test_proxy_message() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
     ADO_ADDRESSES
         .save(
@@ -621,6 +636,7 @@ fn test_update_address_unauth() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     ADO_ADDRESSES
@@ -652,6 +668,7 @@ fn test_update_address_not_found() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
@@ -680,6 +697,7 @@ fn test_update_address() {
         name: String::from("Some App"),
         primitive_contract: String::from("primitive_contract"),
         target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
+        kernel_address: None,
     };
 
     ADO_ADDRESSES

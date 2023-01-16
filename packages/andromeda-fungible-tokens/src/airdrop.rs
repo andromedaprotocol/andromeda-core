@@ -7,6 +7,7 @@ use cw_utils::Expiration;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub asset_info: AssetInfoUnchecked,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

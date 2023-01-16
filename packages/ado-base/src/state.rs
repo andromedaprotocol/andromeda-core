@@ -15,6 +15,7 @@ pub struct ADOContract<'a> {
     pub(crate) ado_type: Item<'a, String>,
     pub(crate) version: Item<'a, String>,
     pub(crate) app_contract: Item<'a, Addr>,
+    pub(crate) kernel_address: Item<'a, Addr>,
     #[cfg(feature = "primitive")]
     pub(crate) primitive_contract: Item<'a, Addr>,
     #[cfg(feature = "primitive")]
@@ -37,6 +38,7 @@ impl<'a> Default for ADOContract<'a> {
             ado_type: Item::new("ado_type"),
             version: Item::new("version"),
             app_contract: Item::new("app_contract"),
+            kernel_address: Item::new("kernel_address"),
             #[cfg(feature = "primitive")]
             primitive_contract: Item::new("primitive_contract"),
             #[cfg(feature = "primitive")]
@@ -55,5 +57,9 @@ impl<'a> ADOContract<'a> {
     pub(crate) fn is_nested<T: DeserializeOwned>(&self, data: &Option<Binary>) -> bool {
         let res: Result<T, ContractError> = parse_message(data);
         res.is_ok()
+    }
+
+    pub fn kernel_address(&self) -> &Item<'a, Addr> {
+        &self.kernel_address
     }
 }

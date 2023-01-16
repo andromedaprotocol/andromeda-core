@@ -69,6 +69,7 @@ pub fn instantiate(
             operators: None,
             modules: msg.modules,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -344,6 +345,7 @@ mod tests {
             minimal_withdrawal_frequency: MinimumFrequency::Time {
                 time: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -363,6 +365,7 @@ mod tests {
             minimal_withdrawal_frequency: MinimumFrequency::Time {
                 time: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info.clone(), msg).unwrap();
 
@@ -384,6 +387,7 @@ mod tests {
             minimal_withdrawal_frequency: MinimumFrequency::Time {
                 time: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -415,6 +419,7 @@ mod tests {
             minimal_withdrawal_frequency: MinimumFrequency::Time {
                 time: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -448,6 +453,7 @@ mod tests {
             minimal_withdrawal_frequency: MinimumFrequency::Time {
                 time: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -483,6 +489,8 @@ mod tests {
                 coin: "junox".to_string(),
                 limit: Uint128::from(50_u64),
             },
+            kernel_address: None,
+
             minimal_withdrawal_frequency: MinimumFrequency::Time {
                 time: Uint128::from(10_u16),
             },
@@ -518,6 +526,7 @@ mod tests {
             minimal_withdrawal_frequency: MinimumFrequency::Time {
                 time: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -550,6 +559,7 @@ mod tests {
             minimal_withdrawal_frequency: MinimumFrequency::Time {
                 time: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -590,6 +600,7 @@ mod tests {
             minimal_withdrawal_frequency: MinimumFrequency::Time {
                 time: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {
@@ -622,6 +633,7 @@ mod tests {
             minimal_withdrawal_frequency: MinimumFrequency::Time {
                 time: Uint128::from(10_u16),
             },
+            kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         let exec = ExecuteMsg::Deposit {

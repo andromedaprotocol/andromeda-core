@@ -49,6 +49,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -225,6 +226,7 @@ mod tests {
             condition_address,
             task_balancer: "task_balancer".to_string(),
             target_message: to_binary("eyJpbmNyZW1lbnRfb25lIjp7fX0=").unwrap(),
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -268,6 +270,7 @@ mod tests {
             condition_address,
             task_balancer: "task_balancer".to_string(),
             target_message: to_binary("eyJpbmNyZW1lbnRfb25lIjp7fX0=").unwrap(),
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 

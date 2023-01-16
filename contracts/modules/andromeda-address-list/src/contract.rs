@@ -43,6 +43,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -195,7 +196,10 @@ mod tests {
             deps,
             mock_env(),
             info,
-            InstantiateMsg { is_inclusive: true },
+            InstantiateMsg {
+                is_inclusive: true,
+                kernel_address: None,
+            },
         )
         .unwrap();
     }
@@ -205,7 +209,10 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("creator", &[]);
-        let msg = InstantiateMsg { is_inclusive: true };
+        let msg = InstantiateMsg {
+            is_inclusive: true,
+            kernel_address: None,
+        };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }

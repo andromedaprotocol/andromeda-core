@@ -9,6 +9,7 @@ use cosmwasm_std::{ensure, Addr, Api, Coin, Decimal, Fraction, QuerierWrapper};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub rates: Vec<RateInfo>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

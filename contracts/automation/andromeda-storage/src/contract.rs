@@ -42,6 +42,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -217,6 +218,7 @@ mod tests {
             task_balancer: Addr::unchecked("task_balancer".to_string()),
             process: Addr::unchecked("process".to_string()),
             max_processes: 3,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -242,6 +244,7 @@ mod tests {
             task_balancer: Addr::unchecked("task_balancer".to_string()),
             process: Addr::unchecked("process".to_string()),
             max_processes: 3,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -264,6 +267,7 @@ mod tests {
             task_balancer: Addr::unchecked("task_balancer".to_string()),
             process: Addr::unchecked("process".to_string()),
             max_processes: 3,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -286,6 +290,7 @@ mod tests {
             task_balancer: Addr::unchecked("task_balancer".to_string()),
             process: Addr::unchecked("process".to_string()),
             max_processes: 3,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 

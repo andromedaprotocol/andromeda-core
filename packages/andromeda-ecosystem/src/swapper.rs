@@ -38,6 +38,7 @@ pub enum SwapperCw20HookMsg {
 pub struct InstantiateMsg {
     pub swapper_impl: SwapperImpl,
     pub primitive_contract: String,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

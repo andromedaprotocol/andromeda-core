@@ -27,6 +27,7 @@ pub struct InstantiateMsg {
     pub recipients: Vec<AddressWeight>,
     pub lock_time: Option<u64>,
     pub modules: Option<Vec<Module>>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]

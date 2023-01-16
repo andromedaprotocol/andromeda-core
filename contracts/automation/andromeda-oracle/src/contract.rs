@@ -52,6 +52,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -204,6 +205,7 @@ mod tests {
             message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
             return_type: TypeOfResponse::CustomType(CustomTypes::CounterResponse),
             response_element: Some("count".to_string()),
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -262,6 +264,7 @@ mod tests {
             message_binary: to_binary("eyJjdXJyZW50X2NvdW50Ijp7fX0=").unwrap(),
             return_type: TypeOfResponse::RegularType(RegularTypes::Uint128),
             response_element: None,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -292,6 +295,7 @@ mod tests {
             message_binary: to_binary("eyJjdXJyZW50X2NvdW50Ijp7fX0=").unwrap(),
             return_type: TypeOfResponse::RegularType(RegularTypes::Uint128),
             response_element: None,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -323,6 +327,7 @@ mod tests {
             message_binary: to_binary("eyJpc196ZXJvIjp7fX0=").unwrap(),
             return_type: TypeOfResponse::RegularType(RegularTypes::Bool),
             response_element: None,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -352,6 +357,7 @@ mod tests {
             message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
             return_type: TypeOfResponse::CustomType(CustomTypes::CounterResponse),
             response_element: Some("count".to_string()),
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -380,6 +386,7 @@ mod tests {
             message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
             return_type: TypeOfResponse::CustomType(CustomTypes::CounterResponse),
             response_element: None,
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 
@@ -402,6 +409,7 @@ mod tests {
             message_binary: to_binary("eyJjb3VudCI6e319").unwrap(),
             return_type: TypeOfResponse::CustomType(CustomTypes::CounterResponse),
             response_element: Some("previous_count".to_string()),
+            kernel_address: None,
         };
         let info = mock_info("creator", &[]);
 

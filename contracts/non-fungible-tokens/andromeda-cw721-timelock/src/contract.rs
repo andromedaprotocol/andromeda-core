@@ -28,7 +28,7 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -43,6 +43,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             primitive_contract: None,
+            kernel_address: msg.kernel_address,
         },
     )
 }
@@ -240,7 +241,9 @@ mod test {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            kernel_address: None,
+        };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
@@ -251,7 +254,9 @@ mod test {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            kernel_address: None,
+        };
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
@@ -278,7 +283,9 @@ mod test {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            kernel_address: None,
+        };
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
@@ -305,7 +312,9 @@ mod test {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            kernel_address: None,
+        };
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
@@ -340,7 +349,9 @@ mod test {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            kernel_address: None,
+        };
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
@@ -377,7 +388,9 @@ mod test {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            kernel_address: None,
+        };
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
@@ -411,7 +424,9 @@ mod test {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            kernel_address: None,
+        };
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
@@ -445,7 +460,9 @@ mod test {
         let mut deps = mock_dependencies_custom(&[]);
         let env = mock_env();
         let info = mock_info(owner, &[]);
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            kernel_address: None,
+        };
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 

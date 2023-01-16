@@ -26,6 +26,7 @@ pub struct InstantiateMsg {
     pub minter: AndrAddress,
     ///The attached Andromeda modules
     pub modules: Option<Vec<Module>>,
+    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]
