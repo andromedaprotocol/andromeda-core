@@ -30,7 +30,7 @@ impl<'a> ADOContract<'a> {
         self.ado_type.save(storage, &msg.ado_type)?;
         self.version.save(storage, &msg.ado_version)?;
         if let Some(kernel_address) = msg.kernel_address {
-            self.primitive_contract
+            self.kernel_address
                 .save(storage, &api.addr_validate(&kernel_address)?)?;
         }
         let attributes = [attr("method", "instantiate"), attr("type", &msg.ado_type)];

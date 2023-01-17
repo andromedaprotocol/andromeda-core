@@ -1,3 +1,4 @@
+use amp::messages::AMPPkt;
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
@@ -91,6 +92,7 @@ pub enum ExecuteMsg {
         address: AndrAddress,
     },
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
 }
 
 #[cw_serde]

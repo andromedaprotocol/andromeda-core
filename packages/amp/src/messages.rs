@@ -6,7 +6,7 @@ use cosmwasm_std::{
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Receive(AMPPkt),
+    AMPReceive(AMPPkt),
 }
 
 #[cw_serde]
@@ -71,7 +71,7 @@ impl AMPMsg {
         id: u64,
     ) -> Result<SubMsg, ContractError> {
         let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()]);
-        let msg = to_binary(&ExecuteMsg::Receive(pkt))?;
+        let msg = to_binary(&ExecuteMsg::AMPReceive(pkt))?;
         Ok(SubMsg {
             id,
             reply_on: self.reply_on.clone(),

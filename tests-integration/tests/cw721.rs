@@ -44,6 +44,7 @@ fn cw721_rates_module() {
     let rates_code_id = router.store_code(mock_andromeda_rates());
 
     let receiver = Addr::unchecked("receiver");
+
     // Generate rates contract
     let rates: Vec<RateInfo> = [RateInfo {
         rate: Rate::Flat(coin(100, "uandr")),

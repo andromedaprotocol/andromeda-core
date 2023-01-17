@@ -1,4 +1,5 @@
 use ado_base::state::ADOContract;
+use amp::messages::AMPPkt;
 use andromeda_ecosystem::vault::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
     BALANCES, STRATEGY_CONTRACT_ADDRESSES,
@@ -15,9 +16,9 @@ use common::{
     withdraw::{Withdrawal, WithdrawalType},
 };
 use cosmwasm_std::{
-    coin, ensure, entry_point, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Deps,
-    DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn, Response, StdError,
-    SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
+    coin, ensure, entry_point, from_binary, to_binary, BankMsg, Binary, Coin, ContractResult,
+    CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn,
+    Response, StdError, SubMsg, SystemResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
@@ -85,6 +86,7 @@ pub fn execute(
         ExecuteMsg::UpdateStrategy { strategy, address } => {
             execute_update_strategy(deps, env, info, strategy, address)
         }
+        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
     }
 }
 
@@ -101,6 +103,44 @@ fn execute_andr_receive(
         }
         _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
+}
+
+pub struct ExecuteEnv<'a> {
+    deps: DepsMut<'a>,
+    pub env: Env,
+    pub info: MessageInfo,
+}
+
+fn handle_amp_packet(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    packet: AMPPkt,
+) -> Result<Response, ContractError> {
+    let mut res = Response::default();
+    let execute_env = ExecuteEnv { deps, env, info };
+
+    let msg_opt = packet.messages.first();
+    if let Some(msg) = msg_opt {
+        let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
+        let funds = msg.funds.to_vec();
+        let mut exec_info = execute_env.info.clone();
+        exec_info.funds = funds;
+
+        let exec_res = execute(
+            execute_env.deps,
+            execute_env.env.clone(),
+            exec_info,
+            exec_msg,
+        )?;
+
+        res = res
+            .add_attributes(exec_res.attributes)
+            .add_submessages(exec_res.messages)
+            .add_events(exec_res.events);
+    }
+
+    Ok(res)
 }
 
 fn execute_deposit(

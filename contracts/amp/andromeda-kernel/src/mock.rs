@@ -1,12 +1,12 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
-use crate::contract::{execute, instantiate, query};
+use crate::contract::{execute, instantiate, query, reply};
 use amp::kernel::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 
 pub fn mock_andromeda_kernel() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
+    let contract = ContractWrapper::new_with_empty(execute, instantiate, query).with_reply(reply);
     Box::new(contract)
 }
 

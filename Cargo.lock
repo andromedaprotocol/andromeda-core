@@ -339,6 +339,7 @@ dependencies = [
 name = "andromeda-ecosystem"
 version = "0.1.0"
 dependencies = [
+ "amp",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -778,6 +779,7 @@ name = "andromeda-vault"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "amp",
  "andromeda-ecosystem",
  "common",
  "cosmwasm-schema",
@@ -1778,6 +1780,7 @@ dependencies = [
  "andromeda-ecosystem",
  "andromeda-finance",
  "andromeda-fungible-tokens",
+ "andromeda-kernel",
  "andromeda-marketplace",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",

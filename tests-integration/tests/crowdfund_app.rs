@@ -132,10 +132,8 @@ fn test_crowdfund_app() {
     };
 
     // Create splitter recipient structures
-    let vault_one_recipient = Recipient::ADO(ADORecipient {
-        address: AndrAddress {
-            identifier: vault_one_app_component.clone().name,
-        },
+    let vault_one_recipient = UpdatedRecipient::ADO(UpdatedADORecipient {
+        address: vault_one_app_component.clone().name,
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
                 Some(Recipient::Addr(vault_one_recipient_addr.to_string())),
@@ -150,7 +148,7 @@ fn test_crowdfund_app() {
 
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
-                Some(UpdatedRecipient::Addr(vault_two_recipient_addr.to_string())),
+                Some(Recipient::Addr(vault_two_recipient_addr.to_string())),
                 None,
                 None,
             ))
