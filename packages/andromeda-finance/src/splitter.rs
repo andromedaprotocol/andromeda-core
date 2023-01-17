@@ -1,25 +1,17 @@
 use amp::kernel::ExecuteMsg as KernelExecuteMsg;
 use amp::messages::{AMPMsg, AMPPkt, ReplyGas};
 use common::{
-    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     encode_binary,
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, BankMsg, Binary, Coin, CosmosMsg, Decimal, SubMsg, WasmMsg};
 use cw_utils::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 #[cw_serde]
 pub struct AddressPercent {
-    pub recipient: Recipient,
-    pub percent: Decimal,
-}
-
-#[cw_serde]
-pub struct UpdatedAddressPercent {
-    pub recipient: UpdatedRecipient,
+    pub recipient: AMPRecipient,
     pub percent: Decimal,
 }
 
@@ -33,26 +25,17 @@ pub struct Splitter {
 }
 
 #[cw_serde]
-/// A config struct for a `Splitter` contract.
-pub struct UpdatedSplitter {
-    /// The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
-    pub recipients: Vec<UpdatedAddressPercent>,
-    /// Whether or not the contract is currently locked. This restricts updating any config related fields.
-    pub lock: Expiration,
-}
-
-#[cw_serde]
-pub struct UpdatedADORecipient {
+pub struct ADORecipient {
     /// Addr can also be a human-readable identifier used in a app contract.
     pub address: String,
     pub msg: Option<Binary>,
 }
 
 #[cw_serde]
-pub enum UpdatedRecipient {
+pub enum AMPRecipient {
     /// An address that is not another ADO. It is assumed that it is a valid address.
     Addr(String),
-    ADO(UpdatedADORecipient),
+    ADO(ADORecipient),
 }
 
 pub fn generate_msg_native_kernel(
@@ -73,30 +56,30 @@ pub fn generate_msg_native_kernel(
     }))
 }
 
-impl UpdatedRecipient {
-    /// Creates an Addr Recipient from the given string
-    pub fn from_string(addr: String) -> UpdatedRecipient {
-        UpdatedRecipient::Addr(addr)
+impl AMPRecipient {
+    /// Creates an Addr AMPRecipient from the given string
+    pub fn from_string(addr: String) -> AMPRecipient {
+        AMPRecipient::Addr(addr)
     }
 
     /// Gets the address of the recipient. If the is an ADORecipient it will query the app
     /// contract to get its address if it fails address validation.
-    pub fn updated_get_addr(&self) -> Result<String, ContractError> {
+    pub fn get_addr(&self) -> Result<String, ContractError> {
         match &self {
-            UpdatedRecipient::Addr(string) => Ok(string.to_owned()),
-            UpdatedRecipient::ADO(recip) => Ok(recip.address.clone()),
+            AMPRecipient::Addr(string) => Ok(string.to_owned()),
+            AMPRecipient::ADO(recip) => Ok(recip.address.clone()),
         }
     }
 
-    pub fn updated_get_message(&self) -> Result<Option<Binary>, ContractError> {
+    pub fn get_message(&self) -> Result<Option<Binary>, ContractError> {
         match &self {
-            UpdatedRecipient::Addr(_string) => Ok(None),
-            UpdatedRecipient::ADO(recip) => Ok(recip.msg.to_owned()),
+            AMPRecipient::Addr(_string) => Ok(None),
+            AMPRecipient::ADO(recip) => Ok(recip.msg.to_owned()),
         }
     }
 
     /// Generates the sub message depending on the type of the recipient.
-    pub fn updated_generate_msg_native(
+    pub fn generate_msg_native(
         &self,
         funds: Vec<Coin>,
         origin: String,
@@ -105,7 +88,7 @@ impl UpdatedRecipient {
         kernel_address: String,
     ) -> Result<SubMsg, ContractError> {
         Ok(match &self {
-            UpdatedRecipient::ADO(_recip) => SubMsg::new(WasmMsg::Execute {
+            AMPRecipient::ADO(_recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: kernel_address,
                 msg: encode_binary(&KernelExecuteMsg::Receive(AMPPkt::new(
                     origin,
@@ -114,7 +97,7 @@ impl UpdatedRecipient {
                 )))?,
                 funds,
             }),
-            UpdatedRecipient::Addr(addr) => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            AMPRecipient::Addr(addr) => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: addr.clone(),
                 amount: funds,
             })),
@@ -124,7 +107,7 @@ impl UpdatedRecipient {
     // /// Generates the sub message depending on the type of the recipient.
     // pub fn generate_msg_cw20(&self, cw20_coin: Cw20Coin) -> Result<SubMsg, ContractError> {
     //     Ok(match &self {
-    //         UpdatedRecipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
+    //         AMPRecipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
     //             contract_addr: cw20_coin.address,
     //             msg: encode_binary(&Cw20ExecuteMsg::Send {
     //                 contract: self.updated_get_addr()?,
@@ -135,7 +118,7 @@ impl UpdatedRecipient {
     //             })?,
     //             funds: vec![],
     //         }),
-    //         UpdatedRecipient::Addr(addr) => SubMsg::new(WasmMsg::Execute {
+    //         AMPRecipient::Addr(addr) => SubMsg::new(WasmMsg::Execute {
     //             contract_addr: cw20_coin.address,
     //             msg: encode_binary(&Cw20ExecuteMsg::Transfer {
     //                 recipient: addr.to_string(),
@@ -178,7 +161,7 @@ impl UpdatedRecipient {
 pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned percentage.
-    pub recipients: Vec<UpdatedAddressPercent>,
+    pub recipients: Vec<AddressPercent>,
     pub lock_time: Option<u64>,
     pub modules: Option<Vec<Module>>,
     pub kernel_address: Option<String>,
@@ -195,16 +178,14 @@ impl InstantiateMsg {
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     UpdateRecipients {
-        recipients: Vec<UpdatedAddressPercent>,
+        recipients: Vec<AddressPercent>,
     },
     /// Used to lock/unlock the contract allowing the config to be updated.
     UpdateLock {
         lock_time: u64,
     },
     /// Divides any attached funds to the message amongst the recipients list.
-    Send {},
-
-    SendKernel {
+    Send {
         reply_gas: ReplyGas,
     },
 
@@ -223,28 +204,18 @@ pub enum QueryMsg {
     /// The current config of the Splitter contract
     #[returns(GetSplitterConfigResponse)]
     GetSplitterConfig {},
-
-    #[returns(UpdatedGetSplitterConfigResponse)]
-    UpdatedGetSplitterConfig {},
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct GetSplitterConfigResponse {
     pub config: Splitter,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-pub struct UpdatedGetSplitterConfigResponse {
-    pub config: UpdatedSplitter,
 }
 
 /// Ensures that a given list of recipients for a `splitter` contract is valid:
 ///
 /// * Must include at least one recipient
 /// * The combined percentage of the recipients must not exceed 100
-pub fn validate_recipient_list(
-    recipients: Vec<UpdatedAddressPercent>,
-) -> Result<bool, ContractError> {
+pub fn validate_recipient_list(recipients: Vec<AddressPercent>) -> Result<bool, ContractError> {
     ensure!(
         !recipients.is_empty(),
         ContractError::EmptyRecipientsList {}
@@ -274,20 +245,20 @@ mod tests {
         let res = validate_recipient_list(empty_recipients).unwrap_err();
         assert_eq!(res, ContractError::EmptyRecipientsList {});
 
-        let inadequate_recipients = vec![UpdatedAddressPercent {
-            recipient: UpdatedRecipient::from_string(String::from("Some Address")),
+        let inadequate_recipients = vec![AddressPercent {
+            recipient: AMPRecipient::from_string(String::from("Some Address")),
             percent: Decimal::percent(150),
         }];
         let res = validate_recipient_list(inadequate_recipients).unwrap_err();
         assert_eq!(res, ContractError::AmountExceededHundredPrecent {});
 
         let valid_recipients = vec![
-            UpdatedAddressPercent {
-                recipient: UpdatedRecipient::from_string(String::from("Some Address")),
+            AddressPercent {
+                recipient: AMPRecipient::from_string(String::from("Some Address")),
                 percent: Decimal::percent(50),
             },
-            UpdatedAddressPercent {
-                recipient: UpdatedRecipient::from_string(String::from("Some Address")),
+            AddressPercent {
+                recipient: AMPRecipient::from_string(String::from("Some Address")),
                 percent: Decimal::percent(50),
             },
         ];

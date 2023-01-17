@@ -12,9 +12,7 @@ use andromeda_crowdfund::mock::{
 use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of,
 };
-use andromeda_finance::splitter::{
-    UpdatedADORecipient, UpdatedAddressPercent, UpdatedRecipient,
-};
+use andromeda_finance::splitter::{ADORecipient, AMPRecipient, AddressPercent};
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
@@ -22,10 +20,6 @@ use andromeda_testing::mock::MockAndromeda;
 use andromeda_vault::mock::{
     mock_andromeda_vault, mock_vault_deposit_msg, mock_vault_get_balance,
     mock_vault_instantiate_msg,
-};
-use common::{
-    ado_base::recipient::{ADORecipient, Recipient},
-    app::AndrAddress,
 };
 use cosmwasm_std::{coin, to_binary, Addr, BlockInfo, Coin, Decimal, Uint128};
 use cw721::{Expiration, OwnerOfResponse};
@@ -132,23 +126,27 @@ fn test_crowdfund_app() {
     };
 
     // Create splitter recipient structures
-    let vault_one_recipient = UpdatedRecipient::ADO(UpdatedADORecipient {
+    let vault_one_recipient = AMPRecipient::ADO(ADORecipient {
         address: vault_one_app_component.clone().name,
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
-                Some(Recipient::Addr(vault_one_recipient_addr.to_string())),
+                Some(common::ado_base::recipient::Recipient::Addr(
+                    vault_one_recipient_addr.to_string(),
+                )),
                 None,
                 None,
             ))
             .unwrap(),
         ),
     });
-    let vault_two_recipient = UpdatedRecipient::ADO(UpdatedADORecipient {
+    let vault_two_recipient = AMPRecipient::ADO(ADORecipient {
         address: vault_two_app_component.clone().name,
 
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
-                Some(Recipient::Addr(vault_two_recipient_addr.to_string())),
+                Some(common::ado_base::recipient::Recipient::Addr(
+                    vault_two_recipient_addr.to_string(),
+                )),
                 None,
                 None,
             ))
@@ -156,11 +154,11 @@ fn test_crowdfund_app() {
         ),
     });
     let splitter_recipients = vec![
-        UpdatedAddressPercent {
+        AddressPercent {
             recipient: vault_one_recipient,
             percent: Decimal::from_str("0.5").unwrap(),
         },
-        UpdatedAddressPercent {
+        AddressPercent {
             recipient: vault_two_recipient,
             percent: Decimal::from_str("0.5").unwrap(),
         },
@@ -236,12 +234,14 @@ fn test_crowdfund_app() {
 
     // Start Sale
     let token_price = coin(100, "uandr");
-    let sale_recipient = Recipient::ADO(ADORecipient {
-        address: AndrAddress {
-            identifier: splitter_app_component.name,
-        },
-        msg: Some(to_binary(&mock_splitter_send_msg()).unwrap()),
-    });
+    let sale_recipient =
+        common::ado_base::recipient::Recipient::ADO(common::ado_base::recipient::ADORecipient {
+            address: common::app::AndrAddress {
+                identifier: splitter_app_component.name,
+            },
+
+            msg: Some(to_binary(&mock_splitter_send_msg()).unwrap()),
+        });
     let start_msg = mock_start_crowdfund_msg(
         Expiration::AtHeight(router.block_info().height + 5),
         token_price.clone(),

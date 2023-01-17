@@ -340,6 +340,7 @@ name = "andromeda-ecosystem"
 version = "0.1.0"
 dependencies = [
  "amp",
+ "andromeda-finance",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",

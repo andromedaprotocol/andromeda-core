@@ -1,3 +1,4 @@
+use amp::messages::ReplyGas;
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
@@ -6,7 +7,7 @@ use cosmwasm_std::{
 
 use crate::contract::{execute, instantiate};
 use andromeda_finance::splitter::{
-    ExecuteMsg, InstantiateMsg, UpdatedADORecipient, UpdatedAddressPercent, UpdatedRecipient,
+    ADORecipient, AMPRecipient, AddressPercent, ExecuteMsg, InstantiateMsg,
 };
 use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT,
@@ -30,8 +31,8 @@ fn test_modules() {
                 identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
             },
         }]),
-        recipients: vec![UpdatedAddressPercent {
-            recipient: UpdatedRecipient::from_string(String::from("Some Address")),
+        recipients: vec![AddressPercent {
+            recipient: AMPRecipient::from_string(String::from("Some Address")),
             percent: Decimal::percent(100),
         }],
         lock_time: Some(100_000),
@@ -45,7 +46,12 @@ fn test_modules() {
         .add_attribute("type", "splitter");
     assert_eq!(expected_res, res);
 
-    let msg = ExecuteMsg::Send {};
+    let msg = ExecuteMsg::Send {
+        reply_gas: ReplyGas {
+            reply_on: None,
+            gas_limit: None,
+        },
+    };
     let info = mock_info("anyone", &coins(100, "uusd"));
 
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
@@ -88,12 +94,12 @@ fn test_update_app_contract() {
     let msg = InstantiateMsg {
         modules: Some(modules),
         recipients: vec![
-            UpdatedAddressPercent {
-                recipient: UpdatedRecipient::from_string(String::from("Some Address")),
+            AddressPercent {
+                recipient: AMPRecipient::from_string(String::from("Some Address")),
                 percent: Decimal::percent(50),
             },
-            UpdatedAddressPercent {
-                recipient: UpdatedRecipient::ADO(UpdatedADORecipient {
+            AddressPercent {
+                recipient: AMPRecipient::ADO(ADORecipient {
                     address: "e".to_string(),
                     msg: None,
                 }),
@@ -135,8 +141,8 @@ fn test_update_app_contract_invalid_recipient() {
     let info = mock_info("app_contract", &[]);
     let msg = InstantiateMsg {
         modules: Some(modules),
-        recipients: vec![UpdatedAddressPercent {
-            recipient: UpdatedRecipient::ADO(UpdatedADORecipient {
+        recipients: vec![AddressPercent {
+            recipient: AMPRecipient::ADO(ADORecipient {
                 address: "z".to_string(),
                 msg: None,
             }),

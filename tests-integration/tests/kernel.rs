@@ -1,7 +1,4 @@
-
-use andromeda_finance::splitter::{UpdatedADORecipient, UpdatedAddressPercent, UpdatedRecipient};
-
-
+use andromeda_finance::splitter::{ADORecipient, AMPRecipient, AddressPercent};
 
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_kernel_msg,
@@ -11,9 +8,7 @@ use andromeda_vault::mock::{
     mock_andromeda_vault, mock_vault_deposit_msg, mock_vault_get_balance,
     mock_vault_instantiate_msg,
 };
-use common::{
-    ado_base::{recipient::Recipient},
-};
+
 use cosmwasm_std::{coin, coins, to_binary, Addr, Coin, Decimal, Uint128};
 
 use cw_multi_test::{App, Executor};
@@ -72,12 +67,14 @@ fn kernel() {
         .unwrap();
 
     // Generate Splitter Contract
-    let recipients: Vec<UpdatedAddressPercent> = vec![UpdatedAddressPercent {
-        recipient: UpdatedRecipient::ADO(UpdatedADORecipient {
+    let recipients: Vec<AddressPercent> = vec![AddressPercent {
+        recipient: AMPRecipient::ADO(ADORecipient {
             address: vault_addr.to_string(),
             msg: Some(
                 to_binary(&mock_vault_deposit_msg(
-                    Some(Recipient::Addr(recipient.to_string())),
+                    Some(common::ado_base::recipient::Recipient::Addr(
+                        recipient.to_string(),
+                    )),
                     None,
                     None,
                 ))
@@ -100,12 +97,7 @@ fn kernel() {
 
     let send_msg = mock_splitter_send_kernel_msg(None, None);
     router
-        .execute_contract(
-            owner,
-            splitter_addr,
-            &send_msg,
-            &coins(100, "uandr"),
-        )
+        .execute_contract(owner, splitter_addr, &send_msg, &coins(100, "uandr"))
         .unwrap();
 
     let query_balance =

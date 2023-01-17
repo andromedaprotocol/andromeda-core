@@ -20,7 +20,7 @@ impl<'a> ADOContract<'a> {
         storage: &mut dyn Storage,
         env: Env,
         #[cfg(feature = "primitive")] api: &dyn Api,
-        #[cfg(not(feature = "primitive"))] _api: &dyn Api,
+        #[cfg(not(feature = "primitive"))] api: &dyn Api,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {

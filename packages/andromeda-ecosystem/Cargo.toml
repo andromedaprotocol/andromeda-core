@@ -22,6 +22,8 @@ cw20 = "0.16.0"
 cw-storage-plus = "0.16.0"
 
 common = { path = "../common", version = "0.1.0" }
+andromeda-finance = { path = "../andromeda-finance", version = "0.1.0" }
+
 cw-asset = { version = "2.0.0" }
 
 amp = { path = "../amp" }
