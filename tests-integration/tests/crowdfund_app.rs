@@ -13,7 +13,7 @@ use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of,
 };
 use andromeda_finance::splitter::{
-    AddressPercent, UpdatedADORecipient, UpdatedAddressPercent, UpdatedRecipient,
+    UpdatedADORecipient, UpdatedAddressPercent, UpdatedRecipient,
 };
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,

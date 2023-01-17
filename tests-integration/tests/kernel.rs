@@ -1,13 +1,10 @@
-use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg};
+
 use andromeda_finance::splitter::{UpdatedADORecipient, UpdatedAddressPercent, UpdatedRecipient};
-use andromeda_modules::rates::{Rate, RateInfo};
-use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg as CW721ExecuteMsg, TokenExtension, TransferAgreement,
-};
-use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
+
+
+
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_kernel_msg,
-    mock_splitter_send_msg,
 };
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vault::mock::{
@@ -15,12 +12,10 @@ use andromeda_vault::mock::{
     mock_vault_instantiate_msg,
 };
 use common::{
-    ado_base::{modules::Module, recipient::Recipient},
-    app::AndrAddress,
-    primitive::Value,
+    ado_base::{recipient::Recipient},
 };
 use cosmwasm_std::{coin, coins, to_binary, Addr, Coin, Decimal, Uint128};
-use cw721_base::MintMsg;
+
 use cw_multi_test::{App, Executor};
 
 fn mock_app() -> App {
@@ -106,7 +101,7 @@ fn kernel() {
     let send_msg = mock_splitter_send_kernel_msg(None, None);
     router
         .execute_contract(
-            owner.clone(),
+            owner,
             splitter_addr,
             &send_msg,
             &coins(100, "uandr"),

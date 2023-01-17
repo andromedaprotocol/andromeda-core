@@ -209,7 +209,7 @@ fn execute_send_kernel(
         let message = recipient_addr
             .recipient
             .updated_get_message()?
-            .unwrap_or(Binary::default());
+            .unwrap_or_default();
 
         match &recipient_addr.recipient {
             UpdatedRecipient::Addr(addr) => {
@@ -250,7 +250,7 @@ fn execute_send_kernel(
     // Generates the SubMsg intended for the kernel
     let msg = generate_msg_native_kernel(
         kernel_funds,
-        origin.clone(),
+        origin,
         previous_sender.into_string(),
         amp_msgs,
         kernel_address.into_string(),
