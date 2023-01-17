@@ -117,7 +117,7 @@ pub fn handle_amp_packet(
     //     );
     // }
 
-    for message in packet.messages.to_vec() {
+    for message in packet.clone().messages {
         let contract_addr =
             message.get_recipient_address(execute_env.deps.api, &execute_env.deps.querier, None)?;
         let msg = message.generate_message(

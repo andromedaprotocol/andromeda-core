@@ -145,8 +145,8 @@ impl AMPPkt {
     pub fn get_unique_recipients(&self) -> Vec<String> {
         let mut recipients: Vec<String> = self
             .messages
-            .to_vec()
-            .into_iter()
+            .iter()
+            .cloned()
             .map(|msg| msg.recipient)
             .collect();
         recipients.sort_unstable();
@@ -157,8 +157,8 @@ impl AMPPkt {
     /// Gets all messages for a given recipient
     pub fn get_messages_for_recipient(&self, recipient: String) -> Vec<AMPMsg> {
         self.messages
-            .to_vec()
-            .into_iter()
+            .iter()
+            .cloned()
             .filter(|msg| msg.recipient == recipient.clone())
             .collect()
     }
