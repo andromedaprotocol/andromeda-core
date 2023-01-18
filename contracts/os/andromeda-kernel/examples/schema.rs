@@ -1,4 +1,4 @@
-use amp::kernel::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_os::kernel::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_schema::write_api;
 
 fn main() {

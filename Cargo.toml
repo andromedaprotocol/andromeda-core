@@ -9,7 +9,7 @@ members = [
     "contracts/finance/*",
     "contracts/automation/*",
     "contracts/modules/*",
-    "contracts/amp/*",
+    "contracts/os/*",
 
     #Internal
     "tests-integration"

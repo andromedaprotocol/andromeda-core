@@ -1,6 +1,6 @@
 use crate::contract::instantiate;
 
-use amp::kernel::InstantiateMsg;
+use andromeda_os::kernel::InstantiateMsg;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 #[test]

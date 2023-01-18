@@ -5,7 +5,7 @@ use andromeda_finance::splitter::{
     GetSplitterConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
 };
 
-use amp::messages::{AMPMsg, ReplyGas};
+use amp::messages::{AMPMsg, AMPPkt, ExecuteMsg as AMPExecuteMsg, ReplyGas};
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     app::AndrAddress,
@@ -208,7 +208,7 @@ fn execute_send(
                     message,
                     Some(vec_coin.clone()),
                     Some(reply_gas.reply_on.clone().unwrap_or(ReplyOn::Always)),
-                    Some(reply_gas.gas_limit.unwrap_or(0)),
+                    reply_gas.gas_limit,
                 ));
                 println!("15");
                 // Add the coins intended for the kernel
@@ -423,7 +423,7 @@ mod tests {
     use super::*;
     use andromeda_finance::splitter::{ADORecipient, AMPRecipient};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, Coin, Decimal};
+    use cosmwasm_std::{from_binary, to_binary, Coin, Decimal, Empty, WasmMsg};
 
     #[test]
     fn test_instantiate() {
@@ -700,23 +700,36 @@ mod tests {
                     operators: None,
                     modules: None,
                     primitive_contract: None,
-                    kernel_address: None,
+                    kernel_address: Some("kernel".to_string()),
                 },
             )
             .unwrap();
 
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+
+        let pkt = AMPPkt::new(
+            info.sender.clone(),
+            "cosmos2contract",
+            vec![
+                AMPMsg::new(
+                    recip_address1,
+                    Binary::default(),
+                    Some(vec![Coin::new(1000, "uluna")]),
+                    None,
+                    None,
+                ),
+                AMPMsg::new(
+                    recip_address2,
+                    Binary::default(),
+                    Some(vec![Coin::new(2000, "uluna")]),
+                    None,
+                    None,
+                ),
+            ],
+        );
 
         let expected_res = Response::new()
             .add_submessages(vec![
-                SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: recip_address1,
-                    amount: vec![Coin::new(1000, "uluna")], // 10000 * 0.1
-                })),
-                SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: recip_address2,
-                    amount: vec![Coin::new(2000, "uluna")], // 10000 * 0.2
-                })),
                 SubMsg::new(
                     // refunds remainder to sender
                     CosmosMsg::Bank(BankMsg::Send {
@@ -724,6 +737,11 @@ mod tests {
                         amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
                     }),
                 ),
+                SubMsg::new(WasmMsg::Execute {
+                    contract_addr: "kernel".to_string(),
+                    msg: to_binary(&AMPExecuteMsg::AMPReceive(pkt)).unwrap(),
+                    funds: vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")],
+                }),
             ])
             .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
 

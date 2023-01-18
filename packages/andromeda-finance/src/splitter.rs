@@ -1,5 +1,4 @@
-use amp::kernel::ExecuteMsg as KernelExecuteMsg;
-use amp::messages::{AMPMsg, AMPPkt, ReplyGas};
+use amp::messages::{AMPMsg, AMPPkt, ExecuteMsg as AMPExecuteMsg, ReplyGas};
 use common::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     encode_binary,
@@ -47,7 +46,7 @@ pub fn generate_msg_native_kernel(
 ) -> Result<SubMsg, ContractError> {
     Ok(SubMsg::new(WasmMsg::Execute {
         contract_addr: kernel_address,
-        msg: encode_binary(&KernelExecuteMsg::Receive(AMPPkt::new(
+        msg: encode_binary(&AMPExecuteMsg::AMPReceive(AMPPkt::new(
             origin,
             previous_sender,
             messages,
@@ -90,7 +89,7 @@ impl AMPRecipient {
         Ok(match &self {
             AMPRecipient::ADO(_recip) => SubMsg::new(WasmMsg::Execute {
                 contract_addr: kernel_address,
-                msg: encode_binary(&KernelExecuteMsg::Receive(AMPPkt::new(
+                msg: encode_binary(&AMPExecuteMsg::AMPReceive(AMPPkt::new(
                     origin,
                     previous_sender,
                     messages,
