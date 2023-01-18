@@ -5,7 +5,7 @@ use andromeda_finance::splitter::{
     GetSplitterConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
 };
 
-use amp::messages::{AMPMsg, AMPPkt, ExecuteMsg as AMPExecuteMsg, ReplyGas};
+use amp::messages::{AMPMsg, ReplyGas};
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     app::AndrAddress,
@@ -421,9 +421,10 @@ fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amp::messages::{AMPPkt, ExecuteMsg as AMPExecuteMsg};
     use andromeda_finance::splitter::{ADORecipient, AMPRecipient};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, to_binary, Coin, Decimal, Empty, WasmMsg};
+    use cosmwasm_std::{from_binary, to_binary, Coin, Decimal, WasmMsg};
 
     #[test]
     fn test_instantiate() {
