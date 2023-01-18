@@ -58,8 +58,4 @@ impl<'a> ADOContract<'a> {
         let res: Result<T, ContractError> = parse_message(data);
         res.is_ok()
     }
-
-    pub fn kernel_address(&self) -> &Item<'a, Addr> {
-        &self.kernel_address
-    }
 }

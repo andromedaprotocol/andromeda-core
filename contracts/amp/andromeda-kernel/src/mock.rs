@@ -11,9 +11,7 @@ pub fn mock_andromeda_kernel() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_kernel_instantiate_message() -> InstantiateMsg {
-    InstantiateMsg {
-        kernel_address: Some("kernel_address".to_string()),
-    }
+    InstantiateMsg {}
 }
 
 pub fn mock_upsert_key_address(key: impl Into<String>, value: impl Into<String>) -> ExecuteMsg {

@@ -5,9 +5,7 @@ use cosmwasm_std::Addr;
 use crate::messages::AMPPkt;
 
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub kernel_address: Option<String>,
-}
+pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
