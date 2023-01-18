@@ -68,7 +68,7 @@ name = "andromeda-adodb"
 version = "0.1.1"
 dependencies = [
  "ado-base",
- "andromeda-app",
+ "andromeda-os",
  "andromeda-testing",
  "common",
  "cosmwasm-schema",
@@ -765,6 +765,7 @@ dependencies = [
  "andromeda-kernel",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
+ "andromeda-os",
  "andromeda-primitive",
  "common",
  "cosmwasm-schema",

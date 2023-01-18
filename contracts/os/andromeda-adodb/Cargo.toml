@@ -30,7 +30,7 @@ cw721 = "0.16.0"
 cw2 = "0.16.0"
 semver = "1"
 
-andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
+andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 

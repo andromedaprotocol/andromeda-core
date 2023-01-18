@@ -8,7 +8,7 @@ use common::{
     Funds,
 };
 
-use andromeda_app::{adodb::QueryMsg as FactoryQueryMsg, app::QueryMsg as MissionQueryMsg};
+use andromeda_app::app::QueryMsg as MissionQueryMsg;
 use andromeda_modules::{
     address_list::{IncludesAddressResponse, QueryMsg as AddressListQueryMsg},
     rates::QueryMsg as RatesQueryMsg,
@@ -18,6 +18,7 @@ use andromeda_non_fungible_tokens::{
     cw721::{MetadataAttribute, QueryMsg as Cw721QueryMsg, TokenExtension, TransferAgreement},
     cw721_bid::{BidResponse, ExecuteMsg as BidsExecuteMsg, QueryMsg as BidsQueryMsg},
 };
+use andromeda_os::adodb::QueryMsg as FactoryQueryMsg;
 use cosmwasm_std::{
     coin, coins, from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},

@@ -1,6 +1,6 @@
 use crate::state::{read_code_id, store_code_id, ADO_TYPE};
 use ado_base::state::ADOContract;
-use andromeda_app::adodb::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_os::adodb::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,

@@ -2,7 +2,7 @@ use crate::contract::{execute, instantiate, query};
 
 use crate::state::CODE_ID;
 use ado_base::ADOContract;
-use andromeda_app::adodb::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_os::adodb::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
 use common::{ado_base::AndromedaQuery, error::ContractError};
 use cosmwasm_std::{
