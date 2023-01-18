@@ -709,7 +709,7 @@ mod tests {
         let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
 
         let pkt = AMPPkt::new(
-            info.sender.clone(),
+            info.sender,
             "cosmos2contract",
             vec![
                 AMPMsg::new(
