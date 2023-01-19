@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PathInfo {
-    name: String,
-    addr: Addr,
+    pub name: String,
+    pub address: Addr,
 }
 
 pub struct PathIndices<'a> {
@@ -83,13 +83,14 @@ pub fn resolve_pathname(
     };
     let mut address = user_address;
     for (idx, part) in parts.iter().enumerate() {
+        // Skip username
         if idx == 0 {
             continue;
         }
 
         address = paths()
             .load(storage, (address.to_string() + part.as_str()).as_str())?
-            .addr;
+            .address;
     }
 
     Ok(address)
@@ -99,13 +100,33 @@ pub fn add_pathname(
     storage: &mut dyn Storage,
     parent_addr: Addr,
     name: String,
-    addr: Addr,
+    address: Addr,
 ) -> Result<(), StdError> {
     paths().save(
         storage,
         &(parent_addr.to_string() + name.as_str()),
-        &PathInfo { name, addr },
+        &PathInfo { name, address },
     )
+}
+
+pub fn validate_username(username: String) -> Result<bool, ContractError> {
+    ensure!(
+        username.len() > 0,
+        ContractError::InvalidUsername {
+            error: Some("Username cannot be empty.".to_string())
+        }
+    );
+    ensure!(
+        username.chars().all(|ch| ch.is_alphanumeric()),
+        ContractError::InvalidUsername {
+            error: Some(
+                "Username contains invalid characters. All characters must be alphanumeric."
+                    .to_string()
+            )
+        }
+    );
+
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -116,7 +137,7 @@ mod test {
 
     #[test]
     fn test_split_pathname() {
-        let pathname = "/username/dir1/dir2/file";
+        let pathname = "//username/dir1/dir2/file";
 
         let res = split_pathname(pathname.to_string());
         let expected = vec!["username", "dir1", "dir2", "file"];
@@ -146,6 +167,20 @@ mod test {
         let invalid_path = "/username/dir1/f!le";
         let res = validate_pathname(invalid_path.to_string());
         assert!(res.is_err())
+    }
+
+    #[test]
+    fn test_validate_username() {
+        let valid_user = "username1980";
+        validate_username(valid_user.to_string()).unwrap();
+
+        let empty_user = "";
+        let res = validate_username(empty_user.to_string());
+        assert!(res.is_err());
+
+        let invalid_user = "///////";
+        let res = validate_username(invalid_user.to_string());
+        assert!(res.is_err());
     }
 
     #[test]
@@ -179,7 +214,7 @@ mod test {
                 (username_address.to_string() + first_directory).as_str(),
                 &PathInfo {
                     name: first_directory.to_string(),
-                    addr: first_directory_address.clone(),
+                    address: first_directory_address.clone(),
                 },
             )
             .unwrap();
@@ -198,7 +233,7 @@ mod test {
                 (first_directory_address.to_string() + second_directory).as_str(),
                 &PathInfo {
                     name: second_directory.to_string(),
-                    addr: second_directory_address.clone(),
+                    address: second_directory_address.clone(),
                 },
             )
             .unwrap();
@@ -217,7 +252,7 @@ mod test {
                 (second_directory_address.to_string() + file).as_str(),
                 &PathInfo {
                     name: file.to_string(),
-                    addr: file_address.clone(),
+                    address: file_address.clone(),
                 },
             )
             .unwrap();

@@ -1,12 +1,16 @@
 use ado_base::state::ADOContract;
 
 use andromeda_os::vfs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, error::ContractError};
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
-    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
+
+use crate::state::{
+    add_pathname, paths, resolve_pathname, validate_pathname, validate_username, PathInfo, USERS,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-vfs";
@@ -60,9 +64,52 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let _execute_env = ExecuteEnv { deps, env, info };
+    let execute_env = ExecuteEnv { deps, env, info };
 
-    match msg {}
+    match msg {
+        ExecuteMsg::AddPath { name, address } => execute_add_path(execute_env, name, address),
+        ExecuteMsg::RegisterUser { username, address } => {
+            execute_register_user(execute_env, username, address)
+        }
+    }
+}
+
+fn execute_add_path(
+    execute_env: ExecuteEnv,
+    name: String,
+    address: Addr,
+) -> Result<Response, ContractError> {
+    add_pathname(
+        execute_env.deps.storage,
+        execute_env.info.sender,
+        name,
+        address,
+    )?;
+    Ok(Response::default())
+}
+
+fn execute_register_user(
+    execute_env: ExecuteEnv,
+    username: String,
+    address: Option<Addr>,
+) -> Result<Response, ContractError> {
+    let current_user_address = USERS.may_load(execute_env.deps.storage, username.as_str())?;
+    if current_user_address.is_some() {
+        ensure!(
+            current_user_address.unwrap() == execute_env.info.sender,
+            ContractError::Unauthorized {}
+        );
+    }
+
+    validate_username(username.clone())?;
+    let address_to_store = address.unwrap_or(execute_env.info.sender);
+    USERS.save(
+        execute_env.deps.storage,
+        username.as_str(),
+        &address_to_store,
+    )?;
+
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -104,6 +151,13 @@ fn from_semver(err: semver::Error) -> StdError {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    match msg {}
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::ResolvePath { path } => encode_binary(&query_resolve_path(deps, path)?),
+    }
+}
+
+fn query_resolve_path(deps: Deps, path: String) -> Result<Addr, ContractError> {
+    validate_pathname(path.clone())?;
+    Ok(resolve_pathname(deps.storage, deps.api, path)?)
 }

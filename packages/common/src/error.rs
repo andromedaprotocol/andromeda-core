@@ -522,6 +522,9 @@ pub enum ContractError {
 
     #[error("Invalid Pathname, {error:?}")]
     InvalidPathname { error: Option<String> },
+
+    #[error("Invalid Username, {error:?}")]
+    InvalidUsername { error: Option<String> },
 }
 
 impl From<Cw20ContractError> for ContractError {
