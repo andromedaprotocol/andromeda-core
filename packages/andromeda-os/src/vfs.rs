@@ -1,8 +1,8 @@
-use common::ado_base::AndromedaQuery;
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
 
-use amp::messages::AMPPkt;
+use cosmwasm_schema::{cw_serde, QueryResponses};
+
+
+
 
 #[cw_serde]
 pub struct InstantiateMsg {

@@ -34,17 +34,17 @@ pub fn paths<'a>() -> IndexedMap<'a, &'a str, PathInfo, PathIndices<'a>> {
 pub const USERS: Map<&str, Addr> = Map::new("users");
 
 pub fn split_pathname(path: String) -> Vec<String> {
-    path.split("/")
-        .filter(|string| string.len() > 0)
+    path.split('/')
+        .filter(|string| !string.is_empty())
         .map(|string| string.to_string())
         .collect::<Vec<String>>()
 }
 
-pub const VALID_CHARACTERS: [&'static str; 4] = ["_", "-", "/", ":"];
+pub const VALID_CHARACTERS: [&str; 4] = ["_", "-", "/", ":"];
 
 pub fn validate_pathname(path: String) -> Result<bool, ContractError> {
     ensure!(
-        path.len() > 0,
+        !path.is_empty(),
         ContractError::InvalidPathname {
             error: Some("Empty path".to_string())
         }
@@ -79,7 +79,7 @@ pub fn resolve_pathname(
     let username_or_address = parts.first().unwrap();
     let user_address = match api.addr_validate(username_or_address) {
         Ok(addr) => addr,
-        Err(_e) => USERS.load(storage, &username_or_address.as_str())?,
+        Err(_e) => USERS.load(storage, username_or_address.as_str())?,
     };
     let mut address = user_address;
     for (idx, part) in parts.iter().enumerate() {
@@ -88,7 +88,7 @@ pub fn resolve_pathname(
         }
 
         address = paths()
-            .load(storage, &(address.to_string() + part.as_str()).as_str())?
+            .load(storage, (address.to_string() + part.as_str()).as_str())?
             .addr;
     }
 

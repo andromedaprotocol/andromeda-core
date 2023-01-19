@@ -1,13 +1,12 @@
 use ado_base::state::ADOContract;
-use amp::messages::AMPPkt;
+
 use andromeda_os::vfs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
-    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
+    ado_base::{InstantiateMsg as BaseInstantiateMsg},
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -65,7 +64,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let execute_env = ExecuteEnv { deps, env, info };
+    let _execute_env = ExecuteEnv { deps, env, info };
 
     match msg {}
 }
@@ -109,6 +108,6 @@ fn from_semver(err: semver::Error) -> StdError {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {}
 }
