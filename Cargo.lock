@@ -833,6 +833,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-vfs"
+version = "0.1.0"
+dependencies = [
+ "ado-base",
+ "amp",
+ "andromeda-os",
+ "andromeda-testing",
+ "common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 0.16.0",
+ "cw2 0.16.0",
+ "cw721",
+ "schemars",
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-weighted-distribution-splitter"
 version = "0.1.0"
 dependencies = [

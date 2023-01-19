@@ -10,7 +10,7 @@ pub struct InstantiateMsg {}
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
-    Receive(AMPPkt),
+    AMPReceive(AMPPkt),
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
     UpsertKeyAddress { key: String, value: String },
 }
