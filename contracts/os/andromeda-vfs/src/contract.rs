@@ -1,13 +1,9 @@
 use ado_base::state::ADOContract;
 
 use andromeda_os::vfs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use common::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg},
-    error::ContractError,
-};
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, error::ContractError};
 use cosmwasm_std::{
-    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError,
+    ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
