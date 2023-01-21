@@ -413,8 +413,9 @@ fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amp::messages::{AMPPkt, ExecuteMsg as AMPExecuteMsg};
+    use amp::messages::AMPPkt;
     use andromeda_finance::splitter::{ADORecipient, AMPRecipient};
+    use andromeda_os::kernel::ExecuteMsg as KernelExecuteMsg;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{from_binary, to_binary, Coin, Decimal, WasmMsg};
 
@@ -732,7 +733,7 @@ mod tests {
                 ),
                 SubMsg::new(WasmMsg::Execute {
                     contract_addr: "kernel".to_string(),
-                    msg: to_binary(&AMPExecuteMsg::AMPReceive(pkt)).unwrap(),
+                    msg: to_binary(&KernelExecuteMsg::Receive(pkt)).unwrap(),
                     funds: vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")],
                 }),
             ])

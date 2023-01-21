@@ -684,6 +684,7 @@ dependencies = [
  "ado-base",
  "amp",
  "andromeda-finance",
+ "andromeda-os",
  "andromeda-testing",
  "common",
  "cosmwasm-schema",
