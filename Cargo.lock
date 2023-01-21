@@ -394,6 +394,7 @@ name = "andromeda-finance"
 version = "0.1.0"
 dependencies = [
  "amp",
+ "andromeda-os",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
