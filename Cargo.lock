@@ -191,7 +191,9 @@ name = "andromeda-crowdfund"
 version = "0.1.0"
 dependencies = [
  "ado-base",
+ "amp",
  "andromeda-app",
+ "andromeda-finance",
  "andromeda-non-fungible-tokens",
  "common",
  "cosmwasm-schema",
@@ -537,6 +539,7 @@ dependencies = [
 name = "andromeda-non-fungible-tokens"
 version = "0.1.0"
 dependencies = [
+ "andromeda-finance",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",

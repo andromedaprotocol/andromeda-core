@@ -3,17 +3,17 @@ use crate::state::{
     PURCHASES, SALE_CONDUCTED, STATE,
 };
 use ado_base::ADOContract;
+use amp::messages::AMPMsg;
+use andromeda_finance::splitter::AMPRecipient as Recipient;
 use andromeda_non_fungible_tokens::{
     crowdfund::{
         Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, State,
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
 };
+
 use common::{
-    ado_base::{
-        hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
-        InstantiateMsg as BaseInstantiateMsg,
-    },
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     deduct_funds, encode_binary,
     error::ContractError,
     merge_sub_msgs,
@@ -545,7 +545,13 @@ fn execute_end_sale(
     if state.amount_sold < state.min_tokens_sold {
         issue_refunds_and_burn_tokens(deps, env, limit)
     } else {
-        transfer_tokens_and_send_funds(deps, env, limit)
+        let origin = info.sender.into_string();
+        let previous_sender = env.clone().contract.address.into_string();
+        let kernel_address = ADOContract::default()
+            .get_kernel_address(deps.storage)?
+            .into_string();
+
+        transfer_tokens_and_send_funds(deps, env, limit, origin, previous_sender, kernel_address)
     }
 }
 
@@ -596,22 +602,41 @@ fn transfer_tokens_and_send_funds(
     deps: DepsMut,
     env: Env,
     limit: Option<u32>,
+    origin: String,
+    previous_sender: String,
+    kernel_address: String,
 ) -> Result<Response, ContractError> {
     let mut state = STATE.load(deps.storage)?;
     let mut resp = Response::new();
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+
+    let recipient = state.recipient.get_addr()?;
+
+    let message = state.recipient.get_message()?.unwrap_or_default();
+
     ensure!(limit > 0, ContractError::LimitMustNotBeZero {});
     // Send the funds if they haven't been sent yet and if all of the tokens have been transferred.
     if state.amount_transferred == state.amount_sold {
         if state.amount_to_send > Uint128::zero() {
+            let amp_message = AMPMsg::new(
+                recipient,
+                message,
+                Some(vec![Coin {
+                    denom: state.price.denom.clone(),
+                    amount: state.amount_to_send,
+                }]),
+                None,
+                None,
+            );
             let msg = state.recipient.generate_msg_native(
-                deps.api,
-                &deps.querier,
-                ADOContract::default().get_app_contract(deps.storage)?,
                 vec![Coin {
                     denom: state.price.denom.clone(),
                     amount: state.amount_to_send,
                 }],
+                origin,
+                previous_sender,
+                vec![amp_message],
+                kernel_address,
             )?;
             state.amount_to_send = Uint128::zero();
             STATE.save(deps.storage, &state)?;

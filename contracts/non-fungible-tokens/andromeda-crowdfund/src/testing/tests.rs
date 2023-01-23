@@ -10,6 +10,7 @@ use crate::{
         MOCK_ROYALTY_RECIPIENT, MOCK_TAX_RECIPIENT, MOCK_TOKENS_FOR_SALE, MOCK_TOKEN_CONTRACT,
     },
 };
+use andromeda_finance::splitter::AMPRecipient as Recipient;
 use andromeda_non_fungible_tokens::{
     crowdfund::{Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg, State},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
@@ -17,7 +18,6 @@ use andromeda_non_fungible_tokens::{
 use common::{
     ado_base::{
         modules::{Module, ADDRESS_LIST, RATES},
-        recipient::Recipient,
         AndromedaMsg,
     },
     app::AndrAddress,
@@ -92,7 +92,7 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
         },
         modules,
         can_mint_after_sale: true,
-        kernel_address: None,
+        kernel_address: Some("kernel".to_string()),
     };
 
     let info = mock_info("owner", &[]);
