@@ -67,3 +67,6 @@ name = "cw20_staking_app"
 
 [[test]]
 name = "wrapped_cw721_app"
+
+[[test]]
+name = "kernel"

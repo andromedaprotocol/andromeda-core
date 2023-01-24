@@ -4,13 +4,19 @@ use andromeda_adodb::mock::{
     mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_get_code_id_msg, mock_store_code_id_msg,
 };
 use andromeda_kernel::mock::{
-    mock_andromeda_kernel, mock_kernel_instantiate_message, mock_upsert_key_address,
+    mock_andromeda_kernel, mock_get_key_address, mock_kernel_instantiate_message,
+    mock_upsert_key_address,
 };
 use andromeda_primitive::mock::{
     mock_andromeda_primitive, mock_primitive_instantiate_msg, mock_store_address_msgs,
 };
+use andromeda_vfs::mock::{
+    mock_add_path, mock_andromeda_vfs, mock_register_user, mock_vfs_instantiate_message,
+};
 use cosmwasm_std::Addr;
 use cw_multi_test::{App, Executor};
+
+pub const ADMIN_USERNAME: &str = "am";
 
 pub struct MockAndromeda {
     pub admin_address: Addr,
@@ -25,6 +31,7 @@ impl MockAndromeda {
         let adodb_code_id = app.store_code(mock_andromeda_adodb());
         let primitive_code_id = app.store_code(mock_andromeda_primitive());
         let kernel_code_id = app.store_code(mock_andromeda_kernel());
+        let vfs_code_id = app.store_code(mock_andromeda_vfs());
 
         // Init ADO DB
         let adodb_init_msg = mock_adodb_instantiate_msg();
@@ -61,6 +68,19 @@ impl MockAndromeda {
                 &kernel_init_msg,
                 &[],
                 "Kernel",
+                Some(admin_address.to_string()),
+            )
+            .unwrap();
+
+        // Init VFS
+        let vfs_init_msg = mock_vfs_instantiate_message(kernel_address.clone());
+        let vfs_address = app
+            .instantiate_contract(
+                vfs_code_id,
+                admin_address.clone(),
+                &vfs_init_msg,
+                &[],
+                "VFS",
                 Some(admin_address.to_string()),
             )
             .unwrap();
@@ -103,22 +123,18 @@ impl MockAndromeda {
         )
         .unwrap();
 
-        let store_adodb_addr_msg =
-            mock_upsert_key_address("adodb".to_string(), adodb_address.to_string());
-        app.execute_contract(
-            admin_address.clone(),
-            kernel_address.clone(),
-            &store_adodb_addr_msg,
-            &[],
-        )
-        .unwrap();
-
-        MockAndromeda {
-            adodb_address,
+        let mock_andr = MockAndromeda {
+            adodb_address: adodb_address.clone(),
             registry_address,
             admin_address: admin_address.clone(),
             kernel_address,
-        }
+        };
+
+        mock_andr.register_kernel_key_address(app, "adodb", adodb_address);
+        mock_andr.register_kernel_key_address(app, "vfs", vfs_address);
+        mock_andr.register_user(app, admin_address.clone(), ADMIN_USERNAME, None);
+
+        mock_andr
     }
 
     /// Stores a given Code ID under the given key in the ADO DB contract
@@ -141,5 +157,61 @@ impl MockAndromeda {
         app.wrap()
             .query_wasm_smart(self.adodb_address.clone(), &msg)
             .unwrap()
+    }
+
+    /// Registers a key address for the kernel
+    pub fn register_kernel_key_address(
+        &self,
+        app: &mut App,
+        key: impl Into<String>,
+        address: Addr,
+    ) {
+        let msg = mock_upsert_key_address(key, address);
+        app.execute_contract(
+            self.admin_address.clone(),
+            self.kernel_address.clone(),
+            &msg,
+            &[],
+        )
+        .unwrap();
+    }
+
+    /// Registers a user on the VFS
+    pub fn register_user(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        username: impl Into<String>,
+        proxy_address: Option<Addr>,
+    ) {
+        let vfs_address_query = mock_get_key_address("vfs");
+        let vfs_address: Addr = app
+            .wrap()
+            .query_wasm_smart(self.kernel_address.clone(), &vfs_address_query)
+            .unwrap();
+
+        let register_msg = mock_register_user(username, proxy_address);
+
+        app.execute_contract(sender, vfs_address, &register_msg, &[])
+            .unwrap();
+    }
+
+    /// Adds a path to resolve to the VFS
+    pub fn vfs_add_path(
+        &self,
+        app: &mut App,
+        sender: Addr,
+        name: impl Into<String>,
+        address: Addr,
+    ) {
+        let vfs_address_query = mock_get_key_address("vfs");
+        let vfs_address: Addr = app
+            .wrap()
+            .query_wasm_smart(self.kernel_address.clone(), &vfs_address_query)
+            .unwrap();
+
+        let register_msg = mock_add_path(name, address);
+        app.execute_contract(sender, vfs_address, &register_msg, &[])
+            .unwrap();
     }
 }

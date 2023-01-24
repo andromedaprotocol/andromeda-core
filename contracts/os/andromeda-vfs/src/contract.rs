@@ -8,9 +8,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{
-    add_pathname, paths, resolve_pathname, validate_pathname, validate_username, PathInfo, USERS,
-};
+use crate::state::{add_pathname, resolve_pathname, validate_pathname, validate_username, USERS};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-vfs";

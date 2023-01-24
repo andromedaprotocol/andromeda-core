@@ -6,6 +6,7 @@ version = 3
 name = "ado-base"
 version = "0.1.0"
 dependencies = [
+ "andromeda-os",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -767,6 +768,7 @@ dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-os",
  "andromeda-primitive",
+ "andromeda-vfs",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
