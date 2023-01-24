@@ -1,6 +1,7 @@
 use amp::messages::AMPPkt;
+use andromeda_finance::splitter::AMPRecipient as Recipient;
 use common::{
-    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    ado_base::{AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
     error::ContractError,
     withdraw::Withdrawal,

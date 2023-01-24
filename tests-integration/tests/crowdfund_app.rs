@@ -130,9 +130,7 @@ fn test_crowdfund_app() {
         address: vault_one_app_component.clone().name,
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
-                Some(common::ado_base::recipient::Recipient::Addr(
-                    vault_one_recipient_addr.to_string(),
-                )),
+                Some(AMPRecipient::Addr(vault_one_recipient_addr.to_string())),
                 None,
                 None,
             ))
@@ -144,9 +142,7 @@ fn test_crowdfund_app() {
 
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
-                Some(common::ado_base::recipient::Recipient::Addr(
-                    vault_two_recipient_addr.to_string(),
-                )),
+                Some(AMPRecipient::Addr(vault_two_recipient_addr.to_string())),
                 None,
                 None,
             ))

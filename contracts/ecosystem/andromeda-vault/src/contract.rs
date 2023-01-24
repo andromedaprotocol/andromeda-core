@@ -4,9 +4,10 @@ use andromeda_ecosystem::vault::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
     BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
+use andromeda_finance::splitter::AMPRecipient as Recipient;
 use common::{
     ado_base::{
-        operators::IsOperatorResponse, recipient::Recipient, AndromedaMsg, AndromedaQuery,
+        operators::IsOperatorResponse, AndromedaMsg, AndromedaQuery,
         InstantiateMsg as BaseInstantiateMsg, QueryMsg as AndrQueryMsg,
     },
     app::AndrAddress,
@@ -15,6 +16,7 @@ use common::{
     parse_message,
     withdraw::{Withdrawal, WithdrawalType},
 };
+
 use cosmwasm_std::{
     coin, ensure, entry_point, from_binary, to_binary, BankMsg, Binary, Coin, ContractResult,
     CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, QueryRequest, Reply, ReplyOn,
@@ -173,11 +175,7 @@ fn execute_deposit(
         // If depositing to a yield strategy we must first check that the sender has either provided the amount to deposit
         // or has a combination of the amount within the vault and within the sent funds
         if strategy.is_some() && deposit_balance <= deposit_amount.amount {
-            let recipient_addr = recipient.get_addr(
-                deps.api,
-                &deps.querier,
-                ADOContract::default().get_app_contract(deps.storage)?,
-            )?;
+            let recipient_addr = recipient.get_addr()?;
             let balance_key = (recipient_addr.as_str(), deposit_amount.denom.as_str());
             let vault_balance = BALANCES
                 .may_load(deps.storage, balance_key)?
@@ -218,11 +216,7 @@ fn execute_deposit(
         // Depositing to vault
         None => {
             for funds in deposited_funds {
-                let recipient_addr = recipient.get_addr(
-                    deps.api,
-                    &deps.querier,
-                    ADOContract::default().get_app_contract(deps.storage)?,
-                )?;
+                let recipient_addr = recipient.get_addr()?;
                 let balance_key = (recipient_addr.as_str(), funds.denom.as_str());
                 let curr_balance = BALANCES
                     .may_load(deps.storage, balance_key)?
@@ -280,11 +274,7 @@ pub fn withdraw_vault(
 
     let recipient = recipient
         .unwrap_or_else(|| Recipient::Addr(info.sender.to_string()))
-        .get_addr(
-            deps.api,
-            &deps.querier,
-            ADOContract::default().get_app_contract(deps.storage)?,
-        )?;
+        .get_addr()?;
     for withdrawal in withdrawals {
         let denom = withdrawal.token;
         let balance = BALANCES
@@ -349,7 +339,7 @@ pub fn withdraw_strategy(
     withdrawals: Vec<Withdrawal>,
 ) -> Result<Response, ContractError> {
     let res = Response::default();
-    let recipient = Recipient::Addr(info.sender.to_string());
+    let recipient = common::ado_base::recipient::Recipient::Addr(info.sender.to_string());
     let addr_opt = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
     if addr_opt.is_none() {
         return Err(ContractError::InvalidStrategy {

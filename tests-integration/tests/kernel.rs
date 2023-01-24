@@ -72,9 +72,7 @@ fn kernel() {
             address: vault_addr.to_string(),
             msg: Some(
                 to_binary(&mock_vault_deposit_msg(
-                    Some(common::ado_base::recipient::Recipient::Addr(
-                        recipient.to_string(),
-                    )),
+                    Some(AMPRecipient::Addr(recipient.to_string())),
                     None,
                     None,
                 ))
