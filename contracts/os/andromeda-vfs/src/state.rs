@@ -111,7 +111,7 @@ pub fn add_pathname(
 
 pub fn validate_username(username: String) -> Result<bool, ContractError> {
     ensure!(
-        username.len() > 0,
+        !username.is_empty(),
         ContractError::InvalidUsername {
             error: Some("Username cannot be empty.".to_string())
         }

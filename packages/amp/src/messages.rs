@@ -58,7 +58,7 @@ impl AMPMsg {
         querier: &QuerierWrapper,
         vfs_contract: Option<Addr>,
     ) -> Result<Addr, ContractError> {
-        if self.recipient.contains("/") {
+        if self.recipient.contains('/') {
             match vfs_contract {
                 Some(vfs_contract) => {
                     let query = VFSQueryMsg::ResolvePath {
