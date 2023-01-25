@@ -170,7 +170,7 @@ fn execute_send(
     let mut msgs: Vec<SubMsg> = Vec::new();
     let mut amp_msgs: Vec<AMPMsg> = Vec::new();
     let mut kernel_funds: Vec<Coin> = Vec::new();
-    println!("1");
+
     let mut remainder_funds = info.funds.clone();
     // Looking at this nested for loop, we could find a way to reduce time/memory complexity to avoid DoS.
     // Would like to understand more about why we loop through funds and what it exactly stored in it.
@@ -191,11 +191,8 @@ fn execute_send(
         }
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
-        println!("12");
         let recipient = recipient_addr.recipient.get_addr()?;
-        println!("13");
         let message = recipient_addr.recipient.get_message()?.unwrap_or_default();
-        println!("14");
 
         match &recipient_addr.recipient {
             AMPRecipient::Addr(addr) => msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -210,12 +207,10 @@ fn execute_send(
                     Some(reply_gas.reply_on.clone().unwrap_or(ReplyOn::Always)),
                     reply_gas.gas_limit,
                 ));
-                println!("15");
                 // Add the coins intended for the kernel
                 for x in &vec_coin {
                     kernel_funds.push(x.to_owned())
                 }
-                println!("16");
             }
         }
     }
@@ -237,19 +232,15 @@ fn execute_send(
     // Check if any messages are intended for kernel in the first place
     if !amp_msgs.is_empty() {
         let contract = ADOContract::default();
-        println!("17");
         // The original sender of the message is the user in this case
         let origin = info.sender.to_string();
-        println!("17.1");
 
         // The previous sender of the message is the contract in this case since it will be the one sending the message to the kernel
         let previous_sender = env.contract.address;
-        println!("17.2");
 
         // The kernel address has been validated and saved during instantiation
         let kernel_address = contract.get_kernel_address(deps.storage)?;
 
-        println!("18");
         let msg = generate_msg_native_kernel(
             kernel_funds,
             origin,
