@@ -101,6 +101,7 @@ dependencies = [
  "ado-base",
  "andromeda-app",
  "andromeda-automation",
+ "andromeda-os",
  "andromeda-testing",
  "common",
  "cosmwasm-schema",

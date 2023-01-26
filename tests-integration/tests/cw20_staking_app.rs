@@ -110,7 +110,7 @@ fn test_cw20_staking_app() {
     let app_init_msg = mock_app_instantiate_msg(
         "Staking App".to_string(),
         app_components.clone(),
-        andr.registry_address.to_string(),
+        andr.kernel_address,
     );
 
     let app_addr = router

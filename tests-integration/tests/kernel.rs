@@ -1,3 +1,7 @@
+use andromeda_app::app::AppComponent;
+use andromeda_app_contract::mock::{
+    mock_andromeda_app, mock_app_instantiate_msg, mock_get_components_msg,
+};
 use andromeda_finance::splitter::{AMPRecipient, AddressPercent};
 
 use andromeda_splitter::mock::{
@@ -9,7 +13,6 @@ use andromeda_vault::mock::{
     mock_vault_instantiate_msg,
 };
 
-use common::ado_base::recipient::Recipient;
 use cosmwasm_std::{coin, coins, to_binary, Addr, Coin, Decimal, Uint128};
 
 use cw_multi_test::{App, Executor};
@@ -50,47 +53,65 @@ fn kernel() {
     // Store contract codes
     let vault_code_id = router.store_code(mock_andromeda_vault());
     let splitter_code_id = router.store_code(mock_andromeda_splitter());
+    let app_code_id = router.store_code(mock_andromeda_app());
 
     andr.store_code_id(&mut router, "splitter", splitter_code_id);
     andr.store_code_id(&mut router, "vault", vault_code_id);
+    andr.store_code_id(&mut router, "app", app_code_id);
 
     // Generate Vault Contract
     let vault_init_msg = mock_vault_instantiate_msg();
-    let vault_addr = router
-        .instantiate_contract(
-            vault_code_id,
-            owner.clone(),
-            &vault_init_msg,
-            &[],
-            "Vault",
-            Some(owner.to_string()),
-        )
-        .unwrap();
-
-    andr.vfs_add_path(&mut router, owner.clone(), "vault", vault_addr.clone());
+    let vault_app_component =
+        AppComponent::new("vault", "vault", to_binary(&vault_init_msg).unwrap());
 
     // Generate Splitter Contract
     let vault_deposit_message =
-        mock_vault_deposit_msg(Some(Recipient::Addr(recipient.to_string())), None, None);
+        mock_vault_deposit_msg(Some(AMPRecipient::Addr(recipient.to_string())), None, None);
     let recipients: Vec<AddressPercent> = vec![AddressPercent {
         recipient: AMPRecipient::ado(
-            "/am/vault",
+            "/am/app1/vault",
             Some(to_binary(&vault_deposit_message).unwrap()),
         ),
         percent: Decimal::percent(100),
     }];
 
-    let splitter_init_msg = mock_splitter_instantiate_msg(recipients, andr.kernel_address, None);
-    let splitter_addr = router
+    let splitter_init_msg =
+        mock_splitter_instantiate_msg(recipients, andr.kernel_address.clone(), None);
+    let splitter_app_component = AppComponent::new(
+        "splitter",
+        "splitter",
+        to_binary(&splitter_init_msg).unwrap(),
+    );
+
+    let app_components: Vec<AppComponent> = vec![vault_app_component, splitter_app_component];
+    let app_init_msg = mock_app_instantiate_msg(
+        "app1",
+        app_components.clone(),
+        andr.kernel_address.to_string(),
+    );
+
+    let app_addr = router
         .instantiate_contract(
-            splitter_code_id,
+            app_code_id,
             owner.clone(),
-            &splitter_init_msg,
+            &app_init_msg,
             &[],
-            "Splitter",
+            "Crowdfund App",
             Some(owner.to_string()),
         )
         .unwrap();
+
+    let components: Vec<AppComponent> = router
+        .wrap()
+        .query_wasm_smart(app_addr.clone(), &mock_get_components_msg())
+        .unwrap();
+
+    assert_eq!(components, app_components);
+
+    andr.vfs_add_path(&mut router, owner.clone(), "app1", app_addr);
+
+    let splitter_addr = andr.vfs_resolve_path(&mut router, "/am/app1/splitter");
+    let vault_addr = andr.vfs_resolve_path(&mut router, "/am/app1/vault");
 
     let send_msg = mock_splitter_send_kernel_msg(None, None);
     router

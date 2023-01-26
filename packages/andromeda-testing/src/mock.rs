@@ -11,7 +11,8 @@ use andromeda_primitive::mock::{
     mock_andromeda_primitive, mock_primitive_instantiate_msg, mock_store_address_msgs,
 };
 use andromeda_vfs::mock::{
-    mock_add_path, mock_andromeda_vfs, mock_register_user, mock_vfs_instantiate_message,
+    mock_add_path, mock_andromeda_vfs, mock_register_user, mock_resolve_path_query,
+    mock_vfs_instantiate_message,
 };
 use cosmwasm_std::Addr;
 use cw_multi_test::{App, Executor};
@@ -213,5 +214,16 @@ impl MockAndromeda {
         let register_msg = mock_add_path(name, address);
         app.execute_contract(sender, vfs_address, &register_msg, &[])
             .unwrap();
+    }
+
+    pub fn vfs_resolve_path(&self, app: &mut App, path: impl Into<String>) -> Addr {
+        let vfs_address_query = mock_get_key_address("vfs");
+        let vfs_address: Addr = app
+            .wrap()
+            .query_wasm_smart(self.kernel_address.clone(), &vfs_address_query)
+            .unwrap();
+
+        let query = mock_resolve_path_query(path);
+        app.wrap().query_wasm_smart(vfs_address, &query).unwrap()
     }
 }

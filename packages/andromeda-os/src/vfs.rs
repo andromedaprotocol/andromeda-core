@@ -8,6 +8,21 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+pub struct PathDetails {
+    name: String,
+    address: Addr,
+}
+
+impl PathDetails {
+    pub fn new(name: impl Into<String>, address: Addr) -> PathDetails {
+        PathDetails {
+            name: name.into(),
+            address,
+        }
+    }
+}
+
+#[cw_serde]
 pub enum ExecuteMsg {
     // Receives an AMP Packet for relaying
     // AMPReceive(AMPPkt),
@@ -15,6 +30,9 @@ pub enum ExecuteMsg {
         name: String,
         address: Addr,
     },
+    // AddPathMulti {
+    //     paths: Vec<PathDetails>,
+    // },
     RegisterUser {
         username: String,
         address: Option<Addr>,
