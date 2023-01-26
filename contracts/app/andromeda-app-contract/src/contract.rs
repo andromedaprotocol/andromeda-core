@@ -96,7 +96,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     let addr_str = get_reply_address(msg)?;
     let addr = &deps.api.addr_validate(&addr_str)?;
     ADO_ADDRESSES.save(deps.storage, &descriptor.name, addr)?;
-    let assign_app = generate_assign_app_message(&addr, env.contract.address.as_ref())?;
+    let assign_app = generate_assign_app_message(addr, env.contract.address.as_ref())?;
 
     let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
     let register_component_path_msg = register_component_path(
