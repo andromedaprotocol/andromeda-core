@@ -1,14 +1,12 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query, reply};
+use andromeda_finance::splitter::AMPRecipient as Recipient;
 use andromeda_non_fungible_tokens::{
     crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg},
     cw721::TokenExtension,
 };
-use common::{
-    ado_base::{modules::Module, recipient::Recipient},
-    app::AndrAddress,
-};
+use common::{ado_base::modules::Module, app::AndrAddress};
 use cosmwasm_std::{Coin, Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
 use cw_utils::Expiration;
@@ -29,7 +27,7 @@ pub fn mock_crowdfund_instantiate_msg(
         },
         can_mint_after_sale,
         modules,
-        kernel_address: None,
+        kernel_address: Some("kernel".to_string()),
     }
 }
 

@@ -1,13 +1,15 @@
 mod mock_querier;
 
+use self::mock_querier::{MOCK_ANCHOR_CONTRACT, MOCK_VAULT_CONTRACT};
 use crate::contract::*;
 use crate::testing::mock_querier::{mock_dependencies_custom, PositionResponse};
 use andromeda_ecosystem::vault::{
     ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType, YieldStrategy,
     BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
+use andromeda_finance::splitter::AMPRecipient as Recipient;
 use common::{
-    ado_base::{recipient::Recipient, AndromedaMsg},
+    ado_base::AndromedaMsg,
     app::AndrAddress,
     error::ContractError,
     withdraw::{Withdrawal, WithdrawalType},
@@ -18,8 +20,6 @@ use cosmwasm_std::{
     to_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
     ReplyOn, Response, SubMsg, Uint128, WasmMsg,
 };
-
-use self::mock_querier::{MOCK_ANCHOR_CONTRACT, MOCK_VAULT_CONTRACT};
 
 #[test]
 fn test_instantiate() {
@@ -739,7 +739,9 @@ fn test_withdraw_single_strategy() {
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let withdraw_exec = to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr("depositor".to_string())),
+        recipient: Some(common::ado_base::recipient::Recipient::Addr(
+            "depositor".to_string(),
+        )),
         tokens_to_withdraw: Some(withdrawals),
     }))
     .unwrap();

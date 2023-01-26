@@ -1,6 +1,7 @@
 use crate::cw721::TokenExtension;
+use andromeda_finance::splitter::AMPRecipient as Recipient;
 use common::{
-    ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};

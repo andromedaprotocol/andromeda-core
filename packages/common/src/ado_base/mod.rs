@@ -13,7 +13,6 @@ use crate::{
     error::ContractError,
     withdraw::Withdrawal,
 };
-
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, Uint64, WasmQuery};
 

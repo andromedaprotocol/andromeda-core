@@ -130,9 +130,7 @@ fn test_crowdfund_app() {
         address: vault_one_app_component.clone().name,
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
-                Some(common::ado_base::recipient::Recipient::Addr(
-                    vault_one_recipient_addr.to_string(),
-                )),
+                Some(AMPRecipient::Addr(vault_one_recipient_addr.to_string())),
                 None,
                 None,
             ))
@@ -144,9 +142,7 @@ fn test_crowdfund_app() {
 
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
-                Some(common::ado_base::recipient::Recipient::Addr(
-                    vault_two_recipient_addr.to_string(),
-                )),
+                Some(AMPRecipient::Addr(vault_two_recipient_addr.to_string())),
                 None,
                 None,
             ))
@@ -234,14 +230,10 @@ fn test_crowdfund_app() {
 
     // Start Sale
     let token_price = coin(100, "uandr");
-    let sale_recipient =
-        common::ado_base::recipient::Recipient::ADO(common::ado_base::recipient::ADORecipient {
-            address: common::app::AndrAddress {
-                identifier: splitter_app_component.name,
-            },
-
-            msg: Some(to_binary(&mock_splitter_send_msg()).unwrap()),
-        });
+    let sale_recipient = AMPRecipient::ADO(ADORecipient {
+        address: splitter_app_component.name,
+        msg: Some(to_binary(&mock_splitter_send_msg()).unwrap()),
+    });
     let start_msg = mock_start_crowdfund_msg(
         Expiration::AtHeight(router.block_info().height + 5),
         token_price.clone(),
@@ -281,16 +273,11 @@ fn test_crowdfund_app() {
     });
     let end_sale_msg = mock_end_crowdfund_msg(None);
     router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked(crowdfund_addr.clone()),
-            &end_sale_msg,
-            &[],
-        )
-        .unwrap();
-    router
         .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
         .unwrap();
+    // router
+    //     .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
+    //     .unwrap();
 
     // Check final state
     //Check token transfers

@@ -20,6 +20,8 @@ andromeda-finance = { version = "0.1.0", path = "../../../packages/andromeda-fin
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["modules"] }
 common = { version = "0.1.0", path = "../../../packages/common" }
 amp = { version = "0.1.0", path = "../../../packages/amp" }
+andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
+
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { version = "0.16.0", optional = true }
