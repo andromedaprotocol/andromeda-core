@@ -105,12 +105,19 @@ impl AMPRecipient {
     }
 
     // /// Generates the sub message depending on the type of the recipient.
-    // pub fn generate_msg_cw20(&self, cw20_coin: Cw20Coin) -> Result<SubMsg, ContractError> {
+    // pub fn generate_msg_cw20(
+    //     &self,
+    //     cw20_coin: Cw20Coin,
+    //     origin: String,
+    //     previous_sender: String,
+    //     messages: Vec<AMPMsg>,
+    //     kernel_address: String,
+    // ) -> Result<SubMsg, ContractError> {
     //     Ok(match &self {
-    //         AMPRecipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
+    //         AMPRecipient::ADO(_recip) => SubMsg::new(WasmMsg::Execute {
     //             contract_addr: cw20_coin.address,
     //             msg: encode_binary(&Cw20ExecuteMsg::Send {
-    //                 contract: self.updated_get_addr()?,
+    //                 contract: self.get_addr()?,
     //                 amount: cw20_coin.amount,
     //                 msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(
     //                     recip.msg.clone(),

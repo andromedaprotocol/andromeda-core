@@ -13,6 +13,7 @@ use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of,
 };
 use andromeda_finance::splitter::{ADORecipient, AMPRecipient, AddressPercent};
+use andromeda_kernel::mock::{mock_andromeda_kernel, mock_kernel_instantiate_message};
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
@@ -84,11 +85,13 @@ fn test_crowdfund_app() {
     let vault_code_id = router.store_code(mock_andromeda_vault());
     let splitter_code_id = router.store_code(mock_andromeda_splitter());
     let app_code_id = router.store_code(mock_andromeda_app());
+    let kernel_code_id = router.store_code(mock_andromeda_kernel());
     andr.store_code_id(&mut router, "cw721", cw721_code_id);
     andr.store_code_id(&mut router, "crowdfund", crowdfund_code_id);
     andr.store_code_id(&mut router, "vault", vault_code_id);
     andr.store_code_id(&mut router, "splitter", splitter_code_id);
     andr.store_code_id(&mut router, "app", app_code_id);
+    andr.store_code_id(&mut router, "kernel", kernel_code_id);
 
     // Generate App Components
     // App component names must be less than 3 characters or longer than 54 characters to force them to be 'invalid' as the MockApi struct used within the CosmWasm App struct only contains those two validation checks
@@ -123,6 +126,13 @@ fn test_crowdfund_app() {
         name: "4".to_string(),
         ado_type: "vault".to_string(),
         instantiate_msg: to_binary(&vault_two_init_msg).unwrap(),
+    };
+
+    let kernel_init_msg = mock_kernel_instantiate_message();
+    let kernel_component = AppComponent {
+        name: "6".to_string(),
+        ado_type: "kernel".to_string(),
+        instantiate_msg: to_binary(&kernel_init_msg).unwrap(),
     };
 
     // Create splitter recipient structures
@@ -160,9 +170,21 @@ fn test_crowdfund_app() {
         },
     ];
 
-    let kernel_address = "kernel_address".to_string();
-    let splitter_init_msg =
-        mock_splitter_instantiate_msg(splitter_recipients, kernel_address, None);
+    // Instantiate the kernel contract
+    let kernel_addr = router
+        .instantiate_contract(
+            kernel_code_id,
+            owner.clone(),
+            &kernel_init_msg,
+            &[],
+            "Kernel",
+            Some(owner.to_string()),
+        )
+        .unwrap();
+
+    print!("Kernel address: {:?}", kernel_addr.to_string());
+
+    let splitter_init_msg = mock_splitter_instantiate_msg(splitter_recipients, kernel_addr, None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
         instantiate_msg: to_binary(&splitter_init_msg).unwrap(),
@@ -191,7 +213,7 @@ fn test_crowdfund_app() {
             "Crowdfund App",
             Some(owner.to_string()),
         )
-        .unwrap();
+        .unwrap(); 
 
     let components: Vec<AppComponent> = router
         .wrap()

@@ -19,7 +19,7 @@ pub fn mock_app_instantiate_msg(
         name,
         primitive_contract,
         target_ados: None,
-        kernel_address: None,
+        kernel_address: Some("contract3".to_string()),
     }
 }
 

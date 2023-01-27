@@ -27,7 +27,7 @@ pub fn mock_crowdfund_instantiate_msg(
         },
         can_mint_after_sale,
         modules,
-        kernel_address: Some("kernel".to_string()),
+        kernel_address: Some("contract3".to_string()),
     }
 }
 
