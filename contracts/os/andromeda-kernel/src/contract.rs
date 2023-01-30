@@ -73,7 +73,7 @@ pub fn execute(
     let execute_env = ExecuteEnv { deps, env, info };
 
     match msg {
-        ExecuteMsg::Receive(packet) => handle_amp_packet(execute_env, packet),
+        ExecuteMsg::AMPReceive(packet) => handle_amp_packet(execute_env, packet),
         ExecuteMsg::UpsertKeyAddress { key, value } => upsert_key_address(execute_env, key, value),
     }
 }

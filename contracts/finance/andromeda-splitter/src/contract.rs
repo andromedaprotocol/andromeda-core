@@ -733,7 +733,7 @@ mod tests {
                 ),
                 SubMsg::new(WasmMsg::Execute {
                     contract_addr: "kernel".to_string(),
-                    msg: to_binary(&KernelExecuteMsg::Receive(pkt)).unwrap(),
+                    msg: to_binary(&KernelExecuteMsg::AMPReceive(pkt)).unwrap(),
                     funds: vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")],
                 }),
             ])
