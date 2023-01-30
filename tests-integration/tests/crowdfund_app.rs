@@ -1,5 +1,8 @@
 use std::str::FromStr;
 
+use andromeda_adodb::mock::{
+    mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_get_code_id_msg, mock_store_code_id_msg,
+};
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
     mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
@@ -13,10 +16,13 @@ use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of,
 };
 use andromeda_finance::splitter::{ADORecipient, AMPRecipient, AddressPercent};
-use andromeda_kernel::mock::{mock_andromeda_kernel, mock_kernel_instantiate_message};
+use andromeda_kernel::mock::{
+    mock_andromeda_kernel, mock_kernel_instantiate_message, mock_upsert_key_address,
+};
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
+
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vault::mock::{
     mock_andromeda_vault, mock_vault_deposit_msg, mock_vault_get_balance,
@@ -86,6 +92,7 @@ fn test_crowdfund_app() {
     let splitter_code_id = router.store_code(mock_andromeda_splitter());
     let app_code_id = router.store_code(mock_andromeda_app());
     let kernel_code_id = router.store_code(mock_andromeda_kernel());
+    let adodb_code_id = router.store_code(mock_andromeda_adodb());
     andr.store_code_id(&mut router, "cw721", cw721_code_id);
     andr.store_code_id(&mut router, "crowdfund", crowdfund_code_id);
     andr.store_code_id(&mut router, "vault", vault_code_id);
@@ -184,6 +191,42 @@ fn test_crowdfund_app() {
 
     print!("Kernel address: {:?}", kernel_addr.to_string());
 
+    let adodb_init_msg = mock_adodb_instantiate_msg();
+
+    // Instantiate the adodb contract
+    let adodb_addr = router
+        .instantiate_contract(
+            adodb_code_id,
+            owner.clone(),
+            &adodb_init_msg,
+            &[],
+            "adodb",
+            Some(owner.to_string()),
+        )
+        .unwrap();
+
+    print!("adodb address: {:?}", adodb_addr.to_string());
+
+    // Add the crowdfund's code id into the adodb
+    router
+        .execute_contract(
+            owner.clone(),
+            adodb_addr.clone(),
+            &mock_store_code_id_msg("crowdfund".to_string(), crowdfund_code_id),
+            &[],
+        )
+        .unwrap();
+
+    // Upsert adodb address in kernel
+    router
+        .execute_contract(
+            owner.clone(),
+            kernel_addr.clone(),
+            &mock_upsert_key_address("adodb", adodb_addr),
+            &[],
+        )
+        .unwrap();
+
     let splitter_init_msg = mock_splitter_instantiate_msg(splitter_recipients, kernel_addr, None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
@@ -239,6 +282,15 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
+    let splitter_addr: String = router
+        .wrap()
+        .query_wasm_smart(
+            app_addr.clone(),
+            &mock_get_address_msg(splitter_app_component.clone().name),
+        )
+        .unwrap();
+    println!("Splitter address is: {:?}", splitter_addr);
+
     // Mint Tokens
     let mint_msg = mock_crowdfund_quick_mint_msg(5, owner.to_string());
     router
@@ -253,7 +305,7 @@ fn test_crowdfund_app() {
     // Start Sale
     let token_price = coin(100, "uandr");
     let sale_recipient = AMPRecipient::ADO(ADORecipient {
-        address: splitter_app_component.name,
+        address: "contract10".to_string(),
         msg: Some(to_binary(&mock_splitter_send_msg()).unwrap()),
     });
     let start_msg = mock_start_crowdfund_msg(
@@ -302,9 +354,10 @@ fn test_crowdfund_app() {
             &[],
         )
         .unwrap();
-    router
+    let result = router
         .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
         .unwrap();
+    println!("{:?}", result);
 
     // Check final state
     //Check token transfers

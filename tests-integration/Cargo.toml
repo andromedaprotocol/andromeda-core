@@ -36,7 +36,10 @@ andromeda-finance = { path = "../packages/andromeda-finance"}
 andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = ["testing"] }
 
 #OS
+andromeda-os = { path = "../packages/andromeda-os"}
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = ["testing"] }
+andromeda-adodb = { path = "../contracts/os/andromeda-adodb", features = ["testing"] }
+
 
 #Other Crates
 common = { version = "0.1.0", path = "../packages/common" }

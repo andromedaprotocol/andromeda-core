@@ -197,6 +197,7 @@ pub enum ExecuteMsg {
     },
 
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
 }
 
 #[cw_serde]

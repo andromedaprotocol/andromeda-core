@@ -89,6 +89,7 @@ pub fn handle_amp_packet(
         )?,
         ContractError::Unauthorized {}
     );
+
     let mut res = Response::default();
     // Batched message implementation
     // let message_recipients = packet.get_unique_recipients();

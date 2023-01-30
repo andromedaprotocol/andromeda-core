@@ -1835,6 +1835,7 @@ name = "tests-integration"
 version = "0.1.0"
 dependencies = [
  "andromeda-address-list",
+ "andromeda-adodb",
  "andromeda-app",
  "andromeda-app-contract",
  "andromeda-auction",
@@ -1849,6 +1850,7 @@ dependencies = [
  "andromeda-marketplace",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
+ "andromeda-os",
  "andromeda-rates",
  "andromeda-splitter",
  "andromeda-testing",
