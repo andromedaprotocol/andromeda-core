@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use andromeda_adodb::mock::{
-    mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_get_code_id_msg, mock_store_code_id_msg,
+    mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_store_code_id_msg,
 };
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
@@ -136,15 +136,10 @@ fn test_crowdfund_app() {
     };
 
     let kernel_init_msg = mock_kernel_instantiate_message();
-    let kernel_component = AppComponent {
-        name: "6".to_string(),
-        ado_type: "kernel".to_string(),
-        instantiate_msg: to_binary(&kernel_init_msg).unwrap(),
-    };
 
     // Create splitter recipient structures
     let vault_one_recipient = AMPRecipient::ADO(ADORecipient {
-        address: vault_one_app_component.clone().name,
+        address: "contract8".to_string(),
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
                 Some(AMPRecipient::Addr(vault_one_recipient_addr.to_string())),
@@ -155,7 +150,7 @@ fn test_crowdfund_app() {
         ),
     });
     let vault_two_recipient = AMPRecipient::ADO(ADORecipient {
-        address: vault_two_app_component.clone().name,
+        address: "contract9".to_string(),
 
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
@@ -222,12 +217,13 @@ fn test_crowdfund_app() {
         .execute_contract(
             owner.clone(),
             kernel_addr.clone(),
-            &mock_upsert_key_address("adodb", adodb_addr),
+            &mock_upsert_key_address("adodb", adodb_addr.clone()),
             &[],
         )
         .unwrap();
 
-    let splitter_init_msg = mock_splitter_instantiate_msg(splitter_recipients, kernel_addr, None);
+    let splitter_init_msg =
+        mock_splitter_instantiate_msg(splitter_recipients, kernel_addr.clone(), None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
         instantiate_msg: to_binary(&splitter_init_msg).unwrap(),
@@ -265,6 +261,24 @@ fn test_crowdfund_app() {
 
     assert_eq!(components, app_components);
 
+    let vault_one_addr: String = router
+        .wrap()
+        .query_wasm_smart(
+            app_addr.clone(),
+            &mock_get_address_msg(vault_one_app_component.clone().name),
+        )
+        .unwrap();
+    println!("Vault one address: {:?}", vault_one_addr);
+
+    let vault_two_addr: String = router
+        .wrap()
+        .query_wasm_smart(
+            app_addr.clone(),
+            &mock_get_address_msg(vault_two_app_component.name),
+        )
+        .unwrap();
+    println!("Vault two address: {:?}", vault_two_addr);
+
     router
         .execute_contract(
             owner.clone(),
@@ -282,6 +296,16 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
+    // Add the vault's code id into the adodb
+    router
+        .execute_contract(
+            owner.clone(),
+            adodb_addr.clone(),
+            &mock_store_code_id_msg("vault".to_string(), vault_code_id),
+            &[],
+        )
+        .unwrap();
+
     let splitter_addr: String = router
         .wrap()
         .query_wasm_smart(
@@ -290,6 +314,16 @@ fn test_crowdfund_app() {
         )
         .unwrap();
     println!("Splitter address is: {:?}", splitter_addr);
+
+    // Add the splitter's code id into the adodb
+    router
+        .execute_contract(
+            owner.clone(),
+            adodb_addr.clone(),
+            &mock_store_code_id_msg("splitter".to_string(), splitter_code_id),
+            &[],
+        )
+        .unwrap();
 
     // Mint Tokens
     let mint_msg = mock_crowdfund_quick_mint_msg(5, owner.to_string());
@@ -379,13 +413,7 @@ fn test_crowdfund_app() {
     }
 
     //Check vault balances
-    let vault_one_addr: String = router
-        .wrap()
-        .query_wasm_smart(
-            app_addr.clone(),
-            &mock_get_address_msg(vault_one_app_component.name),
-        )
-        .unwrap();
+
     let balance_one: Vec<Coin> = router
         .wrap()
         .query_wasm_smart(
@@ -400,13 +428,6 @@ fn test_crowdfund_app() {
     assert!(!balance_one.is_empty());
     assert_eq!(balance_one[0], coin(150, "uandr"));
 
-    let vault_two_addr: String = router
-        .wrap()
-        .query_wasm_smart(
-            app_addr,
-            &mock_get_address_msg(vault_two_app_component.name),
-        )
-        .unwrap();
     let balance_two: Vec<Coin> = router
         .wrap()
         .query_wasm_smart(

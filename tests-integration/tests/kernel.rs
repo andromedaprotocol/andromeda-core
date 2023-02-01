@@ -1,7 +1,7 @@
 use andromeda_finance::splitter::{ADORecipient, AMPRecipient, AddressPercent};
 
 use andromeda_splitter::mock::{
-    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_kernel_msg,
+    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vault::mock::{
@@ -93,7 +93,7 @@ fn kernel() {
         )
         .unwrap();
 
-    let send_msg = mock_splitter_send_kernel_msg(None, None);
+    let send_msg = mock_splitter_send_msg();
     router
         .execute_contract(owner, splitter_addr, &send_msg, &coins(100, "uandr"))
         .unwrap();

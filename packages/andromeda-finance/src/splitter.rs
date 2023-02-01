@@ -194,6 +194,7 @@ pub enum ExecuteMsg {
     /// Divides any attached funds to the message amongst the recipients list.
     Send {
         reply_gas: ReplyGas,
+        packet: Option<AMPPkt>,
     },
 
     AndrReceive(AndromedaMsg),
