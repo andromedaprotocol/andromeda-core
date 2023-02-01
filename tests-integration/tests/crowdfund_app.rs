@@ -222,8 +222,7 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
-    let splitter_init_msg =
-        mock_splitter_instantiate_msg(splitter_recipients, kernel_addr, None);
+    let splitter_init_msg = mock_splitter_instantiate_msg(splitter_recipients, kernel_addr, None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
         instantiate_msg: to_binary(&splitter_init_msg).unwrap(),
@@ -397,10 +396,7 @@ fn test_crowdfund_app() {
     //Check token transfers
     let cw721_addr: String = router
         .wrap()
-        .query_wasm_smart(
-            app_addr,
-            &mock_get_address_msg(cw721_component.name),
-        )
+        .query_wasm_smart(app_addr, &mock_get_address_msg(cw721_component.name))
         .unwrap();
     for (i, buyer) in buyers.iter().enumerate() {
         let query_msg = mock_cw721_owner_of(i.to_string(), None);

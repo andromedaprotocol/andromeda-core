@@ -81,14 +81,12 @@ impl WasmMockQuerier {
                         let balances: &HashMap<String, Uint128> =
                             match self.token_querier.balances.get(contract_addr) {
                                 Some(balances) => balances,
-                                None => {
-                                    return SystemResult::Err(SystemError::InvalidRequest {
-                                        error: format!(
-                                            "No balance info exists for the contract {contract_addr}"
-                                        ),
-                                        request: msg.as_slice().into(),
-                                    })
-                                }
+                                None => return SystemResult::Err(SystemError::InvalidRequest {
+                                    error: format!(
+                                        "No balance info exists for the contract {contract_addr}"
+                                    ),
+                                    request: msg.as_slice().into(),
+                                }),
                             };
 
                         let balance = match balances.get(&address) {
