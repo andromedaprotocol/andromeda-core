@@ -223,7 +223,7 @@ fn test_crowdfund_app() {
         .unwrap();
 
     let splitter_init_msg =
-        mock_splitter_instantiate_msg(splitter_recipients, kernel_addr.clone(), None);
+        mock_splitter_instantiate_msg(splitter_recipients, kernel_addr, None);
     let splitter_app_component = AppComponent {
         name: "5".to_string(),
         instantiate_msg: to_binary(&splitter_init_msg).unwrap(),
@@ -265,10 +265,10 @@ fn test_crowdfund_app() {
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
-            &mock_get_address_msg(vault_one_app_component.clone().name),
+            &mock_get_address_msg(vault_one_app_component.name),
         )
         .unwrap();
-    println!("Vault one address: {:?}", vault_one_addr);
+    println!("Vault one address: {vault_one_addr:?}");
 
     let vault_two_addr: String = router
         .wrap()
@@ -277,7 +277,7 @@ fn test_crowdfund_app() {
             &mock_get_address_msg(vault_two_app_component.name),
         )
         .unwrap();
-    println!("Vault two address: {:?}", vault_two_addr);
+    println!("Vault two address: {vault_two_addr:?}");
 
     router
         .execute_contract(
@@ -310,16 +310,16 @@ fn test_crowdfund_app() {
         .wrap()
         .query_wasm_smart(
             app_addr.clone(),
-            &mock_get_address_msg(splitter_app_component.clone().name),
+            &mock_get_address_msg(splitter_app_component.name),
         )
         .unwrap();
-    println!("Splitter address is: {:?}", splitter_addr);
+    println!("Splitter address is: {splitter_addr:?}");
 
     // Add the splitter's code id into the adodb
     router
         .execute_contract(
             owner.clone(),
-            adodb_addr.clone(),
+            adodb_addr,
             &mock_store_code_id_msg("splitter".to_string(), splitter_code_id),
             &[],
         )
@@ -391,14 +391,14 @@ fn test_crowdfund_app() {
     let result = router
         .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
         .unwrap();
-    println!("{:?}", result);
+    println!("{result:?}");
 
     // Check final state
     //Check token transfers
     let cw721_addr: String = router
         .wrap()
         .query_wasm_smart(
-            app_addr.clone(),
+            app_addr,
             &mock_get_address_msg(cw721_component.name),
         )
         .unwrap();

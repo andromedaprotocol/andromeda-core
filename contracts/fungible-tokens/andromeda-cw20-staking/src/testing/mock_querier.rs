@@ -63,7 +63,7 @@ impl Querier for WasmMockQuerier {
             Ok(v) => v,
             Err(e) => {
                 return SystemResult::Err(SystemError::InvalidRequest {
-                    error: format!("Parsing query request: {}", e),
+                    error: format!("Parsing query request: {e}"),
                     request: bin_request.into(),
                 })
             }
@@ -84,8 +84,7 @@ impl WasmMockQuerier {
                                 None => {
                                     return SystemResult::Err(SystemError::InvalidRequest {
                                         error: format!(
-                                            "No balance info exists for the contract {}",
-                                            contract_addr
+                                            "No balance info exists for the contract {contract_addr}"
                                         ),
                                         request: msg.as_slice().into(),
                                     })

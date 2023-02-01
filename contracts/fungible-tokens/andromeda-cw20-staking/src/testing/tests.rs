@@ -156,7 +156,7 @@ fn test_instantiate_exceed_max() {
 
     for i in 0..MAX_REWARD_TOKENS + 1 {
         reward_tokens.push(RewardTokenUnchecked {
-            asset_info: AssetInfoUnchecked::cw20(format!("token{}", i)),
+            asset_info: AssetInfoUnchecked::cw20(format!("token{i}")),
             allocation_config: None,
         });
     }
@@ -1633,7 +1633,7 @@ fn test_add_reward_token_exceeds_max() {
 
     for i in 0..MAX_REWARD_TOKENS {
         reward_tokens.push(RewardTokenUnchecked {
-            asset_info: AssetInfoUnchecked::cw20(format!("token{}", i)),
+            asset_info: AssetInfoUnchecked::cw20(format!("token{i}")),
             allocation_config: None,
         });
     }
