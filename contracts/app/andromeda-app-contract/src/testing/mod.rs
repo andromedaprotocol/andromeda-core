@@ -4,7 +4,7 @@ use crate::{
 };
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg};
 use andromeda_automation::condition::ExecuteMsg as ConditionExecuteMsg;
-use andromeda_os::vfs::ExecuteMsg as VFSExecuteMsg;
+use andromeda_os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
 
 use common::{ado_base::AndromedaMsg, encode_binary, error::ContractError};
@@ -66,7 +66,7 @@ fn test_instantiation() {
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: "vfs_contract".to_string(),
             msg: to_binary(&VFSExecuteMsg::AddParentPath {
-                name: "Some App".to_string(),
+                name: convert_component_name("Some App".to_string()),
                 parent_address: info.sender,
             })
             .unwrap(),

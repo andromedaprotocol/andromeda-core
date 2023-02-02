@@ -3,11 +3,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr};
 use regex::Regex;
 
-pub const COMPONENT_NAME_REGEX: &str = r"^([^/^:\s]{1,40})+$";
+pub const COMPONENT_NAME_REGEX: &str = r"^[^/^:\s]{1,40}$";
 pub const PATH_REGEX: &str = r"^([A-Za-z0-9]+://)?(/)?([^/:\s]{1,40}(/)?)+$";
 
 pub fn convert_component_name(path: String) -> String {
-    path.replace(" ", "_")
+    path.replace(' ', "_")
 }
 
 pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
@@ -107,7 +107,8 @@ mod test {
         let res = validate_component_name(invalid_name.to_string());
         assert!(res.is_err());
 
-        let invalid_name = "somereallyreallyreallyreallyreallyreallyreallyreallylongname";
+        let invalid_name =
+            "somereallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongname";
         let res = validate_component_name(invalid_name.to_string());
         assert!(res.is_err());
     }
