@@ -143,7 +143,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
+    StdError::generic_err(format!("Semver: {err}"))
 }
 
 pub fn receive_cw20(
@@ -305,8 +305,7 @@ pub fn execute_withdraw_native(
         withdraw_amount <= max_withdrawal_allowed,
         ContractError::InvalidWithdrawal {
             msg: Some(format!(
-                "Amount exceeds max allowed withdrawal limit of {}",
-                max_withdrawal_allowed
+                "Amount exceeds max allowed withdrawal limit of {max_withdrawal_allowed}"
             )),
         }
     );

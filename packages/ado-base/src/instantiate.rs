@@ -26,7 +26,7 @@ impl<'a> ADOContract<'a> {
                     code_id,
                     msg,
                     funds: vec![],
-                    label: format!("Instantiate: {}", ado_type),
+                    label: format!("Instantiate: {ado_type}"),
                 }),
                 gas_limit: None,
             }),

@@ -417,7 +417,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
+    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[cfg(test)]
@@ -722,7 +722,7 @@ mod tests {
         println!("{:?}", env.block.time.clone().seconds());
         let time_spent = env.block.time.clone().seconds() - details.time_of_staking.seconds();
 
-        println!("{:?}", time_spent);
+        println!("{time_spent:?}");
         let set_reward = REWARD.load(&deps.storage).unwrap();
         let expected_reward = set_reward.amount * Uint128::from(time_spent);
 

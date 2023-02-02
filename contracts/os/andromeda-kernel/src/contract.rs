@@ -89,6 +89,7 @@ pub fn handle_amp_packet(
         )?,
         ContractError::Unauthorized {}
     );
+
     let mut res = Response::default();
 
     let vfs_address = KERNEL_ADDRESSES.may_load(execute_env.deps.storage, VFS_KEY)?;
@@ -171,7 +172,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
+    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

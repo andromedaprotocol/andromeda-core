@@ -251,7 +251,7 @@ fn execute_buy(
     ensure!(
         payment.denom == coin_denom,
         ContractError::InvalidFunds {
-            msg: format!("No {} assets are provided to sale", coin_denom),
+            msg: format!("No {coin_denom} assets are provided to sale"),
         }
     );
     ensure!(
@@ -538,7 +538,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
+    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[cfg(test)]

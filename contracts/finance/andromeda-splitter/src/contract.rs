@@ -5,7 +5,7 @@ use andromeda_finance::splitter::{
     GetSplitterConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
 };
 
-use amp::messages::{AMPMsg, ReplyGas};
+use amp::messages::{AMPMsg, AMPPkt, ReplyGas};
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     app::AndrAddress,
@@ -134,29 +134,59 @@ pub fn execute(
             execute_update_recipients(deps, env, info, recipients)
         }
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
-        ExecuteMsg::Send { reply_gas } => execute_send(deps, env, info, reply_gas),
+        ExecuteMsg::Send { reply_gas, packet } => execute_send(deps, env, info, reply_gas, packet),
         ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
+        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
     }
 }
 
-// The nature of the saved recipient dictates the message's path
-// pub fn execute_receive(
-//     deps: DepsMut,
-//     env: Env,
-//     info: MessageInfo,
-//     msg: MessagePath,
-// ) -> Result<Response, ContractError> {
-//     match msg {
-//         MessagePath::Direct() => execute_send(deps, info),
-//         MessagePath::Kernel(reply_gas) => execute_send_kernel(deps, env, info, reply_gas),
-//     }
-// }
+pub struct ExecuteEnv<'a> {
+    deps: DepsMut<'a>,
+    pub env: Env,
+    pub info: MessageInfo,
+}
+
+fn handle_amp_packet(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    packet: AMPPkt,
+) -> Result<Response, ContractError> {
+    let mut res = Response::default();
+
+    let execute_env = ExecuteEnv { deps, env, info };
+    let msg_opt = packet.messages.first();
+    if let Some(msg) = msg_opt {
+        let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
+
+        let funds = msg.funds.to_vec();
+
+        let mut exec_info = execute_env.info.clone();
+
+        exec_info.funds = funds;
+
+        let exec_res = execute(
+            execute_env.deps,
+            execute_env.env.clone(),
+            exec_info,
+            exec_msg,
+        )?;
+
+        res = res
+            .add_attributes(exec_res.attributes)
+            .add_submessages(exec_res.messages)
+            .add_events(exec_res.events);
+    }
+
+    Ok(res)
+}
 
 fn execute_send(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     reply_gas: ReplyGas,
+    packet: Option<AMPPkt>,
 ) -> Result<Response, ContractError> {
     let sent_funds: Vec<Coin> = info.funds.clone();
     ensure!(
@@ -167,6 +197,7 @@ fn execute_send(
     );
 
     let splitter = SPLITTER.load(deps.storage)?;
+
     let mut msgs: Vec<SubMsg> = Vec::new();
     let mut amp_msgs: Vec<AMPMsg> = Vec::new();
     let mut kernel_funds: Vec<Coin> = Vec::new();
@@ -180,6 +211,7 @@ fn execute_send(
         info.funds.len() < 5,
         ContractError::ExceedsMaxAllowedCoins {}
     );
+
     for recipient_addr in &splitter.recipients {
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
@@ -189,9 +221,11 @@ fn execute_send(
             remainder_funds[i].amount -= recip_coin.amount;
             vec_coin.push(recip_coin);
         }
+
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
         let recipient = recipient_addr.recipient.get_addr()?;
+
         let message = recipient_addr.recipient.get_message()?.unwrap_or_default();
 
         match &recipient_addr.recipient {
@@ -199,6 +233,7 @@ fn execute_send(
                 to_address: addr.clone(),
                 amount: vec_coin,
             }))),
+
             AMPRecipient::ADO(_) => {
                 amp_msgs.push(AMPMsg::new(
                     recipient,
@@ -213,9 +248,11 @@ fn execute_send(
                 }
             }
         }
+        println!("8");
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
     // Who is the sender of this function?
+
     // Why does the remaining funds go the the sender of the executor of the splitter?
     // Is it considered tax(fee) or mistake?
     // Discussion around caller of splitter function in andromedaSPLITTER smart contract.
@@ -230,7 +267,7 @@ fn execute_send(
 
     // Generates the SubMsg intended for the kernel
     // Check if any messages are intended for kernel in the first place
-    if !amp_msgs.is_empty() {
+    if !amp_msgs.is_empty() && packet.is_none() {
         let contract = ADOContract::default();
         // The original sender of the message is the user in this case
         let origin = info.sender.to_string();
@@ -249,7 +286,28 @@ fn execute_send(
             kernel_address.into_string(),
         )?;
         msgs.push(msg);
+    } else if !amp_msgs.is_empty() && packet.is_some() {
+        let contract = ADOContract::default();
+
+        // The original sender of the message is the user in this case
+        let origin = packet.unwrap().get_origin();
+
+        // The previous sender of the message is the contract in this case since it will be the one sending the message to the kernel
+        let previous_sender = env.contract.address;
+
+        // The kernel address has been validated and saved during instantiation
+        let kernel_address = contract.get_kernel_address(deps.storage)?;
+
+        let msg = generate_msg_native_kernel(
+            kernel_funds,
+            origin,
+            previous_sender.into_string(),
+            amp_msgs,
+            kernel_address.into_string(),
+        )?;
+        msgs.push(msg);
     }
+    println!("THE MESSAGES are: {msgs:?}");
 
     Ok(Response::new()
         .add_submessages(msgs)
@@ -264,17 +322,20 @@ pub fn execute_andromeda(
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        AndromedaMsg::Receive(reply_gas) => {
-            let reply_gas = if let Some(rep_gas) = reply_gas {
-                let reply_gas: ReplyGas = from_binary(&rep_gas)?;
-                reply_gas
+        AndromedaMsg::Receive(binary) => {
+            let (reply_gas, packet) = if let Some(rep_gas_pkt) = binary {
+                let reply_gas_packet: (ReplyGas, Option<AMPPkt>) = from_binary(&rep_gas_pkt)?;
+                reply_gas_packet
             } else {
-                ReplyGas {
-                    reply_on: None,
-                    gas_limit: None,
-                }
+                (
+                    ReplyGas {
+                        reply_on: None,
+                        gas_limit: None,
+                    },
+                    None,
+                )
             };
-            execute_send(deps, env, info, reply_gas)
+            execute_send(deps, env, info, reply_gas, packet)
         }
         _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
@@ -392,7 +453,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
+    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[entry_point]
@@ -583,6 +644,7 @@ mod tests {
                 reply_on: None,
                 gas_limit: None,
             },
+            packet: None,
         };
 
         let splitter = Splitter {
@@ -671,6 +733,7 @@ mod tests {
                 reply_on: None,
                 gas_limit: None,
             },
+            packet: None,
         };
 
         let splitter = Splitter {
@@ -800,6 +863,7 @@ mod tests {
                 reply_on: None,
                 gas_limit: None,
             },
+            packet: None,
         };
 
         let splitter = Splitter {

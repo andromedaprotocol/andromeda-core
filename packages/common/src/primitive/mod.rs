@@ -19,7 +19,7 @@ pub enum Primitive {
 fn parse_error(type_name: String) -> StdError {
     StdError::ParseErr {
         target_type: type_name.clone(),
-        msg: format!("Primitive is not a {}", type_name),
+        msg: format!("Primitive is not a {type_name}"),
     }
 }
 

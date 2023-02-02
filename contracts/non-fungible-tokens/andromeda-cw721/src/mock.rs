@@ -25,7 +25,7 @@ pub fn mock_cw721_instantiate_msg(
         symbol,
         minter: AndrAddress { identifier: minter },
         modules,
-        kernel_address: None,
+        kernel_address: Some("contract3".to_string()),
     }
 }
 

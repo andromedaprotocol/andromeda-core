@@ -13,7 +13,7 @@ pub fn mock_andromeda_vault() -> Box<dyn Contract<Empty>> {
 
 pub fn mock_vault_instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
-        kernel_address: None,
+        kernel_address: Some("contract3".to_string()),
     }
 }
 

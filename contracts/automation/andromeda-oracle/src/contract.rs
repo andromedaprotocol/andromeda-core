@@ -110,7 +110,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
+    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -277,10 +277,10 @@ mod tests {
         assert_eq!(addr, MOCK_COUNTER_CONTRACT.to_string());
 
         let res = query_target(deps.as_ref()).unwrap();
-        println!("Response: {:?}", res);
+        println!("Response: {res:?}");
 
         let from_stringg: Uint128 = res.parse().unwrap();
-        println!("Parsed version: {:?}", from_stringg);
+        println!("Parsed version: {from_stringg:?}");
         assert_eq!(from_stringg, Uint128::new(1))
     }
 
@@ -308,10 +308,10 @@ mod tests {
         assert_eq!(addr, MOCK_COUNTER_CONTRACT.to_string());
 
         let res = query_target(deps.as_ref()).unwrap();
-        println!("Response: {:?}", res);
+        println!("Response: {res:?}");
 
         let from_stringg: u32 = res.parse().unwrap();
-        println!("Parsed version: {:?}", from_stringg);
+        println!("Parsed version: {from_stringg:?}");
         assert_eq!(from_stringg, 1)
         // We can now assume that we can parse into any type of number
     }
@@ -337,10 +337,10 @@ mod tests {
 
         let res: String = query_target(deps.as_ref()).unwrap();
 
-        println!("Pre-parsed result: {:?}", res);
+        println!("Pre-parsed result: {res:?}");
         let parsed_result: bool = res.parse().unwrap();
 
-        println!("Parsed result: {:?}", parsed_result);
+        println!("Parsed result: {parsed_result:?}");
 
         // The mock querier always returns false
         assert!(!parsed_result)
@@ -367,10 +367,10 @@ mod tests {
 
         let res: String = query_target(deps.as_ref()).unwrap();
 
-        println!("Pre-parsed result: {:?}", res);
+        println!("Pre-parsed result: {res:?}");
 
         let parsed_result: Uint128 = res.parse().unwrap();
-        println!("From String version: {:?}", parsed_result);
+        println!("From String version: {parsed_result:?}");
 
         assert_eq!(parsed_result, Uint128::new(1));
     }
@@ -419,9 +419,9 @@ mod tests {
 
         let res = query_target(deps.as_ref()).unwrap();
 
-        println!("Pre-parsed result: {:?}", res);
+        println!("Pre-parsed result: {res:?}");
         let parsed_result: Uint128 = res.parse().unwrap();
-        println!("From String version: {:?}", parsed_result);
+        println!("From String version: {parsed_result:?}");
 
         assert_eq!(parsed_result, Uint128::zero());
     }

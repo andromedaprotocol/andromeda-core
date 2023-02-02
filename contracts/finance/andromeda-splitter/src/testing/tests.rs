@@ -51,6 +51,7 @@ fn test_modules() {
             reply_on: None,
             gas_limit: None,
         },
+        packet: None,
     };
     let info = mock_info("anyone", &coins(100, "uusd"));
 

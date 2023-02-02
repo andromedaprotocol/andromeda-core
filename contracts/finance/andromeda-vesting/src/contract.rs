@@ -159,7 +159,7 @@ fn execute_create_batch(
         current_time
     };
 
-    let release_amount_string = format!("{:?}", release_amount);
+    let release_amount_string = format!("{release_amount:?}");
 
     let batch = Batch {
         amount: funds.amount,
@@ -502,7 +502,7 @@ fn execute_vote(
         .add_message(msg)
         .add_attribute("action", "vote")
         .add_attribute("proposal_id", proposal_id.to_string())
-        .add_attribute("vote", format!("{:?}", vote)))
+        .add_attribute("vote", format!("{vote:?}")))
 }
 
 fn get_amount_delegated(
@@ -556,7 +556,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
+    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
