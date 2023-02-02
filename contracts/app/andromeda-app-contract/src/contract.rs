@@ -9,7 +9,10 @@ use andromeda_app::app::{
     QueryMsg,
 };
 use andromeda_automation::condition::ExecuteMsg as ConditionExecuteMsg;
-use andromeda_os::{kernel::QueryMsg as KernelQueryMsg, vfs::ExecuteMsg as VFSExecuteMsg};
+use andromeda_os::{
+    kernel::QueryMsg as KernelQueryMsg,
+    vfs::{validate_component_name, ExecuteMsg as VFSExecuteMsg},
+};
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
@@ -20,8 +23,8 @@ use common::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    Reply, ReplyOn, Response, StdError, Storage, SubMsg, WasmMsg,
+    ensure, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    QuerierWrapper, Reply, ReplyOn, Response, StdError, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 
@@ -32,6 +35,7 @@ const CONTRACT_NAME: &str = "crates.io:andromeda-app-contract";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const REGISTER_PATH_MSG_ID: u64 = 1001;
+const REGISTER_PARENT_PATH_MSG_MSG: u64 = 1002;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -60,18 +64,18 @@ pub fn instantiate(
             deps.storage,
             env,
             deps.api,
-            info,
+            info.clone(),
             BaseInstantiateMsg {
                 ado_type: "app".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
                 primitive_contract: None,
-                kernel_address: Some(msg.kernel_address),
+                kernel_address: Some(msg.kernel_address.clone()),
             },
         )?
         .add_attribute("owner", &sender)
-        .add_attribute("andr_app", msg.name);
+        .add_attribute("andr_app", msg.name.clone());
 
     let mut msgs: Vec<SubMsg> = vec![];
     for component in msg.app_components {
@@ -79,7 +83,27 @@ pub fn instantiate(
         msgs.extend(comp_resp.messages);
     }
 
-    Ok(resp.add_submessages(msgs))
+    // Register App in VFS
+    let vfs_address_query = KernelQueryMsg::KeyAddress {
+        key: "vfs".to_string(),
+    };
+    let vfs_address: Addr = deps
+        .querier
+        .query_wasm_smart(msg.kernel_address, &vfs_address_query)?;
+
+    let add_path_msg = VFSExecuteMsg::AddParentPath {
+        name: msg.name,
+        parent_address: info.sender,
+    };
+    let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: vfs_address.to_string(),
+        msg: to_binary(&add_path_msg)?,
+        funds: vec![],
+    });
+
+    let register_msg = SubMsg::reply_on_error(cosmos_msg, REGISTER_PARENT_PATH_MSG_MSG);
+
+    Ok(resp.add_submessage(register_msg).add_submessages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -224,6 +248,7 @@ fn execute_add_app_component(
     sender: &str,
     component: AppComponent,
 ) -> Result<Response, ContractError> {
+    validate_component_name(component.name.clone())?;
     let contract = ADOContract::default();
     ensure!(
         contract.is_contract_owner(storage, sender)?,

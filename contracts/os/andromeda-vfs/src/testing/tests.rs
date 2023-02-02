@@ -114,3 +114,30 @@ fn test_add_path() {
 
     assert_eq!(resolved_addr, component_addr)
 }
+
+#[test]
+fn test_add_parent_path() {
+    let mut deps = mock_dependencies();
+    let username = "u1";
+    let user_address = Addr::unchecked("useraddr");
+    let component_name = "f1";
+    let sender = "sender";
+    let info = mock_info(sender, &[]);
+    let env = mock_env();
+    let msg = ExecuteMsg::AddParentPath {
+        name: component_name.to_string(),
+        parent_address: user_address.clone(),
+    };
+
+    execute(deps.as_mut(), env, info, msg).unwrap();
+
+    USERS
+        .save(deps.as_mut().storage, username, &user_address)
+        .unwrap();
+
+    let path = format!("/{}/{}", username, component_name);
+
+    let resolved_addr = resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path).unwrap();
+
+    assert_eq!(resolved_addr, sender)
+}

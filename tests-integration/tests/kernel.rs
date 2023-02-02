@@ -108,8 +108,6 @@ fn kernel() {
 
     assert_eq!(components, app_components);
 
-    andr.vfs_add_path(&mut router, owner.clone(), "app1", app_addr);
-
     let splitter_addr = andr.vfs_resolve_path(&mut router, "/am/app1/splitter");
     let vault_addr = andr.vfs_resolve_path(&mut router, "/am/app1/vault");
 

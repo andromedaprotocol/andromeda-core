@@ -19,10 +19,11 @@ use andromeda_non_fungible_tokens::{
     cw721_bid::{BidResponse, ExecuteMsg as BidsExecuteMsg, QueryMsg as BidsQueryMsg},
 };
 use andromeda_os::adodb::QueryMsg as FactoryQueryMsg;
+use andromeda_os::kernel::QueryMsg as KernelQueryMsg;
 use cosmwasm_std::{
     coin, coins, from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Decimal, Event, OwnedDeps,
+    to_binary, Addr, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Decimal, Event, OwnedDeps,
     Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128,
     WasmMsg, WasmQuery,
 };
@@ -34,6 +35,8 @@ pub const MOCK_FACTORY_CONTRACT: &str = "factory_contract";
 pub const MOCK_CW721_CONTRACT: &str = "cw721_contract";
 pub const MOCK_AUCTION_CONTRACT: &str = "auction_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
+pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
+pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 pub const MOCK_CW20_CONTRACT2: &str = "cw20_contract2";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
@@ -106,6 +109,7 @@ impl WasmMockQuerier {
                     MOCK_CW20_CONTRACT2 => self.handle_cw20_query(msg),
                     MOCK_CW721_CONTRACT => self.handle_cw721_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
+                    MOCK_KERNEL_CONTRACT => self.handle_kernel_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
                     MOCK_BIDS_CONTRACT => self.handle_bids_query(msg),
@@ -412,6 +416,20 @@ impl WasmMockQuerier {
                         value: Primitive::String(MOCK_FACTORY_CONTRACT.to_owned()),
                     },
                     _ => panic!("Unsupported primitive key"),
+                };
+                SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
+            }
+            _ => panic!("Unsupported Query"),
+        }
+    }
+
+    fn handle_kernel_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            KernelQueryMsg::KeyAddress { key } => {
+                let msg_response = match key.as_str() {
+                    "adodb" => Addr::unchecked(MOCK_FACTORY_CONTRACT),
+                    "vfs" => Addr::unchecked(MOCK_VFS_CONTRACT),
+                    _ => panic!("Unsupported key address"),
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))
             }

@@ -63,7 +63,7 @@ pub fn instantiate(
                 minter: AndrAddress {
                     identifier: env.contract.address.to_string(),
                 },
-                kernel_address: None,
+                kernel_address: Some("kernel_contract".to_string()),
             };
             let msg = contract.generate_instantiate_msg(
                 deps.storage,
@@ -314,7 +314,7 @@ mod tests {
                 primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
                 cw721_instantiate_type: InstantiateType::Address(MOCK_CW721_CONTRACT.to_owned()),
                 can_unwrap: true,
-                kernel_address: None,
+                kernel_address: Some("kernel_contract".to_string()),
             },
         )
         .unwrap();
@@ -329,7 +329,7 @@ mod tests {
             primitive_contract: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             can_unwrap: true,
             cw721_instantiate_type: InstantiateType::Address(MOCK_CW721_CONTRACT.to_owned()),
-            kernel_address: None,
+            kernel_address: Some("kernel_contract".to_string()),
         };
 
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -362,7 +362,7 @@ mod tests {
                 symbol: "symbol".to_string(),
                 modules: None,
             }),
-            kernel_address: None,
+            kernel_address: Some("kernel_contract".to_string()),
         };
 
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -373,7 +373,7 @@ mod tests {
             minter: AndrAddress {
                 identifier: mock_env().contract.address.to_string(),
             },
-            kernel_address: None,
+            kernel_address: Some("kernel_contract".to_string()),
         };
         let msg: SubMsg = SubMsg {
             id: 1,

@@ -40,35 +40,6 @@ pub fn split_pathname(path: String) -> Vec<String> {
         .collect::<Vec<String>>()
 }
 
-pub const VALID_CHARACTERS: [&str; 4] = ["_", "-", "/", ":"];
-
-pub fn validate_pathname(path: String) -> Result<bool, ContractError> {
-    ensure!(
-        !path.is_empty(),
-        ContractError::InvalidPathname {
-            error: Some("Empty path".to_string())
-        }
-    );
-    ensure!(
-        path.chars().any(|character| character.is_alphanumeric()),
-        ContractError::InvalidPathname {
-            error: Some("Path name does not include any valid characters".to_string())
-        }
-    );
-    // let valid_characters: Vec<&str> = vec!["_", "-"];
-
-    ensure!(
-        path.chars().all(|character| character.is_alphanumeric()
-            | VALID_CHARACTERS
-                .iter()
-                .any(|valid| valid.chars().next().eq(&Some(character)))),
-        ContractError::InvalidPathname {
-            error: Some("Pathname includes an invalid character".to_string())
-        }
-    );
-    Ok(true)
-}
-
 pub fn resolve_pathname(
     storage: &dyn Storage,
     api: &dyn Api,
@@ -143,30 +114,6 @@ mod test {
         let expected = vec!["username", "dir1", "dir2", "file"];
 
         assert_eq!(res, expected)
-    }
-
-    #[test]
-    fn test_validate_pathname() {
-        let valid_path = "/username/dir1/file";
-        validate_pathname(valid_path.to_string()).unwrap();
-
-        let valid_path = "username/dir1/file";
-        validate_pathname(valid_path.to_string()).unwrap();
-
-        let valid_path = "/username/dir1/file/";
-        validate_pathname(valid_path.to_string()).unwrap();
-
-        let empty_path = "";
-        let res = validate_pathname(empty_path.to_string());
-        assert!(res.is_err());
-
-        let invalid_path = "///////";
-        let res = validate_pathname(invalid_path.to_string());
-        assert!(res.is_err());
-
-        let invalid_path = "/username/dir1/f!le";
-        let res = validate_pathname(invalid_path.to_string());
-        assert!(res.is_err())
     }
 
     #[test]

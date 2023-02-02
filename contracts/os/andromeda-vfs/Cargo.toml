@@ -29,6 +29,7 @@ serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 cw721 = "0.16.0"
 cw2 = "0.16.0"
 semver = "1"
+regex = "1"
 
 amp = { version = "0.1.0", path = "../../../packages/amp" }
 andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }

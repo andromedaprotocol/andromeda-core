@@ -1,6 +1,8 @@
 use ado_base::state::ADOContract;
 
-use andromeda_os::vfs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_os::vfs::{
+    validate_component_name, validate_pathname, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
     ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
@@ -8,7 +10,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{add_pathname, resolve_pathname, validate_pathname, validate_username, USERS};
+use crate::state::{add_pathname, resolve_pathname, validate_username, USERS};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-vfs";
@@ -69,6 +71,10 @@ pub fn execute(
         ExecuteMsg::RegisterUser { username, address } => {
             execute_register_user(execute_env, username, address)
         }
+        ExecuteMsg::AddParentPath {
+            name,
+            parent_address,
+        } => execute_add_parent_path(execute_env, name, parent_address),
     }
 }
 
@@ -77,11 +83,27 @@ fn execute_add_path(
     name: String,
     address: Addr,
 ) -> Result<Response, ContractError> {
+    validate_component_name(name.clone())?;
     add_pathname(
         execute_env.deps.storage,
         execute_env.info.sender,
         name,
         address,
+    )?;
+    Ok(Response::default())
+}
+
+fn execute_add_parent_path(
+    execute_env: ExecuteEnv,
+    name: String,
+    parent_address: Addr,
+) -> Result<Response, ContractError> {
+    validate_component_name(name.clone())?;
+    add_pathname(
+        execute_env.deps.storage,
+        parent_address,
+        name,
+        execute_env.info.sender,
     )?;
     Ok(Response::default())
 }
