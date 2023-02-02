@@ -1,22 +1,18 @@
 use crate::{
     contract::*,
-    state::{ADO_ADDRESSES, ADO_DESCRIPTORS, TARGET_ADOS},
+    state::{ADO_ADDRESSES, TARGET_ADOS},
 };
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg};
 use andromeda_automation::condition::ExecuteMsg as ConditionExecuteMsg;
 use andromeda_os::vfs::ExecuteMsg as VFSExecuteMsg;
-use andromeda_testing::{
-    reply::MsgInstantiateContractResponse, testing::mock_querier::mock_dependencies_custom,
-};
+use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
 
 use common::{ado_base::AndromedaMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
     attr,
     testing::{mock_env, mock_info},
-    to_binary, Addr, CosmosMsg, Empty, Event, Reply, ReplyOn, Response, StdError, SubMsg,
-    SubMsgResponse, SubMsgResult, WasmMsg,
+    to_binary, Addr, CosmosMsg, Empty, ReplyOn, Response, StdError, SubMsg, WasmMsg,
 };
-use prost::Message;
 
 #[test]
 fn test_empty_instantiation() {

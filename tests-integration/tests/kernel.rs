@@ -103,7 +103,7 @@ fn kernel() {
 
     let components: Vec<AppComponent> = router
         .wrap()
-        .query_wasm_smart(app_addr.clone(), &mock_get_components_msg())
+        .query_wasm_smart(app_addr, &mock_get_components_msg())
         .unwrap();
 
     assert_eq!(components, app_components);
