@@ -94,9 +94,9 @@ fn test_auction_app() {
     // Create App
     let app_components = vec![cw721_component.clone(), auction_component];
     let app_init_msg = mock_app_instantiate_msg(
-        "Auction App".to_string(),
+        "AuctionApp".to_string(),
         app_components.clone(),
-        andr.registry_address,
+        andr.kernel_address,
     );
 
     let app_addr = router

@@ -3,8 +3,12 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr};
 use regex::Regex;
 
-pub const PATH_REGEX: &str = r"^([A-Za-z0-9]+://)?(/)?([^/:\s]+(/)?)+$";
-pub const COMPONENT_NAME_REGEX: &str = r"^([^/^:\s]+)+$";
+pub const COMPONENT_NAME_REGEX: &str = r"^([^/^:\s]{1,40})+$";
+pub const PATH_REGEX: &str = r"^([A-Za-z0-9]+://)?(/)?([^/:\s]{1,40}(/)?)+$";
+
+pub fn convert_component_name(path: String) -> String {
+    path.replace(" ", "_")
+}
 
 pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
     let re = Regex::new(COMPONENT_NAME_REGEX).unwrap();
@@ -98,6 +102,14 @@ mod test {
         let invalid_name = "/ /";
         let res = validate_component_name(invalid_name.to_string());
         assert!(res.is_err());
+
+        let invalid_name = " ";
+        let res = validate_component_name(invalid_name.to_string());
+        assert!(res.is_err());
+
+        let invalid_name = "somereallyreallyreallyreallyreallyreallyreallyreallylongname";
+        let res = validate_component_name(invalid_name.to_string());
+        assert!(res.is_err());
     }
 
     #[test]
@@ -128,5 +140,13 @@ mod test {
         let invalid_path = "vfs:/username/dir1/f!le";
         let res = validate_pathname(invalid_path.to_string());
         assert!(res.is_err())
+    }
+
+    #[test]
+    fn test_convert_component_name() {
+        let pre_convert = "Some Component Name";
+        let converted = convert_component_name(pre_convert.to_string());
+
+        assert_eq!("Some_Component_Name", converted)
     }
 }

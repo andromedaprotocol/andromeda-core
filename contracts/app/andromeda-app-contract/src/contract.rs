@@ -11,7 +11,7 @@ use andromeda_app::app::{
 use andromeda_automation::condition::ExecuteMsg as ConditionExecuteMsg;
 use andromeda_os::{
     kernel::QueryMsg as KernelQueryMsg,
-    vfs::{validate_component_name, ExecuteMsg as VFSExecuteMsg},
+    vfs::{convert_component_name, validate_component_name, ExecuteMsg as VFSExecuteMsg},
 };
 use common::{
     ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
@@ -92,7 +92,7 @@ pub fn instantiate(
         .query_wasm_smart(msg.kernel_address, &vfs_address_query)?;
 
     let add_path_msg = VFSExecuteMsg::AddParentPath {
-        name: msg.name,
+        name: convert_component_name(msg.name),
         parent_address: info.sender,
     };
     let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
