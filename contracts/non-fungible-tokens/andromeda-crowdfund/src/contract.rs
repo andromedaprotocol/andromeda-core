@@ -545,6 +545,7 @@ fn execute_end_sale(
     if state.amount_sold < state.min_tokens_sold {
         issue_refunds_and_burn_tokens(deps, env, limit)
     } else {
+        println!("end sale in crowdfund");
         let origin = info.sender.into_string();
         let previous_sender = env.clone().contract.address.into_string();
         let kernel_address = ADOContract::default()
@@ -642,6 +643,7 @@ fn transfer_tokens_and_send_funds(
             STATE.save(deps.storage, &state)?;
 
             resp = resp.add_submessage(msg);
+            println!("transfer tokens resp {:?}", resp);
         }
         // Once all purchased tokens have been transferred, begin burning `limit` number of tokens
         // that were not purchased.
@@ -733,6 +735,8 @@ fn transfer_tokens_and_send_funds(
         )?;
     }
     STATE.save(deps.storage, &state)?;
+    println!("rate messages: {:?}", rate_messages);
+
     Ok(resp
         .add_attribute("action", "transfer_tokens_and_send_funds")
         .add_messages(transfer_msgs)

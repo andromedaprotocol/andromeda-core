@@ -1837,6 +1837,7 @@ dependencies = [
 name = "tests-integration"
 version = "0.1.0"
 dependencies = [
+ "amp",
  "andromeda-address-list",
  "andromeda-adodb",
  "andromeda-app",

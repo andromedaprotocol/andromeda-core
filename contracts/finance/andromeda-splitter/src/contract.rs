@@ -277,10 +277,10 @@ fn execute_send(
     // The previous sender of the message is the contract
     let previous_sender = env.contract.address;
 
-    // The kernel address has been validated and saved during instantiation
-    let kernel_address = contract.get_kernel_address(deps.storage)?;
-
     if !amp_msgs.is_empty() {
+        // The kernel address has been validated and saved during instantiation
+        let kernel_address = contract.get_kernel_address(deps.storage)?;
+
         let msg = generate_msg_native_kernel(
             kernel_funds,
             origin,

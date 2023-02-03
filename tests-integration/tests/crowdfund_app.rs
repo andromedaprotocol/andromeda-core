@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use andromeda_adodb::mock::{
     mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_store_code_id_msg,
 };
@@ -25,6 +23,7 @@ use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
 use common::{ado_base::modules::Module, app::AndrAddress};
+use std::str::FromStr;
 
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vault::mock::{
@@ -177,7 +176,7 @@ fn test_crowdfund_app() {
 
     // Create splitter recipient structures
     let vault_one_recipient = AMPRecipient::ADO(ADORecipient {
-        address: "contract8".to_string(),
+        address: "contract9".to_string(),
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
                 Some(AMPRecipient::Addr(vault_one_recipient_addr.to_string())),
@@ -188,7 +187,7 @@ fn test_crowdfund_app() {
         ),
     });
     let vault_two_recipient = AMPRecipient::ADO(ADORecipient {
-        address: "contract9".to_string(),
+        address: "contract10".to_string(),
 
         msg: Some(
             to_binary(&mock_vault_deposit_msg(
@@ -333,6 +332,8 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
+    println!("crowdfund address {:?}", crowdfund_addr);
+
     // Add the vault's code id into the adodb
     router
         .execute_contract(
@@ -375,8 +376,19 @@ fn test_crowdfund_app() {
 
     // Start Sale
     let token_price = coin(100, "uandr");
+    // let packet = AMPPkt::new(
+    //         "owner".to_string(),
+    //         "previous_sender".to_string(),
+    //         vec![AMPMsg {
+    //             recipient: "contract10".to_string(),
+    //             message: to_binary(&"eyJzZW5kIjp7InJlcGx5X2dhcyI6eyJyZXBseV9vbiI6bnVsbCwiZ2FzX2xpbWl0IjpudWxsfSwicGFja2V0IjpudWxsfX0=").unwrap(),
+    //             funds: vec![coin(300, "uandr")],
+    //             reply_on: ReplyOn::Never,
+    //             gas_limit: None,
+    //         }],
+    //     );
     let sale_recipient = AMPRecipient::ADO(ADORecipient {
-        address: "contract10".to_string(),
+        address: splitter_addr,
         msg: Some(to_binary(&mock_splitter_send_msg(None)).unwrap()),
     });
     let start_msg = mock_start_crowdfund_msg(
