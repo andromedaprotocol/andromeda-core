@@ -19,9 +19,12 @@ use andromeda_finance::splitter::{ADORecipient, AMPRecipient, AddressPercent};
 use andromeda_kernel::mock::{
     mock_andromeda_kernel, mock_kernel_instantiate_message, mock_upsert_key_address,
 };
+use andromeda_modules::rates::{Rate, RateInfo};
+use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
+use common::{ado_base::modules::Module, app::AndrAddress};
 
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vault::mock::{
@@ -93,6 +96,8 @@ fn test_crowdfund_app() {
     let app_code_id = router.store_code(mock_andromeda_app());
     let kernel_code_id = router.store_code(mock_andromeda_kernel());
     let adodb_code_id = router.store_code(mock_andromeda_adodb());
+    let rates_code_id = router.store_code(mock_andromeda_rates());
+
     andr.store_code_id(&mut router, "cw721", cw721_code_id);
     andr.store_code_id(&mut router, "crowdfund", crowdfund_code_id);
     andr.store_code_id(&mut router, "vault", vault_code_id);
@@ -102,7 +107,40 @@ fn test_crowdfund_app() {
 
     // Generate App Components
     // App component names must be less than 3 characters or longer than 54 characters to force them to be 'invalid' as the MockApi struct used within the CosmWasm App struct only contains those two validation checks
-    let crowdfund_init_msg = mock_crowdfund_instantiate_msg("2".to_string(), false, None);
+
+    let rates_recipient = "rates_recipient";
+    // Generate rates contract
+    let rates: Vec<RateInfo> = [RateInfo {
+        rate: Rate::Flat(coin(1, "uandr")),
+        is_additive: false,
+        recipients: [common::ado_base::recipient::Recipient::Addr(
+            rates_recipient.to_string(),
+        )]
+        .to_vec(),
+        description: Some("Some test rate".to_string()),
+    }]
+    .to_vec();
+    let rates_init_msg = mock_rates_instantiate_msg(rates);
+    let rates_addr = router
+        .instantiate_contract(
+            rates_code_id,
+            owner.clone(),
+            &rates_init_msg,
+            &[],
+            "rates",
+            None,
+        )
+        .unwrap();
+
+    let modules: Vec<Module> = vec![Module {
+        module_type: "rates".to_string(),
+        address: AndrAddress {
+            identifier: rates_addr.to_string(),
+        },
+        is_mutable: false,
+    }];
+
+    let crowdfund_init_msg = mock_crowdfund_instantiate_msg("2".to_string(), false, Some(modules));
     let crowdfund_app_component = AppComponent {
         name: "1".to_string(),
         ado_type: "crowdfund".to_string(),
@@ -339,7 +377,7 @@ fn test_crowdfund_app() {
     let token_price = coin(100, "uandr");
     let sale_recipient = AMPRecipient::ADO(ADORecipient {
         address: "contract10".to_string(),
-        msg: Some(to_binary(&mock_splitter_send_msg()).unwrap()),
+        msg: Some(to_binary(&mock_splitter_send_msg(None)).unwrap()),
     });
     let start_msg = mock_start_crowdfund_msg(
         Expiration::AtHeight(router.block_info().height + 5),

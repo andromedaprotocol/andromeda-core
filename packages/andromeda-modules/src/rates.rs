@@ -1,3 +1,4 @@
+use amp::messages::AMPPkt;
 use common::{
     ado_base::{hooks::AndromedaHook, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,
@@ -15,6 +16,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     UpdateRates { rates: Vec<RateInfo> },
 }
 

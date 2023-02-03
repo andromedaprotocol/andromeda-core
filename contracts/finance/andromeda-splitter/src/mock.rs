@@ -24,22 +24,23 @@ pub fn mock_splitter_instantiate_msg(
     }
 }
 
-pub fn mock_splitter_send_msg() -> ExecuteMsg {
+pub fn mock_splitter_send_msg(packet: Option<AMPPkt>) -> ExecuteMsg {
     ExecuteMsg::Send {
         reply_gas: ReplyGas {
             reply_on: None,
             gas_limit: None,
         },
-        packet: Some(AMPPkt::new(
-            "owner".to_string(),
-            "previous_sender".to_string(),
-            vec![AMPMsg {
-                recipient: "contract10".to_string(),
-                message: to_binary(&"eyJzZW5kIjp7InJlcGx5X2dhcyI6eyJyZXBseV9vbiI6bnVsbCwiZ2FzX2xpbWl0IjpudWxsfSwicGFja2V0IjpudWxsfX0=").unwrap(),
-                funds: vec![coin(300, "uandr")],
-                reply_on: ReplyOn::Never,
-                gas_limit: None,
-            }],
-        )),
+        packet,
+        // packet: Some(AMPPkt::new(
+        //     "owner".to_string(),
+        //     "previous_sender".to_string(),
+        //     vec![AMPMsg {
+        //         recipient: "contract10".to_string(),
+        //         message: to_binary(&"eyJzZW5kIjp7InJlcGx5X2dhcyI6eyJyZXBseV9vbiI6bnVsbCwiZ2FzX2xpbWl0IjpudWxsfSwicGFja2V0IjpudWxsfX0=").unwrap(),
+        //         funds: vec![coin(300, "uandr")],
+        //         reply_on: ReplyOn::Never,
+        //         gas_limit: None,
+        //     }],
+        // )),
     }
 }

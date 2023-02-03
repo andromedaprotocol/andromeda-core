@@ -248,7 +248,6 @@ fn execute_send(
                 }
             }
         }
-        println!("8");
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
     // Who is the sender of this function?
@@ -267,38 +266,21 @@ fn execute_send(
 
     // Generates the SubMsg intended for the kernel
     // Check if any messages are intended for kernel in the first place
-    if !amp_msgs.is_empty() && packet.is_none() {
-        let contract = ADOContract::default();
+    let contract = ADOContract::default();
 
-        // The original sender of the message is the user in this case
-        let origin = info.sender.to_string();
+    // The original sender of the message
+    let origin = match packet {
+        Some(p) => p.get_origin(),
+        None => info.sender.to_string(),
+    };
 
-        // The previous sender of the message is the contract in this case since it will be the one sending the message to the kernel
-        let previous_sender = env.contract.address;
+    // The previous sender of the message is the contract
+    let previous_sender = env.contract.address;
 
-        // The kernel address has been validated and saved during instantiation
-        let kernel_address = contract.get_kernel_address(deps.storage)?;
+    // The kernel address has been validated and saved during instantiation
+    let kernel_address = contract.get_kernel_address(deps.storage)?;
 
-        let msg = generate_msg_native_kernel(
-            kernel_funds,
-            origin,
-            previous_sender.into_string(),
-            amp_msgs,
-            kernel_address.into_string(),
-        )?;
-        msgs.push(msg);
-    } else if !amp_msgs.is_empty() && packet.is_some() {
-        let contract = ADOContract::default();
-
-        // The original sender of the message is the user in this case
-        let origin = packet.unwrap().get_origin();
-
-        // The previous sender of the message is the contract in this case since it will be the one sending the message to the kernel
-        let previous_sender = env.contract.address;
-
-        // The kernel address has been validated and saved during instantiation
-        let kernel_address = contract.get_kernel_address(deps.storage)?;
-
+    if !amp_msgs.is_empty() {
         let msg = generate_msg_native_kernel(
             kernel_funds,
             origin,
@@ -308,6 +290,7 @@ fn execute_send(
         )?;
         msgs.push(msg);
     }
+
     println!("THE MESSAGES are: {msgs:?}");
 
     Ok(Response::new()
@@ -668,7 +651,7 @@ mod tests {
                     operators: None,
                     modules: None,
                     primitive_contract: None,
-                    kernel_address: None,
+                    kernel_address: Some("kernel".to_string()),
                 },
             )
             .unwrap();
