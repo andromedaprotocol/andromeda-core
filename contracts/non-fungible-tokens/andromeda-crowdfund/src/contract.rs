@@ -612,7 +612,6 @@ fn transfer_tokens_and_send_funds(
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
     let recipient = state.recipient.get_addr()?;
-    
 
     let message = state.recipient.get_message()?.unwrap_or_default();
 
