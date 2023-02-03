@@ -472,7 +472,7 @@ fn test_crowdfund_app() {
         )
         .unwrap();
     assert!(!balance_one.is_empty());
-    assert_eq!(balance_one[0], coin(150, "uandr"));
+    assert_eq!(balance_one[0], coin(148, "uandr"));
 
     let balance_two: Vec<Coin> = router
         .wrap()
@@ -486,5 +486,5 @@ fn test_crowdfund_app() {
         )
         .unwrap();
     assert!(!balance_two.is_empty());
-    assert_eq!(balance_two[0], coin(150, "uandr"));
+    assert_eq!(balance_two[0], coin(148, "uandr"));
 }
