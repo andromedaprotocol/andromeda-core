@@ -324,14 +324,14 @@ fn execute_place_bid(
     ensure!(
         payment.denom == coin_denom && payment.amount > Uint128::zero(),
         ContractError::InvalidFunds {
-            msg: format!("No {} assets are provided to auction", coin_denom),
+            msg: format!("No {coin_denom} assets are provided to auction"),
         }
     );
     let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
     ensure!(
         payment.amount >= min_bid,
         ContractError::InvalidFunds {
-            msg: format!("Must provide at least {} {} to bid", min_bid, coin_denom)
+            msg: format!("Must provide at least {min_bid} {coin_denom} to bid")
         }
     );
     ensure!(

@@ -85,7 +85,7 @@ pub fn execute_set_value(
         .add_attribute("method", "set_value")
         .add_attribute("sender", sender)
         .add_attribute("key", key)
-        .add_attribute("value", format!("{:?}", value)))
+        .add_attribute("value", format!("{value:?}")))
 }
 
 pub fn execute_delete_value(

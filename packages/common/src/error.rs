@@ -605,5 +605,5 @@ impl From<OverflowError> for ContractError {
 pub enum Never {}
 
 pub fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
+    StdError::generic_err(format!("Semver: {err}"))
 }
