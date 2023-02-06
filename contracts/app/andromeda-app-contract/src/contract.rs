@@ -122,16 +122,21 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     ADO_ADDRESSES.save(deps.storage, &descriptor.name, addr)?;
     let assign_app = generate_assign_app_message(addr, env.contract.address.as_ref())?;
 
-    let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
-    let register_component_path_msg = register_component_path(
-        kernel_address.to_string(),
-        &deps.querier,
-        descriptor.name,
-        addr.clone(),
-    )?;
-    Ok(Response::default()
-        .add_submessage(assign_app)
-        .add_submessage(register_component_path_msg))
+    let mut resp = Response::default().add_submessage(assign_app);
+
+    if descriptor.name.chars().next().unwrap() != '.' {
+        let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+        let register_component_path_msg = register_component_path(
+            kernel_address.to_string(),
+            &deps.querier,
+            descriptor.name,
+            addr.clone(),
+        )?;
+
+        resp = resp.add_submessage(register_component_path_msg)
+    }
+
+    Ok(resp)
 }
 
 pub fn register_component_path(

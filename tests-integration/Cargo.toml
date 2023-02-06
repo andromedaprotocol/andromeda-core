@@ -39,6 +39,7 @@ andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", feature
 andromeda-os = { path = "../packages/andromeda-os"}
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = ["testing"] }
 andromeda-adodb = { path = "../contracts/os/andromeda-adodb", features = ["testing"] }
+andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = ["testing"]}
 
 
 #Other Crates
