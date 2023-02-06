@@ -99,7 +99,6 @@ pub fn handle_amp_packet(
             &execute_env.deps.querier,
             vfs_address.clone(),
         )?;
-        print!("3 contract address from kernel {:?}", contract_addr);
         let msg = message.generate_sub_message(
             contract_addr,
             packet.get_origin(),
