@@ -108,7 +108,7 @@ fn test_add_path() {
         .save(deps.as_mut().storage, username, &Addr::unchecked(sender))
         .unwrap();
 
-    let path = format!("/{}/{}", username, component_name);
+    let path = format!("/{username}/{component_name}");
 
     let resolved_addr = resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path).unwrap();
 
@@ -135,7 +135,7 @@ fn test_add_parent_path() {
         .save(deps.as_mut().storage, username, &user_address)
         .unwrap();
 
-    let path = format!("/{}/{}", username, component_name);
+    let path = format!("/{username}/{component_name}");
 
     let resolved_addr = resolve_pathname(deps.as_ref().storage, deps.as_ref().api, path).unwrap();
 
