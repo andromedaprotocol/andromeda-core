@@ -124,7 +124,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
     let mut resp = Response::default().add_submessage(assign_app);
 
-    if descriptor.name.chars().next().unwrap() != '.' {
+    if !descriptor.name.starts_with('.') {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
         let register_component_path_msg = register_component_path(
             kernel_address.to_string(),
