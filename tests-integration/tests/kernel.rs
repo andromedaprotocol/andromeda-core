@@ -135,7 +135,7 @@ fn kernel() {
         .query_wasm_smart::<Addr>(vfs_address, &query)
         .is_err());
 
-    let send_msg = mock_splitter_send_msg();
+    let send_msg = mock_splitter_send_msg(None);
     router
         .execute_contract(owner, splitter_addr, &send_msg, &coins(100, "uandr"))
         .unwrap();

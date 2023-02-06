@@ -1,5 +1,6 @@
 use crate::state::{Config, CONFIG};
 use ado_base::ADOContract;
+use amp::messages::AMPPkt;
 use andromeda_modules::rates::{
     calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
     QueryMsg, RateInfo,
@@ -14,8 +15,8 @@ use common::{
     parse_message, Funds,
 };
 use cosmwasm_std::{
-    attr, coin, ensure, entry_point, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo,
-    Response, StdError, SubMsg,
+    attr, coin, ensure, entry_point, from_binary, Binary, Coin, Deps, DepsMut, Env, Event,
+    MessageInfo, Response, StdError, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
@@ -62,7 +63,49 @@ pub fn execute(
     match msg {
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
         ExecuteMsg::UpdateRates { rates } => execute_update_rates(deps, info, rates),
+        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
     }
+}
+
+pub struct ExecuteEnv<'a> {
+    deps: DepsMut<'a>,
+    pub env: Env,
+    pub info: MessageInfo,
+}
+
+fn handle_amp_packet(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    packet: AMPPkt,
+) -> Result<Response, ContractError> {
+    let mut res = Response::default();
+
+    let execute_env = ExecuteEnv { deps, env, info };
+    let msg_opt = packet.messages.first();
+    if let Some(msg) = msg_opt {
+        let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
+
+        let funds = msg.funds.to_vec();
+
+        let mut exec_info = execute_env.info.clone();
+
+        exec_info.funds = funds;
+
+        let exec_res = execute(
+            execute_env.deps,
+            execute_env.env.clone(),
+            exec_info,
+            exec_msg,
+        )?;
+
+        res = res
+            .add_attributes(exec_res.attributes)
+            .add_submessages(exec_res.messages)
+            .add_events(exec_res.events);
+    }
+
+    Ok(res)
 }
 
 fn execute_andr_receive(

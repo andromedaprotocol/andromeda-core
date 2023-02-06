@@ -538,6 +538,8 @@ dependencies = [
 name = "andromeda-modules"
 version = "0.1.0"
 dependencies = [
+ "amp",
+ "andromeda-finance",
  "andromeda-testing",
  "common",
  "cosmwasm-schema",
@@ -660,6 +662,7 @@ name = "andromeda-rates"
 version = "0.1.2"
 dependencies = [
  "ado-base",
+ "amp",
  "andromeda-modules",
  "andromeda-testing",
  "common",
@@ -1891,6 +1894,7 @@ dependencies = [
 name = "tests-integration"
 version = "0.1.0"
 dependencies = [
+ "amp",
  "andromeda-address-list",
  "andromeda-adodb",
  "andromeda-app",
