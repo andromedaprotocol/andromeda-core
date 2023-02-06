@@ -251,7 +251,6 @@ fn test_crowdfund_app() {
             &mock_get_address_msg(vault_one_app_component.name),
         )
         .unwrap();
-    println!("Vault one address: {vault_one_addr:?}");
 
     let vault_two_addr: String = router
         .wrap()
@@ -260,7 +259,6 @@ fn test_crowdfund_app() {
             &mock_get_address_msg(vault_two_app_component.name),
         )
         .unwrap();
-    println!("Vault two address: {vault_two_addr:?}");
 
     router
         .execute_contract(
@@ -279,8 +277,6 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
-    println!("crowdfund address {:?}", crowdfund_addr);
-
     let splitter_addr: String = router
         .wrap()
         .query_wasm_smart(
@@ -288,7 +284,6 @@ fn test_crowdfund_app() {
             &mock_get_address_msg(splitter_app_component.name),
         )
         .unwrap();
-    println!("Splitter address is: {splitter_addr:?}");
 
     // Mint Tokens
     let mint_msg = mock_crowdfund_quick_mint_msg(5, owner.to_string());
@@ -364,10 +359,9 @@ fn test_crowdfund_app() {
             &[],
         )
         .unwrap();
-    let result = router
+    router
         .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
         .unwrap();
-    println!("{result:?}");
 
     // Check final state
     //Check token transfers

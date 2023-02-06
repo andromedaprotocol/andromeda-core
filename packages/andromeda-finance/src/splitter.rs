@@ -99,18 +99,15 @@ impl AMPRecipient {
         _kernel_address: String,
     ) -> Result<SubMsg, ContractError> {
         Ok(match &self {
-            AMPRecipient::ADO(recip) => {
-                println!("Generate message native ADO");
-                SubMsg::new(WasmMsg::Execute {
-                    contract_addr: recip.address.to_owned(),
-                    msg: encode_binary(&AMPExecuteMsg::AMPReceive(AMPPkt::new(
-                        origin,
-                        previous_sender,
-                        messages,
-                    )))?,
-                    funds,
-                })
-            }
+            AMPRecipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
+                contract_addr: recip.address.to_owned(),
+                msg: encode_binary(&AMPExecuteMsg::AMPReceive(AMPPkt::new(
+                    origin,
+                    previous_sender,
+                    messages,
+                )))?,
+                funds,
+            }),
             AMPRecipient::Addr(addr) => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: addr.clone(),
                 amount: funds,
