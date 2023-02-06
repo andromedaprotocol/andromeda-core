@@ -11,10 +11,13 @@ pub fn mock_andromeda_auction() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_auction_instantiate_msg(modules: Option<Vec<Module>>) -> InstantiateMsg {
+pub fn mock_auction_instantiate_msg(
+    modules: Option<Vec<Module>>,
+    kernel_address: Option<String>,
+) -> InstantiateMsg {
     InstantiateMsg {
         modules,
-        kernel_address: None,
+        kernel_address,
     }
 }
 

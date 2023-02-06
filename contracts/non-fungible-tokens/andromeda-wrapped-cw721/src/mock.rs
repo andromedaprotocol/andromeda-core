@@ -16,12 +16,13 @@ pub fn mock_wrapped_cw721_instantiate_msg(
     primitive_contract: String,
     cw721_instantiate_type: InstantiateType,
     can_unwrap: bool,
+    kernel_address: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         primitive_contract,
         cw721_instantiate_type,
         can_unwrap,
-        kernel_address: None,
+        kernel_address,
     }
 }
 

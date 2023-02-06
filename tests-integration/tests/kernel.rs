@@ -62,7 +62,7 @@ fn kernel() {
     andr.store_code_id(&mut router, "app", app_code_id);
 
     // Generate Vault Contract
-    let vault_init_msg = mock_vault_instantiate_msg();
+    let vault_init_msg = mock_vault_instantiate_msg(Some(andr.kernel_address.to_string()));
     let vault_app_component =
         AppComponent::new("vault", "vault", to_binary(&vault_init_msg).unwrap());
     let hidden_vault_app_component = AppComponent::new(

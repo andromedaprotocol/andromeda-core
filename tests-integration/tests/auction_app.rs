@@ -77,6 +77,7 @@ fn test_auction_app() {
         "TT".to_string(),
         owner.to_string(),
         None,
+        Some(andr.kernel_address.to_string()),
     );
     let cw721_component = AppComponent::new(
         "1".to_string(),
@@ -84,7 +85,8 @@ fn test_auction_app() {
         to_binary(&cw721_init_msg).unwrap(),
     );
 
-    let auction_init_msg = mock_auction_instantiate_msg(None);
+    let auction_init_msg =
+        mock_auction_instantiate_msg(None, Some(andr.kernel_address.to_string()));
     let auction_component = AppComponent::new(
         "2".to_string(),
         "auction".to_string(),

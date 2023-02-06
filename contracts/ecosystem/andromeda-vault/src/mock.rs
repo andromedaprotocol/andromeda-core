@@ -11,10 +11,8 @@ pub fn mock_andromeda_vault() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_vault_instantiate_msg() -> InstantiateMsg {
-    InstantiateMsg {
-        kernel_address: Some("contract3".to_string()),
-    }
+pub fn mock_vault_instantiate_msg(kernel_address: Option<String>) -> InstantiateMsg {
+    InstantiateMsg { kernel_address }
 }
 
 /// Used to generate a deposit message for a vault
