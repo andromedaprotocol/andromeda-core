@@ -1,6 +1,3 @@
-use andromeda_adodb::mock::{
-    mock_adodb_instantiate_msg, mock_andromeda_adodb, mock_store_code_id_msg,
-};
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
     mock_andromeda_app, mock_app_instantiate_msg, mock_claim_ownership_msg, mock_get_address_msg,
@@ -14,9 +11,7 @@ use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of,
 };
 use andromeda_finance::splitter::{ADORecipient, AMPRecipient, AddressPercent};
-use andromeda_kernel::mock::{
-    mock_andromeda_kernel, mock_kernel_instantiate_message, mock_upsert_key_address,
-};
+
 use andromeda_modules::rates::{Rate, RateInfo};
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_splitter::mock::{

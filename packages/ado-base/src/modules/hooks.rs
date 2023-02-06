@@ -1,6 +1,4 @@
-use cosmwasm_std::{
-    from_binary, to_binary, Api, Binary, Event, QuerierWrapper, StdError, Storage, SubMsg,
-};
+use cosmwasm_std::{to_binary, Api, Binary, Event, QuerierWrapper, StdError, Storage, SubMsg};
 use serde::de::DeserializeOwned;
 
 use crate::modules::ADOContract;
