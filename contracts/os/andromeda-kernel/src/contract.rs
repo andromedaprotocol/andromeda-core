@@ -121,7 +121,6 @@ pub fn handle_amp_packet(
     for message in packet.clone().messages {
         let contract_addr =
             message.get_recipient_address(execute_env.deps.api, &execute_env.deps.querier, None)?;
-        print!("3 contract address from kernel {:?}", contract_addr);
         let msg = message.generate_message(
             contract_addr,
             packet.get_origin(),

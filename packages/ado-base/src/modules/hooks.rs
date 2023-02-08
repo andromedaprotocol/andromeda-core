@@ -1,6 +1,4 @@
-use cosmwasm_std::{
-    from_binary, to_binary, Api, Binary, Event, QuerierWrapper, StdError, Storage, SubMsg,
-};
+use cosmwasm_std::{to_binary, Api, Binary, Event, QuerierWrapper, StdError, Storage, SubMsg};
 use serde::de::DeserializeOwned;
 
 use crate::modules::ADOContract;
@@ -23,7 +21,6 @@ impl<'a> ADOContract<'a> {
         hook_msg: AndromedaHook,
     ) -> Result<Vec<T>, ContractError> {
         let addresses: Vec<String> = self.load_module_addresses(storage, api, &querier)?;
-        println!("1 module hook {:?}", addresses);
         let mut resp: Vec<T> = Vec::new();
         for addr in addresses {
             let mod_resp = hook_query::<T>(&querier, hook_msg.clone(), addr)?;
@@ -120,7 +117,6 @@ fn hook_query<T: DeserializeOwned>(
     addr: String,
 ) -> Result<Option<T>, ContractError> {
     let msg = HookMsg::AndrHook(hook_msg);
-    println!("2 hook msg {:?}", msg);
     let mod_resp: Result<Option<T>, StdError> = querier.query_wasm_smart(addr, &msg);
     process_module_response(mod_resp)
 }

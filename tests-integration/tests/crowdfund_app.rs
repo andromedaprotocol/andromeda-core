@@ -221,8 +221,6 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
-    print!("Kernel address: {:?}", kernel_addr.to_string());
-
     let adodb_init_msg = mock_adodb_instantiate_msg();
 
     // Instantiate the adodb contract
@@ -236,8 +234,6 @@ fn test_crowdfund_app() {
             Some(owner.to_string()),
         )
         .unwrap();
-
-    print!("adodb address: {:?}", adodb_addr.to_string());
 
     // Add the crowdfund's code id into the adodb
     router
@@ -304,7 +300,6 @@ fn test_crowdfund_app() {
             &mock_get_address_msg(vault_one_app_component.name),
         )
         .unwrap();
-    println!("Vault one address: {vault_one_addr:?}");
 
     let vault_two_addr: String = router
         .wrap()
@@ -313,7 +308,6 @@ fn test_crowdfund_app() {
             &mock_get_address_msg(vault_two_app_component.name),
         )
         .unwrap();
-    println!("Vault two address: {vault_two_addr:?}");
 
     router
         .execute_contract(
@@ -332,8 +326,6 @@ fn test_crowdfund_app() {
         )
         .unwrap();
 
-    println!("crowdfund address {:?}", crowdfund_addr);
-
     // Add the vault's code id into the adodb
     router
         .execute_contract(
@@ -351,7 +343,6 @@ fn test_crowdfund_app() {
             &mock_get_address_msg(splitter_app_component.name),
         )
         .unwrap();
-    println!("Splitter address is: {splitter_addr:?}");
 
     // Add the splitter's code id into the adodb
     router
@@ -440,7 +431,6 @@ fn test_crowdfund_app() {
     let result = router
         .execute_contract(owner, Addr::unchecked(crowdfund_addr), &end_sale_msg, &[])
         .unwrap();
-    println!("{result:?}");
 
     // Check final state
     //Check token transfers

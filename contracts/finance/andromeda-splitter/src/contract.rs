@@ -291,8 +291,6 @@ fn execute_send(
         msgs.push(msg);
     }
 
-    println!("THE MESSAGES are: {msgs:?}");
-
     Ok(Response::new()
         .add_submessages(msgs)
         .add_attribute("action", "send")
