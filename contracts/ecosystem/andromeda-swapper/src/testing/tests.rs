@@ -27,7 +27,7 @@ fn init(deps: DepsMut) -> Response {
             identifier: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
         }),
         primitive_contract: "primitive_contract".to_string(),
-        kernel_address: None,
+        kernel_address: Some("kernel_contract".to_string()),
     };
 
     instantiate(deps, mock_env(), mock_info("sender", &[]), msg).unwrap()
@@ -65,7 +65,7 @@ fn test_instantiate_swapper_impl_new() {
             ado_type: "swapper_impl".to_string(),
         }),
         primitive_contract: "primitive_contract".to_string(),
-        kernel_address: None,
+        kernel_address: Some("kernel_contract".to_string()),
     };
 
     let res = instantiate(deps.as_mut(), mock_env(), mock_info("sender", &[]), msg).unwrap();

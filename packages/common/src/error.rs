@@ -519,6 +519,12 @@ pub enum ContractError {
 
     #[error("Invalid Expiration Time")]
     InvalidExpirationTime {},
+
+    #[error("Invalid Pathname, {error:?}")]
+    InvalidPathname { error: Option<String> },
+
+    #[error("Invalid Username, {error:?}")]
+    InvalidUsername { error: Option<String> },
 }
 
 impl From<Cw20ContractError> for ContractError {

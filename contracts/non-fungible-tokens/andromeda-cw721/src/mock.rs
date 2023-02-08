@@ -19,13 +19,14 @@ pub fn mock_cw721_instantiate_msg(
     symbol: String,
     minter: String,
     modules: Option<Vec<Module>>,
+    kernel_address: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         name,
         symbol,
         minter: AndrAddress { identifier: minter },
         modules,
-        kernel_address: Some("contract3".to_string()),
+        kernel_address,
     }
 }
 

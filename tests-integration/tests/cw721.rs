@@ -4,6 +4,7 @@ use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg as CW721ExecuteMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
+use andromeda_testing::mock::MockAndromeda;
 use common::{
     ado_base::{modules::Module, recipient::Recipient},
     app::AndrAddress,
@@ -12,6 +13,10 @@ use common::{
 use cosmwasm_std::{coin, Addr, Uint128};
 use cw721_base::MintMsg;
 use cw_multi_test::{App, Executor};
+
+fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
+    MockAndromeda::new(app, &admin_address)
+}
 
 fn mock_app() -> App {
     App::new(|router, _api, storage| {
@@ -44,6 +49,11 @@ fn cw721_rates_module() {
     let rates_code_id = router.store_code(mock_andromeda_rates());
 
     let receiver = Addr::unchecked("receiver");
+
+    let andr = mock_andromeda(&mut router, owner.clone());
+
+    andr.store_code_id(&mut router, "cw721", cw721_code_id);
+    andr.store_code_id(&mut router, "rates", rates_code_id);
 
     // Generate rates contract
     let rates: Vec<RateInfo> = [RateInfo {
@@ -79,6 +89,7 @@ fn cw721_rates_module() {
         "TT".to_string(),
         owner.to_string(),
         Some(modules),
+        Some(andr.kernel_address.to_string()),
     );
     let cw721_addr = router
         .instantiate_contract(

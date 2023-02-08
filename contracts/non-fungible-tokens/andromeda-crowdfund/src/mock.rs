@@ -20,6 +20,7 @@ pub fn mock_crowdfund_instantiate_msg(
     token_address: String,
     can_mint_after_sale: bool,
     modules: Option<Vec<Module>>,
+    kernel_address: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         token_address: AndrAddress {
@@ -27,7 +28,7 @@ pub fn mock_crowdfund_instantiate_msg(
         },
         can_mint_after_sale,
         modules,
-        kernel_address: Some("contract3".to_string()),
+        kernel_address,
     }
 }
 

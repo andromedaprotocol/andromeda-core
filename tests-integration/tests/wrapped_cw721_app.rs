@@ -65,6 +65,7 @@ fn test_wrapped_cw721_app() {
         "TT".to_string(),
         owner.to_string(), // Crowdfund must be minter
         None,
+        Some(andr.kernel_address.to_string()),
     );
     let cw721_component = AppComponent::new(
         "1".to_string(),
@@ -80,6 +81,7 @@ fn test_wrapped_cw721_app() {
             modules: None,
         }),
         true,
+        Some(andr.kernel_address.to_string()),
     );
     let wrapped_cw721_component = AppComponent::new(
         "2".to_string(),
@@ -91,7 +93,7 @@ fn test_wrapped_cw721_app() {
     let app_init_msg = mock_app_instantiate_msg(
         "Wrapped CW721 App".to_string(),
         app_components.clone(),
-        andr.registry_address.to_string(),
+        andr.kernel_address.to_string(),
     );
     let app_addr = router
         .instantiate_contract(

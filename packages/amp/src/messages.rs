@@ -10,6 +10,11 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
+pub enum VFSQueryMsg {
+    ResolvePath { path: String },
+}
+
+#[cw_serde]
 /// This struct defines how the kernel parses and relays messages between ADOs
 /// It contains a simple recipient string which may use our namespacing implementation or a simple contract address
 /// If the desired recipient is via IBC then namespacing must be employed
@@ -50,22 +55,32 @@ impl AMPMsg {
     pub fn get_recipient_address(
         &self,
         api: &dyn Api,
-        _querier: &QuerierWrapper,
-        _namespacing_contract: Option<Addr>,
-    ) -> Result<String, ContractError> {
+        querier: &QuerierWrapper,
+        vfs_contract: Option<Addr>,
+    ) -> Result<Addr, ContractError> {
+        if self.recipient.contains('/') {
+            match vfs_contract {
+                Some(vfs_contract) => {
+                    let query = VFSQueryMsg::ResolvePath {
+                        path: self.recipient.clone(),
+                    };
+                    return Ok(querier.query_wasm_smart(vfs_contract, &query)?);
+                }
+                None => return Err(ContractError::InvalidAddress {}),
+            }
+        }
+
         let addr = api.addr_validate(&self.recipient);
         match addr {
-            Ok(addr) => Ok(addr.to_string()),
+            Ok(addr) => Ok(addr),
             Err(_) => Err(ContractError::InvalidAddress {}),
         }
     }
 
     /// Generates a sub message for the given AMP Message
-    pub fn generate_message(
+    pub fn generate_sub_message(
         &self,
-        // api: &dyn Api,
-        // querier: &QuerierWrapper,
-        contract_addr: String,
+        contract_addr: impl Into<String>,
         origin: String,
         previous_sender: String,
         id: u64,
@@ -77,7 +92,7 @@ impl AMPMsg {
             reply_on: self.reply_on.clone(),
             gas_limit: self.gas_limit,
             msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr,
+                contract_addr: contract_addr.into(),
                 msg,
                 funds: self.funds.to_vec(),
             }),

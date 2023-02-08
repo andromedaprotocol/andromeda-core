@@ -50,7 +50,7 @@ fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
 }
 
 #[test]
-fn test_auction_app() {
+fn test_marketplace_app() {
     let owner = Addr::unchecked("owner");
     let buyer = Addr::unchecked("buyer");
     let rates_receiver = Addr::unchecked("receiver");
@@ -77,6 +77,7 @@ fn test_auction_app() {
         "TT".to_string(),
         owner.to_string(),
         None,
+        Some(andr.kernel_address.to_string()),
     );
     let cw721_component = AppComponent::new(
         "1".to_string(),
@@ -121,7 +122,7 @@ fn test_auction_app() {
     let app_init_msg = mock_app_instantiate_msg(
         "Auction App".to_string(),
         app_components.clone(),
-        andr.registry_address.to_string(),
+        andr.kernel_address.to_string(),
     );
 
     let app_addr = router

@@ -38,6 +38,17 @@ pub enum AMPRecipient {
     ADO(ADORecipient),
 }
 
+impl AMPRecipient {
+    pub fn ado(address: impl Into<String>, msg: Option<Binary>) -> AMPRecipient {
+        let ado_recipient = ADORecipient {
+            address: address.into(),
+            msg,
+        };
+
+        AMPRecipient::ADO(ado_recipient)
+    }
+}
+
 pub fn generate_msg_native_kernel(
     funds: Vec<Coin>,
     origin: String,
