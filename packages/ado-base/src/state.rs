@@ -1,7 +1,11 @@
+#[cfg(feature = "vfs")]
+use andromeda_os::{kernel::QueryMsg as KernelQueryMsg, vfs::QueryMsg as VFSQueryMsg};
 #[cfg(feature = "modules")]
 use common::ado_base::modules::Module;
 use common::{error::ContractError, parse_message};
 use cosmwasm_std::{Addr, Binary};
+#[cfg(feature = "vfs")]
+use cosmwasm_std::{QuerierWrapper, Storage};
 #[cfg(feature = "withdraw")]
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
@@ -57,5 +61,25 @@ impl<'a> ADOContract<'a> {
     pub(crate) fn is_nested<T: DeserializeOwned>(&self, data: &Option<Binary>) -> bool {
         let res: Result<T, ContractError> = parse_message(data);
         res.is_ok()
+    }
+
+    #[cfg(feature = "vfs")]
+    /// Resolves a given path by querying the VFS address from the kernel and then using the VFS to resolve the given path
+    pub fn resolve_path(
+        &self,
+        storage: &dyn Storage,
+        querier: &QuerierWrapper,
+        path: String,
+    ) -> Result<String, ContractError> {
+        let vfs_address_query = KernelQueryMsg::KeyAddress {
+            key: "vfs".to_string(),
+        };
+        let kernel_address = self.kernel_address.load(storage)?;
+        let vfs_address: Addr = querier.query_wasm_smart(kernel_address, &vfs_address_query)?;
+
+        let resolve_path_query = VFSQueryMsg::ResolvePath { path };
+        let res: String = querier.query_wasm_smart(vfs_address, &resolve_path_query)?;
+
+        Ok(res)
     }
 }

@@ -26,3 +26,7 @@ pub fn mock_verify_address(address: impl Into<String>) -> QueryMsg {
         address: address.into(),
     }
 }
+
+pub fn mock_get_key_address(key: impl Into<String>) -> QueryMsg {
+    QueryMsg::KeyAddress { key: key.into() }
+}

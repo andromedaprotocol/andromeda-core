@@ -1,9 +1,10 @@
 use crate::ADOContract;
 
+use andromeda_os::kernel::QueryMsg as KernelQueryMsg;
 use common::{
     ado_base::query_get, encode_binary, error::ContractError, primitive::GetValueResponse,
 };
-use cosmwasm_std::{DepsMut, Order, QuerierWrapper, Response, Storage};
+use cosmwasm_std::{Addr, DepsMut, Order, QuerierWrapper, Response, Storage};
 use cw_storage_plus::Bound;
 
 const DEFAULT_LIMIT: u32 = 10;
@@ -33,6 +34,7 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Gets the address for `contract` stored in the primitive contract.
+    /// TODO: REMOVE
     pub fn get_address_from_primitive(
         &self,
         storage: &dyn Storage,
@@ -43,6 +45,22 @@ impl<'a> ADOContract<'a> {
         let data = encode_binary(&contract)?;
         let res: GetValueResponse = query_get(Some(data), primitive_address.to_string(), querier)?;
         let address = res.value.try_get_string()?;
+
+        Ok(address)
+    }
+
+    /// Gets the address for `contract` stored in the primitive contract.
+    pub fn get_address_from_kernel(
+        &self,
+        storage: &dyn Storage,
+        querier: &QuerierWrapper,
+        contract: &str,
+    ) -> Result<Addr, ContractError> {
+        let kernel_address = self.kernel_address.load(storage)?;
+        let query = KernelQueryMsg::KeyAddress {
+            key: contract.to_string(),
+        };
+        let address: Addr = querier.query_wasm_smart(kernel_address, &query)?;
 
         Ok(address)
     }

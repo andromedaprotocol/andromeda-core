@@ -13,7 +13,6 @@ pub struct ProcessComponent {
 pub struct InstantiateMsg {
     pub process: Vec<ProcessComponent>,
     pub name: String,
-    pub primitive_contract: String,
     pub first_ados: Vec<String>,
     pub kernel_address: Option<String>,
 }
