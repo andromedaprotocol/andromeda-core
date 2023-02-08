@@ -12,8 +12,8 @@ use cw2::{get_contract_version, set_contract_version};
 
 use andromeda_ibc::ics721::{
     CallbackMsg, Class, ClassId, ExecuteMsg, IbcOutgoingMsg, InstantiateMsg, MigrateMsg,
-    NewTokenInfo, NonFungibleTokenPacketData, QueryMsg, TokenId, TransferInfo, VoucherCreation,
-    VoucherRedemption, CLASS_ID_TO_CLASS_URI,
+    NonFungibleTokenPacketData, QueryMsg, Token, TokenId, VoucherCreation, VoucherRedemption,
+    CLASS_ID_TO_CLASS_URI,
 };
 use semver::Version;
 
@@ -106,8 +106,7 @@ fn execute_callback(
             CallbackMsg::Mint {
                 class_id,
                 receiver,
-                token_ids,
-                token_uris,
+                tokens,
             } => callback_mint(deps, class_id, tokens, receiver),
 
             CallbackMsg::Conjunction { operands } => Ok(Response::default().add_messages(operands)),
@@ -445,19 +444,19 @@ fn query_owner(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    match msg {
-        MigrateMsg::WithUpdate { pauser, proxy } => {
-            PROXY.save(
-                deps.storage,
-                &proxy
-                    .as_ref()
-                    .map(|h| deps.api.addr_validate(h))
-                    .transpose()?,
-            )?;
-            PO.set_pauser(deps.storage, deps.api, pauser.as_deref())?;
-            Ok(Response::default().add_attribute("method", "migrate"))
-        }
-    }
-}
+// #[cfg_attr(not(feature = "library"), entry_point)]
+// pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+//     match msg {
+//         MigrateMsg::WithUpdate { pauser, proxy } => {
+//             PROXY.save(
+//                 deps.storage,
+//                 &proxy
+//                     .as_ref()
+//                     .map(|h| deps.api.addr_validate(h))
+//                     .transpose()?,
+//             )?;
+//             PO.set_pauser(deps.storage, deps.api, pauser.as_deref())?;
+//             Ok(Response::default().add_attribute("method", "migrate"))
+//         }
+//     }
+// }

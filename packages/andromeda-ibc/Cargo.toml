@@ -24,6 +24,7 @@ cw-paginate = { git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v2.
 cw721-proxy-derive = { git = "https://github.com/0xekez/cw721-proxy.git" }
 cw-cii = { git = "https://github.com/public-awesome/ics721.git" }
 cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
+zip-optional = { git = "https://github.com/public-awesome/ics721.git" }
 
 common = { path = "../common", version = "0.1.0" }
 cw-asset = { version = "2.0.0" }

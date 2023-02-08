@@ -69,6 +69,15 @@ pub enum ContractError {
     #[error("Paused")]
     Paused {},
 
+    #[error("EmptyOptional")]
+    EmptyOptional {},
+
+    #[error("EmptyOptional")]
+    EmptyClassId {},
+
+    #[error("NoTokens")]
+    NoTokens {},
+
     #[error("UnrecognisedReplyId")]
     UnrecognisedReplyId {},
 

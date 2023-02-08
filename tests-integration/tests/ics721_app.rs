@@ -1,12 +1,15 @@
-use andromeda_ics721::contract::{execute, instantiate, migrate, query};
-use cosmwasm_std::{to_binary, Addr, Empty, IbcTimeout, IbcTimeoutBlock};
+use andromeda_ics721::contract::{self, execute, instantiate, query};
+use cosmwasm_std::{to_binary, Addr, Empty, IbcTimeout, IbcTimeoutBlock, WasmMsg};
 use cw_cii::{Admin, ContractInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_pause_once::PauseError;
 
-use andromeda_ibc::ibc::reply;
-use andromeda_ibc::ics721::{
-    CallbackMsg, ExecuteMsg, IbcOutgoingMsg, InstantiateMsg, QueryMsg, TransferInfo,
+use andromeda_ibc::{
+    ibc,
+    ics721::{
+        self, CallbackMsg, Class, ClassId, ExecuteMsg, IbcOutgoingMsg, InstantiateMsg, MigrateMsg,
+        QueryMsg, Token, TokenId, VoucherCreation,
+    },
 };
 use common::error::ContractError;
 
@@ -22,9 +25,9 @@ fn cw721_contract() -> Box<dyn Contract<Empty>> {
 }
 
 fn bridge_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(execute, instantiate, query)
-        .with_migrate(migrate)
-        .with_reply(reply);
+    let contract = ContractWrapper::new(contract::execute, contract::instantiate, contract::query)
+        // .with_migrate(contract::migrate)
+        .with_reply(ibc::reply);
     Box::new(contract)
 }
 
@@ -504,6 +507,7 @@ fn test_proxy_authorized() {
                         revision: 0,
                         height: 10,
                     }),
+                    memo: None,
                 })
                 .unwrap(),
             },
@@ -549,6 +553,7 @@ fn test_no_receive_with_proxy() {
                         revision: 0,
                         height: 10,
                     }),
+                    memo: None,
                 })
                 .unwrap(),
             }),
@@ -576,7 +581,7 @@ fn test_pause() {
     let err = pause_bridge_should_fail(&mut app, "zeke", &bridge);
     assert_eq!(
         err,
-        ContractError::Pause(PauseError::Unauthorized {
+        ContractError::PauseError(PauseError::Unauthorized {
             sender: Addr::unchecked("zeke")
         })
     );
@@ -590,7 +595,7 @@ fn test_pause() {
 
     // Pausing fails.
     let err = pause_bridge_should_fail(&mut app, "ekez", &bridge);
-    assert_eq!(err, ContractError::Pause(PauseError::Paused {}));
+    assert_eq!(err, ContractError::PauseError(PauseError::Paused {}));
 
     // Even something like executing a callback on ourselves will be
     // caught by a pause.
@@ -604,7 +609,7 @@ fn test_pause() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, ContractError::Pause(PauseError::Paused {}));
+    assert_eq!(err, ContractError::PauseError(PauseError::Paused {}));
 
     // Set a new pauser.
     let bridge_id = app.store_code(bridge_contract());

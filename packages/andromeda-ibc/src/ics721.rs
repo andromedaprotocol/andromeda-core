@@ -17,9 +17,9 @@ pub const PO: PauseOrchestrator = PauseOrchestrator::new("pauser_key", "paused_k
 
 /// Maps classID (from NonFungibleTokenPacketData) to the cw721
 /// contract we have instantiated for that classID.
-pub const CLASS_ID_TO_NFT_CONTRACT: Map<String, Addr> = Map::new("class_id_to_nft_contract");
+pub const CLASS_ID_TO_NFT_CONTRACT: Map<ClassId, Addr> = Map::new("class_id_to_nft_contract");
 /// Maps cw721 contracts to the classID they were instantiated for.
-pub const NFT_CONTRACT_TO_CLASS_ID: Map<Addr, String> = Map::new("nft_contract_to_class_id");
+pub const NFT_CONTRACT_TO_CLASS_ID: Map<Addr, ClassId> = Map::new("nft_contract_to_class_id");
 
 /// Maps between classIDs and classUris. We need to keep this state
 /// ourselves as cw721 contracts do not have class-level metadata.
@@ -27,10 +27,11 @@ pub const CLASS_ID_TO_CLASS_URI: Map<String, Option<String>> = Map::new("class_i
 
 /// Maps (class ID, token ID) -> local channel ID. Used to determine
 /// the local channel that NFTs have been sent out on.
-pub const OUTGOING_CLASS_TOKEN_TO_CHANNEL: Map<(String, String), String> =
+pub const OUTGOING_CLASS_TOKEN_TO_CHANNEL: Map<(ClassId, TokenId), String> =
     Map::new("outgoing_class_token_to_channel");
+
 /// Same as above, but for NFTs arriving at this contract.
-pub const INCOMING_CLASS_TOKEN_TO_CHANNEL: Map<(String, String), String> =
+pub const INCOMING_CLASS_TOKEN_TO_CHANNEL: Map<(ClassId, TokenId), String> =
     Map::new("incoming_class_token_to_channel");
 
 #[derive(Deserialize)]
@@ -119,59 +120,12 @@ pub enum CallbackMsg {
     Mint {
         /// The class_id to mint for. This must have previously been
         /// created with `SaveClass`.
-        class_id: String,
-        /// Unique identifiers for the tokens.
-        token_ids: Vec<String>,
-        /// Urls pointing to metadata about the NFTs to mint. For
-        /// example, this may point to ERC721 metadata on IPFS. Must
-        /// be the same length as token_ids. token_uris[i] is the
-        /// metadata for token_ids[i].
-        token_uris: Vec<String>,
+        class_id: ClassId,
         /// The address that ought to receive the NFTs. This is a
         /// local address, not a bech32 public key.
         receiver: String,
-    },
-    /// Much like mint, but will instantiate a new cw721 contract iff
-    /// the classID does not have one yet.
-    InstantiateAndMint {
-        /// The ics721 class ID to mint for.
-        class_id: String,
-        /// The URI for this class ID.
-        class_uri: Option<String>,
-        /// Unique identifiers for the tokens being transfered.
-        token_ids: Vec<String>,
-        /// A list of urls pointing to metadata about the NFTs. For
-        /// example, this may point to ERC721 metadata on ipfs.
-        ///
-        /// Must be the same length as token_ids.
-        token_uris: Vec<String>,
-        /// The address that ought to receive the NFT. This is a local
-        /// address, not a bech32 public key.
-        receiver: String,
-    },
-    /// Transfers a number of NFTs identified by CLASS_ID and
-    /// TOKEN_IDS to RECEIVER.
-    BatchTransfer {
-        /// The ics721 class ID of the tokens to be transfered.
-        class_id: String,
-        /// The address that should receive the tokens.
-        receiver: String,
-        /// The tokens (of CLASS_ID) that should be sent.
-        token_ids: Vec<String>,
-    },
-    /// Handles the falliable part of receiving an IBC
-    /// packet. Transforms TRANSFERS into a `BatchTransfer` message
-    /// and NEW_TOKENS into a `DoInstantiateAndMint`, then dispatches
-    /// those methods.
-    HandlePacketReceive {
-        /// The address receiving the NFTs.
-        receiver: String,
-        /// The URI for the collection being transfered.
-        class_uri: Option<String>,
-        /// Information about transfer actions.
-        transfers: Option<TransferInfo>,
-        /// Information about mint actions.
-        new_tokens: Option<NewTokenInfo>,
+        /// The tokens to mint on the collection.
+        tokens: Vec<Token>,
     },
     /// In submessage terms, say a message that results in an error
     /// "returns false" and one that succedes "returns true". Returns
@@ -184,60 +138,6 @@ pub enum CallbackMsg {
 }
 
 #[cw_serde]
-pub struct TransferInfo {
-    /// The class ID the tokens belong to.
-    pub class_id: String,
-    /// The tokens to be transfered.
-    pub token_ids: Vec<String>,
-}
-
-impl TransferInfo {
-    pub fn into_wasm_msg(self, env: &Env, receiver: &Addr) -> StdResult<WasmMsg> {
-        Ok(WasmMsg::Execute {
-            contract_addr: env.contract.address.to_string(),
-            msg: to_binary(&ExecuteMsg::Callback(CallbackMsg::BatchTransfer {
-                class_id: self.class_id,
-                receiver: receiver.to_string(),
-                token_ids: self.token_ids,
-            }))?,
-            funds: vec![],
-        })
-    }
-}
-
-#[cw_serde]
-pub struct NewTokenInfo {
-    /// The class ID to mint tokens for.
-    pub class_id: String,
-    /// The token IDs of the tokens to be minted.
-    pub token_ids: Vec<String>,
-    /// The URIs of the tokens to be minted. Matched with token_ids by
-    /// index.
-    pub token_uris: Vec<String>,
-}
-
-impl NewTokenInfo {
-    pub fn into_wasm_msg(
-        self,
-        env: &Env,
-        receiver: &Addr,
-        class_uri: Option<String>,
-    ) -> StdResult<WasmMsg> {
-        Ok(WasmMsg::Execute {
-            contract_addr: env.contract.address.to_string(),
-            msg: to_binary(&ExecuteMsg::Callback(CallbackMsg::InstantiateAndMint {
-                class_id: self.class_id,
-                class_uri,
-                receiver: receiver.to_string(),
-                token_ids: self.token_ids,
-                token_uris: self.token_uris,
-            }))?,
-            funds: vec![],
-        })
-    }
-}
-
-#[cw_serde]
 pub struct IbcOutgoingMsg {
     /// The address that should receive the NFT being sent on the
     /// *receiving chain*.
@@ -247,15 +147,16 @@ pub struct IbcOutgoingMsg {
     pub channel_id: String,
     /// Timeout for the IBC message.
     pub timeout: IbcTimeout,
+    /// Memo to add custom string to the msg
+    pub memo: Option<String>,
 }
-
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Gets the classID this contract has stored for a given NFT
     /// contract. If there is no class ID for the provided contract,
     /// returns None.
-    #[returns(Option<String>)]
+    #[returns(Option<ClassId>)]
     ClassId { contract: String },
 
     /// Gets the NFT contract associated wtih the provided class
@@ -266,9 +167,12 @@ pub enum QueryMsg {
 
     /// Gets the class level metadata URI for the provided
     /// class_id. If there is no metadata, returns None. Returns
-    /// `Option<String>`.
-    #[returns(Option<String>)]
-    Metadata { class_id: String },
+    /// `Option<Class>`.
+    #[returns(Option<Class>)]
+    ClassMetadata { class_id: String },
+
+    #[returns(Option<Token>)]
+    TokenMetadata { class_id: String, token_id: String },
 
     /// Gets the owner of the NFT identified by CLASS_ID and
     /// TOKEN_ID. Errors if no such NFT exists. Returns
@@ -305,23 +209,35 @@ pub enum MigrateMsg {
 #[serde(rename_all = "camelCase")]
 pub struct NonFungibleTokenPacketData {
     /// Uniquely identifies the collection which the tokens being
-    /// transfered belong to on the sending chain.
-    pub class_id: String,
-    /// URL that points to metadata about the collection. This is not
-    /// validated.
+    /// transfered belong to on the sending chain. Must be non-empty.
+    pub class_id: ClassId,
+    /// Optional URL that points to metadata about the
+    /// collection. Must be non-empty if provided.
     pub class_uri: Option<String>,
+    /// Optional base64 encoded field which contains on-chain metadata
+    /// about the NFT class. Must be non-empty if provided.
+    pub class_data: Option<Binary>,
     /// Uniquely identifies the tokens in the NFT collection being
-    /// transfered.
-    pub token_ids: Vec<String>,
-    /// URL that points to metadata for each token being
+    /// transfered. This MUST be non-empty.
+    pub token_ids: Vec<TokenId>,
+    /// Optional URL that points to metadata for each token being
     /// transfered. `tokenUris[N]` should hold the metadata for
-    /// `tokenIds[N]` and both lists should have the same length.
-    pub token_uris: Vec<String>,
+    /// `tokenIds[N]` and both lists should have the same if
+    /// provided. Must be non-empty if provided.
+    pub token_uris: Option<Vec<String>>,
+    /// Optional base64 encoded metadata for the tokens being
+    /// transfered. `tokenData[N]` should hold metadata for
+    /// `tokenIds[N]` and both lists should have the same length if
+    /// provided. Must be non-empty if provided.
+    pub token_data: Option<Vec<Binary>>,
+
     /// The address sending the tokens on the sending chain.
     pub sender: String,
     /// The address that should receive the tokens on the receiving
     /// chain.
     pub receiver: String,
+    /// Memo to add custom string to the msg
+    pub memo: Option<String>,
 }
 
 /// A token ID according to the ICS-721 spec. The newtype pattern is
@@ -375,7 +291,7 @@ pub struct VoucherCreation {
 }
 
 impl TokenId {
-    pub(crate) fn new<T>(token_id: T) -> Self
+    pub fn new<T>(token_id: T) -> Self
     where
         T: Into<String>,
     {
@@ -384,7 +300,7 @@ impl TokenId {
 }
 
 impl ClassId {
-    pub(crate) fn new<T>(class_id: T) -> Self
+    pub fn new<T>(class_id: T) -> Self
     where
         T: Into<String>,
     {
@@ -402,7 +318,7 @@ impl VoucherRedemption {
     ///   vouchers are being redeemed on.
     /// - `receiver` that address that ought to receive the NFTs the
     ///   debt-vouchers are redeemable for.
-    pub(crate) fn into_wasm_msg(self, contract: Addr, receiver: String) -> StdResult<WasmMsg> {
+    pub fn into_wasm_msg(self, contract: Addr, receiver: String) -> StdResult<WasmMsg> {
         Ok(WasmMsg::Execute {
             contract_addr: contract.into_string(),
             msg: to_binary(&ExecuteMsg::Callback(CallbackMsg::RedeemVouchers {
@@ -424,7 +340,7 @@ impl VoucherCreation {
     ///   vouchers are being created on.
     /// - `receiver` that address that ought to receive the newly
     ///   created debt-vouchers.
-    pub(crate) fn into_wasm_msg(self, contract: Addr, receiver: String) -> StdResult<WasmMsg> {
+    pub fn into_wasm_msg(self, contract: Addr, receiver: String) -> StdResult<WasmMsg> {
         Ok(WasmMsg::Execute {
             contract_addr: contract.into_string(),
             msg: to_binary(&ExecuteMsg::Callback(CallbackMsg::CreateVouchers {
