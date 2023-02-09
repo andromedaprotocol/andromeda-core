@@ -15,7 +15,7 @@ use andromeda_ibc::ics721::{
     NonFungibleTokenPacketData, QueryMsg, Token, TokenId, VoucherCreation, VoucherRedemption,
     CLASS_ID_TO_CLASS_URI,
 };
-use semver::Version;
+// use semver::Version;
 
 use crate::state::{
     UniversalNftInfoResponse, CLASS_ID_TO_CLASS, CLASS_ID_TO_NFT_CONTRACT, CW721_CODE_ID,

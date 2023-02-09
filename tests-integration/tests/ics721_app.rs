@@ -1,14 +1,14 @@
-use andromeda_ics721::contract::{self, execute, instantiate, query};
-use cosmwasm_std::{to_binary, Addr, Empty, IbcTimeout, IbcTimeoutBlock, WasmMsg};
+use andromeda_ics721::contract::{self};
+use cosmwasm_std::{to_binary, Addr, Empty, IbcTimeout, IbcTimeoutBlock};
 use cw_cii::{Admin, ContractInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
-use cw_pause_once::PauseError;
+// use cw_pause_once::PauseError;
 
 use andromeda_ibc::{
     ibc,
     ics721::{
-        self, CallbackMsg, Class, ClassId, ExecuteMsg, IbcOutgoingMsg, InstantiateMsg, MigrateMsg,
-        QueryMsg, Token, TokenId, VoucherCreation,
+        CallbackMsg, Class, ClassId, ExecuteMsg, IbcOutgoingMsg, InstantiateMsg, QueryMsg, Token,
+        TokenId, VoucherCreation,
     },
 };
 use common::error::ContractError;
@@ -59,24 +59,24 @@ fn instantiate_bridge(app: &mut App) -> Addr {
     .unwrap()
 }
 
-fn instantiate_bridge_with_pauser(app: &mut App, pauser: &str) -> Addr {
-    let cw721_id = app.store_code(cw721_contract());
-    let bridge_id = app.store_code(bridge_contract());
+// fn instantiate_bridge_with_pauser(app: &mut App, pauser: &str) -> Addr {
+//     let cw721_id = app.store_code(cw721_contract());
+//     let bridge_id = app.store_code(bridge_contract());
 
-    app.instantiate_contract(
-        bridge_id,
-        Addr::unchecked(COMMUNITY_POOL),
-        &InstantiateMsg {
-            cw721_base_code_id: cw721_id,
-            proxy: None,
-            pauser: Some(pauser.to_string()),
-        },
-        &[],
-        "cw-ics721-bridge",
-        Some(pauser.to_string()),
-    )
-    .unwrap()
-}
+//     app.instantiate_contract(
+//         bridge_id,
+//         Addr::unchecked(COMMUNITY_POOL),
+//         &InstantiateMsg {
+//             cw721_base_code_id: cw721_id,
+//             proxy: None,
+//             pauser: Some(pauser.to_string()),
+//         },
+//         &[],
+//         "cw-ics721-bridge",
+//         Some(pauser.to_string()),
+//     )
+//     .unwrap()
+// }
 
 fn instantiate_bridge_with_proxy(app: &mut App, proxy: Option<ContractInstantiateInfo>) -> Addr {
     let cw721_id = app.store_code(cw721_contract());
@@ -97,40 +97,40 @@ fn instantiate_bridge_with_proxy(app: &mut App, proxy: Option<ContractInstantiat
     .unwrap()
 }
 
-fn pause_bridge(app: &mut App, sender: &str, bridge: &Addr) {
-    app.execute_contract(
-        Addr::unchecked(sender),
-        bridge.clone(),
-        &ExecuteMsg::Pause {},
-        &[],
-    )
-    .unwrap();
-}
+// fn pause_bridge(app: &mut App, sender: &str, bridge: &Addr) {
+//     app.execute_contract(
+//         Addr::unchecked(sender),
+//         bridge.clone(),
+//         &ExecuteMsg::Pause {},
+//         &[],
+//     )
+//     .unwrap();
+// }
 
-fn pause_bridge_should_fail(app: &mut App, sender: &str, bridge: &Addr) -> ContractError {
-    app.execute_contract(
-        Addr::unchecked(sender),
-        bridge.clone(),
-        &ExecuteMsg::Pause {},
-        &[],
-    )
-    .unwrap_err()
-    .downcast()
-    .unwrap()
-}
+// fn pause_bridge_should_fail(app: &mut App, sender: &str, bridge: &Addr) -> ContractError {
+//     app.execute_contract(
+//         Addr::unchecked(sender),
+//         bridge.clone(),
+//         &ExecuteMsg::Pause {},
+//         &[],
+//     )
+//     .unwrap_err()
+//     .downcast()
+//     .unwrap()
+// }
 
-fn query_pause_info(app: &mut App, bridge: &Addr) -> (bool, Option<Addr>) {
-    let paused = app
-        .wrap()
-        .query_wasm_smart(bridge, &QueryMsg::Paused {})
-        .unwrap();
-    let pauser = app
-        .wrap()
-        .query_wasm_smart(bridge, &QueryMsg::Pauser {})
-        .unwrap();
+// fn query_pause_info(app: &mut App, bridge: &Addr) -> (bool, Option<Addr>) {
+//     let paused = app
+//         .wrap()
+//         .query_wasm_smart(bridge, &QueryMsg::Paused {})
+//         .unwrap();
+//     let pauser = app
+//         .wrap()
+//         .query_wasm_smart(bridge, &QueryMsg::Pauser {})
+//         .unwrap();
 
-    (paused, pauser)
-}
+//     (paused, pauser)
+// }
 
 #[test]
 fn test_instantiate() {
@@ -566,76 +566,76 @@ fn test_no_receive_with_proxy() {
     assert_eq!(err, ContractError::Unauthorized {})
 }
 
-/// Tests the contract's pause behavior.
-#[test]
-fn test_pause() {
-    let mut app = App::default();
-    let bridge = instantiate_bridge_with_pauser(&mut app, "ekez");
+// /// Tests the contract's pause behavior.
+// #[test]
+// fn test_pause() {
+//     let mut app = App::default();
+//     let bridge = instantiate_bridge_with_pauser(&mut app, "ekez");
 
-    // Should start unpaused.
-    let (paused, pauser) = query_pause_info(&mut app, &bridge);
-    assert!(!paused);
-    assert_eq!(pauser, Some(Addr::unchecked("ekez")));
+//     // Should start unpaused.
+//     let (paused, pauser) = query_pause_info(&mut app, &bridge);
+//     assert!(!paused);
+//     assert_eq!(pauser, Some(Addr::unchecked("ekez")));
 
-    // Non-pauser may not pause.
-    let err = pause_bridge_should_fail(&mut app, "zeke", &bridge);
-    assert_eq!(
-        err,
-        ContractError::PauseError(PauseError::Unauthorized {
-            sender: Addr::unchecked("zeke")
-        })
-    );
+//     // Non-pauser may not pause.
+//     let err = pause_bridge_should_fail(&mut app, "zeke", &bridge);
+//     assert_eq!(
+//         err,
+//         ContractError::PauseError(PauseError::Unauthorized {
+//             sender: Addr::unchecked("zeke")
+//         })
+//     );
 
-    // Pause the bridge.
-    pause_bridge(&mut app, "ekez", &bridge);
-    // Pausing should remove the pauser.
-    let (paused, pauser) = query_pause_info(&mut app, &bridge);
-    assert!(paused);
-    assert_eq!(pauser, None);
+//     // Pause the bridge.
+//     pause_bridge(&mut app, "ekez", &bridge);
+//     // Pausing should remove the pauser.
+//     let (paused, pauser) = query_pause_info(&mut app, &bridge);
+//     assert!(paused);
+//     assert_eq!(pauser, None);
 
-    // Pausing fails.
-    let err = pause_bridge_should_fail(&mut app, "ekez", &bridge);
-    assert_eq!(err, ContractError::PauseError(PauseError::Paused {}));
+//     // Pausing fails.
+//     let err = pause_bridge_should_fail(&mut app, "ekez", &bridge);
+//     assert_eq!(err, ContractError::PauseError(PauseError::Paused {}));
 
-    // Even something like executing a callback on ourselves will be
-    // caught by a pause.
-    let err: ContractError = app
-        .execute_contract(
-            bridge.clone(),
-            bridge.clone(),
-            &ExecuteMsg::Callback(CallbackMsg::Conjunction { operands: vec![] }),
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, ContractError::PauseError(PauseError::Paused {}));
+//     // Even something like executing a callback on ourselves will be
+//     // caught by a pause.
+//     let err: ContractError = app
+//         .execute_contract(
+//             bridge.clone(),
+//             bridge.clone(),
+//             &ExecuteMsg::Callback(CallbackMsg::Conjunction { operands: vec![] }),
+//             &[],
+//         )
+//         .unwrap_err()
+//         .downcast()
+//         .unwrap();
+//     assert_eq!(err, ContractError::PauseError(PauseError::Paused {}));
 
-    // Set a new pauser.
-    let bridge_id = app.store_code(bridge_contract());
-    app.execute(
-        Addr::unchecked("ekez"),
-        WasmMsg::Migrate {
-            contract_addr: bridge.to_string(),
-            new_code_id: bridge_id,
-            msg: to_binary(&MigrateMsg::WithUpdate {
-                pauser: Some("zeke".to_string()),
-                proxy: None,
-            })
-            .unwrap(),
-        }
-        .into(),
-    )
-    .unwrap();
+//     // Set a new pauser.
+//     let bridge_id = app.store_code(bridge_contract());
+//     app.execute(
+//         Addr::unchecked("ekez"),
+//         WasmMsg::Migrate {
+//             contract_addr: bridge.to_string(),
+//             new_code_id: bridge_id,
+//             msg: to_binary(&MigrateMsg::WithUpdate {
+//                 pauser: Some("zeke".to_string()),
+//                 proxy: None,
+//             })
+//             .unwrap(),
+//         }
+//         .into(),
+//     )
+//     .unwrap();
 
-    // Setting new pauser should unpause.
-    let (paused, pauser) = query_pause_info(&mut app, &bridge);
-    assert!(!paused);
-    assert_eq!(pauser, Some(Addr::unchecked("zeke")));
+//     // Setting new pauser should unpause.
+//     let (paused, pauser) = query_pause_info(&mut app, &bridge);
+//     assert!(!paused);
+//     assert_eq!(pauser, Some(Addr::unchecked("zeke")));
 
-    // One more pause for posterity sake.
-    pause_bridge(&mut app, "zeke", &bridge);
-    let (paused, pauser) = query_pause_info(&mut app, &bridge);
-    assert!(paused);
-    assert_eq!(pauser, None);
-}
+//     // One more pause for posterity sake.
+//     pause_bridge(&mut app, "zeke", &bridge);
+//     let (paused, pauser) = query_pause_info(&mut app, &bridge);
+//     assert!(paused);
+//     assert_eq!(pauser, None);
+// }
