@@ -44,7 +44,7 @@ struct ActionAggregator {
     creation: Option<VoucherCreation>,
 }
 
-pub(crate) fn receive_ibc_packet(
+pub fn receive_ibc_packet(
     deps: DepsMut,
     env: Env,
     packet: IbcPacket,

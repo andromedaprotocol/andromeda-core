@@ -2,31 +2,27 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, DepsMut, Env, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
-    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacket,
-    IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response,
-    StdResult, SubMsgResult, WasmMsg,
+    DepsMut, Env, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg,
+    IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response, SubMsgResult,
 };
 use cw_storage_plus::Item;
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::{
-    ibc_helpers::{self, ack_fail, ack_success, try_get_ack_error},
-    ics721::{
-        ClassId, CLASS_ID_TO_NFT_CONTRACT, INCOMING_CLASS_TOKEN_TO_CHANNEL,
-        NFT_CONTRACT_TO_CLASS_ID, OUTGOING_CLASS_TOKEN_TO_CHANNEL, PROXY,
-    },
+    ibc_helpers::{self, ack_fail, ack_success},
+    ics721::{ClassId, CLASS_ID_TO_NFT_CONTRACT, NFT_CONTRACT_TO_CLASS_ID, PROXY},
 };
 use common::error::{ContractError, Never};
 
 /// Submessage reply ID used for instantiating cw721 contracts.
-pub(crate) const INSTANTIATE_CW721_REPLY_ID: u64 = 0;
+pub const INSTANTIATE_CW721_REPLY_ID: u64 = 0;
 /// Submessage reply ID used for instantiating the proxy contract.
-pub(crate) const INSTANTIATE_PROXY_REPLY_ID: u64 = 1;
+pub const INSTANTIATE_PROXY_REPLY_ID: u64 = 1;
 /// Submessages dispatched with this reply ID will set the ack on the
 /// response depending on if the submessage execution succeded or
 /// failed.
-pub(crate) const ACK_AND_DO_NOTHING: u64 = 2;
+pub const ACK_AND_DO_NOTHING: u64 = 2;
 /// The IBC version this contract expects to communicate with.
 pub const IBC_VERSION: &str = "ics721-1";
 

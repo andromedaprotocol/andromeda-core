@@ -1,19 +1,15 @@
 use ado_base::state::ADOContract;
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg,
-    error::{from_semver, ContractError},
-};
-use cosmwasm_std::{ensure, entry_point};
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, error::ContractError};
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, IbcMsg, MessageInfo, Response,
     StdResult, SubMsg, WasmMsg,
 };
-use cw2::{get_contract_version, set_contract_version};
+use cw2::set_contract_version;
 
 use andromeda_ibc::ics721::{
-    CallbackMsg, Class, ClassId, ExecuteMsg, IbcOutgoingMsg, InstantiateMsg, MigrateMsg,
+    CallbackMsg, Class, ClassId, ExecuteMsg, IbcOutgoingMsg, InstantiateMsg,
     NonFungibleTokenPacketData, QueryMsg, Token, TokenId, VoucherCreation, VoucherRedemption,
-    CLASS_ID_TO_CLASS_URI,
 };
 // use semver::Version;
 

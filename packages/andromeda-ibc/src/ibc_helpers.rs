@@ -1,6 +1,5 @@
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Ibc3ChannelOpenResponse, IbcAcknowledgement, IbcChannel,
-    IbcChannelOpenResponse, IbcEndpoint, IbcOrder,
+    from_binary, to_binary, Binary, IbcAcknowledgement, IbcChannel, IbcEndpoint, IbcOrder,
 };
 use serde::{Deserialize, Serialize};
 
@@ -11,10 +10,7 @@ use crate::{ibc::IBC_VERSION, ics721::NonFungibleTokenPacketData};
 /// Tries to remove the source prefix from a given class_id. If the
 /// class_id does not begin with the given prefix, returns
 /// `None`. Otherwise, returns `Some(unprefixed)`.
-pub(crate) fn try_pop_source_prefix<'a>(
-    source: &IbcEndpoint,
-    class_id: &'a str,
-) -> Option<&'a str> {
+pub fn try_pop_source_prefix<'a>(source: &IbcEndpoint, class_id: &'a str) -> Option<&'a str> {
     let source_prefix = get_endpoint_prefix(source);
     // This must not panic in the face of non-ascii, or empty
     // strings. We can not trust classID as it comes from an external
@@ -85,7 +81,7 @@ pub fn try_get_ack_error(ack: &IbcAcknowledgement) -> Option<String> {
 
 /// Validates order and version information for ics721. We expect
 /// ics721-1 as the version and an unordered channel.
-pub(crate) fn validate_order_and_version(
+pub fn validate_order_and_version(
     channel: &IbcChannel,
     counterparty_version: Option<&str>,
 ) -> Result<(), ContractError> {

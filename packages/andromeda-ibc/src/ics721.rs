@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{to_binary, Addr, Binary, Empty, Env, IbcTimeout, StdResult, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, Binary, Empty, IbcTimeout, StdResult, WasmMsg};
 use cw721_proxy_derive::cw721_proxy;
 use cw_cii::ContractInstantiateInfo;
 use cw_pause_once::PauseOrchestrator;
