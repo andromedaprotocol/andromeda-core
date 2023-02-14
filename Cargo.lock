@@ -596,6 +596,7 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
+ "lazy_static",
  "regex",
  "schemars",
  "semver",
@@ -856,7 +857,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vfs"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ado-base",
  "amp",
@@ -868,8 +869,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
- "cw721",
- "regex",
  "schemars",
  "semver",
  "serde",
@@ -1594,6 +1593,12 @@ dependencies = [
  "elliptic-curve",
  "sha2 0.10.6",
 ]
+
+[[package]]
+name = "lazy_static"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"

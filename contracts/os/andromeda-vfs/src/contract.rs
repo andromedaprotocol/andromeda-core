@@ -1,8 +1,6 @@
 use ado_base::state::ADOContract;
 
-use andromeda_os::vfs::{
-    validate_component_name, validate_pathname, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-};
+use andromeda_os::vfs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
     ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
@@ -82,7 +80,7 @@ fn execute_add_path(
     name: String,
     address: Addr,
 ) -> Result<Response, ContractError> {
-    validate_component_name(name.clone())?;
+    // validate_component_name(name.clone())?;
     add_pathname(
         execute_env.deps.storage,
         execute_env.info.sender,
@@ -97,7 +95,7 @@ fn execute_add_parent_path(
     name: String,
     parent_address: Addr,
 ) -> Result<Response, ContractError> {
-    validate_component_name(name.clone())?;
+    // validate_component_name(name.clone())?;
     add_pathname(
         execute_env.deps.storage,
         parent_address,
@@ -177,6 +175,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 }
 
 fn query_resolve_path(deps: Deps, path: String) -> Result<Addr, ContractError> {
-    validate_pathname(path.clone())?;
+    // validate_pathname(path.clone())?;
     resolve_pathname(deps.storage, deps.api, path)
 }
