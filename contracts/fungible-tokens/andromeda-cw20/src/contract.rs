@@ -43,7 +43,6 @@ pub fn instantiate(
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: msg.modules.clone(),
-            primitive_contract: None,
             kernel_address: msg.clone().kernel_address,
         },
     )?;

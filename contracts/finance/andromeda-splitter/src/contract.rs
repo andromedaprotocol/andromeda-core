@@ -80,7 +80,6 @@ pub fn instantiate(
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: msg.modules,
-            primitive_contract: None,
             kernel_address: msg.kernel_address,
         },
     )
@@ -510,7 +509,6 @@ mod tests {
                     ado_version: CONTRACT_VERSION.to_string(),
                     operators: None,
                     modules: None,
-                    primitive_contract: None,
                     kernel_address: None,
                 },
             )
@@ -574,7 +572,6 @@ mod tests {
                     ado_version: CONTRACT_VERSION.to_string(),
                     operators: None,
                     modules: None,
-                    primitive_contract: None,
                     kernel_address: None,
                 },
             )
@@ -648,7 +645,6 @@ mod tests {
                     ado_version: CONTRACT_VERSION.to_string(),
                     operators: None,
                     modules: None,
-                    primitive_contract: None,
                     kernel_address: Some("kernel".to_string()),
                 },
             )
@@ -737,7 +733,6 @@ mod tests {
                     ado_version: CONTRACT_VERSION.to_string(),
                     operators: None,
                     modules: None,
-                    primitive_contract: None,
                     kernel_address: Some("kernel".to_string()),
                 },
             )
@@ -867,7 +862,6 @@ mod tests {
                     ado_version: CONTRACT_VERSION.to_string(),
                     operators: None,
                     modules: None,
-                    primitive_contract: None,
                     kernel_address: None,
                 },
             )

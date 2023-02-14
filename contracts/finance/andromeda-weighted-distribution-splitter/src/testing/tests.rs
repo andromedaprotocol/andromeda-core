@@ -224,7 +224,6 @@ fn test_execute_update_lock() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -278,7 +277,6 @@ fn test_execute_update_lock_too_short() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -320,7 +318,6 @@ fn test_execute_update_lock_too_long() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -362,7 +359,6 @@ fn test_execute_update_lock_already_locked() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -404,7 +400,6 @@ fn test_execute_update_lock_unauthorized() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -449,7 +444,6 @@ fn test_execute_remove_recipient() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -541,7 +535,6 @@ fn test_execute_remove_recipient_not_on_list() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -604,7 +597,6 @@ fn test_execute_remove_recipient_contract_locked() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -675,7 +667,6 @@ fn test_execute_remove_recipient_unauthorized() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -722,7 +713,6 @@ fn test_update_recipient_weight() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -818,7 +808,6 @@ fn test_update_recipient_weight_locked_contract() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -892,7 +881,6 @@ fn test_update_recipient_weight_user_not_found() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -964,7 +952,6 @@ fn test_update_recipient_weight_invalid_weight() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -1032,7 +1019,6 @@ fn test_execute_add_recipient() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -1137,7 +1123,6 @@ fn test_execute_add_recipient_duplicate_recipient() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -1215,7 +1200,6 @@ fn test_execute_add_recipient_invalid_weight() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -1285,7 +1269,6 @@ fn test_execute_add_recipient_locked_contract() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -1338,7 +1321,6 @@ fn test_execute_add_recipient_unauthorized() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -1374,7 +1356,6 @@ fn test_execute_update_recipients() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -1445,7 +1426,6 @@ fn test_execute_update_recipients_invalid_weight() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -1500,7 +1480,6 @@ fn test_execute_update_recipients_contract_locked() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -1553,7 +1532,6 @@ fn test_execute_update_recipients_unauthorized() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )
@@ -1609,7 +1587,6 @@ fn test_execute_send() {
                 ado_version: CONTRACT_VERSION.to_string(),
                 operators: None,
                 modules: None,
-                primitive_contract: None,
                 kernel_address: None,
             },
         )

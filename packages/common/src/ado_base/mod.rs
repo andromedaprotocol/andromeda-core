@@ -33,7 +33,6 @@ pub struct InstantiateMsg {
     pub ado_version: String,
     pub operators: Option<Vec<String>>,
     pub modules: Option<Vec<Module>>,
-    pub primitive_contract: Option<String>,
     pub kernel_address: Option<String>,
 }
 

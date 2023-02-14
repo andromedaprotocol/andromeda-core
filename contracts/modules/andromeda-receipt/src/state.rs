@@ -74,7 +74,6 @@ mod tests {
                     ado_version: CONTRACT_VERSION.to_string(),
                     operators: None,
                     modules: None,
-                    primitive_contract: None,
                     kernel_address: None,
                 },
             )
