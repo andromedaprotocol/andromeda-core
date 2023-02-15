@@ -1,5 +1,5 @@
 use ado_base::state::ADOContract;
-use amp::messages::AMPPkt;
+use amp::messages::{AMPMsg, AMPPkt};
 use andromeda_ecosystem::vault::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
     BALANCES, STRATEGY_CONTRACT_ADDRESSES,
@@ -137,7 +137,7 @@ fn handle_amp_packet(
         let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
         let funds = msg.funds.to_vec();
         let mut exec_info = execute_env.info.clone();
-        exec_info.funds = funds.clone();
+        exec_info.funds = funds;
 
         let mut exec_res = execute(
             execute_env.deps,
@@ -149,11 +149,16 @@ fn handle_amp_packet(
         // Make sure we don't send a packet with no AMP messages
         if packet.messages.len() > 1 {
             // Remove the executed message (which is always the first one) and send back the adjusted packet to the kernel
-            let mut adjusted_messages = packet.messages;
-            adjusted_messages.remove(0);
+            let adjusted_messages: Vec<AMPMsg> = packet.messages.into_iter().skip(1).collect();
+
+            // Send back the unused funds
+            let unused_funds: Vec<Coin> = adjusted_messages
+                .iter()
+                .flat_map(|msg| msg.funds.iter().cloned())
+                .collect();
 
             let kernel_message = generate_msg_native_kernel(
-                funds,
+                unused_funds,
                 origin,
                 previous_sender.to_string(),
                 adjusted_messages,
