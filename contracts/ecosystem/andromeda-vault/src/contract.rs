@@ -146,18 +146,21 @@ fn handle_amp_packet(
             exec_msg,
         )?;
 
-        // Remove the executed message (which is always the first one) and send back the adjusted packet to the kernel
-        let mut adjusted_messages = packet.messages;
-        adjusted_messages.remove(0);
+        // Make sure we don't send a packet with no AMP messages
+        if packet.messages.len() > 1 {
+            // Remove the executed message (which is always the first one) and send back the adjusted packet to the kernel
+            let mut adjusted_messages = packet.messages;
+            adjusted_messages.remove(0);
 
-        let kernel_message = generate_msg_native_kernel(
-            funds,
-            origin,
-            previous_sender.to_string(),
-            adjusted_messages,
-            kernel_address.into_string(),
-        )?;
-        exec_res.messages.push(kernel_message);
+            let kernel_message = generate_msg_native_kernel(
+                funds,
+                origin,
+                previous_sender.to_string(),
+                adjusted_messages,
+                kernel_address.into_string(),
+            )?;
+            exec_res.messages.push(kernel_message);
+        }
 
         res = res
             .add_attributes(exec_res.attributes)
@@ -167,7 +170,6 @@ fn handle_amp_packet(
 
     Ok(res)
 }
-
 fn execute_deposit(
     deps: DepsMut,
     _env: Env,

@@ -153,28 +153,52 @@ fn handle_amp_packet(
 ) -> Result<Response, ContractError> {
     let mut res = Response::default();
 
+    // Get kernel address
+    let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+
+    // Original packet sender
+    let origin = packet.get_origin();
+
+    // This contract will become the previous sender after sending the message back to the kernel
+    let previous_sender = env.clone().contract.address;
+
     let execute_env = ExecuteEnv { deps, env, info };
+
     let msg_opt = packet.messages.first();
+
     if let Some(msg) = msg_opt {
         let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
-
         let funds = msg.funds.to_vec();
-
         let mut exec_info = execute_env.info.clone();
+        exec_info.funds = funds.clone();
 
-        exec_info.funds = funds;
-
-        let exec_res = execute(
+        let mut exec_res = execute(
             execute_env.deps,
             execute_env.env.clone(),
             exec_info,
             exec_msg,
         )?;
 
+        // Make sure we don't send a packet with no AMP messages
+        if packet.messages.len() > 1 {
+            // Remove the executed message (which is always the first one) and send back the adjusted packet to the kernel
+            let mut adjusted_messages = packet.messages;
+            adjusted_messages.remove(0);
+
+            let kernel_message = generate_msg_native_kernel(
+                funds,
+                origin,
+                previous_sender.to_string(),
+                adjusted_messages,
+                kernel_address.into_string(),
+            )?;
+            exec_res.messages.push(kernel_message);
+        }
+
         res = res
             .add_attributes(exec_res.attributes)
             .add_submessages(exec_res.messages)
-            .add_events(exec_res.events);
+            .add_events(exec_res.events)
     }
 
     Ok(res)
