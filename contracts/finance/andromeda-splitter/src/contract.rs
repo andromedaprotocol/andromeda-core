@@ -157,7 +157,7 @@ fn handle_amp_packet(
     let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
 
     // Original packet sender
-    let origin = packet.get_verified_origin(info.sender.as_str(), kernel_address.as_str())?;
+    let origin = packet.get_origin();
 
     // This contract will become the previous sender after sending the message back to the kernel
     let previous_sender = env.clone().contract.address;

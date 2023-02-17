@@ -182,29 +182,20 @@ impl AMPPkt {
             .filter(|msg| msg.recipient == recipient.clone())
             .collect()
     }
-    pub fn verify_origin(
-        &self,
-        sender: &str,
-        kernel_address: &str,
-        origin: &str,
-    ) -> Result<(), ContractError> {
-        if sender == kernel_address || origin == sender {
-            Ok(())
-        } else {
-            Err(ContractError::InvalidOrigin {})
-        }
-    }
+    // pub fn verify_origin(
+    //     &self,
+    //     sender: &str,
+    //     kernel_address: &str,
+    //     origin: &str,
+    // ) -> Result<(), ContractError> {
+    //     todo!()
+    // }
 
-    pub fn get_verified_origin(
-        &self,
-        sender: &str,
-        kernel_address: &str,
-    ) -> Result<String, ContractError> {
-        let origin = self.get_origin();
-        if sender == kernel_address || origin == sender {
-            Ok(origin)
-        } else {
-            Err(ContractError::InvalidOrigin {})
-        }
-    }
+    // pub fn get_verified_origin(
+    //     &self,
+    //     sender: &str,
+    //     kernel_address: &str,
+    // ) -> Result<String, ContractError> {
+    //     todo!()
+    // }
 }
