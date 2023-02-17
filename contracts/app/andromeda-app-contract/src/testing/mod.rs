@@ -1,13 +1,9 @@
-use crate::{
-    contract::*,
-    state::{ADO_ADDRESSES, TARGET_ADOS},
-};
+use crate::{contract::*, state::ADO_ADDRESSES};
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg};
-use andromeda_automation::condition::ExecuteMsg as ConditionExecuteMsg;
 use andromeda_os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
 
-use common::{ado_base::AndromedaMsg, encode_binary, error::ContractError};
+use common::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{
     attr,
     testing::{mock_env, mock_info},
@@ -21,7 +17,6 @@ fn test_empty_instantiation() {
     let msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
     let info = mock_info("creator", &[]);
@@ -42,7 +37,6 @@ fn test_instantiation() {
             instantiate_msg: to_binary(&true).unwrap(),
         }],
         name: String::from("Some App"),
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
     let info = mock_info("creator", &[]);
@@ -111,7 +105,6 @@ fn test_instantiation_duplicate_components() {
             },
         ],
         name: String::from("Some App"),
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
     let info = mock_info("creator", &[]);
@@ -128,7 +121,6 @@ fn test_add_app_component_unauthorized() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -160,7 +152,6 @@ fn test_add_app_component_duplicate_name() {
         }],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -193,7 +184,6 @@ fn test_add_app_component() {
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -246,7 +236,6 @@ fn test_claim_ownership_unauth() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -268,7 +257,6 @@ fn test_claim_ownership_not_found() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -296,7 +284,6 @@ fn test_claim_ownership_empty() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -317,7 +304,6 @@ fn test_claim_ownership_all() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -384,7 +370,6 @@ fn test_claim_ownership() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -440,7 +425,6 @@ fn test_proxy_message_unauth() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -465,7 +449,6 @@ fn test_proxy_message_not_found() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -486,105 +469,6 @@ fn test_proxy_message_not_found() {
 }
 
 #[test]
-fn test_fire_condition_works() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
-    let info = mock_info("creator", &[]);
-    let inst_msg = InstantiateMsg {
-        app_components: vec![],
-        name: String::from("Some Process"),
-
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
-        kernel_address: "kernel_contract".to_string(),
-    };
-
-    instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
-
-    let msg = ExecuteMsg::AddAppComponent {
-        component: AppComponent {
-            name: "condition1".to_string(),
-            ado_type: "condition".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
-        },
-    };
-
-    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-    let msg = ExecuteMsg::AddAppComponent {
-        component: AppComponent {
-            name: "condition2".to_string(),
-            ado_type: "condition".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
-        },
-    };
-
-    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
-
-    assert_eq!(1, res.messages.len());
-    let inst_submsg: SubMsg<Empty> = SubMsg {
-        id: 2,
-        msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-            code_id: 0,
-            msg: to_binary(&true).unwrap(),
-            funds: vec![],
-            label: "Instantiate: condition".to_string(),
-            admin: Some("creator".to_string()),
-        }),
-        reply_on: ReplyOn::Always,
-        gas_limit: None,
-    };
-    let expected = Response::new()
-        .add_submessage(inst_submsg)
-        .add_attributes(vec![
-            attr("method", "add_app_component"),
-            attr("name", "condition2"),
-            attr("type", "condition"),
-        ]);
-
-    assert_eq!(expected, res);
-
-    assert_eq!(
-        Addr::unchecked(""),
-        ADO_ADDRESSES
-            .load(deps.as_ref().storage, "condition1")
-            .unwrap()
-    );
-
-    let msg = ExecuteMsg::AddAppComponent {
-        component: AppComponent {
-            name: "splitter".to_string(),
-            ado_type: "splitter-ado".to_string(),
-            instantiate_msg: to_binary(&true).unwrap(),
-        },
-    };
-
-    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-    assert_eq!(
-        TARGET_ADOS.load(&deps.storage).unwrap(),
-        Some(vec!["condition1".to_string(), "condition2".to_string()])
-    );
-    let msg = ExecuteMsg::Fire {};
-    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    let expected_res = Response::new()
-        .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "".to_string(),
-            msg: encode_binary(&ConditionExecuteMsg::GetResults {}).unwrap(),
-            funds: vec![],
-        })))
-        .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "".to_string(),
-            msg: encode_binary(&ConditionExecuteMsg::GetResults {}).unwrap(),
-            funds: vec![],
-        })))
-        .add_attribute("address", "".to_string())
-        .add_attribute("address", "".to_string())
-        .add_attribute("action", "fire_ado");
-    assert_eq!(res, expected_res);
-}
-
-#[test]
 fn test_proxy_message() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
@@ -593,7 +477,6 @@ fn test_proxy_message() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
     ADO_ADDRESSES
@@ -641,7 +524,6 @@ fn test_update_address_unauth() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -673,7 +555,6 @@ fn test_update_address_not_found() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 
@@ -702,7 +583,6 @@ fn test_update_address() {
         app_components: vec![],
         name: String::from("Some App"),
 
-        target_ados: Some(vec!["condition1".to_string(), "condition2".to_string()]),
         kernel_address: "kernel_contract".to_string(),
     };
 

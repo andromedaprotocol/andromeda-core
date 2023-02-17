@@ -1,4 +1,4 @@
-use amp::messages::ReplyGas;
+use amp::messages::ReplyGasExit;
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},
@@ -47,9 +47,10 @@ fn test_modules() {
     assert_eq!(expected_res, res);
 
     let msg = ExecuteMsg::Send {
-        reply_gas: ReplyGas {
+        reply_gas: ReplyGasExit {
             reply_on: None,
             gas_limit: None,
+            exit_at_error: Some(true),
         },
         packet: None,
     };

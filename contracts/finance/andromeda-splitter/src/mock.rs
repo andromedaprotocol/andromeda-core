@@ -1,7 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use amp::messages::{AMPPkt, ReplyGas};
+use amp::messages::{AMPPkt, ReplyGasExit};
 use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg};
 use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
@@ -26,9 +26,10 @@ pub fn mock_splitter_instantiate_msg(
 
 pub fn mock_splitter_send_msg(packet: Option<AMPPkt>) -> ExecuteMsg {
     ExecuteMsg::Send {
-        reply_gas: ReplyGas {
+        reply_gas: ReplyGasExit {
             reply_on: None,
             gas_limit: None,
+            exit_at_error: Some(true),
         },
         packet,
     }

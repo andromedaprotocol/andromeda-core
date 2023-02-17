@@ -1,4 +1,4 @@
-use amp::messages::{AMPMsg, AMPPkt, ExecuteMsg as AMPExecuteMsg, ReplyGas};
+use amp::messages::{AMPMsg, AMPPkt, ExecuteMsg as AMPExecuteMsg, ReplyGasExit};
 use andromeda_os::kernel::ExecuteMsg as KernelExecuteMsg;
 use common::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
@@ -204,7 +204,7 @@ pub enum ExecuteMsg {
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {
-        reply_gas: ReplyGas,
+        reply_gas: ReplyGasExit,
         packet: Option<AMPPkt>,
     },
 

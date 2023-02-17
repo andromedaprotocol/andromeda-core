@@ -124,7 +124,7 @@ fn handle_amp_packet(
     let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
 
     // Original packet sender
-    let origin = packet.get_origin();
+    let origin = packet.get_verified_origin(info.sender.as_str(), kernel_address.as_str())?;
 
     // This contract will become the previous sender after sending the message back to the kernel
     let previous_sender = env.clone().contract.address;
@@ -137,40 +137,85 @@ fn handle_amp_packet(
         let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
         let funds = msg.funds.to_vec();
         let mut exec_info = execute_env.info.clone();
-        exec_info.funds = funds;
+        exec_info.funds = funds.clone();
 
-        let mut exec_res = execute(
-            execute_env.deps,
-            execute_env.env.clone(),
-            exec_info,
-            exec_msg,
-        )?;
+        if msg.exit_at_error {
+            let env = execute_env.env.clone();
+            let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
 
-        // Make sure we don't send a packet with no AMP messages
-        if packet.messages.len() > 1 {
-            // Remove the executed message (which is always the first one) and send back the adjusted packet to the kernel
-            let adjusted_messages: Vec<AMPMsg> = packet.messages.into_iter().skip(1).collect();
+            if packet.messages.len() > 1 {
+                let adjusted_messages: Vec<AMPMsg> =
+                    packet.messages.iter().skip(1).cloned().collect();
 
-            // Send back the unused funds
-            let unused_funds: Vec<Coin> = adjusted_messages
-                .iter()
-                .flat_map(|msg| msg.funds.iter().cloned())
-                .collect();
+                let unused_funds: Vec<Coin> = adjusted_messages
+                    .iter()
+                    .flat_map(|msg| msg.funds.iter().cloned())
+                    .collect();
 
-            let kernel_message = generate_msg_native_kernel(
-                unused_funds,
-                origin,
-                previous_sender.to_string(),
-                adjusted_messages,
-                kernel_address.into_string(),
-            )?;
-            exec_res.messages.push(kernel_message);
+                let kernel_message = generate_msg_native_kernel(
+                    unused_funds,
+                    origin,
+                    previous_sender.to_string(),
+                    adjusted_messages,
+                    kernel_address.into_string(),
+                )?;
+
+                exec_res.messages.push(kernel_message);
+            }
+
+            res = res
+                .add_attributes(exec_res.attributes)
+                .add_submessages(exec_res.messages)
+                .add_events(exec_res.events);
+        } else {
+            match execute(
+                execute_env.deps,
+                execute_env.env.clone(),
+                exec_info,
+                exec_msg,
+            ) {
+                Ok(mut exec_res) => {
+                    if packet.messages.len() > 1 {
+                        let adjusted_messages: Vec<AMPMsg> =
+                            packet.messages.iter().skip(1).cloned().collect();
+
+                        let unused_funds: Vec<Coin> = adjusted_messages
+                            .iter()
+                            .flat_map(|msg| msg.funds.iter().cloned())
+                            .collect();
+
+                        let kernel_message = generate_msg_native_kernel(
+                            unused_funds,
+                            origin,
+                            previous_sender.to_string(),
+                            adjusted_messages,
+                            kernel_address.into_string(),
+                        )?;
+
+                        exec_res.messages.push(kernel_message);
+                    }
+
+                    res = res
+                        .add_attributes(exec_res.attributes)
+                        .add_submessages(exec_res.messages)
+                        .add_events(exec_res.events);
+                }
+                Err(_) => {
+                    // There's an error, but the user opted for the operation to proceed
+                    // No funds are used in the event of an error
+                    if packet.messages.len() > 1 {
+                        let kernel_message = generate_msg_native_kernel(
+                            funds,
+                            origin,
+                            previous_sender.to_string(),
+                            packet.messages,
+                            kernel_address.into_string(),
+                        )?;
+                        res = res.add_submessage(kernel_message);
+                    }
+                }
+            }
         }
-
-        res = res
-            .add_attributes(exec_res.attributes)
-            .add_submessages(exec_res.messages)
-            .add_events(exec_res.events)
     }
 
     Ok(res)

@@ -28,8 +28,6 @@ pub struct InstantiateMsg {
     pub app_components: Vec<AppComponent>,
     pub name: String,
     pub kernel_address: String,
-    // Used for automation
-    pub target_ados: Option<Vec<String>>,
 }
 
 #[cw_serde]
@@ -37,7 +35,6 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     AddAppComponent { component: AppComponent },
     ClaimOwnership { name: Option<String> },
-    Fire {},
     ProxyMessage { name: String, msg: Binary },
     UpdateAddress { name: String, addr: String },
 }

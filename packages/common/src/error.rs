@@ -35,6 +35,9 @@ pub enum ContractError {
     #[error("UnmetCondition")]
     UnmetCondition {},
 
+    #[error("InvalidOrigin")]
+    InvalidOrigin {},
+
     #[error("RewardTooLow")]
     RewardTooLow {},
 

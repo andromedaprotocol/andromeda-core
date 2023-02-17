@@ -48,6 +48,7 @@ fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
 fn kernel() {
     let owner = Addr::unchecked("owner");
     let recipient = Addr::unchecked("recipient");
+    let recipient2 = Addr::unchecked("recipient2");
 
     let mut router = mock_app();
     let andr = mock_andromeda(&mut router, owner.clone());
@@ -74,13 +75,25 @@ fn kernel() {
     // Generate Splitter Contract
     let vault_deposit_message =
         mock_vault_deposit_msg(Some(AMPRecipient::Addr(recipient.to_string())), None, None);
-    let recipients: Vec<AddressPercent> = vec![AddressPercent {
-        recipient: AMPRecipient::ado(
-            "/am/app1/vault",
-            Some(to_binary(&vault_deposit_message).unwrap()),
-        ),
-        percent: Decimal::percent(100),
-    }];
+    let vault_deposit_message2 =
+        mock_vault_deposit_msg(Some(AMPRecipient::Addr(recipient2.to_string())), None, None);
+
+    let recipients: Vec<AddressPercent> = vec![
+        AddressPercent {
+            recipient: AMPRecipient::ado(
+                "/am/app1/vault",
+                Some(to_binary(&vault_deposit_message).unwrap()),
+            ),
+            percent: Decimal::percent(80),
+        },
+        AddressPercent {
+            recipient: AMPRecipient::ado(
+                "/am/app1/vault",
+                Some(to_binary(&vault_deposit_message2).unwrap()),
+            ),
+            percent: Decimal::percent(20),
+        },
+    ];
 
     let splitter_init_msg =
         mock_splitter_instantiate_msg(recipients, andr.kernel_address.clone(), None);
@@ -136,18 +149,26 @@ fn kernel() {
         .is_err());
 
     let send_msg = mock_splitter_send_msg(None);
-    router
+    let res = router
         .execute_contract(owner, splitter_addr, &send_msg, &coins(100, "uandr"))
         .unwrap();
+    println!("{:?}", res);
 
     let query_balance =
         mock_vault_get_balance(recipient.to_string(), Some("uandr".to_string()), None);
+    let query_balance2 =
+        mock_vault_get_balance(recipient2.to_string(), Some("uandr".to_string()), None);
 
     let resp: Vec<Coin> = router
         .wrap()
-        .query_wasm_smart(vault_addr, &query_balance)
+        .query_wasm_smart(vault_addr.clone(), &query_balance)
+        .unwrap();
+    let resp2: Vec<Coin> = router
+        .wrap()
+        .query_wasm_smart(vault_addr, &query_balance2)
         .unwrap();
 
     assert!(resp.first().is_some());
-    assert_eq!(resp.first().unwrap().amount, Uint128::from(100u128))
+    assert_eq!(resp.first().unwrap().amount, Uint128::from(80u128));
+    assert_eq!(resp2.first().unwrap().amount, Uint128::from(20u128));
 }

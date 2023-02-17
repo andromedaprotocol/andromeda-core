@@ -29,6 +29,8 @@ pub struct AMPMsg {
     pub funds: Vec<Coin>,
     /// When the message should reply, defaults to Always
     pub reply_on: ReplyOn,
+    /// Determines whether the operation should terminate or proceed upon a failed message
+    pub exit_at_error: bool,
     /// An optional imposed gas limit for the message
     pub gas_limit: Option<u64>,
 }
@@ -40,6 +42,7 @@ impl AMPMsg {
         message: Binary,
         funds: Option<Vec<Coin>>,
         reply_on: Option<ReplyOn>,
+        exit_at_error: Option<bool>,
         gas_limit: Option<u64>,
     ) -> AMPMsg {
         AMPMsg {
@@ -47,6 +50,7 @@ impl AMPMsg {
             message,
             funds: funds.unwrap_or_default(),
             reply_on: reply_on.unwrap_or(ReplyOn::Always),
+            exit_at_error: exit_at_error.unwrap_or(true),
             gas_limit,
         }
     }
@@ -104,13 +108,14 @@ impl AMPMsg {
 /// Allows the user to choose between bypassing or using the kernel
 pub enum MessagePath {
     Direct(),
-    Kernel(ReplyGas),
+    Kernel(ReplyGasExit),
 }
 
 #[cw_serde]
-pub struct ReplyGas {
+pub struct ReplyGasExit {
     pub reply_on: Option<ReplyOn>,
     pub gas_limit: Option<u64>,
+    pub exit_at_error: Option<bool>,
 }
 
 #[cw_serde]
@@ -176,5 +181,30 @@ impl AMPPkt {
             .cloned()
             .filter(|msg| msg.recipient == recipient.clone())
             .collect()
+    }
+    pub fn verify_origin(
+        &self,
+        sender: &str,
+        kernel_address: &str,
+        origin: &str,
+    ) -> Result<(), ContractError> {
+        if sender == kernel_address || origin == sender {
+            Ok(())
+        } else {
+            Err(ContractError::InvalidOrigin {})
+        }
+    }
+
+    pub fn get_verified_origin(
+        &self,
+        sender: &str,
+        kernel_address: &str,
+    ) -> Result<String, ContractError> {
+        let origin = self.get_origin();
+        if sender == kernel_address || origin == sender {
+            Ok(origin)
+        } else {
+            Err(ContractError::InvalidOrigin {})
+        }
     }
 }

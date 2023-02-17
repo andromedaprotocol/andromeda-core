@@ -18,7 +18,6 @@ pub fn mock_app_instantiate_msg(
     InstantiateMsg {
         app_components,
         name: name.into(),
-        target_ados: None,
         kernel_address: kernel_address.into(),
     }
 }

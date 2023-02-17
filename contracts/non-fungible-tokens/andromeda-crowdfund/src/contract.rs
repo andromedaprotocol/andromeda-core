@@ -626,6 +626,7 @@ fn transfer_tokens_and_send_funds(
                 }]),
                 None,
                 None,
+                None,
             );
             let msg = state.recipient.generate_msg_native(
                 vec![Coin {

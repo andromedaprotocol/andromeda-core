@@ -5,7 +5,7 @@ use andromeda_finance::splitter::{
     GetSplitterConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
 };
 
-use amp::messages::{AMPMsg, AMPPkt, ReplyGas};
+use amp::messages::{AMPMsg, AMPPkt, ReplyGasExit};
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     app::AndrAddress,
@@ -157,7 +157,7 @@ fn handle_amp_packet(
     let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
 
     // Original packet sender
-    let origin = packet.get_origin();
+    let origin = packet.get_verified_origin(info.sender.as_str(), kernel_address.as_str())?;
 
     // This contract will become the previous sender after sending the message back to the kernel
     let previous_sender = env.clone().contract.address;
@@ -213,7 +213,7 @@ fn execute_send(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    reply_gas: ReplyGas,
+    reply_gas: ReplyGasExit,
     packet: Option<AMPPkt>,
 ) -> Result<Response, ContractError> {
     let sent_funds: Vec<Coin> = info.funds.clone();
@@ -268,6 +268,7 @@ fn execute_send(
                     message,
                     Some(vec_coin.clone()),
                     Some(reply_gas.reply_on.clone().unwrap_or(ReplyOn::Always)),
+                    reply_gas.exit_at_error,
                     reply_gas.gas_limit,
                 ));
                 // Add the coins intended for the kernel
@@ -334,13 +335,14 @@ pub fn execute_andromeda(
     match msg {
         AndromedaMsg::Receive(binary) => {
             let (reply_gas, packet) = if let Some(rep_gas_pkt) = binary {
-                let reply_gas_packet: (ReplyGas, Option<AMPPkt>) = from_binary(&rep_gas_pkt)?;
+                let reply_gas_packet: (ReplyGasExit, Option<AMPPkt>) = from_binary(&rep_gas_pkt)?;
                 reply_gas_packet
             } else {
                 (
-                    ReplyGas {
+                    ReplyGasExit {
                         reply_on: None,
                         gas_limit: None,
+                        exit_at_error: Some(true),
                     },
                     None,
                 )
@@ -648,9 +650,10 @@ mod tests {
             },
         ];
         let msg = ExecuteMsg::Send {
-            reply_gas: ReplyGas {
+            reply_gas: ReplyGasExit {
                 reply_on: None,
                 gas_limit: None,
+                exit_at_error: Some(true),
             },
             packet: None,
         };
@@ -736,9 +739,10 @@ mod tests {
             },
         ];
         let msg = ExecuteMsg::Send {
-            reply_gas: ReplyGas {
+            reply_gas: ReplyGasExit {
                 reply_on: None,
                 gas_limit: None,
+                exit_at_error: Some(true),
             },
             packet: None,
         };
@@ -779,11 +783,13 @@ mod tests {
                     Some(vec![Coin::new(1000, "uluna")]),
                     None,
                     None,
+                    None,
                 ),
                 AMPMsg::new(
                     recip_address2,
                     Binary::default(),
                     Some(vec![Coin::new(2000, "uluna")]),
+                    None,
                     None,
                     None,
                 ),
@@ -865,9 +871,10 @@ mod tests {
             },
         ];
         let msg = ExecuteMsg::Send {
-            reply_gas: ReplyGas {
+            reply_gas: ReplyGasExit {
                 reply_on: None,
                 gas_limit: None,
+                exit_at_error: Some(true),
             },
             packet: None,
         };
