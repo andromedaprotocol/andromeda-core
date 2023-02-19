@@ -145,7 +145,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
         QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::IsInclusive {} => encode_binary(&handle_is_inclusive(deps)?),
     }
+}
+
+fn handle_is_inclusive(deps: Deps) -> Result<bool, ContractError> {
+    let is_inclusive = IS_INCLUSIVE.load(deps.storage)?;
+    Ok(is_inclusive)
 }
 
 fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {

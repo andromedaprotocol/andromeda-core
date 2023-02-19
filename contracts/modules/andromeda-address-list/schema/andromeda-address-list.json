@@ -12,6 +12,12 @@
     "properties": {
       "is_inclusive": {
         "type": "boolean"
+      },
+      "kernel_address": {
+        "type": [
+          "string",
+          "null"
+        ]
       }
     },
     "additionalProperties": false
@@ -528,6 +534,19 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "is_inclusive"
+        ],
+        "properties": {
+          "is_inclusive": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -672,6 +691,19 @@
             ],
             "properties": {
               "type": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "kernel_address"
+            ],
+            "properties": {
+              "kernel_address": {
                 "type": "object",
                 "additionalProperties": false
               }
@@ -1073,6 +1105,19 @@
         {
           "type": "object",
           "required": [
+            "kernel_address"
+          ],
+          "properties": {
+            "kernel_address": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
             "original_publisher"
           ],
           "properties": {
@@ -1190,6 +1235,11 @@
         }
       },
       "additionalProperties": false
+    },
+    "is_inclusive": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
     }
   }
 }

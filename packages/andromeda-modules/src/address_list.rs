@@ -35,6 +35,8 @@ pub enum QueryMsg {
     AndrHook(AndromedaHook),
     #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
+    #[returns(bool)]
+    IsInclusive {},
 }
 
 #[cw_serde]
