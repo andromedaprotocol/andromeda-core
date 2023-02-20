@@ -174,7 +174,7 @@ fn handle_amp_packet(
 
         if msg.exit_at_error {
             let env = execute_env.env.clone();
-            let mut exec_res = execute(execute_env.deps, env, exec_info.clone(), exec_msg)?;
+            let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
 
             if packet.messages.len() > 1 {
                 let adjusted_messages: Vec<AMPMsg> =
