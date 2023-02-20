@@ -910,7 +910,7 @@ mod tests {
             "cosmos2contract",
             vec![
                 AMPMsg::new(
-                    recip_address1.clone(),
+                    recip_address1,
                     to_binary(&ExecuteMsg::Send {
                         reply_gas: ReplyGasExit {
                             reply_on: None,
@@ -926,7 +926,7 @@ mod tests {
                     None,
                 ),
                 AMPMsg::new(
-                    recip_address2.clone(),
+                    recip_address2,
                     to_binary(&ExecuteMsg::Send {
                         reply_gas: ReplyGasExit {
                             reply_on: None,
@@ -943,7 +943,7 @@ mod tests {
                 ),
             ],
         );
-        let msg = ExecuteMsg::AMPReceive(pkt.clone());
+        let msg = ExecuteMsg::AMPReceive(pkt);
 
         let splitter = Splitter {
             recipients: recipient,
@@ -969,7 +969,7 @@ mod tests {
             )
             .unwrap();
 
-        let err = execute(deps.as_mut(), env, info.clone(), msg).unwrap_err();
+        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
         assert_eq!(
             err,
@@ -1032,12 +1032,12 @@ mod tests {
                 ),
             ],
         );
-        let msg = ExecuteMsg::AMPReceive(pkt.clone());
+        let msg = ExecuteMsg::AMPReceive(pkt);
 
         let recipient = vec![
             AddressPercent {
                 recipient: AMPRecipient::ADO(ADORecipient {
-                    address: recip_address1.clone(),
+                    address: recip_address1,
                     msg: None,
                 }),
                 percent: Decimal::percent(recip_percent1),
@@ -1078,10 +1078,10 @@ mod tests {
         let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
 
         let pkt = AMPPkt::new(
-            info.clone().sender,
+            info.sender,
             "cosmos2contract",
             vec![AMPMsg::new(
-                recip_address2.clone(),
+                recip_address2,
                 to_binary(&ExecuteMsg::Send {
                     reply_gas: ReplyGasExit {
                         reply_on: None,
