@@ -542,10 +542,11 @@ fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError
 mod tests {
     use super::*;
     use amp::messages::AMPPkt;
+    use amp::messages::ExecuteMsg::AMPReceive as AMPExecuteMsg;
     use andromeda_finance::splitter::{ADORecipient, AMPRecipient};
     use andromeda_os::kernel::ExecuteMsg as KernelExecuteMsg;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, to_binary, Coin, Decimal, WasmMsg};
+    use cosmwasm_std::{coins, from_binary, to_binary, Coin, Decimal, WasmMsg};
 
     #[test]
     fn test_instantiate() {
@@ -1076,24 +1077,34 @@ mod tests {
 
         let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
 
-        let expected_res = Response::new()
-            .add_submessages(vec![
-                SubMsg::new(
-                    // refunds remainder to sender
-                    CosmosMsg::Bank(BankMsg::Send {
-                        to_address: owner.to_string(),
-                        amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
-                    }),
-                ),
-                SubMsg::new(WasmMsg::Execute {
-                    contract_addr: "kernel".to_string(),
-                    msg: to_binary(&KernelExecuteMsg::AMPReceive(pkt)).unwrap(),
-                    funds: vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")],
-                }),
-            ])
-            .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+        let pkt = AMPPkt::new(
+            info.clone().sender,
+            "cosmos2contract",
+            vec![AMPMsg::new(
+                recip_address2.clone(),
+                to_binary(&ExecuteMsg::Send {
+                    reply_gas: ReplyGasExit {
+                        reply_on: None,
+                        gas_limit: None,
+                        exit_at_error: Some(false),
+                    },
+                    packet: None,
+                })
+                .unwrap(),
+                Some(vec![Coin::new(0, "uluna")]),
+                None,
+                Some(false),
+                None,
+            )],
+        );
 
-        assert_eq!(res, expected_res);
+        let expected_res = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "kernel".to_string(),
+            msg: to_binary(&AMPExecuteMsg(pkt)).unwrap(),
+            funds: coins(0, "uluna"),
+        }));
+
+        assert_eq!(res.messages[0], expected_res);
     }
 
     #[test]
