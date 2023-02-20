@@ -298,17 +298,7 @@ fn test_crowdfund_app() {
 
     // Start Sale
     let token_price = coin(100, "uandr");
-    // let packet = AMPPkt::new(
-    //         "owner".to_string(),
-    //         "previous_sender".to_string(),
-    //         vec![AMPMsg {
-    //             recipient: "contract10".to_string(),
-    //             message: to_binary(&"eyJzZW5kIjp7InJlcGx5X2dhcyI6eyJyZXBseV9vbiI6bnVsbCwiZ2FzX2xpbWl0IjpudWxsfSwicGFja2V0IjpudWxsfX0=").unwrap(),
-    //             funds: vec![coin(300, "uandr")],
-    //             reply_on: ReplyOn::Never,
-    //             gas_limit: None,
-    //         }],
-    //     );
+
     let sale_recipient = AMPRecipient::ADO(ADORecipient {
         address: splitter_addr,
         msg: Some(to_binary(&mock_splitter_send_msg(None)).unwrap()),

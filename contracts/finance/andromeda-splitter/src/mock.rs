@@ -29,7 +29,7 @@ pub fn mock_splitter_send_msg(packet: Option<AMPPkt>) -> ExecuteMsg {
         reply_gas: ReplyGasExit {
             reply_on: None,
             gas_limit: None,
-            exit_at_error: Some(true),
+            exit_at_error: Some(false),
         },
         packet,
     }

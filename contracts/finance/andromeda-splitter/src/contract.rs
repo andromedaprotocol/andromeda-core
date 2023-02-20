@@ -170,40 +170,85 @@ fn handle_amp_packet(
         let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
         let funds = msg.funds.to_vec();
         let mut exec_info = execute_env.info.clone();
-        exec_info.funds = funds;
+        exec_info.funds = funds.clone();
 
-        let mut exec_res = execute(
-            execute_env.deps,
-            execute_env.env.clone(),
-            exec_info,
-            exec_msg,
-        )?;
+        if msg.exit_at_error {
+            let env = execute_env.env.clone();
+            let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
 
-        // Make sure we don't send a packet with no AMP messages
-        if packet.messages.len() > 1 {
-            // Remove the executed message (which is always the first one) and send back the adjusted packet to the kernel
-            let adjusted_messages: Vec<AMPMsg> = packet.messages.into_iter().skip(1).collect();
+            if packet.messages.len() > 1 {
+                let adjusted_messages: Vec<AMPMsg> =
+                    packet.messages.iter().skip(1).cloned().collect();
 
-            // Send back the unused funds
-            let unused_funds: Vec<Coin> = adjusted_messages
-                .iter()
-                .flat_map(|msg| msg.funds.iter().cloned())
-                .collect();
+                let unused_funds: Vec<Coin> = adjusted_messages
+                    .iter()
+                    .flat_map(|msg| msg.funds.iter().cloned())
+                    .collect();
 
-            let kernel_message = generate_msg_native_kernel(
-                unused_funds,
-                origin,
-                previous_sender.to_string(),
-                adjusted_messages,
-                kernel_address.into_string(),
-            )?;
-            exec_res.messages.push(kernel_message);
+                let kernel_message = generate_msg_native_kernel(
+                    unused_funds,
+                    origin,
+                    previous_sender.to_string(),
+                    adjusted_messages,
+                    kernel_address.into_string(),
+                )?;
+
+                exec_res.messages.push(kernel_message);
+            }
+
+            res = res
+                .add_attributes(exec_res.attributes)
+                .add_submessages(exec_res.messages)
+                .add_events(exec_res.events);
+        } else {
+            match execute(
+                execute_env.deps,
+                execute_env.env.clone(),
+                exec_info,
+                exec_msg,
+            ) {
+                Ok(mut exec_res) => {
+                    if packet.messages.len() > 1 {
+                        let adjusted_messages: Vec<AMPMsg> =
+                            packet.messages.iter().skip(1).cloned().collect();
+
+                        let unused_funds: Vec<Coin> = adjusted_messages
+                            .iter()
+                            .flat_map(|msg| msg.funds.iter().cloned())
+                            .collect();
+
+                        let kernel_message = generate_msg_native_kernel(
+                            unused_funds,
+                            origin,
+                            previous_sender.to_string(),
+                            adjusted_messages,
+                            kernel_address.into_string(),
+                        )?;
+
+                        exec_res.messages.push(kernel_message);
+                    }
+
+                    res = res
+                        .add_attributes(exec_res.attributes)
+                        .add_submessages(exec_res.messages)
+                        .add_events(exec_res.events);
+                }
+                Err(_) => {
+                    // There's an error, but the user opted for the operation to proceed
+                    // No funds are used in the event of an error
+                    if packet.messages.len() > 1 {
+                        let kernel_message = generate_msg_native_kernel(
+                            funds,
+                            origin,
+                            previous_sender.to_string(),
+                            packet.messages,
+                            kernel_address.into_string(),
+                        )?;
+                        res = res.add_submessage(kernel_message);
+                    }
+                }
+            }
         }
-
-        res = res
-            .add_attributes(exec_res.attributes)
-            .add_submessages(exec_res.messages)
-            .add_events(exec_res.events)
     }
 
     Ok(res)
@@ -223,6 +268,14 @@ fn execute_send(
             msg: "ensure! at least one coin to be sent".to_string(),
         }
     );
+    for coin in sent_funds.clone() {
+        ensure!(
+            !coin.amount.is_zero(),
+            ContractError::InvalidFunds {
+                msg: "Amount must be non-zero".to_string(),
+            }
+        );
+    }
 
     let splitter = SPLITTER.load(deps.storage)?;
 
@@ -713,6 +766,115 @@ mod tests {
         let env = mock_env();
 
         let sender_funds_amount = 10000u128;
+        let owner = "creator";
+        let info = mock_info(owner, &[Coin::new(sender_funds_amount, "uluna")]);
+
+        let recip_address1 = "address1".to_string();
+        let recip_percent1 = 10; // 10%
+
+        let recip_address2 = "address2".to_string();
+        let recip_percent2 = 20; // 20%
+
+        let recipient = vec![
+            AddressPercent {
+                recipient: AMPRecipient::ADO(ADORecipient {
+                    address: recip_address1.clone(),
+                    msg: None,
+                }),
+                percent: Decimal::percent(recip_percent1),
+            },
+            AddressPercent {
+                recipient: AMPRecipient::ADO(ADORecipient {
+                    address: recip_address2.clone(),
+                    msg: None,
+                }),
+                percent: Decimal::percent(recip_percent2),
+            },
+        ];
+        let msg = ExecuteMsg::Send {
+            reply_gas: ReplyGasExit {
+                reply_on: None,
+                gas_limit: None,
+                exit_at_error: Some(true),
+            },
+            packet: None,
+        };
+
+        let splitter = Splitter {
+            recipients: recipient,
+            lock: Expiration::AtTime(Timestamp::from_seconds(0)),
+        };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                mock_env(),
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    ado_version: CONTRACT_VERSION.to_string(),
+                    operators: None,
+                    modules: None,
+                    kernel_address: Some("kernel".to_string()),
+                },
+            )
+            .unwrap();
+
+        let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+
+        let pkt = AMPPkt::new(
+            info.sender,
+            "cosmos2contract",
+            vec![
+                AMPMsg::new(
+                    recip_address1,
+                    Binary::default(),
+                    Some(vec![Coin::new(1000, "uluna")]),
+                    None,
+                    None,
+                    None,
+                ),
+                AMPMsg::new(
+                    recip_address2,
+                    Binary::default(),
+                    Some(vec![Coin::new(2000, "uluna")]),
+                    None,
+                    None,
+                    None,
+                ),
+            ],
+        );
+
+        let expected_res = Response::new()
+            .add_submessages(vec![
+                SubMsg::new(
+                    // refunds remainder to sender
+                    CosmosMsg::Bank(BankMsg::Send {
+                        to_address: owner.to_string(),
+                        amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
+                    }),
+                ),
+                SubMsg::new(WasmMsg::Execute {
+                    contract_addr: "kernel".to_string(),
+                    msg: to_binary(&KernelExecuteMsg::AMPReceive(pkt)).unwrap(),
+                    funds: vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")],
+                }),
+            ])
+            .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+
+        assert_eq!(res, expected_res);
+    }
+
+    #[test]
+    fn test_execute_send_ado_recipient_exit_with_error_true() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let sender_funds_amount = 0u128;
         let owner = "creator";
         let info = mock_info(owner, &[Coin::new(sender_funds_amount, "uluna")]);
 

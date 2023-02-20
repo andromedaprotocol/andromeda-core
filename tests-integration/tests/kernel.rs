@@ -149,10 +149,9 @@ fn kernel() {
         .is_err());
 
     let send_msg = mock_splitter_send_msg(None);
-    let res = router
+    router
         .execute_contract(owner, splitter_addr, &send_msg, &coins(100, "uandr"))
         .unwrap();
-    println!("{:?}", res);
 
     let query_balance =
         mock_vault_get_balance(recipient.to_string(), Some("uandr".to_string()), None);

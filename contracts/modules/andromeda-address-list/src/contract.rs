@@ -142,9 +142,9 @@ fn from_semver(err: semver::Error) -> StdError {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
         QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
+        QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
         QueryMsg::IsInclusive {} => encode_binary(&handle_is_inclusive(deps)?),
     }
 }
