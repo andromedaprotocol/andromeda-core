@@ -174,7 +174,7 @@ fn handle_amp_packet(
 
         if msg.exit_at_error {
             let env = execute_env.env.clone();
-            let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
+            let mut exec_res = execute(execute_env.deps, env, exec_info.clone(), exec_msg)?;
 
             if packet.messages.len() > 1 {
                 let adjusted_messages: Vec<AMPMsg> =
@@ -237,11 +237,14 @@ fn handle_amp_packet(
                     // There's an error, but the user opted for the operation to proceed
                     // No funds are used in the event of an error
                     if packet.messages.len() > 1 {
+                        let adjusted_messages: Vec<AMPMsg> =
+                            packet.messages.iter().skip(1).cloned().collect();
+
                         let kernel_message = generate_msg_native_kernel(
                             funds,
                             origin,
                             previous_sender.to_string(),
-                            packet.messages,
+                            adjusted_messages,
                             kernel_address.into_string(),
                         )?;
                         res = res.add_submessage(kernel_message);
@@ -868,9 +871,10 @@ mod tests {
 
         assert_eq!(res, expected_res);
     }
+    // testinn
 
     #[test]
-    fn test_execute_send_ado_recipient_exit_with_error_true() {
+    fn test_handle_packet_exit_with_error_true() {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
@@ -900,14 +904,151 @@ mod tests {
                 percent: Decimal::percent(recip_percent2),
             },
         ];
-        let msg = ExecuteMsg::Send {
-            reply_gas: ReplyGasExit {
-                reply_on: None,
-                gas_limit: None,
-                exit_at_error: Some(true),
-            },
-            packet: None,
+        let pkt = AMPPkt::new(
+            info.clone().sender,
+            "cosmos2contract",
+            vec![
+                AMPMsg::new(
+                    recip_address1.clone(),
+                    to_binary(&ExecuteMsg::Send {
+                        reply_gas: ReplyGasExit {
+                            reply_on: None,
+                            gas_limit: None,
+                            exit_at_error: Some(true),
+                        },
+                        packet: None,
+                    })
+                    .unwrap(),
+                    Some(vec![Coin::new(0, "uluna")]),
+                    None,
+                    Some(true),
+                    None,
+                ),
+                AMPMsg::new(
+                    recip_address2.clone(),
+                    to_binary(&ExecuteMsg::Send {
+                        reply_gas: ReplyGasExit {
+                            reply_on: None,
+                            gas_limit: None,
+                            exit_at_error: Some(true),
+                        },
+                        packet: None,
+                    })
+                    .unwrap(),
+                    Some(vec![Coin::new(0, "uluna")]),
+                    None,
+                    Some(true),
+                    None,
+                ),
+            ],
+        );
+        let msg = ExecuteMsg::AMPReceive(pkt.clone());
+
+        let splitter = Splitter {
+            recipients: recipient,
+            lock: Expiration::AtTime(Timestamp::from_seconds(0)),
         };
+
+        SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+
+        let deps_mut = deps.as_mut();
+        ADOContract::default()
+            .instantiate(
+                deps_mut.storage,
+                mock_env(),
+                deps_mut.api,
+                mock_info(owner, &[]),
+                BaseInstantiateMsg {
+                    ado_type: "splitter".to_string(),
+                    ado_version: CONTRACT_VERSION.to_string(),
+                    operators: None,
+                    modules: None,
+                    kernel_address: Some("kernel".to_string()),
+                },
+            )
+            .unwrap();
+
+        let err = execute(deps.as_mut(), env, info.clone(), msg).unwrap_err();
+
+        assert_eq!(
+            err,
+            ContractError::InvalidFunds {
+                msg: "Amount must be non-zero".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_execute_send_ado_recipient_exit_with_error_false() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let sender_funds_amount = 0u128;
+        let owner = "creator";
+        let info = mock_info(owner, &[Coin::new(sender_funds_amount, "uluna")]);
+
+        let recip_address1 = "address1".to_string();
+        let recip_percent1 = 10; // 10%
+
+        let recip_address2 = "address2".to_string();
+        let recip_percent2 = 20; // 20%
+
+        let pkt = AMPPkt::new(
+            info.clone().sender,
+            "cosmos2contract",
+            vec![
+                AMPMsg::new(
+                    recip_address1.clone(),
+                    to_binary(&ExecuteMsg::Send {
+                        reply_gas: ReplyGasExit {
+                            reply_on: None,
+                            gas_limit: None,
+                            exit_at_error: Some(false),
+                        },
+                        packet: None,
+                    })
+                    .unwrap(),
+                    Some(vec![Coin::new(0, "uluna")]),
+                    None,
+                    Some(false),
+                    None,
+                ),
+                AMPMsg::new(
+                    recip_address2.clone(),
+                    to_binary(&ExecuteMsg::Send {
+                        reply_gas: ReplyGasExit {
+                            reply_on: None,
+                            gas_limit: None,
+                            exit_at_error: Some(false),
+                        },
+                        packet: None,
+                    })
+                    .unwrap(),
+                    Some(vec![Coin::new(0, "uluna")]),
+                    None,
+                    Some(false),
+                    None,
+                ),
+            ],
+        );
+        let msg = ExecuteMsg::AMPReceive(pkt.clone());
+
+        let recipient = vec![
+            AddressPercent {
+                recipient: AMPRecipient::ADO(ADORecipient {
+                    address: recip_address1.clone(),
+                    msg: None,
+                }),
+                percent: Decimal::percent(recip_percent1),
+            },
+            AddressPercent {
+                recipient: AMPRecipient::ADO(ADORecipient {
+                    address: recip_address2.clone(),
+                    msg: None,
+                }),
+                percent: Decimal::percent(recip_percent2),
+            },
+        ];
 
         let splitter = Splitter {
             recipients: recipient,
@@ -934,29 +1075,6 @@ mod tests {
             .unwrap();
 
         let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
-
-        let pkt = AMPPkt::new(
-            info.sender,
-            "cosmos2contract",
-            vec![
-                AMPMsg::new(
-                    recip_address1,
-                    Binary::default(),
-                    Some(vec![Coin::new(1000, "uluna")]),
-                    None,
-                    None,
-                    None,
-                ),
-                AMPMsg::new(
-                    recip_address2,
-                    Binary::default(),
-                    Some(vec![Coin::new(2000, "uluna")]),
-                    None,
-                    None,
-                    None,
-                ),
-            ],
-        );
 
         let expected_res = Response::new()
             .add_submessages(vec![
