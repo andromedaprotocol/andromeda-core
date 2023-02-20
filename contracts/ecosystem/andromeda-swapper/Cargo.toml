@@ -17,6 +17,7 @@ cw-storage-plus = "0.16.0"
 cw20 = "0.16.0"
 cw2 = "0.16.0"
 cw-asset = "2.0.0"
+cw-utils = "0.16.0"
 semver = "1"
 
 andromeda-ecosystem = { version = "0.1.0", path = "../../../packages/andromeda-ecosystem" }

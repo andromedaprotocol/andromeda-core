@@ -268,7 +268,7 @@ fn execute_send(
     ensure!(
         !sent_funds.is_empty(),
         ContractError::InvalidFunds {
-            msg: "ensure! at least one coin to be sent".to_string(),
+            msg: "At least one coin should to be sent".to_string(),
         }
     );
     for coin in sent_funds.clone() {

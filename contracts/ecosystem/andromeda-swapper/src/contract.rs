@@ -18,6 +18,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
+use cw_utils::one_coin;
 use semver::Version;
 
 // version info for migration info
@@ -110,21 +111,8 @@ fn execute_swap(
     ask_asset_info: AssetInfo,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
+    one_coin(&info)?;
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
-
-    ensure!(
-        info.funds.len() <= 1,
-        ContractError::InvalidFunds {
-            msg: "Must send at most one native coin".to_string(),
-        }
-    );
-    ensure!(
-        !info.funds.is_empty() && info.funds[0].amount > Uint128::zero(),
-        ContractError::InvalidFunds {
-            msg: "Must send funds to swap".to_string(),
-        }
-    );
-
     let coin = &info.funds[0];
     if let AssetInfo::Native(denom) = &ask_asset_info {
         if denom == &coin.denom {
