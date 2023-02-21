@@ -1,5 +1,5 @@
 use crate::cw721::TokenExtension;
-use andromeda_finance::splitter::AMPRecipient as Recipient;
+use andromeda_os::recipient::AMPRecipient as Recipient;
 use common::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     app::AndrAddress,

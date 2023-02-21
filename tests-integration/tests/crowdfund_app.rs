@@ -10,7 +10,8 @@ use andromeda_crowdfund::mock::{
 use andromeda_cw721::mock::{
     mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_cw721_owner_of,
 };
-use andromeda_finance::splitter::{ADORecipient, AMPRecipient, AddressPercent};
+use andromeda_finance::splitter::AddressPercent;
+use andromeda_os::recipient::{ADORecipient, AMPRecipient};
 
 use andromeda_modules::rates::{Rate, RateInfo};
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};

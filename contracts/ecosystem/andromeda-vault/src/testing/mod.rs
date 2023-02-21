@@ -7,7 +7,7 @@ use andromeda_ecosystem::vault::{
     ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType, YieldStrategy,
     BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
-use andromeda_finance::splitter::AMPRecipient as Recipient;
+use andromeda_os::recipient::AMPRecipient as Recipient;
 use common::{
     ado_base::AndromedaMsg,
     app::AndrAddress,

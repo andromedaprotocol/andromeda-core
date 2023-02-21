@@ -187,7 +187,6 @@ version = "0.2.0"
 dependencies = [
  "ado-base",
  "andromeda-app",
- "andromeda-finance",
  "andromeda-non-fungible-tokens",
  "andromeda-os",
  "common",
@@ -336,7 +335,6 @@ dependencies = [
 name = "andromeda-ecosystem"
 version = "0.1.0"
 dependencies = [
- "andromeda-finance",
  "andromeda-os",
  "common",
  "cosmwasm-schema",
@@ -534,7 +532,7 @@ dependencies = [
 name = "andromeda-non-fungible-tokens"
 version = "0.1.0"
 dependencies = [
- "andromeda-finance",
+ "andromeda-os",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -803,7 +801,6 @@ version = "0.2.0"
 dependencies = [
  "ado-base",
  "andromeda-ecosystem",
- "andromeda-finance",
  "andromeda-os",
  "common",
  "cosmwasm-schema",

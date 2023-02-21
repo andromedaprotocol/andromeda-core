@@ -20,5 +20,6 @@ cw721 = "0.16.0"
 cw721-base = { version = "0.16.0", features=["library"]}
 
 common = { path = "../common", version = "0.1.0" }
-andromeda-finance = { path = "../andromeda-finance", version = "0.1.0" }
+andromeda-os = { path = "../andromeda-os", version = "0.1.0" }
+
 

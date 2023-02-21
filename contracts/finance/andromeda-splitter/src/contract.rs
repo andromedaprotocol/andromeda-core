@@ -1,9 +1,10 @@
 use crate::state::SPLITTER;
 use ado_base::ADOContract;
 use andromeda_finance::splitter::{
-    generate_msg_native_kernel, validate_recipient_list, AMPRecipient, AddressPercent, ExecuteMsg,
-    GetSplitterConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg, Splitter,
+    validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
+    MigrateMsg, QueryMsg, Splitter,
 };
+use andromeda_os::recipient::{generate_msg_native_kernel, AMPRecipient};
 
 use andromeda_os::messages::{AMPMsg, AMPPkt, ReplyGasExit};
 use common::{
@@ -541,10 +542,10 @@ fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_finance::splitter::{ADORecipient, AMPRecipient};
     use andromeda_os::kernel::ExecuteMsg as KernelExecuteMsg;
     use andromeda_os::messages::AMPPkt;
     use andromeda_os::messages::ExecuteMsg::AMPReceive as AMPExecuteMsg;
+    use andromeda_os::recipient::{ADORecipient, AMPRecipient};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary, to_binary, Coin, Decimal, WasmMsg};
 

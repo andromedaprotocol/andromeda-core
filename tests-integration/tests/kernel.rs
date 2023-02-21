@@ -2,7 +2,8 @@ use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{
     mock_andromeda_app, mock_app_instantiate_msg, mock_get_components_msg,
 };
-use andromeda_finance::splitter::{AMPRecipient, AddressPercent};
+use andromeda_finance::splitter::AddressPercent;
+use andromeda_os::recipient::AMPRecipient;
 
 use andromeda_kernel::mock::mock_get_key_address;
 use andromeda_splitter::mock::{

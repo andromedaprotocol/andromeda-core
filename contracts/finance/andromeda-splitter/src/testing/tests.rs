@@ -6,9 +6,8 @@ use cosmwasm_std::{
 };
 
 use crate::contract::{execute, instantiate};
-use andromeda_finance::splitter::{
-    ADORecipient, AMPRecipient, AddressPercent, ExecuteMsg, InstantiateMsg,
-};
+use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg};
+use andromeda_os::recipient::{ADORecipient, AMPRecipient};
 use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT,
 };

@@ -1,5 +1,5 @@
-use andromeda_finance::splitter::AMPRecipient as Recipient;
 use andromeda_os::messages::AMPPkt;
+use andromeda_os::recipient::AMPRecipient as Recipient;
 use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
