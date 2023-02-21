@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     OrderBy,
@@ -15,6 +16,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     ReceiveNft(Cw721ReceiveMsg),
     /// Places a bid on the current auction for the given token_id. The previous largest bid gets
     /// automatically sent back to the bidder when they are outbid.

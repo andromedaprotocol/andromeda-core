@@ -110,11 +110,12 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "0.1.2"
+version = "0.2.2"
 dependencies = [
  "ado-base",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
+ "andromeda-os",
  "andromeda-testing",
  "common",
  "cosmwasm-schema",

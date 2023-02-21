@@ -6,6 +6,10 @@ use andromeda_non_fungible_tokens::auction::{
     AuctionIdsResponse, AuctionInfo, AuctionStateResponse, Bid, BidsResponse, Cw721HookMsg,
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenAuctionState,
 };
+use andromeda_os::{
+    messages::{AMPMsg, AMPPkt},
+    recipient::generate_msg_native_kernel,
+};
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
@@ -84,6 +88,7 @@ pub fn execute(
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
+        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(deps, env, info, msg),
         ExecuteMsg::UpdateAuction {
             token_id,
@@ -118,6 +123,124 @@ pub fn execute(
             token_address,
         } => execute_claim(deps, env, info, token_id, token_address),
     }
+}
+
+pub struct ExecuteEnv<'a> {
+    deps: DepsMut<'a>,
+    pub env: Env,
+    pub info: MessageInfo,
+}
+
+fn handle_amp_packet(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    packet: AMPPkt,
+) -> Result<Response, ContractError> {
+    let mut res = Response::default();
+
+    // Get kernel address
+    let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+
+    // Original packet sender
+    let origin = packet.get_origin();
+
+    // This contract will become the previous sender after sending the message back to the kernel
+    let previous_sender = env.clone().contract.address;
+
+    let execute_env = ExecuteEnv { deps, env, info };
+
+    let msg_opt = packet.messages.first();
+
+    if let Some(msg) = msg_opt {
+        let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
+        let funds = msg.funds.to_vec();
+        let mut exec_info = execute_env.info.clone();
+        exec_info.funds = funds.clone();
+
+        if msg.exit_at_error {
+            let env = execute_env.env.clone();
+            let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
+
+            if packet.messages.len() > 1 {
+                let adjusted_messages: Vec<AMPMsg> =
+                    packet.messages.iter().skip(1).cloned().collect();
+
+                let unused_funds: Vec<Coin> = adjusted_messages
+                    .iter()
+                    .flat_map(|msg| msg.funds.iter().cloned())
+                    .collect();
+
+                let kernel_message = generate_msg_native_kernel(
+                    unused_funds,
+                    origin,
+                    previous_sender.to_string(),
+                    adjusted_messages,
+                    kernel_address.into_string(),
+                )?;
+
+                exec_res.messages.push(kernel_message);
+            }
+
+            res = res
+                .add_attributes(exec_res.attributes)
+                .add_submessages(exec_res.messages)
+                .add_events(exec_res.events);
+        } else {
+            match execute(
+                execute_env.deps,
+                execute_env.env.clone(),
+                exec_info,
+                exec_msg,
+            ) {
+                Ok(mut exec_res) => {
+                    if packet.messages.len() > 1 {
+                        let adjusted_messages: Vec<AMPMsg> =
+                            packet.messages.iter().skip(1).cloned().collect();
+
+                        let unused_funds: Vec<Coin> = adjusted_messages
+                            .iter()
+                            .flat_map(|msg| msg.funds.iter().cloned())
+                            .collect();
+
+                        let kernel_message = generate_msg_native_kernel(
+                            unused_funds,
+                            origin,
+                            previous_sender.to_string(),
+                            adjusted_messages,
+                            kernel_address.into_string(),
+                        )?;
+
+                        exec_res.messages.push(kernel_message);
+                    }
+
+                    res = res
+                        .add_attributes(exec_res.attributes)
+                        .add_submessages(exec_res.messages)
+                        .add_events(exec_res.events);
+                }
+                Err(_) => {
+                    // There's an error, but the user opted for the operation to proceed
+                    // No funds are used in the event of an error
+                    if packet.messages.len() > 1 {
+                        let adjusted_messages: Vec<AMPMsg> =
+                            packet.messages.iter().skip(1).cloned().collect();
+
+                        let kernel_message = generate_msg_native_kernel(
+                            funds,
+                            origin,
+                            previous_sender.to_string(),
+                            adjusted_messages,
+                            kernel_address.into_string(),
+                        )?;
+                        res = res.add_submessage(kernel_message);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(res)
 }
 
 fn handle_receive_cw721(
