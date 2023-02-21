@@ -1,4 +1,4 @@
-use amp::messages::AMPPkt;
+use andromeda_os::messages::AMPPkt;
 use common::{
     ado_base::{hooks::AndromedaHook, recipient::Recipient, AndromedaMsg, AndromedaQuery},
     error::ContractError,

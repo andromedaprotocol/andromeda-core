@@ -26,4 +26,4 @@ andromeda-finance = { path = "../andromeda-finance", version = "0.1.0" }
 
 cw-asset = { version = "2.0.0" }
 
-amp = { path = "../amp" }
+andromeda-os = { version = "0.1.0", path = "../../packages/andromeda-os" }

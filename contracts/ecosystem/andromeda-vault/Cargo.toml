@@ -22,7 +22,7 @@ cw-utils = "0.16.0"
 andromeda-ecosystem = { version = "0.1.0", path = "../../../packages/andromeda-ecosystem" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }
-amp = { path = "../../../packages/amp", version="0.1.0" }
+andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
 andromeda-finance = { path = "../../../packages/andromeda-finance", version="0.1.0" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

@@ -1,4 +1,4 @@
-use amp::messages::ReplyGasExit;
+use andromeda_os::messages::ReplyGasExit;
 use cosmwasm_std::{
     coins,
     testing::{mock_env, mock_info},

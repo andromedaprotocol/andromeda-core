@@ -41,7 +41,6 @@ andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = ["tes
 andromeda-adodb = { path = "../contracts/os/andromeda-adodb", features = ["testing"] }
 andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = ["testing"]}
 
-amp = { path = "../packages/amp" }
 
 
 #Other Crates

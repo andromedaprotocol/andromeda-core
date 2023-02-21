@@ -1,5 +1,5 @@
 use ado_base::state::ADOContract;
-use amp::messages::AMPPkt;
+use andromeda_os::messages::AMPPkt;
 use andromeda_os::{
     adodb::QueryMsg as ADODBQueryMsg,
     kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},

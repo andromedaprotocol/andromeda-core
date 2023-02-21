@@ -1,10 +1,10 @@
 use crate::state::{Config, CONFIG};
 use ado_base::ADOContract;
-use amp::messages::AMPPkt;
 use andromeda_modules::rates::{
     calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
     QueryMsg, RateInfo,
 };
+use andromeda_os::messages::AMPPkt;
 use common::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},

@@ -1,5 +1,5 @@
-use amp::messages::{AMPMsg, AMPPkt, ExecuteMsg as AMPExecuteMsg, ReplyGasExit};
 use andromeda_os::kernel::ExecuteMsg as KernelExecuteMsg;
+use andromeda_os::messages::{AMPMsg, AMPPkt, ExecuteMsg as AMPExecuteMsg, ReplyGasExit};
 use common::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     encode_binary,

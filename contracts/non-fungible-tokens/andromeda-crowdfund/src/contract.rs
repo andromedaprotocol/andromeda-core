@@ -3,7 +3,6 @@ use crate::state::{
     PURCHASES, SALE_CONDUCTED, STATE,
 };
 use ado_base::ADOContract;
-use amp::messages::AMPMsg;
 use andromeda_finance::splitter::AMPRecipient as Recipient;
 use andromeda_non_fungible_tokens::{
     crowdfund::{
@@ -11,6 +10,7 @@ use andromeda_non_fungible_tokens::{
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
 };
+use andromeda_os::messages::AMPMsg;
 
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},

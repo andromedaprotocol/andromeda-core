@@ -29,7 +29,6 @@ serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 cw2 = "0.16.0"
 semver = "1"
 
-amp = { version = "0.1.0", path = "../../../packages/amp" }
 andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }
 common = { version = "0.1.0", path = "../../../packages/common" }

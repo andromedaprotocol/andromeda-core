@@ -1,10 +1,10 @@
 use ado_base::state::ADOContract;
-use amp::messages::{AMPMsg, AMPPkt};
 use andromeda_ecosystem::vault::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StrategyAddressResponse, StrategyType,
     BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
 use andromeda_finance::splitter::{generate_msg_native_kernel, AMPRecipient as Recipient};
+use andromeda_os::messages::{AMPMsg, AMPPkt};
 use common::{
     ado_base::{
         operators::IsOperatorResponse, AndromedaMsg, AndromedaQuery,

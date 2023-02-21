@@ -1,8 +1,8 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use amp::messages::{AMPPkt, ReplyGasExit};
 use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg};
+use andromeda_os::messages::{AMPPkt, ReplyGasExit};
 use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 
