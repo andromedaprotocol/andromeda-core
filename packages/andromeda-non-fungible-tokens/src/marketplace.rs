@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -12,6 +13,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     ReceiveNft(Cw721ReceiveMsg),
     /// Transfers NFT to buyer and sends funds to seller
     Buy {

@@ -13,10 +13,12 @@ use andromeda_cw721::mock::{
     mock_send_nft,
 };
 use andromeda_marketplace::mock::{
-    mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg, mock_start_sale,
+    mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
+    mock_receive_packet, mock_start_sale,
 };
 use andromeda_modules::rates::{Rate, RateInfo};
 
+use andromeda_os::messages::{AMPMsg, AMPPkt};
 use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_testing::mock::MockAndromeda;
 use common::ado_base::{modules::Module, recipient::Recipient};
@@ -105,7 +107,8 @@ fn test_marketplace_app() {
         Module::new("rates", rates_component.clone().name, false),
         Module::new("address-list", address_list_component.clone().name, false),
     ];
-    let marketplace_init_msg = mock_marketplace_instantiate_msg(Some(modules));
+    let marketplace_init_msg =
+        mock_marketplace_instantiate_msg(Some(modules), Some(andr.kernel_address.to_string()));
     let marketplace_component = AppComponent::new(
         "4".to_string(),
         "marketplace".to_string(),
@@ -220,11 +223,26 @@ fn test_marketplace_app() {
 
     // Buy Token
     let buy_msg = mock_buy_token(cw721_addr.clone(), token_id);
+    let amp_msg = AMPMsg::new(
+        Addr::unchecked(marketplace_addr.clone()),
+        to_binary(&buy_msg).unwrap(),
+        Some(vec![coin(200, "uandr")]),
+        None,
+        Some(true),
+        None,
+    );
+
+    let packet = AMPPkt::new(
+        buyer.clone(),
+        andr.kernel_address.to_string(),
+        vec![amp_msg],
+    );
+    let receive_packet_msg = mock_receive_packet(packet);
     router
         .execute_contract(
             buyer.clone(),
             Addr::unchecked(marketplace_addr),
-            &buy_msg,
+            &receive_packet_msg,
             &[coin(200, "uandr")],
         )
         .unwrap();
