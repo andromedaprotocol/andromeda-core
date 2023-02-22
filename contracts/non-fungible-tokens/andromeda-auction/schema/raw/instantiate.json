@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "properties": {
+    "kernel_address": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "modules": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Module"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "AndrAddress": {
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "Can be either an address or identifier of an ADO in a app.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Module": {
+      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
+      "type": "object",
+      "required": [
+        "address",
+        "is_mutable",
+        "module_type"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/AndrAddress"
+        },
+        "is_mutable": {
+          "type": "boolean"
+        },
+        "module_type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
