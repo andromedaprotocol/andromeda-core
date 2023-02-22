@@ -2,6 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_os::messages::AMPPkt;
 use common::ado_base::modules::Module;
 use cosmwasm_std::{Addr, Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
@@ -69,4 +70,8 @@ pub fn mock_claim_auction(token_id: String, token_address: String) -> ExecuteMsg
         token_id,
         token_address,
     }
+}
+
+pub fn mock_receive_packet(packet: AMPPkt) -> ExecuteMsg {
+    ExecuteMsg::AMPReceive(packet)
 }
