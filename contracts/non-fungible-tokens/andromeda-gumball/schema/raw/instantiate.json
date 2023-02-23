@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "andromeda_cw721_contract",
+    "randomness_source",
+    "required_coin"
+  ],
+  "properties": {
+    "andromeda_cw721_contract": {
+      "$ref": "#/definitions/AndrAddress"
+    },
+    "kernel_address": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "randomness_source": {
+      "type": "string"
+    },
+    "required_coin": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "AndrAddress": {
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "Can be either an address or identifier of an ADO in a app.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-app-contract",
-  "contract_version": "0.1.0",
+  "contract_version": "0.2.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8,8 +8,8 @@
     "type": "object",
     "required": [
       "app_components",
-      "name",
-      "primitive_contract"
+      "kernel_address",
+      "name"
     ],
     "properties": {
       "app_components": {
@@ -18,20 +18,11 @@
           "$ref": "#/definitions/AppComponent"
         }
       },
+      "kernel_address": {
+        "type": "string"
+      },
       "name": {
         "type": "string"
-      },
-      "primitive_contract": {
-        "type": "string"
-      },
-      "target_ados": {
-        "type": [
-          "array",
-          "null"
-        ],
-        "items": {
-          "type": "string"
-        }
       }
     },
     "additionalProperties": false,
@@ -115,19 +106,6 @@
                 ]
               }
             },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "fire"
-        ],
-        "properties": {
-          "fire": {
-            "type": "object",
             "additionalProperties": false
           }
         },
@@ -767,6 +745,19 @@
           {
             "type": "object",
             "required": [
+              "kernel_address"
+            ],
+            "properties": {
+              "kernel_address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
               "original_publisher"
             ],
             "properties": {
@@ -929,6 +920,19 @@
           ],
           "properties": {
             "type": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kernel_address"
+          ],
+          "properties": {
+            "kernel_address": {
               "type": "object",
               "additionalProperties": false
             }

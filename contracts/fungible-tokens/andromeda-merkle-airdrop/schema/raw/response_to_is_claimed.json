@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IsClaimedResponse",
+  "type": "object",
+  "required": [
+    "is_claimed"
+  ],
+  "properties": {
+    "is_claimed": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

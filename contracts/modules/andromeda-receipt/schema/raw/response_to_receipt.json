@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReceiptResponse",
+  "type": "object",
+  "required": [
+    "receipt"
+  ],
+  "properties": {
+    "receipt": {
+      "$ref": "#/definitions/Receipt"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Attribute": {
+      "description": "An key value pair that is used in the context of event attributes in logs",
+      "type": "object",
+      "required": [
+        "key",
+        "value"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "Event": {
+      "description": "A full [*Cosmos SDK* event].\n\nThis version uses string attributes (similar to [*Cosmos SDK* StringEvent]), which then get magically converted to bytes for Tendermint somewhere between the Rust-Go interface, JSON deserialization and the `NewEvent` call in Cosmos SDK.\n\n[*Cosmos SDK* event]: https://docs.cosmos.network/main/core/events.html [*Cosmos SDK* StringEvent]: https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/base/abci/v1beta1/abci.proto#L56-L70",
+      "type": "object",
+      "required": [
+        "attributes",
+        "type"
+      ],
+      "properties": {
+        "attributes": {
+          "description": "The attributes to be included in the event.\n\nYou can learn more about these from [*Cosmos SDK* docs].\n\n[*Cosmos SDK* docs]: https://docs.cosmos.network/main/core/events.html",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "type": {
+          "description": "The event type. This is renamed to \"ty\" because \"type\" is reserved in Rust. This sucks, we know.",
+          "type": "string"
+        }
+      }
+    },
+    "Receipt": {
+      "description": "A struct representation of a receipt. Contains a vector of CosmWasm [Event](https://docs.rs/cosmwasm-std/0.16.0/cosmwasm_std/struct.Event.html) structs.",
+      "type": "object",
+      "required": [
+        "events"
+      ],
+      "properties": {
+        "events": {
+          "description": "A vector of CosmWasm [Event](https://docs.rs/cosmwasm-std/0.16.0/cosmwasm_std/struct.Event.html) structs related to the receipt",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Event"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -21,6 +21,12 @@
         "description": "Whether or not multi-batching has been enabled.",
         "type": "boolean"
       },
+      "kernel_address": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "recipient": {
         "description": "The recipient of all funds locked in this contract.",
         "allOf": [
@@ -984,6 +990,19 @@
           {
             "type": "object",
             "required": [
+              "kernel_address"
+            ],
+            "properties": {
+              "kernel_address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
               "original_publisher"
             ],
             "properties": {
@@ -1146,6 +1165,19 @@
           ],
           "properties": {
             "type": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kernel_address"
+          ],
+          "properties": {
+            "kernel_address": {
               "type": "object",
               "additionalProperties": false
             }

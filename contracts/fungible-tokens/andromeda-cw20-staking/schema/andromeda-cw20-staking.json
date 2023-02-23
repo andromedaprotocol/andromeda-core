@@ -20,6 +20,12 @@
           "$ref": "#/definitions/RewardTokenUnchecked"
         }
       },
+      "kernel_address": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "staking_token": {
         "description": "The cw20 token that can be staked.",
         "allOf": [
@@ -1009,6 +1015,19 @@
           {
             "type": "object",
             "required": [
+              "kernel_address"
+            ],
+            "properties": {
+              "kernel_address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
               "original_publisher"
             ],
             "properties": {
@@ -1171,6 +1190,19 @@
           ],
           "properties": {
             "type": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kernel_address"
+          ],
+          "properties": {
+            "kernel_address": {
               "type": "object",
               "additionalProperties": false
             }

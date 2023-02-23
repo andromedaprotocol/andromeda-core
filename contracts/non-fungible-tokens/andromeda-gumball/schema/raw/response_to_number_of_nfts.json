@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NumberOfNftsResponse",
+  "type": "object",
+  "required": [
+    "number"
+  ],
+  "properties": {
+    "number": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

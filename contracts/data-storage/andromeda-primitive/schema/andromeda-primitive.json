@@ -6,6 +6,14 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
+    "properties": {
+      "kernel_address": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
     "additionalProperties": false
   },
   "execute": {
@@ -663,6 +671,19 @@
           {
             "type": "object",
             "required": [
+              "kernel_address"
+            ],
+            "properties": {
+              "kernel_address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
               "original_publisher"
             ],
             "properties": {
@@ -825,6 +846,19 @@
           ],
           "properties": {
             "type": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kernel_address"
+          ],
+          "properties": {
+            "kernel_address": {
               "type": "object",
               "additionalProperties": false
             }

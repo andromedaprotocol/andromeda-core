@@ -12,6 +12,12 @@
       "swapper_impl"
     ],
     "properties": {
+      "kernel_address": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "primitive_contract": {
         "type": "string"
       },
@@ -751,6 +757,19 @@
           {
             "type": "object",
             "required": [
+              "kernel_address"
+            ],
+            "properties": {
+              "kernel_address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
               "original_publisher"
             ],
             "properties": {
@@ -913,6 +932,19 @@
           ],
           "properties": {
             "type": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kernel_address"
+          ],
+          "properties": {
+            "kernel_address": {
               "type": "object",
               "additionalProperties": false
             }

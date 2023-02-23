@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-crowdfund",
-  "contract_version": "0.1.0",
+  "contract_version": "0.2.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13,6 +13,12 @@
     "properties": {
       "can_mint_after_sale": {
         "type": "boolean"
+      },
+      "kernel_address": {
+        "type": [
+          "string",
+          "null"
+        ]
       },
       "modules": {
         "type": [
@@ -150,7 +156,7 @@
                 "description": "The recipient of the funds if the sale met the minimum sold.",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Recipient"
+                    "$ref": "#/definitions/AMPRecipient"
                   }
                 ]
               }
@@ -273,6 +279,35 @@
           }
         },
         "additionalProperties": false
+      },
+      "AMPRecipient": {
+        "oneOf": [
+          {
+            "description": "An address that is not another ADO. It is assumed that it is a valid address.",
+            "type": "object",
+            "required": [
+              "addr"
+            ],
+            "properties": {
+              "addr": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "a_d_o"
+            ],
+            "properties": {
+              "a_d_o": {
+                "$ref": "#/definitions/ADORecipient"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
       },
       "AndrAddress": {
         "type": "object",
@@ -1001,6 +1036,19 @@
           {
             "type": "object",
             "required": [
+              "kernel_address"
+            ],
+            "properties": {
+              "kernel_address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
               "original_publisher"
             ],
             "properties": {
@@ -1163,6 +1211,19 @@
           ],
           "properties": {
             "type": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kernel_address"
+          ],
+          "properties": {
+            "kernel_address": {
               "type": "object",
               "additionalProperties": false
             }
@@ -1400,7 +1461,7 @@
           "description": "The recipient of the raised funds if the sale is successful.",
           "allOf": [
             {
-              "$ref": "#/definitions/Recipient"
+              "$ref": "#/definitions/AMPRecipient"
             }
           ]
         }
@@ -1408,7 +1469,6 @@
       "additionalProperties": false,
       "definitions": {
         "ADORecipient": {
-          "description": "ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message",
           "type": "object",
           "required": [
             "address"
@@ -1416,11 +1476,7 @@
           "properties": {
             "address": {
               "description": "Addr can also be a human-readable identifier used in a app contract.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/AndrAddress"
-                }
-              ]
+              "type": "string"
             },
             "msg": {
               "anyOf": [
@@ -1435,18 +1491,34 @@
           },
           "additionalProperties": false
         },
-        "AndrAddress": {
-          "type": "object",
-          "required": [
-            "identifier"
-          ],
-          "properties": {
-            "identifier": {
-              "description": "Can be either an address or identifier of an ADO in a app.",
-              "type": "string"
+        "AMPRecipient": {
+          "oneOf": [
+            {
+              "description": "An address that is not another ADO. It is assumed that it is a valid address.",
+              "type": "object",
+              "required": [
+                "addr"
+              ],
+              "properties": {
+                "addr": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "a_d_o"
+              ],
+              "properties": {
+                "a_d_o": {
+                  "$ref": "#/definitions/ADORecipient"
+                }
+              },
+              "additionalProperties": false
             }
-          },
-          "additionalProperties": false
+          ]
         },
         "Binary": {
           "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
@@ -1508,35 +1580,6 @@
                 "never": {
                   "type": "object",
                   "additionalProperties": false
-                }
-              },
-              "additionalProperties": false
-            }
-          ]
-        },
-        "Recipient": {
-          "oneOf": [
-            {
-              "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-              "type": "object",
-              "required": [
-                "addr"
-              ],
-              "properties": {
-                "addr": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "required": [
-                "a_d_o"
-              ],
-              "properties": {
-                "a_d_o": {
-                  "$ref": "#/definitions/ADORecipient"
                 }
               },
               "additionalProperties": false

@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "recipients"
+  ],
+  "properties": {
+    "kernel_address": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lock_time": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "modules": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Module"
+      }
+    },
+    "recipients": {
+      "description": "The vector of recipients for the contract. Anytime a `Send` execute message is sent the amount sent will be divided amongst these recipients depending on their assigned percentage.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AddressPercent"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ADORecipient": {
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "description": "Addr can also be a human-readable identifier used in a app contract.",
+          "type": "string"
+        },
+        "msg": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AMPRecipient": {
+      "oneOf": [
+        {
+          "description": "An address that is not another ADO. It is assumed that it is a valid address.",
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "a_d_o"
+          ],
+          "properties": {
+            "a_d_o": {
+              "$ref": "#/definitions/ADORecipient"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "AddressPercent": {
+      "type": "object",
+      "required": [
+        "percent",
+        "recipient"
+      ],
+      "properties": {
+        "percent": {
+          "$ref": "#/definitions/Decimal"
+        },
+        "recipient": {
+          "$ref": "#/definitions/AMPRecipient"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AndrAddress": {
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "Can be either an address or identifier of an ADO in a app.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
+    "Module": {
+      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
+      "type": "object",
+      "required": [
+        "address",
+        "is_mutable",
+        "module_type"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/AndrAddress"
+        },
+        "is_mutable": {
+          "type": "boolean"
+        },
+        "module_type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
