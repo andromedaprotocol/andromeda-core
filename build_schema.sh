@@ -30,3 +30,7 @@ done
 for c in contracts/non-fungible-tokens/*; do
     (cd $c && cargo schema)
 done
+
+for c in contracts/os/*; do
+    (cd $c && cargo schema)
+done
