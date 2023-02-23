@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     withdraw::WithdrawalType,
@@ -22,6 +23,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     /// Claim the number of batches specified starting from the beginning. If not
     /// specified then the max will be claimed.
     Claim {

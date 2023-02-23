@@ -130,13 +130,13 @@ pub fn execute(
     )?;
 
     match msg {
+        ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
+        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
         ExecuteMsg::UpdateRecipients { recipients } => {
             execute_update_recipients(deps, env, info, recipients)
         }
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
         ExecuteMsg::Send { reply_gas, packet } => execute_send(deps, env, info, reply_gas, packet),
-        ExecuteMsg::AndrReceive(msg) => execute_andromeda(deps, env, info, msg),
-        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
     }
 }
 

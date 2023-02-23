@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-merkle-airdrop"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["AndrewPochapsky <andrew.pochapsky@gmail.com>"]
 edition = "2018"
 
@@ -36,6 +36,7 @@ hex = "0.4"
 sha2 = { version = "0.9.5", default-features = false }
 cw-asset = "2.0.0"
 
+andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
 andromeda-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-fungible-tokens" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }

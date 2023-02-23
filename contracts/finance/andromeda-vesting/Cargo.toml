@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-vesting"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["AndrewPochapsky <andrew.pochapsky@gmail.com>"]
 edition = "2018"
 
@@ -32,6 +32,7 @@ cw-utils = "0.16.0"
 cw-asset = "2.0.0"
 semver = "1"
 
+andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
 andromeda-finance = { version = "0.1.0", path = "../../../packages/andromeda-finance" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }

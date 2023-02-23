@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-wrapped-cw721"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -22,6 +22,7 @@ cw721-base = { version = "0.16.0", features = ["library"] }
 cw2 = "0.16.0"
 semver = "1"
 
+andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-non-fungible-tokens" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["instantiate"] }

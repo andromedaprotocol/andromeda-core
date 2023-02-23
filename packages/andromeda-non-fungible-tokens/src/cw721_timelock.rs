@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw721::Cw721ReceiveMsg;
@@ -11,6 +12,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     /// Transfers the given token to the recipient once the time lock has expired.
     Claim {
         lock_id: String,

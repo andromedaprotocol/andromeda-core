@@ -6,6 +6,14 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
+    "properties": {
+      "kernel_address": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
     "additionalProperties": false
   },
   "execute": {
@@ -490,6 +498,29 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "a_d_o_type"
+        ],
+        "properties": {
+          "a_d_o_type": {
+            "type": "object",
+            "required": [
+              "code_id"
+            ],
+            "properties": {
+              "code_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -547,6 +578,19 @@
             ],
             "properties": {
               "type": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "kernel_address"
+            ],
+            "properties": {
+              "kernel_address": {
                 "type": "object",
                 "additionalProperties": false
               }
@@ -662,6 +706,14 @@
   "migrate": null,
   "sudo": null,
   "responses": {
+    "a_d_o_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Nullable_String",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "andr_query": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AndromedaQuery",
@@ -718,6 +770,19 @@
           ],
           "properties": {
             "type": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kernel_address"
+          ],
+          "properties": {
+            "kernel_address": {
               "type": "object",
               "additionalProperties": false
             }

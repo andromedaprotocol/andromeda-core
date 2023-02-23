@@ -1,4 +1,5 @@
 use crate::cw721::TokenExtension;
+use andromeda_os::messages::AMPPkt;
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
@@ -17,6 +18,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     Mint(Vec<GumballMintMsg>),
     Buy {},
     UpdateRequiredCoin {

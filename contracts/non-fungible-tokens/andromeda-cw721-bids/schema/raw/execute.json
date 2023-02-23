@@ -17,6 +17,18 @@
     {
       "type": "object",
       "required": [
+        "a_m_p_receive"
+      ],
+      "properties": {
+        "a_m_p_receive": {
+          "$ref": "#/definitions/AMPPkt"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "place_bid"
       ],
       "properties": {
@@ -116,6 +128,87 @@
               "type": "null"
             }
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AMPMsg": {
+      "description": "This struct defines how the kernel parses and relays messages between ADOs It contains a simple recipient string which may use our namespacing implementation or a simple contract address If the desired recipient is via IBC then namespacing must be employed The attached message must be a binary encoded execute message for the receiving ADO Funds can be attached for an individual message and will be attached accordingly",
+      "type": "object",
+      "required": [
+        "exit_at_error",
+        "funds",
+        "message",
+        "recipient",
+        "reply_on"
+      ],
+      "properties": {
+        "exit_at_error": {
+          "description": "Determines whether the operation should terminate or proceed upon a failed message",
+          "type": "boolean"
+        },
+        "funds": {
+          "description": "Any funds to be attached to the message, defaults to an empty vector",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
+        },
+        "gas_limit": {
+          "description": "An optional imposed gas limit for the message",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "message": {
+          "description": "The message to be sent to the recipient",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "recipient": {
+          "description": "The message recipient, can be a contract/wallet address or a namespaced URI",
+          "type": "string"
+        },
+        "reply_on": {
+          "description": "When the message should reply, defaults to Always",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ReplyOn"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AMPPkt": {
+      "description": "An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating It contains an original sender, if used for authorisation the sender must be authorised The previous sender is the one who sent the message A packet may contain several messages which allows for message batching",
+      "type": "object",
+      "required": [
+        "messages",
+        "origin",
+        "previous_sender"
+      ],
+      "properties": {
+        "messages": {
+          "description": "Any messages associated with the packet",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AMPMsg"
+          }
+        },
+        "origin": {
+          "description": "The original sender of the packet, immutable, can be retrieved with `AMPPkt.get_origin`",
+          "type": "string"
+        },
+        "previous_sender": {
+          "description": "The previous sender of the packet, immutable, can be retrieved with `AMPPkt.get_previous_sender`",
+          "type": "string"
         }
       },
       "additionalProperties": false
@@ -378,6 +471,21 @@
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
     },
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
     "Decimal": {
       "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
       "type": "string"
@@ -476,6 +584,39 @@
             }
           },
           "additionalProperties": false
+        }
+      ]
+    },
+    "ReplyOn": {
+      "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",
+      "oneOf": [
+        {
+          "description": "Always perform a callback after SubMsg is processed",
+          "type": "string",
+          "enum": [
+            "always"
+          ]
+        },
+        {
+          "description": "Only callback if SubMsg returned an error, no callback on success case",
+          "type": "string",
+          "enum": [
+            "error"
+          ]
+        },
+        {
+          "description": "Only callback if SubMsg was successful, no callback on error case",
+          "type": "string",
+          "enum": [
+            "success"
+          ]
+        },
+        {
+          "description": "Never make a callback - this is like the original CosmosMsg semantics",
+          "type": "string",
+          "enum": [
+            "never"
+          ]
         }
       ]
     },

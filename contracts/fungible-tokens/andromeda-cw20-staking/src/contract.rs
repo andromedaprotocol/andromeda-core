@@ -1,8 +1,12 @@
+use andromeda_os::{
+    messages::{AMPMsg, AMPPkt},
+    recipient::generate_msg_native_kernel,
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_binary, Addr, Api, Attribute, Binary, CosmosMsg, Decimal, Decimal256, Deps,
-    DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, StdError, Storage, Uint128,
+    attr, ensure, from_binary, Addr, Api, Attribute, Binary, Coin, CosmosMsg, Decimal, Decimal256,
+    Deps, DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, StdError, Storage, Uint128,
     Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -105,10 +109,12 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::AndrReceive(msg) => {
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
+        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
+        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
+
         ExecuteMsg::AddRewardToken { reward_token } => {
             execute_add_reward_token(deps, env, info, reward_token)
         }
@@ -137,6 +143,124 @@ pub fn execute(
         ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(deps, env, info, amount),
         ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
     }
+}
+
+pub struct ExecuteEnv<'a> {
+    deps: DepsMut<'a>,
+    pub env: Env,
+    pub info: MessageInfo,
+}
+
+fn handle_amp_packet(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    packet: AMPPkt,
+) -> Result<Response, ContractError> {
+    let mut res = Response::default();
+
+    // Get kernel address
+    let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+
+    // Original packet sender
+    let origin = packet.get_origin();
+
+    // This contract will become the previous sender after sending the message back to the kernel
+    let previous_sender = env.clone().contract.address;
+
+    let execute_env = ExecuteEnv { deps, env, info };
+
+    let msg_opt = packet.messages.first();
+
+    if let Some(msg) = msg_opt {
+        let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
+        let funds = msg.funds.to_vec();
+        let mut exec_info = execute_env.info.clone();
+        exec_info.funds = funds.clone();
+
+        if msg.exit_at_error {
+            let env = execute_env.env.clone();
+            let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
+
+            if packet.messages.len() > 1 {
+                let adjusted_messages: Vec<AMPMsg> =
+                    packet.messages.iter().skip(1).cloned().collect();
+
+                let unused_funds: Vec<Coin> = adjusted_messages
+                    .iter()
+                    .flat_map(|msg| msg.funds.iter().cloned())
+                    .collect();
+
+                let kernel_message = generate_msg_native_kernel(
+                    unused_funds,
+                    origin,
+                    previous_sender.to_string(),
+                    adjusted_messages,
+                    kernel_address.into_string(),
+                )?;
+
+                exec_res.messages.push(kernel_message);
+            }
+
+            res = res
+                .add_attributes(exec_res.attributes)
+                .add_submessages(exec_res.messages)
+                .add_events(exec_res.events);
+        } else {
+            match execute(
+                execute_env.deps,
+                execute_env.env.clone(),
+                exec_info,
+                exec_msg,
+            ) {
+                Ok(mut exec_res) => {
+                    if packet.messages.len() > 1 {
+                        let adjusted_messages: Vec<AMPMsg> =
+                            packet.messages.iter().skip(1).cloned().collect();
+
+                        let unused_funds: Vec<Coin> = adjusted_messages
+                            .iter()
+                            .flat_map(|msg| msg.funds.iter().cloned())
+                            .collect();
+
+                        let kernel_message = generate_msg_native_kernel(
+                            unused_funds,
+                            origin,
+                            previous_sender.to_string(),
+                            adjusted_messages,
+                            kernel_address.into_string(),
+                        )?;
+
+                        exec_res.messages.push(kernel_message);
+                    }
+
+                    res = res
+                        .add_attributes(exec_res.attributes)
+                        .add_submessages(exec_res.messages)
+                        .add_events(exec_res.events);
+                }
+                Err(_) => {
+                    // There's an error, but the user opted for the operation to proceed
+                    // No funds are used in the event of an error
+                    if packet.messages.len() > 1 {
+                        let adjusted_messages: Vec<AMPMsg> =
+                            packet.messages.iter().skip(1).cloned().collect();
+
+                        let kernel_message = generate_msg_native_kernel(
+                            funds,
+                            origin,
+                            previous_sender.to_string(),
+                            adjusted_messages,
+                            kernel_address.into_string(),
+                        )?;
+                        res = res.add_submessage(kernel_message);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(res)
 }
 
 fn receive_cw20(

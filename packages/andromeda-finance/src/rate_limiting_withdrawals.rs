@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Timestamp, Uint128};
@@ -50,9 +51,10 @@ pub enum MinimumFrequency {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     Deposit { recipient: Option<String> },
     Withdraw { amount: Uint128 },
-    AndrReceive(AndromedaMsg),
 }
 
 #[cw_serde]

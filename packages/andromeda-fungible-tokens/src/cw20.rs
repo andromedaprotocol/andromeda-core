@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Uint128};
@@ -38,6 +39,8 @@ impl From<InstantiateMsg> for Cw20InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     /// Transfer is a base message to move tokens to another account without triggering actions
     Transfer {
         recipient: String,
@@ -109,7 +112,6 @@ pub enum ExecuteMsg {
     },
     /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
     UploadLogo(Logo),
-    AndrReceive(AndromedaMsg),
 }
 
 impl From<ExecuteMsg> for Cw20ExecuteMsg {

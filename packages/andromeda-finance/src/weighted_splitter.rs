@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -32,6 +33,8 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     UpdateRecipients {
         recipients: Vec<AddressWeight>,
@@ -54,7 +57,6 @@ pub enum ExecuteMsg {
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {},
-    AndrReceive(AndromedaMsg),
 }
 
 #[cw_serde]

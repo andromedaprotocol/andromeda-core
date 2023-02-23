@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
@@ -23,8 +24,9 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Receive(Cw20ReceiveMsg),
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
+    Receive(Cw20ReceiveMsg),
     /// Add `reward_token` as another reward token. Owner only.
     AddRewardToken {
         reward_token: RewardTokenUnchecked,

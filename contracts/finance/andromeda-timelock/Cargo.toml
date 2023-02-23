@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-timelock"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -21,6 +21,7 @@ semver = "1"
 andromeda-finance = { version = "0.1.0", path = "../../../packages/andromeda-finance" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["modules"] }
+andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
 
 [dev-dependencies]
 

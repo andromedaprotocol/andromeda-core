@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::{
     ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
@@ -79,6 +80,7 @@ impl CustomMsg for QueryMsg {}
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     /// Mints a token
     Mint(Box<MintMsg<TokenExtension>>),
     /// Transfers ownership of a token

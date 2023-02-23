@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-cw721"
-version = "0.1.1"
+version = "0.2.1"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2018"
 
@@ -33,6 +33,7 @@ cw721 = "0.16.0"
 cw2 = "0.16.0"
 semver = "1"
 
+andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-non-fungible-tokens" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["modules"] }

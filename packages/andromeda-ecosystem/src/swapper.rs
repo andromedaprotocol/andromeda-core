@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::{
     ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
@@ -62,6 +63,7 @@ pub struct InstantiateInfo {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     Receive(Cw20ReceiveMsg),
     Swap {
         ask_asset_info: AssetInfo,

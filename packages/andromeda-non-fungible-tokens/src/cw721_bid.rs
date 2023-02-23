@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Event, SubMsg, Uint128};
@@ -38,7 +39,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-
+    AMPReceive(AMPPkt),
     PlaceBid {
         token_id: String,
         expiration: Expiration,

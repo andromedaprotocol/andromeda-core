@@ -1,5 +1,5 @@
 use crate::cw721::TokenExtension;
-use andromeda_os::recipient::AMPRecipient as Recipient;
+use andromeda_os::{messages::AMPPkt, recipient::AMPRecipient as Recipient};
 use common::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     app::AndrAddress,
@@ -19,6 +19,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     /// Mints a new token to be sold in a future sale. Only possible when the sale is not ongoing.
     Mint(Vec<CrowdfundMintMsg>),
     /// Starts the sale if one is not already ongoing.

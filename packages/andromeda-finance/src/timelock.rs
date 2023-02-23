@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
 use cw_utils::Expiration;
@@ -128,6 +129,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
     /// Hold funds in Escrow
     HoldFunds {
         condition: Option<EscrowCondition>,

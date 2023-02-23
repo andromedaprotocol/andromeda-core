@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-lockdrop"
-version = "1.0.0"
+version = "1.2.0"
 edition = "2018"
 
 exclude = [
@@ -32,6 +32,7 @@ cw-utils = "0.16.0"
 schemars = "0.8.10"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 
+andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
 andromeda-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-fungible-tokens" }
 common = { version = "0.1.0", path = "../../../packages/common" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0" }

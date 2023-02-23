@@ -77,6 +77,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AndrReceive(msg) => execute_andr_receive(deps, env, info, msg),
+        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
         ExecuteMsg::Deposit {
             recipient,
             amount,
@@ -90,7 +91,6 @@ pub fn execute(
         ExecuteMsg::UpdateStrategy { strategy, address } => {
             execute_update_strategy(deps, env, info, strategy, address)
         }
-        ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
     }
 }
 

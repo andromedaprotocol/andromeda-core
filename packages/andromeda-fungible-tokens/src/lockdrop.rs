@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Decimal;
@@ -23,8 +24,9 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Receive(Cw20ReceiveMsg),
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
+    Receive(Cw20ReceiveMsg),
     /// Function to deposit native fund in the contract in exchange for recieving a proportion of the
     /// TOKEN.
     DepositNative {},

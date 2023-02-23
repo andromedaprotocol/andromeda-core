@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPPkt;
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw721::Cw721ReceiveMsg;
@@ -29,8 +30,9 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    ReceiveNft(Cw721ReceiveMsg),
     AndrReceive(AndromedaMsg),
+    AMPReceive(AMPPkt),
+    ReceiveNft(Cw721ReceiveMsg),
 }
 
 #[cw_serde]
