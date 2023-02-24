@@ -1,6 +1,7 @@
 use cosmwasm_std::{OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
+use cw_pause_once::PauseError;
 use cw_utils::{Expiration, ParseReplyError, PaymentError};
 
 use hex::FromHexError;
@@ -18,10 +19,13 @@ pub enum ContractError {
     Hex(#[from] FromHexError),
 
     #[error("{0}")]
-    ParseReply(#[from] ParseReplyError),
+    Payment(#[from] PaymentError),
 
     #[error("{0}")]
-    Payment(#[from] PaymentError),
+    PauseError(#[from] PauseError),
+
+    #[error("{0}")]
+    ParseReplyError(#[from] ParseReplyError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -49,6 +53,36 @@ pub enum ContractError {
 
     #[error("ProcessNotFound")]
     ProcessNotFound {},
+
+    #[error("only unordered channels are supported")]
+    OrderedChannel {},
+
+    #[error("invalid IBC channel version - got ({actual}), expected ({expected})")]
+    InvalidVersion { actual: String, expected: String },
+
+    #[error("tokenId list has different length than tokenUri list")]
+    TokenInfoLenMissmatch {},
+
+    #[error("ICS 721 channels may not be closed")]
+    CantCloseChannel {},
+
+    #[error("Paused")]
+    Paused {},
+
+    #[error("EmptyOptional")]
+    EmptyOptional {},
+
+    #[error("EmptyOptional")]
+    EmptyClassId {},
+
+    #[error("NoTokens")]
+    NoTokens {},
+
+    #[error("UnrecognisedReplyId")]
+    UnrecognisedReplyId {},
+
+    #[error("ImbalancedTokenInfo")]
+    ImbalancedTokenInfo {},
 
     #[error("UnsupportedNFT")]
     UnsupportedNFT {},
@@ -572,4 +606,13 @@ impl From<OverflowError> for ContractError {
     fn from(_err: OverflowError) -> Self {
         ContractError::Overflow {}
     }
+}
+
+/// Enum that can never be constructed. Used as an error type where we
+/// can not error.
+#[derive(Error, Debug)]
+pub enum Never {}
+
+pub fn from_semver(err: semver::Error) -> StdError {
+    StdError::generic_err(format!("Semver: {err}"))
 }

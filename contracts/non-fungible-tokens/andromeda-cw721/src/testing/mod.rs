@@ -945,7 +945,7 @@ fn test_batch_mint() {
             owner: owner.to_string(),
             token_uri: None,
             extension: TokenExtension {
-                name: format!("Token {}", i),
+                name: format!("Token {i}"),
                 publisher: owner.to_string(),
                 description: None,
                 attributes: vec![],

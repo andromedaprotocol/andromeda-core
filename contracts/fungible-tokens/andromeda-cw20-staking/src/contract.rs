@@ -2,8 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, from_binary, Addr, Api, Attribute, Binary, CosmosMsg, Decimal, Decimal256, Deps,
-    DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, StdError, Storage, Uint128,
-    Uint256,
+    DepsMut, Env, MessageInfo, Order, QuerierWrapper, Response, Storage, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -22,7 +21,11 @@ use andromeda_fungible_tokens::cw20_staking::{
     Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardToken,
     RewardTokenUnchecked, RewardType, StakerResponse, State,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
+};
 use cw_utils::nonpayable;
 use semver::Version;
 
@@ -717,8 +720,4 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }

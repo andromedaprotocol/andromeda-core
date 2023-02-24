@@ -9,15 +9,15 @@ use andromeda_non_fungible_tokens::auction::{
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     expiration::{expiration_from_milliseconds, MILLISECONDS_TO_NANOSECONDS_RATIO},
     rates::get_tax_amount,
     Funds, OrderBy,
 };
 use cosmwasm_std::{
     attr, coins, ensure, entry_point, from_binary, Addr, Api, BankMsg, Binary, BlockInfo, Coin,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError,
-    Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, Storage,
+    SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, Expiration, OwnerOfResponse};
@@ -324,14 +324,14 @@ fn execute_place_bid(
     ensure!(
         payment.denom == coin_denom && payment.amount > Uint128::zero(),
         ContractError::InvalidFunds {
-            msg: format!("No {} assets are provided to auction", coin_denom),
+            msg: format!("No {coin_denom} assets are provided to auction"),
         }
     );
     let min_bid = token_auction_state.min_bid.unwrap_or(Uint128::zero());
     ensure!(
         payment.amount >= min_bid,
         ContractError::InvalidFunds {
-            msg: format!("Must provide at least {} {} to bid", min_bid, coin_denom)
+            msg: format!("Must provide at least {min_bid} {coin_denom} to bid")
         }
     );
     ensure!(
@@ -726,10 +726,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg(test)]

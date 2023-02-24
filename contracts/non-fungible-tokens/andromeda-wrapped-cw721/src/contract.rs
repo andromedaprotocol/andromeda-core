@@ -10,8 +10,11 @@ use andromeda_non_fungible_tokens::{
     },
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError, response::get_reply_address,
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    app::AndrAddress,
+    encode_binary,
+    error::{from_semver, ContractError},
+    response::get_reply_address,
 };
 use cosmwasm_std::{
     ensure, entry_point, from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo,
@@ -285,10 +288,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {}", err))
 }
 
 #[cfg(test)]
