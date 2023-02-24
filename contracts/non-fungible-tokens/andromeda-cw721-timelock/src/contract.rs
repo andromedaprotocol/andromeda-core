@@ -63,7 +63,6 @@ pub fn execute(
             ADOContract::default().execute(deps, env, info, msg, execute)
         }
         ExecuteMsg::AMPReceive(pkt) => handle_amp_packet(deps, env, info, pkt),
-
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(deps, env, info, msg),
         ExecuteMsg::Claim { lock_id } => execute_claim(deps, env, info, lock_id),
     }

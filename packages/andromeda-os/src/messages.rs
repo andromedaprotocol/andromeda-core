@@ -1,7 +1,9 @@
+use crate::adodb::QueryMsg as ADODBQueryMsg;
 use common::error::ContractError;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, Coin, CosmosMsg, QuerierWrapper, ReplyOn, SubMsg, WasmMsg,
+    to_binary, Addr, Api, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, QuerierWrapper,
+    QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
 
 #[cw_serde]
@@ -182,20 +184,55 @@ impl AMPPkt {
             .filter(|msg| msg.recipient == recipient.clone())
             .collect()
     }
-    // pub fn verify_origin(
-    //     &self,
-    //     sender: &str,
-    //     kernel_address: &str,
-    //     origin: &str,
-    // ) -> Result<(), ContractError> {
-    //     todo!()
-    // }
+    pub fn verify_origin(
+        &self,
+        sender: &str,
+        kernel_address: &str,
+        adodb_address: &str,
+        origin: &str,
+        deps: Deps,
+    ) -> Result<(), ContractError> {
+        if sender == origin || sender == kernel_address {
+            Ok(())
+        } else {
+            // Get the sender's Code ID
+            let contract_info: ContractInfoResponse =
+                deps.querier
+                    .query(&QueryRequest::Wasm(WasmQuery::ContractInfo {
+                        contract_addr: sender.to_owned(),
+                    }))?;
 
-    // pub fn get_verified_origin(
-    //     &self,
-    //     sender: &str,
-    //     kernel_address: &str,
-    // ) -> Result<String, ContractError> {
-    //     todo!()
-    // }
+            let sender_code_id = contract_info.code_id;
+
+            // We query the ADO type in the adodb, it will return an error if the sender's Code ID doesn't exist.
+            let verify: Option<String> =
+                deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                    contract_addr: adodb_address.to_owned(),
+                    msg: to_binary(&ADODBQueryMsg::ADOType {
+                        code_id: sender_code_id,
+                    })?,
+                }))?;
+
+            if verify.is_some() {
+                Ok(())
+            } else {
+                Err(ContractError::Unauthorized {})
+            }
+        }
+    }
+
+    pub fn get_verified_origin(
+        &self,
+        sender: &str,
+        kernel_address: &str,
+        adodb_address: &str,
+        deps: Deps,
+    ) -> Result<String, ContractError> {
+        let origin = self.get_origin();
+        let res = self.verify_origin(sender, kernel_address, adodb_address, origin.as_str(), deps);
+        match res {
+            Ok(_) => Ok(origin),
+            Err(err) => Err(err),
+        }
+    }
 }
