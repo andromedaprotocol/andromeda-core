@@ -1,4 +1,5 @@
 use crate::adodb::QueryMsg as ADODBQueryMsg;
+use crate::kernel::QueryMsg as KernelQueryMsg;
 use common::error::ContractError;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
@@ -15,6 +16,7 @@ pub enum ExecuteMsg {
 pub enum VFSQueryMsg {
     ResolvePath { path: String },
 }
+pub const ADO_DB_KEY: &str = "adodb";
 
 #[cw_serde]
 /// This struct defines how the kernel parses and relays messages between ADOs
@@ -188,13 +190,20 @@ impl AMPPkt {
         &self,
         sender: &str,
         kernel_address: &str,
-        adodb_address: &str,
         origin: &str,
         deps: Deps,
     ) -> Result<(), ContractError> {
         if sender == origin || sender == kernel_address {
             Ok(())
         } else {
+            let adodb_address: Addr =
+                deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                    contract_addr: kernel_address.to_string(),
+                    msg: to_binary(&KernelQueryMsg::KeyAddress {
+                        key: ADO_DB_KEY.to_string(),
+                    })?,
+                }))?;
+
             // Get the sender's Code ID
             let contract_info: ContractInfoResponse =
                 deps.querier
@@ -207,7 +216,7 @@ impl AMPPkt {
             // We query the ADO type in the adodb, it will return an error if the sender's Code ID doesn't exist.
             let verify: Option<String> =
                 deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-                    contract_addr: adodb_address.to_owned(),
+                    contract_addr: adodb_address.to_string(),
                     msg: to_binary(&ADODBQueryMsg::ADOType {
                         code_id: sender_code_id,
                     })?,
@@ -225,11 +234,10 @@ impl AMPPkt {
         &self,
         sender: &str,
         kernel_address: &str,
-        adodb_address: &str,
         deps: Deps,
     ) -> Result<String, ContractError> {
         let origin = self.get_origin();
-        let res = self.verify_origin(sender, kernel_address, adodb_address, origin.as_str(), deps);
+        let res = self.verify_origin(sender, kernel_address, origin.as_str(), deps);
         match res {
             Ok(_) => Ok(origin),
             Err(err) => Err(err),
