@@ -26,7 +26,10 @@ use andromeda_fungible_tokens::cw20_staking::{
     Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardToken,
     RewardTokenUnchecked, RewardType, StakerResponse, State,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg, app::GetAddress, encode_binary,
+    error::ContractError,
+};
 use cw_utils::nonpayable;
 use semver::Version;
 
@@ -49,8 +52,8 @@ pub fn instantiate(
                 max: MAX_REWARD_TOKENS,
             }
         );
-        let staking_token = AssetInfoUnchecked::cw20(msg.staking_token.identifier.to_lowercase());
-        let staking_token_identifier = msg.staking_token.identifier.clone();
+        let staking_token = AssetInfoUnchecked::cw20(msg.staking_token.to_lowercase());
+        let staking_token_identifier = msg.staking_token.clone();
         let additional_rewards: Result<Vec<RewardToken>, ContractError> = additional_rewards
             .into_iter()
             .map(|r| {

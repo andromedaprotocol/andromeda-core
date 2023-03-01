@@ -17,9 +17,7 @@ use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, AllocationState, Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
     RewardToken, RewardTokenUnchecked, RewardType, StakerResponse, State,
 };
-use common::{
-    app::AndrAddress, error::ContractError, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
-};
+use common::{error::ContractError, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO};
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
 const MOCK_STAKING_TOKEN: &str = "staking_token";
@@ -33,9 +31,7 @@ fn init(
     let info = mock_info("owner", &[]);
 
     let msg = InstantiateMsg {
-        staking_token: AndrAddress {
-            identifier: MOCK_STAKING_TOKEN.to_owned(),
-        },
+        staking_token: MOCK_STAKING_TOKEN.to_owned(),
         additional_rewards,
         kernel_address: None,
     };
@@ -82,9 +78,7 @@ fn test_instantiate() {
 
     assert_eq!(
         Config {
-            staking_token: AndrAddress {
-                identifier: MOCK_STAKING_TOKEN.to_owned()
-            },
+            staking_token: MOCK_STAKING_TOKEN.to_owned(),
             number_of_reward_tokens: 3,
         },
         CONFIG.load(deps.as_ref().storage).unwrap()

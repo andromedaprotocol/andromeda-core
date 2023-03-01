@@ -1,7 +1,6 @@
 use andromeda_os::messages::AMPPkt;
 use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
     error::ContractError,
     expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
 };
@@ -16,7 +15,7 @@ use std::fmt;
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The cw20 token that can be staked.
-    pub staking_token: AndrAddress,
+    pub staking_token: String,
     /// Any rewards in addition to the staking token. This list cannot include the staking token.
     pub additional_rewards: Option<Vec<RewardTokenUnchecked>>,
     pub kernel_address: Option<String>,
@@ -84,7 +83,7 @@ pub enum QueryMsg {
 #[cw_serde]
 pub struct Config {
     /// The token accepted for staking.
-    pub staking_token: AndrAddress,
+    pub staking_token: String,
     /// The current number of reward tokens, cannot exceed `MAX_REWARD_TOKENS`.
     pub number_of_reward_tokens: u32,
 }

@@ -2,7 +2,6 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20_staking::{Cw20HookMsg, InstantiateMsg, QueryMsg};
-use common::app::AndrAddress;
 use cosmwasm_std::Empty;
 
 use cw_multi_test::{Contract, ContractWrapper};
@@ -14,7 +13,7 @@ pub fn mock_andromeda_cw20_staking() -> Box<dyn Contract<Empty>> {
 
 pub fn mock_cw20_staking_instantiate_msg(staking_token: String) -> InstantiateMsg {
     InstantiateMsg {
-        staking_token: AndrAddress::from_string(staking_token),
+        staking_token,
         additional_rewards: None,
         kernel_address: None,
     }
