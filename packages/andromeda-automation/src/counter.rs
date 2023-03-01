@@ -1,13 +1,10 @@
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub whitelist: Vec<AndrAddress>,
+    pub whitelist: Vec<String>,
     pub kernel_address: Option<String>,
 }
 

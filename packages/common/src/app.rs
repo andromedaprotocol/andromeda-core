@@ -8,6 +8,37 @@ pub struct AndrAddress {
     pub identifier: String,
 }
 
+pub trait GetAddress {
+    fn get_address(
+        &self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        app_contract: Option<Addr>,
+    ) -> Result<String, ContractError>;
+}
+impl GetAddress for String {
+    fn get_address(
+        &self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        app_contract: Option<Addr>,
+    ) -> Result<String, ContractError> {
+        let addr = api.addr_validate(&self);
+        match addr {
+            Ok(addr) => Ok(addr.to_string()),
+            Err(_) => match app_contract {
+                Some(app_contract) => query_get::<String>(
+                    Some(encode_binary(&self)?),
+                    app_contract.to_string(),
+                    querier,
+                ),
+                // TODO: Make error more descriptive.
+                None => Err(ContractError::InvalidAddress {}),
+            },
+        }
+    }
+}
+
 impl AndrAddress {
     /// Gets the address from the given identifier by attempting to validate it into an [`Addr`] and
     /// then querying the app contract if it fails.

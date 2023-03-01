@@ -8,11 +8,7 @@ pub mod ownership;
 pub mod recipient;
 pub mod version;
 
-use crate::{
-    ado_base::{modules::Module, recipient::Recipient},
-    error::ContractError,
-    withdraw::Withdrawal,
-};
+use crate::{ado_base::modules::Module, error::ContractError, withdraw::Withdrawal};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, Uint64, WasmQuery};
 
@@ -24,6 +20,7 @@ use self::{
     kernel_address::KernelAddressResponse,
     operators::{IsOperatorResponse, OperatorsResponse},
     ownership::{ContractOwnerResponse, PublisherResponse},
+    recipient::Recipient,
     version::VersionResponse,
 };
 

@@ -2,10 +2,8 @@ use crate::state::{CONDITION_ADO_ADDRESS, TARGET_ADO_ADDRESS, TARGET_MSG, TASK_B
 use ado_base::state::ADOContract;
 use andromeda_automation::execute::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_automation::task_balancer::ExecuteMsg as TaskBalancerExecuteMsg;
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError,
-};
+use common::app::GetAddress;
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use std::env;
 
 use cosmwasm_std::{
@@ -99,7 +97,7 @@ fn execute_update_condition_address(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    condition_address: AndrAddress,
+    condition_address: String,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // Only the contract's owner can update the Execute ADO address
@@ -195,30 +193,25 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 
 fn query_condition_ado(deps: Deps) -> Result<String, ContractError> {
     let address = CONDITION_ADO_ADDRESS.load(deps.storage)?;
-    Ok(address.identifier)
+    Ok(address)
 }
 
 fn query_execute_ado(deps: Deps) -> Result<String, ContractError> {
     let address = TARGET_ADO_ADDRESS.load(deps.storage)?;
-    Ok(address.identifier)
+    Ok(address)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use andromeda_automation::counter::ExecuteMsg::IncrementOne;
-    use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
     #[test]
     fn test_initialization() {
         let mut deps = mock_dependencies();
-        let target_address = AndrAddress {
-            identifier: "MOCK_COUNTER_CONTRACT".to_string(),
-        };
-        let condition_address = AndrAddress {
-            identifier: "condition_address".to_string(),
-        };
+        let target_address = "MOCK_COUNTER_CONTRACT".to_string();
+        let condition_address = "condition_address".to_string();
 
         let msg = InstantiateMsg {
             target_address,
@@ -235,12 +228,7 @@ mod tests {
 
         // make sure address was saved correctly
         let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
-        assert_eq!(
-            addr,
-            AndrAddress {
-                identifier: "MOCK_COUNTER_CONTRACT".to_string(),
-            }
-        )
+        assert_eq!(addr, "MOCK_COUNTER_CONTRACT".to_string())
     }
 
     #[test]
@@ -257,12 +245,8 @@ mod tests {
     #[test]
     fn test_execute_unauthorized() {
         let mut deps = mock_dependencies();
-        let target_address = AndrAddress {
-            identifier: "MOCK_COUNTER_CONTRACT".to_string(),
-        };
-        let condition_address = AndrAddress {
-            identifier: "condition_address".to_string(),
-        };
+        let target_address = "MOCK_COUNTER_CONTRACT".to_string();
+        let condition_address = "condition_address".to_string();
 
         let msg = InstantiateMsg {
             target_address,
@@ -279,12 +263,7 @@ mod tests {
 
         // make sure address was saved correctly
         let addr = TARGET_ADO_ADDRESS.load(&deps.storage).unwrap();
-        assert_eq!(
-            addr,
-            AndrAddress {
-                identifier: "MOCK_COUNTER_CONTRACT".to_string(),
-            }
-        );
+        assert_eq!(addr, "MOCK_COUNTER_CONTRACT".to_string());
 
         let msg = ExecuteMsg::Execute {};
         let info = mock_info("not_condition_address", &[]);

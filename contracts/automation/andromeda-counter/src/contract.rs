@@ -5,7 +5,10 @@ use ado_base::state::ADOContract;
 use andromeda_automation::counter::{
     CounterResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg, app::GetAddress, encode_binary,
+    error::ContractError,
+};
 use cosmwasm_std::{
     ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
     Uint128,
@@ -207,7 +210,6 @@ fn query_is_zero(deps: Deps) -> Result<bool, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::app::AndrAddress;
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
         to_binary,
@@ -217,9 +219,7 @@ mod tests {
     fn test_initialization() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
-            whitelist: vec![AndrAddress {
-                identifier: "address".to_string(),
-            }],
+            whitelist: vec!["address".to_string()],
             kernel_address: None,
         };
         let info = mock_info("creator", &[]);
@@ -243,9 +243,7 @@ mod tests {
     fn test_increment_one() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
-            whitelist: vec![AndrAddress {
-                identifier: "address".to_string(),
-            }],
+            whitelist: vec!["address".to_string()],
             kernel_address: None,
         };
         let info = mock_info("creator", &[]);
@@ -270,9 +268,7 @@ mod tests {
     fn test_increment_two() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
-            whitelist: vec![AndrAddress {
-                identifier: "address".to_string(),
-            }],
+            whitelist: vec!["address".to_string()],
             kernel_address: None,
         };
         let info = mock_info("creator", &[]);
@@ -298,9 +294,7 @@ mod tests {
     fn test_reset() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
-            whitelist: vec![AndrAddress {
-                identifier: "address".to_string(),
-            }],
+            whitelist: vec!["address".to_string()],
             kernel_address: None,
         };
         let info = mock_info("creator", &[]);

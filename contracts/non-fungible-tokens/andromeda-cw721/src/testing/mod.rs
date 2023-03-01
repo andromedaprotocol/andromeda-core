@@ -11,7 +11,6 @@ use common::{
         modules::{Module, ADDRESS_LIST, BIDS, RATES, RECEIPT},
         AndromedaMsg, AndromedaQuery,
     },
-    app::AndrAddress,
     error::ContractError,
     primitive::{PrimitivePointer, Value},
     Funds,
@@ -221,9 +220,8 @@ fn test_agreed_transfer_token_doesnt_exist() {
     let purchaser = "purchaser";
     let agreement = TransferAgreement {
         amount: Value::Pointer(PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+
             key: Some("sell_amount".to_string()),
         }),
         purchaser: purchaser.to_string(),
@@ -257,9 +255,8 @@ fn test_agreed_transfer_nft_primitive_pointer() {
     let purchaser = "purchaser";
     let agreement = TransferAgreement {
         amount: Value::Pointer(PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+
             key: Some("sell_amount".to_string()),
         }),
         purchaser: purchaser.to_string(),

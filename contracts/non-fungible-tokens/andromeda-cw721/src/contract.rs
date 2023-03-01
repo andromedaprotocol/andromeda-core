@@ -351,9 +351,7 @@ fn execute_transfer(
     let tax_amount = if let Some(agreement) =
         &TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?
     {
-        let app_contract = base_contract.get_app_contract(deps.storage)?;
-        let agreement_amount =
-            get_transfer_agreement_amount(deps.api, &deps.querier, app_contract, agreement)?;
+        let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
         let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
             deps.storage,
             deps.api,
@@ -391,15 +389,11 @@ fn execute_transfer(
 }
 
 fn get_transfer_agreement_amount(
-    api: &dyn Api,
+    _api: &dyn Api,
     querier: &QuerierWrapper,
-    app_contract: Option<Addr>,
     agreement: &TransferAgreement,
 ) -> Result<Coin, ContractError> {
-    let agreement_amount = agreement
-        .amount
-        .clone()
-        .try_into_coin(api, querier, app_contract)?;
+    let agreement_amount = agreement.amount.clone().try_into_coin(querier)?;
     match agreement_amount {
         Some(amount) => Ok(amount),
         None => Err(ContractError::PrimitiveDoesNotExist {
@@ -423,9 +417,7 @@ fn check_can_send(
 
     // token purchaser can send if correct funds are sent
     if let Some(agreement) = &TRANSFER_AGREEMENTS.may_load(deps.storage, token_id)? {
-        let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
-        let agreement_amount =
-            get_transfer_agreement_amount(deps.api, &deps.querier, app_contract, agreement)?;
+        let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
         ensure!(
             has_coins(
                 &info.funds,

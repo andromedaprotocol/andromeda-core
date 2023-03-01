@@ -5,7 +5,7 @@ use common::{
     primitive::{Primitive, PrimitivePointer},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Addr, Api, Coin, Decimal, Fraction, QuerierWrapper};
+use cosmwasm_std::{ensure, Coin, Decimal, Fraction, QuerierWrapper};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -83,13 +83,8 @@ impl Rate {
 
     /// Validates `self` and returns an "unwrapped" version of itself wherein if it is an External
     /// Rate, the actual rate value is retrieved from the Primitive Contract.
-    pub fn validate(
-        &self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        app_contract: Option<Addr>,
-    ) -> Result<Rate, ContractError> {
-        let rate = self.clone().get_rate(api, querier, app_contract)?;
+    pub fn validate(&self, querier: &QuerierWrapper) -> Result<Rate, ContractError> {
+        let rate = self.clone().get_rate(querier)?;
         ensure!(rate.is_non_zero()?, ContractError::InvalidRate {});
 
         if let Rate::Percent(PercentRate { percent }) = rate {
@@ -101,17 +96,12 @@ impl Rate {
 
     /// If `self` is Flat or Percent it returns itself. Otherwise it queries the primitive contract
     /// and retrieves the actual Flat or Percent rate.
-    fn get_rate(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        app_contract: Option<Addr>,
-    ) -> Result<Rate, ContractError> {
+    fn get_rate(self, querier: &QuerierWrapper) -> Result<Rate, ContractError> {
         match self {
             Rate::Flat(_) => Ok(self),
             Rate::Percent(_) => Ok(self),
             Rate::External(primitive_pointer) => {
-                let primitive = primitive_pointer.into_value(api, querier, app_contract)?;
+                let primitive = primitive_pointer.into_value(querier)?;
                 match primitive {
                     None => Err(ContractError::ParsingError {
                         err: "Stored primitive is None".to_string(),
@@ -180,7 +170,6 @@ mod tests {
     use andromeda_testing::testing::mock_querier::{
         mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT,
     };
-    use common::app::AndrAddress;
     use cosmwasm_std::{coin, Uint128};
 
     use super::*;
@@ -190,26 +179,19 @@ mod tests {
         let deps = mock_dependencies_custom(&[]);
 
         let rate = Rate::External(PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+
             key: Some("percent".to_string()),
         });
-        let validated_rate = rate
-            .validate(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap();
+        let validated_rate = rate.validate(&deps.as_ref().querier).unwrap();
         let expected_rate = Rate::from(Decimal::percent(1));
         assert_eq!(expected_rate, validated_rate);
 
         let rate = Rate::External(PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             key: Some("flat".to_string()),
         });
-        let validated_rate = rate
-            .validate(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap();
+        let validated_rate = rate.validate(&deps.as_ref().querier).unwrap();
         let expected_rate = Rate::Flat(coin(1u128, "uusd"));
         assert_eq!(expected_rate, validated_rate);
     }

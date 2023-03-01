@@ -5,10 +5,8 @@ use andromeda_automation::{
     execute,
 };
 
-use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError,
-};
+use common::app::GetAddress;
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 use cosmwasm_std::{
     ensure, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     QueryRequest, Reply, Response, StdError, WasmMsg, WasmQuery,
@@ -107,7 +105,7 @@ fn execute_update_whitelist(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    addresses: Vec<AndrAddress>,
+    addresses: Vec<String>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // Check authority
@@ -125,7 +123,7 @@ fn execute_update_execute_ado(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    address: AndrAddress,
+    address: String,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     // Check authority
@@ -138,7 +136,7 @@ fn execute_update_execute_ado(
     EXECUTE_ADO.save(deps.storage, &address)?;
     Ok(Response::new()
         .add_attribute("action", "updated_execute_ado")
-        .add_attribute("new_address", address.identifier))
+        .add_attribute("new_address", address))
 }
 
 fn execute_get_results(
@@ -360,7 +358,7 @@ fn query_logic_gate(deps: Deps) -> Result<LogicGate, ContractError> {
     Ok(LOGIC_GATE.load(deps.storage)?)
 }
 
-fn query_whitelist(deps: Deps) -> Result<Vec<AndrAddress>, ContractError> {
+fn query_whitelist(deps: Deps) -> Result<Vec<String>, ContractError> {
     Ok(EVAL_ADOS.load(deps.storage)?)
 }
 
@@ -368,7 +366,6 @@ fn query_whitelist(deps: Deps) -> Result<Vec<AndrAddress>, ContractError> {
 mod tests {
     use super::*;
     use crate::mock_querier::mock_dependencies_custom;
-    use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_env, mock_info};
 
     // legit_address1 always returns true
@@ -381,23 +378,14 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::And,
-            eval_ados: vec![AndrAddress {
-                identifier: "legit_address".to_string(),
-            }],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(0, res.messages.len());
         let eval_ados = EVAL_ADOS.load(&deps.storage).unwrap();
-        assert_eq!(
-            eval_ados[0],
-            AndrAddress {
-                identifier: "legit_address".to_string(),
-            }
-        );
+        assert_eq!(eval_ados[0], "legit_address".to_string());
         assert_eq!(LOGIC_GATE.load(&deps.storage).unwrap(), LogicGate::And)
     }
 
@@ -408,17 +396,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::And,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -436,17 +415,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::And,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address1".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -455,7 +425,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap();
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -473,17 +443,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Or,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address1".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -492,7 +453,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap();
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -510,17 +471,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Or,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -529,7 +481,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap();
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -547,17 +499,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Xor,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -566,7 +509,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap();
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -584,17 +527,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Xor,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address1".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -614,12 +548,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Not,
-            eval_ados: vec![AndrAddress {
-                identifier: "legit_address2".to_string(),
-            }],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -628,7 +558,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap();
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -646,12 +576,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Not,
-            eval_ados: vec![AndrAddress {
-                identifier: "legit_address1".to_string(),
-            }],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -671,17 +597,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Not,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -701,17 +618,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nand,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -720,7 +628,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap();
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -738,17 +646,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nand,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address2".to_string(), "legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -757,7 +656,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap();
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -775,17 +674,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nand,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address1".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -805,17 +695,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nor,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address2".to_string(), "legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -823,7 +704,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap();
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -841,17 +722,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nor,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -871,17 +743,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Nor,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address1".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -901,17 +764,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Xnor,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address1".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -919,7 +773,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap();
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -937,17 +791,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Xnor,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address2".to_string(), "legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -956,7 +801,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap().identifier;
+        let contract_addr = EXECUTE_ADO.load(&deps.storage).unwrap();
         let expected_response = Response::new()
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -974,17 +819,8 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             logic_gate: LogicGate::Xnor,
-            eval_ados: vec![
-                AndrAddress {
-                    identifier: "legit_address1".to_string(),
-                },
-                AndrAddress {
-                    identifier: "legit_address2".to_string(),
-                },
-            ],
-            execute_ado: AndrAddress {
-                identifier: "execute_ado".to_string(),
-            },
+            eval_ados: vec!["legit_address1".to_string(), "legit_address2".to_string()],
+            execute_ado: "execute_ado".to_string(),
             kernel_address: None,
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();

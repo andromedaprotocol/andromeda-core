@@ -8,9 +8,9 @@ use andromeda_ecosystem::vault::{
     BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
 use andromeda_os::recipient::AMPRecipient as Recipient;
+use common::app::GetAddress;
 use common::{
     ado_base::AndromedaMsg,
-    app::AndrAddress,
     error::ContractError,
     withdraw::{Withdrawal, WithdrawalType},
 };
@@ -65,7 +65,7 @@ fn add_strategy(
     env: Env,
     info: MessageInfo,
     strategy: StrategyType,
-    address: AndrAddress,
+    address: String,
 ) -> Response {
     let msg = ExecuteMsg::UpdateStrategy { strategy, address };
     execute(deps, env, info, msg).unwrap()
@@ -87,9 +87,7 @@ fn test_execute_update_strategy() {
         env,
         info,
         StrategyType::Anchor,
-        AndrAddress {
-            identifier: MOCK_ANCHOR_CONTRACT.to_string(),
-        },
+        MOCK_ANCHOR_CONTRACT.to_string(),
     );
 
     let expected = Response::default()
@@ -118,9 +116,7 @@ fn test_execute_update_strategy_not_operator() {
     env.contract.address = Addr::unchecked("someinvalidvaultaddress");
     let msg = ExecuteMsg::UpdateStrategy {
         strategy: StrategyType::Anchor,
-        address: AndrAddress {
-            identifier: MOCK_ANCHOR_CONTRACT.to_string(),
-        },
+        address: MOCK_ANCHOR_CONTRACT.to_string(),
     };
     let resp = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -171,9 +167,7 @@ fn test_deposit_insufficient_funds() {
 fn test_deposit_strategy() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: AndrAddress {
-            identifier: MOCK_ANCHOR_CONTRACT.to_string(),
-        },
+        address: MOCK_ANCHOR_CONTRACT.to_string(),
     };
     let inst_msg = InstantiateMsg {
         kernel_address: None,
@@ -246,9 +240,7 @@ fn test_deposit_strategy() {
 fn test_deposit_strategy_partial_amount() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: AndrAddress {
-            identifier: MOCK_ANCHOR_CONTRACT.to_string(),
-        },
+        address: MOCK_ANCHOR_CONTRACT.to_string(),
     };
     let inst_msg = InstantiateMsg {
         kernel_address: None,
@@ -337,9 +329,7 @@ fn test_deposit_strategy_empty_funds_non_empty_amount() {
 fn test_deposit_strategy_insufficient_partial_amount() {
     let yield_strategy = YieldStrategy {
         strategy_type: StrategyType::Anchor,
-        address: AndrAddress {
-            identifier: "terra1anchoraddress".to_string(),
-        },
+        address: "terra1anchoraddress".to_string(),
     };
     let inst_msg = InstantiateMsg {
         kernel_address: None,

@@ -1,16 +1,13 @@
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     // The contract we'll send the ExecuteMsg to
-    pub target_address: AndrAddress,
+    pub target_address: String,
     // Condition ADO's address
-    pub condition_address: AndrAddress,
+    pub condition_address: String,
     // Task balancer's address
     pub task_balancer: String,
     // Target ADO's Execute Msg
@@ -24,7 +21,7 @@ pub enum ExecuteMsg {
     /// Evaluates 2 pieces of data
     Execute {},
     UpdateConditionAddress {
-        condition_address: AndrAddress,
+        condition_address: String,
     },
 }
 

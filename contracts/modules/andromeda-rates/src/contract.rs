@@ -239,10 +239,7 @@ fn query_deducted_funds(
         if let Some(desc) = &rate_info.description {
             event = event.add_attribute("description", desc);
         }
-        let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
-        let rate = rate_info
-            .rate
-            .validate(deps.api, &deps.querier, app_contract)?;
+        let rate = rate_info.rate.validate(&deps.querier)?;
         let fee = calculate_fee(rate, &coin)?;
         for reciever in rate_info.recipients.iter() {
             if !rate_info.is_additive {
@@ -305,8 +302,8 @@ mod tests {
     use andromeda_testing::testing::mock_querier::{
         mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT,
     };
+    use common::primitive::PrimitivePointer;
     use common::{ado_base::recipient::Recipient, encode_binary};
-    use common::{app::AndrAddress, primitive::PrimitivePointer};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{
         coin, coins, from_binary, BankMsg, Coin, CosmosMsg, Decimal, Uint128, WasmMsg,
@@ -419,9 +416,7 @@ mod tests {
             },
             RateInfo {
                 rate: Rate::External(PrimitivePointer {
-                    address: AndrAddress {
-                        identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-                    },
+                    address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
                     key: Some("flat".into()),
                 }),
                 is_additive: false,
@@ -510,9 +505,7 @@ mod tests {
             },
             RateInfo {
                 rate: Rate::External(PrimitivePointer {
-                    address: AndrAddress {
-                        identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-                    },
+                    address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
                     key: Some("flat_cw20".to_string()),
                 }),
                 is_additive: false,

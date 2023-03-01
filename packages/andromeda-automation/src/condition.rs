@@ -1,14 +1,11 @@
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub logic_gate: LogicGate,
-    pub eval_ados: Vec<AndrAddress>,
-    pub execute_ado: AndrAddress,
+    pub eval_ados: Vec<String>,
+    pub execute_ado: String,
     pub kernel_address: Option<String>,
 }
 
@@ -17,8 +14,8 @@ pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
     // Gets the results from the Eval ADOs and then interprets them based off the selected logic gate
     GetResults {},
-    UpdateExecuteADO { address: AndrAddress },
-    UpdateEvalAdos { addresses: Vec<AndrAddress> },
+    UpdateExecuteADO { address: String },
+    UpdateEvalAdos { addresses: Vec<String> },
     UpdateLogicGate { logic_gate: LogicGate },
 }
 
@@ -35,7 +32,7 @@ pub enum QueryMsg {
     #[returns(LogicGate)]
     LogicGate {},
 
-    #[returns(Vec<AndrAddress>)]
+    #[returns(Vec<String>)]
     EvalAdos {},
 }
 

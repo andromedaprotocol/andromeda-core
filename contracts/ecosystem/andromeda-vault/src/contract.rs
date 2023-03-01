@@ -8,12 +8,12 @@ use andromeda_os::recipient::generate_msg_native_kernel;
 use andromeda_os::recipient::AMPRecipient as Recipient;
 
 use andromeda_os::messages::{AMPMsg, AMPPkt};
+use common::app::GetAddress;
 use common::{
     ado_base::{
         operators::IsOperatorResponse, AndromedaMsg, AndromedaQuery,
         InstantiateMsg as BaseInstantiateMsg, QueryMsg as AndrQueryMsg,
     },
-    app::AndrAddress,
     encode_binary,
     error::ContractError,
     parse_message,
@@ -452,7 +452,7 @@ fn execute_update_strategy(
     env: Env,
     info: MessageInfo,
     strategy: StrategyType,
-    address: AndrAddress,
+    address: String,
 ) -> Result<Response, ContractError> {
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_ref())?,

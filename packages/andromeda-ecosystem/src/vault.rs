@@ -2,7 +2,6 @@ use andromeda_os::messages::AMPPkt;
 use andromeda_os::recipient::AMPRecipient as Recipient;
 use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
     error::ContractError,
     withdraw::Withdrawal,
 };
@@ -29,7 +28,7 @@ pub enum StrategyType {
 #[serde(rename_all = "snake_case")]
 pub struct YieldStrategy {
     pub strategy_type: StrategyType,
-    pub address: AndrAddress,
+    pub address: String,
 }
 
 impl StrategyType {
@@ -90,7 +89,7 @@ pub enum ExecuteMsg {
     },
     UpdateStrategy {
         strategy: StrategyType,
-        address: AndrAddress,
+        address: String,
     },
     AndrReceive(AndromedaMsg),
     AMPReceive(AMPPkt),

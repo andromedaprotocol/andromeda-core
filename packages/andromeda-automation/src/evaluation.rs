@@ -1,20 +1,17 @@
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     // Condition ADO's address
-    pub condition_address: AndrAddress,
+    pub condition_address: String,
 
     // Oracle ADO's address
-    pub oracle_address: AndrAddress,
+    pub oracle_address: String,
 
     // Task balancer ADO's address
-    pub task_balancer: AndrAddress,
+    pub task_balancer: String,
 
     // The value we want to compare with the oracle's, if absent, we assume that the oracle is returning a bool
     pub user_value: Option<Uint128>,
@@ -28,8 +25,8 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    ChangeConditionAddress { address: AndrAddress },
-    ChangeQueryAddress { address: AndrAddress },
+    ChangeConditionAddress { address: String },
+    ChangeQueryAddress { address: String },
 }
 
 #[cw_serde]

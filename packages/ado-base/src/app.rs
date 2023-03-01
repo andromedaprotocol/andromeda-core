@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Addr, Api, Deps, QuerierWrapper, Storage};
 
 use crate::ADOContract;
-use common::{ado_base::modules::Module, error::ContractError};
+use common::error::ContractError;
 
 #[cw_serde]
 enum AppQueryMsg {

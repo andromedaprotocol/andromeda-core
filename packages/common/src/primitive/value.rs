@@ -1,11 +1,10 @@
 use crate::{
     ado_base::query_get,
-    app::AndrAddress,
     error::ContractError,
     primitive::{GetValueResponse, Primitive},
 };
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Addr, Api, Coin, Decimal, QuerierWrapper, StdError, Uint128};
+use cosmwasm_std::{to_binary, Coin, Decimal, QuerierWrapper, StdError, Uint128};
 
 #[cw_serde]
 pub enum Value<T>
@@ -26,7 +25,7 @@ where
 #[cw_serde]
 pub struct PrimitivePointer {
     /// The address of the primitive contract.
-    pub address: AndrAddress,
+    pub address: String,
     /// The optional key for the stored data.
     pub key: Option<String>,
 }
@@ -35,13 +34,8 @@ impl PrimitivePointer {
     /// Queries the related primitive contract instance to get the stored `Primitive`. If it does
     /// not exist, `Ok(None)` is returned so it is on the receiver to handle the case of a missing
     /// primitive.
-    pub fn into_value(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        app_address: Option<Addr>,
-    ) -> Result<Option<Primitive>, ContractError> {
-        let primitive_address = self.address.get_address(api, querier, app_address)?;
+    pub fn into_value(self, querier: &QuerierWrapper) -> Result<Option<Primitive>, ContractError> {
+        let primitive_address = self.address;
         let key = self
             .key
             .map(|k| to_binary(&k))
@@ -66,15 +60,13 @@ impl<T: Into<Primitive>> Value<T> {
     /// type `T`.
     fn try_into_value(
         self,
-        api: &dyn Api,
         querier: &QuerierWrapper,
-        app_address: Option<Addr>,
         func: fn(Primitive) -> Result<T, StdError>,
     ) -> Result<Option<T>, ContractError> {
         match self {
             Value::Raw(value) => Ok(Some(value)),
             Value::Pointer(pointer) => {
-                let primitive = pointer.into_value(api, querier, app_address)?;
+                let primitive = pointer.into_value(querier)?;
                 if let Some(primitive) = primitive {
                     Ok(Some(func(primitive)?))
                 } else {
@@ -88,66 +80,48 @@ impl<T: Into<Primitive>> Value<T> {
 impl Value<String> {
     pub fn try_into_string(
         self,
-        api: &dyn Api,
         querier: &QuerierWrapper,
-        app_address: Option<Addr>,
     ) -> Result<Option<String>, ContractError> {
-        self.try_into_value(api, querier, app_address, |p| p.try_get_string())
+        self.try_into_value(querier, |p| p.try_get_string())
     }
 }
 
 impl Value<Uint128> {
     pub fn try_into_uint128(
         self,
-        api: &dyn Api,
         querier: &QuerierWrapper,
-        app_address: Option<Addr>,
     ) -> Result<Option<Uint128>, ContractError> {
-        self.try_into_value(api, querier, app_address, |p| p.try_get_uint128())
+        self.try_into_value(querier, |p| p.try_get_uint128())
     }
 }
 
 impl Value<Decimal> {
     pub fn try_into_decimal(
         self,
-        api: &dyn Api,
         querier: &QuerierWrapper,
-        app_address: Option<Addr>,
     ) -> Result<Option<Decimal>, ContractError> {
-        self.try_into_value(api, querier, app_address, |p| p.try_get_decimal())
+        self.try_into_value(querier, |p| p.try_get_decimal())
     }
 }
 
 impl Value<Coin> {
-    pub fn try_into_coin(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        app_address: Option<Addr>,
-    ) -> Result<Option<Coin>, ContractError> {
-        self.try_into_value(api, querier, app_address, |p| p.try_get_coin())
+    pub fn try_into_coin(self, querier: &QuerierWrapper) -> Result<Option<Coin>, ContractError> {
+        self.try_into_value(querier, |p| p.try_get_coin())
     }
 }
 
 impl Value<bool> {
-    pub fn try_into_bool(
-        self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        app_address: Option<Addr>,
-    ) -> Result<Option<bool>, ContractError> {
-        self.try_into_value(api, querier, app_address, |p| p.try_get_bool())
+    pub fn try_into_bool(self, querier: &QuerierWrapper) -> Result<Option<bool>, ContractError> {
+        self.try_into_value(querier, |p| p.try_get_bool())
     }
 }
 
 impl Value<Vec<Primitive>> {
     pub fn try_into_vec(
         self,
-        api: &dyn Api,
         querier: &QuerierWrapper,
-        app_address: Option<Addr>,
     ) -> Result<Option<Vec<Primitive>>, ContractError> {
-        self.try_into_value(api, querier, app_address, |p| p.try_get_vec())
+        self.try_into_value(querier, |p| p.try_get_vec())
     }
 }
 
@@ -161,16 +135,11 @@ mod tests {
         let deps = mock_dependencies_custom(&[]);
 
         let pointer = PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             key: None,
         };
 
-        let res = pointer
-            .into_value(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap();
-
+        let res = pointer.into_value(&deps.as_ref().querier).unwrap();
         assert_eq!(Some(Primitive::Decimal(Decimal::zero())), res);
     }
 
@@ -179,15 +148,11 @@ mod tests {
         let deps = mock_dependencies_custom(&[]);
 
         let pointer = PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             key: Some("String".to_string()),
         };
 
-        let res = pointer
-            .into_value(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap();
+        let res = pointer.into_value(&deps.as_ref().querier).unwrap();
 
         assert_eq!(Some(Primitive::String("Value".to_string())), res);
     }
@@ -197,15 +162,11 @@ mod tests {
         let deps = mock_dependencies_custom(&[]);
 
         let pointer = PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             key: Some("non_existing_key".to_string()),
         };
 
-        let res = pointer
-            .into_value(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap();
+        let res = pointer.into_value(&deps.as_ref().querier).unwrap();
 
         assert_eq!(None, res);
     }
@@ -216,22 +177,16 @@ mod tests {
         let value = Value::Raw("Value".to_string());
         assert_eq!(
             Some("Value".to_string()),
-            value
-                .try_into_string(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_string(&deps.as_ref().querier).unwrap()
         );
 
         let value = Value::Pointer(PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             key: Some("String".to_string()),
         });
         assert_eq!(
             Some("Value".to_string()),
-            value
-                .try_into_string(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_string(&deps.as_ref().querier,).unwrap()
         );
     }
 
@@ -241,22 +196,16 @@ mod tests {
         let value = Value::Raw(Uint128::new(10));
         assert_eq!(
             Some(Uint128::new(10)),
-            value
-                .try_into_uint128(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_uint128(&deps.as_ref().querier,).unwrap()
         );
 
         let value = Value::Pointer(PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             key: Some("Uint128".to_string()),
         });
         assert_eq!(
             Some(Uint128::new(10)),
-            value
-                .try_into_uint128(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_uint128(&deps.as_ref().querier,).unwrap()
         );
     }
 
@@ -266,22 +215,16 @@ mod tests {
         let value = Value::Raw(Decimal::percent(1));
         assert_eq!(
             Some(Decimal::percent(1)),
-            value
-                .try_into_decimal(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_decimal(&deps.as_ref().querier,).unwrap()
         );
 
         let value = Value::Pointer(PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             key: Some("Decimal".to_string()),
         });
         assert_eq!(
             Some(Decimal::percent(1)),
-            value
-                .try_into_decimal(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_decimal(&deps.as_ref().querier,).unwrap()
         );
     }
 
@@ -291,22 +234,16 @@ mod tests {
         let value = Value::Raw(Coin::new(100, "uusd"));
         assert_eq!(
             Some(Coin::new(100, "uusd")),
-            value
-                .try_into_coin(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_coin(&deps.as_ref().querier,).unwrap()
         );
 
         let value = Value::Pointer(PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             key: Some("Coin".to_string()),
         });
         assert_eq!(
             Some(Coin::new(100, "uusd")),
-            value
-                .try_into_coin(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_coin(&deps.as_ref().querier,).unwrap()
         );
     }
 
@@ -316,22 +253,16 @@ mod tests {
         let value = Value::Raw(true);
         assert_eq!(
             Some(true),
-            value
-                .try_into_bool(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_bool(&deps.as_ref().querier,).unwrap()
         );
 
         let value = Value::Pointer(PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             key: Some("Bool".to_string()),
         });
         assert_eq!(
             Some(true),
-            value
-                .try_into_bool(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_bool(&deps.as_ref().querier,).unwrap()
         );
     }
 
@@ -342,22 +273,16 @@ mod tests {
         let value = Value::Raw(vec.clone());
         assert_eq!(
             Some(vec.clone()),
-            value
-                .try_into_vec(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_vec(&deps.as_ref().querier,).unwrap()
         );
 
         let value = Value::Pointer(PrimitivePointer {
-            address: AndrAddress {
-                identifier: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            },
+            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
             key: Some("Vec".to_string()),
         });
         assert_eq!(
             Some(vec),
-            value
-                .try_into_vec(deps.as_ref().api, &deps.as_ref().querier, None)
-                .unwrap()
+            value.try_into_vec(&deps.as_ref().querier,).unwrap()
         );
     }
 }
