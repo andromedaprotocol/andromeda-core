@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Config",
+  "type": "object",
+  "required": [
+    "can_mint_after_sale",
+    "token_address"
+  ],
+  "properties": {
+    "can_mint_after_sale": {
+      "description": "Whether or not the owner can mint additional tokens after the sale has been conducted.",
+      "type": "boolean"
+    },
+    "token_address": {
+      "description": "The address of the token contract whose tokens are being sold.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AndrAddress"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "AndrAddress": {
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "Can be either an address or identifier of an ADO in a app.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

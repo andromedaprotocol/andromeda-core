@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IncludesAddressResponse",
+  "type": "object",
+  "required": [
+    "included"
+  ],
+  "properties": {
+    "included": {
+      "description": "Whether the address is included in the address list",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

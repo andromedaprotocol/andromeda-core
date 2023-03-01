@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "app_components",
+    "name",
+    "primitive_contract"
+  ],
+  "properties": {
+    "app_components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AppComponent"
+      }
+    },
+    "name": {
+      "type": "string"
+    },
+    "primitive_contract": {
+      "type": "string"
+    },
+    "target_ados": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "AppComponent": {
+      "type": "object",
+      "required": [
+        "ado_type",
+        "instantiate_msg",
+        "name"
+      ],
+      "properties": {
+        "ado_type": {
+          "type": "string"
+        },
+        "instantiate_msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    }
+  }
+}
