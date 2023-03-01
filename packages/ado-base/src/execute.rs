@@ -94,10 +94,7 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::RefreshAddresses { start_after, limit } => {
                 self.execute_refresh_addresses(deps, start_after, limit)
             }
-            _ => {
-                println!("Are we getting here?");
-                Err(ContractError::UnsupportedOperation {})
-            }
+            _ => Err(ContractError::UnsupportedOperation {}),
         }
     }
 
@@ -110,8 +107,8 @@ impl<'a> ADOContract<'a> {
         module: &Module,
     ) -> Result<(), ContractError> {
         if let Some(app_contract) = self.get_app_contract(storage)? {
-            api.addr_validate(&module.address)?;
-            // self.validate_andr_address(api, querier, module.address.to_owned(), app_contract)?;
+            // api.addr_validate(&module.address)?;
+            self.validate_andr_address(api, querier, module.address.to_owned(), app_contract)?;
         }
         Ok(())
     }
