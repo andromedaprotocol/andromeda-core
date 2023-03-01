@@ -233,9 +233,12 @@ fn execute_deposit(
 ) -> Result<Response, ContractError> {
     let mut resp = Response::default();
 
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+
     // Validate address
-    recipient.validate_address(deps.api, recipient.get_addr()?)?;
+    let recipient_addr =
+        recipient.get_validated_addr(deps.api, &deps.querier, app_contract.clone())?;
 
     // If no amount is provided then the sent funds are used as a deposit
     let deposited_funds = if let Some(deposit_amount) = amount {
@@ -256,7 +259,6 @@ fn execute_deposit(
         // If depositing to a yield strategy we must first check that the sender has either provided the amount to deposit
         // or has a combination of the amount within the vault and within the sent funds
         if strategy.is_some() && deposit_balance <= deposit_amount.amount {
-            let recipient_addr = recipient.get_addr()?;
             let balance_key = (recipient_addr.as_str(), deposit_amount.denom.as_str());
             let vault_balance = BALANCES
                 .may_load(deps.storage, balance_key)?

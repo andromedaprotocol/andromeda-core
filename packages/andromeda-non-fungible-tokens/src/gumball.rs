@@ -1,15 +1,12 @@
 use crate::cw721::TokenExtension;
 use andromeda_os::messages::AMPPkt;
-use common::{
-    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub andromeda_cw721_contract: AndrAddress,
+    pub andromeda_cw721_contract: String,
     pub randomness_source: String,
     pub required_coin: String,
     pub kernel_address: Option<String>,

@@ -41,11 +41,18 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     // Max 100 recipients
     ensure!(
         msg.recipients.len() <= 100,
         ContractError::ReachedRecipientLimit {}
     );
+    // Validate recipients
+    for address_weight in &msg.recipients {
+        address_weight
+            .recipient
+            .validate_address(deps.api, &deps.querier, app_contract.clone())?
+    }
     let current_time = env.block.time.seconds();
     let splitter = match msg.lock_time {
         Some(lock_time) => {

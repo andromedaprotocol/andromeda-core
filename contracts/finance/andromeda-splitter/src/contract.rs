@@ -307,7 +307,6 @@ fn execute_send(
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
         let recipient = recipient_addr.recipient.get_addr()?;
-
         let message = recipient_addr.recipient.get_message()?.unwrap_or_default();
 
         match &recipient_addr.recipient {

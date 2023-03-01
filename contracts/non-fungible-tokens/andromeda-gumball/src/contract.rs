@@ -10,6 +10,7 @@ use andromeda_non_fungible_tokens::{
 
 use andromeda_os::messages::{AMPMsg, AMPPkt};
 use andromeda_os::recipient::generate_msg_native_kernel;
+use common::app::GetAddress;
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
@@ -520,7 +521,6 @@ fn query_state(deps: Deps) -> Result<State, ContractError> {
 mod tests {
     use super::*;
     use common::ado_base::recipient::Recipient;
-    use common::app::AndrAddress;
     use cosmwasm_std::coin;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
@@ -555,9 +555,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -574,9 +572,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -597,9 +593,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -621,9 +615,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -645,9 +637,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -669,9 +659,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -698,9 +686,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -722,9 +708,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -754,9 +738,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -790,9 +772,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -839,9 +819,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -878,9 +856,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -925,9 +901,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -974,9 +948,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -1027,9 +999,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,
@@ -1087,9 +1057,7 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let msg = InstantiateMsg {
-            andromeda_cw721_contract: AndrAddress {
-                identifier: "cw721_contract".to_string(),
-            },
+            andromeda_cw721_contract: "cw721_contract".to_string(),
             randomness_source: "terrand".to_string(),
             required_coin: "uusd".to_string(),
             kernel_address: None,

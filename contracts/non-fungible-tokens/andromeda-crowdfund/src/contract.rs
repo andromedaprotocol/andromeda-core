@@ -369,6 +369,10 @@ fn execute_start_sale(
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
+    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+
+    // Validate recipient
+    recipient.validate_address(deps.api, &deps.querier, app_contract)?;
 
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,

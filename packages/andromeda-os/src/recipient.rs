@@ -1,6 +1,8 @@
+use common::ado_base::query_get;
+use common::app::GetAddress;
 use common::{encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Api, BankMsg, Binary, Coin, CosmosMsg, SubMsg, WasmMsg};
+use cosmwasm_std::{Addr, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg, WasmMsg};
 
 use crate::kernel::ExecuteMsg as KernelExecuteMsg;
 use crate::messages::{AMPMsg, AMPPkt, ExecuteMsg as AMPExecuteMsg};
@@ -63,6 +65,23 @@ impl AMPRecipient {
         }
     }
 
+    pub fn get_validated_addr(
+        &self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        app_contract: Option<Addr>,
+    ) -> Result<String, ContractError> {
+        match &self {
+            AMPRecipient::Addr(string) => Ok(string.to_owned().get_address(api, querier, None)?),
+            AMPRecipient::ADO(recip) => {
+                Ok(recip
+                    .address
+                    .clone()
+                    .get_address(api, querier, app_contract)?)
+            }
+        }
+    }
+
     pub fn get_message(&self) -> Result<Option<Binary>, ContractError> {
         match &self {
             AMPRecipient::Addr(_string) => Ok(None),
@@ -70,11 +89,28 @@ impl AMPRecipient {
         }
     }
 
-    pub fn validate_address(&self, api: &dyn Api, address: String) -> Result<(), ContractError> {
-        let validated_address = api.addr_validate(&address);
-        match validated_address {
+    pub fn validate_address(
+        &self,
+        api: &dyn Api,
+        querier: &QuerierWrapper,
+        app_contract: Option<Addr>,
+    ) -> Result<(), ContractError> {
+        let address = self.get_addr()?;
+        let addr = api.addr_validate(&address);
+        match addr {
             Ok(_) => Ok(()),
-            Err(_) => Err(ContractError::InvalidAddress {}),
+            Err(_) => match app_contract {
+                Some(app_contract) => {
+                    query_get::<String>(
+                        Some(encode_binary(&self)?),
+                        app_contract.to_string(),
+                        querier,
+                    )?;
+                    Ok(())
+                }
+                // TODO: Make error more descriptive.
+                None => Err(ContractError::InvalidAddress {}),
+            },
         }
     }
 
