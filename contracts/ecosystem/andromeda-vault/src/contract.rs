@@ -232,7 +232,10 @@ fn execute_deposit(
     strategy: Option<StrategyType>,
 ) -> Result<Response, ContractError> {
     let mut resp = Response::default();
+
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    // Validate address
+    recipient.validate_address(deps.api, recipient.get_addr()?)?;
 
     // If no amount is provided then the sent funds are used as a deposit
     let deposited_funds = if let Some(deposit_amount) = amount {

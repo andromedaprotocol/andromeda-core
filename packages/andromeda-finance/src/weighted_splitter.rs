@@ -1,5 +1,6 @@
-use andromeda_os::messages::AMPPkt;
-use common::ado_base::{modules::Module, recipient::Recipient, AndromedaMsg, AndromedaQuery};
+use andromeda_os::messages::{AMPPkt, ReplyGasExit};
+use andromeda_os::recipient::AMPRecipient as Recipient;
+use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_utils::Expiration;
@@ -56,7 +57,10 @@ pub enum ExecuteMsg {
         lock_time: u64,
     },
     /// Divides any attached funds to the message amongst the recipients list.
-    Send {},
+    Send {
+        reply_gas_exit: Option<ReplyGasExit>,
+        packet: Option<AMPPkt>,
+    },
 }
 
 #[cw_serde]

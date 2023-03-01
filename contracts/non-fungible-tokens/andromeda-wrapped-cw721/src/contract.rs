@@ -14,8 +14,8 @@ use andromeda_os::{
     recipient::generate_msg_native_kernel,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, app::AndrAddress, encode_binary,
-    error::ContractError, response::get_reply_address,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    response::get_reply_address,
 };
 use cosmwasm_std::{
     ensure, entry_point, from_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo,
@@ -63,9 +63,8 @@ pub fn instantiate(
                 name: specification.name,
                 symbol: specification.symbol,
                 modules: specification.modules,
-                minter: AndrAddress {
-                    identifier: env.contract.address.to_string(),
-                },
+                minter: env.contract.address.to_string(),
+
                 kernel_address: Some("kernel_contract".to_string()),
             };
             let msg = contract.generate_instantiate_msg(
@@ -493,9 +492,8 @@ mod tests {
             name: "name".to_string(),
             symbol: "symbol".to_string(),
             modules: None,
-            minter: AndrAddress {
-                identifier: mock_env().contract.address.to_string(),
-            },
+            minter: mock_env().contract.address.to_string(),
+
             kernel_address: Some("kernel_contract".to_string()),
         };
         let msg: SubMsg = SubMsg {

@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Addr, Api, Deps, QuerierWrapper, Storage};
 
 use crate::ADOContract;
-use common::{app::AndrAddress, error::ContractError};
+use common::{ado_base::modules::Module, error::ContractError};
 
 #[cw_serde]
 enum AppQueryMsg {
@@ -17,7 +17,7 @@ impl<'a> ADOContract<'a> {
     pub(crate) fn validate_andr_addresses(
         &self,
         deps: Deps,
-        mut addresses: Vec<AndrAddress>,
+        mut addresses: Vec<String>,
     ) -> Result<(), ContractError> {
         let app_contract = self.get_app_contract(deps.storage)?;
         ensure!(
@@ -28,19 +28,13 @@ impl<'a> ADOContract<'a> {
         {
             let modules = self.load_modules(deps.storage)?;
             if !modules.is_empty() {
-                let andr_addresses: Vec<AndrAddress> =
-                    modules.into_iter().map(|m| m.address).collect();
+                let andr_addresses: Vec<String> = modules.into_iter().map(|m| m.address).collect();
                 addresses.extend(andr_addresses);
             }
         }
         let app_contract = app_contract.unwrap();
         for address in addresses {
-            self.validate_andr_address(
-                deps.api,
-                &deps.querier,
-                address.identifier,
-                app_contract.clone(),
-            )?;
+            self.validate_andr_address(deps.api, &deps.querier, address, app_contract.clone())?;
         }
         Ok(())
     }
@@ -62,6 +56,24 @@ impl<'a> ADOContract<'a> {
         }
         Ok(())
     }
+
+    // pub(crate) fn validate_address(
+    //     &self,
+    //     api: &dyn Api,
+    //     querier: &QuerierWrapper,
+    //     address: String,
+    //     app_contract: Addr,
+    // ) -> Result<(), ContractError> {
+    //     // If the address passes this check then it doesn't refer to a app component by
+    //     // name.
+    //     if api.addr_validate(&address).is_err() {
+    //         ensure!(
+    //             self.component_exists(querier, address.clone(), app_contract)?,
+    //             ContractError::InvalidComponent { name: address }
+    //         );
+    //     }
+    //     Ok(())
+    // }
 
     fn component_exists(
         &self,

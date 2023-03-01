@@ -9,7 +9,6 @@ use common::{
         modules::{Module, ADDRESS_LIST, RATES, RECEIPT},
         AndromedaMsg, AndromedaQuery,
     },
-    app::AndrAddress,
     error::ContractError,
 };
 use cosmwasm_std::{
@@ -50,24 +49,21 @@ fn test_andr_query() {
 fn test_transfer() {
     let modules: Vec<Module> = vec![
         Module {
-            module_type: RECEIPT.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_RECEIPT_CONTRACT.to_owned(),
-            },
+            module_name: Some(RECEIPT.to_owned()),
+            address: MOCK_RECEIPT_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
         Module {
-            module_type: RATES.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_RATES_CONTRACT.to_owned(),
-            },
+            module_name: Some(RATES.to_owned()),
+            address: MOCK_RATES_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
         Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
     ];
@@ -178,24 +174,21 @@ fn test_transfer() {
 fn test_send() {
     let modules: Vec<Module> = vec![
         Module {
-            module_type: RECEIPT.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_RECEIPT_CONTRACT.to_owned(),
-            },
+            module_name: Some(RECEIPT.to_owned()),
+            address: MOCK_RECEIPT_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
         Module {
-            module_type: RATES.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_RATES_CONTRACT.to_owned(),
-            },
+            module_name: Some(RATES.to_owned()),
+            address: MOCK_RATES_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
         Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
     ];
@@ -317,10 +310,9 @@ fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules: Vec<Module> = vec![Module {
-        module_type: ADDRESS_LIST.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-        },
+        module_name: Some(ADDRESS_LIST.to_owned()),
+        address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+
         is_mutable: false,
     }];
 

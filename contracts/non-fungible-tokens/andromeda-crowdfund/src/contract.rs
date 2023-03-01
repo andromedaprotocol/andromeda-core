@@ -306,10 +306,7 @@ fn execute_mint(
         ContractError::CannotMintAfterSaleConducted {}
     );
 
-    let app_contract = contract.get_app_contract(deps.storage)?;
-    let token_contract = config
-        .token_address
-        .get_address(deps.api, &deps.querier, app_contract)?;
+    let token_contract = config.token_address;
     let crowdfund_contract = env.contract.address.to_string();
 
     let mut resp = Response::new();
@@ -831,11 +828,7 @@ fn transfer_tokens_and_send_funds(
         }
         rate_messages.extend(purchase.msgs);
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: config.token_address.get_address(
-                deps.api,
-                &deps.querier,
-                ADOContract::default().get_app_contract(deps.storage)?,
-            )?,
+            contract_addr: config.clone().token_address,
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: purchaser,
                 token_id: purchase.token_id,
@@ -906,16 +899,12 @@ fn process_refund(
 fn get_burn_messages(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
-    api: &dyn Api,
+    _api: &dyn Api,
     address: String,
     limit: usize,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let config = CONFIG.load(storage)?;
-    let token_address = config.token_address.get_address(
-        api,
-        querier,
-        ADOContract::default().get_app_contract(storage)?,
-    )?;
+    let token_address = config.token_address;
     let tokens_to_burn = query_tokens(querier, token_address.clone(), address, limit)?;
 
     tokens_to_burn

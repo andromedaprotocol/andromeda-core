@@ -6,15 +6,11 @@ use andromeda_finance::weighted_splitter::{
     MigrateMsg, QueryMsg, Splitter,
 };
 use andromeda_os::{
-    messages::{AMPMsg, AMPPkt},
-    recipient::generate_msg_native_kernel,
+    messages::{AMPMsg, AMPPkt, ReplyGasExit},
+    recipient::{generate_msg_native_kernel, AMPRecipient as Recipient},
 };
 use common::{
-    ado_base::{
-        hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
-        InstantiateMsg as BaseInstantiateMsg,
-    },
-    app::AndrAddress,
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::ContractError,
 };
@@ -104,7 +100,7 @@ pub fn execute(
     if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
         if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
             let splitter = SPLITTER.load(deps.storage)?;
-            let mut andr_addresses: Vec<AndrAddress> = vec![];
+            let mut andr_addresses: Vec<String> = vec![];
             for recipient in splitter.recipients {
                 if let Recipient::ADO(ado_recipient) = recipient.recipient {
                     andr_addresses.push(ado_recipient.address);
@@ -146,7 +142,10 @@ pub fn execute(
         }
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(deps, env, info, lock_time),
 
-        ExecuteMsg::Send {} => execute_send(deps, info),
+        ExecuteMsg::Send {
+            reply_gas_exit,
+            packet,
+        } => execute_send(deps, env, info, reply_gas_exit, packet),
     }
 }
 
@@ -378,12 +377,27 @@ pub fn execute_andromeda(
     msg: AndromedaMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        AndromedaMsg::Receive(..) => execute_send(deps, info),
+        AndromedaMsg::Receive(binary) => {
+            let (reply_gas_exit, packet) = if let Some(rep_gas_pkt) = binary {
+                let reply_gas_packet: (Option<ReplyGasExit>, Option<AMPPkt>) =
+                    from_binary(&rep_gas_pkt)?;
+                reply_gas_packet
+            } else {
+                (None, None)
+            };
+            execute_send(deps, env, info, reply_gas_exit, packet)
+        }
         _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
 }
 
-fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+fn execute_send(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    reply_gas_exit: Option<ReplyGasExit>,
+    packet: Option<AMPPkt>,
+) -> Result<Response, ContractError> {
     // Amount of coins sent should be at least 1
     ensure!(
         !&info.funds.is_empty(),
@@ -399,9 +413,9 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
 
     let splitter = SPLITTER.load(deps.storage)?;
     let mut msgs: Vec<SubMsg> = Vec::new();
-
+    let mut amp_msgs: Vec<AMPMsg> = Vec::new();
+    let mut kernel_funds: Vec<Coin> = Vec::new();
     let mut remainder_funds = info.funds.clone();
-
     let mut total_weight = Uint128::zero();
 
     // Calculate the total weight of all recipients
@@ -423,13 +437,42 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
         }
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
-        let msg = recipient_addr.recipient.generate_msg_native(
-            deps.api,
-            &deps.querier,
-            ADOContract::default().get_app_contract(deps.storage)?,
-            vec_coin,
-        )?;
-        msgs.push(msg);
+        let recipient = recipient_addr.recipient.get_addr()?;
+
+        let message = recipient_addr.recipient.get_message()?.unwrap_or_default();
+
+        match &recipient_addr.recipient {
+            Recipient::Addr(addr) => msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: addr.clone(),
+                amount: vec_coin,
+            }))),
+
+            Recipient::ADO(_) => {
+                if let Some(ref reply_gas_exit) = reply_gas_exit {
+                    amp_msgs.push(AMPMsg::new(
+                        recipient,
+                        message,
+                        Some(vec_coin.clone()),
+                        reply_gas_exit.clone().reply_on,
+                        reply_gas_exit.exit_at_error,
+                        reply_gas_exit.gas_limit,
+                    ));
+                } else {
+                    amp_msgs.push(AMPMsg::new(
+                        recipient,
+                        message,
+                        Some(vec_coin.clone()),
+                        None,
+                        None,
+                        None,
+                    ))
+                };
+                // Add the coins intended for the kernel
+                for x in &vec_coin {
+                    kernel_funds.push(x.to_owned())
+                }
+            }
+        }
     }
     remainder_funds.retain(|x| x.amount > Uint128::zero());
 
@@ -438,6 +481,33 @@ fn execute_send(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractEr
             to_address: info.sender.to_string(),
             amount: remainder_funds,
         })));
+    }
+
+    // Generates the SubMsg intended for the kernel
+    // Check if any messages are intended for kernel in the first place
+    let contract = ADOContract::default();
+
+    // The original sender of the message
+    let origin = match packet {
+        Some(p) => p.get_origin(),
+        None => info.sender.to_string(),
+    };
+
+    // The previous sender of the message is the contract
+    let previous_sender = env.contract.address;
+
+    if !amp_msgs.is_empty() {
+        // The kernel address has been validated and saved during instantiation
+        let kernel_address = contract.get_kernel_address(deps.storage)?;
+
+        let msg = generate_msg_native_kernel(
+            kernel_funds,
+            origin,
+            previous_sender.into_string(),
+            amp_msgs,
+            kernel_address.into_string(),
+        )?;
+        msgs.push(msg);
     }
 
     Ok(Response::new()

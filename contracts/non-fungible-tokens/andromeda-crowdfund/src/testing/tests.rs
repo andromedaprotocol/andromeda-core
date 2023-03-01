@@ -20,7 +20,6 @@ use common::{
         modules::{Module, ADDRESS_LIST, RATES},
         AndromedaMsg,
     },
-    app::AndrAddress,
     encode_binary,
     error::ContractError,
 };
@@ -87,9 +86,8 @@ fn get_transfer_message(token_id: impl Into<String>, recipient: impl Into<String
 
 fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     let msg = InstantiateMsg {
-        token_address: AndrAddress {
-            identifier: MOCK_TOKEN_CONTRACT.to_owned(),
-        },
+        token_address: MOCK_TOKEN_CONTRACT.to_owned(),
+
         modules,
         can_mint_after_sale: true,
         kernel_address: Some("kernel".to_string()),
@@ -104,10 +102,9 @@ fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules = vec![Module {
-        module_type: RATES.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_RATES_CONTRACT.to_owned(),
-        },
+        module_name: Some(RATES.to_owned()),
+        address: MOCK_RATES_CONTRACT.to_owned(),
+
         is_mutable: false,
     }];
 
@@ -124,9 +121,7 @@ fn test_instantiate() {
 
     assert_eq!(
         Config {
-            token_address: AndrAddress {
-                identifier: MOCK_TOKEN_CONTRACT.to_owned()
-            },
+            token_address: MOCK_TOKEN_CONTRACT.to_owned(),
             can_mint_after_sale: true
         },
         CONFIG.load(deps.as_mut().storage).unwrap()
@@ -215,9 +210,8 @@ fn test_mint_sale_started() {
 fn test_mint_sale_conducted_cant_mint_after_sale() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        token_address: AndrAddress {
-            identifier: MOCK_TOKEN_CONTRACT.to_owned(),
-        },
+        token_address: MOCK_TOKEN_CONTRACT.to_owned(),
+
         modules: None,
         can_mint_after_sale: false,
         kernel_address: None,
@@ -706,10 +700,9 @@ fn test_purchase_wrong_denom() {
 fn test_purchase_not_enough_for_price() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
-        module_type: RATES.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_RATES_CONTRACT.to_owned(),
-        },
+        module_name: Some(RATES.to_owned()),
+        address: MOCK_RATES_CONTRACT.to_owned(),
+
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -751,10 +744,9 @@ fn test_purchase_not_enough_for_price() {
 fn test_purchase_not_enough_for_tax() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
-        module_type: RATES.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_RATES_CONTRACT.to_owned(),
-        },
+        module_name: Some(RATES.to_owned()),
+        address: MOCK_RATES_CONTRACT.to_owned(),
+
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -808,10 +800,8 @@ fn test_purchase_not_enough_for_tax() {
 fn test_purchase_by_token_id_not_available() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
-        module_type: RATES.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_RATES_CONTRACT.to_owned(),
-        },
+        module_name: Some(RATES.to_owned()),
+        address: MOCK_RATES_CONTRACT.to_owned(),
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -847,10 +837,8 @@ fn test_purchase_by_token_id_not_available() {
 fn test_purchase_by_token_id() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
-        module_type: RATES.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_RATES_CONTRACT.to_owned(),
-        },
+        module_name: Some(RATES.to_owned()),
+        address: MOCK_RATES_CONTRACT.to_owned(),
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -910,10 +898,8 @@ fn test_purchase_by_token_id() {
 fn test_multiple_purchases() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
-        module_type: RATES.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_RATES_CONTRACT.to_owned(),
-        },
+        module_name: Some(RATES.to_owned()),
+        address: MOCK_RATES_CONTRACT.to_owned(),
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -1093,10 +1079,8 @@ fn test_multiple_purchases() {
 fn test_purchase_more_than_allowed_per_wallet() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
-        module_type: RATES.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_RATES_CONTRACT.to_owned(),
-        },
+        module_name: Some(RATES.to_owned()),
+        address: MOCK_RATES_CONTRACT.to_owned(),
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -1191,10 +1175,8 @@ fn mint(deps: DepsMut, token_id: impl Into<String>) -> Result<Response, Contract
 fn test_integration_conditions_not_met() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
-        module_type: RATES.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_RATES_CONTRACT.to_owned(),
-        },
+        module_name: Some(RATES.to_owned()),
+        address: MOCK_RATES_CONTRACT.to_owned(),
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -1369,10 +1351,8 @@ fn test_integration_conditions_met() {
     let mut deps = mock_dependencies_custom(&[]);
     deps.querier.contract_address = MOCK_CONDITIONS_MET_CONTRACT.to_string();
     let modules = vec![Module {
-        module_type: RATES.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_RATES_CONTRACT.to_owned(),
-        },
+        module_name: Some(RATES.to_owned()),
+        address: MOCK_RATES_CONTRACT.to_owned(),
         is_mutable: false,
     }];
     init(deps.as_mut(), Some(modules));
@@ -1738,15 +1718,12 @@ fn test_end_sale_limit_zero() {
 fn test_validate_andr_addresses_nonexisting_module() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        token_address: AndrAddress {
-            identifier: "e".to_owned(),
-        },
+        token_address: "e".to_owned(),
+
         modules: Some(vec![Module {
-            module_type: "address_list".to_string(),
+            module_name: Some("address_list".to_string()),
             is_mutable: true,
-            address: AndrAddress {
-                identifier: "z".to_string(),
-            },
+            address: "z".to_string(),
         }]),
         can_mint_after_sale: true,
         kernel_address: None,
@@ -1773,9 +1750,8 @@ fn test_validate_andr_addresses_nonexisting_module() {
 fn test_update_app_contract_nonexisting_address() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        token_address: AndrAddress {
-            identifier: "z".to_owned(),
-        },
+        token_address: "z".to_owned(),
+
         modules: None,
         can_mint_after_sale: true,
         kernel_address: None,
@@ -1801,9 +1777,8 @@ fn test_update_app_contract_nonexisting_address() {
 fn test_validate_andr_addresses_regular_address() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
-        token_address: AndrAddress {
-            identifier: "terra1asdf1ssdfadf".to_owned(),
-        },
+        token_address: "terra1asdf1ssdfadf".to_owned(),
+
         modules: None,
         can_mint_after_sale: true,
         kernel_address: None,
@@ -1830,16 +1805,13 @@ fn test_validate_andr_addresses_regular_address() {
 fn test_addresslist() {
     let mut deps = mock_dependencies_custom(&[]);
     let modules = vec![Module {
-        module_type: ADDRESS_LIST.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-        },
+        module_name: Some(ADDRESS_LIST.to_owned()),
+        address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+
         is_mutable: false,
     }];
     let msg = InstantiateMsg {
-        token_address: AndrAddress {
-            identifier: MOCK_TOKEN_CONTRACT.to_owned(),
-        },
+        token_address: MOCK_TOKEN_CONTRACT.to_owned(),
         modules: Some(modules),
         can_mint_after_sale: true,
         kernel_address: None,

@@ -11,7 +11,6 @@ use andromeda_testing::testing::mock_querier::{
 };
 use common::{
     ado_base::{modules::Module, AndromedaMsg},
-    app::AndrAddress,
     error::ContractError,
 };
 
@@ -23,11 +22,9 @@ fn test_modules() {
     let info = mock_info(owner, &[]);
     let msg = InstantiateMsg {
         modules: Some(vec![Module {
-            module_type: "address_list".to_string(),
+            module_name: Some("address_list".to_string()),
             is_mutable: false,
-            address: AndrAddress {
-                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-            },
+            address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
         }]),
         kernel_address: None,
     };
@@ -72,10 +69,9 @@ fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules: Vec<Module> = vec![Module {
-        module_type: "address_list".to_string(),
-        address: AndrAddress {
-            identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-        },
+        module_name: Some("address_list".to_string()),
+        address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+
         is_mutable: false,
     }];
 

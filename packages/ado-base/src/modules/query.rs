@@ -28,7 +28,6 @@ impl<'a> ADOContract<'a> {
 mod tests {
     use super::*;
     use crate::modules::Module;
-    use common::app::AndrAddress;
     use cosmwasm_std::{testing::mock_dependencies, Addr};
 
     #[test]
@@ -42,18 +41,16 @@ mod tests {
             .unwrap();
 
         let module1 = Module {
-            module_type: "module_type1".to_string(),
-            address: AndrAddress {
-                identifier: "address1".to_string(),
-            },
+            module_name: Some("module_type1".to_string()),
+            address: "address1".to_string(),
+
             is_mutable: true,
         };
 
         let module2 = Module {
-            module_type: "module_type2".to_string(),
-            address: AndrAddress {
-                identifier: "address2".to_string(),
-            },
+            module_name: Some("module_type2".to_string()),
+            address: "address2".to_string(),
+
             is_mutable: true,
         };
 

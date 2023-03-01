@@ -4,7 +4,7 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
-use common::{ado_base::modules::Module, app::AndrAddress, primitive::Value};
+use common::{ado_base::modules::Module, primitive::Value};
 use cosmwasm_std::{Binary, Coin, Empty};
 use cw721_base::MintMsg;
 use cw_multi_test::{Contract, ContractWrapper};
@@ -24,7 +24,7 @@ pub fn mock_cw721_instantiate_msg(
     InstantiateMsg {
         name,
         symbol,
-        minter: AndrAddress { identifier: minter },
+        minter,
         modules,
         kernel_address,
     }

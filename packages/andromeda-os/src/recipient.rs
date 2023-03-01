@@ -1,6 +1,6 @@
 use common::{encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{BankMsg, Binary, Coin, CosmosMsg, SubMsg, WasmMsg};
+use cosmwasm_std::{Api, BankMsg, Binary, Coin, CosmosMsg, SubMsg, WasmMsg};
 
 use crate::kernel::ExecuteMsg as KernelExecuteMsg;
 use crate::messages::{AMPMsg, AMPPkt, ExecuteMsg as AMPExecuteMsg};
@@ -67,6 +67,14 @@ impl AMPRecipient {
         match &self {
             AMPRecipient::Addr(_string) => Ok(None),
             AMPRecipient::ADO(recip) => Ok(recip.msg.to_owned()),
+        }
+    }
+
+    pub fn validate_address(&self, api: &dyn Api, address: String) -> Result<(), ContractError> {
+        let validated_address = api.addr_validate(&address);
+        match validated_address {
+            Ok(_) => Ok(()),
+            Err(_) => Err(ContractError::InvalidAddress {}),
         }
     }
 

@@ -1,16 +1,13 @@
 use crate::cw721::TokenExtension;
 use andromeda_os::{messages::AMPPkt, recipient::AMPRecipient as Recipient};
-use common::{
-    ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
 use cw_utils::Expiration;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub token_address: AndrAddress,
+    pub token_address: String,
     pub can_mint_after_sale: bool,
     pub modules: Option<Vec<Module>>,
     pub kernel_address: Option<String>,
@@ -73,7 +70,7 @@ pub enum QueryMsg {
 #[cw_serde]
 pub struct Config {
     /// The address of the token contract whose tokens are being sold.
-    pub token_address: AndrAddress,
+    pub token_address: String,
     /// Whether or not the owner can mint additional tokens after the sale has been conducted.
     pub can_mint_after_sale: bool,
 }

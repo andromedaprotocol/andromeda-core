@@ -110,17 +110,16 @@ impl<'a> ADOContract<'a> {
     fn load_module_addresses(
         &self,
         storage: &dyn Storage,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
+        _api: &dyn Api,
+        _querier: &QuerierWrapper,
     ) -> Result<Vec<String>, ContractError> {
-        let app_contract = self.get_app_contract(storage)?;
-        let module_addresses: Result<Vec<String>, _> = self
+        let module_addresses: Vec<String> = self
             .load_modules(storage)?
-            .iter()
-            .map(|m| m.address.get_address(api, querier, app_contract.clone()))
+            .into_iter()
+            .map(|m| m.address)
             .collect();
 
-        module_addresses
+        Ok(module_addresses)
     }
 
     /// Validates all modules.
@@ -137,10 +136,7 @@ impl<'a> ADOContract<'a> {
 mod tests {
     use super::*;
     use crate::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
-    use common::{
-        ado_base::modules::{ADDRESS_LIST, AUCTION, RECEIPT},
-        app::AndrAddress,
-    };
+    use common::ado_base::modules::{ADDRESS_LIST, AUCTION, RECEIPT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_info},
         Addr,
@@ -151,10 +147,9 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let module = Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: "address".to_string(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: "address".to_string(),
+
             is_mutable: false,
         };
         let deps_mut = deps.as_mut();
@@ -182,10 +177,9 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let module = Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: "address".to_string(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: "address".to_string(),
+
             is_mutable: false,
         };
         let deps_mut = deps.as_mut();
@@ -224,10 +218,9 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let module = Module {
-            module_type: AUCTION.to_owned(),
-            address: AndrAddress {
-                identifier: "address".to_string(),
-            },
+            module_name: Some(AUCTION.to_owned()),
+            address: "address".to_string(),
+
             is_mutable: false,
         };
         let deps_mut = deps.as_mut();
@@ -265,10 +258,9 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info("sender", &[]);
         let module = Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: "address".to_string(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: "address".to_string(),
+
             is_mutable: true,
         };
         ADOContract::default()
@@ -292,10 +284,9 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info("owner", &[]);
         let module = Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: "address".to_string(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: "address".to_string(),
+
             is_mutable: true,
         };
 
@@ -314,10 +305,9 @@ mod tests {
             .unwrap();
 
         let module = Module {
-            module_type: RECEIPT.to_owned(),
-            address: AndrAddress {
-                identifier: "other_address".to_string(),
-            },
+            module_name: Some(RECEIPT.to_owned()),
+            address: "other_address".to_string(),
+
             is_mutable: true,
         };
 
@@ -346,10 +336,9 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info("owner", &[]);
         let module = Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: "address".to_string(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: "address".to_string(),
+
             is_mutable: false,
         };
 
@@ -368,10 +357,9 @@ mod tests {
             .unwrap();
 
         let module = Module {
-            module_type: RECEIPT.to_owned(),
-            address: AndrAddress {
-                identifier: "other_address".to_string(),
-            },
+            module_name: Some(RECEIPT.to_owned()),
+            address: "other_address".to_string(),
+
             is_mutable: true,
         };
 
@@ -386,10 +374,9 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info("owner", &[]);
         let module = Module {
-            module_type: AUCTION.to_owned(),
-            address: AndrAddress {
-                identifier: "address".to_string(),
-            },
+            module_name: Some(AUCTION.to_owned()),
+            address: "address".to_string(),
+
             is_mutable: true,
         };
 
@@ -413,10 +400,8 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info("owner", &[]);
         let module = Module {
-            module_type: AUCTION.to_owned(),
-            address: AndrAddress {
-                identifier: "address".to_string(),
-            },
+            module_name: Some(AUCTION.to_owned()),
+            address: "address".to_string(),
             is_mutable: true,
         };
 
@@ -470,10 +455,9 @@ mod tests {
             .unwrap();
 
         let module = Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: "address".to_string(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: "address".to_string(),
+
             is_mutable: true,
         };
 
@@ -508,10 +492,9 @@ mod tests {
             .unwrap();
 
         let module = Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: "address".to_string(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: "address".to_string(),
+
             is_mutable: false,
         };
 
@@ -555,10 +538,8 @@ mod tests {
                 deps.as_mut().storage,
                 "1",
                 &Module {
-                    module_type: "address_list".to_string(),
-                    address: AndrAddress {
-                        identifier: "address".to_string(),
-                    },
+                    module_name: Some("address_list".to_string()),
+                    address: "address".to_string(),
                     is_mutable: true,
                 },
             )
@@ -570,10 +551,8 @@ mod tests {
                 deps.as_mut().storage,
                 "2",
                 &Module {
-                    module_type: "address_list".to_string(),
-                    address: AndrAddress {
-                        identifier: "a".to_string(),
-                    },
+                    module_name: Some("address_list".to_string()),
+                    address: "a".to_string(),
                     is_mutable: true,
                 },
             )
@@ -584,7 +563,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            vec![String::from("address"), String::from("actual_address")],
+            vec![String::from("address"), String::from("a")],
             module_addresses
         );
     }

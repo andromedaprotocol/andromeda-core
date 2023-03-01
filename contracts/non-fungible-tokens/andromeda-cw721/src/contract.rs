@@ -271,14 +271,9 @@ fn handle_amp_packet(
 fn execute_mint(env: ExecuteEnv, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
     let cw721_contract = AndrCW721Contract::default();
-    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     let andr_minter = ANDR_MINTER.load(deps.storage)?;
     if cw721_contract.minter.may_load(deps.storage)?.is_none() {
-        let addr = deps.api.addr_validate(&andr_minter.get_address(
-            deps.api,
-            &deps.querier,
-            app_contract,
-        )?)?;
+        let addr = deps.api.addr_validate(&andr_minter)?;
         save_minter(&cw721_contract, deps.storage, &addr)?;
     }
 
@@ -296,14 +291,9 @@ fn execute_batch_mint(
     } = env;
     let mut resp = Response::default();
     let cw721_contract = AndrCW721Contract::default();
-    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     let andr_minter = ANDR_MINTER.load(deps.storage)?;
     if cw721_contract.minter.may_load(deps.storage)?.is_none() {
-        let addr = deps.api.addr_validate(&andr_minter.get_address(
-            deps.api,
-            &deps.querier,
-            app_contract,
-        )?)?;
+        let addr = deps.api.addr_validate(&andr_minter)?;
         save_minter(&cw721_contract, deps.storage, &addr)?;
     }
     for msg in tokens_to_mint {
@@ -568,11 +558,8 @@ pub fn query_transfer_agreement(
 }
 
 pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
-    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     let minter = ANDR_MINTER.load(deps.storage)?;
-    let addr = minter.get_address(deps.api, &deps.querier, app_contract)?;
-
-    Ok(addr)
+    Ok(minter)
 }
 
 fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {

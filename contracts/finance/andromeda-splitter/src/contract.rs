@@ -9,7 +9,6 @@ use andromeda_os::recipient::{generate_msg_native_kernel, AMPRecipient};
 use andromeda_os::messages::{AMPMsg, AMPPkt, ReplyGasExit};
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
-    app::AndrAddress,
     encode_binary,
     error::ContractError,
 };
@@ -100,15 +99,13 @@ pub fn execute(
     if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
         if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
             let splitter = SPLITTER.load(deps.storage)?;
-            let mut andr_addresses: Vec<AndrAddress> = vec![];
+            let mut addresses: Vec<String> = vec![];
             for recipient in splitter.recipients {
                 if let AMPRecipient::ADO(ado_recipient) = recipient.recipient {
-                    andr_addresses.push(common::app::AndrAddress {
-                        identifier: ado_recipient.address,
-                    });
+                    addresses.push(ado_recipient.address);
                 }
             }
-            return contract.execute_update_app_contract(deps, info, address, Some(andr_addresses));
+            return contract.execute_update_app_contract(deps, info, address, Some(addresses));
         } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
             return contract.execute_update_owner(deps, info, address);
         }

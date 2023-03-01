@@ -674,7 +674,6 @@ mod tests {
     use andromeda_non_fungible_tokens::marketplace::{Cw721HookMsg, ExecuteMsg, InstantiateMsg};
 
     use common::ado_base::modules::{Module, RATES};
-    use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coin, coins};
 
@@ -1024,10 +1023,9 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let modules = vec![Module {
-            module_type: RATES.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_RATES_CONTRACT.to_owned(),
-            },
+            module_name: Some(RATES.to_owned()),
+            address: MOCK_RATES_CONTRACT.to_owned(),
+
             is_mutable: false,
         }];
         let msg = InstantiateMsg {
@@ -1055,10 +1053,9 @@ mod tests {
         let env = mock_env();
         let info = mock_info("owner", &[]);
         let modules = vec![Module {
-            module_type: RATES.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_RATES_CONTRACT.to_owned(),
-            },
+            module_name: Some(RATES.to_owned()),
+            address: MOCK_RATES_CONTRACT.to_owned(),
+
             is_mutable: false,
         }];
         let msg = InstantiateMsg {

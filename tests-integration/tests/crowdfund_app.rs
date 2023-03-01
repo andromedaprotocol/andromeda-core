@@ -18,7 +18,7 @@ use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
-use common::{ado_base::modules::Module, app::AndrAddress};
+use common::ado_base::modules::Module;
 use std::str::FromStr;
 
 use andromeda_testing::mock::MockAndromeda;
@@ -125,15 +125,13 @@ fn test_crowdfund_app() {
         .unwrap();
 
     let modules: Vec<Module> = vec![Module {
-        module_type: "rates".to_string(),
-        address: AndrAddress {
-            identifier: rates_addr.to_string(),
-        },
+        module_name: Some("rates".to_string()),
+        address: rates_addr.to_string(),
         is_mutable: false,
     }];
 
     let crowdfund_init_msg = mock_crowdfund_instantiate_msg(
-        "2".to_string(),
+        "Test Tokens".to_string(),
         false,
         Some(modules),
         Some(andr.kernel_address.to_string()),

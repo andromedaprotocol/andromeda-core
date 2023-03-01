@@ -6,7 +6,7 @@ use andromeda_non_fungible_tokens::{
     cw721::TokenExtension,
 };
 use andromeda_os::recipient::AMPRecipient as Recipient;
-use common::{ado_base::modules::Module, app::AndrAddress};
+use common::ado_base::modules::Module;
 use cosmwasm_std::{Coin, Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
 use cw_utils::Expiration;
@@ -23,9 +23,7 @@ pub fn mock_crowdfund_instantiate_msg(
     kernel_address: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        token_address: AndrAddress {
-            identifier: token_address,
-        },
+        token_address,
         can_mint_after_sale,
         modules,
         kernel_address,

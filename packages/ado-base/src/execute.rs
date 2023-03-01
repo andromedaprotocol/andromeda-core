@@ -3,7 +3,6 @@ use crate::ADOContract;
 use common::ado_base::modules::Module;
 use common::{
     ado_base::{AndromedaMsg, ExecuteMsg, InstantiateMsg},
-    app::AndrAddress,
     error::ContractError,
     parse_message,
 };
@@ -95,7 +94,10 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::RefreshAddresses { start_after, limit } => {
                 self.execute_refresh_addresses(deps, start_after, limit)
             }
-            _ => Err(ContractError::UnsupportedOperation {}),
+            _ => {
+                println!("Are we getting here?");
+                Err(ContractError::UnsupportedOperation {})
+            }
         }
     }
 
@@ -108,12 +110,8 @@ impl<'a> ADOContract<'a> {
         module: &Module,
     ) -> Result<(), ContractError> {
         if let Some(app_contract) = self.get_app_contract(storage)? {
-            self.validate_andr_address(
-                api,
-                querier,
-                module.address.identifier.to_owned(),
-                app_contract,
-            )?;
+            api.addr_validate(&module.address)?;
+            // self.validate_andr_address(api, querier, module.address.to_owned(), app_contract)?;
         }
         Ok(())
     }
@@ -171,7 +169,7 @@ impl<'a> ADOContract<'a> {
         deps: DepsMut,
         info: MessageInfo,
         address: String,
-        addresses: Option<Vec<AndrAddress>>,
+        addresses: Option<Vec<String>>,
     ) -> Result<Response, ContractError> {
         ensure!(
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
@@ -242,10 +240,9 @@ mod tests {
             .unwrap();
 
         let module = Module {
-            module_type: "module".to_owned(),
-            address: AndrAddress {
-                identifier: "z".to_string(),
-            },
+            module_name: Some("module".to_owned()),
+            address: "z".to_string(),
+
             is_mutable: false,
         };
 
@@ -278,10 +275,8 @@ mod tests {
                     ado_type: "type".to_string(),
                     ado_version: "version".to_string(),
                     modules: Some(vec![Module {
-                        module_type: "module".to_owned(),
-                        address: AndrAddress {
-                            identifier: "terra1...".to_string(),
-                        },
+                        module_name: Some("module".to_owned()),
+                        address: "terra1...".to_string(),
 
                         is_mutable: true,
                     }]),
@@ -297,10 +292,9 @@ mod tests {
             .unwrap();
 
         let module = Module {
-            module_type: "module".to_owned(),
-            address: AndrAddress {
-                identifier: "z".to_string(),
-            },
+            module_name: Some("module".to_owned()),
+            address: "z".to_string(),
+
             is_mutable: false,
         };
 
@@ -377,11 +371,9 @@ mod tests {
                     ado_type: "type".to_string(),
                     ado_version: "version".to_string(),
                     modules: Some(vec![Module {
-                        module_type: "address_list".to_string(),
+                        module_name: Some("address_list".to_string()),
                         is_mutable: true,
-                        address: AndrAddress {
-                            identifier: "z".to_string(),
-                        },
+                        address: "z".to_string(),
                     }]),
                     operators: None,
                     kernel_address: None,

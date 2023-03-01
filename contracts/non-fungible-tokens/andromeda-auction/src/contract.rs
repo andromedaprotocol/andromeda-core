@@ -866,7 +866,6 @@ mod tests {
     };
     use andromeda_testing::testing::mock_querier::{MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT};
     use common::ado_base::modules::Module;
-    use common::app::AndrAddress;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{attr, coin, coins, from_binary, BankMsg, CosmosMsg, Response, Timestamp};
     use cw721::Expiration;
@@ -1918,10 +1917,9 @@ mod tests {
         let mut env = mock_env();
         let info = mock_info("owner", &[]);
         let module = Module {
-            module_type: "rates".to_string(),
-            address: AndrAddress {
-                identifier: MOCK_RATES_CONTRACT.to_owned(),
-            },
+            module_name: Some("rates".to_string()),
+            address: MOCK_RATES_CONTRACT.to_owned(),
+
             is_mutable: true,
         };
         let msg = InstantiateMsg {

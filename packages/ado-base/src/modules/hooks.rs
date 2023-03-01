@@ -37,7 +37,7 @@ impl<'a> ADOContract<'a> {
     pub fn on_funds_transfer(
         &self,
         storage: &dyn Storage,
-        api: &dyn Api,
+        _api: &dyn Api,
         querier: &QuerierWrapper,
         sender: String,
         amount: Funds,
@@ -49,9 +49,8 @@ impl<'a> ADOContract<'a> {
         let mut events: Vec<Event> = Vec::new();
         let mut receipt_module_address: Option<String> = None;
         for module in modules {
-            let app_contract = self.get_app_contract(storage)?;
-            let module_address = module.address.get_address(api, querier, app_contract)?;
-            if module.module_type == RECEIPT {
+            let module_address = module.address;
+            if module.module_name == Some(RECEIPT.to_string()) {
                 // If receipt module exists we want to make sure we do it last.
                 receipt_module_address = Some(module_address);
                 continue;

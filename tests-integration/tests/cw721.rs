@@ -7,7 +7,6 @@ use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg};
 use andromeda_testing::mock::MockAndromeda;
 use common::{
     ado_base::{modules::Module, recipient::Recipient},
-    app::AndrAddress,
     primitive::Value,
 };
 use cosmwasm_std::{coin, Addr, Uint128};
@@ -77,10 +76,9 @@ fn cw721_rates_module() {
 
     // Generate CW721 contract
     let modules: Vec<Module> = [Module {
-        module_type: "rates".to_string(),
-        address: AndrAddress {
-            identifier: rates_addr.to_string(),
-        },
+        module_name: Some("rates".to_string()),
+        address: rates_addr.to_string(),
+
         is_mutable: false,
     }]
     .to_vec();

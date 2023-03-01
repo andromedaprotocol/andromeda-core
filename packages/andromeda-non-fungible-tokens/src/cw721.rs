@@ -1,7 +1,6 @@
 use andromeda_os::messages::AMPPkt;
 use common::{
     ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
     primitive::Value,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -24,7 +23,7 @@ pub struct InstantiateMsg {
     /// The minter is the only one who can create new NFTs.
     /// This is designed for a base NFT that is controlled by an external program
     /// or contract. You will likely replace this with custom logic in custom NFTs
-    pub minter: AndrAddress,
+    pub minter: String,
     ///The attached Andromeda modules
     pub modules: Option<Vec<Module>>,
     pub kernel_address: Option<String>,

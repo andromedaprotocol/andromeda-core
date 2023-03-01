@@ -7,11 +7,7 @@ use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT,
 };
 use common::{
-    ado_base::{
-        modules::Module, recipient::ADORecipient, AndromedaMsg,
-        InstantiateMsg as BaseInstantiateMsg,
-    },
-    app::AndrAddress,
+    ado_base::{modules::Module, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     error::ContractError,
 };
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -22,7 +18,7 @@ use ado_base::ADOContract;
 use andromeda_finance::weighted_splitter::{
     GetSplitterConfigResponse, GetUserWeightResponse, QueryMsg, Splitter,
 };
-use common::ado_base::recipient::Recipient;
+use andromeda_os::recipient::{ADORecipient, AMPRecipient as Recipient};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{attr, from_binary, Coin, CosmosMsg, SubMsg};
 
@@ -33,11 +29,9 @@ fn test_modules() {
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
         modules: Some(vec![Module {
-            module_type: "address_list".to_string(),
+            module_name: Some("address_list".to_string()),
             is_mutable: false,
-            address: AndrAddress {
-                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-            },
+            address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
         }]),
         recipients: vec![AddressWeight {
             recipient: Recipient::from_string(String::from("Some Address")),
@@ -54,7 +48,10 @@ fn test_modules() {
         .add_attribute("type", "weighted-distribution-splitter");
     assert_eq!(expected_res, res);
 
-    let msg = ExecuteMsg::Send {};
+    let msg = ExecuteMsg::Send {
+        reply_gas_exit: None,
+        packet: None,
+    };
     let info = mock_info("anyone", &coins(100, "uusd"));
 
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
@@ -86,10 +83,9 @@ fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules: Vec<Module> = vec![Module {
-        module_type: "address_list".to_string(),
-        address: AndrAddress {
-            identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-        },
+        module_name: Some("address_list".to_string()),
+        address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+
         is_mutable: false,
     }];
 
@@ -103,9 +99,7 @@ fn test_update_app_contract() {
             },
             AddressWeight {
                 recipient: Recipient::ADO(ADORecipient {
-                    address: AndrAddress {
-                        identifier: "e".to_string(),
-                    },
+                    address: "e".to_string(),
                     msg: None,
                 }),
                 weight: Uint128::new(50),
@@ -136,10 +130,9 @@ fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules: Vec<Module> = vec![Module {
-        module_type: "address_list".to_string(),
-        address: AndrAddress {
-            identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-        },
+        module_name: Some("address_list".to_string()),
+        address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+
         is_mutable: false,
     }];
 
@@ -148,9 +141,7 @@ fn test_update_app_contract_invalid_recipient() {
         modules: Some(modules),
         recipients: vec![AddressWeight {
             recipient: Recipient::ADO(ADORecipient {
-                address: AndrAddress {
-                    identifier: "z".to_string(),
-                },
+                address: "z".to_string(),
                 msg: None,
             }),
             weight: Uint128::new(100),
@@ -1567,7 +1558,10 @@ fn test_execute_send() {
             weight: recip_weight2,
         },
     ];
-    let msg = ExecuteMsg::Send {};
+    let msg = ExecuteMsg::Send {
+        reply_gas_exit: None,
+        packet: None,
+    };
 
     let splitter = Splitter {
         recipients: recipient,
@@ -1691,7 +1685,10 @@ fn test_execute_send_error() {
             weight: recip_weight2,
         },
     ];
-    let msg = ExecuteMsg::Send {};
+    let msg = ExecuteMsg::Send {
+        reply_gas_exit: None,
+        packet: None,
+    };
 
     let info = mock_info(
         owner,

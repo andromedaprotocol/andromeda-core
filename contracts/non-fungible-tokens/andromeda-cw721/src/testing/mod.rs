@@ -39,9 +39,8 @@ fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
-        minter: AndrAddress {
-            identifier: MINTER.to_string(),
-        },
+        minter: MINTER.to_string(),
+
         modules,
         kernel_address: None,
     };
@@ -79,9 +78,7 @@ fn test_transfer_nft() {
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
     assert_eq!(
-        AndrAddress {
-            identifier: MINTER.to_owned()
-        },
+        MINTER.to_owned(),
         ANDR_MINTER.load(deps.as_ref().storage).unwrap()
     );
     mint_token(
@@ -590,24 +587,21 @@ fn test_transfer_agreement() {
 fn test_modules() {
     let modules: Vec<Module> = vec![
         Module {
-            module_type: RECEIPT.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_RECEIPT_CONTRACT.to_owned(),
-            },
+            module_name: Some(RECEIPT.to_owned()),
+            address: MOCK_RECEIPT_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
         Module {
-            module_type: RATES.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_RATES_CONTRACT.to_owned(),
-            },
+            module_name: Some(RATES.to_owned()),
+            address: MOCK_RATES_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
         Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
     ];
@@ -730,10 +724,9 @@ fn test_modules() {
 #[test]
 fn test_transfer_with_offer() {
     let modules: Vec<Module> = vec![Module {
-        module_type: BIDS.to_owned(),
-        address: AndrAddress {
-            identifier: MOCK_BIDS_CONTRACT.to_owned(),
-        },
+        module_name: Some(BIDS.to_owned()),
+        address: MOCK_BIDS_CONTRACT.to_owned(),
+
         is_mutable: false,
     }];
 
@@ -791,17 +784,15 @@ fn test_update_app_contract() {
 
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
         Module {
-            module_type: RATES.to_owned(),
-            address: AndrAddress {
-                identifier: "b".to_owned(),
-            },
+            module_name: Some(RATES.to_owned()),
+            address: "b".to_owned(),
+
             is_mutable: false,
         },
     ];
@@ -810,9 +801,8 @@ fn test_update_app_contract() {
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
-        minter: AndrAddress {
-            identifier: "e".to_string(),
-        },
+        minter: "e".to_string(),
+
         modules: Some(modules),
         kernel_address: None,
     };
@@ -839,17 +829,15 @@ fn test_update_app_contract_invalid_minter() {
 
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+
             is_mutable: false,
         },
         Module {
-            module_type: RATES.to_owned(),
-            address: AndrAddress {
-                identifier: "b".to_owned(),
-            },
+            module_name: Some(RATES.to_owned()),
+            address: "b".to_owned(),
+
             is_mutable: false,
         },
     ];
@@ -858,9 +846,8 @@ fn test_update_app_contract_invalid_minter() {
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
-        minter: AndrAddress {
-            identifier: "k".to_string(),
-        },
+        minter: "k".to_string(),
+
         modules: Some(modules),
         kernel_address: None,
     };
@@ -886,17 +873,13 @@ fn test_update_app_contract_invalid_module() {
 
     let modules: Vec<Module> = vec![
         Module {
-            module_type: ADDRESS_LIST.to_owned(),
-            address: AndrAddress {
-                identifier: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-            },
+            module_name: Some(ADDRESS_LIST.to_owned()),
+            address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
             is_mutable: false,
         },
         Module {
-            module_type: RATES.to_owned(),
-            address: AndrAddress {
-                identifier: "k".to_owned(),
-            },
+            module_name: Some(RATES.to_owned()),
+            address: "k".to_owned(),
             is_mutable: false,
         },
     ];
@@ -905,9 +888,7 @@ fn test_update_app_contract_invalid_module() {
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
-        minter: AndrAddress {
-            identifier: MINTER.to_string(),
-        },
+        minter: MINTER.to_string(),
         modules: Some(modules),
         kernel_address: None,
     };
@@ -934,9 +915,8 @@ fn test_batch_mint() {
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
-        minter: AndrAddress {
-            identifier: MINTER.to_string(),
-        },
+        minter: MINTER.to_string(),
+
         modules: None,
         kernel_address: None,
     };
