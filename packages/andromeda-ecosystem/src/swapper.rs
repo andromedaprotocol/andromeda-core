@@ -1,8 +1,5 @@
 use andromeda_os::messages::AMPPkt;
-use common::{
-    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
-    app::AndrAddress,
-};
+use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 use cw20::Cw20ReceiveMsg;
@@ -47,7 +44,7 @@ pub enum SwapperImpl {
     /// Specifies the instantiation specification for the swapper impl.
     New(InstantiateInfo),
     /// Specifies the swapper impl by reference to an existing contract.
-    Reference(AndrAddress),
+    Reference(String),
 }
 
 #[cw_serde]
@@ -91,7 +88,7 @@ pub enum Cw20HookMsg {
 pub enum QueryMsg {
     #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
-    #[returns(AndrAddress)]
+    #[returns(String)]
     SwapperImpl {},
 }
 

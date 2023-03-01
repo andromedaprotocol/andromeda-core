@@ -10,7 +10,7 @@ use andromeda_os::{
 };
 use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
-    app::AndrAddress,
+    app::GetAddress,
     encode_binary,
     error::ContractError,
     response::get_reply_address,
@@ -81,7 +81,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     ensure!(msg.id == 1, ContractError::InvalidReplyId {});
 
     let addr = get_reply_address(msg)?;
-    SWAPPER_IMPL_ADDR.save(deps.storage, &AndrAddress { identifier: addr })?;
+    SWAPPER_IMPL_ADDR.save(deps.storage, &addr)?;
     Ok(Response::default())
 }
 
@@ -411,7 +411,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-fn query_swapper_impl(deps: Deps) -> Result<AndrAddress, ContractError> {
+fn query_swapper_impl(deps: Deps) -> Result<String, ContractError> {
     let andr_address = SWAPPER_IMPL_ADDR.load(deps.storage)?;
     Ok(andr_address)
 }

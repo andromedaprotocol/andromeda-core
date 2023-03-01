@@ -14,7 +14,7 @@ use andromeda_testing::{
     reply::MsgInstantiateContractResponse,
     testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2},
 };
-use common::{ado_base::recipient::Recipient, app::AndrAddress, error::ContractError};
+use common::{ado_base::recipient::Recipient, error::ContractError};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use prost::Message;
@@ -23,9 +23,7 @@ const MOCK_ASTROPORT_WRAPPER_CONTRACT: &str = "astroport_wrapper";
 
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
-        swapper_impl: SwapperImpl::Reference(AndrAddress {
-            identifier: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(),
-        }),
+        swapper_impl: SwapperImpl::Reference(MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned()),
         primitive_contract: "primitive_contract".to_string(),
         kernel_address: Some("kernel_contract".to_string()),
     };
@@ -46,14 +44,9 @@ fn test_instantiate_swapper_impl_address() {
     );
 
     let msg = QueryMsg::SwapperImpl {};
-    let res: AndrAddress = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: String = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
-    assert_eq!(
-        AndrAddress {
-            identifier: MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned()
-        },
-        res
-    )
+    assert_eq!(MOCK_ASTROPORT_WRAPPER_CONTRACT.to_owned(), res)
 }
 
 #[test]
@@ -112,14 +105,9 @@ fn test_instantiate_swapper_impl_new() {
     reply(deps.as_mut(), mock_env(), reply_msg).unwrap();
 
     let msg = QueryMsg::SwapperImpl {};
-    let res: AndrAddress = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: String = from_binary(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
-    assert_eq!(
-        AndrAddress {
-            identifier: "swapper_impl_address".to_string()
-        },
-        res
-    )
+    assert_eq!("swapper_impl_address".to_string(), res)
 }
 
 #[test]
