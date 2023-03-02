@@ -1,36 +1,36 @@
 use common::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr};
-use regex::Regex;
+// use regex::Regex;
 
-pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
-pub const PATH_REGEX: &str = r"^([A-Za-z0-9]+://)?(/)?([A-Za-z0-9\.]{1,40}(/)?)+$";
+// pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
+// pub const PATH_REGEX: &str = r"^([A-Za-z0-9]+://)?(/)?([A-Za-z0-9\.]{1,40}(/)?)+$";
 
 pub fn convert_component_name(path: String) -> String {
     path.replace(' ', "_")
 }
 
 pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
-    let re = Regex::new(COMPONENT_NAME_REGEX).unwrap();
+    // let re = Regex::new(COMPONENT_NAME_REGEX).unwrap();
 
-    ensure!(
-        re.is_match(&path),
-        ContractError::InvalidPathname {
-            error: Some("Pathname includes an invalid character".to_string())
-        }
-    );
+    // ensure!(
+    //     re.is_match(&path),
+    //     ContractError::InvalidPathname {
+    //         error: Some("Pathname includes an invalid character".to_string())
+    //     }
+    // );
     Ok(true)
 }
 
 pub fn validate_pathname(path: String) -> Result<bool, ContractError> {
-    let re = Regex::new(PATH_REGEX).unwrap();
+    // let re = Regex::new(PATH_REGEX).unwrap();
 
-    ensure!(
-        re.is_match(&path),
-        ContractError::InvalidPathname {
-            error: Some("Pathname includes an invalid character".to_string())
-        }
-    );
+    // ensure!(
+    //     re.is_match(&path),
+    //     ContractError::InvalidPathname {
+    //         error: Some("Pathname includes an invalid character".to_string())
+    //     }
+    // );
     Ok(true)
 }
 
