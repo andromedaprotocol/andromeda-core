@@ -13,27 +13,8 @@
     },
     "token_address": {
       "description": "The address of the token contract whose tokens are being sold.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/AndrAddress"
-        }
-      ]
+      "type": "string"
     }
   },
-  "additionalProperties": false,
-  "definitions": {
-    "AndrAddress": {
-      "type": "object",
-      "required": [
-        "identifier"
-      ],
-      "properties": {
-        "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a app.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    }
-  }
+  "additionalProperties": false
 }

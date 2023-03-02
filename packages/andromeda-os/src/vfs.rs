@@ -1,6 +1,6 @@
 use common::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Addr};
+use cosmwasm_std::Addr;
 // use regex::Regex;
 
 // pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
@@ -10,7 +10,7 @@ pub fn convert_component_name(path: String) -> String {
     path.replace(' ', "_")
 }
 
-pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
+pub fn validate_component_name(_path: String) -> Result<bool, ContractError> {
     // let re = Regex::new(COMPONENT_NAME_REGEX).unwrap();
 
     // ensure!(
@@ -22,7 +22,7 @@ pub fn validate_component_name(path: String) -> Result<bool, ContractError> {
     Ok(true)
 }
 
-pub fn validate_pathname(path: String) -> Result<bool, ContractError> {
+pub fn validate_pathname(_path: String) -> Result<bool, ContractError> {
     // let re = Regex::new(PATH_REGEX).unwrap();
 
     // ensure!(

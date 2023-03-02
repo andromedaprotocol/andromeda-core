@@ -24,11 +24,7 @@
     },
     "staking_token": {
       "description": "The cw20 token that can be staked.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/AndrAddress"
-        }
-      ]
+      "type": "string"
     }
   },
   "additionalProperties": false,
@@ -80,19 +76,6 @@
           "minimum": 0.0
         }
       }
-    },
-    "AndrAddress": {
-      "type": "object",
-      "required": [
-        "identifier"
-      ],
-      "properties": {
-        "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a app.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
     },
     "AssetInfoBase_for_String": {
       "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",

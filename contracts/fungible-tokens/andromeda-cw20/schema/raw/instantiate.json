@@ -64,19 +64,6 @@
   },
   "additionalProperties": false,
   "definitions": {
-    "AndrAddress": {
-      "type": "object",
-      "required": [
-        "identifier"
-      ],
-      "properties": {
-        "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a app.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
@@ -221,18 +208,20 @@
       "type": "object",
       "required": [
         "address",
-        "is_mutable",
-        "module_type"
+        "is_mutable"
       ],
       "properties": {
         "address": {
-          "$ref": "#/definitions/AndrAddress"
+          "type": "string"
         },
         "is_mutable": {
           "type": "boolean"
         },
-        "module_type": {
-          "type": "string"
+        "module_name": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false

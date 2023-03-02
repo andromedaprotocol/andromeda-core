@@ -28,11 +28,7 @@
       },
       "staking_token": {
         "description": "The cw20 token that can be staked.",
-        "allOf": [
-          {
-            "$ref": "#/definitions/AndrAddress"
-          }
-        ]
+        "type": "string"
       }
     },
     "additionalProperties": false,
@@ -84,19 +80,6 @@
             "minimum": 0.0
           }
         }
-      },
-      "AndrAddress": {
-        "type": "object",
-        "required": [
-          "identifier"
-        ],
-        "properties": {
-          "identifier": {
-            "description": "Can be either an address or identifier of an ADO in a app.",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
       },
       "AssetInfoBase_for_String": {
         "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
@@ -821,48 +804,32 @@
         "type": "object",
         "required": [
           "address",
-          "is_mutable",
-          "module_type"
+          "is_mutable"
         ],
         "properties": {
           "address": {
-            "$ref": "#/definitions/AndrAddress"
+            "type": "string"
           },
           "is_mutable": {
             "type": "boolean"
           },
-          "module_type": {
-            "type": "string"
+          "module_name": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
       },
       "Recipient": {
-        "oneOf": [
+        "anyOf": [
           {
             "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-            "type": "object",
-            "required": [
-              "addr"
-            ],
-            "properties": {
-              "addr": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
+            "type": "string"
           },
           {
-            "type": "object",
-            "required": [
-              "a_d_o"
-            ],
-            "properties": {
-              "a_d_o": {
-                "$ref": "#/definitions/ADORecipient"
-              }
-            },
-            "additionalProperties": false
+            "$ref": "#/definitions/ADORecipient"
           }
         ]
       },
@@ -1473,29 +1440,10 @@
         },
         "staking_token": {
           "description": "The token accepted for staking.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/AndrAddress"
-            }
-          ]
+          "type": "string"
         }
       },
-      "additionalProperties": false,
-      "definitions": {
-        "AndrAddress": {
-          "type": "object",
-          "required": [
-            "identifier"
-          ],
-          "properties": {
-            "identifier": {
-              "description": "Can be either an address or identifier of an ADO in a app.",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      }
+      "additionalProperties": false
     },
     "staker": {
       "$schema": "http://json-schema.org/draft-07/schema#",

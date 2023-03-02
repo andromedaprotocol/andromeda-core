@@ -32,19 +32,6 @@
   },
   "additionalProperties": false,
   "definitions": {
-    "AndrAddress": {
-      "type": "object",
-      "required": [
-        "identifier"
-      ],
-      "properties": {
-        "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a app.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
     "Cw721Specification": {
       "type": "object",
       "required": [
@@ -103,18 +90,20 @@
       "type": "object",
       "required": [
         "address",
-        "is_mutable",
-        "module_type"
+        "is_mutable"
       ],
       "properties": {
         "address": {
-          "$ref": "#/definitions/AndrAddress"
+          "type": "string"
         },
         "is_mutable": {
           "type": "boolean"
         },
-        "module_type": {
-          "type": "string"
+        "module_name": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false
