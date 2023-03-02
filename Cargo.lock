@@ -872,6 +872,7 @@ name = "andromeda-weighted-distribution-splitter"
 version = "0.2.0"
 dependencies = [
  "ado-base",
+ "andromeda-app",
  "andromeda-finance",
  "andromeda-os",
  "andromeda-testing",

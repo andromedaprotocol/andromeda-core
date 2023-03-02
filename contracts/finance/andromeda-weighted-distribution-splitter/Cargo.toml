@@ -24,3 +24,4 @@ common = { version = "0.1.0", path = "../../../packages/common" }
 [dev-dependencies]
 
 andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }
+andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }
