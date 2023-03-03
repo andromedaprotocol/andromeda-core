@@ -44,6 +44,8 @@ pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
 pub const MOCK_RECEIPT_CONTRACT: &str = "receipt_contract";
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
 pub const MOCK_BIDS_CONTRACT: &str = "bids_contract";
+pub const MOCK_RECIPIENT1: &str = "mock_recipient1";
+pub const MOCK_RECIPIENT2: &str = "mock_recipient2";
 
 pub const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 pub const MOCK_TOKEN_TRANSFER_AGREEMENT: &str = "token_transfer_agreement";

@@ -1,10 +1,10 @@
+
 use cosmwasm_std::{coins, BankMsg, Response, StdError, Timestamp, Uint128};
 use cw_utils::Expiration;
 
-use crate::{
-    contract::{execute, instantiate},
-    mock_querier::{MOCK_RECIPIENT1, MOCK_RECIPIENT2},
-};
+use crate::contract::{execute, instantiate};
+use andromeda_testing::testing::mock_querier::{MOCK_RECIPIENT1, MOCK_RECIPIENT2};
+
 use andromeda_finance::weighted_splitter::{AddressWeight, ExecuteMsg, InstantiateMsg};
 use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_RECIPIENT,
