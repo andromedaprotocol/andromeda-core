@@ -1,7 +1,10 @@
 use cosmwasm_std::{coins, BankMsg, Response, StdError, Timestamp, Uint128};
 use cw_utils::Expiration;
 
-use crate::contract::{execute, instantiate};
+use crate::{
+    contract::{execute, instantiate},
+    mock_querier::{MOCK_RECIPIENT1, MOCK_RECIPIENT2},
+};
 use andromeda_finance::weighted_splitter::{AddressWeight, ExecuteMsg, InstantiateMsg};
 use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_RECIPIENT,
@@ -94,12 +97,12 @@ fn test_update_app_contract() {
         modules: Some(modules),
         recipients: vec![
             AddressWeight {
-                recipient: Recipient::from_string(String::from("Some Address")),
+                recipient: Recipient::from_string(MOCK_RECIPIENT1.to_string()),
                 weight: Uint128::new(50),
             },
             AddressWeight {
                 recipient: Recipient::ADO(ADORecipient {
-                    address: "e".to_string(),
+                    address: MOCK_RECIPIENT2.to_string().to_string(),
                     msg: None,
                 }),
                 weight: Uint128::new(50),
@@ -130,9 +133,8 @@ fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let modules: Vec<Module> = vec![Module {
-        module_name: Some("address_list".to_string()),
-        address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-
+        module_name: Some("ks".to_string()),
+        address: "z".to_owned(),
         is_mutable: false,
     }];
 
@@ -141,7 +143,7 @@ fn test_update_app_contract_invalid_recipient() {
         modules: Some(modules),
         recipients: vec![AddressWeight {
             recipient: Recipient::ADO(ADORecipient {
-                address: "z".to_string(),
+                address: MOCK_RECIPIENT1.to_string().to_string(),
                 msg: None,
             }),
             weight: Uint128::new(100),
@@ -173,7 +175,7 @@ fn test_instantiate() {
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
         recipients: vec![AddressWeight {
-            recipient: Recipient::from_string(String::from("Some Address")),
+            recipient: Recipient::from_string(String::from(MOCK_RECIPIENT1.to_string())),
             weight: Uint128::new(1),
         }],
         modules: None,

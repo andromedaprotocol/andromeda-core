@@ -16,6 +16,8 @@ pub const MOCK_WEIGHTED_DISTRIBUTION_SPLITTER_CONTRACT: &str =
     "weighted_distribution_splitter_contract";
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
+pub const MOCK_RECIPIENT1: &str = "mock_recipient1";
+pub const MOCK_RECIPIENT2: &str = "mock_recipient2";
 
 pub const MOCK_TOKEN_ADDR: &str = "token0001";
 pub const MOCK_TOKEN_OWNER: &str = "owner";

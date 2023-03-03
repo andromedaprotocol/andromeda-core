@@ -190,6 +190,7 @@ impl<'a> ADOContract<'a> {
 }
 
 #[cfg(test)]
+#[cfg(feature = "modules")]
 mod tests {
     use super::*;
     use crate::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
@@ -207,7 +208,6 @@ mod tests {
     ) -> Result<Response, ContractError> {
         Ok(Response::new())
     }
-
     #[test]
     fn test_register_module_invalid_identifier() {
         let contract = ADOContract::default();
