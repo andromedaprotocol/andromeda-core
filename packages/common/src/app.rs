@@ -23,7 +23,7 @@ impl GetAddress for String {
         querier: &QuerierWrapper,
         app_contract: Option<Addr>,
     ) -> Result<String, ContractError> {
-        let addr = api.addr_validate(&self);
+        let addr = api.addr_validate(self);
         match addr {
             Ok(addr) => Ok(addr.to_string()),
             Err(_) => match app_contract {

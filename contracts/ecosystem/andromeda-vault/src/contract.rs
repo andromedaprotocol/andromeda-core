@@ -237,8 +237,7 @@ fn execute_deposit(
     let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
 
     // Validate address
-    let recipient_addr =
-        recipient.get_validated_addr(deps.api, &deps.querier, app_contract.clone())?;
+    let recipient_addr = recipient.get_validated_addr(deps.api, &deps.querier, app_contract)?;
 
     // If no amount is provided then the sent funds are used as a deposit
     let deposited_funds = if let Some(deposit_amount) = amount {
