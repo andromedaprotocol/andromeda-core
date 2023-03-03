@@ -20,8 +20,8 @@ andromeda-os = { version = "0.1.0", path = "../../../packages/andromeda-os" }
 andromeda-finance = { version = "0.1.0", path = "../../../packages/andromeda-finance" }
 ado-base = { path = "../../../packages/ado-base", version = "0.1.0", features = ["modules"] }
 common = { version = "0.1.0", path = "../../../packages/common" }
+andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }
 
 [dev-dependencies]
 
-andromeda-testing = { version = "0.1.0", path = "../../../packages/andromeda-testing" }
 andromeda-app = { version = "0.1.0", path = "../../../packages/andromeda-app" }

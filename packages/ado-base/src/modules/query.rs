@@ -41,14 +41,14 @@ mod tests {
             .unwrap();
 
         let module1 = Module {
-            module_name: Some("module_type1".to_string()),
+            module_name: Some("module_name1".to_string()),
             address: "address1".to_string(),
 
             is_mutable: true,
         };
 
         let module2 = Module {
-            module_name: Some("module_type2".to_string()),
+            module_name: Some("module_name2".to_string()),
             address: "address2".to_string(),
 
             is_mutable: true,

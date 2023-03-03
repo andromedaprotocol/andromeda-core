@@ -4,7 +4,7 @@ use cw_utils::Expiration;
 use crate::contract::{execute, instantiate};
 use andromeda_finance::weighted_splitter::{AddressWeight, ExecuteMsg, InstantiateMsg};
 use andromeda_testing::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT,
+    mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_RATES_RECIPIENT,
 };
 use common::{
     ado_base::{modules::Module, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
@@ -34,7 +34,7 @@ fn test_modules() {
             address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
         }]),
         recipients: vec![AddressWeight {
-            recipient: Recipient::from_string(String::from("Some Address")),
+            recipient: Recipient::from_string(MOCK_RATES_RECIPIENT.to_string()),
             weight: Uint128::new(100),
         }],
         lock_time: None,
@@ -69,7 +69,7 @@ fn test_modules() {
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "Some Address".to_string(),
+                to_address: MOCK_RATES_RECIPIENT.to_string(),
                 amount: coins(100, "uusd"),
             })
             .add_attribute("action", "send")
