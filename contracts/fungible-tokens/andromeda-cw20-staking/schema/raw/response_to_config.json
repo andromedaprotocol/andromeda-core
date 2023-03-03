@@ -15,27 +15,8 @@
     },
     "staking_token": {
       "description": "The token accepted for staking.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/AndrAddress"
-        }
-      ]
+      "type": "string"
     }
   },
-  "additionalProperties": false,
-  "definitions": {
-    "AndrAddress": {
-      "type": "object",
-      "required": [
-        "identifier"
-      ],
-      "properties": {
-        "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a app.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    }
-  }
+  "additionalProperties": false
 }

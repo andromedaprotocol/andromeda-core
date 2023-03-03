@@ -590,48 +590,32 @@
       "type": "object",
       "required": [
         "address",
-        "is_mutable",
-        "module_type"
+        "is_mutable"
       ],
       "properties": {
         "address": {
-          "$ref": "#/definitions/AndrAddress"
+          "type": "string"
         },
         "is_mutable": {
           "type": "boolean"
         },
-        "module_type": {
-          "type": "string"
+        "module_name": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false
     },
     "Recipient": {
-      "oneOf": [
+      "anyOf": [
         {
           "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-          "type": "object",
-          "required": [
-            "addr"
-          ],
-          "properties": {
-            "addr": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+          "type": "string"
         },
         {
-          "type": "object",
-          "required": [
-            "a_d_o"
-          ],
-          "properties": {
-            "a_d_o": {
-              "$ref": "#/definitions/ADORecipient"
-            }
-          },
-          "additionalProperties": false
+          "$ref": "#/definitions/ADORecipient"
         }
       ]
     },

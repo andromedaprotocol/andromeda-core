@@ -26,36 +26,25 @@
     },
     "additionalProperties": false,
     "definitions": {
-      "AndrAddress": {
-        "type": "object",
-        "required": [
-          "identifier"
-        ],
-        "properties": {
-          "identifier": {
-            "description": "Can be either an address or identifier of an ADO in a app.",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
       "Module": {
         "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
         "type": "object",
         "required": [
           "address",
-          "is_mutable",
-          "module_type"
+          "is_mutable"
         ],
         "properties": {
           "address": {
-            "$ref": "#/definitions/AndrAddress"
+            "type": "string"
           },
           "is_mutable": {
             "type": "boolean"
           },
-          "module_type": {
-            "type": "string"
+          "module_name": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -663,48 +652,32 @@
         "type": "object",
         "required": [
           "address",
-          "is_mutable",
-          "module_type"
+          "is_mutable"
         ],
         "properties": {
           "address": {
-            "$ref": "#/definitions/AndrAddress"
+            "type": "string"
           },
           "is_mutable": {
             "type": "boolean"
           },
-          "module_type": {
-            "type": "string"
+          "module_name": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
       },
       "Recipient": {
-        "oneOf": [
+        "anyOf": [
           {
             "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-            "type": "object",
-            "required": [
-              "addr"
-            ],
-            "properties": {
-              "addr": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
+            "type": "string"
           },
           {
-            "type": "object",
-            "required": [
-              "a_d_o"
-            ],
-            "properties": {
-              "a_d_o": {
-                "$ref": "#/definitions/ADORecipient"
-              }
-            },
-            "additionalProperties": false
+            "$ref": "#/definitions/ADORecipient"
           }
         ]
       },
@@ -1454,31 +1427,13 @@
           ]
         },
         "Recipient": {
-          "oneOf": [
+          "anyOf": [
             {
               "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-              "type": "object",
-              "required": [
-                "addr"
-              ],
-              "properties": {
-                "addr": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "type": "string"
             },
             {
-              "type": "object",
-              "required": [
-                "a_d_o"
-              ],
-              "properties": {
-                "a_d_o": {
-                  "$ref": "#/definitions/ADORecipient"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "#/definitions/ADORecipient"
             }
           ]
         },
@@ -1701,31 +1656,13 @@
           ]
         },
         "Recipient": {
-          "oneOf": [
+          "anyOf": [
             {
               "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-              "type": "object",
-              "required": [
-                "addr"
-              ],
-              "properties": {
-                "addr": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "type": "string"
             },
             {
-              "type": "object",
-              "required": [
-                "a_d_o"
-              ],
-              "properties": {
-                "a_d_o": {
-                  "$ref": "#/definitions/ADORecipient"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "#/definitions/ADORecipient"
             }
           ]
         },

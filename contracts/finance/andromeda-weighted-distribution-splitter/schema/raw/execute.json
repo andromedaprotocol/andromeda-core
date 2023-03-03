@@ -109,7 +109,7 @@
           ],
           "properties": {
             "recipient": {
-              "$ref": "#/definitions/Recipient"
+              "$ref": "#/definitions/AMPRecipient"
             }
           },
           "additionalProperties": false
@@ -150,6 +150,28 @@
       "properties": {
         "send": {
           "type": "object",
+          "properties": {
+            "packet": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/AMPPkt"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reply_gas_exit": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ReplyGasExit"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
           "additionalProperties": false
         }
       },
@@ -266,6 +288,17 @@
       },
       "additionalProperties": false
     },
+    "AMPRecipient": {
+      "anyOf": [
+        {
+          "description": "An address that is not another ADO. It is assumed that it is a valid address.",
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/ADORecipient"
+        }
+      ]
+    },
     "AddressWeight": {
       "type": "object",
       "required": [
@@ -274,7 +307,7 @@
       ],
       "properties": {
         "recipient": {
-          "$ref": "#/definitions/Recipient"
+          "$ref": "#/definitions/AMPRecipient"
         },
         "weight": {
           "$ref": "#/definitions/Uint128"
@@ -564,50 +597,64 @@
       "type": "object",
       "required": [
         "address",
-        "is_mutable",
-        "module_type"
+        "is_mutable"
       ],
       "properties": {
         "address": {
-          "$ref": "#/definitions/AndrAddress"
+          "type": "string"
         },
         "is_mutable": {
           "type": "boolean"
         },
-        "module_type": {
-          "type": "string"
+        "module_name": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false
     },
     "Recipient": {
-      "oneOf": [
+      "anyOf": [
         {
           "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-          "type": "object",
-          "required": [
-            "addr"
-          ],
-          "properties": {
-            "addr": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+          "type": "string"
         },
         {
-          "type": "object",
-          "required": [
-            "a_d_o"
-          ],
-          "properties": {
-            "a_d_o": {
-              "$ref": "#/definitions/ADORecipient"
-            }
-          },
-          "additionalProperties": false
+          "$ref": "#/definitions/ADORecipient"
         }
       ]
+    },
+    "ReplyGasExit": {
+      "type": "object",
+      "properties": {
+        "exit_at_error": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "gas_limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "reply_on": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ReplyOn"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "ReplyOn": {
       "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",
