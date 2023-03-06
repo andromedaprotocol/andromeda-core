@@ -7,8 +7,8 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use cosmwasm_std::{Binary, Coin, CustomMsg};
 use cw721::{
-    AllNftInfoResponse, ContractInfoResponse, Expiration, NftInfoResponse, NumTokensResponse,
-    OperatorsResponse, OwnerOfResponse, TokensResponse,
+    AllNftInfoResponse, ApprovalResponse, ApprovalsResponse, ContractInfoResponse, Expiration,
+    NftInfoResponse, NumTokensResponse, OperatorsResponse, OwnerOfResponse, TokensResponse,
 };
 pub use cw721_base::MintMsg;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MinterResponse, QueryMsg as Cw721QueryMsg};
@@ -238,6 +238,19 @@ pub enum QueryMsg {
     Extension { msg: Box<QueryMsg> },
     #[returns(MinterResponse)]
     Minter {},
+    #[returns(ApprovalResponse)]
+    Approval {
+        token_id: String,
+        spender: String,
+        include_expired: Option<bool>,
+    },
+    /// Return approvals that a token has
+    /// Return type: `ApprovalsResponse`
+    #[returns(ApprovalsResponse)]
+    Approvals {
+        token_id: String,
+        include_expired: Option<bool>,
+    },
 }
 
 impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {

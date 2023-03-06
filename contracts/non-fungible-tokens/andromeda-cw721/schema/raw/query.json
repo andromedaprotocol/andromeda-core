@@ -319,7 +319,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Return operator that can access all of the owner's tokens. Return type: `ApprovalResponse`",
       "type": "object",
       "required": [
         "approval"
@@ -1005,7 +1004,6 @@
           "additionalProperties": false
         },
         {
-          "description": "Return operator that can access all of the owner's tokens. Return type: `ApprovalResponse`",
           "type": "object",
           "required": [
             "approval"
