@@ -752,15 +752,21 @@ fn transfer_tokens_and_send_funds(
                 None,
                 None,
             );
-            let msg = state.recipient.generate_msg_native(
-                vec![Coin {
-                    denom: state.price.denom.clone(),
-                    amount: state.amount_to_send,
-                }],
-                origin,
-                previous_sender,
-                vec![amp_message],
+            // let msg = state.recipient.generate_msg_native(
+            //     vec![Coin {
+            //         denom: state.price.denom.clone(),
+            //         amount: state.amount_to_send,
+            //     }],
+            //     origin,
+            //     previous_sender,
+            //     vec![amp_message],
+            //     kernel_address,
+            // )?;
+            let msg = amp_message.generate_sub_message(
                 kernel_address,
+                origin,
+                env.contract.address.to_string(),
+                1,
             )?;
             state.amount_to_send = Uint128::zero();
             STATE.save(deps.storage, &state)?;
@@ -821,6 +827,10 @@ fn transfer_tokens_and_send_funds(
         // This is an O(1) operation from looking at the source code.
         purchases.pop();
     }
+
+    // Resolve the token contract address from the VFS
+    let token_contract_address =
+        ADOContract::default().resolve_path(deps.storage, &deps.querier, config.token_address)?;
     for purchase in purchases.into_iter() {
         let purchaser = purchase.purchaser;
         let should_remove = purchaser != last_purchaser || remove_last_purchaser;
@@ -833,7 +843,7 @@ fn transfer_tokens_and_send_funds(
         }
         rate_messages.extend(purchase.msgs);
         transfer_msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: config.clone().token_address,
+            contract_addr: token_contract_address.clone(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: purchaser,
                 token_id: purchase.token_id,
@@ -909,7 +919,8 @@ fn get_burn_messages(
     limit: usize,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let config = CONFIG.load(storage)?;
-    let token_address = config.token_address;
+    let token_address =
+        ADOContract::default().resolve_path(storage, querier, config.token_address)?;
     let tokens_to_burn = query_tokens(querier, token_address.clone(), address, limit)?;
 
     tokens_to_burn

@@ -17,14 +17,14 @@ pub fn mock_andromeda_cw721() -> Box<dyn Contract<Empty>> {
 pub fn mock_cw721_instantiate_msg(
     name: String,
     symbol: String,
-    minter: String,
+    minter: impl Into<String>,
     modules: Option<Vec<Module>>,
     kernel_address: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         name,
         symbol,
-        minter,
+        minter: minter.into(),
         modules,
         kernel_address,
     }

@@ -145,7 +145,7 @@ fn test_crowdfund_app() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        crowdfund_app_component.clone().name, // Crowdfund must be minter
+        "am/app/1", // Crowdfund must be minter
         None,
         Some(andr.kernel_address.to_string()),
     );

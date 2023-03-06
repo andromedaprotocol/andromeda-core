@@ -268,14 +268,35 @@ fn handle_amp_packet(
     Ok(res)
 }
 
+fn resolve_minter(
+    storage: &dyn Storage,
+    querier: &QuerierWrapper,
+) -> Result<String, ContractError> {
+    let andr_minter = ANDR_MINTER.load(storage)?;
+    ADOContract::default().resolve_path(storage, querier, andr_minter)
+}
+
+/// Called before the standing CW721 minting method in order to update the current minting address for the contract
+fn pre_mint(
+    storage: &mut dyn Storage,
+    querier: &QuerierWrapper,
+    api: &dyn Api,
+) -> Result<(), ContractError> {
+    let cw721_contract = AndrCW721Contract::default();
+
+    // Update the minter before minting in case of any changes
+    let andr_minter = resolve_minter(storage, &querier)?;
+    let addr = api.addr_validate(&andr_minter)?;
+    save_minter(&cw721_contract, storage, &addr)?;
+
+    Ok(())
+}
+
 fn execute_mint(env: ExecuteEnv, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
     let cw721_contract = AndrCW721Contract::default();
-    let andr_minter = ANDR_MINTER.load(deps.storage)?;
-    if cw721_contract.minter.may_load(deps.storage)?.is_none() {
-        let addr = deps.api.addr_validate(&andr_minter)?;
-        save_minter(&cw721_contract, deps.storage, &addr)?;
-    }
+
+    pre_mint(deps.storage, &deps.querier, deps.api)?;
 
     Ok(cw721_contract.execute(deps, env, info, msg.into())?)
 }
@@ -290,12 +311,10 @@ fn execute_batch_mint(
         env,
     } = env;
     let mut resp = Response::default();
+
+    // Update the minter before minting in case of any changes
     let cw721_contract = AndrCW721Contract::default();
-    let andr_minter = ANDR_MINTER.load(deps.storage)?;
-    if cw721_contract.minter.may_load(deps.storage)?.is_none() {
-        let addr = deps.api.addr_validate(&andr_minter)?;
-        save_minter(&cw721_contract, deps.storage, &addr)?;
-    }
+    pre_mint(deps.storage, &deps.querier, deps.api)?;
     for msg in tokens_to_mint {
         let mint_resp = cw721_contract.mint(deps.branch(), env.clone(), info.clone(), msg)?;
         resp = resp
