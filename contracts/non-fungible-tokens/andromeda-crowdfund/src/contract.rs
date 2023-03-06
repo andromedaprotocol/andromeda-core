@@ -308,13 +308,14 @@ fn execute_mint(
 
     let token_contract = config.token_address;
     let crowdfund_contract = env.contract.address.to_string();
+    let resolved_path = contract.resolve_path(deps.storage, &deps.querier, token_contract)?;
 
     let mut resp = Response::new();
     for mint_msg in mint_msgs {
         let mint_resp = mint(
             deps.storage,
             &crowdfund_contract,
-            token_contract.clone(),
+            resolved_path.clone(),
             mint_msg,
         )?;
         resp = resp

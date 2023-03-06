@@ -13,6 +13,7 @@ withdraw = ["cw-asset", "cw20"]
 modules = []
 instantiate = ["primitive"]
 primitive = []
+vfs = []
 
 [dependencies]
 cosmwasm-std = "1.2.1"
