@@ -131,7 +131,7 @@ fn test_crowdfund_app() {
     }];
 
     let crowdfund_init_msg = mock_crowdfund_instantiate_msg(
-        "Test Tokens".to_string(),
+        "2".to_string(),
         false,
         Some(modules),
         Some(andr.kernel_address.to_string()),
