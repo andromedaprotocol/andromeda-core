@@ -172,7 +172,6 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
             ExecuteMsg::Mint(msg) => Cw721ExecuteMsg::Mint(*msg),
             ExecuteMsg::Burn { token_id } => Cw721ExecuteMsg::Burn { token_id },
             ExecuteMsg::Extension { msg } => Cw721ExecuteMsg::Extension { msg: *msg },
-
             _ => panic!("Unsupported message"),
         }
     }
@@ -298,6 +297,22 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
             }
             QueryMsg::Extension { msg } => Cw721QueryMsg::Extension { msg: *msg },
             QueryMsg::Minter {} => Cw721QueryMsg::Minter {},
+            QueryMsg::Approval {
+                token_id,
+                spender,
+                include_expired,
+            } => Cw721QueryMsg::Approval {
+                token_id,
+                spender,
+                include_expired,
+            },
+            QueryMsg::Approvals {
+                token_id,
+                include_expired,
+            } => Cw721QueryMsg::Approvals {
+                token_id,
+                include_expired,
+            },
             _ => panic!("Unsupported message"),
         }
     }
