@@ -2,6 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Addr, Api, Deps, QuerierWrapper, Storage};
 
 use crate::ADOContract;
+use andromeda_os::{kernel::QueryMsg as KernelQueryMsg, vfs::QueryMsg as VFSQueryMessage};
 use common::error::ContractError;
 
 #[cw_serde]
@@ -20,6 +21,8 @@ impl<'a> ADOContract<'a> {
         mut addresses: Vec<String>,
     ) -> Result<(), ContractError> {
         let app_contract = self.get_app_contract(deps.storage)?;
+        let kernel_address = self.get_kernel_address(deps.storage)?;
+        let vfs_address = self.get_vfs_address(&deps.querier, kernel_address)?;
         ensure!(
             app_contract.is_some(),
             ContractError::AppContractNotSpecified {}
@@ -34,7 +37,13 @@ impl<'a> ADOContract<'a> {
         }
         let app_contract = app_contract.unwrap();
         for address in addresses {
-            self.validate_andr_address(deps.api, &deps.querier, address, app_contract.clone())?;
+            self.validate_andr_address(
+                deps.api,
+                &deps.querier,
+                address,
+                app_contract.clone(),
+                vfs_address.clone(),
+            )?;
         }
         Ok(())
     }
@@ -45,36 +54,40 @@ impl<'a> ADOContract<'a> {
         querier: &QuerierWrapper,
         identifier: String,
         app_contract: Addr,
+        vfs_address: Addr,
     ) -> Result<(), ContractError> {
         // If the address passes this check then it doesn't refer to a app component by
         // name.
         if api.addr_validate(&identifier).is_err() {
-            ensure!(
-                self.component_exists(querier, identifier.clone(), app_contract)?,
-                ContractError::InvalidComponent { name: identifier }
-            );
+            // Check app contract for component if using local reference
+            if identifier.starts_with("./") {
+                ensure!(
+                    self.component_exists(querier, identifier.clone(), app_contract)?,
+                    ContractError::InvalidComponent { name: identifier }
+                );
+            } else {
+                // Otherwise check VFS
+                ensure!(
+                    self.validate_vfs(querier, identifier, vfs_address)?,
+                    ContractError::InvalidAddress {}
+                )
+            }
         }
         Ok(())
     }
 
-    // pub(crate) fn validate_address(
-    //     &self,
-    //     api: &dyn Api,
-    //     querier: &QuerierWrapper,
-    //     address: String,
-    //     app_contract: Addr,
-    // ) -> Result<(), ContractError> {
-    //     // If the address passes this check then it doesn't refer to a app component by
-    //     // name.
-    //     if api.addr_validate(&address).is_err() {
-    //         ensure!(
-    //             self.component_exists(querier, address.clone(), app_contract)?,
-    //             ContractError::InvalidComponent { name: address }
-    //         );
-    //     }
-    //     Ok(())
-    // }
+    pub(crate) fn get_vfs_address(
+        &self,
+        querier: &QuerierWrapper,
+        kernel_address: Addr,
+    ) -> Result<Addr, ContractError> {
+        let query = KernelQueryMsg::KeyAddress {
+            key: "vfs".to_string(),
+        };
+        Ok(querier.query_wasm_smart(kernel_address, &query)?)
+    }
 
+    /// Checks the given component name against the registered app contract to ensure it exists
     fn component_exists(
         &self,
         querier: &QuerierWrapper,
@@ -82,5 +95,17 @@ impl<'a> ADOContract<'a> {
         app_contract: Addr,
     ) -> Result<bool, ContractError> {
         Ok(querier.query_wasm_smart(app_contract, &AppQueryMsg::ComponentExists { name })?)
+    }
+
+    /// Validates a given path agains the VFS
+    pub(crate) fn validate_vfs(
+        &self,
+        querier: &QuerierWrapper,
+        path: String,
+        vfs_address: Addr,
+    ) -> Result<bool, ContractError> {
+        let query = VFSQueryMessage::ResolvePath { path };
+        let query_resp = querier.query_wasm_smart::<Addr>(vfs_address, &query);
+        Ok(query_resp.is_ok())
     }
 }

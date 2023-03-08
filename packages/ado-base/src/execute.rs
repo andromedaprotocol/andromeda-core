@@ -108,7 +108,14 @@ impl<'a> ADOContract<'a> {
     ) -> Result<(), ContractError> {
         if let Some(app_contract) = self.get_app_contract(storage)? {
             // api.addr_validate(&module.address)?;
-            self.validate_andr_address(api, querier, module.address.to_owned(), app_contract)?;
+            let kernel_address = self.get_kernel_address(storage)?;
+            self.validate_andr_address(
+                api,
+                querier,
+                module.address.to_owned(),
+                app_contract,
+                kernel_address,
+            )?;
         }
         Ok(())
     }

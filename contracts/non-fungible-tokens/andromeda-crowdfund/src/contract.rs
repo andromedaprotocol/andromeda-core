@@ -726,7 +726,7 @@ fn transfer_tokens_and_send_funds(
     env: Env,
     limit: Option<u32>,
     origin: String,
-    previous_sender: String,
+    _previous_sender: String,
     kernel_address: String,
 ) -> Result<Response, ContractError> {
     let mut state = STATE.load(deps.storage)?;
@@ -752,16 +752,6 @@ fn transfer_tokens_and_send_funds(
                 None,
                 None,
             );
-            // let msg = state.recipient.generate_msg_native(
-            //     vec![Coin {
-            //         denom: state.price.denom.clone(),
-            //         amount: state.amount_to_send,
-            //     }],
-            //     origin,
-            //     previous_sender,
-            //     vec![amp_message],
-            //     kernel_address,
-            // )?;
             let msg = amp_message.generate_sub_message(
                 kernel_address,
                 origin,

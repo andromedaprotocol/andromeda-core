@@ -15,7 +15,7 @@ pub struct ADORecipient {
 }
 
 #[cw_serde]
-#[serde(untagged)]
+// #[serde(untagged)]
 pub enum AMPRecipient {
     /// An address that is not another ADO. It is assumed that it is a valid address.
     Addr(String),
