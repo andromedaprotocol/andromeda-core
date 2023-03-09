@@ -99,7 +99,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
         return Err(ContractError::Std(StdError::generic_err(
             msg.result.unwrap_err(),
@@ -107,12 +107,13 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     }
 
     let id = msg.id.to_string();
+
     let descriptor = ADO_DESCRIPTORS.load(deps.storage, &id)?;
 
     let addr_str = get_reply_address(msg)?;
     let addr = &deps.api.addr_validate(&addr_str)?;
     ADO_ADDRESSES.save(deps.storage, &descriptor.name, addr)?;
-    let assign_app = generate_assign_app_message(addr, env.contract.address.as_ref())?;
+    // let assign_app = generate_assign_app_message(addr, env.contract.address.as_ref())?;
 
     let mut resp = Response::default();
 
@@ -128,7 +129,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
         resp = resp.add_submessage(register_component_path_msg)
     }
 
-    Ok(resp.add_submessage(assign_app))
+    Ok(resp)
 }
 
 pub fn register_component_path(
