@@ -285,7 +285,7 @@ fn pre_mint(
     let cw721_contract = AndrCW721Contract::default();
 
     // Update the minter before minting in case of any changes
-    let andr_minter = resolve_minter(storage, &querier)?;
+    let andr_minter = resolve_minter(storage, querier)?;
     let addr = api.addr_validate(&andr_minter)?;
     save_minter(&cw721_contract, storage, &addr)?;
 
