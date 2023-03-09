@@ -41,19 +41,19 @@ impl<'a> ADOContract<'a> {
                 deps.api,
                 &deps.querier,
                 address,
-                app_contract.clone(),
+                Some(app_contract.clone()),
                 vfs_address.clone(),
             )?;
         }
         Ok(())
     }
 
-    pub(crate) fn validate_andr_address(
+    pub fn validate_andr_address(
         &self,
         api: &dyn Api,
         querier: &QuerierWrapper,
         identifier: String,
-        app_contract: Addr,
+        app_contract: Option<Addr>,
         vfs_address: Addr,
     ) -> Result<(), ContractError> {
         // If the address passes this check then it doesn't refer to a app component by
@@ -62,7 +62,11 @@ impl<'a> ADOContract<'a> {
             // Check app contract for component if using local reference
             if identifier.starts_with("./") {
                 ensure!(
-                    self.component_exists(querier, identifier.clone(), app_contract)?,
+                    app_contract.is_some(),
+                    ContractError::AppContractNotSpecified {}
+                );
+                ensure!(
+                    self.component_exists(querier, identifier.clone(), app_contract.unwrap())?,
                     ContractError::InvalidComponent { name: identifier }
                 );
             } else {
@@ -76,7 +80,7 @@ impl<'a> ADOContract<'a> {
         Ok(())
     }
 
-    pub(crate) fn get_vfs_address(
+    pub fn get_vfs_address(
         &self,
         querier: &QuerierWrapper,
         kernel_address: Addr,

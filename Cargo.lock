@@ -89,7 +89,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-app-contract"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ado-base",
  "andromeda-app",
@@ -184,7 +184,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-crowdfund"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ado-base",
  "andromeda-app",

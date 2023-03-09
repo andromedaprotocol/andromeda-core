@@ -12,6 +12,8 @@ pub const ADO_ADDRESSES: Map<&str, Addr> = Map::new("ado_addresses");
 pub const ADO_DESCRIPTORS: Map<&str, AppComponent> = Map::new("ado_descriptors");
 pub const ADO_IDX: Item<u64> = Item::new("ado_idx");
 pub const APP_NAME: Item<String> = Item::new("app_name");
+// Used to keep track of which component indices have had the app assigned
+pub const ASSIGNED_IDX: Item<u64> = Item::new("assigned_idx");
 
 // DEV NOTE: Very similar to CW721 module instantiation, possibly merge both implementations?
 pub fn add_app_component(
@@ -26,8 +28,11 @@ pub fn add_app_component(
     Ok(idx)
 }
 
-pub fn load_component_addresses(storage: &dyn Storage) -> Result<Vec<Addr>, ContractError> {
-    let min = Some(Bound::inclusive("1"));
+pub fn load_component_addresses(
+    storage: &dyn Storage,
+    min: Option<&str>,
+) -> Result<Vec<Addr>, ContractError> {
+    let min = Some(Bound::inclusive(min.unwrap_or("1")));
     let addresses: Vec<Addr> = ADO_ADDRESSES
         .range(storage, min, None, Order::Ascending)
         .flatten()

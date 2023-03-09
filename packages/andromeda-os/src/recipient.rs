@@ -90,30 +90,30 @@ impl AMPRecipient {
         }
     }
 
-    pub fn validate_address(
-        &self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        app_contract: Option<Addr>,
-    ) -> Result<(), ContractError> {
-        let address = self.get_addr()?;
-        let addr = api.addr_validate(&address);
-        match addr {
-            Ok(_) => Ok(()),
-            Err(_) => match app_contract {
-                Some(app_contract) => {
-                    query_get::<String>(
-                        Some(encode_binary(&self)?),
-                        app_contract.to_string(),
-                        querier,
-                    )?;
-                    Ok(())
-                }
-                // TODO: Make error more descriptive.
-                None => Err(ContractError::InvalidAddress {}),
-            },
-        }
-    }
+    // pub fn validate_address(
+    //     &self,
+    //     api: &dyn Api,
+    //     querier: &QuerierWrapper,
+    //     app_contract: Option<Addr>,
+    // ) -> Result<(), ContractError> {
+    //     let address = self.get_addr()?;
+    //     let addr = api.addr_validate(&address);
+    //     match addr {
+    //         Ok(_) => Ok(()),
+    //         Err(_) => match app_contract {
+    //             Some(app_contract) => {
+    //                 query_get::<String>(
+    //                     Some(encode_binary(&self)?),
+    //                     app_contract.to_string(),
+    //                     querier,
+    //                 )?;
+    //                 Ok(())
+    //             }
+    //             // TODO: Make error more descriptive.
+    //             None => Err(ContractError::InvalidAddress {}),
+    //         },
+    //     }
+    // }
 
     /// Generates the sub message depending on the type of the recipient.
     pub fn generate_msg_native(

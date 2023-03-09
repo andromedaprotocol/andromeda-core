@@ -370,11 +370,19 @@ fn execute_start_sale(
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let ado_contract = ADOContract::default();
+    let kernel_address = ado_contract.get_kernel_address(deps.storage)?;
+    let vfs_address = ado_contract.get_vfs_address(&deps.querier, kernel_address)?;
+    let app_address = ado_contract.get_app_contract(deps.storage)?;
 
     // Validate recipient
-    recipient.validate_address(deps.api, &deps.querier, app_contract)?;
-
+    ado_contract.validate_andr_address(
+        deps.api,
+        &deps.querier,
+        recipient.get_addr()?,
+        app_address,
+        vfs_address,
+    )?;
     ensure!(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}

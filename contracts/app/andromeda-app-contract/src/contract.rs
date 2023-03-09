@@ -1,7 +1,7 @@
 use crate::state::{
     add_app_component, generate_assign_app_message, generate_ownership_message,
     load_component_addresses, load_component_addresses_with_name, load_component_descriptors,
-    ADO_ADDRESSES, ADO_DESCRIPTORS, APP_NAME,
+    ADO_ADDRESSES, ADO_DESCRIPTORS, ADO_IDX, APP_NAME, ASSIGNED_IDX,
 };
 use ado_base::ADOContract;
 use andromeda_app::app::{
@@ -99,7 +99,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.result.is_err() {
         return Err(ContractError::Std(StdError::generic_err(
             msg.result.unwrap_err(),
@@ -113,7 +113,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     let addr_str = get_reply_address(msg)?;
     let addr = &deps.api.addr_validate(&addr_str)?;
     ADO_ADDRESSES.save(deps.storage, &descriptor.name, addr)?;
-    // let assign_app = generate_assign_app_message(addr, env.contract.address.as_ref())?;
 
     let mut resp = Response::default();
 
@@ -127,6 +126,21 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         )?;
 
         resp = resp.add_submessage(register_component_path_msg)
+    }
+
+    // Once all components are registered we need to register them with the VFS
+    let curr_idx = ADO_IDX.load(deps.storage)?;
+    if id == curr_idx.to_string() {
+        // Only assign app to new components
+        let assigned_idx = ASSIGNED_IDX.load(deps.storage).unwrap_or(1);
+        let addresses: Vec<Addr> =
+            load_component_addresses(deps.storage, Some(assigned_idx.to_string().as_str()))?;
+        for address in addresses {
+            let assign_app_msg =
+                generate_assign_app_message(&address, env.contract.address.as_str())?;
+            resp = resp.add_submessage(assign_app_msg)
+        }
+        ASSIGNED_IDX.save(deps.storage, &curr_idx)?;
     }
 
     Ok(resp)
@@ -229,7 +243,7 @@ fn execute_claim_ownership(
         let address = ADO_ADDRESSES.load(storage, &name)?;
         msgs.push(generate_ownership_message(address, sender)?);
     } else {
-        let addresses = load_component_addresses(storage)?;
+        let addresses = load_component_addresses(storage, None)?;
         for address in addresses {
             msgs.push(generate_ownership_message(address, sender)?);
         }
@@ -293,10 +307,24 @@ fn execute_update_address(
     let new_addr = deps.api.addr_validate(&addr)?;
     ADO_ADDRESSES.save(deps.storage, &name, &new_addr)?;
 
-    Ok(Response::default()
+    let mut resp = Response::default()
         .add_attribute("method", "update_address")
-        .add_attribute("name", name)
-        .add_attribute("address", addr))
+        .add_attribute("name", name.clone())
+        .add_attribute("address", addr.clone());
+
+    if !name.starts_with('.') {
+        let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+        let register_component_path_msg = register_component_path(
+            kernel_address.to_string(),
+            &deps.querier,
+            name,
+            deps.api.addr_validate(&addr)?,
+        )?;
+
+        resp = resp.add_submessage(register_component_path_msg)
+    }
+
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -113,7 +113,7 @@ impl<'a> ADOContract<'a> {
                 api,
                 querier,
                 module.address.to_owned(),
-                app_contract,
+                Some(app_contract),
                 kernel_address,
             )?;
         }
