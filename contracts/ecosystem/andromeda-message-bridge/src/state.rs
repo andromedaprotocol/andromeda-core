@@ -16,5 +16,5 @@ pub fn read_chains(storage: &dyn Storage) -> Result<Vec<String>, ContractError> 
         .keys(storage, None, None, cosmwasm_std::Order::Descending)
         .map(|x| Ok(x?))
         .collect();
-    Ok(chains?)
+    chains
 }
