@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-adodb",
-  "contract_version": "0.1.1",
+  "contract_version": "0.1.2",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -490,6 +490,35 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "ado_types"
+        ],
+        "properties": {
+          "ado_types": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -662,6 +691,14 @@
   "migrate": null,
   "sudo": null,
   "responses": {
+    "ado_types": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_String",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "andr_query": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AndromedaQuery",

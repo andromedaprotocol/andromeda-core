@@ -1,4 +1,4 @@
-use crate::state::{read_code_id, store_code_id};
+use crate::state::{read_code_id, store_code_id, CODE_ID};
 use ado_base::state::ADOContract;
 use andromeda_app::adodb::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use common::{
@@ -8,9 +8,11 @@ use common::{
     parse_message,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response,
+    StdError,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw_storage_plus::Bound;
 use semver::Version;
 
 // version info for migration info
@@ -127,6 +129,9 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
+        QueryMsg::AdoTypes { limit, start_after } => {
+            encode_binary(&query_ado_types(deps, limit, start_after.as_deref())?)
+        }
         QueryMsg::AndrQuery(msg) => handle_andromeda_query(deps, env, msg),
     }
 }
@@ -148,4 +153,22 @@ fn handle_andromeda_query(
 fn query_code_id(deps: Deps, key: String) -> Result<u64, ContractError> {
     let code_id = read_code_id(deps.storage, &key)?;
     Ok(code_id)
+}
+
+const DEFAULT_LIMIT: u32 = 25;
+const MAX_LIMIT: u32 = 100;
+
+fn query_ado_types(
+    deps: Deps,
+    limit: Option<u32>,
+    start_after: Option<&str>,
+) -> Result<Vec<String>, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let ado_types: Vec<String> = CODE_ID
+        .keys(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect::<Result<Vec<String>, _>>()?;
+    Ok(ado_types)
 }

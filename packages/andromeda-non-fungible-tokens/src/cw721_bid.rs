@@ -1,4 +1,4 @@
-use common::ado_base::hooks::AndromedaHook;
+use common::ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Event, SubMsg, Uint128};
 use cw721::Expiration;
@@ -36,6 +36,8 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
+
     PlaceBid {
         token_id: String,
         expiration: Expiration,
@@ -54,6 +56,8 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(AndromedaQuery)]
+    AndrQuery(AndromedaQuery),
     #[returns(AndromedaHook)]
     AndrHook(AndromedaHook),
     #[returns(BidResponse)]

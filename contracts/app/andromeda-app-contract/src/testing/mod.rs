@@ -545,7 +545,7 @@ fn test_fire_condition_works() {
     );
     let msg = ExecuteMsg::Fire {};
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    println!("{:?}", res);
+    println!("{res:?}");
 
     let expected_res = Response::new()
         .add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
