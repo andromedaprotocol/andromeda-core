@@ -1,4 +1,3 @@
-
 use andromeda_ibc::ics721::{Class, ClassId, TokenId};
 use cosmwasm_std::{Addr, Binary, Empty};
 use cw_pause_once::PauseOrchestrator;

@@ -1,4 +1,3 @@
-
 use std::ops::Deref;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};

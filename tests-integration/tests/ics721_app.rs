@@ -1,5 +1,4 @@
-
-use andromeda_ics721::contract::{self};
+use andromeda_ics721::contract;
 use cosmwasm_std::{to_binary, Addr, Empty, IbcTimeout, IbcTimeoutBlock};
 use cw_cii::{Admin, ContractInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
