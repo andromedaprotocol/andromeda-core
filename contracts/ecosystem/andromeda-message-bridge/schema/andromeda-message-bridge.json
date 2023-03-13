@@ -21,18 +21,43 @@
           "send_message": {
             "type": "object",
             "required": [
-              "channel",
+              "chain",
               "message",
-              "target"
+              "recipient"
             ],
             "properties": {
-              "channel": {
+              "chain": {
                 "type": "string"
               },
               "message": {
                 "$ref": "#/definitions/Binary"
               },
-              "target": {
+              "recipient": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "save_channel"
+        ],
+        "properties": {
+          "save_channel": {
+            "type": "object",
+            "required": [
+              "chain",
+              "channel"
+            ],
+            "properties": {
+              "chain": {
+                "type": "string"
+              },
+              "channel": {
                 "type": "string"
               }
             },

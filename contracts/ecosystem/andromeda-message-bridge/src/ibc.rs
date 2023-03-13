@@ -79,24 +79,24 @@ pub fn do_ibc_packet_receive(
     let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
 
     match msg {
-        IbcExecuteMsg::SendMessage { target, message } => {
-            execute_send_message(deps, target, message)
+        IbcExecuteMsg::SendMessage { recipient, message } => {
+            execute_send_message(deps, recipient, message)
         }
     }
 }
 
 fn execute_send_message(
     deps: DepsMut,
-    target: String,
+    recipient: String,
     message: Binary,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    let wasm_msg = try_wasm_msg(deps, target.clone(), message.clone())?;
+    let wasm_msg = try_wasm_msg(deps, recipient.clone(), message.clone())?;
 
     Ok(IbcReceiveResponse::new()
         .add_message(wasm_msg)
         .add_attribute("method", "execute_send_message")
         .add_attribute("message", message.to_string())
-        .add_attribute("target", target)
+        .add_attribute("recipient", recipient)
         .set_ack(make_ack_success()))
 }
 

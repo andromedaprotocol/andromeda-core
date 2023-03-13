@@ -1,14 +1,16 @@
 use andromeda_ibc::message_bridge::{ExecuteMsg, IbcExecuteMsg, InstantiateMsg, QueryMsg};
 
 use ado_base::ADOContract;
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, error::ContractError};
+use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response, StdError,
-    WasmMsg,
+    attr, ensure, to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response,
+    StdError, WasmMsg,
 };
 use cw2::set_contract_version;
+
+use crate::state::{read_chains, read_channel, save_channel};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-message-bridge";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -39,26 +41,61 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _deps: DepsMut,
+    deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::SendMessage {
-            channel,
-            target,
+            chain,
+            recipient,
             message,
-        } => Ok(Response::new()
-            .add_attribute("method", "execute_send_message")
-            .add_attribute("channel", channel.clone())
-            // outbound IBC message, where packet is then received on other chain
-            .add_message(IbcMsg::SendPacket {
-                channel_id: channel,
-                data: to_binary(&IbcExecuteMsg::SendMessage { target, message })?,
-                timeout: IbcTimeout::with_timestamp(env.block.time.plus_seconds(300)),
-            })),
+        } => execute_send_message(deps, env, chain, recipient, message),
+        ExecuteMsg::SaveChannel { channel, chain } => {
+            execute_save_channel(deps, info, channel, chain)
+        }
     }
+}
+
+pub fn execute_send_message(
+    deps: DepsMut,
+    env: Env,
+    chain: String,
+    recipient: String,
+    message: Binary,
+) -> Result<Response, ContractError> {
+    let channel = read_channel(deps.storage, chain.clone())?;
+
+    Ok(Response::new()
+        .add_attribute("method", "execute_send_message")
+        .add_attribute("channel", channel.clone())
+        .add_attribute("chain", chain)
+        // outbound IBC message, where packet is then received on other chain
+        .add_message(IbcMsg::SendPacket {
+            channel_id: channel,
+            data: to_binary(&IbcExecuteMsg::SendMessage { recipient, message })?,
+            timeout: IbcTimeout::with_timestamp(env.block.time.plus_seconds(300)),
+        }))
+}
+
+pub fn execute_save_channel(
+    deps: DepsMut,
+    info: MessageInfo,
+    channel: String,
+    chain: String,
+) -> Result<Response, ContractError> {
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    save_channel(deps.storage, chain.clone(), channel.clone())?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "execute_save_channel"),
+        attr("chain", chain),
+        attr("channel", channel),
+    ]))
 }
 
 /// called on IBC packet receive in other chain
@@ -72,6 +109,20 @@ pub fn try_wasm_msg(_deps: DepsMut, target: String, message: Binary) -> Result<W
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    match msg {}
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
+        QueryMsg::ChannelID { chain } => encode_binary(&query_channel_id(deps, chain)?),
+        QueryMsg::SupportedChains {} => encode_binary(&query_supported_chains(deps)?),
+    }
+}
+
+fn query_channel_id(deps: Deps, chain: String) -> Result<String, ContractError> {
+    let channel_id = read_channel(deps.storage, chain)?;
+    Ok(channel_id)
+}
+
+fn query_supported_chains(deps: Deps) -> Result<Vec<String>, ContractError> {
+    let chains = read_chains(deps.storage)?;
+    Ok(chains)
 }
