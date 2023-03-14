@@ -26,37 +26,6 @@ pub const ACK_AND_DO_NOTHING: u64 = 2;
 /// The IBC version this contract expects to communicate with.
 pub const IBC_VERSION: &str = "ics721-1";
 
-/// Handles the `OpenInit` and `OpenTry` parts of the IBC handshake.
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_channel_open(
-    _deps: DepsMut,
-    _env: Env,
-    msg: IbcChannelOpenMsg,
-) -> Result<IbcChannelOpenResponse, ContractError> {
-    validate_order_and_version(msg.channel(), msg.counterparty_version())?;
-    Ok(None)
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_channel_connect(
-    _deps: DepsMut,
-    _env: Env,
-    msg: IbcChannelConnectMsg,
-) -> Result<IbcBasicResponse, ContractError> {
-    validate_order_and_version(msg.channel(), msg.counterparty_version())?;
-
-    Ok(IbcBasicResponse::new().add_attribute("method", "ibc_channel_connect"))
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_channel_close(
-    _deps: DepsMut,
-    _env: Env,
-    _msg: IbcChannelCloseMsg,
-) -> Result<IbcBasicResponse, ContractError> {
-    Ok(IbcBasicResponse::new().add_attribute("method", "ibc_channel_close"))
-}
-
 #[cw_serde]
 pub enum AckMode {
     // Messages should respond with an error ACK.
@@ -67,43 +36,6 @@ pub enum AckMode {
 
 pub const ACK_MODE: Item<AckMode> = Item::new("ack_mode");
 pub const LAST_ACK: Item<AckMode> = Item::new("ack_mode");
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_packet_receive(
-    deps: DepsMut,
-    _env: Env,
-    _msg: IbcPacketReceiveMsg,
-) -> Result<IbcReceiveResponse, Never> {
-    match ACK_MODE.load(deps.storage).unwrap() {
-        AckMode::Error => {
-            Ok(IbcReceiveResponse::default().set_ack(ibc_helpers::ack_fail("error".to_string())))
-        }
-        AckMode::Success => Ok(IbcReceiveResponse::default().set_ack(ibc_helpers::ack_success())),
-    }
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_packet_ack(
-    deps: DepsMut,
-    _env: Env,
-    ack: IbcPacketAckMsg,
-) -> Result<IbcBasicResponse, ContractError> {
-    let err = ibc_helpers::try_get_ack_error(&ack.acknowledgement);
-    LAST_ACK.save(
-        deps.storage,
-        &err.map(|_| AckMode::Error).unwrap_or(AckMode::Success),
-    )?;
-    Ok(IbcBasicResponse::new().add_attribute("method", "ibc_packet_ack"))
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_packet_timeout(
-    _deps: DepsMut,
-    _env: Env,
-    _msg: IbcPacketTimeoutMsg,
-) -> Result<IbcBasicResponse, ContractError> {
-    Ok(IbcBasicResponse::new().add_attribute("method", "ibc_packet_timeout"))
-}
 
 pub fn validate_order_and_version(
     channel: &IbcChannel,
