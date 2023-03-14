@@ -106,6 +106,37 @@ mod test {
 
     use super::*;
 
+    // #[test]
+    // fn test_path_parser() {
+    //     let pathname = "ibc://juno/path";
+    //     let protocol: Option<&str> = if let Some(idx) = pathname.find(":") {
+    //         let first_word = &pathname[..idx];
+    //         println!("first word: {}", first_word);
+    //         Some(first_word)
+    //     } else {
+    //         None
+    //     };
+    //     match protocol {
+    //         Some("ibc") => todo!(),
+    //         Some("wormhole") => todo!(),
+    //         _ => todo!(),
+    //     }
+    //     let supported_protocols = vec!["ibc", "wormhole"];
+    //     let supported_chains = vec!["juno", "injective"];
+    //     let mut res = split_pathname(pathname.to_string());
+    //     let expected = vec!["ibc", "juno", "path"];
+
+    //     let _ = &res[0].pop();
+    //     let prot = &res[0];
+
+    //     assert!(supported_protocols.contains(&prot.as_str()));
+
+    //     assert_eq!(res, expected);
+
+    //     let parsed_path = path_parser(expected);
+    //     println!("parsed path: {:?}", parsed_path);
+    // }
+
     #[test]
     fn test_split_pathname() {
         let pathname = "//username/dir1/dir2/file";

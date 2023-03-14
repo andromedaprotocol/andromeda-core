@@ -1,4 +1,3 @@
-use common::ado_base::query_get;
 use common::app::GetAddress;
 use common::{encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;

@@ -16,7 +16,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{ADO_DB_KEY, KERNEL_ADDRESSES, VFS_KEY};
+use crate::state::{ADO_DB_KEY, IBC_BRIDGE, KERNEL_ADDRESSES, VFS_KEY};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-kernel";
@@ -27,9 +27,13 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let verified_address = deps.api.addr_validate(&msg.ibc_bridge)?;
+    IBC_BRIDGE.save(deps.storage, &verified_address)?;
+
     ADOContract::default().instantiate(
         deps.storage,
         env,
@@ -74,6 +78,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::AMPReceive(packet) => handle_amp_packet(execute_env, packet),
         ExecuteMsg::UpsertKeyAddress { key, value } => upsert_key_address(execute_env, key, value),
+        ExecuteMsg::UpdateIbcBridge { new_address } => update_ibc_bridge(execute_env, new_address),
     }
 }
 
@@ -93,6 +98,7 @@ pub fn handle_amp_packet(
 
     let vfs_address = KERNEL_ADDRESSES.may_load(execute_env.deps.storage, VFS_KEY)?;
     for message in packet.clone().messages {
+        // let parsed_path = message.parse_path(execute_env.deps.storage, api, ibc_bridge);
         let contract_addr = message.get_recipient_address(
             execute_env.deps.api,
             &execute_env.deps.querier,
@@ -110,6 +116,24 @@ pub fn handle_amp_packet(
 
     // TODO: GENERATE ATTRIBUTES FROM AMP PACKET
     Ok(res)
+}
+
+fn update_ibc_bridge(
+    execute_env: ExecuteEnv,
+    new_address: String,
+) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    ensure!(
+        contract.is_contract_owner(execute_env.deps.storage, execute_env.info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    let verified_address = execute_env.deps.api.addr_validate(&new_address)?;
+    IBC_BRIDGE.save(execute_env.deps.storage, &verified_address)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_ibc_bridge"),
+        attr("new_address", new_address),
+    ]))
 }
 
 fn upsert_key_address(
