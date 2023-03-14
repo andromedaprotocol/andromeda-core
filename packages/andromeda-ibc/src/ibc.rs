@@ -1,19 +1,15 @@
 use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    DepsMut, Env, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg,
-    IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response, SubMsgResult,
-};
+use cosmwasm_std::{DepsMut, Env, IbcChannel, IbcOrder, Reply, Response, SubMsgResult};
 use cw_storage_plus::Item;
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::{
-    ibc_helpers::{self, ack_fail, ack_success},
+    ibc_helpers::{ack_fail, ack_success},
     ics721::{ClassId, CLASS_ID_TO_NFT_CONTRACT, NFT_CONTRACT_TO_CLASS_ID, PROXY},
 };
-use common::error::{ContractError, Never};
+use common::error::ContractError;
 
 /// Submessage reply ID used for instantiating cw721 contracts.
 pub const INSTANTIATE_CW721_REPLY_ID: u64 = 0;
