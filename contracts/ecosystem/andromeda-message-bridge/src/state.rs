@@ -1,6 +1,7 @@
 use common::error::ContractError;
 use cosmwasm_std::{StdResult, Storage};
 use cw_storage_plus::Map;
+// A mapping of each supported chain to its corresponding channel
 pub const CHAIN_CHANNELS: Map<String, String> = Map::new("channels");
 
 pub fn save_channel(storage: &mut dyn Storage, chain: String, channel: String) -> StdResult<()> {
