@@ -1,7 +1,7 @@
-use andromeda_os::messages::{extract_chain, AMPMsg};
+// use andromeda_os::messages::extract_chain;
 use common::error::ContractError;
-use cosmwasm_std::{to_binary, Addr, Api, Binary, Coin, CosmosMsg, Storage, SubMsg, WasmMsg};
-use cw_storage_plus::{Item, Map};
+use cosmwasm_std::{Addr, Api, Binary, Coin, CosmosMsg, Storage, SubMsg, WasmMsg};
+use cw_storage_plus::Map;
 
 pub const ADO_DB_KEY: &str = "adodb";
 pub const VFS_KEY: &str = "vfs";
@@ -15,7 +15,7 @@ pub fn parse_path(
     message: Binary,
     funds: Vec<Coin>,
     storage: &dyn Storage,
-    api: &dyn Api,
+    _api: &dyn Api,
 ) -> Result<Option<SubMsg>, ContractError> {
     if recipient.contains('/') {
         let pathname = &recipient;
@@ -32,15 +32,18 @@ pub fn parse_path(
                 // load vector of supported chains
                 // load bridge contract address
                 // extract message from path
-                Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
-                    msg: to_binary(&BridgeExecuteMsg::SendMessage {
-                        chain: extract_chain(&pathname).unwrap_or_default(),
-                        recipient,
-                        message: binary_message,
-                    })?,
-                    funds,
-                })))),
+
+                // Will import the bridge's execute msg once merged
+
+                // Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                //     contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
+                //     msg: to_binary(&BridgeExecuteMsg::SendMessage {
+                //         chain: extract_chain(&pathname).unwrap_or_default(),
+                //         recipient,
+                //         message: binary_message,
+                //     })?,
+                //     funds,
+                // })))),
                 Some("wormhole") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
                     msg: binary_message,

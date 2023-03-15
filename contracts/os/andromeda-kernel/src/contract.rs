@@ -27,7 +27,7 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: InstantiateMsg,
+    _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     ADOContract::default().instantiate(
@@ -94,9 +94,9 @@ pub fn handle_amp_packet(
     let vfs_address = KERNEL_ADDRESSES.may_load(execute_env.deps.storage, VFS_KEY)?;
     for message in packet.clone().messages {
         let parsed_path = parse_path(
-            message.recipient,
-            message.message,
-            message.funds,
+            message.recipient.clone(),
+            message.message.clone(),
+            message.funds.clone(),
             execute_env.deps.storage,
             execute_env.deps.api,
         )?;
