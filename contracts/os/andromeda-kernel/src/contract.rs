@@ -99,7 +99,16 @@ pub fn handle_amp_packet(
             message.funds,
             execute_env.deps.storage,
             execute_env.deps.api,
-        );
+        )?;
+        match parsed_path {
+            // parse_path returning a SubMsg means that the recipient is on another chain. The message is sent to the relevant bridge contract
+            Some(sub_msg) => {
+                res = res.add_submessage(sub_msg);
+                continue;
+            }
+            // parse_path returning None means that the recipient is local
+            None => (),
+        };
         let contract_addr = message.get_recipient_address(
             execute_env.deps.api,
             &execute_env.deps.querier,

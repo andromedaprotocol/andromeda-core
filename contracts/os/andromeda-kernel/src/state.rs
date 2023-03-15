@@ -35,7 +35,7 @@ pub fn parse_path(
                 Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
                     msg: to_binary(&BridgeExecuteMsg::SendMessage {
-                        chain: extract_chain(&pathname),
+                        chain: extract_chain(&pathname).unwrap_or_default(),
                         recipient,
                         message: binary_message,
                     })?,
@@ -49,18 +49,26 @@ pub fn parse_path(
                 _ => Err(ContractError::UnsupportedOperation {}),
             }
         } else {
+            // In case there's no protocol, the pathname should look like this : chain/path or just /path
             let chain = pathname.splitn(2, '/').next();
+
             match chain {
                 // In case of andromeda we proceed as usual
                 Some("andromeda") => Ok(None),
                 // In case of other chain, we forward to bridge contract
-                Some(chain) => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
-                    msg: binary_message,
-                    funds,
-                })))),
-                // If no identifiable chain, assume it's the implicit path, so proceed to querying vfs to resolve path
-                None => Ok(None),
+                Some(chain) => {
+                    if chain.is_empty() {
+                        Ok(None)
+                    } else {
+                        Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
+                            msg: binary_message,
+                            funds,
+                        }))))
+                    }
+                }
+                // Valid paths are supposed to have '/'
+                None => Err(ContractError::InvalidPathname { error: None }),
             }
         }
     } else {
