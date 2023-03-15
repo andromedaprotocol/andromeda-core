@@ -33,8 +33,3 @@ pub enum QueryMsg {
     #[returns(Vec<String>)]
     SupportedChains {},
 }
-
-#[cw_serde]
-pub enum Chain {
-    Juno,
-}
