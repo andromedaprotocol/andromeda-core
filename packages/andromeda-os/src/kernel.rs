@@ -5,22 +5,14 @@ use cosmwasm_std::Addr;
 use crate::messages::AMPPkt;
 
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub ibc_bridge: String,
-}
+pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
     AMPReceive(AMPPkt),
     /// Upserts a key address to the kernel, restricted to the owner of the kernel
-    UpsertKeyAddress {
-        key: String,
-        value: String,
-    },
-    UpdateIbcBridge {
-        new_address: String,
-    },
+    UpsertKeyAddress { key: String, value: String },
 }
 
 #[cw_serde]

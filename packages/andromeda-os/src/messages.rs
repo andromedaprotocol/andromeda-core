@@ -4,7 +4,7 @@ use common::error::ContractError;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, Addr, Api, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, QuerierWrapper,
-    QueryRequest, ReplyOn, Storage, SubMsg, WasmMsg, WasmQuery,
+    QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
 
 #[cw_serde]
@@ -39,6 +39,14 @@ pub struct AMPMsg {
     pub gas_limit: Option<u64>,
 }
 
+pub fn extract_chain(pathname: &str) -> Option<&str> {
+    let juno_start = pathname.find('/')? + 2;
+    let juno_end = pathname[juno_start..]
+        .find('/')
+        .unwrap_or(pathname[juno_start..].len());
+    Some(&pathname[juno_start..juno_start + juno_end])
+}
+
 impl AMPMsg {
     /// Creates a new AMPMsg
     pub fn new(
@@ -60,58 +68,62 @@ impl AMPMsg {
     }
 
     /// Checks if the recipient is on another chain
-    pub fn parse_path(
-        &self,
-        storage: &dyn Storage,
-        api: &dyn Api,
-        ibc_bridge: String,
-    ) -> Result<Option<SubMsg>, ContractError> {
-        if self.recipient.contains('/') {
-            let pathname = &self.recipient;
-            let protocol: Option<&str> = if let Some(idx) = pathname.find(":") {
-                let first_word = &pathname[..idx];
-                Some(first_word)
-            } else {
-                None
-            };
-            let binary_message = self.message.clone();
-            let funds = self.funds.clone();
-            if protocol.is_some() {
-                match protocol {
-                    // load vector of supported chains
-                    // load bridge contract address
-                    // extract message from path
-                    Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: ibc_bridge,
-                        msg: binary_message,
-                        funds,
-                    })))),
-                    Some("wormhole") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: ibc_bridge,
-                        msg: binary_message,
-                        funds,
-                    })))),
-                    _ => Err(ContractError::UnsupportedOperation {}),
-                }
-            } else {
-                let chain = pathname.splitn(2, '/').next();
-                match chain {
-                    // In case of andromeda we proceed as usual
-                    Some("andromeda") => Ok(None),
-                    // In case of other chain, we forward to bridge contract
-                    Some(chain) => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: ibc_bridge,
-                        msg: binary_message,
-                        funds,
-                    })))),
-                    // If no identifiable chain, assume it's the implicit path, so proceed to querying vfs to resolve path
-                    None => Ok(None),
-                }
-            }
-        } else {
-            Ok(None)
-        }
-    }
+    // pub fn parse_path(
+    //     &self,
+    //     storage: &dyn Storage,
+    //     api: &dyn Api,
+    //     ibc_bridge: String,
+    // ) -> Result<Option<SubMsg>, ContractError> {
+    //     if self.recipient.contains('/') {
+    //         let pathname = &self.recipient;
+    //         let protocol: Option<&str> = if let Some(idx) = pathname.find(":") {
+    //             let first_word = &pathname[..idx];
+    //             Some(first_word)
+    //         } else {
+    //             None
+    //         };
+    //         let binary_message = self.message.clone();
+    //         let funds = self.funds.clone();
+    //         if protocol.is_some() {
+    //             match protocol {
+    //                 // load vector of supported chains
+    //                 // load bridge contract address
+    //                 // extract message from path
+    //                 Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+    //                     contract_addr: IBC_BRIDGE.load(storage)?.to_string(),
+    //                     msg: to_binary(&BridgeExecuteMsg::SendMessage {
+    //                         chain: extract_chain(&pathname),
+    //                         recipient: self.recipient,
+    //                         message: binary_message,
+    //                     })?,
+    //                     funds,
+    //                 })))),
+    //                 Some("wormhole") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+    //                     contract_addr: ibc_bridge,
+    //                     msg: binary_message,
+    //                     funds,
+    //                 })))),
+    //                 _ => Err(ContractError::UnsupportedOperation {}),
+    //             }
+    //         } else {
+    //             let chain = pathname.splitn(2, '/').next();
+    //             match chain {
+    //                 // In case of andromeda we proceed as usual
+    //                 Some("andromeda") => Ok(None),
+    //                 // In case of other chain, we forward to bridge contract
+    //                 Some(chain) => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+    //                     contract_addr: ibc_bridge,
+    //                     msg: binary_message,
+    //                     funds,
+    //                 })))),
+    //                 // If no identifiable chain, assume it's the implicit path, so proceed to querying vfs to resolve path
+    //                 None => Ok(None),
+    //             }
+    //         }
+    //     } else {
+    //         Ok(None)
+    //     }
+    // }
 
     /// Gets the address for the recipient
     pub fn get_recipient_address(
@@ -296,5 +308,22 @@ impl AMPPkt {
             Ok(_) => Ok(origin),
             Err(err) => Err(err),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    fn extract_chain(s: &str) -> Option<&str> {
+        let juno_start = s.find('/')? + 2;
+        let juno_end = s[juno_start..].find('/').unwrap_or(s[juno_start..].len());
+        Some(&s[juno_start..juno_start + juno_end])
+    }
+
+    #[test]
+    fn test_second_part() {
+        let s = "ibc://juno/...";
+        let res = extract_chain(s);
+        assert_eq!("juno", res.unwrap())
     }
 }
