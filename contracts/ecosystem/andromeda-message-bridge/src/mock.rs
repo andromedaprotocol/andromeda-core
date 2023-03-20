@@ -23,11 +23,11 @@ pub fn mock_message_bridge_channel_id(chain: String) -> QueryMsg {
     QueryMsg::ChannelID { chain }
 }
 
-pub fn mock_send_nft(channel: String, chain: String) -> ExecuteMsg {
+pub fn mock_save_channel(channel: String, chain: String) -> ExecuteMsg {
     ExecuteMsg::SaveChannel { channel, chain }
 }
 
-pub fn mock_transfer_nft(recipient: String, chain: String, message: Binary) -> ExecuteMsg {
+pub fn mock_send_message(recipient: String, chain: String, message: Binary) -> ExecuteMsg {
     ExecuteMsg::SendMessage {
         chain,
         recipient,

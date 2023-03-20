@@ -1,6 +1,13 @@
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg};
 use andromeda_ibc::ibc::reply;
-use andromeda_message_bridge::contract;
+use andromeda_message_bridge::{
+    contract,
+    mock::{
+        mock_andromeda_message_bridge, mock_message_bridge_channel_id,
+        mock_message_bridge_instantiate_msg, mock_message_bridge_supported_chains,
+        mock_save_channel, mock_send_message,
+    },
+};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg as CW721ExecuteMsg, TokenExtension, TransferAgreement,
 };
@@ -52,43 +59,30 @@ fn message_bridge() {
 
     // Store contract codes
     let cw721_code_id = router.store_code(mock_andromeda_cw721());
-    let message_bridge_code_id = router.store_code(mock_andromeda_rates());
+    let message_bridge_code_id = router.store_code(mock_andromeda_message_bridge());
 
     let receiver = Addr::unchecked("receiver");
-    // Generate rates contract
-    let rates: Vec<RateInfo> = [RateInfo {
-        rate: Rate::Flat(coin(100, "uandr")),
-        is_additive: true,
-        recipients: [Recipient::Addr(receiver.to_string())].to_vec(),
-        description: Some("Some test rate".to_string()),
-    }]
-    .to_vec();
-    let rates_init_msg = mock_rates_instantiate_msg(rates);
-    let rates_addr = router
+
+    // Generate message bridge contract
+
+    let message_bridge_init_msg = mock_message_bridge_instantiate_msg();
+    let message_bridge_addr = router
         .instantiate_contract(
-            rates_code_id,
+            message_bridge_code_id,
             owner.clone(),
-            &rates_init_msg,
+            &message_bridge_init_msg,
             &[],
-            "rates",
+            "message-bridge",
             None,
         )
         .unwrap();
 
     // Generate CW721 contract
-    let modules: Vec<Module> = [Module {
-        module_type: "rates".to_string(),
-        address: AndrAddress {
-            identifier: rates_addr.to_string(),
-        },
-        is_mutable: false,
-    }]
-    .to_vec();
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
         owner.to_string(),
-        Some(modules),
+        None,
     );
     let cw721_addr = router
         .instantiate_contract(
@@ -124,54 +118,97 @@ fn message_bridge() {
         .execute_contract(owner.clone(), cw721_addr.clone(), &mint_msg, &[])
         .unwrap();
 
-    // Create Transfer Agreement
-    let buyer = Addr::unchecked("buyer");
-    let agreement_amount = coin(100, "uandr");
-    let xfer_agreement_msg = CW721ExecuteMsg::TransferAgreement {
-        token_id: token_id.clone(),
-        agreement: Some(TransferAgreement {
-            amount: Value::Raw(agreement_amount),
-            purchaser: buyer.to_string(),
-        }),
-    };
+    // Save channel
+    let channel = "channel-1".to_string();
+    let chain = "juno".to_string();
+    let save_channel_msg = mock_save_channel(channel, chain.clone());
+
     let _ = router
-        .execute_contract(owner.clone(), cw721_addr.clone(), &xfer_agreement_msg, &[])
+        .execute_contract(
+            owner.clone(),
+            message_bridge_addr.clone(),
+            &save_channel_msg,
+            &[],
+        )
         .unwrap();
+    // Query channel id
 
-    // Store current balances for comparison
-    let pre_balance_owner = router
-        .wrap()
-        .query_balance(owner.to_string(), "uandr")
-        .unwrap();
-    let pre_balance_receiver = router
-        .wrap()
-        .query_balance(receiver.to_string(), "uandr")
-        .unwrap();
+    let channel_query_msg = mock_message_bridge_channel_id(chain);
 
-    // Transfer Token
-    let xfer_msg = CW721ExecuteMsg::TransferNft {
-        recipient: buyer.to_string(),
-        token_id,
-    };
+    let channel: String = router
+        .wrap()
+        .query_wasm_smart(message_bridge_addr.clone(), &channel_query_msg)
+        .unwrap();
+    assert_eq!("channel-1".to_string(), channel);
+
+    // Save another channel
+    let channel = "channel-2".to_string();
+    let chain = "secret".to_string();
+    let save_channel_msg = mock_save_channel(channel, chain.clone());
+
     let _ = router
-        .execute_contract(buyer, cw721_addr, &xfer_msg, &[coin(200, "uandr")])
+        .execute_contract(
+            owner.clone(),
+            message_bridge_addr.clone(),
+            &save_channel_msg,
+            &[],
+        )
         .unwrap();
 
-    // Check balances post tx
-    let post_balance_owner = router
+    // Query supported chains
+    let supported_chains_query_msg = mock_message_bridge_supported_chains();
+
+    let supported_chains: Vec<String> = router
         .wrap()
-        .query_balance(owner.to_string(), "uandr")
+        .query_wasm_smart(message_bridge_addr.clone(), &supported_chains_query_msg)
         .unwrap();
-    let post_balance_receiver = router
-        .wrap()
-        .query_balance(receiver.to_string(), "uandr")
-        .unwrap();
-    assert_eq!(
-        pre_balance_owner.amount + Uint128::from(100u128),
-        post_balance_owner.amount
-    );
-    assert_eq!(
-        pre_balance_receiver.amount + Uint128::from(100u128),
-        post_balance_receiver.amount
-    );
+    assert_eq!(vec!["secret", "juno"], supported_chains);
+
+    // // Send message
+
+    // let recipient = "recipient".to_string();
+    // let chain = "juno".to_string();
+    // let message = to_binary(&mint_msg).unwrap();
+    // let send_msg = mock_send_message(recipient, chain, message);
+
+    // let _ = router
+    //     .execute_contract(owner.clone(), message_bridge_addr.clone(), &send_msg, &[])
+    //     .unwrap();
+
+    // // Store current balances for comparison
+    // let pre_balance_owner = router
+    //     .wrap()
+    //     .query_balance(owner.to_string(), "uandr")
+    //     .unwrap();
+    // let pre_balance_receiver = router
+    //     .wrap()
+    //     .query_balance(receiver.to_string(), "uandr")
+    //     .unwrap();
+
+    // // Transfer Token
+    // let xfer_msg = CW721ExecuteMsg::TransferNft {
+    //     recipient: buyer.to_string(),
+    //     token_id,
+    // };
+    // let _ = router
+    //     .execute_contract(buyer, cw721_addr, &xfer_msg, &[coin(200, "uandr")])
+    //     .unwrap();
+
+    // // Check balances post tx
+    // let post_balance_owner = router
+    //     .wrap()
+    //     .query_balance(owner.to_string(), "uandr")
+    //     .unwrap();
+    // let post_balance_receiver = router
+    //     .wrap()
+    //     .query_balance(receiver.to_string(), "uandr")
+    //     .unwrap();
+    // assert_eq!(
+    //     pre_balance_owner.amount + Uint128::from(100u128),
+    //     post_balance_owner.amount
+    // );
+    // assert_eq!(
+    //     pre_balance_receiver.amount + Uint128::from(100u128),
+    //     post_balance_receiver.amount
+    // );
 }
