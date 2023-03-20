@@ -47,20 +47,7 @@ pub fn instantiate(
         msg.recipients.len() <= 100,
         ContractError::ReachedRecipientLimit {}
     );
-    let ado_contract = ADOContract::default();
-    let kernel_address = ado_contract.get_kernel_address(deps.storage)?;
-    let vfs_address = ado_contract.get_vfs_address(&deps.querier, kernel_address)?;
-    let app_address = ado_contract.get_app_contract(deps.storage)?;
-    // Validate recipients
-    for address_weight in &msg.recipients {
-        ado_contract.validate_andr_address(
-            deps.api,
-            &deps.querier,
-            address_weight.recipient.get_addr()?,
-            app_address.clone(),
-            vfs_address.clone(),
-        )?;
-    }
+
     let current_time = env.block.time.seconds();
     let splitter = match msg.lock_time {
         Some(lock_time) => {
