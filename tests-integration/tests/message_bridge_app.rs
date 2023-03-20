@@ -98,7 +98,7 @@ fn message_bridge() {
         youtube_url: None,
     };
     let mint_msg = CW721ExecuteMsg::Mint(Box::new(MintMsg {
-        token_id: token_id,
+        token_id,
         owner: owner.to_string(),
         token_uri: None,
         extension: token_extension,
