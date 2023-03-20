@@ -1958,6 +1958,7 @@ dependencies = [
  "andromeda-ibc",
  "andromeda-ics721",
  "andromeda-marketplace",
+ "andromeda-message-bridge",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
  "andromeda-rates",

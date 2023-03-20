@@ -20,6 +20,7 @@ andromeda-ics721 = { path = "../contracts/non-fungible-tokens/andromeda-ics721",
 
 #IBC
 andromeda-ibc = { path = "../packages/andromeda-ibc" }
+andromeda-message-bridge = { path = "../contracts/ecosystem/andromeda-message-bridge", features = ["testing"] }
 
 #Fungible Tokens
 andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
