@@ -41,7 +41,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    let _app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     // Max 100 recipients
     ensure!(
         msg.recipients.len() <= 100,

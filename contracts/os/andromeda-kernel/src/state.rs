@@ -19,14 +19,14 @@ pub fn parse_path(
 ) -> Result<Option<SubMsg>, ContractError> {
     if recipient.contains('/') {
         let pathname = &recipient;
-        let protocol: Option<&str> = if let Some(idx) = pathname.find(":") {
+        let protocol: Option<&str> = if let Some(idx) = pathname.find(':') {
             let protocol = &pathname[..idx];
             Some(protocol)
         } else {
             None
         };
-        let binary_message = message.clone();
-        let funds = funds.clone();
+        let binary_message = message;
+        let funds = funds;
         if protocol.is_some() {
             match protocol {
                 // load vector of supported chains
@@ -49,12 +49,11 @@ pub fn parse_path(
                     msg: binary_message,
                     funds,
                 })))),
-                _ => Err(ContractError::UnsupportedOperation {}),
+                _ => Err(ContractError::UnsupportedProtocol {}),
             }
         } else {
             // In case there's no protocol, the pathname should look like this : chain/path or just /path
-            let chain = pathname.splitn(2, '/').next();
-
+            let chain = pathname.split('/').next();
             match chain {
                 // In case of andromeda we proceed as usual
                 Some("andromeda") => Ok(None),
@@ -63,6 +62,7 @@ pub fn parse_path(
                     if chain.is_empty() {
                         Ok(None)
                     } else {
+                        println!("reached here");
                         Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                             contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
                             msg: binary_message,

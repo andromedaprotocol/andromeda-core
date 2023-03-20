@@ -271,13 +271,13 @@ mod tests {
     #[test]
     fn test_explicit_without_protocol() {
         let s = "juno/path";
-        let res = s.splitn(2, '/').next();
+        let res = s.split('/').next();
         assert_eq!("juno", res.unwrap())
     }
     #[test]
     fn test_explicit_without_protocol_without_chain() {
         let s = "/path";
-        let res = s.splitn(2, '/').next();
+        let res = s.split('/').next();
         assert!(res.unwrap().is_empty())
     }
 }

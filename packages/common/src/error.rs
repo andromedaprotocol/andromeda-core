@@ -59,6 +59,9 @@ pub enum ContractError {
     #[error("UnsupportedReturnType")]
     UnsupportedReturnType {},
 
+    #[error("UnsupportedProtocol")]
+    UnsupportedProtocol {},
+
     #[error("AlreadyUnbonded")]
     AlreadyUnbonded {},
 

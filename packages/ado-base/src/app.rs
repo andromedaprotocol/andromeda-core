@@ -58,7 +58,7 @@ impl<'a> ADOContract<'a> {
     ) -> Result<(), ContractError> {
         // If the address passes this check then it doesn't refer to a app component by
         // name.
-        if api.addr_validate(&identifier).is_err() || identifier.contains("/") {
+        if api.addr_validate(&identifier).is_err() || identifier.contains('/') {
             // Check app contract for component if using local reference
             if identifier.starts_with("./") {
                 ensure!(
