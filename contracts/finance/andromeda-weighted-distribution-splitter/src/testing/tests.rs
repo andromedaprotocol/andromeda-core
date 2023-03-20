@@ -2,7 +2,9 @@ use cosmwasm_std::{coins, BankMsg, Response, StdError, Timestamp, Uint128};
 use cw_utils::Expiration;
 
 use crate::contract::{execute, instantiate};
-use andromeda_testing::testing::mock_querier::{MOCK_RECIPIENT1, MOCK_RECIPIENT2};
+use andromeda_testing::testing::mock_querier::{
+    MOCK_KERNEL_CONTRACT, MOCK_RECIPIENT1, MOCK_RECIPIENT2,
+};
 
 use andromeda_finance::weighted_splitter::{AddressWeight, ExecuteMsg, InstantiateMsg};
 use andromeda_testing::testing::mock_querier::{
@@ -108,7 +110,7 @@ fn test_update_app_contract() {
             },
         ],
         lock_time: None,
-        kernel_address: None,
+        kernel_address: Some(MOCK_KERNEL_CONTRACT.to_string()),
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -148,7 +150,7 @@ fn test_update_app_contract_invalid_recipient() {
             weight: Uint128::new(100),
         }],
         lock_time: Some(100_000),
-        kernel_address: None,
+        kernel_address: Some(MOCK_KERNEL_CONTRACT.to_string()),
     };
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -159,12 +161,7 @@ fn test_update_app_contract_invalid_recipient() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
-    assert_eq!(
-        ContractError::InvalidComponent {
-            name: "z".to_string()
-        },
-        res.unwrap_err()
-    );
+    assert_eq!(ContractError::InvalidAddress {}, res.unwrap_err());
 }
 
 #[test]

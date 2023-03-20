@@ -232,6 +232,7 @@ dependencies = [
  "ado-base",
  "andromeda-fungible-tokens",
  "andromeda-os",
+ "andromeda-testing",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",

@@ -23,6 +23,7 @@ pub fn mock_cw20_instantiate_msg(
     initial_balances: Vec<cw20::Cw20Coin>,
     mint: Option<MinterResponse>,
     modules: Option<Vec<Module>>,
+    kernel_address: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         name,
@@ -32,7 +33,7 @@ pub fn mock_cw20_instantiate_msg(
         mint,
         marketing: None,
         modules,
-        kernel_address: None,
+        kernel_address,
     }
 }
 

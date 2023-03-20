@@ -24,7 +24,8 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_testing::testing::mock_querier::{
     bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_BIDS_CONTRACT,
-    MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
+    MOCK_KERNEL_CONTRACT, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT,
+    MOCK_RECEIPT_CONTRACT,
 };
 use cw721::{AllNftInfoResponse, OwnerOfResponse};
 use cw721_base::MintMsg;
@@ -39,9 +40,8 @@ fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
         minter: MINTER.to_string(),
-
         modules,
-        kernel_address: None,
+        kernel_address: Some(MOCK_KERNEL_CONTRACT.to_string()),
     };
 
     instantiate(deps, env, info, inst_msg).unwrap();

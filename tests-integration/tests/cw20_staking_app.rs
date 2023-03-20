@@ -91,6 +91,7 @@ fn test_cw20_staking_app() {
             Some(Uint128::from(1000000u128)),
         )),
         None,
+        Some(andr.kernel_address.to_string()),
     );
     let cw20_component = AppComponent::new(
         "1".to_string(),
@@ -98,7 +99,10 @@ fn test_cw20_staking_app() {
         to_binary(&cw20_init_msg).unwrap(),
     );
 
-    let cw20_staking_init_msg = mock_cw20_staking_instantiate_msg(cw20_component.clone().name);
+    let cw20_staking_init_msg = mock_cw20_staking_instantiate_msg(
+        cw20_component.clone().name,
+        Some(andr.kernel_address.to_string()),
+    );
     let cw20_staking_component = AppComponent::new(
         "2".to_string(),
         "cw20-staking".to_string(),

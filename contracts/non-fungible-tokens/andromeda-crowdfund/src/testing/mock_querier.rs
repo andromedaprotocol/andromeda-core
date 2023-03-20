@@ -1,4 +1,6 @@
 use andromeda_app::app::QueryMsg as AppQueryMsg;
+use andromeda_os::kernel::QueryMsg as KernelQueryMsg;
+use andromeda_os::vfs::QueryMsg as VfsQueryMessage;
 use common::{
     ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
     Funds,
@@ -15,6 +17,8 @@ pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
 pub const MOCK_ADDRESSLIST_CONTRACT: &str = "addresslist_contract";
+pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
+pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
@@ -70,10 +74,31 @@ impl WasmMockQuerier {
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_APP_CONTRACT => self.handle_app_query(msg),
                     MOCK_ADDRESSLIST_CONTRACT => self.handle_addresslist_query(msg),
+                    MOCK_KERNEL_CONTRACT => self.handle_kernel_query(msg),
+                    MOCK_VFS_CONTRACT => self.handle_vfs_query(msg),
+
                     _ => panic!("Unknown Contract Address {}", contract_addr),
                 }
             }
             _ => self.base.handle_query(request),
+        }
+    }
+
+    fn handle_vfs_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            VfsQueryMessage::ResolvePath { path } => {
+                SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap()))
+            }
+            _ => panic!("Unsupported Query: {}", msg),
+        }
+    }
+
+    fn handle_kernel_query(&self, msg: &Binary) -> QuerierResult {
+        match from_binary(msg).unwrap() {
+            KernelQueryMsg::KeyAddress { key } => {
+                SystemResult::Ok(ContractResult::Ok(to_binary(&MOCK_VFS_CONTRACT).unwrap()))
+            }
+            _ => panic!("Unsupported Query: {}", msg),
         }
     }
 

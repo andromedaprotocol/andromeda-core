@@ -11,11 +11,14 @@ pub fn mock_andromeda_cw20_staking() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_cw20_staking_instantiate_msg(staking_token: String) -> InstantiateMsg {
+pub fn mock_cw20_staking_instantiate_msg(
+    staking_token: String,
+    kernel_address: Option<String>,
+) -> InstantiateMsg {
     InstantiateMsg {
         staking_token,
         additional_rewards: None,
-        kernel_address: None,
+        kernel_address,
     }
 }
 
