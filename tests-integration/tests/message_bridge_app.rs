@@ -1,35 +1,24 @@
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg};
-use andromeda_ibc::ibc::reply;
-use andromeda_message_bridge::{
-    contract,
-    mock::{
-        mock_andromeda_message_bridge, mock_message_bridge_channel_id,
-        mock_message_bridge_instantiate_msg, mock_message_bridge_supported_chains,
-        mock_save_channel, mock_send_message,
-    },
+
+use andromeda_message_bridge::mock::{
+    mock_andromeda_message_bridge, mock_message_bridge_channel_id,
+    mock_message_bridge_instantiate_msg, mock_message_bridge_supported_chains, mock_save_channel,
 };
-use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg as CW721ExecuteMsg, TokenExtension, TransferAgreement,
-};
-use cosmwasm_std::{coin, to_binary, Addr, Empty, IbcTimeout, IbcTimeoutBlock, Uint128};
+use andromeda_non_fungible_tokens::cw721::{ExecuteMsg as CW721ExecuteMsg, TokenExtension};
+use cosmwasm_std::{coin, Addr};
 use cw721_base::MintMsg;
-use cw_cii::{Admin, ContractInstantiateInfo};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+
+use cw_multi_test::{App, Executor};
 // use cw_pause_once::PauseError;
 
-use andromeda_message_bridge::ibc;
-use common::error::ContractError;
-
-const COMMUNITY_POOL: &str = "community_pool";
-
-fn message_bridge_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw721_base::entry::execute,
-        cw721_base::entry::instantiate,
-        cw721_base::entry::query,
-    );
-    Box::new(contract)
-}
+// fn message_bridge_contract() -> Box<dyn Contract<Empty>> {
+//     let contract = ContractWrapper::new(
+//         cw721_base::entry::execute,
+//         cw721_base::entry::instantiate,
+//         cw721_base::entry::query,
+//     );
+//     Box::new(contract)
+// }
 
 fn mock_app() -> App {
     App::new(|router, _api, storage| {
@@ -61,7 +50,7 @@ fn message_bridge() {
     let cw721_code_id = router.store_code(mock_andromeda_cw721());
     let message_bridge_code_id = router.store_code(mock_andromeda_message_bridge());
 
-    let receiver = Addr::unchecked("receiver");
+    let _receiver = Addr::unchecked("receiver");
 
     // Generate message bridge contract
 
@@ -109,13 +98,13 @@ fn message_bridge() {
         youtube_url: None,
     };
     let mint_msg = CW721ExecuteMsg::Mint(Box::new(MintMsg {
-        token_id: token_id.clone(),
+        token_id: token_id,
         owner: owner.to_string(),
         token_uri: None,
         extension: token_extension,
     }));
     let _ = router
-        .execute_contract(owner.clone(), cw721_addr.clone(), &mint_msg, &[])
+        .execute_contract(owner.clone(), cw721_addr, &mint_msg, &[])
         .unwrap();
 
     // Save channel
@@ -144,15 +133,10 @@ fn message_bridge() {
     // Save another channel
     let channel = "channel-2".to_string();
     let chain = "secret".to_string();
-    let save_channel_msg = mock_save_channel(channel, chain.clone());
+    let save_channel_msg = mock_save_channel(channel, chain);
 
     let _ = router
-        .execute_contract(
-            owner.clone(),
-            message_bridge_addr.clone(),
-            &save_channel_msg,
-            &[],
-        )
+        .execute_contract(owner, message_bridge_addr.clone(), &save_channel_msg, &[])
         .unwrap();
 
     // Query supported chains
@@ -160,7 +144,7 @@ fn message_bridge() {
 
     let supported_chains: Vec<String> = router
         .wrap()
-        .query_wasm_smart(message_bridge_addr.clone(), &supported_chains_query_msg)
+        .query_wasm_smart(message_bridge_addr, &supported_chains_query_msg)
         .unwrap();
     assert_eq!(vec!["secret", "juno"], supported_chains);
 
