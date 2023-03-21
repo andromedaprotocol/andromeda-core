@@ -92,8 +92,7 @@ impl WasmMockQuerier {
                 } else {
                     SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap()))
                 }
-            }
-            _ => panic!("Unsupported Query: {:?}", msg),
+            } // _ => panic!("Unsupported Query: {:?}", msg),
         }
     }
 
