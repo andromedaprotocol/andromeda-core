@@ -103,7 +103,7 @@ fn test_update_app_contract() {
             },
             AddressWeight {
                 recipient: Recipient::ADO(ADORecipient {
-                    address: MOCK_RECIPIENT2.to_string().to_string(),
+                    address: MOCK_RECIPIENT2.to_string(),
                     msg: None,
                 }),
                 weight: Uint128::new(50),
@@ -144,7 +144,7 @@ fn test_update_app_contract_invalid_recipient() {
         modules: Some(modules),
         recipients: vec![AddressWeight {
             recipient: Recipient::ADO(ADORecipient {
-                address: MOCK_RECIPIENT1.to_string().to_string(),
+                address: MOCK_RECIPIENT1.to_string(),
                 msg: None,
             }),
             weight: Uint128::new(100),
@@ -171,7 +171,7 @@ fn test_instantiate() {
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
         recipients: vec![AddressWeight {
-            recipient: Recipient::from_string(String::from(MOCK_RECIPIENT1.to_string())),
+            recipient: Recipient::from_string(MOCK_RECIPIENT1.to_string()),
             weight: Uint128::new(1),
         }],
         modules: None,
