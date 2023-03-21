@@ -11,7 +11,7 @@ use cosmwasm_std::{
     MessageInfo, Response, StdError, WasmMsg,
 };
 use cw2::set_contract_version;
-use serde::de::DeserializeOwned;
+// use serde::de::DeserializeOwned;
 
 use crate::state::{read_chains, read_channel, save_channel};
 
@@ -102,13 +102,13 @@ pub fn execute_save_channel(
 }
 
 /// called on IBC packet receive in other chain
-pub fn try_wasm_msg<T>(_deps: DepsMut, target: String, message: Binary) -> Result<WasmMsg, StdError>
-where
-    T: DeserializeOwned,
+pub fn try_wasm_msg(_deps: DepsMut, target: String, message: Binary) -> Result<WasmMsg, StdError>
+// where
+//     T: DeserializeOwned,
 {
-    let unpacked_message = from_binary::<T>(&message)?;
+    let _unpacked_message = from_binary(&message)?;
     //TODO change String to AMPPkt once it's been merged with AMP
-    let wasm_msg = if TypeId::of::<T>() == TypeId::of::<String>() {
+    let wasm_msg = if TypeId::of::<i32>() == TypeId::of::<String>() {
         WasmMsg::Execute {
             contract_addr: "kernel_address".to_owned(),
             msg: message,
