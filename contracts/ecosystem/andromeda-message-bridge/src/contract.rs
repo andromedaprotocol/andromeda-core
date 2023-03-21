@@ -1,3 +1,5 @@
+use std::any::TypeId;
+
 use andromeda_ibc::message_bridge::{ExecuteMsg, IbcExecuteMsg, InstantiateMsg, QueryMsg};
 
 use ado_base::ADOContract;
@@ -5,10 +7,11 @@ use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, erro
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response,
-    StdError, WasmMsg,
+    attr, ensure, from_binary, to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout,
+    MessageInfo, Response, StdError, WasmMsg,
 };
 use cw2::set_contract_version;
+use serde::de::DeserializeOwned;
 
 use crate::state::{read_chains, read_channel, save_channel};
 
@@ -99,11 +102,24 @@ pub fn execute_save_channel(
 }
 
 /// called on IBC packet receive in other chain
-pub fn try_wasm_msg(_deps: DepsMut, target: String, message: Binary) -> Result<WasmMsg, StdError> {
-    let wasm_msg = WasmMsg::Execute {
-        contract_addr: target,
-        msg: message,
-        funds: vec![],
+pub fn try_wasm_msg<T>(_deps: DepsMut, target: String, message: Binary) -> Result<WasmMsg, StdError>
+where
+    T: DeserializeOwned,
+{
+    let unpacked_message = from_binary::<T>(&message)?;
+    //TODO change String to AMPPkt once it's been merged with AMP
+    let wasm_msg = if TypeId::of::<T>() == TypeId::of::<String>() {
+        WasmMsg::Execute {
+            contract_addr: "kernel_address".to_owned(),
+            msg: message,
+            funds: vec![],
+        }
+    } else {
+        WasmMsg::Execute {
+            contract_addr: target,
+            msg: message,
+            funds: vec![],
+        }
     };
     Ok(wasm_msg)
 }
