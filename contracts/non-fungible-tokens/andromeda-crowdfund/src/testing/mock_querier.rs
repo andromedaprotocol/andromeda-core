@@ -87,15 +87,19 @@ impl WasmMockQuerier {
     fn handle_vfs_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             VfsQueryMessage::ResolvePath { path } => {
-                SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap()))
+                if path.len() < 2 {
+                    SystemResult::Ok(ContractResult::Err("InvalidComponent".to_string()))
+                } else {
+                    SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap()))
+                }
             }
-            _ => panic!("Unsupported Query: {}", msg),
+            _ => panic!("Unsupported Query: {:?}", msg),
         }
     }
 
     fn handle_kernel_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
-            KernelQueryMsg::KeyAddress { key } => {
+            KernelQueryMsg::KeyAddress { key: _ } => {
                 SystemResult::Ok(ContractResult::Ok(to_binary(&MOCK_VFS_CONTRACT).unwrap()))
             }
             _ => panic!("Unsupported Query: {}", msg),

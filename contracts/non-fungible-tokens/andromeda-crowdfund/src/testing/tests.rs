@@ -1740,12 +1740,7 @@ fn test_validate_andr_addresses_nonexisting_module() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
-    assert_eq!(
-        ContractError::InvalidComponent {
-            name: "z".to_string()
-        },
-        res.unwrap_err()
-    );
+    assert_eq!(ContractError::InvalidAddress {}, res.unwrap_err());
 }
 
 #[test]
@@ -1753,7 +1748,6 @@ fn test_update_app_contract_nonexisting_address() {
     let mut deps = mock_dependencies_custom(&[]);
     let msg = InstantiateMsg {
         token_address: "z".to_owned(),
-
         modules: None,
         can_mint_after_sale: true,
         kernel_address: Some(MOCK_KERNEL_CONTRACT.to_string()),
@@ -1767,12 +1761,7 @@ fn test_update_app_contract_nonexisting_address() {
     });
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
-    assert_eq!(
-        ContractError::InvalidComponent {
-            name: "z".to_string()
-        },
-        res.unwrap_err()
-    );
+    assert_eq!(ContractError::InvalidAddress {}, res.unwrap_err());
 }
 
 #[test]
