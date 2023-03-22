@@ -14,6 +14,8 @@ use cw20::{BalanceResponse, Cw20QueryMsg};
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
+pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
+pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -66,11 +68,21 @@ impl WasmMockQuerier {
                     MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
                     MOCK_APP_CONTRACT => self.handle_app_query(msg),
+                    MOCK_KERNEL_CONTRACT => self.handle_kernel_query(msg),
+                    MOCK_VFS_CONTRACT => self.handle_vfs_query(msg),
                     _ => panic!("Unsupported query for contract: {}", contract_addr),
                 }
             }
             _ => self.base.handle_query(request),
         }
+    }
+
+    fn handle_kernel_query(&self, _msg: &Binary) -> QuerierResult {
+        SystemResult::Ok(ContractResult::Ok(to_binary(&MOCK_VFS_CONTRACT).unwrap()))
+    }
+
+    fn handle_vfs_query(&self, _msg: &Binary) -> QuerierResult {
+        SystemResult::Ok(ContractResult::Err("InvalidComponent".to_string()))
     }
 
     fn handle_cw20_query(&self, msg: &Binary) -> QuerierResult {

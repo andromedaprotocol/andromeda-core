@@ -21,31 +21,42 @@ impl<'a> ADOContract<'a> {
         mut addresses: Vec<String>,
     ) -> Result<(), ContractError> {
         let app_contract = self.get_app_contract(deps.storage)?;
-        let kernel_address = self.get_kernel_address(deps.storage)?;
-        let vfs_address = self.get_vfs_address(&deps.querier, kernel_address)?;
-        ensure!(
-            app_contract.is_some(),
-            ContractError::AppContractNotSpecified {}
-        );
-        #[cfg(feature = "modules")]
-        {
-            let modules = self.load_modules(deps.storage)?;
-            if !modules.is_empty() {
-                let andr_addresses: Vec<String> = modules.into_iter().map(|m| m.address).collect();
-                addresses.extend(andr_addresses);
+        let kernel_address = self.get_kernel_address(deps.storage);
+        match kernel_address {
+            Ok(kernel_address) => {
+                let vfs_address = self.get_vfs_address(&deps.querier, kernel_address)?;
+                ensure!(
+                    app_contract.is_some(),
+                    ContractError::AppContractNotSpecified {}
+                );
+                #[cfg(feature = "modules")]
+                {
+                    let modules = self.load_modules(deps.storage)?;
+                    if !modules.is_empty() {
+                        let andr_addresses: Vec<String> =
+                            modules.into_iter().map(|m| m.address).collect();
+                        addresses.extend(andr_addresses);
+                    }
+                }
+                let app_contract = app_contract.unwrap();
+                for address in addresses {
+                    self.validate_andr_address(
+                        deps.api,
+                        &deps.querier,
+                        address,
+                        Some(app_contract.clone()),
+                        vfs_address.clone(),
+                    )?;
+                }
+                Ok(())
+            }
+            Err(_) => {
+                for address in addresses {
+                    deps.api.addr_validate(&address)?;
+                }
+                Ok(())
             }
         }
-        let app_contract = app_contract.unwrap();
-        for address in addresses {
-            self.validate_andr_address(
-                deps.api,
-                &deps.querier,
-                address,
-                Some(app_contract.clone()),
-                vfs_address.clone(),
-            )?;
-        }
-        Ok(())
     }
 
     pub fn validate_andr_address(

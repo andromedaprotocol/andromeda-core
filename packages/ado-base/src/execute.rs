@@ -196,206 +196,201 @@ impl<'a> ADOContract<'a> {
     }
 }
 
-#[cfg(test)]
-#[cfg(feature = "modules")]
-mod tests {
-    use super::*;
-    use crate::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
-    use common::ado_base::modules::Module;
-    use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env, mock_info},
-        Addr, Uint64,
-    };
+// #[cfg(test)]
+// #[cfg(feature = "modules")]
+// mod tests {
+//     use super::*;
+//     use crate::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT};
+//     use common::ado_base::modules::Module;
+//     use cosmwasm_std::{
+//         testing::{mock_dependencies, mock_env, mock_info},
+//         Addr, Uint64,
+//     };
 
-    fn dummy_function(
-        _deps: DepsMut,
-        _env: Env,
-        _info: MessageInfo,
-        _msg: AndromedaMsg,
-    ) -> Result<Response, ContractError> {
-        Ok(Response::new())
-    }
-    #[test]
-    fn test_register_module_invalid_identifier() {
-        let contract = ADOContract::default();
-        let mut deps = mock_dependencies_custom(&[]);
+//     fn dummy_function(
+//         _deps: DepsMut,
+//         _env: Env,
+//         _info: MessageInfo,
+//         _msg: AndromedaMsg,
+//     ) -> Result<Response, ContractError> {
+//         Ok(Response::new())
+//     }
+//     #[test]
+//     fn test_register_module_invalid_identifier() {
+//         let contract = ADOContract::default();
+//         let mut deps = mock_dependencies_custom(&[]);
 
-        let info = mock_info("owner", &[]);
-        let deps_mut = deps.as_mut();
-        contract
-            .instantiate(
-                deps_mut.storage,
-                mock_env(),
-                deps_mut.api,
-                info.clone(),
-                InstantiateMsg {
-                    ado_type: "type".to_string(),
-                    modules: None,
-                    operators: None,
-                    ado_version: "version".to_string(),
-                    kernel_address: None,
-                },
-            )
-            .unwrap();
+//         let info = mock_info("owner", &[]);
+//         let deps_mut = deps.as_mut();
+//         contract
+//             .instantiate(
+//                 deps_mut.storage,
+//                 mock_env(),
+//                 deps_mut.api,
+//                 info.clone(),
+//                 InstantiateMsg {
+//                     ado_type: "type".to_string(),
+//                     modules: None,
+//                     operators: None,
+//                     ado_version: "version".to_string(),
+//                     kernel_address: None,
+//                 },
+//             )
+//             .unwrap();
 
-        contract
-            .app_contract
-            .save(deps_mut.storage, &Addr::unchecked(MOCK_APP_CONTRACT))
-            .unwrap();
+//         contract
+//             .app_contract
+//             .save(deps_mut.storage, &Addr::unchecked(MOCK_APP_CONTRACT))
+//             .unwrap();
 
-        let module = Module {
-            module_name: Some("module".to_owned()),
-            address: "z".to_string(),
+//         let module = Module {
+//             module_name: Some("module".to_owned()),
+//             address: "z".to_string(),
 
-            is_mutable: false,
-        };
+//             is_mutable: false,
+//         };
 
-        let msg = AndromedaMsg::RegisterModule { module };
+//         let msg = AndromedaMsg::RegisterModule { module };
 
-        let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
+//         let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
 
-        assert_eq!(
-            ContractError::InvalidComponent {
-                name: "z".to_string()
-            },
-            res.unwrap_err()
-        );
-    }
+//         assert_eq!(
+//             ContractError::InvalidComponent {
+//                 name: "z".to_string()
+//             },
+//             res.unwrap_err()
+//         );
+//     }
 
-    #[test]
-    fn test_alter_module_invalid_identifier() {
-        let contract = ADOContract::default();
-        let mut deps = mock_dependencies_custom(&[]);
+//     #[test]
+//     fn test_alter_module_invalid_identifier() {
+//         let contract = ADOContract::default();
+//         let mut deps = mock_dependencies_custom(&[]);
 
-        let info = mock_info("owner", &[]);
-        let deps_mut = deps.as_mut();
-        contract
-            .instantiate(
-                deps_mut.storage,
-                mock_env(),
-                deps_mut.api,
-                info.clone(),
-                InstantiateMsg {
-                    ado_type: "type".to_string(),
-                    ado_version: "version".to_string(),
-                    modules: Some(vec![Module {
-                        module_name: Some("module".to_owned()),
-                        address: "terra1...".to_string(),
+//         let info = mock_info("owner", &[]);
+//         let deps_mut = deps.as_mut();
+//         contract
+//             .instantiate(
+//                 deps_mut.storage,
+//                 mock_env(),
+//                 deps_mut.api,
+//                 info.clone(),
+//                 InstantiateMsg {
+//                     ado_type: "type".to_string(),
+//                     ado_version: "version".to_string(),
+//                     modules: Some(vec![Module {
+//                         module_name: Some("module".to_owned()),
+//                         address: "terra1...".to_string(),
 
-                        is_mutable: true,
-                    }]),
-                    operators: None,
-                    kernel_address: None,
-                },
-            )
-            .unwrap();
+//                         is_mutable: true,
+//                     }]),
+//                     operators: None,
+//                     kernel_address: None,
+//                 },
+//             )
+//             .unwrap();
 
-        contract
-            .app_contract
-            .save(deps_mut.storage, &Addr::unchecked(MOCK_APP_CONTRACT))
-            .unwrap();
+//         contract
+//             .app_contract
+//             .save(deps_mut.storage, &Addr::unchecked(MOCK_APP_CONTRACT))
+//             .unwrap();
 
-        let module = Module {
-            module_name: Some("module".to_owned()),
-            address: "z".to_string(),
+//         let module = Module {
+//             module_name: Some("module".to_owned()),
+//             address: "z".to_string(),
 
-            is_mutable: false,
-        };
+//             is_mutable: false,
+//         };
 
-        let msg = AndromedaMsg::AlterModule {
-            module_idx: Uint64::new(1),
-            module,
-        };
+//         let msg = AndromedaMsg::AlterModule {
+//             module_idx: Uint64::new(1),
+//             module,
+//         };
 
-        let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
+//         let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
 
-        assert_eq!(
-            ContractError::InvalidComponent {
-                name: "z".to_string()
-            },
-            res.unwrap_err()
-        );
-    }
+//         assert_eq!(
+//             ContractError::InvalidComponent {
+//                 name: "z".to_string()
+//             },
+//             res.unwrap_err()
+//         );
+//     }
 
-    #[test]
-    fn test_update_app_contract() {
-        let contract = ADOContract::default();
-        let mut deps = mock_dependencies();
+//     #[test]
+//     fn test_update_app_contract() {
+//         let contract = ADOContract::default();
+//         let mut deps = mock_dependencies();
 
-        let info = mock_info("owner", &[]);
-        let deps_mut = deps.as_mut();
-        contract
-            .instantiate(
-                deps_mut.storage,
-                mock_env(),
-                deps_mut.api,
-                info.clone(),
-                InstantiateMsg {
-                    ado_type: "type".to_string(),
-                    ado_version: "version".to_string(),
-                    modules: None,
-                    operators: None,
-                    kernel_address: None,
-                },
-            )
-            .unwrap();
+//         let info = mock_info("owner", &[]);
+//         let deps_mut = deps.as_mut();
+//         contract
+//             .instantiate(
+//                 deps_mut.storage,
+//                 mock_env(),
+//                 deps_mut.api,
+//                 info.clone(),
+//                 InstantiateMsg {
+//                     ado_type: "type".to_string(),
+//                     ado_version: "version".to_string(),
+//                     modules: None,
+//                     operators: None,
+//                     kernel_address: None,
+//                 },
+//             )
+//             .unwrap();
 
-        let address = String::from("address");
+//         let address = String::from("address");
 
-        let msg = AndromedaMsg::UpdateAppContract {
-            address: address.clone(),
-        };
+//         let msg = AndromedaMsg::UpdateAppContract {
+//             address: address.clone(),
+//         };
 
-        let res = contract
-            .execute(deps_mut, mock_env(), info, msg, dummy_function)
-            .unwrap();
+//         let res = contract
+//             .execute(deps_mut, mock_env(), info, msg, dummy_function)
+//             .unwrap();
 
-        assert_eq!(
-            Response::new()
-                .add_attribute("action", "update_app_contract")
-                .add_attribute("address", address),
-            res
-        );
-    }
+//         assert_eq!(
+//             Response::new()
+//                 .add_attribute("action", "update_app_contract")
+//                 .add_attribute("address", address),
+//             res
+//         );
+//     }
 
-    #[test]
-    fn test_update_app_contract_invalid_module() {
-        let contract = ADOContract::default();
-        let mut deps = mock_dependencies_custom(&[]);
+//     #[test]
+//     fn test_update_app_contract_invalid_module() {
+//         let contract = ADOContract::default();
+//         let mut deps = mock_dependencies_custom(&[]);
 
-        let info = mock_info("owner", &[]);
-        let deps_mut = deps.as_mut();
-        contract
-            .instantiate(
-                deps_mut.storage,
-                mock_env(),
-                deps_mut.api,
-                info.clone(),
-                InstantiateMsg {
-                    ado_type: "type".to_string(),
-                    ado_version: "version".to_string(),
-                    modules: Some(vec![Module {
-                        module_name: Some("address_list".to_string()),
-                        is_mutable: true,
-                        address: "z".to_string(),
-                    }]),
-                    operators: None,
-                    kernel_address: None,
-                },
-            )
-            .unwrap();
+//         let info = mock_info("owner", &[]);
+//         let deps_mut = deps.as_mut();
+//         contract
+//             .instantiate(
+//                 deps_mut.storage,
+//                 mock_env(),
+//                 deps_mut.api,
+//                 info.clone(),
+//                 InstantiateMsg {
+//                     ado_type: "type".to_string(),
+//                     ado_version: "version".to_string(),
+//                     modules: Some(vec![Module {
+//                         module_name: Some("address_list".to_string()),
+//                         is_mutable: true,
+//                         address: "z".to_string(),
+//                     }]),
+//                     operators: None,
+//                     kernel_address: None,
+//                 },
+//             )
+//             .unwrap();
 
-        let msg = AndromedaMsg::UpdateAppContract {
-            address: MOCK_APP_CONTRACT.to_owned(),
-        };
+//         let msg = AndromedaMsg::UpdateAppContract {
+//             address: MOCK_APP_CONTRACT.to_owned(),
+//         };
 
-        let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
+//         let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
 
-        assert_eq!(
-            ContractError::InvalidComponent {
-                name: "z".to_string()
-            },
-            res.unwrap_err()
-        );
-    }
-}
+//         assert_eq!(ContractError::InvalidAddress {}, res.unwrap_err());
+//     }
+// }

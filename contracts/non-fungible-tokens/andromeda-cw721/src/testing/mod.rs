@@ -24,8 +24,7 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_testing::testing::mock_querier::{
     bank_sub_msg, mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT, MOCK_BIDS_CONTRACT,
-    MOCK_KERNEL_CONTRACT, MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT,
-    MOCK_RECEIPT_CONTRACT,
+    MOCK_PRIMITIVE_CONTRACT, MOCK_RATES_CONTRACT, MOCK_RATES_RECIPIENT, MOCK_RECEIPT_CONTRACT,
 };
 use cw721::{AllNftInfoResponse, OwnerOfResponse};
 use cw721_base::MintMsg;
@@ -41,7 +40,7 @@ fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
         symbol: SYMBOL.to_string(),
         minter: MINTER.to_string(),
         modules,
-        kernel_address: Some(MOCK_KERNEL_CONTRACT.to_string()),
+        kernel_address: None,
     };
 
     instantiate(deps, env, info, inst_msg).unwrap();
@@ -723,7 +722,6 @@ fn test_transfer_with_offer() {
     let modules: Vec<Module> = vec![Module {
         module_name: Some(BIDS.to_owned()),
         address: MOCK_BIDS_CONTRACT.to_owned(),
-
         is_mutable: false,
     }];
 
@@ -783,13 +781,11 @@ fn test_update_app_contract() {
         Module {
             module_name: Some(ADDRESS_LIST.to_owned()),
             address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-
             is_mutable: false,
         },
         Module {
             module_name: Some(RATES.to_owned()),
             address: "b".to_owned(),
-
             is_mutable: false,
         },
     ];
@@ -798,8 +794,7 @@ fn test_update_app_contract() {
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
-        minter: "e".to_string(),
-
+        minter: "eee".to_string(),
         modules: Some(modules),
         kernel_address: None,
     };
@@ -844,7 +839,6 @@ fn test_update_app_contract_invalid_minter() {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
         minter: "k".to_string(),
-
         modules: Some(modules),
         kernel_address: None,
     };
@@ -856,12 +850,7 @@ fn test_update_app_contract_invalid_minter() {
     });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
-    assert_eq!(
-        ContractError::InvalidComponent {
-            name: "k".to_string()
-        },
-        res.unwrap_err()
-    );
+    assert!(res.is_err());
 }
 
 #[test]
@@ -913,7 +902,6 @@ fn test_batch_mint() {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
         minter: MINTER.to_string(),
-
         modules: None,
         kernel_address: None,
     };

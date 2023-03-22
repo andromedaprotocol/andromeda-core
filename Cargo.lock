@@ -208,6 +208,7 @@ name = "andromeda-cw20"
 version = "0.2.0"
 dependencies = [
  "ado-base",
+ "andromeda-app",
  "andromeda-fungible-tokens",
  "andromeda-modules",
  "andromeda-os",

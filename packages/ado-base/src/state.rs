@@ -71,15 +71,17 @@ impl<'a> ADOContract<'a> {
         querier: &QuerierWrapper,
         path: String,
     ) -> Result<String, ContractError> {
-        let vfs_address_query = KernelQueryMsg::KeyAddress {
-            key: "vfs".to_string(),
-        };
-        let kernel_address = self.kernel_address.load(storage)?;
-        let vfs_address: Addr = querier.query_wasm_smart(kernel_address, &vfs_address_query)?;
-
-        let resolve_path_query = VFSQueryMsg::ResolvePath { path };
-        let res: String = querier.query_wasm_smart(vfs_address, &resolve_path_query)?;
-
-        Ok(res)
+        let kernel_address = self.kernel_address.may_load(storage)?;
+        if let Some(kernel_address) = kernel_address {
+            let vfs_address_query = KernelQueryMsg::KeyAddress {
+                key: "vfs".to_string(),
+            };
+            let vfs_address: Addr = querier.query_wasm_smart(kernel_address, &vfs_address_query)?;
+            let resolve_path_query = VFSQueryMsg::ResolvePath { path };
+            let res: String = querier.query_wasm_smart(vfs_address, &resolve_path_query)?;
+            Ok(res)
+        } else {
+            Ok(path)
+        }
     }
 }
