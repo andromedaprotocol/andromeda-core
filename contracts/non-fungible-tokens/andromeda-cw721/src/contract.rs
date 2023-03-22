@@ -271,9 +271,10 @@ fn handle_amp_packet(
 fn resolve_minter(
     storage: &dyn Storage,
     querier: &QuerierWrapper,
+    api: &dyn Api,
 ) -> Result<String, ContractError> {
     let andr_minter = ANDR_MINTER.load(storage)?;
-    ADOContract::default().resolve_path(storage, querier, andr_minter)
+    ADOContract::default().resolve_path(storage, querier, api, andr_minter)
 }
 
 /// Called before the standing CW721 minting method in order to update the current minting address for the contract
@@ -285,7 +286,7 @@ fn pre_mint(
     let cw721_contract = AndrCW721Contract::default();
 
     // Update the minter before minting in case of any changes
-    let andr_minter = resolve_minter(storage, querier)?;
+    let andr_minter = resolve_minter(storage, querier, api)?;
     let addr = api.addr_validate(&andr_minter)?;
     save_minter(&cw721_contract, storage, &addr)?;
 

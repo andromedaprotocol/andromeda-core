@@ -5,7 +5,7 @@ use common::ado_base::modules::Module;
 use common::{error::ContractError, parse_message};
 use cosmwasm_std::{Addr, Binary};
 #[cfg(feature = "vfs")]
-use cosmwasm_std::{QuerierWrapper, Storage};
+use cosmwasm_std::{Api, QuerierWrapper, Storage};
 #[cfg(feature = "withdraw")]
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
@@ -69,6 +69,7 @@ impl<'a> ADOContract<'a> {
         &self,
         storage: &dyn Storage,
         querier: &QuerierWrapper,
+        api: &dyn Api,
         path: String,
     ) -> Result<String, ContractError> {
         let kernel_address = self.kernel_address.may_load(storage)?;
@@ -81,7 +82,8 @@ impl<'a> ADOContract<'a> {
             let res: String = querier.query_wasm_smart(vfs_address, &resolve_path_query)?;
             Ok(res)
         } else {
-            Ok(path)
+            let validated_address = api.addr_validate(&path)?.into_string();
+            Ok(validated_address)
         }
     }
 }

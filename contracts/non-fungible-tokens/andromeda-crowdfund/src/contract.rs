@@ -308,7 +308,8 @@ fn execute_mint(
 
     let token_contract = config.token_address;
     let crowdfund_contract = env.contract.address.to_string();
-    let resolved_path = contract.resolve_path(deps.storage, &deps.querier, token_contract)?;
+    let resolved_path =
+        contract.resolve_path(deps.storage, &deps.querier, deps.api, token_contract)?;
 
     let mut resp = Response::new();
     for mint_msg in mint_msgs {
@@ -827,8 +828,12 @@ fn transfer_tokens_and_send_funds(
     }
 
     // Resolve the token contract address from the VFS
-    let token_contract_address =
-        ADOContract::default().resolve_path(deps.storage, &deps.querier, config.token_address)?;
+    let token_contract_address = ADOContract::default().resolve_path(
+        deps.storage,
+        &deps.querier,
+        deps.api,
+        config.token_address,
+    )?;
     for purchase in purchases.into_iter() {
         let purchaser = purchase.purchaser;
         let should_remove = purchaser != last_purchaser || remove_last_purchaser;
@@ -912,13 +917,13 @@ fn process_refund(
 fn get_burn_messages(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
-    _api: &dyn Api,
+    api: &dyn Api,
     address: String,
     limit: usize,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let config = CONFIG.load(storage)?;
     let token_address =
-        ADOContract::default().resolve_path(storage, querier, config.token_address)?;
+        ADOContract::default().resolve_path(storage, querier, api, config.token_address)?;
     let tokens_to_burn = query_tokens(querier, token_address.clone(), address, limit)?;
 
     tokens_to_burn
