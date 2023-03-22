@@ -6,10 +6,9 @@ use common::{
     Funds,
 };
 use cosmwasm_std::{
-    from_binary, from_slice,
-    testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, OwnedDeps, Querier, QuerierResult,
-    QueryRequest, Response, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
+    from_binary, from_slice, testing::MockQuerier, to_binary, BankMsg, Binary, Coin,
+    ContractResult, CosmosMsg, Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError,
+    SystemResult, Uint128, WasmQuery,
 };
 pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
@@ -18,20 +17,6 @@ pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
 pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
-
-pub fn mock_dependencies_custom(
-    contract_balance: &[Coin],
-) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
-    let custom_querier: WasmMockQuerier =
-        WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
-
-    OwnedDeps {
-        storage: MockStorage::default(),
-        api: MockApi::default(),
-        querier: custom_querier,
-        custom_query_type: std::marker::PhantomData,
-    }
-}
 
 pub struct WasmMockQuerier {
     base: MockQuerier,
@@ -169,14 +154,6 @@ impl WasmMockQuerier {
                 }
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&None::<Response>).unwrap())),
             },
-        }
-    }
-
-    pub fn new(base: MockQuerier) -> Self {
-        WasmMockQuerier {
-            base,
-            contract_address: mock_env().contract.address.to_string(),
-            tokens_left_to_burn: 2,
         }
     }
 }
