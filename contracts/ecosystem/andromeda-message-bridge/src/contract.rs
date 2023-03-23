@@ -103,6 +103,7 @@ pub fn execute_save_channel(
 
 /// called on IBC packet receive in other chain
 pub fn try_wasm_msg(_deps: DepsMut, target: String, message: Binary) -> Result<WasmMsg, StdError> {
+    //TODO: Check if the message's type in an AMPPkt to send it directly to the kernel
     let wasm_msg = WasmMsg::Execute {
         contract_addr: target,
         msg: message,
