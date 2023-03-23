@@ -12,7 +12,7 @@ use common::{
     ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
     app::GetAddress,
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     response::get_reply_address,
 };
 use cosmwasm_std::{
@@ -448,8 +448,4 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }

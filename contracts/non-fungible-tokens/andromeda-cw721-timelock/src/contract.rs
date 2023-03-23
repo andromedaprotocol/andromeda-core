@@ -6,10 +6,14 @@ use andromeda_os::{
     messages::{AMPMsg, AMPPkt},
     recipient::generate_msg_native_kernel,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
+};
 use cosmwasm_std::{
     ensure, entry_point, from_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, WasmMsg,
+    Response, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg, Expiration};
@@ -342,10 +346,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[cfg(test)]

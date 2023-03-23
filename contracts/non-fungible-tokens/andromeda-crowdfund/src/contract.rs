@@ -18,7 +18,7 @@ use andromeda_os::{
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     deduct_funds, encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     merge_sub_msgs,
     rates::get_tax_amount,
     Funds,
@@ -1029,8 +1029,4 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }

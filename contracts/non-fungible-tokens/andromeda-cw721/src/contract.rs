@@ -6,8 +6,7 @@ use andromeda_os::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, from_binary, has_coins, to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg,
-    Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, StdError, Storage, SubMsg,
-    Uint128,
+    Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, Storage, SubMsg, Uint128,
 };
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
@@ -24,7 +23,7 @@ use common::{
         AndromedaMsg, InstantiateMsg as BaseInstantiateMsg,
     },
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     rates::get_tax_amount,
     Funds,
 };
@@ -632,8 +631,4 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }

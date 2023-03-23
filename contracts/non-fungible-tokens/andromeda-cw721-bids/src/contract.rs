@@ -18,7 +18,7 @@ use common::{
         InstantiateMsg as BaseInstantiateMsg,
     },
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     rates::get_tax_amount,
     Funds,
 };
@@ -446,10 +446,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -2,8 +2,13 @@ use crate::state::{CONDITION_ADO_ADDRESS, TARGET_ADO_ADDRESS, TARGET_MSG, TASK_B
 use ado_base::state::ADOContract;
 use andromeda_automation::execute::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_automation::task_balancer::ExecuteMsg as TaskBalancerExecuteMsg;
+
 use common::app::GetAddress;
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
+};
 use std::env;
 
 use cosmwasm_std::{
@@ -176,10 +181,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

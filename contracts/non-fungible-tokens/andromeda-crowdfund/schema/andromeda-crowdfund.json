@@ -1,6 +1,6 @@
 {
   "contract_name": "andromeda-crowdfund",
-  "contract_version": "0.2.0",
+  "contract_version": "0.2.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -363,13 +363,31 @@
         "additionalProperties": false
       },
       "AMPRecipient": {
-        "anyOf": [
+        "oneOf": [
           {
             "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-            "type": "string"
+            "type": "object",
+            "required": [
+              "addr"
+            ],
+            "properties": {
+              "addr": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/ADORecipient"
+            "type": "object",
+            "required": [
+              "a_d_o"
+            ],
+            "properties": {
+              "a_d_o": {
+                "$ref": "#/definitions/ADORecipient"
+              }
+            },
+            "additionalProperties": false
           }
         ]
       },
@@ -782,13 +800,31 @@
         "additionalProperties": false
       },
       "Recipient": {
-        "anyOf": [
+        "oneOf": [
           {
             "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-            "type": "string"
+            "type": "object",
+            "required": [
+              "addr"
+            ],
+            "properties": {
+              "addr": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/ADORecipient"
+            "type": "object",
+            "required": [
+              "a_d_o"
+            ],
+            "properties": {
+              "a_d_o": {
+                "$ref": "#/definitions/ADORecipient"
+              }
+            },
+            "additionalProperties": false
           }
         ]
       },
@@ -1554,13 +1590,31 @@
           "additionalProperties": false
         },
         "AMPRecipient": {
-          "anyOf": [
+          "oneOf": [
             {
               "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-              "type": "string"
+              "type": "object",
+              "required": [
+                "addr"
+              ],
+              "properties": {
+                "addr": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             },
             {
-              "$ref": "#/definitions/ADORecipient"
+              "type": "object",
+              "required": [
+                "a_d_o"
+              ],
+              "properties": {
+                "a_d_o": {
+                  "$ref": "#/definitions/ADORecipient"
+                }
+              },
+              "additionalProperties": false
             }
           ]
         },

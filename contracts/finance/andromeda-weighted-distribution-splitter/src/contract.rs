@@ -12,12 +12,12 @@ use andromeda_os::{
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
 };
 
 use cosmwasm_std::{
     attr, ensure, entry_point, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdError, SubMsg, Timestamp, Uint128,
+    MessageInfo, Response, SubMsg, Timestamp, Uint128,
 };
 
 use cw_utils::{nonpayable, Expiration};
@@ -684,10 +684,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[entry_point]

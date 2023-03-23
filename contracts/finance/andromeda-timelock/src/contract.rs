@@ -4,7 +4,7 @@ use andromeda_os::{
 };
 use cosmwasm_std::{
     attr, ensure, entry_point, from_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, SubMsg,
+    Response, SubMsg,
 };
 
 use crate::state::{escrows, get_key, get_keys_for_recipient};
@@ -19,7 +19,7 @@ use common::{
         InstantiateMsg as BaseInstantiateMsg,
     },
     encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -365,10 +365,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[entry_point]

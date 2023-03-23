@@ -7,10 +7,14 @@ use andromeda_os::{
     messages::{AMPMsg, AMPPkt},
     recipient::generate_msg_native_kernel,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
+};
 use cosmwasm_std::{
     attr, ensure, entry_point, from_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdError, Uint128, WasmMsg,
+    MessageInfo, Response, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
@@ -538,10 +542,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -841,7 +841,6 @@ mod tests {
             .load(&deps.storage, "valid1".to_string())
             .unwrap();
         let time_spent = env.block.time.clone().seconds() - details.time_of_staking.seconds();
-
         let set_reward = REWARD.load(&deps.storage).unwrap();
         let expected_reward = set_reward.amount * Uint128::from(time_spent);
 

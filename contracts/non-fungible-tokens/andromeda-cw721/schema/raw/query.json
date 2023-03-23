@@ -317,6 +317,65 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "approval"
+      ],
+      "properties": {
+        "approval": {
+          "type": "object",
+          "required": [
+            "spender",
+            "token_id"
+          ],
+          "properties": {
+            "include_expired": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "spender": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Return approvals that a token has Return type: `ApprovalsResponse`",
+      "type": "object",
+      "required": [
+        "approvals"
+      ],
+      "properties": {
+        "approvals": {
+          "type": "object",
+          "required": [
+            "token_id"
+          ],
+          "properties": {
+            "include_expired": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
@@ -952,6 +1011,65 @@
           "properties": {
             "minter": {
               "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "approval"
+          ],
+          "properties": {
+            "approval": {
+              "type": "object",
+              "required": [
+                "spender",
+                "token_id"
+              ],
+              "properties": {
+                "include_expired": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "spender": {
+                  "type": "string"
+                },
+                "token_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Return approvals that a token has Return type: `ApprovalsResponse`",
+          "type": "object",
+          "required": [
+            "approvals"
+          ],
+          "properties": {
+            "approvals": {
+              "type": "object",
+              "required": [
+                "token_id"
+              ],
+              "properties": {
+                "include_expired": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "token_id": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": false
             }
           },

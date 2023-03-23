@@ -8,7 +8,7 @@ use andromeda_os::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
+    Empty, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ExecuteMsg;
@@ -26,7 +26,11 @@ use andromeda_fungible_tokens::airdrop::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, IsClaimedResponse, LatestStageResponse,
     MerkleRootResponse, MigrateMsg, QueryMsg, TotalClaimedResponse,
 };
-use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
+use common::{
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
+};
 
 use semver::Version;
 
@@ -486,10 +490,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[cfg(test)]

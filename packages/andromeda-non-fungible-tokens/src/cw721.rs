@@ -7,8 +7,8 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use cosmwasm_std::{Binary, Coin, CustomMsg};
 use cw721::{
-    AllNftInfoResponse, ContractInfoResponse, Expiration, NftInfoResponse, NumTokensResponse,
-    OperatorsResponse, OwnerOfResponse, TokensResponse,
+    AllNftInfoResponse, ApprovalResponse, ApprovalsResponse, ContractInfoResponse, Expiration,
+    NftInfoResponse, NumTokensResponse, OperatorsResponse, OwnerOfResponse, TokensResponse,
 };
 pub use cw721_base::MintMsg;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MinterResponse, QueryMsg as Cw721QueryMsg};
@@ -174,7 +174,6 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
             ExecuteMsg::Mint(msg) => Cw721ExecuteMsg::Mint(*msg),
             ExecuteMsg::Burn { token_id } => Cw721ExecuteMsg::Burn { token_id },
             ExecuteMsg::Extension { msg } => Cw721ExecuteMsg::Extension { msg: *msg },
-
             _ => panic!("Unsupported message"),
         }
     }
@@ -240,6 +239,19 @@ pub enum QueryMsg {
     Extension { msg: Box<QueryMsg> },
     #[returns(MinterResponse)]
     Minter {},
+    #[returns(ApprovalResponse)]
+    Approval {
+        token_id: String,
+        spender: String,
+        include_expired: Option<bool>,
+    },
+    /// Return approvals that a token has
+    /// Return type: `ApprovalsResponse`
+    #[returns(ApprovalsResponse)]
+    Approvals {
+        token_id: String,
+        include_expired: Option<bool>,
+    },
 }
 
 impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
@@ -287,6 +299,22 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
             }
             QueryMsg::Extension { msg } => Cw721QueryMsg::Extension { msg: *msg },
             QueryMsg::Minter {} => Cw721QueryMsg::Minter {},
+            QueryMsg::Approval {
+                token_id,
+                spender,
+                include_expired,
+            } => Cw721QueryMsg::Approval {
+                token_id,
+                spender,
+                include_expired,
+            },
+            QueryMsg::Approvals {
+                token_id,
+                include_expired,
+            } => Cw721QueryMsg::Approvals {
+                token_id,
+                include_expired,
+            },
             _ => panic!("Unsupported message"),
         }
     }

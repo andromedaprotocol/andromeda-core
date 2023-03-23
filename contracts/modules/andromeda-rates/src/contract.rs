@@ -11,12 +11,12 @@ use common::{
         AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg,
     },
     deduct_funds, encode_binary,
-    error::ContractError,
+    error::{from_semver, ContractError},
     parse_message, Funds,
 };
 use cosmwasm_std::{
     attr, coin, ensure, entry_point, from_binary, Binary, Coin, Deps, DepsMut, Env, Event,
-    MessageInfo, Response, StdError, SubMsg,
+    MessageInfo, Response, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
@@ -172,10 +172,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[entry_point]

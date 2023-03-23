@@ -14,7 +14,9 @@ use andromeda_os::{
     recipient::generate_msg_native_kernel,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
     response::get_reply_address,
 };
 use cosmwasm_std::{
@@ -409,10 +411,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }
 
 #[cfg(test)]

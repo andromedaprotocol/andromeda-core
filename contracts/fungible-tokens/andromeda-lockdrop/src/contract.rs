@@ -7,7 +7,7 @@ use andromeda_os::{
 };
 use cosmwasm_std::{
     ensure, entry_point, from_binary, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, Uint128,
+    Response, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -19,7 +19,9 @@ use andromeda_fungible_tokens::lockdrop::{
     UserInfoResponse,
 };
 use common::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
+    encode_binary,
+    error::{from_semver, ContractError},
     expiration::MILLISECONDS_TO_NANOSECONDS_RATIO,
 };
 
@@ -262,10 +264,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     contract.execute_update_version(deps)?;
 
     Ok(Response::default())
-}
-
-fn from_semver(err: semver::Error) -> StdError {
-    StdError::generic_err(format!("Semver: {err}"))
 }
 
 pub fn receive_cw20(

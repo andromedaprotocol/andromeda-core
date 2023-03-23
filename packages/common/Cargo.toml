@@ -21,6 +21,8 @@ thiserror = { version = "1.0.21" }
 hex = "0.4"
 cw1155 = "0.16.0"
 cw1155-base = "0.16.0"
+cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
+semver = "1"
 
 
 cw20 = { version = "0.16.0" }
