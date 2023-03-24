@@ -1,6 +1,8 @@
 // use andromeda_os::messages::extract_chain;
+use andromeda_ibc::message_bridge::ExecuteMsg as BridgeExecuteMsg;
+use andromeda_os::messages::extract_chain;
 use common::error::ContractError;
-use cosmwasm_std::{Addr, Api, Binary, Coin, CosmosMsg, Storage, SubMsg, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, Api, Binary, Coin, CosmosMsg, Storage, SubMsg, WasmMsg};
 use cw_storage_plus::Map;
 
 pub const ADO_DB_KEY: &str = "adodb";
@@ -34,19 +36,22 @@ pub fn parse_path(
                 // extract message from path
 
                 // Will import the bridge's execute msg once merged
-
-                // Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                //     contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
-                //     msg: to_binary(&BridgeExecuteMsg::SendMessage {
-                //         chain: extract_chain(&pathname).unwrap_or_default(),
-                //         recipient,
-                //         message: binary_message,
-                //     })?,
-                //     funds,
-                // })))),
+                Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
+                    msg: to_binary(&BridgeExecuteMsg::SendMessage {
+                        chain: extract_chain(&pathname).unwrap_or_default().to_owned(),
+                        recipient,
+                        message: binary_message,
+                    })?,
+                    funds,
+                })))),
                 Some("wormhole") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
-                    msg: binary_message,
+                    msg: to_binary(&BridgeExecuteMsg::SendMessage {
+                        chain: extract_chain(&pathname).unwrap_or_default().to_owned(),
+                        recipient,
+                        message: binary_message,
+                    })?,
                     funds,
                 })))),
                 _ => Err(ContractError::UnsupportedProtocol {}),
@@ -62,15 +67,17 @@ pub fn parse_path(
                     if chain.is_empty() {
                         Ok(None)
                     } else {
-                        println!("reached here");
                         Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                             contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
-                            msg: binary_message,
+                            msg: to_binary(&BridgeExecuteMsg::SendMessage {
+                                chain: extract_chain(&pathname).unwrap_or_default().to_owned(),
+                                recipient,
+                                message: binary_message,
+                            })?,
                             funds,
                         }))))
                     }
                 }
-                // Valid paths are supposed to have '/'
                 None => Err(ContractError::InvalidPathname { error: None }),
             }
         }

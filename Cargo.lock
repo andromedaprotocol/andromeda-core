@@ -493,6 +493,7 @@ name = "andromeda-kernel"
 version = "0.2.0"
 dependencies = [
  "ado-base",
+ "andromeda-ibc",
  "andromeda-os",
  "andromeda-testing",
  "common",
