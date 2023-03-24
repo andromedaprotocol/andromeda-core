@@ -39,7 +39,7 @@ pub fn parse_path(
                 Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
                     msg: to_binary(&BridgeExecuteMsg::SendMessage {
-                        chain: extract_chain(&pathname).unwrap_or_default().to_owned(),
+                        chain: extract_chain(pathname).unwrap_or_default().to_owned(),
                         recipient,
                         message: binary_message,
                     })?,
@@ -48,7 +48,7 @@ pub fn parse_path(
                 Some("wormhole") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
                     msg: to_binary(&BridgeExecuteMsg::SendMessage {
-                        chain: extract_chain(&pathname).unwrap_or_default().to_owned(),
+                        chain: extract_chain(pathname).unwrap_or_default().to_owned(),
                         recipient,
                         message: binary_message,
                     })?,
@@ -70,7 +70,7 @@ pub fn parse_path(
                         Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                             contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
                             msg: to_binary(&BridgeExecuteMsg::SendMessage {
-                                chain: extract_chain(&pathname).unwrap_or_default().to_owned(),
+                                chain: extract_chain(pathname).unwrap_or_default().to_owned(),
                                 recipient,
                                 message: binary_message,
                             })?,
