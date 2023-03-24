@@ -581,6 +581,7 @@ dependencies = [
  "andromeda-ibc",
  "andromeda-non-fungible-tokens",
  "andromeda-os",
+ "andromeda-testing",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",

@@ -148,3 +148,135 @@ fn query_supported_chains(deps: Deps) -> Result<Vec<String>, ContractError> {
     let chains = read_chains(deps.storage)?;
     Ok(chains)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::state::CHAIN_CHANNELS;
+
+    use super::*;
+    use andromeda_os::messages::AMPMsg;
+    use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
+    use cosmwasm_std::testing::{mock_env, mock_info};
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            kernel_address: Some("kernel_address".to_string()),
+        };
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+    }
+
+    #[test]
+    fn test_save_channel() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            kernel_address: Some("kernel_address".to_string()),
+        };
+        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let msg = ExecuteMsg::SaveChannel {
+            channel: "channel-1".to_owned(),
+            chain: "juno".to_owned(),
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let msg = ExecuteMsg::SaveChannel {
+            channel: "channel-2".to_owned(),
+            chain: "andromeda".to_owned(),
+        };
+        execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let saved_channel = CHAIN_CHANNELS
+            .load(&deps.storage, "juno".to_string())
+            .unwrap();
+        assert_eq!(saved_channel, "channel-1".to_string());
+
+        // Query testing
+        let query_msg = QueryMsg::SupportedChains {};
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let supported_chains: Vec<String> = from_binary(&res).unwrap();
+        let expected_suuported_chains = vec!["juno".to_string(), "andromeda".to_string()];
+        assert_eq!(supported_chains, expected_suuported_chains);
+
+        let query_msg = QueryMsg::ChannelID {
+            chain: "juno".to_string(),
+        };
+        let res = query(deps.as_ref(), env, query_msg).unwrap();
+        let channel_id: String = from_binary(&res).unwrap();
+        let expected_channel_id = "channel-1".to_string();
+        assert_eq!(channel_id, expected_channel_id)
+    }
+
+    #[test]
+    fn test_save_channel_unauthorized() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            kernel_address: Some("kernel_address".to_string()),
+        };
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let msg = ExecuteMsg::SaveChannel {
+            channel: "channel-1".to_owned(),
+            chain: "juno".to_owned(),
+        };
+        let info = mock_info("not_creator", &[]);
+        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {})
+    }
+
+    #[test]
+    fn test_try_wasm_msg_string() {
+        let mut deps = mock_dependencies_custom(&[]);
+
+        let message = to_binary(&"string".to_string()).unwrap();
+        let target = "target".to_string();
+        let res = try_wasm_msg::<String>(deps.as_mut(), target, message.clone()).unwrap();
+
+        let expected_res = WasmMsg::Execute {
+            contract_addr: "target".to_string(),
+            msg: message,
+            funds: vec![],
+        };
+        assert_eq!(res, expected_res)
+    }
+
+    #[test]
+    fn test_try_wasm_msg_amppkt() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("sender", &vec![]);
+        let amp_packet = AMPPkt::new(
+            "origin",
+            "previous_sender",
+            vec![AMPMsg::new(
+                "recipient",
+                to_binary(&"msg").unwrap(),
+                None,
+                None,
+                None,
+                None,
+            )],
+        );
+        let msg = InstantiateMsg {
+            kernel_address: Some("kernel_address".to_string()),
+        };
+        instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        let message = to_binary(&amp_packet).unwrap();
+        let target = "target".to_string();
+        let res = try_wasm_msg::<AMPPkt>(deps.as_mut(), target, message.clone()).unwrap();
+        let expected_res = WasmMsg::Execute {
+            contract_addr: "kernel_address".to_string(),
+            msg: message,
+            funds: vec![],
+        };
+        assert_eq!(res, expected_res)
+    }
+}
