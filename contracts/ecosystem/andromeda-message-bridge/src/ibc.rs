@@ -11,6 +11,7 @@ use cosmwasm_std::{
     IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder,
     IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
 };
+use serde::de::DeserializeOwned;
 
 pub const IBC_VERSION: &str = "message-bridge-1";
 
@@ -53,15 +54,18 @@ pub fn ibc_channel_close(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_packet_receive(
+pub fn ibc_packet_receive<T: 'static>(
     deps: DepsMut,
     env: Env,
     msg: IbcPacketReceiveMsg,
-) -> Result<IbcReceiveResponse, Never> {
+) -> Result<IbcReceiveResponse, Never>
+where
+    T: DeserializeOwned,
+{
     // Regardless of if our processing of this packet works we need to
     // commit an ACK to the chain. As such, we wrap all handling logic
     // in a seprate function and on error write out an error ack.
-    match do_ibc_packet_receive(deps, env, msg) {
+    match do_ibc_packet_receive::<T>(deps, env, msg) {
         Ok(response) => Ok(response),
         Err(error) => Ok(IbcReceiveResponse::new()
             .add_attribute("method", "ibc_packet_receive")
@@ -70,27 +74,33 @@ pub fn ibc_packet_receive(
     }
 }
 
-pub fn do_ibc_packet_receive(
+pub fn do_ibc_packet_receive<T: 'static>(
     deps: DepsMut,
     _env: Env,
     msg: IbcPacketReceiveMsg,
-) -> Result<IbcReceiveResponse, ContractError> {
+) -> Result<IbcReceiveResponse, ContractError>
+where
+    T: DeserializeOwned,
+{
     // The channel this packet is being relayed along on this chain.
     let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
 
     match msg {
         IbcExecuteMsg::SendMessage { recipient, message } => {
-            execute_send_message(deps, recipient, message)
+            execute_send_message::<T>(deps, recipient, message)
         }
     }
 }
 
-fn execute_send_message(
+fn execute_send_message<T: 'static>(
     deps: DepsMut,
     recipient: String,
     message: Binary,
-) -> Result<IbcReceiveResponse, ContractError> {
-    let wasm_msg = try_wasm_msg(deps, recipient.clone(), message.clone())?;
+) -> Result<IbcReceiveResponse, ContractError>
+where
+    T: DeserializeOwned,
+{
+    let wasm_msg = try_wasm_msg::<T>(deps, recipient.clone(), message.clone())?;
 
     Ok(IbcReceiveResponse::new()
         .add_message(wasm_msg)
