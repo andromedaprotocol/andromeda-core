@@ -14,6 +14,10 @@ pub enum ExecuteMsg {
         recipient: String,
         message: Binary,
     },
+    SendAmpPacket {
+        chain: String,
+        message: Binary,
+    },
     SaveChannel {
         channel: String,
         chain: String,
@@ -23,6 +27,7 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub enum IbcExecuteMsg {
     SendMessage { recipient: String, message: Binary },
+    SendAmpPacket { message: Binary },
 }
 
 #[cw_serde]

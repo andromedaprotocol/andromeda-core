@@ -40,11 +40,11 @@ pub struct AMPMsg {
 }
 
 pub fn extract_chain(pathname: &str) -> Option<&str> {
-    let juno_start = pathname.find('/')? + 2;
-    let juno_end = pathname[juno_start..]
+    let start = pathname.find('/')? + 2;
+    let end = pathname[start..]
         .find('/')
-        .unwrap_or(pathname[juno_start..].len());
-    Some(&pathname[juno_start..juno_start + juno_end])
+        .unwrap_or(pathname[start..].len());
+    Some(&pathname[start..start + end])
 }
 
 impl AMPMsg {

@@ -1,6 +1,6 @@
 use crate::{
     ack::{make_ack_fail, make_ack_success},
-    contract::try_wasm_msg,
+    contract::{try_wasm_msg, try_wasm_msg_amp},
 };
 use andromeda_ibc::message_bridge::IbcExecuteMsg;
 use common::error::{ContractError, Never};
@@ -11,8 +11,6 @@ use cosmwasm_std::{
     IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder,
     IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
 };
-use serde::de::DeserializeOwned;
-
 pub const IBC_VERSION: &str = "message-bridge-1";
 
 /// Handles the `OpenInit` and `OpenTry` parts of the IBC handshake.
@@ -54,18 +52,15 @@ pub fn ibc_channel_close(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_packet_receive<T: 'static>(
+pub fn ibc_packet_receive(
     deps: DepsMut,
     env: Env,
     msg: IbcPacketReceiveMsg,
-) -> Result<IbcReceiveResponse, Never>
-where
-    T: DeserializeOwned,
-{
+) -> Result<IbcReceiveResponse, Never> {
     // Regardless of if our processing of this packet works we need to
     // commit an ACK to the chain. As such, we wrap all handling logic
     // in a seprate function and on error write out an error ack.
-    match do_ibc_packet_receive::<T>(deps, env, msg) {
+    match do_ibc_packet_receive(deps, env, msg) {
         Ok(response) => Ok(response),
         Err(error) => Ok(IbcReceiveResponse::new()
             .add_attribute("method", "ibc_packet_receive")
@@ -74,33 +69,41 @@ where
     }
 }
 
-pub fn do_ibc_packet_receive<T: 'static>(
+pub fn do_ibc_packet_receive(
     deps: DepsMut,
     _env: Env,
     msg: IbcPacketReceiveMsg,
-) -> Result<IbcReceiveResponse, ContractError>
-where
-    T: DeserializeOwned,
-{
+) -> Result<IbcReceiveResponse, ContractError> {
     // The channel this packet is being relayed along on this chain.
     let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
 
     match msg {
         IbcExecuteMsg::SendMessage { recipient, message } => {
-            execute_send_message::<T>(deps, recipient, message)
+            execute_send_message(deps, recipient, message)
         }
+        IbcExecuteMsg::SendAmpPacket { message } => execute_send_amp_pkt(deps, message),
     }
 }
 
-fn execute_send_message<T: 'static>(
+fn execute_send_amp_pkt(
+    deps: DepsMut,
+    message: Binary,
+) -> Result<IbcReceiveResponse, ContractError> {
+    let wasm_msg = try_wasm_msg_amp(deps, message.clone())?;
+
+    Ok(IbcReceiveResponse::new()
+        .add_message(wasm_msg)
+        .add_attribute("method", "execute_send_message")
+        .add_attribute("message", message.to_string())
+        .set_ack(make_ack_success()))
+}
+
+fn execute_send_message(
     deps: DepsMut,
     recipient: String,
     message: Binary,
-) -> Result<IbcReceiveResponse, ContractError>
-where
-    T: DeserializeOwned,
-{
-    let wasm_msg = try_wasm_msg::<T>(deps, recipient.clone(), message.clone())?;
+) -> Result<IbcReceiveResponse, ContractError> {
+    let wasm_msg = try_wasm_msg(deps, recipient.clone(), message.clone())?;
 
     Ok(IbcReceiveResponse::new()
         .add_message(wasm_msg)

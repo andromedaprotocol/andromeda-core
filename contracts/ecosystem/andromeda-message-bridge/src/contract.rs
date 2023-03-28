@@ -1,17 +1,13 @@
 use ado_base::ADOContract;
 use andromeda_ibc::message_bridge::{ExecuteMsg, IbcExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_os::messages::AMPPkt;
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_binary, to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout,
-    MessageInfo, Response, WasmMsg,
+    attr, ensure, to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response,
+    WasmMsg,
 };
 use cw2::set_contract_version;
-use serde::de::DeserializeOwned;
-use std::any::TypeId;
-// use serde::de::DeserializeOwned;
 
 use crate::state::{read_chains, read_channel, save_channel};
 
@@ -58,7 +54,30 @@ pub fn execute(
         ExecuteMsg::SaveChannel { channel, chain } => {
             execute_save_channel(deps, info, channel, chain)
         }
+        ExecuteMsg::SendAmpPacket { chain, message } => {
+            execute_send_amp_packet(deps, env, chain, message)
+        }
     }
+}
+
+pub fn execute_send_amp_packet(
+    deps: DepsMut,
+    env: Env,
+    chain: String,
+    message: Binary,
+) -> Result<Response, ContractError> {
+    let channel = read_channel(deps.storage, chain.clone())?;
+
+    Ok(Response::new()
+        .add_attribute("method", "execute_send_message")
+        .add_attribute("channel", channel.clone())
+        .add_attribute("chain", chain)
+        // outbound IBC message, where packet is then received on other chain
+        .add_message(IbcMsg::SendPacket {
+            channel_id: channel,
+            data: to_binary(&IbcExecuteMsg::SendAmpPacket { message })?,
+            timeout: IbcTimeout::with_timestamp(env.block.time.plus_seconds(300)),
+        }))
 }
 
 pub fn execute_send_message(
@@ -102,32 +121,29 @@ pub fn execute_save_channel(
 }
 
 /// called on IBC packet receive in other chain
-pub fn try_wasm_msg<T: 'static>(
-    deps: DepsMut,
+pub fn try_wasm_msg(
+    _deps: DepsMut,
     target: String,
     message: Binary,
-) -> Result<WasmMsg, ContractError>
-where
-    T: DeserializeOwned,
-{
-    let _: T = from_binary(&message)?;
-    let wasm_msg = if TypeId::of::<T>() == TypeId::of::<AMPPkt>() {
-        let kernel_address = ADOContract::default()
-            .get_kernel_address(deps.storage)?
-            .into_string();
-        WasmMsg::Execute {
-            contract_addr: kernel_address,
-            msg: message,
-            funds: vec![],
-        }
-    } else {
-        WasmMsg::Execute {
-            contract_addr: target,
-            msg: message,
-            funds: vec![],
-        }
-    };
-    Ok(wasm_msg)
+) -> Result<WasmMsg, ContractError> {
+    Ok(WasmMsg::Execute {
+        contract_addr: target,
+        msg: message,
+        funds: vec![],
+    })
+}
+
+/// called on IBC packet receive in other chain
+pub fn try_wasm_msg_amp(deps: DepsMut, message: Binary) -> Result<WasmMsg, ContractError> {
+    // Get kernel address
+    let kernel_address = ADOContract::default()
+        .get_kernel_address(deps.storage)?
+        .to_string();
+    Ok(WasmMsg::Execute {
+        contract_addr: kernel_address,
+        msg: message,
+        funds: vec![],
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -151,11 +167,10 @@ fn query_supported_chains(deps: Deps) -> Result<Vec<String>, ContractError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::state::CHAIN_CHANNELS;
-
     use super::*;
-    use andromeda_os::messages::AMPMsg;
+    use crate::state::CHAIN_CHANNELS;
     use andromeda_testing::testing::mock_querier::mock_dependencies_custom;
+    use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_env, mock_info};
 
     #[test]
@@ -237,43 +252,10 @@ mod tests {
 
         let message = to_binary(&"string".to_string()).unwrap();
         let target = "target".to_string();
-        let res = try_wasm_msg::<String>(deps.as_mut(), target, message.clone()).unwrap();
+        let res = try_wasm_msg(deps.as_mut(), target, message.clone()).unwrap();
 
         let expected_res = WasmMsg::Execute {
             contract_addr: "target".to_string(),
-            msg: message,
-            funds: vec![],
-        };
-        assert_eq!(res, expected_res)
-    }
-
-    #[test]
-    fn test_try_wasm_msg_amppkt() {
-        let mut deps = mock_dependencies_custom(&[]);
-        let env = mock_env();
-        let info = mock_info("sender", &vec![]);
-        let amp_packet = AMPPkt::new(
-            "origin",
-            "previous_sender",
-            vec![AMPMsg::new(
-                "recipient",
-                to_binary(&"msg").unwrap(),
-                None,
-                None,
-                None,
-                None,
-            )],
-        );
-        let msg = InstantiateMsg {
-            kernel_address: Some("kernel_address".to_string()),
-        };
-        instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        let message = to_binary(&amp_packet).unwrap();
-        let target = "target".to_string();
-        let res = try_wasm_msg::<AMPPkt>(deps.as_mut(), target, message.clone()).unwrap();
-        let expected_res = WasmMsg::Execute {
-            contract_addr: "kernel_address".to_string(),
             msg: message,
             funds: vec![],
         };

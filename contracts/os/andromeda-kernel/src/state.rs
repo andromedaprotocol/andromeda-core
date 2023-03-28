@@ -38,18 +38,16 @@ pub fn parse_path(
                 // Will import the bridge's execute msg once merged
                 Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
-                    msg: to_binary(&BridgeExecuteMsg::SendMessage {
+                    msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                         chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                        recipient,
                         message: binary_message,
                     })?,
                     funds,
                 })))),
                 Some("wormhole") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
-                    msg: to_binary(&BridgeExecuteMsg::SendMessage {
+                    msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                         chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                        recipient,
                         message: binary_message,
                     })?,
                     funds,
@@ -61,6 +59,7 @@ pub fn parse_path(
             let chain = pathname.split('/').next();
             match chain {
                 // In case of andromeda we proceed as usual
+                // This approach assumes that andromeda's always the native chain
                 Some("andromeda") => Ok(None),
                 // In case of other chain, we forward to bridge contract
                 Some(chain) => {
@@ -69,9 +68,8 @@ pub fn parse_path(
                     } else {
                         Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                             contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
-                            msg: to_binary(&BridgeExecuteMsg::SendMessage {
+                            msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                                 chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                                recipient,
                                 message: binary_message,
                             })?,
                             funds,
