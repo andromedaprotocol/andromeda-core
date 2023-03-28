@@ -135,6 +135,7 @@ dependencies = [
 name = "andromeda-automation"
 version = "0.1.0"
 dependencies = [
+ "andromeda-os",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -168,6 +169,7 @@ version = "0.1.0"
 dependencies = [
  "ado-base",
  "andromeda-automation",
+ "andromeda-os",
  "andromeda-testing",
  "base64",
  "common",
