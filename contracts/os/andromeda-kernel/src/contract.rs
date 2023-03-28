@@ -1,5 +1,5 @@
 use ado_base::state::ADOContract;
-use andromeda_os::messages::AMPPkt;
+use andromeda_os::messages::{AMPMsg, AMPPkt};
 use andromeda_os::{
     adodb::QueryMsg as ADODBQueryMsg,
     kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
@@ -10,8 +10,8 @@ use common::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError,
+    attr, ensure, entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Reply, ReplyOn, Response, StdError, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -73,8 +73,57 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::AMPReceive(packet) => handle_amp_packet(execute_env, packet),
+        ExecuteMsg::AMPDirect {
+            recipient,
+            message,
+            reply_on,
+            exit_at_error,
+            gas_limit,
+        } => handle_amp_direct(
+            execute_env.deps,
+            execute_env.env,
+            execute_env.info,
+            recipient,
+            message,
+            reply_on,
+            exit_at_error,
+            gas_limit,
+        ),
         ExecuteMsg::UpsertKeyAddress { key, value } => upsert_key_address(execute_env, key, value),
     }
+}
+
+pub fn handle_amp_direct(
+    _deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    recipient: String,
+    message: Binary,
+    reply_on: Option<ReplyOn>,
+    exit_at_error: Option<bool>,
+    gas_limit: Option<u64>,
+) -> Result<Response, ContractError> {
+    let origin = info.clone().sender;
+    let previous_sender = env.contract.address;
+
+    let amp_message = AMPMsg::new(
+        recipient.clone(),
+        message.clone(),
+        Some(info.clone().funds),
+        reply_on,
+        exit_at_error,
+        gas_limit,
+    );
+    let amp_pkt = AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]);
+    Ok(Response::default()
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: recipient.clone(),
+            msg: to_binary(&amp_pkt)?,
+            funds: info.funds,
+        }))
+        .add_attribute("action", "handle_amp_direct")
+        .add_attribute("recipient", recipient)
+        .add_attribute("message", message.to_string()))
 }
 
 pub fn handle_amp_packet(
