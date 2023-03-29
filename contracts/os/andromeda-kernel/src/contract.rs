@@ -118,7 +118,7 @@ pub fn handle_amp_direct(
     Ok(Response::default()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: recipient.clone(),
-            msg: to_binary(&amp_pkt)?,
+            msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
             funds: info.funds,
         }))
         .add_attribute("action", "handle_amp_direct")

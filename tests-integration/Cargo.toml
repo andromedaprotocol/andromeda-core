@@ -25,6 +25,13 @@ andromeda-ics721 = { path = "../contracts/non-fungible-tokens/andromeda-ics721",
 andromeda-ibc = { path = "../packages/andromeda-ibc" }
 andromeda-message-bridge = { path = "../contracts/ecosystem/andromeda-message-bridge", features = ["testing"] }
 
+#Automation
+andromeda-automation = { path = "../packages/andromeda-automation" }
+andromeda-counter = { path = "../contracts/automation/andromeda-counter", features = ["testing"] }
+
+
+
+
 #Fungible Tokens
 andromeda-fungible-tokens = { path = "../packages/andromeda-fungible-tokens" }
 andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", features = ["testing"] }
