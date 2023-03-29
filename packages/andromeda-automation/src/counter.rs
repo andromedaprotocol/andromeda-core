@@ -5,7 +5,7 @@ use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub whitelist: Vec<String>,
+    // pub whitelist: Vec<String>,
     pub kernel_address: Option<String>,
 }
 

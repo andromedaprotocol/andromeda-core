@@ -12,10 +12,10 @@ pub fn mock_andromeda_counter() -> Box<dyn Contract<Empty>> {
 
 pub fn mock_counter_instantiate_msg(
     kernel_address: impl Into<String>,
-    whitelist: Vec<String>,
+    // _whitelist: Vec<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        whitelist,
+        // whitelist,
         kernel_address: Some(kernel_address.into()),
     }
 }

@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query, reply};
 use andromeda_os::kernel::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use cosmwasm_std::Empty;
+use cosmwasm_std::{Binary, Empty, ReplyOn};
 use cw_multi_test::{Contract, ContractWrapper};
 
 pub fn mock_andromeda_kernel() -> Box<dyn Contract<Empty>> {
@@ -18,6 +18,22 @@ pub fn mock_upsert_key_address(key: impl Into<String>, value: impl Into<String>)
     ExecuteMsg::UpsertKeyAddress {
         key: key.into(),
         value: value.into(),
+    }
+}
+
+pub fn mock_amp_direct(
+    recipient: impl Into<String>,
+    message: Binary,
+    reply_on: Option<ReplyOn>,
+    exit_at_error: Option<bool>,
+    gas_limit: Option<u64>,
+) -> ExecuteMsg {
+    ExecuteMsg::AMPDirect {
+        recipient: recipient.into(),
+        message,
+        reply_on,
+        exit_at_error,
+        gas_limit,
     }
 }
 

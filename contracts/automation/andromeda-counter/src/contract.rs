@@ -36,7 +36,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     COUNT.save(deps.storage, &Uint128::zero())?;
-    WHITELIST.save(deps.storage, &msg.whitelist)?;
+    // WHITELIST.save(deps.storage, &msg.whitelist)?;
     ADOContract::default().instantiate(
         deps.storage,
         env,
@@ -205,24 +205,24 @@ fn execute_reset(deps: DepsMut, _env: Env, _info: MessageInfo) -> Result<Respons
 fn execute_increment_one(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
 ) -> Result<Response, ContractError> {
     // Check authority
-    let whitelist = WHITELIST.load(deps.storage)?;
-    let mut addresses: Vec<String> = vec![];
-    for i in whitelist {
-        let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
-        let address = i.get_address(deps.api, &deps.querier, app_contract)?;
-        addresses.push(address)
-    }
-    ensure!(
-        addresses.contains(&info.sender.to_string()),
-        ContractError::Unauthorized {}
-    );
+    // let whitelist = WHITELIST.load(deps.storage)?;
+    // let mut addresses: Vec<String> = vec![];
+    // for i in whitelist {
+    //     let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    //     let address = i.get_address(deps.api, &deps.querier, app_contract)?;
+    //     addresses.push(address)
+    // }
+    // ensure!(
+    //     addresses.contains(&info.sender.to_string()),
+    //     ContractError::Unauthorized {}
+    // );
     let mut count = COUNT.load(deps.storage)?;
 
-    // Error to test process removal
-    ensure!(count < Uint128::new(3), ContractError::CannotExceedCap {});
+    // // Error to test process removal
+    // ensure!(count < Uint128::new(3), ContractError::CannotExceedCap {});
 
     count += Uint128::new(1);
     COUNT.save(deps.storage, &count)?;
@@ -340,7 +340,7 @@ mod tests {
     fn test_initialization() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
-            whitelist: vec!["address".to_string()],
+            // whitelist: vec!["address".to_string()],
             kernel_address: None,
         };
         let info = mock_info("creator", &[]);
@@ -364,7 +364,7 @@ mod tests {
     fn test_increment_one() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
-            whitelist: vec!["address".to_string()],
+            // whitelist: vec!["address".to_string()],
             kernel_address: None,
         };
         let info = mock_info("creator", &[]);
@@ -389,7 +389,7 @@ mod tests {
     fn test_increment_two() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
-            whitelist: vec!["address".to_string()],
+            // whitelist: vec!["address".to_string()],
             kernel_address: None,
         };
         let info = mock_info("creator", &[]);
@@ -415,7 +415,7 @@ mod tests {
     fn test_reset() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
-            whitelist: vec!["address".to_string()],
+            // whitelist: vec!["address".to_string()],
             kernel_address: None,
         };
         let info = mock_info("creator", &[]);

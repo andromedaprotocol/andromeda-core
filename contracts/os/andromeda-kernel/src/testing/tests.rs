@@ -24,7 +24,7 @@ fn parse_path_no_slash() {
     let recipient = "user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let res = parse_path(recipient, message, vec![], &storage.storage, &storage.api).unwrap();
+    let res = parse_path(recipient, message, vec![], &storage.storage).unwrap();
     assert_eq!(res, None)
 }
 
@@ -46,7 +46,7 @@ fn parse_path_external_explicit() {
     let recipient = "wormhole::/juno/user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let _err = parse_path(recipient, message, vec![], &storage.storage, &storage.api).unwrap_err();
+    let _err = parse_path(recipient, message, vec![], &storage.storage).unwrap_err();
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn parse_path_unsupported_protocol() {
     let recipient = "eth::/juno/user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let err = parse_path(recipient, message, vec![], &storage.storage, &storage.api).unwrap_err();
+    let err = parse_path(recipient, message, vec![], &storage.storage).unwrap_err();
     assert_eq!(err, ContractError::UnsupportedProtocol {})
 }
 
@@ -89,7 +89,7 @@ fn parse_path_no_protocol_external() {
     let recipient = "juno/user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let _err = parse_path(recipient, message, vec![], &storage.storage, &storage.api).unwrap_err();
+    let _err = parse_path(recipient, message, vec![], &storage.storage).unwrap_err();
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn parse_path_no_protocol_andromeda() {
     let recipient = "andromeda/user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let res = parse_path(recipient, message, vec![], &storage.storage, &storage.api).unwrap();
+    let res = parse_path(recipient, message, vec![], &storage.storage).unwrap();
     assert!(res.is_none())
 }
 
@@ -132,6 +132,6 @@ fn parse_path_no_protocol_no_chain() {
     let recipient = "/user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let res = parse_path(recipient, message, vec![], &storage.storage, &storage.api).unwrap();
+    let res = parse_path(recipient, message, vec![], &storage.storage).unwrap();
     assert!(res.is_none())
 }

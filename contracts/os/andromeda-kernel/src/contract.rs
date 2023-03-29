@@ -16,7 +16,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{parse_path, ADO_DB_KEY, KERNEL_ADDRESSES, VFS_KEY};
+use crate::state::{parse_path, parse_path_direct, ADO_DB_KEY, KERNEL_ADDRESSES, VFS_KEY};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-kernel";
@@ -94,7 +94,7 @@ pub fn execute(
 }
 
 pub fn handle_amp_direct(
-    _deps: DepsMut,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     recipient: String,
@@ -104,26 +104,49 @@ pub fn handle_amp_direct(
     gas_limit: Option<u64>,
 ) -> Result<Response, ContractError> {
     let origin = info.clone().sender;
-    let previous_sender = env.contract.address;
+    let previous_sender = env.clone().contract.address;
 
-    let amp_message = AMPMsg::new(
+    let parsed_path = parse_path_direct(
+        env,
+        info.clone(),
         recipient.clone(),
         message.clone(),
-        Some(info.clone().funds),
-        reply_on,
-        exit_at_error,
-        gas_limit,
-    );
-    let amp_pkt = AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]);
-    Ok(Response::default()
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: recipient.clone(),
-            msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
-            funds: info.funds,
-        }))
-        .add_attribute("action", "handle_amp_direct")
-        .add_attribute("recipient", recipient)
-        .add_attribute("message", message.to_string()))
+        info.funds.clone(),
+        deps.storage,
+        reply_on.clone(),
+        exit_at_error.clone(),
+        gas_limit.clone(),
+    )?;
+    // If parsed path yields a SubMsg, it means that the recipient is on another chain
+    if let Some(msg) = parsed_path {
+        Ok(Response::default()
+            .add_submessage(msg)
+            .add_attribute("action", "handle_amp_direct")
+            .add_attribute("recipient", recipient)
+            .add_attribute("message", message.to_string()))
+    } else {
+        let amp_pkt = AMPPkt::new(
+            origin,
+            previous_sender,
+            vec![AMPMsg::new(
+                recipient.clone(),
+                message.clone(),
+                Some(info.clone().funds),
+                reply_on,
+                exit_at_error,
+                gas_limit,
+            )],
+        );
+        Ok(Response::default()
+            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: recipient.clone(),
+                msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
+                funds: info.funds,
+            }))
+            .add_attribute("action", "handle_amp_direct")
+            .add_attribute("recipient", recipient)
+            .add_attribute("message", message.to_string()))
+    }
 }
 
 pub fn handle_amp_packet(
@@ -147,7 +170,6 @@ pub fn handle_amp_packet(
             message.message.clone(),
             message.funds.clone(),
             execute_env.deps.storage,
-            execute_env.deps.api,
         )?;
         if let Some(sub_msg) = parsed_path {
             res = res.add_submessage(sub_msg);
