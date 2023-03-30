@@ -145,9 +145,10 @@ fn kernel() {
     let recipient = "ibc://juno/user_1/app2/splitter";
     let message = to_binary(&CounterExecuteMsg::IncrementOne {}).unwrap();
     let send_msg = mock_amp_direct(recipient, message, None, None, None);
+    // So far the kernel is successfully sending a packet to the relevant message bridge using the parser
     let res = router
         .execute_contract(owner, andr.kernel_address, &send_msg, &coins(100, "uandr"))
-        .unwrap_err();
+        .unwrap();
     println!("{:?}", res)
 
     // let query_balance =

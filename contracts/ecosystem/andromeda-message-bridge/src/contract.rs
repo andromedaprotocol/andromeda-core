@@ -139,6 +139,8 @@ pub fn try_wasm_msg_amp(deps: DepsMut, message: Binary) -> Result<WasmMsg, Contr
     let kernel_address = ADOContract::default()
         .get_kernel_address(deps.storage)?
         .to_string();
+    // The message is supposed to be an AMPPkt in binary form
+    // Further testing will guide how to handle funds
     Ok(WasmMsg::Execute {
         contract_addr: kernel_address,
         msg: message,
