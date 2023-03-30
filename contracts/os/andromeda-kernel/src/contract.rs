@@ -92,7 +92,7 @@ pub fn execute(
         ExecuteMsg::UpsertKeyAddress { key, value } => upsert_key_address(execute_env, key, value),
     }
 }
-
+#[allow(clippy::too_many_arguments)]
 pub fn handle_amp_direct(
     deps: DepsMut,
     env: Env,
@@ -114,8 +114,8 @@ pub fn handle_amp_direct(
         info.funds.clone(),
         deps.storage,
         reply_on.clone(),
-        exit_at_error.clone(),
-        gas_limit.clone(),
+        exit_at_error,
+        gas_limit,
     )?;
     // If parsed path yields a SubMsg, it means that the recipient is on another chain
     if let Some(msg) = parsed_path {

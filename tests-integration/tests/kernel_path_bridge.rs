@@ -3,19 +3,15 @@ use andromeda_app_contract::mock::{
     mock_andromeda_app, mock_app_instantiate_msg, mock_get_components_msg,
 };
 use andromeda_automation::counter::ExecuteMsg as CounterExecuteMsg;
-use andromeda_counter::mock::{
-    mock_andromeda_counter, mock_counter_increment_one_msg, mock_counter_instantiate_msg,
-    mock_counter_query_current_count_msg,
-};
+use andromeda_counter::mock::{mock_andromeda_counter, mock_counter_instantiate_msg};
 use andromeda_kernel::mock::{mock_amp_direct, mock_get_key_address, mock_upsert_key_address};
 use andromeda_message_bridge::mock::{
-    mock_andromeda_message_bridge, mock_message_bridge_channel_id,
-    mock_message_bridge_instantiate_msg, mock_message_bridge_supported_chains, mock_save_channel,
+    mock_andromeda_message_bridge, mock_message_bridge_instantiate_msg, mock_save_channel,
 };
-use andromeda_os::recipient::AMPRecipient;
+
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vfs::mock::mock_resolve_path_query;
-use cosmwasm_std::{coin, coins, to_binary, Addr, Coin, Decimal, Uint128};
+use cosmwasm_std::{coin, coins, to_binary, Addr};
 use cw_multi_test::{App, Executor};
 
 fn mock_app() -> App {
@@ -46,8 +42,8 @@ fn mock_andromeda(app: &mut App, admin_address: Addr) -> MockAndromeda {
 #[test]
 fn kernel() {
     let owner = Addr::unchecked("owner");
-    let recipient = Addr::unchecked("recipient");
-    let recipient2 = Addr::unchecked("recipient2");
+    // let recipient = Addr::unchecked("recipient");
+    // let recipient2 = Addr::unchecked("recipient2");
 
     let mut router = mock_app();
     let andr = mock_andromeda(&mut router, owner.clone());
@@ -103,7 +99,7 @@ fn kernel() {
 
     assert_eq!(components, app_components);
 
-    let counter_addr = andr.vfs_resolve_path(&mut router, "/am/app1/counter");
+    let _counter_addr = andr.vfs_resolve_path(&mut router, "/am/app1/counter");
     let message_bridge_addr = andr.vfs_resolve_path(&mut router, "/am/app1/message-bridge");
 
     // Ensure hidden component is not added to VFS

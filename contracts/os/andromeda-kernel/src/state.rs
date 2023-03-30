@@ -147,6 +147,7 @@ pub fn parse_path(
         Ok(None)
     }
 }
+#[allow(clippy::too_many_arguments)]
 pub fn parse_path_direct(
     env: Env,
     info: MessageInfo,
