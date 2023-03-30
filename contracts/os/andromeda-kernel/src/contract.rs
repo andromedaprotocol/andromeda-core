@@ -10,8 +10,8 @@ use common::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, ReplyOn, Response, StdError, WasmMsg,
+    attr, ensure, entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
+    ReplyOn, Response, StdError, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -138,7 +138,7 @@ pub fn handle_amp_direct(
             )],
         );
         Ok(Response::default()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            .add_submessage(SubMsg::new(WasmMsg::Execute {
                 contract_addr: recipient.clone(),
                 msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
                 funds: info.funds,
@@ -164,23 +164,23 @@ pub fn handle_amp_packet(
     let mut res = Response::default();
 
     let vfs_address = KERNEL_ADDRESSES.may_load(execute_env.deps.storage, VFS_KEY)?;
-    for message in packet.clone().messages {
+    for amp_message in packet.clone().messages {
         let parsed_path = parse_path(
-            message.recipient.clone(),
-            message.message.clone(),
-            message.funds.clone(),
+            amp_message.recipient.clone(),
+            packet.clone(),
+            amp_message.clone(),
             execute_env.deps.storage,
         )?;
         if let Some(sub_msg) = parsed_path {
             res = res.add_submessage(sub_msg);
             continue;
         };
-        let contract_addr = message.get_recipient_address(
+        let contract_addr = amp_message.get_recipient_address(
             execute_env.deps.api,
             &execute_env.deps.querier,
             vfs_address.clone(),
         )?;
-        let msg = message.generate_sub_message(
+        let msg = amp_message.generate_sub_message(
             contract_addr,
             packet.get_origin(),
             packet.get_previous_sender(),

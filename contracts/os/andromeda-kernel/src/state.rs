@@ -14,6 +14,7 @@ pub const WORMHOLE_BRIDGE: &str = "wormhole-bridge";
 
 pub const KERNEL_ADDRESSES: Map<&str, Addr> = Map::new("kernel_addresses");
 
+// turns ibc://juno/path into /path
 fn adjust_recipient_with_protocol(recipient: &str) -> String {
     let mut count_slashes = 0;
     let mut last_slash_index = 0;
@@ -38,8 +39,8 @@ fn adjust_recipient_with_protocol(recipient: &str) -> String {
 
 pub fn parse_path(
     recipient: String,
-    message: Binary,
-    funds: Vec<Coin>,
+    packet: AMPPkt,
+    amp_message: AMPMsg,
     storage: &dyn Storage,
 ) -> Result<Option<SubMsg>, ContractError> {
     if recipient.contains('/') {
@@ -50,8 +51,9 @@ pub fn parse_path(
         } else {
             None
         };
-        let binary_message = message;
-        let funds = funds;
+        let binary_message = amp_message.message;
+        let funds = amp_message.funds;
+
         if protocol.is_some() {
             match protocol {
                 // load vector of supported chains
@@ -59,22 +61,50 @@ pub fn parse_path(
                 // extract message from path
 
                 // Will import the bridge's execute msg once merged
-                Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
-                    msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
-                        chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                        message: binary_message,
-                    })?,
-                    funds,
-                })))),
-                Some("wormhole") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
-                    msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
-                        chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                        message: binary_message,
-                    })?,
-                    funds,
-                })))),
+                Some("ibc") => {
+                    let recipient = adjust_recipient_with_protocol(&recipient);
+                    Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
+                        msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
+                            chain: extract_chain(pathname).unwrap_or_default().to_owned(),
+                            message: to_binary(&AMPPkt::new(
+                                packet.get_origin(),
+                                packet.get_previous_sender(),
+                                vec![AMPMsg::new(
+                                    recipient,
+                                    binary_message,
+                                    Some(funds.clone()),
+                                    Some(amp_message.reply_on),
+                                    Some(amp_message.exit_at_error),
+                                    amp_message.gas_limit,
+                                )],
+                            ))?,
+                        })?,
+                        funds,
+                    }))))
+                }
+                Some("wormhole") => {
+                    let recipient = adjust_recipient_with_protocol(&recipient);
+                    Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
+                        msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
+                            chain: extract_chain(pathname).unwrap_or_default().to_owned(),
+                            message: to_binary(&AMPPkt::new(
+                                packet.get_origin(),
+                                packet.get_previous_sender(),
+                                vec![AMPMsg::new(
+                                    recipient,
+                                    binary_message,
+                                    Some(funds.clone()),
+                                    Some(amp_message.reply_on),
+                                    Some(amp_message.exit_at_error),
+                                    amp_message.gas_limit,
+                                )],
+                            ))?,
+                        })?,
+                        funds,
+                    }))))
+                }
                 _ => Err(ContractError::UnsupportedProtocol {}),
             }
         } else {
@@ -93,7 +123,18 @@ pub fn parse_path(
                             contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
                             msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                                 chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                                message: binary_message,
+                                message: to_binary(&AMPPkt::new(
+                                    packet.get_origin(),
+                                    packet.get_previous_sender(),
+                                    vec![AMPMsg::new(
+                                        recipient,
+                                        binary_message,
+                                        Some(funds.clone()),
+                                        Some(amp_message.reply_on),
+                                        Some(amp_message.exit_at_error),
+                                        amp_message.gas_limit,
+                                    )],
+                                ))?,
                             })?,
                             funds,
                         }))))
@@ -125,7 +166,6 @@ pub fn parse_path_direct(
         } else {
             None
         };
-        let binary_message = message.clone();
         let funds = funds;
         if protocol.is_some() {
             match protocol {
@@ -192,14 +232,29 @@ pub fn parse_path_direct(
                     if chain.is_empty() {
                         Ok(None)
                     } else {
-                        Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
-                            msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
-                                chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                                message: binary_message,
-                            })?,
-                            funds,
-                        }))))
+                        {
+                            Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                                contract_addr: KERNEL_ADDRESSES
+                                    .load(storage, IBC_BRIDGE)?
+                                    .to_string(),
+                                msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
+                                    chain: extract_chain(pathname).unwrap_or_default().to_owned(),
+                                    message: to_binary(&AMPPkt::new(
+                                        info.sender,
+                                        env.contract.address,
+                                        vec![AMPMsg::new(
+                                            recipient,
+                                            message,
+                                            Some(funds.clone()),
+                                            reply_on,
+                                            exit_at_error,
+                                            gas_limit,
+                                        )],
+                                    ))?,
+                                })?,
+                                funds,
+                            }))))
+                        }
                     }
                 }
                 None => Err(ContractError::InvalidPathname { error: None }),
