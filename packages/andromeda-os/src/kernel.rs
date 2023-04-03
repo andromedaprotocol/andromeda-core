@@ -10,6 +10,7 @@ pub struct InstantiateMsg {}
 pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
     AMPReceive(AMPPkt),
+    /// Creates an original AMP packet
     AMPDirect {
         recipient: String,
         message: Binary,

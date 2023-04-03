@@ -1,4 +1,4 @@
-use common::ado_base::AndromedaQuery;
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 
@@ -9,6 +9,7 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    AndrReceive(AndromedaMsg),
     SendMessage {
         chain: String,
         recipient: String,

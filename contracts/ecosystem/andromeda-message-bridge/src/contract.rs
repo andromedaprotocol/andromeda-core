@@ -46,6 +46,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AndrReceive(msg) => contract.execute(deps, env, info, msg, execute),
         ExecuteMsg::SendMessage {
             chain,
             recipient,
