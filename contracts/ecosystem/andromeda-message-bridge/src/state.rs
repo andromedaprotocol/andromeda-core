@@ -8,6 +8,11 @@ pub fn save_channel(storage: &mut dyn Storage, chain: String, channel: String) -
     CHAIN_CHANNELS.save(storage, chain, &channel)
 }
 
+pub fn update_channel(storage: &mut dyn Storage, chain: String, channel: String) -> StdResult<()> {
+    CHAIN_CHANNELS.remove(storage, chain.clone());
+    CHAIN_CHANNELS.save(storage, chain, &channel)
+}
+
 pub fn read_channel(storage: &dyn Storage, chain: String) -> StdResult<String> {
     CHAIN_CHANNELS.load(storage, chain)
 }

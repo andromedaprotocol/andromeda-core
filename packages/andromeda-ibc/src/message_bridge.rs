@@ -23,6 +23,10 @@ pub enum ExecuteMsg {
         channel: String,
         chain: String,
     },
+    UpdateChannel {
+        channel: String,
+        chain: String,
+    },
 }
 
 #[cw_serde]

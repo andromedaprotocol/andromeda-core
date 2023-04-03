@@ -9,7 +9,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use crate::state::{read_chains, read_channel, save_channel};
+use crate::state::{read_chains, read_channel, save_channel, update_channel};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-message-bridge";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -59,6 +59,9 @@ pub fn execute(
         ExecuteMsg::SendAmpPacket { chain, message } => {
             execute_send_amp_packet(deps, env, chain, message)
         }
+        ExecuteMsg::UpdateChannel { channel, chain } => {
+            execute_update_channel(deps, info, channel, chain)
+        }
     }
 }
 
@@ -101,6 +104,25 @@ pub fn execute_send_message(
             data: to_binary(&IbcExecuteMsg::SendMessage { recipient, message })?,
             timeout: IbcTimeout::with_timestamp(env.block.time.plus_seconds(300)),
         }))
+}
+
+pub fn execute_update_channel(
+    deps: DepsMut,
+    info: MessageInfo,
+    channel: String,
+    chain: String,
+) -> Result<Response, ContractError> {
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    update_channel(deps.storage, chain.clone(), channel.clone())?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "execute_save_channel"),
+        attr("chain", chain),
+        attr("channel", channel),
+    ]))
 }
 
 pub fn execute_save_channel(
@@ -229,6 +251,62 @@ mod tests {
         let channel_id: String = from_binary(&res).unwrap();
         let expected_channel_id = "channel-1".to_string();
         assert_eq!(channel_id, expected_channel_id)
+    }
+
+    #[test]
+    fn test_update_channel() {
+        let mut deps = mock_dependencies_custom(&[]);
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let msg = InstantiateMsg {
+            kernel_address: Some("kernel_address".to_string()),
+        };
+        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let msg = ExecuteMsg::SaveChannel {
+            channel: "channel-1".to_owned(),
+            chain: "juno".to_owned(),
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let msg = ExecuteMsg::SaveChannel {
+            channel: "channel-2".to_owned(),
+            chain: "andromeda".to_owned(),
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        let saved_channel = CHAIN_CHANNELS
+            .load(&deps.storage, "juno".to_string())
+            .unwrap();
+        assert_eq!(saved_channel, "channel-1".to_string());
+
+        // Query testing
+        let query_msg = QueryMsg::SupportedChains {};
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let supported_chains: Vec<String> = from_binary(&res).unwrap();
+        let expected_suuported_chains = vec!["juno".to_string(), "andromeda".to_string()];
+        assert_eq!(supported_chains, expected_suuported_chains);
+
+        let query_msg = QueryMsg::ChannelID {
+            chain: "juno".to_string(),
+        };
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let channel_id: String = from_binary(&res).unwrap();
+        let expected_channel_id = "channel-1".to_string();
+        assert_eq!(channel_id, expected_channel_id);
+
+        let update_msg = ExecuteMsg::UpdateChannel {
+            channel: "channel-2".to_string(),
+            chain: "juno".to_string(),
+        };
+        let _res = execute(deps.as_mut(), env.clone(), info, update_msg).unwrap();
+
+        let query_msg = QueryMsg::ChannelID {
+            chain: "juno".to_string(),
+        };
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let channel_id: String = from_binary(&res).unwrap();
+        let expected_channel_id = "channel-2".to_string();
+        assert_eq!(channel_id, expected_channel_id);
     }
 
     #[test]
