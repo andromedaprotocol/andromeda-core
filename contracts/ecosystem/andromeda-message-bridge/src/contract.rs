@@ -303,7 +303,7 @@ mod tests {
         let query_msg = QueryMsg::ChannelID {
             chain: "juno".to_string(),
         };
-        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let res = query(deps.as_ref(), env, query_msg).unwrap();
         let channel_id: String = from_binary(&res).unwrap();
         let expected_channel_id = "channel-2".to_string();
         assert_eq!(channel_id, expected_channel_id);
