@@ -236,18 +236,18 @@ fn execute_increment_two(
     _env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    // Check authority
-    let whitelist = WHITELIST.load(deps.storage)?;
-    let mut addresses: Vec<String> = vec![];
-    for i in whitelist {
-        let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
-        let address = i.get_address(deps.api, &deps.querier, app_contract)?;
-        addresses.push(address)
-    }
-    ensure!(
-        addresses.contains(&info.sender.to_string()),
-        ContractError::Unauthorized {}
-    );
+    // // Check authority
+    // let whitelist = WHITELIST.load(deps.storage)?;
+    // let mut addresses: Vec<String> = vec![];
+    // for i in whitelist {
+    //     let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
+    //     let address = i.get_address(deps.api, &deps.querier, app_contract)?;
+    //     addresses.push(address)
+    // }
+    // ensure!(
+    //     addresses.contains(&info.sender.to_string()),
+    //     ContractError::Unauthorized {}
+    // );
     let mut count = COUNT.load(deps.storage)?;
 
     count += Uint128::new(2);
