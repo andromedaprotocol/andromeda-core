@@ -175,6 +175,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 }
 
 fn query_resolve_path(deps: Deps, path: String) -> Result<Addr, ContractError> {
-    // validate_pathname(path.clone())?;
+    // validate_path_name(path.clone())?;
     resolve_pathname(deps.storage, deps.api, path)
 }

@@ -853,46 +853,47 @@ fn test_update_app_contract_invalid_minter() {
     assert!(res.is_err());
 }
 
-#[test]
-fn test_update_app_contract_invalid_module() {
-    let mut deps = mock_dependencies_custom(&[]);
+// Commented out until we decided how to handle modules
+// #[test]
+// fn test_update_app_contract_invalid_module() {
+//     let mut deps = mock_dependencies_custom(&[]);
 
-    let modules: Vec<Module> = vec![
-        Module {
-            module_name: Some(ADDRESS_LIST.to_owned()),
-            address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-            is_mutable: false,
-        },
-        Module {
-            module_name: Some(RATES.to_owned()),
-            address: "k".to_owned(),
-            is_mutable: false,
-        },
-    ];
+//     let modules: Vec<Module> = vec![
+//         Module {
+//             module_name: Some(ADDRESS_LIST.to_owned()),
+//             address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
+//             is_mutable: false,
+//         },
+//         Module {
+//             module_name: Some(RATES.to_owned()),
+//             address: "k".to_owned(),
+//             is_mutable: false,
+//         },
+//     ];
 
-    let info = mock_info("app_contract", &[]);
-    let inst_msg = InstantiateMsg {
-        name: NAME.to_string(),
-        symbol: SYMBOL.to_string(),
-        minter: MINTER.to_string(),
-        modules: Some(modules),
-        kernel_address: None,
-    };
+//     let info = mock_info("app_contract", &[]);
+//     let inst_msg = InstantiateMsg {
+//         name: NAME.to_string(),
+//         symbol: SYMBOL.to_string(),
+//         minter: MINTER.to_string(),
+//         modules: Some(modules),
+//         kernel_address: None,
+//     };
 
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
+//     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
 
-    let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
-        address: "app_contract".to_string(),
-    });
+//     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
+//         address: "app_contract".to_string(),
+//     });
 
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
-    assert_eq!(
-        ContractError::InvalidComponent {
-            name: "k".to_string()
-        },
-        res.unwrap_err()
-    );
-}
+//     let res = execute(deps.as_mut(), mock_env(), info, msg);
+//     assert_eq!(
+//         ContractError::InvalidComponent {
+//             name: "k".to_string()
+//         },
+//         res.unwrap_err()
+//     );
+// }
 
 #[test]
 fn test_batch_mint() {

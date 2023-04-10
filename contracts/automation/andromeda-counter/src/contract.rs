@@ -1,6 +1,6 @@
 use std::env;
 
-use crate::state::{COUNT, WHITELIST};
+use crate::state::COUNT;
 use ado_base::state::ADOContract;
 use andromeda_automation::counter::{
     CounterResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
@@ -11,7 +11,7 @@ use andromeda_os::{
 };
 use common::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
-    app::GetAddress,
+    // app::GetAddress,
     encode_binary,
     error::{from_semver, ContractError},
 };
@@ -234,7 +234,7 @@ fn execute_increment_one(
 fn execute_increment_two(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
 ) -> Result<Response, ContractError> {
     // // Check authority
     // let whitelist = WHITELIST.load(deps.storage)?;
