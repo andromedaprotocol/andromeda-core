@@ -119,10 +119,10 @@ fn kernel() {
     let save_channel_msg = mock_save_channel("channel-1".to_string(), "juno".to_string());
     router
         .execute_contract(
-            app_addr.clone(),
+            app_addr,
             message_bridge_addr.clone(),
             &save_channel_msg,
-            &vec![],
+            &[],
         )
         .unwrap();
 
