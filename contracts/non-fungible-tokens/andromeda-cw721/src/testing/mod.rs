@@ -853,7 +853,7 @@ fn test_update_app_contract_invalid_minter() {
     assert!(res.is_err());
 }
 
-// Commented out until we decided how to handle modules
+// TODO Commented out until we decided how to handle modules
 // #[test]
 // fn test_update_app_contract_invalid_module() {
 //     let mut deps = mock_dependencies_custom(&[]);
