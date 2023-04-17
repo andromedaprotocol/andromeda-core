@@ -205,6 +205,11 @@ fn upsert_key_address(
         ContractError::Unauthorized {}
     );
 
+    // Updates to new value
+    if KERNEL_ADDRESSES.has(execute_env.deps.storage, &key) {
+        KERNEL_ADDRESSES.remove(execute_env.deps.storage, &key)
+    }
+
     KERNEL_ADDRESSES.save(
         execute_env.deps.storage,
         &key,
