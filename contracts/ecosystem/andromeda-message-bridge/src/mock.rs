@@ -2,6 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_ibc::message_bridge::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_os::messages::AMPMsg;
 use cosmwasm_std::{Binary, Empty};
 
 use cw_multi_test::{Contract, ContractWrapper};
@@ -33,4 +34,8 @@ pub fn mock_send_message(recipient: String, chain: String, message: Binary) -> E
         recipient,
         message,
     }
+}
+
+pub fn mock_send_amp_message(chain: String, message: Vec<AMPMsg>) -> ExecuteMsg {
+    ExecuteMsg::SendAmpPacket { chain, message }
 }

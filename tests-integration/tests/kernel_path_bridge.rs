@@ -7,8 +7,10 @@ use andromeda_counter::mock::{mock_andromeda_counter, mock_counter_instantiate_m
 use andromeda_kernel::mock::{mock_amp_direct, mock_get_key_address, mock_upsert_key_address};
 use andromeda_message_bridge::mock::{
     mock_andromeda_message_bridge, mock_message_bridge_instantiate_msg, mock_save_channel,
+    mock_send_amp_message,
 };
 
+use andromeda_os::messages::AMPMsg;
 use andromeda_testing::mock::MockAndromeda;
 use andromeda_vfs::mock::mock_resolve_path_query;
 use cosmwasm_std::{coin, coins, to_binary, Addr};
@@ -127,7 +129,7 @@ fn kernel() {
         .unwrap();
 
     // Upsert IBC Bridge address into kernel
-    let upsert_msg = mock_upsert_key_address("ibc-bridge", message_bridge_addr);
+    let upsert_msg = mock_upsert_key_address("ibc-bridge", message_bridge_addr.clone());
     router
         .execute_contract(
             owner.clone(),
@@ -140,12 +142,23 @@ fn kernel() {
     // Create a direct AMP message
     let recipient = "ibc://juno/user_1/app2/counter";
     let message = to_binary(&CounterExecuteMsg::IncrementOne {}).unwrap();
-    let send_msg = mock_amp_direct(recipient, message, None, None, None);
-    // So far the kernel is successfully sending a packet to the relevant message bridge using the parser
-    let res = router
-        .execute_contract(owner, andr.kernel_address, &send_msg, &coins(100, "uandr"))
+    let _send_msg = mock_amp_direct(recipient, message.clone(), None, None, None);
+    let amp_msg = vec![AMPMsg::new(recipient, message, None, None, None, None)];
+    let send_amp_pkt_msg = mock_send_amp_message("juno".to_string(), amp_msg);
+    let _res = router
+        .execute_contract(
+            owner,
+            message_bridge_addr,
+            &send_amp_pkt_msg,
+            &coins(100, "uandr"),
+        )
         .unwrap();
-    println!("{:?}", res)
+
+    // // So far the kernel is successfully sending a packet to the relevant message bridge using the parser
+    // let res = router
+    //     .execute_contract(owner, andr.kernel_address, &send_msg, &coins(100, "uandr"))
+    //     .unwrap();
+    // println!("{:?}", res)
 
     // let query_balance =
     //     mock_vault_get_balance(recipient.to_string(), Some("uandr".to_string()), None);
