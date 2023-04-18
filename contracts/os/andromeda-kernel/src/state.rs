@@ -1,10 +1,8 @@
 // use andromeda_os::messages::extract_chain;
 use andromeda_ibc::message_bridge::ExecuteMsg as BridgeExecuteMsg;
-use andromeda_os::messages::{extract_chain, AMPMsg, AMPPkt};
+use andromeda_os::messages::{extract_chain, AMPMsg};
 use common::error::ContractError;
-use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, CosmosMsg, Env, MessageInfo, ReplyOn, Storage, SubMsg, WasmMsg,
-};
+use cosmwasm_std::{to_binary, Addr, Binary, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, WasmMsg};
 use cw_storage_plus::Map;
 
 pub const ADO_DB_KEY: &str = "adodb";
@@ -39,7 +37,6 @@ fn adjust_recipient_with_protocol(recipient: &str) -> String {
 
 pub fn parse_path(
     recipient: String,
-    packet: AMPPkt,
     amp_message: AMPMsg,
     storage: &dyn Storage,
 ) -> Result<Option<SubMsg>, ContractError> {
@@ -67,18 +64,14 @@ pub fn parse_path(
                         contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
                         msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                             chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                            message: to_binary(&AMPPkt::new(
-                                packet.get_origin(),
-                                packet.get_previous_sender(),
-                                vec![AMPMsg::new(
-                                    recipient,
-                                    binary_message,
-                                    Some(funds.clone()),
-                                    Some(amp_message.reply_on),
-                                    Some(amp_message.exit_at_error),
-                                    amp_message.gas_limit,
-                                )],
-                            ))?,
+                            message: vec![AMPMsg::new(
+                                recipient,
+                                binary_message,
+                                Some(funds.clone()),
+                                Some(amp_message.reply_on),
+                                Some(amp_message.exit_at_error),
+                                amp_message.gas_limit,
+                            )],
                         })?,
                         funds,
                     }))))
@@ -89,18 +82,14 @@ pub fn parse_path(
                         contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
                         msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                             chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                            message: to_binary(&AMPPkt::new(
-                                packet.get_origin(),
-                                packet.get_previous_sender(),
-                                vec![AMPMsg::new(
-                                    recipient,
-                                    binary_message,
-                                    Some(funds.clone()),
-                                    Some(amp_message.reply_on),
-                                    Some(amp_message.exit_at_error),
-                                    amp_message.gas_limit,
-                                )],
-                            ))?,
+                            message: vec![AMPMsg::new(
+                                recipient,
+                                binary_message,
+                                Some(funds.clone()),
+                                Some(amp_message.reply_on),
+                                Some(amp_message.exit_at_error),
+                                amp_message.gas_limit,
+                            )],
                         })?,
                         funds,
                     }))))
@@ -123,18 +112,14 @@ pub fn parse_path(
                             contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
                             msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                                 chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                                message: to_binary(&AMPPkt::new(
-                                    packet.get_origin(),
-                                    packet.get_previous_sender(),
-                                    vec![AMPMsg::new(
-                                        recipient,
-                                        binary_message,
-                                        Some(funds.clone()),
-                                        Some(amp_message.reply_on),
-                                        Some(amp_message.exit_at_error),
-                                        amp_message.gas_limit,
-                                    )],
-                                ))?,
+                                message: vec![AMPMsg::new(
+                                    recipient,
+                                    binary_message,
+                                    Some(funds.clone()),
+                                    Some(amp_message.reply_on),
+                                    Some(amp_message.exit_at_error),
+                                    amp_message.gas_limit,
+                                )],
                             })?,
                             funds,
                         }))))
@@ -149,8 +134,6 @@ pub fn parse_path(
 }
 #[allow(clippy::too_many_arguments)]
 pub fn parse_path_direct(
-    env: Env,
-    info: MessageInfo,
     recipient: String,
     message: Binary,
     funds: Vec<Coin>,
@@ -181,18 +164,14 @@ pub fn parse_path_direct(
                         contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
                         msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                             chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                            message: to_binary(&AMPPkt::new(
-                                info.sender,
-                                env.contract.address,
-                                vec![AMPMsg::new(
-                                    recipient,
-                                    message,
-                                    Some(funds.clone()),
-                                    reply_on,
-                                    exit_at_error,
-                                    gas_limit,
-                                )],
-                            ))?,
+                            message: vec![AMPMsg::new(
+                                recipient,
+                                message,
+                                Some(funds.clone()),
+                                reply_on,
+                                exit_at_error,
+                                gas_limit,
+                            )],
                         })?,
                         funds,
                     }))))
@@ -203,18 +182,14 @@ pub fn parse_path_direct(
                         contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
                         msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                             chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                            message: to_binary(&AMPPkt::new(
-                                info.sender,
-                                env.contract.address,
-                                vec![AMPMsg::new(
-                                    recipient,
-                                    message,
-                                    Some(funds.clone()),
-                                    reply_on,
-                                    exit_at_error,
-                                    gas_limit,
-                                )],
-                            ))?,
+                            message: vec![AMPMsg::new(
+                                recipient,
+                                message,
+                                Some(funds.clone()),
+                                reply_on,
+                                exit_at_error,
+                                gas_limit,
+                            )],
                         })?,
                         funds,
                     }))))
@@ -240,18 +215,14 @@ pub fn parse_path_direct(
                                     .to_string(),
                                 msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                                     chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                                    message: to_binary(&AMPPkt::new(
-                                        info.sender,
-                                        env.contract.address,
-                                        vec![AMPMsg::new(
-                                            recipient,
-                                            message,
-                                            Some(funds.clone()),
-                                            reply_on,
-                                            exit_at_error,
-                                            gas_limit,
-                                        )],
-                                    ))?,
+                                    message: vec![AMPMsg::new(
+                                        recipient,
+                                        message,
+                                        Some(funds.clone()),
+                                        reply_on,
+                                        exit_at_error,
+                                        gas_limit,
+                                    )],
                                 })?,
                                 funds,
                             }))))

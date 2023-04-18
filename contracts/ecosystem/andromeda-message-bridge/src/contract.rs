@@ -1,5 +1,9 @@
 use ado_base::ADOContract;
 use andromeda_ibc::message_bridge::{ExecuteMsg, IbcExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_os::{
+    kernel::ExecuteMsg as KernelExecuteMsg,
+    messages::{AMPMsg, AMPPkt},
+};
 use common::{ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -57,7 +61,7 @@ pub fn execute(
             execute_save_channel(deps, info, channel, chain)
         }
         ExecuteMsg::SendAmpPacket { chain, message } => {
-            execute_send_amp_packet(deps, env, chain, message)
+            execute_send_amp_packet(deps, env, info, chain, message)
         }
         ExecuteMsg::UpdateChannel { channel, chain } => {
             execute_update_channel(deps, info, channel, chain)
@@ -68,8 +72,9 @@ pub fn execute(
 pub fn execute_send_amp_packet(
     deps: DepsMut,
     env: Env,
+    info: MessageInfo,
     chain: String,
-    message: Binary,
+    message: Vec<AMPMsg>,
 ) -> Result<Response, ContractError> {
     let channel = read_channel(deps.storage, chain.clone())?;
 
@@ -80,7 +85,13 @@ pub fn execute_send_amp_packet(
         // outbound IBC message, where packet is then received on other chain
         .add_message(IbcMsg::SendPacket {
             channel_id: channel,
-            data: to_binary(&IbcExecuteMsg::SendAmpPacket { message })?,
+            data: to_binary(&IbcExecuteMsg::SendAmpPacket {
+                message: to_binary(&KernelExecuteMsg::AMPReceive(AMPPkt::new(
+                    info.sender,
+                    env.contract.address,
+                    message,
+                )))?,
+            })?,
             timeout: IbcTimeout::with_timestamp(env.block.time.plus_seconds(300)),
         }))
 }

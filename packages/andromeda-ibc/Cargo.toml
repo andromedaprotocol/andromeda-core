@@ -28,4 +28,4 @@ zip-optional = { git = "https://github.com/public-awesome/ics721.git" }
 
 common = { path = "../common", version = "0.1.0" }
 cw-asset = { version = "2.0.0" }
-
+andromeda-os = { path = "../andromeda-os", version = "0.1.0" }

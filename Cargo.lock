@@ -450,6 +450,7 @@ dependencies = [
 name = "andromeda-ibc"
 version = "0.1.0"
 dependencies = [
+ "andromeda-os",
  "common",
  "cosmwasm-schema",
  "cosmwasm-std",

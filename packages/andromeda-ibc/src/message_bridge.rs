@@ -1,3 +1,4 @@
+use andromeda_os::messages::AMPMsg;
 use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
@@ -17,7 +18,7 @@ pub enum ExecuteMsg {
     },
     SendAmpPacket {
         chain: String,
-        message: Binary,
+        message: Vec<AMPMsg>,
     },
     SaveChannel {
         channel: String,

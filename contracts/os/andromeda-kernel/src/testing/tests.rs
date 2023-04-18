@@ -2,7 +2,7 @@ use crate::contract::execute;
 use crate::{contract::instantiate, state::parse_path};
 use andromeda_os::kernel::ExecuteMsg::UpsertKeyAddress;
 use andromeda_os::kernel::InstantiateMsg;
-use andromeda_os::messages::{AMPMsg, AMPPkt};
+use andromeda_os::messages::AMPMsg;
 use common::error::ContractError;
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
@@ -25,9 +25,8 @@ fn parse_path_no_slash() {
     let recipient = "user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let packet = AMPPkt::new("origin", "previous_sender", vec![]);
     let amp_msg = AMPMsg::new("recipient", message, None, None, None, None);
-    let res = parse_path(recipient, packet, amp_msg, &storage.storage).unwrap();
+    let res = parse_path(recipient, amp_msg, &storage.storage).unwrap();
     assert_eq!(res, None)
 }
 
@@ -49,9 +48,8 @@ fn parse_path_external_explicit() {
     let recipient = "wormhole::/juno/user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let packet = AMPPkt::new("origin", "previous_sender", vec![]);
     let amp_msg = AMPMsg::new("recipient", message, None, None, None, None);
-    let _err = parse_path(recipient, packet, amp_msg, &storage.storage).unwrap_err();
+    let _err = parse_path(recipient, amp_msg, &storage.storage).unwrap_err();
 }
 
 #[test]
@@ -72,9 +70,8 @@ fn parse_path_unsupported_protocol() {
     let recipient = "eth::/juno/user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let packet = AMPPkt::new("origin", "previous_sender", vec![]);
     let amp_msg = AMPMsg::new("recipient", message, None, None, None, None);
-    let err = parse_path(recipient, packet, amp_msg, &storage.storage).unwrap_err();
+    let err = parse_path(recipient, amp_msg, &storage.storage).unwrap_err();
     assert_eq!(err, ContractError::UnsupportedProtocol {})
 }
 
@@ -96,9 +93,8 @@ fn parse_path_no_protocol_external() {
     let recipient = "juno/user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let packet = AMPPkt::new("origin", "previous_sender", vec![]);
     let amp_msg = AMPMsg::new("recipient", message, None, None, None, None);
-    let _err = parse_path(recipient, packet, amp_msg, &storage.storage).unwrap_err();
+    let _err = parse_path(recipient, amp_msg, &storage.storage).unwrap_err();
 }
 
 #[test]
@@ -119,9 +115,8 @@ fn parse_path_no_protocol_andromeda() {
     let recipient = "andromeda/user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let packet = AMPPkt::new("origin", "previous_sender", vec![]);
     let amp_msg = AMPMsg::new("recipient", message, None, None, None, None);
-    let res = parse_path(recipient, packet, amp_msg, &storage.storage).unwrap();
+    let res = parse_path(recipient, amp_msg, &storage.storage).unwrap();
     assert!(res.is_none())
 }
 
@@ -143,8 +138,7 @@ fn parse_path_no_protocol_no_chain() {
     let recipient = "/user".to_string();
     let message = to_binary(&"the_message").unwrap();
     let storage = mock_dependencies();
-    let packet = AMPPkt::new("origin", "previous_sender", vec![]);
     let amp_msg = AMPMsg::new("recipient", message, None, None, None, None);
-    let res = parse_path(recipient, packet, amp_msg, &storage.storage).unwrap();
+    let res = parse_path(recipient, amp_msg, &storage.storage).unwrap();
     assert!(res.is_none())
 }

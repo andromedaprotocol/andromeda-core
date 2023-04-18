@@ -107,8 +107,6 @@ pub fn handle_amp_direct(
     let previous_sender = env.clone().contract.address;
 
     let parsed_path = parse_path_direct(
-        env,
-        info.clone(),
         recipient.clone(),
         message.clone(),
         info.funds.clone(),
@@ -167,7 +165,6 @@ pub fn handle_amp_packet(
     for amp_message in packet.clone().messages {
         let parsed_path = parse_path(
             amp_message.recipient.clone(),
-            packet.clone(),
             amp_message.clone(),
             execute_env.deps.storage,
         )?;
