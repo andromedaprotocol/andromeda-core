@@ -104,7 +104,7 @@ pub fn handle_amp_direct(
     gas_limit: Option<u64>,
 ) -> Result<Response, ContractError> {
     let origin = info.clone().sender;
-    let previous_sender = env.clone().contract.address;
+    let previous_sender = env.contract.address;
 
     let parsed_path = parse_path_direct(
         recipient.clone(),
