@@ -10,11 +10,12 @@ use andromeda_ecosystem::swapper::{
     Cw20HookMsg, ExecuteMsg, InstantiateInfo, InstantiateMsg, QueryMsg, SwapperCw20HookMsg,
     SwapperImpl, SwapperImplCw20HookMsg, SwapperImplExecuteMsg, SwapperMsg,
 };
+use andromeda_os::recipient::Recipient;
 use andromeda_testing::{
     reply::MsgInstantiateContractResponse,
     testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT2},
 };
-use common::{ado_base::recipient::Recipient, error::ContractError};
+use common::error::ContractError;
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use prost::Message;
@@ -161,7 +162,7 @@ fn test_swap_native_to_native() {
 
     let send_execute_msg = ExecuteMsg::Send {
         ask_asset_info: AssetInfo::native("uluna"),
-        recipient: Recipient::Addr("sender".to_string()),
+        recipient: Recipient::from_string("sender".to_string()),
     };
 
     let send_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -228,7 +229,7 @@ fn test_swap_native_to_cw20() {
 
     let send_execute_msg = ExecuteMsg::Send {
         ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT)),
-        recipient: Recipient::Addr("sender".to_string()),
+        recipient: Recipient::from_string("sender".to_string()),
     };
 
     let send_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -299,7 +300,7 @@ fn test_swap_cw20_to_native() {
     });
     let send_execute_msg = ExecuteMsg::Send {
         ask_asset_info: AssetInfo::native("uusd"),
-        recipient: Recipient::Addr("sender".to_string()),
+        recipient: Recipient::from_string("sender".to_string()),
     };
 
     let send_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -408,7 +409,7 @@ fn test_swap_cw20_to_cw20() {
     });
     let send_execute_msg = ExecuteMsg::Send {
         ask_asset_info: AssetInfo::Cw20(Addr::unchecked(MOCK_CW20_CONTRACT2)),
-        recipient: Recipient::Addr("sender".to_string()),
+        recipient: Recipient::from_string("sender".to_string()),
     };
 
     let send_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {

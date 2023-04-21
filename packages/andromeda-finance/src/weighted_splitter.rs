@@ -1,5 +1,5 @@
 use andromeda_os::messages::{AMPPkt, ReplyGasExit};
-use andromeda_os::recipient::AMPRecipient as Recipient;
+use andromeda_os::recipient::Recipient;
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;

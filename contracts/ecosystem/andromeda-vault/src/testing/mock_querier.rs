@@ -1,7 +1,6 @@
 //use andromeda_ecosystem::anchor_earn::PositionResponse;
-use common::ado_base::{
-    operators::IsOperatorResponse, recipient::Recipient, AndromedaQuery, QueryMsg,
-};
+use andromeda_os::recipient::Recipient;
+use common::ado_base::{operators::IsOperatorResponse, AndromedaQuery, QueryMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_binary, from_slice,
@@ -73,7 +72,7 @@ impl WasmMockQuerier {
                 AndromedaQuery::Get(data) => {
                     let recipient: String = from_binary(&data.unwrap()).unwrap();
                     let msg_response = PositionResponse {
-                        recipient: Recipient::Addr(recipient),
+                        recipient: Recipient::from_string(recipient),
                         aust_amount: Uint128::from(10u128),
                     };
                     SystemResult::Ok(ContractResult::Ok(to_binary(&msg_response).unwrap()))

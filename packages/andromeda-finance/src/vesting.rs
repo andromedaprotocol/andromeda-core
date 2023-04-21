@@ -1,6 +1,6 @@
-use andromeda_os::messages::AMPPkt;
+use andromeda_os::{messages::AMPPkt, recipient::Recipient};
 use common::{
-    ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    ado_base::{AndromedaMsg, AndromedaQuery},
     withdraw::WithdrawalType,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};

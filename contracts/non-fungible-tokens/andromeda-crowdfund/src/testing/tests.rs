@@ -14,7 +14,7 @@ use andromeda_non_fungible_tokens::{
     crowdfund::{Config, CrowdfundMintMsg, ExecuteMsg, InstantiateMsg, QueryMsg, State},
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, TokenExtension},
 };
-use andromeda_os::recipient::AMPRecipient as Recipient;
+use andromeda_os::recipient::Recipient;
 use common::{
     ado_base::{
         modules::{Module, ADDRESS_LIST, RATES},
@@ -197,7 +197,7 @@ fn test_mint_sale_started() {
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: Some(5),
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
 
     let info = mock_info("owner", &[]);
@@ -434,7 +434,7 @@ fn test_start_sale_no_expiration() {
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
 
     let info = mock_info("owner", &[]);
@@ -452,7 +452,7 @@ fn test_start_sale_expiration_in_past() {
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
 
     let info = mock_info("owner", &[]);
@@ -470,7 +470,7 @@ fn test_start_sale_unauthorized() {
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
 
     let info = mock_info("anyone", &[]);
@@ -488,7 +488,7 @@ fn test_start_sale_max_default() {
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: None,
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
 
     let info = mock_info("owner", &[]);
@@ -512,7 +512,7 @@ fn test_start_sale_max_default() {
             amount_sold: Uint128::zero(),
             amount_to_send: Uint128::zero(),
             amount_transferred: Uint128::zero(),
-            recipient: Recipient::Addr("recipient".to_string()),
+            recipient: Recipient::from_string("recipient".to_string()),
         },
         STATE.load(deps.as_ref().storage).unwrap()
     );
@@ -533,7 +533,7 @@ fn test_start_sale_max_modified() {
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(1u128),
         max_amount_per_wallet: Some(5),
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
 
     let info = mock_info("owner", &[]);
@@ -557,7 +557,7 @@ fn test_start_sale_max_modified() {
             amount_sold: Uint128::zero(),
             amount_to_send: Uint128::zero(),
             amount_transferred: Uint128::zero(),
-            recipient: Recipient::Addr("recipient".to_string()),
+            recipient: Recipient::from_string("recipient".to_string()),
         },
         STATE.load(deps.as_ref().storage).unwrap()
     );
@@ -600,7 +600,7 @@ fn test_purchase_sale_not_ended() {
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
-                recipient: Recipient::Addr("recipient".to_string()),
+                recipient: Recipient::from_string("recipient".to_string()),
             },
         )
         .unwrap();
@@ -640,7 +640,7 @@ fn test_purchase_no_funds() {
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
-                recipient: Recipient::Addr("recipient".to_string()),
+                recipient: Recipient::from_string("recipient".to_string()),
             },
         )
         .unwrap();
@@ -678,7 +678,7 @@ fn test_purchase_wrong_denom() {
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
-                recipient: Recipient::Addr("recipient".to_string()),
+                recipient: Recipient::from_string("recipient".to_string()),
             },
         )
         .unwrap();
@@ -722,7 +722,7 @@ fn test_purchase_not_enough_for_price() {
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
-                recipient: Recipient::Addr("recipient".to_string()),
+                recipient: Recipient::from_string("recipient".to_string()),
             },
         )
         .unwrap();
@@ -770,7 +770,7 @@ fn test_purchase_not_enough_for_tax() {
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
-                recipient: Recipient::Addr("recipient".to_string()),
+                recipient: Recipient::from_string("recipient".to_string()),
             },
         )
         .unwrap();
@@ -821,7 +821,7 @@ fn test_purchase_by_token_id_not_available() {
                 amount_sold: Uint128::zero(),
                 amount_to_send: Uint128::zero(),
                 amount_transferred: Uint128::zero(),
-                recipient: Recipient::Addr("recipient".to_string()),
+                recipient: Recipient::from_string("recipient".to_string()),
             },
         )
         .unwrap();
@@ -856,7 +856,7 @@ fn test_purchase_by_token_id() {
         amount_sold: Uint128::zero(),
         amount_to_send: Uint128::zero(),
         amount_transferred: Uint128::zero(),
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
 
     STATE.save(deps.as_mut().storage, &state).unwrap();
@@ -955,7 +955,7 @@ fn test_multiple_purchases() {
         amount_sold: Uint128::zero(),
         amount_to_send: Uint128::zero(),
         amount_transferred: Uint128::zero(),
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
     STATE.save(deps.as_mut().storage, &state).unwrap();
 
@@ -1106,7 +1106,7 @@ fn test_purchase_more_than_allowed_per_wallet() {
         amount_sold: Uint128::zero(),
         amount_to_send: Uint128::zero(),
         amount_transferred: Uint128::zero(),
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
     STATE.save(deps.as_mut().storage, &state).unwrap();
 
@@ -1140,7 +1140,7 @@ fn test_end_sale_not_expired() {
         amount_sold: Uint128::zero(),
         amount_to_send: Uint128::zero(),
         amount_transferred: Uint128::zero(),
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
     STATE.save(deps.as_mut().storage, &state).unwrap();
     NUMBER_OF_TOKENS_AVAILABLE
@@ -1201,7 +1201,7 @@ fn test_integration_conditions_not_met() {
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(5u128),
         max_amount_per_wallet: Some(2),
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
 
     let info = mock_info("owner", &[]);
@@ -1242,7 +1242,7 @@ fn test_integration_conditions_not_met() {
         amount_sold: Uint128::from(4u128),
         amount_to_send: Uint128::from(360u128),
         amount_transferred: Uint128::zero(),
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
@@ -1372,7 +1372,7 @@ fn test_integration_conditions_met() {
         price: coin(100, "uusd"),
         min_tokens_sold: Uint128::from(3u128),
         max_amount_per_wallet: Some(2),
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
 
     let info = mock_info("owner", &[]);
@@ -1415,7 +1415,7 @@ fn test_integration_conditions_met() {
         amount_sold: Uint128::from(5u128),
         amount_to_send: Uint128::from(450u128),
         amount_transferred: Uint128::zero(),
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
     };
     assert_eq!(state, STATE.load(deps.as_ref().storage).unwrap());
 
@@ -1589,7 +1589,7 @@ fn test_end_sale_single_purchase() {
                 amount_sold: Uint128::from(1u128),
                 amount_to_send: Uint128::from(100u128),
                 amount_transferred: Uint128::zero(),
-                recipient: Recipient::Addr("recipient".to_string()),
+                recipient: Recipient::from_string("recipient".to_string()),
             },
         )
         .unwrap();
@@ -1637,7 +1637,7 @@ fn test_end_sale_all_tokens_sold() {
                 amount_sold: Uint128::from(1u128),
                 amount_to_send: Uint128::from(100u128),
                 amount_transferred: Uint128::zero(),
-                recipient: Recipient::Addr("recipient".to_string()),
+                recipient: Recipient::from_string("recipient".to_string()),
             },
         )
         .unwrap();
@@ -1688,7 +1688,7 @@ fn test_end_sale_limit_zero() {
                 amount_sold: Uint128::from(1u128),
                 amount_to_send: Uint128::from(100u128),
                 amount_transferred: Uint128::zero(),
-                recipient: Recipient::Addr("recipient".to_string()),
+                recipient: Recipient::from_string("recipient".to_string()),
             },
         )
         .unwrap();

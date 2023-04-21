@@ -52,6 +52,31 @@
       {
         "type": "object",
         "required": [
+          "send_amp_packet"
+        ],
+        "properties": {
+          "send_amp_packet": {
+            "type": "object",
+            "required": [
+              "chain",
+              "message"
+            ],
+            "properties": {
+              "chain": {
+                "type": "string"
+              },
+              "message": {
+                "$ref": "#/definitions/Binary"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
           "save_channel"
         ],
         "properties": {

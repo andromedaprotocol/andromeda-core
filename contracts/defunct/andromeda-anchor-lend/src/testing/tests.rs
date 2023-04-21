@@ -106,7 +106,7 @@ fn test_withdraw_tokens_none() {
     let recipient = "recipient";
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        recipient: Some(Recipient::from_string(recipient.to_owned())),
         tokens_to_withdraw: None,
     });
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -136,7 +136,7 @@ fn test_withdraw_tokens_empty() {
     let recipient = "recipient";
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        recipient: Some(Recipient::from_string(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![]),
     });
     let res = execute(deps.as_mut(), mock_env(), info, msg);

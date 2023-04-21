@@ -4,7 +4,7 @@ use andromeda_finance::splitter::{
     validate_recipient_list, AddressPercent, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg,
     MigrateMsg, QueryMsg, Splitter,
 };
-use andromeda_os::recipient::{generate_msg_native_kernel, AMPRecipient};
+use andromeda_os::recipient::generate_msg_native_kernel;
 
 use andromeda_os::messages::{AMPMsg, AMPPkt, ReplyGasExit};
 use common::{
@@ -100,10 +100,8 @@ pub fn execute(
         if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
             let splitter = SPLITTER.load(deps.storage)?;
             let mut addresses: Vec<String> = vec![];
-            for recipient in splitter.recipients {
-                if let AMPRecipient::ADO(ado_recipient) = recipient.recipient {
-                    addresses.push(ado_recipient.address);
-                }
+            for splitter_recipient in splitter.recipients {
+                addresses.push(splitter_recipient.recipient.address);
             }
             return contract.execute_update_app_contract(deps, info, address, Some(addresses));
         } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
@@ -294,8 +292,8 @@ fn execute_send(
         ContractError::ExceedsMaxAllowedCoins {}
     );
 
-    for recipient_addr in &splitter.recipients {
-        let recipient_percent = recipient_addr.percent;
+    for splitter_recipient in &splitter.recipients {
+        let recipient_percent = splitter_recipient.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
         for (i, coin) in sent_funds.iter().enumerate() {
             let mut recip_coin: Coin = coin.clone();
@@ -306,19 +304,18 @@ fn execute_send(
 
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
-        let recipient = recipient_addr.recipient.get_addr()?;
-        let message = recipient_addr.recipient.get_message()?.unwrap_or_default();
+        let recipient_addr = splitter_recipient.recipient.address.clone();
 
-        match &recipient_addr.recipient {
-            AMPRecipient::Addr(addr) => msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: addr.clone(),
+        match &splitter_recipient.recipient.msg {
+            None => msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: splitter_recipient.recipient.address.clone(),
                 amount: vec_coin,
             }))),
 
-            AMPRecipient::ADO(_) => {
+            Some(message) => {
                 amp_msgs.push(AMPMsg::new(
-                    recipient,
-                    message,
+                    recipient_addr,
+                    message.clone(),
                     Some(vec_coin.clone()),
                     Some(reply_gas.reply_on.clone().unwrap_or(ReplyOn::Always)),
                     reply_gas.exit_at_error,
@@ -537,7 +534,7 @@ mod tests {
     use andromeda_os::kernel::ExecuteMsg as KernelExecuteMsg;
     use andromeda_os::messages::AMPPkt;
     use andromeda_os::messages::ExecuteMsg::AMPReceive as AMPExecuteMsg;
-    use andromeda_os::recipient::{ADORecipient, AMPRecipient};
+    use andromeda_os::recipient::Recipient;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary, to_binary, Coin, Decimal, WasmMsg};
 
@@ -548,7 +545,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             recipients: vec![AddressPercent {
-                recipient: AMPRecipient::from_string(String::from("Some Address")),
+                recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Decimal::one(),
             }],
             modules: None,
@@ -622,11 +619,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                recipient: AMPRecipient::from_string(String::from("addr1")),
+                recipient: Recipient::from_string(String::from("addr1")),
                 percent: Decimal::percent(40),
             },
             AddressPercent {
-                recipient: AMPRecipient::from_string(String::from("addr1")),
+                recipient: Recipient::from_string(String::from("addr1")),
                 percent: Decimal::percent(60),
             },
         ];
@@ -691,11 +688,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                recipient: AMPRecipient::from_string(recip_address1.clone()),
+                recipient: Recipient::from_string(recip_address1.clone()),
                 percent: Decimal::percent(recip_percent1),
             },
             AddressPercent {
-                recipient: AMPRecipient::from_string(recip_address2.clone()),
+                recipient: Recipient::from_string(recip_address2.clone()),
                 percent: Decimal::percent(recip_percent2),
             },
         ];
@@ -774,17 +771,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                recipient: AMPRecipient::ADO(ADORecipient {
-                    address: recip_address1.clone(),
-                    msg: None,
-                }),
+                recipient: Recipient::from_string(recip_address1.clone()),
                 percent: Decimal::percent(recip_percent1),
             },
             AddressPercent {
-                recipient: AMPRecipient::ADO(ADORecipient {
-                    address: recip_address2.clone(),
-                    msg: None,
-                }),
+                recipient: Recipient::from_string(recip_address2.clone()),
                 percent: Decimal::percent(recip_percent2),
             },
         ];
@@ -884,17 +875,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                recipient: AMPRecipient::ADO(ADORecipient {
-                    address: recip_address1.clone(),
-                    msg: None,
-                }),
+                recipient: Recipient::from_string(recip_address1.clone()),
                 percent: Decimal::percent(recip_percent1),
             },
             AddressPercent {
-                recipient: AMPRecipient::ADO(ADORecipient {
-                    address: recip_address2.clone(),
-                    msg: None,
-                }),
+                recipient: Recipient::from_string(recip_address2.clone()),
                 percent: Decimal::percent(recip_percent2),
             },
         ];
@@ -1029,17 +1014,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                recipient: AMPRecipient::ADO(ADORecipient {
-                    address: recip_address1,
-                    msg: None,
-                }),
+                recipient: Recipient::from_string(recip_address1.clone()),
                 percent: Decimal::percent(recip_percent1),
             },
             AddressPercent {
-                recipient: AMPRecipient::ADO(ADORecipient {
-                    address: recip_address2.clone(),
-                    msg: None,
-                }),
+                recipient: Recipient::from_string(recip_address2.clone()),
                 percent: Decimal::percent(recip_percent2),
             },
         ];
@@ -1146,11 +1125,11 @@ mod tests {
 
         let recipient = vec![
             AddressPercent {
-                recipient: AMPRecipient::from_string(recip_address1),
+                recipient: Recipient::from_string(recip_address1),
                 percent: Decimal::percent(recip_percent1),
             },
             AddressPercent {
-                recipient: AMPRecipient::from_string(recip_address2),
+                recipient: Recipient::from_string(recip_address2),
                 percent: Decimal::percent(recip_percent2),
             },
         ];

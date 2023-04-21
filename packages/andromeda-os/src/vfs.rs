@@ -1,6 +1,6 @@
 use common::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, QuerierWrapper};
 // use regex::Regex;
 
 // pub const COMPONENT_NAME_REGEX: &str = r"^[A-Za-z0-9\.\-_]{1,40}$";
@@ -81,6 +81,17 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(Addr)]
     ResolvePath { path: String },
+}
+
+/// Queries the provided VFS contract address to resolve the given path
+pub fn vfs_resolve_path(
+    path: impl Into<String>,
+    vfs_contract: impl Into<String>,
+    querier: &QuerierWrapper,
+) -> Result<Addr, ContractError> {
+    let query = QueryMsg::ResolvePath { path: path.into() };
+    let addr = querier.query_wasm_smart::<Addr>(vfs_contract, &query)?;
+    Ok(addr)
 }
 
 #[cfg(test)]

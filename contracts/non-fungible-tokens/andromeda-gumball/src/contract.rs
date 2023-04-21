@@ -8,11 +8,13 @@ use andromeda_non_fungible_tokens::{
     gumball::{ExecuteMsg, InstantiateMsg, NumberOfNftsResponse, QueryMsg, StatusResponse},
 };
 
-use andromeda_os::messages::{AMPMsg, AMPPkt};
-use andromeda_os::recipient::generate_msg_native_kernel;
+use andromeda_os::{
+    messages::{AMPMsg, AMPPkt},
+    recipient::{generate_msg_native_kernel, Recipient},
+};
 use common::app::GetAddress;
 use common::{
-    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     encode_binary,
     error::{from_semver, ContractError},
 };
@@ -281,10 +283,9 @@ fn execute_sale_details(
     // This is to prevent cloning price.
     let price_str = price.to_string();
 
-    let rec = recipient.get_addr(
-        deps.api,
+    let rec = recipient.get_resolved_address(
         &deps.querier,
-        contract.get_app_contract(deps.storage)?,
+        Some(contract.get_vfs_address(deps.storage, &deps.querier)?),
     )?;
 
     // Set the state
@@ -516,7 +517,7 @@ fn query_state(deps: Deps) -> Result<State, ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::ado_base::recipient::Recipient;
+    use andromeda_os::recipient::Recipient;
     use cosmwasm_std::coin;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
@@ -621,7 +622,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(5, "uusd"),
             max_amount_per_wallet: Some(Uint128::from(1_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(res, ContractError::Unauthorized {});
@@ -643,7 +644,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(0, "uusd"),
             max_amount_per_wallet: Some(Uint128::from(1_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(res, ContractError::InvalidZeroAmount {});
@@ -665,7 +666,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(10, "LUNA"),
             max_amount_per_wallet: Some(Uint128::from(1_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(
@@ -692,7 +693,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(10, "uusd"),
             max_amount_per_wallet: Some(Uint128::from(0_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(res, ContractError::InvalidZeroAmount {});
@@ -714,7 +715,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(10, "uusd"),
             max_amount_per_wallet: Some(Uint128::from(1_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(
@@ -744,7 +745,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(10, "uusd"),
             max_amount_per_wallet: Some(Uint128::from(1_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let status = STATUS.load(&deps.storage).unwrap();
@@ -862,7 +863,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(10, "uusd"),
             max_amount_per_wallet: Some(Uint128::from(1_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -907,7 +908,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(10, "uusd"),
             max_amount_per_wallet: Some(Uint128::from(1_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -954,7 +955,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(10, "uusd"),
             max_amount_per_wallet: Some(Uint128::from(1_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -1007,7 +1008,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(10, "uusd"),
             max_amount_per_wallet: Some(Uint128::from(1_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         let info = mock_info("owner", &[]);
@@ -1063,7 +1064,7 @@ mod tests {
         let msg = ExecuteMsg::SetSaleDetails {
             price: coin(10, "uusd"),
             max_amount_per_wallet: Some(Uint128::from(1_u64)),
-            recipient: Recipient::Addr("me".to_string()),
+            recipient: Recipient::from_string("me".to_string()),
         };
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 

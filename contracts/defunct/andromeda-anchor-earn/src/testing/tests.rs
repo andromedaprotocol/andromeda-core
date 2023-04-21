@@ -170,7 +170,7 @@ fn test_deposit_and_withdraw_ust() {
 
     assert_eq!(
         PositionResponse {
-            recipient: Recipient::Addr("owner".to_string()),
+            recipient: Recipient::from_string("owner".to_string()),
             aust_amount: Uint128::from(aust_amount),
         },
         query_res
@@ -381,7 +381,7 @@ fn test_deposit_other_recipient() {
     let amount = 1000000u128;
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-        to_binary(&Recipient::Addr("recipient".into())).unwrap(),
+        to_binary(&Recipient::from_string("recipient".into())).unwrap(),
     )));
     let info = mock_info(
         "owner",
@@ -436,7 +436,7 @@ fn test_withdraw_percent() {
     let recipient = "recipient";
 
     let position = Position {
-        recipient: Recipient::Addr(recipient.to_owned()),
+        recipient: Recipient::from_string(recipient.to_owned()),
         aust_amount: Uint128::from(amount),
     };
     POSITION
@@ -444,7 +444,7 @@ fn test_withdraw_percent() {
         .unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        recipient: Some(Recipient::from_string(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![Withdrawal {
             withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(50))),
             token: "uusd".to_string(),
@@ -480,7 +480,7 @@ fn test_withdraw_invalid_percent() {
     let recipient = "recipient";
 
     let position = Position {
-        recipient: Recipient::Addr(recipient.to_owned()),
+        recipient: Recipient::from_string(recipient.to_owned()),
         aust_amount: Uint128::from(amount),
     };
     POSITION
@@ -488,7 +488,7 @@ fn test_withdraw_invalid_percent() {
         .unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        recipient: Some(Recipient::from_string(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![Withdrawal {
             withdrawal_type: Some(WithdrawalType::Percentage(Decimal::percent(101))),
             token: "uusd".to_string(),
@@ -509,7 +509,7 @@ fn test_withdraw_amount() {
     let recipient = "recipient";
 
     let position = Position {
-        recipient: Recipient::Addr(recipient.to_owned()),
+        recipient: Recipient::from_string(recipient.to_owned()),
         aust_amount: Uint128::from(amount),
     };
     POSITION
@@ -517,7 +517,7 @@ fn test_withdraw_amount() {
         .unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        recipient: Some(Recipient::from_string(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![Withdrawal {
             withdrawal_type: Some(WithdrawalType::Amount(50u128.into())),
             token: "uusd".to_string(),
@@ -553,7 +553,7 @@ fn test_withdraw_too_high_amount() {
     let recipient = "recipient";
 
     let position = Position {
-        recipient: Recipient::Addr(recipient.to_owned()),
+        recipient: Recipient::from_string(recipient.to_owned()),
         aust_amount: Uint128::from(amount),
     };
     POSITION
@@ -561,7 +561,7 @@ fn test_withdraw_too_high_amount() {
         .unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        recipient: Some(Recipient::from_string(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![Withdrawal {
             withdrawal_type: Some(WithdrawalType::Amount((amount + 1).into())),
             token: "uusd".to_string(),
@@ -624,7 +624,7 @@ fn test_withdraw_tokens_none() {
     let recipient = "recipient";
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        recipient: Some(Recipient::from_string(recipient.to_owned())),
         tokens_to_withdraw: None,
     });
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -645,7 +645,7 @@ fn test_withdraw_tokens_empty() {
     let recipient = "recipient";
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        recipient: Some(Recipient::from_string(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![]),
     });
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -665,7 +665,7 @@ fn test_withdraw_aust_with_address() {
     let info = mock_info("owner", &[]);
 
     let position = Position {
-        recipient: Recipient::Addr("owner".to_string()),
+        recipient: Recipient::from_string("owner".to_string()),
         aust_amount: Uint128::from(amount),
     };
     POSITION
@@ -673,7 +673,7 @@ fn test_withdraw_aust_with_address() {
         .unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr("owner".to_string())),
+        recipient: Some(Recipient::from_string("owner".to_string())),
         tokens_to_withdraw: Some(vec![Withdrawal {
             withdrawal_type: None,
             // Specifying the contract address of aust is also valid.
@@ -701,7 +701,7 @@ fn test_withdraw_recipient_sender() {
     let recipient = "recipient";
 
     let position = Position {
-        recipient: Recipient::Addr(recipient.to_owned()),
+        recipient: Recipient::from_string(recipient.to_owned()),
         aust_amount: Uint128::from(amount),
     };
     POSITION
@@ -709,7 +709,7 @@ fn test_withdraw_recipient_sender() {
         .unwrap();
 
     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(Recipient::Addr(recipient.to_owned())),
+        recipient: Some(Recipient::from_string(recipient.to_owned())),
         tokens_to_withdraw: Some(vec![Withdrawal {
             withdrawal_type: None,
             token: "uusd".to_string(),

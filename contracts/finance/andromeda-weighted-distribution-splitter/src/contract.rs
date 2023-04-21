@@ -7,7 +7,7 @@ use andromeda_finance::weighted_splitter::{
 };
 use andromeda_os::{
     messages::{AMPMsg, AMPPkt, ReplyGasExit},
-    recipient::{generate_msg_native_kernel, AMPRecipient as Recipient},
+    recipient::{generate_msg_native_kernel, Recipient},
 };
 use common::{
     ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
@@ -439,15 +439,17 @@ fn execute_send(
         }
         // ADO receivers must use AndromedaMsg::Receive to execute their functionality
         // Others may just receive the funds
-        let recipient = recipient_addr.recipient.get_addr()?;
+        let recipient = recipient_addr.recipient.address;
 
         let message = recipient_addr.recipient.get_message()?.unwrap_or_default();
 
         match &recipient_addr.recipient {
-            Recipient::Addr(addr) => msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: addr.clone(),
-                amount: vec_coin,
-            }))),
+            Recipient::from_string(addr) => {
+                msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: addr.clone(),
+                    amount: vec_coin,
+                })))
+            }
 
             Recipient::ADO(_) => {
                 if let Some(ref reply_gas_exit) = reply_gas_exit {

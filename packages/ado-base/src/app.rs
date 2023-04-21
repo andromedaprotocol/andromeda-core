@@ -21,10 +21,9 @@ impl<'a> ADOContract<'a> {
         mut addresses: Vec<String>,
     ) -> Result<(), ContractError> {
         let app_contract = self.get_app_contract(deps.storage)?;
-        let kernel_address = self.get_kernel_address(deps.storage);
-        match kernel_address {
-            Ok(kernel_address) => {
-                let vfs_address = self.get_vfs_address(&deps.querier, kernel_address)?;
+        let vfs_address = self.get_vfs_address(deps.storage, &deps.querier);
+        match vfs_address {
+            Ok(vfs_address) => {
                 ensure!(
                     app_contract.is_some(),
                     ContractError::AppContractNotSpecified {}
@@ -93,12 +92,13 @@ impl<'a> ADOContract<'a> {
 
     pub fn get_vfs_address(
         &self,
+        storage: &dyn Storage,
         querier: &QuerierWrapper,
-        kernel_address: Addr,
     ) -> Result<Addr, ContractError> {
         let query = KernelQueryMsg::KeyAddress {
             key: "vfs".to_string(),
         };
+        let kernel_address = self.get_kernel_address(storage)?;
         Ok(querier.query_wasm_smart(kernel_address, &query)?)
     }
 

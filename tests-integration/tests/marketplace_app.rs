@@ -91,7 +91,7 @@ fn test_marketplace_app() {
         rate: Rate::Flat(coin(100, "uandr")),
         is_additive: true,
         description: None,
-        recipients: vec![Recipient::Addr(rates_receiver.to_string())],
+        recipients: vec![Recipient::from_string(rates_receiver.to_string())],
     }];
     let rates_init_msg = mock_rates_instantiate_msg(rates);
     let rates_component = AppComponent::new("2", "rates", to_binary(&rates_init_msg).unwrap());

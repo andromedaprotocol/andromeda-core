@@ -1,176 +1,99 @@
-use common::app::GetAddress;
 use common::{encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Api, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg, WasmMsg};
+use cosmwasm_std::{Addr, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg, WasmMsg};
+use cw20::{Cw20Coin, Cw20ExecuteMsg};
 
 use crate::kernel::ExecuteMsg as KernelExecuteMsg;
-use crate::messages::{AMPMsg, AMPPkt, ExecuteMsg as AMPExecuteMsg};
+use crate::messages::{AMPMsg, AMPPkt};
+use crate::vfs::vfs_resolve_path;
 
 #[cw_serde]
-pub struct ADORecipient {
+pub struct Recipient {
     /// Addr can also be a human-readable identifier used in a app contract.
     pub address: String,
     pub msg: Option<Binary>,
 }
 
-#[cw_serde]
-// #[serde(untagged)]
-pub enum AMPRecipient {
-    /// An address that is not another ADO. It is assumed that it is a valid address.
-    Addr(String),
-    ADO(ADORecipient),
-}
-
-impl AMPRecipient {
-    pub fn ado(address: impl Into<String>, msg: Option<Binary>) -> AMPRecipient {
-        let ado_recipient = ADORecipient {
-            address: address.into(),
-            msg,
-        };
-
-        AMPRecipient::ADO(ado_recipient)
-    }
-}
-
-pub fn generate_msg_native_kernel(
-    funds: Vec<Coin>,
-    origin: String,
-    previous_sender: String,
-    messages: Vec<AMPMsg>,
-    kernel_address: String,
-) -> Result<SubMsg, ContractError> {
-    Ok(SubMsg::new(WasmMsg::Execute {
-        contract_addr: kernel_address,
-        msg: encode_binary(&KernelExecuteMsg::AMPReceive(AMPPkt::new(
-            origin,
-            previous_sender,
-            messages,
-        )))?,
-        funds,
-    }))
-}
-
-impl AMPRecipient {
-    /// Creates an Addr AMPRecipient from the given string
-    pub fn from_string(addr: String) -> AMPRecipient {
-        AMPRecipient::Addr(addr)
+impl Recipient {
+    /// Creates an Addr Recipient from the given string
+    pub fn from_string(addr: impl Into<String>) -> Recipient {
+        Recipient {
+            address: addr.into(),
+            msg: None,
+        }
     }
 
     /// Gets the address of the recipient. If the is an ADORecipient it will query the app
     /// contract to get its address if it fails address validation.
-    pub fn get_addr(&self) -> Result<String, ContractError> {
-        match &self {
-            AMPRecipient::Addr(string) => Ok(string.to_owned()),
-            AMPRecipient::ADO(recip) => Ok(recip.address.clone()),
-        }
+    pub fn get_addr(&self) -> String {
+        self.address.clone()
     }
 
-    pub fn get_validated_addr(
+    pub fn get_resolved_address(
         &self,
-        api: &dyn Api,
         querier: &QuerierWrapper,
-        app_contract: Option<Addr>,
-    ) -> Result<String, ContractError> {
-        match &self {
-            AMPRecipient::Addr(string) => Ok(string.to_owned().get_address(api, querier, None)?),
-            AMPRecipient::ADO(recip) => {
-                Ok(recip
-                    .address
-                    .clone()
-                    .get_address(api, querier, app_contract)?)
-            }
+        vfs_contract: Option<Addr>,
+    ) -> Result<Addr, ContractError> {
+        match vfs_contract {
+            None => Err(ContractError::VFSContractNotSpecified {}),
+            Some(addr) => vfs_resolve_path(self.address.clone(), addr, querier),
         }
     }
 
-    pub fn get_message(&self) -> Result<Option<Binary>, ContractError> {
-        match &self {
-            AMPRecipient::Addr(_string) => Ok(None),
-            AMPRecipient::ADO(recip) => Ok(recip.msg.to_owned()),
-        }
+    pub fn get_message(&self) -> Option<Binary> {
+        self.msg.clone()
     }
 
-    // pub fn validate_address(
-    //     &self,
-    //     api: &dyn Api,
-    //     querier: &QuerierWrapper,
-    //     app_contract: Option<Addr>,
-    // ) -> Result<(), ContractError> {
-    //     let address = self.get_addr()?;
-    //     let addr = api.addr_validate(&address);
-    //     match addr {
-    //         Ok(_) => Ok(()),
-    //         Err(_) => match app_contract {
-    //             Some(app_contract) => {
-    //                 query_get::<String>(
-    //                     Some(encode_binary(&self)?),
-    //                     app_contract.to_string(),
-    //                     querier,
-    //                 )?;
-    //                 Ok(())
-    //             }
-    //             // TODO: Make error more descriptive.
-    //             None => Err(ContractError::InvalidAddress {}),
-    //         },
-    //     }
-    // }
-
-    /// Generates the sub message depending on the type of the recipient.
-    pub fn generate_msg_native(
+    /// Generates a new AMP Packet for the recipient with the attached message
+    pub fn generate_direct_msg(
         &self,
+        querier: &QuerierWrapper,
+        vfs_contract: Option<Addr>,
         funds: Vec<Coin>,
-        origin: String,
-        previous_sender: String,
-        messages: Vec<AMPMsg>,
-        _kernel_address: String,
     ) -> Result<SubMsg, ContractError> {
-        Ok(match &self {
-            AMPRecipient::ADO(recip) => SubMsg::new(WasmMsg::Execute {
-                contract_addr: recip.address.to_owned(),
-                msg: encode_binary(&AMPExecuteMsg::AMPReceive(AMPPkt::new(
-                    origin,
-                    previous_sender,
-                    messages,
-                )))?,
+        let resolved_addr = self.get_resolved_address(querier, vfs_contract)?;
+        Ok(match &self.msg {
+            Some(message) => SubMsg::new(WasmMsg::Execute {
+                contract_addr: resolved_addr.to_string(),
+                msg: message.clone(),
                 funds,
             }),
-            AMPRecipient::Addr(addr) => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: addr.clone(),
+            None => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: resolved_addr.to_string(),
                 amount: funds,
             })),
         })
     }
 
-    // /// Generates the sub message depending on the type of the recipient.
-    // pub fn generate_msg_cw20(
-    //     &self,
-    //     cw20_coin: Cw20Coin,
-    //     origin: String,
-    //     previous_sender: String,
-    //     messages: Vec<AMPMsg>,
-    //     kernel_address: String,
-    // ) -> Result<SubMsg, ContractError> {
-    //     Ok(match &self {
-    //         AMPRecipient::ADO(_recip) => SubMsg::new(WasmMsg::Execute {
-    //             contract_addr: cw20_coin.address,
-    //             msg: encode_binary(&Cw20ExecuteMsg::Send {
-    //                 contract: self.get_addr()?,
-    //                 amount: cw20_coin.amount,
-    //                 msg: encode_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Receive(
-    //                     recip.msg.clone(),
-    //                 )))?,
-    //             })?,
-    //             funds: vec![],
-    //         }),
-    //         AMPRecipient::Addr(addr) => SubMsg::new(WasmMsg::Execute {
-    //             contract_addr: cw20_coin.address,
-    //             msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-    //                 recipient: addr.to_string(),
-    //                 amount: cw20_coin.amount,
-    //             })?,
-    //             funds: vec![],
-    //         }),
-    //     })
-    // }
+    // TODO: Enable ICS20 messages? Maybe send approval for Kernel address then send the message to Kernel?
+    /// Generates the sub message depending on the type of the recipient.
+    pub fn generate_msg_cw20(
+        &self,
+        querier: &QuerierWrapper,
+        vfs_contract: Option<Addr>,
+        cw20_coin: Cw20Coin,
+    ) -> Result<SubMsg, ContractError> {
+        let resolved_addr = self.get_resolved_address(querier, vfs_contract)?;
+        Ok(match &self.msg {
+            Some(msg) => SubMsg::new(WasmMsg::Execute {
+                contract_addr: cw20_coin.address,
+                msg: encode_binary(&Cw20ExecuteMsg::Send {
+                    contract: resolved_addr.to_string(),
+                    amount: cw20_coin.amount,
+                    msg: msg.clone(),
+                })?,
+                funds: vec![],
+            }),
+            None => SubMsg::new(WasmMsg::Execute {
+                contract_addr: cw20_coin.address,
+                msg: encode_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: resolved_addr.to_string(),
+                    amount: cw20_coin.amount,
+                })?,
+                funds: vec![],
+            }),
+        })
+    }
 
     // pub fn generate_msg_from_asset(
     //     &self,
@@ -198,4 +121,22 @@ impl AMPRecipient {
     //         }),
     //     }
     // }
+}
+
+pub fn generate_msg_native_kernel(
+    funds: Vec<Coin>,
+    origin: String,
+    previous_sender: String,
+    messages: Vec<AMPMsg>,
+    kernel_address: String,
+) -> Result<SubMsg, ContractError> {
+    Ok(SubMsg::new(WasmMsg::Execute {
+        contract_addr: kernel_address,
+        msg: encode_binary(&KernelExecuteMsg::AMPReceive(AMPPkt::new(
+            origin,
+            previous_sender,
+            messages,
+        )))?,
+        funds,
+    }))
 }

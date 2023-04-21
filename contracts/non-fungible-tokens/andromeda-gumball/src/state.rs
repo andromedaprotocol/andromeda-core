@@ -1,4 +1,4 @@
-use common::ado_base::recipient::Recipient;
+use andromeda_os::recipient::Recipient;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Coin, Uint128};
 use cw_storage_plus::Item;

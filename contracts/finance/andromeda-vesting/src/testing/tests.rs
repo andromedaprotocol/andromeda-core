@@ -12,14 +12,15 @@ use crate::{
 };
 
 use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
-use common::{ado_base::recipient::Recipient, error::ContractError, withdraw::WithdrawalType};
+use andromeda_os::recipient::Recipient;
+use common::{error::ContractError, withdraw::WithdrawalType};
 
 const DEFAULT_VALIDATOR: &str = "validator";
 const UNBONDING_BLOCK_DURATION: u64 = 5;
 
 fn init(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
         is_multi_batch_enabled: true,
         denom: "uusd".to_string(),
         unbonding_duration: Duration::Height(UNBONDING_BLOCK_DURATION),
@@ -92,7 +93,7 @@ fn test_instantiate() {
 
     assert_eq!(
         Config {
-            recipient: Recipient::Addr("recipient".to_string()),
+            recipient: Recipient::from_string("recipient".to_string()),
             is_multi_batch_enabled: true,
             denom: "uusd".to_string(),
             unbonding_duration: Duration::Height(UNBONDING_BLOCK_DURATION)
@@ -357,7 +358,7 @@ fn test_create_batch_and_delegate() {
 fn test_create_batch_multi_batch_not_supported() {
     let mut deps = mock_dependencies();
     let msg = InstantiateMsg {
-        recipient: Recipient::Addr("recipient".to_string()),
+        recipient: Recipient::from_string("recipient".to_string()),
         is_multi_batch_enabled: false,
         denom: "uusd".to_string(),
         unbonding_duration: Duration::Height(0u64),

@@ -22,7 +22,7 @@ use ado_base::ADOContract;
 use andromeda_finance::weighted_splitter::{
     GetSplitterConfigResponse, GetUserWeightResponse, QueryMsg, Splitter,
 };
-use andromeda_os::recipient::{ADORecipient, AMPRecipient as Recipient};
+use andromeda_os::recipient::{ADORecipient, Recipient};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{attr, from_binary, Coin, CosmosMsg, SubMsg};
 
@@ -1548,11 +1548,11 @@ fn test_execute_send() {
 
     let recipient = vec![
         AddressWeight {
-            recipient: Recipient::Addr(recip_address1.clone()),
+            recipient: Recipient::from_string(recip_address1.clone()),
             weight: recip_weight1,
         },
         AddressWeight {
-            recipient: Recipient::Addr(recip_address2.clone()),
+            recipient: Recipient::from_string(recip_address2.clone()),
             weight: recip_weight2,
         },
     ];
@@ -1634,11 +1634,11 @@ fn test_query_user_weight() {
     let mut deps = mock_dependencies();
     let env = mock_env();
     let user1 = AddressWeight {
-        recipient: Recipient::Addr("first".to_string()),
+        recipient: Recipient::from_string("first".to_string()),
         weight: Uint128::new(5),
     };
     let user2 = AddressWeight {
-        recipient: Recipient::Addr("second".to_string()),
+        recipient: Recipient::from_string("second".to_string()),
         weight: Uint128::new(10),
     };
     let splitter = Splitter {
@@ -1649,7 +1649,7 @@ fn test_query_user_weight() {
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
     let query_msg = QueryMsg::GetUserWeight {
-        user: Recipient::Addr("second".to_string()),
+        user: Recipient::from_string("second".to_string()),
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
     let val: GetUserWeightResponse = from_binary(&res).unwrap();
@@ -1675,11 +1675,11 @@ fn test_execute_send_error() {
 
     let recipient = vec![
         AddressWeight {
-            recipient: Recipient::Addr(recip_address1),
+            recipient: Recipient::from_string(recip_address1),
             weight: recip_weight1,
         },
         AddressWeight {
-            recipient: Recipient::Addr(recip_address2),
+            recipient: Recipient::from_string(recip_address2),
             weight: recip_weight2,
         },
     ];

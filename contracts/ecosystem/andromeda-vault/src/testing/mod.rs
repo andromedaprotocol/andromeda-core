@@ -7,7 +7,7 @@ use andromeda_ecosystem::vault::{
     ExecuteMsg, InstantiateMsg, QueryMsg, StrategyAddressResponse, StrategyType, YieldStrategy,
     BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
-use andromeda_os::recipient::AMPRecipient as Recipient;
+use andromeda_os::recipient::Recipient;
 use common::app::GetAddress;
 use common::{
     ado_base::AndromedaMsg,
@@ -197,7 +197,7 @@ fn test_deposit_strategy() {
         strategy: Some(yield_strategy.clone().strategy_type),
     };
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let recipient = Recipient::Addr("depositor".to_string());
+    let recipient = Recipient::from_string("depositor".to_string());
 
     let msg = wasm_execute(
         yield_strategy
@@ -285,7 +285,7 @@ fn test_deposit_strategy_partial_amount() {
             .get_address(deps.as_ref().api, &deps.as_ref().querier, None)
             .unwrap(),
         &ExecuteMsg::AndrReceive(AndromedaMsg::Receive(Some(
-            to_binary(&Recipient::Addr("depositor".to_string())).unwrap(),
+            to_binary(&Recipient::from_string("depositor".to_string())).unwrap(),
         ))),
         vec![coin(100, sent_funds.denom.clone())],
     )
@@ -667,7 +667,7 @@ fn test_withdraw_multi_no_strategy_recipient() {
 
     let info = mock_info(&depositor, &[]);
     let msg = ExecuteMsg::Withdraw {
-        recipient: Some(Recipient::Addr("recipient".to_string())),
+        recipient: Some(Recipient::from_string("recipient".to_string())),
         withdrawals: vec![
             Withdrawal {
                 token: "uusd".to_string(),
@@ -729,9 +729,7 @@ fn test_withdraw_single_strategy() {
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let withdraw_exec = to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(common::ado_base::recipient::Recipient::Addr(
-            "depositor".to_string(),
-        )),
+        recipient: Some("depositor".to_string()),
         tokens_to_withdraw: Some(withdrawals),
     }))
     .unwrap();
@@ -845,13 +843,7 @@ fn test_query_strategy_balance() {
     let resp = query(deps.as_ref(), env, single_query).unwrap();
     let balance: PositionResponse = from_binary(&resp).unwrap();
     assert_eq!(Uint128::from(10u128), balance.aust_amount);
-    assert_eq!(
-        "depositor".to_string(),
-        balance
-            .recipient
-            .get_addr(deps.as_ref().api, &deps.as_ref().querier, None)
-            .unwrap()
-    );
+    assert_eq!("depositor".to_string(), balance.recipient.address);
 }
 
 #[test]

@@ -343,11 +343,10 @@ fn execute_claim(
     key.save(deps.storage, &batch)?;
 
     let config = CONFIG.load(deps.storage)?;
-    let app_contract = contract.get_app_contract(deps.storage)?;
-    let withdraw_msg = config.recipient.generate_msg_native(
-        deps.api,
+    let vfs_contract = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
+    let withdraw_msg = config.recipient.generate_direct_msg(
         &deps.querier,
-        app_contract,
+        Some(vfs_contract),
         vec![Coin::new(amount_to_send.u128(), config.denom)],
     )?;
 
@@ -411,11 +410,10 @@ fn execute_claim_all(
     // claimable amounts. Erroring for one would make the whole transaction fai.
     if !total_amount_to_send.is_zero() {
         let config = CONFIG.load(deps.storage)?;
-        let app_contract = contract.get_app_contract(deps.storage)?;
-        msgs.push(config.recipient.generate_msg_native(
-            deps.api,
+        let vfs_contract = contract.get_vfs_address(deps.storage, &deps.querier)?;
+        msgs.push(config.recipient.generate_direct_msg(
             &deps.querier,
-            app_contract,
+            Some(vfs_contract),
             vec![Coin::new(total_amount_to_send.u128(), config.denom)],
         )?)
     }

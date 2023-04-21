@@ -1,5 +1,5 @@
 use crate::cw721::TokenExtension;
-use andromeda_os::{messages::AMPPkt, recipient::AMPRecipient as Recipient};
+use andromeda_os::{messages::AMPPkt, recipient::Recipient};
 use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};

@@ -7,7 +7,7 @@ use cosmwasm_std::{
 
 use crate::contract::{execute, instantiate};
 use andromeda_finance::splitter::{AddressPercent, ExecuteMsg, InstantiateMsg};
-use andromeda_os::recipient::{ADORecipient, AMPRecipient};
+use andromeda_os::recipient::Recipient;
 use andromeda_testing::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ADDRESSLIST_CONTRACT,
 };
@@ -28,7 +28,7 @@ fn test_modules() {
             address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
         }]),
         recipients: vec![AddressPercent {
-            recipient: AMPRecipient::from_string(String::from("Some Address")),
+            recipient: Recipient::from_string(String::from("Some Address")),
             percent: Decimal::percent(100),
         }],
         lock_time: Some(100_000),
@@ -92,14 +92,11 @@ fn test_update_app_contract() {
         modules: Some(modules),
         recipients: vec![
             AddressPercent {
-                recipient: AMPRecipient::from_string(String::from("Some Address")),
+                recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Decimal::percent(50),
             },
             AddressPercent {
-                recipient: AMPRecipient::ADO(ADORecipient {
-                    address: "eee".to_string(),
-                    msg: None,
-                }),
+                recipient: Recipient::from_string("eee"),
                 percent: Decimal::percent(50),
             },
         ],
@@ -138,10 +135,7 @@ fn test_update_app_contract_invalid_recipient() {
     let msg = InstantiateMsg {
         modules: Some(modules),
         recipients: vec![AddressPercent {
-            recipient: AMPRecipient::ADO(ADORecipient {
-                address: "z".to_string(),
-                msg: None,
-            }),
+            recipient: Recipient::from_string("z"),
             percent: Decimal::percent(100),
         }],
         lock_time: None,

@@ -1,6 +1,6 @@
-use andromeda_os::messages::AMPPkt;
+use andromeda_os::{messages::AMPPkt, recipient::Recipient};
 use common::{
-    ado_base::{hooks::AndromedaHook, recipient::Recipient, AndromedaMsg, AndromedaQuery},
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery},
     error::ContractError,
     primitive::{Primitive, PrimitivePointer},
 };

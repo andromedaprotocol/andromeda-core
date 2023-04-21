@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_ecosystem::vault::{ExecuteMsg, InstantiateMsg, QueryMsg, StrategyType};
-use andromeda_os::recipient::AMPRecipient as Recipient;
+use andromeda_os::recipient::Recipient;
 use cosmwasm_std::{Coin, Empty};
 use cw_multi_test::{Contract, ContractWrapper};
 

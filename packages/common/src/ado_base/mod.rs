@@ -20,7 +20,6 @@ use self::{
     kernel_address::KernelAddressResponse,
     operators::{IsOperatorResponse, OperatorsResponse},
     ownership::{ContractOwnerResponse, PublisherResponse},
-    recipient::Recipient,
     version::VersionResponse,
 };
 
@@ -47,7 +46,7 @@ pub enum AndromedaMsg {
         address: String,
     },
     Withdraw {
-        recipient: Option<Recipient>,
+        recipient: Option<String>, // TODO: REPLACE WITH RECIPIENT
         tokens_to_withdraw: Option<Vec<Withdrawal>>,
     },
     RegisterModule {

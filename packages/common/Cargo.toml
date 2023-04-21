@@ -24,9 +24,7 @@ cw1155-base = "0.16.0"
 cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
 semver = "1"
 
-
 cw20 = { version = "0.16.0" }
 cw20-base = { version = "0.16.0", features=["library"]}
 cw721-base = { version = "0.16.0", features=["library"]}
 cw-asset = { version = "2.0.0" }
-

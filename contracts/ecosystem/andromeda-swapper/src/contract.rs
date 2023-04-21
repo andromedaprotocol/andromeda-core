@@ -6,10 +6,10 @@ use andromeda_ecosystem::swapper::{
 };
 use andromeda_os::{
     messages::{AMPMsg, AMPPkt},
-    recipient::generate_msg_native_kernel,
+    recipient::{generate_msg_native_kernel, Recipient},
 };
 use common::{
-    ado_base::{recipient::Recipient, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::InstantiateMsg as BaseInstantiateMsg,
     app::GetAddress,
     encode_binary,
     error::{from_semver, ContractError},
@@ -235,17 +235,14 @@ fn execute_swap(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     one_coin(&info)?;
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let recipient = recipient.unwrap_or_else(|| Recipient::from_string(info.sender.to_string()));
     let coin = &info.funds[0];
+    let vfs_contract = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
     if let AssetInfo::Native(denom) = &ask_asset_info {
         if denom == &coin.denom {
             // Send coins as is as there is no need to swap.
-            let msg = recipient.generate_msg_native(
-                deps.api,
-                &deps.querier,
-                ADOContract::default().get_app_contract(deps.storage)?,
-                info.funds,
-            )?;
+            let msg =
+                recipient.generate_direct_msg(&deps.querier, Some(vfs_contract), info.funds)?;
             return Ok(Response::new()
                 .add_submessage(msg)
                 .add_attribute("action", "swap"));
@@ -288,13 +285,14 @@ fn execute_send(
         info.sender == env.contract.address,
         ContractError::Unauthorized {}
     );
+    let vfs_contract = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
     let msg: SubMsg = match &ask_asset_info {
         cw_asset::AssetInfoBase::Native(denom) => {
-            let amount = ask_asset_info.query_balance(&deps.querier, env.contract.address)?;
-            recipient.generate_msg_native(
-                deps.api,
+            let amount =
+                ask_asset_info.query_balance(&deps.querier, env.contract.address.clone())?;
+            recipient.generate_direct_msg(
                 &deps.querier,
-                ADOContract::default().get_app_contract(deps.storage)?,
+                Some(vfs_contract),
                 vec![Coin {
                     denom: denom.to_owned(),
                     amount,
@@ -304,9 +302,8 @@ fn execute_send(
         cw_asset::AssetInfoBase::Cw20(contract_addr) => {
             let amount = ask_asset_info.query_balance(&deps.querier, env.contract.address)?;
             recipient.generate_msg_cw20(
-                deps.api,
                 &deps.querier,
-                ADOContract::default().get_app_contract(deps.storage)?,
+                Some(ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?),
                 Cw20Coin {
                     address: contract_addr.to_string(),
                     amount,
@@ -358,14 +355,13 @@ fn execute_swap_cw20(
     sender: String,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let recipient = recipient.unwrap_or(Recipient::Addr(sender));
+    let recipient = recipient.unwrap_or(Recipient::from_string(sender));
     if let AssetInfo::Cw20(contract_addr) = &ask_asset_info {
         if *contract_addr == offer_token {
             // Send as is.
             let msg = recipient.generate_msg_cw20(
-                deps.api,
                 &deps.querier,
-                ADOContract::default().get_app_contract(deps.storage)?,
+                Some(ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?),
                 Cw20Coin {
                     address: offer_token,
                     amount: offer_amount,

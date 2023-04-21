@@ -782,6 +782,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-std"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-pause-once",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw1155",
+ "cw1155-base",
+ "cw2 0.16.0",
+ "cw20 0.16.0",
+ "cw20-base",
+ "cw721-base",
+ "hex",
+ "lazy_static",
+ "regex",
+ "schemars",
+ "semver",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "andromeda-storage"
 version = "0.1.0"
 dependencies = [

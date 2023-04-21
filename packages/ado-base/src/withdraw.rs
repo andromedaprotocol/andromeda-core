@@ -36,7 +36,8 @@ impl<'a> ADOContract<'a> {
         recipient: Option<Recipient>,
         tokens_to_withdraw: Option<Vec<Withdrawal>>,
     ) -> Result<Response, ContractError> {
-        let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+        let recipient =
+            recipient.unwrap_or_else(|| Recipient::from_string(info.sender.to_string()));
         let sender = info.sender.as_str();
         ensure!(
             self.is_owner_or_operator(deps.storage, sender)?,
@@ -143,7 +144,7 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info,
-            Some(Recipient::Addr("address".to_string())),
+            Some(Recipient::from_string("address".to_string())),
             None,
         );
         assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
@@ -162,7 +163,7 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info,
-            Some(Recipient::Addr("address".to_string())),
+            Some(Recipient::from_string("address".to_string())),
             None,
         );
         assert_eq!(
@@ -195,7 +196,7 @@ mod tests {
                 deps.as_mut(),
                 mock_env(),
                 info,
-                Some(Recipient::Addr("address".to_string())),
+                Some(Recipient::from_string("address".to_string())),
                 None,
             )
             .unwrap();
@@ -238,7 +239,7 @@ mod tests {
                 deps.as_mut(),
                 mock_env(),
                 info,
-                Some(Recipient::Addr("address".to_string())),
+                Some(Recipient::from_string("address".to_string())),
                 None,
             )
             .unwrap();
@@ -290,7 +291,7 @@ mod tests {
                 deps.as_mut(),
                 mock_env(),
                 info,
-                Some(Recipient::Addr("address".to_string())),
+                Some(Recipient::from_string("address".to_string())),
                 Some(vec![Withdrawal {
                     token: "uusd".to_string(),
                     withdrawal_type: None,

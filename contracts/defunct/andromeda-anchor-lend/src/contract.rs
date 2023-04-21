@@ -313,7 +313,8 @@ fn execute_withdraw_collateral(
         }))
     } else {
         // do withdraw message
-        let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+        let recipient =
+            recipient.unwrap_or_else(|| Recipient::from_string(info.sender.to_string()));
         recipient.generate_msg_cw20(
             deps.api,
             &deps.querier,
@@ -354,7 +355,7 @@ fn execute_borrow(
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let recipient = recipient.unwrap_or_else(|| Recipient::from_string(info.sender.to_string()));
 
     let anchor_overseer = contract.get_cached_address(deps.storage, ANCHOR_OVERSEER)?;
     let anchor_market = contract.get_cached_address(deps.storage, ANCHOR_MARKET)?;
@@ -480,7 +481,7 @@ fn execute_withdraw_unbonded(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let recipient = recipient.unwrap_or_else(|| Recipient::from_string(info.sender.to_string()));
     let anchor_bluna_hub = contract.get_cached_address(deps.storage, ANCHOR_BLUNA_HUB)?;
 
     let withdrawable_response: WithdrawableUnbondedResponse = deps.querier.query_wasm_smart(

@@ -1,6 +1,6 @@
 use andromeda_os::{
     messages::{AMPMsg, AMPPkt},
-    recipient::generate_msg_native_kernel,
+    recipient::{generate_msg_native_kernel, Recipient},
 };
 use cosmwasm_std::{
     attr, ensure, entry_point, from_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo,
@@ -14,10 +14,7 @@ use andromeda_finance::timelock::{
     GetLockedFundsResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use common::{
-    ado_base::{
-        hooks::AndromedaHook, recipient::Recipient, AndromedaMsg,
-        InstantiateMsg as BaseInstantiateMsg,
-    },
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, InstantiateMsg as BaseInstantiateMsg},
     encode_binary,
     error::{from_semver, ContractError},
 };
@@ -227,21 +224,20 @@ fn execute_hold_funds(
     condition: Option<EscrowCondition>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let rec = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let rec = recipient.unwrap_or_else(|| Recipient::from_string(info.sender.to_string()));
 
     //Validate recipient address
-    let recipient_addr = rec.get_addr(
-        deps.api,
+    let recipient_addr = rec.get_resolved_address(
         &deps.querier,
-        ADOContract::default().get_app_contract(deps.storage)?,
+        Some(ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?),
     )?;
-    deps.api.addr_validate(&recipient_addr)?;
-    let key = get_key(info.sender.as_str(), &recipient_addr);
+    deps.api.addr_validate(&recipient_addr.as_str())?;
+    let key = get_key(info.sender.as_str(), &recipient_addr.as_str());
     let mut escrow = Escrow {
         coins: info.funds,
         condition,
         recipient: rec,
-        recipient_addr,
+        recipient_addr: recipient_addr.to_string(),
     };
     // Add funds to existing escrow if it exists.
     let existing_escrow = escrows().may_load(deps.storage, key.to_vec())?;
@@ -278,14 +274,14 @@ fn execute_release_funds(
 
     ensure!(!keys.is_empty(), ContractError::NoLockedFunds {});
 
+    let vfs_contract = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
     let mut msgs: Vec<SubMsg> = vec![];
     for key in keys.iter() {
         let funds: Escrow = escrows().load(deps.storage, key.clone())?;
         if !funds.is_locked(&env.block)? {
-            let msg = funds.recipient.generate_msg_native(
-                deps.api,
+            let msg = funds.recipient.generate_direct_msg(
                 &deps.querier,
-                ADOContract::default().get_app_contract(deps.storage)?,
+                Some(vfs_contract.clone()),
                 funds.coins,
             )?;
             msgs.push(msg);
@@ -311,6 +307,7 @@ fn execute_release_specific_funds(
     let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
     let key = get_key(&owner, &recipient);
     let escrow = escrows().may_load(deps.storage, key.clone())?;
+    let vfs_contract = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
     match escrow {
         None => Err(ContractError::NoLockedFunds {}),
         Some(escrow) => {
@@ -319,10 +316,9 @@ fn execute_release_specific_funds(
                 ContractError::FundsAreLocked {}
             );
             escrows().remove(deps.storage, key)?;
-            let msg = escrow.recipient.generate_msg_native(
-                deps.api,
+            let msg = escrow.recipient.generate_direct_msg(
                 &deps.querier,
-                ADOContract::default().get_app_contract(deps.storage)?,
+                Some(vfs_contract),
                 escrow.coins,
             )?;
             Ok(Response::new().add_submessage(msg).add_attributes(vec![
@@ -459,7 +455,7 @@ mod tests {
             attr("sender", info.sender.to_string()),
             attr(
                 "recipient",
-                format!("{:?}", Recipient::Addr(info.sender.to_string())),
+                format!("{:?}", Recipient::from_string(info.sender.to_string())),
             ),
             attr("condition", format!("{:?}", Some(condition.clone()))),
         ]);
@@ -475,7 +471,7 @@ mod tests {
         let expected = Escrow {
             coins: funds,
             condition: Some(condition),
-            recipient: Recipient::Addr(owner.to_string()),
+            recipient: Recipient::from_string(owner.to_string()),
             recipient_addr: owner.to_string(),
         };
 
@@ -492,7 +488,7 @@ mod tests {
 
         let msg = ExecuteMsg::HoldFunds {
             condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
-            recipient: Some(Recipient::Addr("recipient".into())),
+            recipient: Some(Recipient::from_string("recipient")),
         };
 
         env.block.height = 0;
@@ -501,7 +497,7 @@ mod tests {
 
         let msg = ExecuteMsg::HoldFunds {
             condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(100))),
-            recipient: Some(Recipient::Addr("recipient".into())),
+            recipient: Some(Recipient::from_string("recipient")),
         };
 
         env.block.height = 120;
@@ -521,7 +517,7 @@ mod tests {
             coins: vec![coin(200, "uusd"), coin(100, "uluna")],
             // Original expiration remains.
             condition: Some(EscrowCondition::Expiration(Expiration::AtHeight(10))),
-            recipient: Recipient::Addr("recipient".to_string()),
+            recipient: Recipient::from_string("recipient".to_string()),
             recipient_addr: "recipient".to_string(),
         };
 
@@ -598,7 +594,7 @@ mod tests {
     fn test_execute_release_multiple_escrows() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let recipient = Recipient::Addr("recipient".into());
+        let recipient = Recipient::from_string("recipient");
 
         let msg = ExecuteMsg::HoldFunds {
             condition: None,

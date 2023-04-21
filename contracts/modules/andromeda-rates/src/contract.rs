@@ -237,7 +237,7 @@ fn query_deducted_funds(
         }
         let rate = rate_info.rate.validate(&deps.querier)?;
         let fee = calculate_fee(rate, &coin)?;
-        for reciever in rate_info.recipients.iter() {
+        for receiver in rate_info.recipients.iter() {
             if !rate_info.is_additive {
                 deduct_funds(&mut leftover_funds, &fee)?;
                 event = event.add_attribute("deducted", fee.to_string());
@@ -245,24 +245,26 @@ fn query_deducted_funds(
             event = event.add_attribute(
                 "payment",
                 PaymentAttribute {
-                    receiver: reciever.get_addr(
-                        deps.api,
+                    receiver: ADOContract::default().resolve_path(
+                        deps.storage,
                         &deps.querier,
-                        ADOContract::default().get_app_contract(deps.storage)?,
+                        deps.api,
+                        receiver.address,
                     )?,
                     amount: fee.clone(),
                 }
                 .to_string(),
             );
             let msg = if is_native {
-                reciever.generate_msg_native(
-                    deps.api,
+                receiver.generate_msg_native(
+                    vec![fee.clone()],
+                    info.sender,
                     &deps.querier,
                     ADOContract::default().get_app_contract(deps.storage)?,
                     vec![fee.clone()],
                 )?
             } else {
-                reciever.generate_msg_cw20(
+                receiver.generate_msg_cw20(
                     deps.api,
                     &deps.querier,
                     ADOContract::default().get_app_contract(deps.storage)?,
@@ -295,11 +297,12 @@ mod tests {
     use super::*;
     use crate::contract::{execute, instantiate, query};
     use andromeda_modules::rates::{InstantiateMsg, PaymentsResponse, QueryMsg, Rate, RateInfo};
+    use andromeda_os::recipient::Recipient;
     use andromeda_testing::testing::mock_querier::{
         mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT,
     };
+    use common::encode_binary;
     use common::primitive::PrimitivePointer;
-    use common::{ado_base::recipient::Recipient, encode_binary};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{
         coin, coins, from_binary, BankMsg, Coin, CosmosMsg, Decimal, Uint128, WasmMsg,
@@ -317,7 +320,7 @@ mod tests {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: true,
                 description: Some("desc1".to_string()),
-                recipients: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::from_string("".into())],
             },
             RateInfo {
                 rate: Rate::Flat(Coin {
@@ -326,7 +329,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc2".to_string()),
-                recipients: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::from_string("".into())],
             },
         ];
         let msg = InstantiateMsg {
@@ -360,7 +363,7 @@ mod tests {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: true,
                 description: Some("desc1".to_string()),
-                recipients: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::from_string("")],
             },
             RateInfo {
                 rate: Rate::Flat(Coin {
@@ -369,7 +372,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc2".to_string()),
-                recipients: vec![Recipient::Addr("".into())],
+                recipients: vec![Recipient::from_string("")],
             },
         ];
         let msg = InstantiateMsg {
@@ -402,13 +405,13 @@ mod tests {
                 }),
                 is_additive: true,
                 description: Some("desc2".to_string()),
-                recipients: vec![Recipient::Addr("1".into())],
+                recipients: vec![Recipient::from_string("1".into())],
             },
             RateInfo {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: false,
                 description: Some("desc1".to_string()),
-                recipients: vec![Recipient::Addr("2".into())],
+                recipients: vec![Recipient::from_string("2".into())],
             },
             RateInfo {
                 rate: Rate::External(PrimitivePointer {
@@ -417,7 +420,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc3".to_string()),
-                recipients: vec![Recipient::Addr("3".into())],
+                recipients: vec![Recipient::from_string("3".into())],
             },
         ];
         let msg = InstantiateMsg {
@@ -491,13 +494,13 @@ mod tests {
                 }),
                 is_additive: true,
                 description: Some("desc2".to_string()),
-                recipients: vec![Recipient::Addr("1".into())],
+                recipients: vec![Recipient::from_string("1".into())],
             },
             RateInfo {
                 rate: Rate::from(Decimal::percent(10)),
                 is_additive: false,
                 description: Some("desc1".to_string()),
-                recipients: vec![Recipient::Addr("2".into())],
+                recipients: vec![Recipient::from_string("2".into())],
             },
             RateInfo {
                 rate: Rate::External(PrimitivePointer {
@@ -506,7 +509,7 @@ mod tests {
                 }),
                 is_additive: false,
                 description: Some("desc3".to_string()),
-                recipients: vec![Recipient::Addr("3".into())],
+                recipients: vec![Recipient::from_string("3".into())],
             },
         ];
         let msg = InstantiateMsg {

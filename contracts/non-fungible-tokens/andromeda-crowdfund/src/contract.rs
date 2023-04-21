@@ -9,7 +9,7 @@ use andromeda_non_fungible_tokens::{
     },
     cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg, QueryMsg as Cw721QueryMsg, TokenExtension},
 };
-use andromeda_os::recipient::AMPRecipient as Recipient;
+use andromeda_os::recipient::Recipient;
 use andromeda_os::{
     messages::{AMPMsg, AMPPkt},
     recipient::generate_msg_native_kernel,
@@ -372,15 +372,14 @@ fn execute_start_sale(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     let ado_contract = ADOContract::default();
-    let kernel_address = ado_contract.get_kernel_address(deps.storage)?;
-    let vfs_address = ado_contract.get_vfs_address(&deps.querier, kernel_address)?;
+    let vfs_address = ado_contract.get_vfs_address(deps.storage, &deps.querier)?;
     let app_address = ado_contract.get_app_contract(deps.storage)?;
 
     // Validate recipient
     ado_contract.validate_andr_address(
         deps.api,
         &deps.querier,
-        recipient.get_addr()?,
+        recipient.address.clone(),
         app_address,
         vfs_address,
     )?;
@@ -742,9 +741,9 @@ fn transfer_tokens_and_send_funds(
     let mut resp = Response::new();
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
-    let recipient = state.recipient.get_addr()?;
+    let recipient = state.recipient.address.clone();
 
-    let message = state.recipient.get_message()?.unwrap_or_default();
+    let message = state.recipient.get_message().unwrap_or_default();
 
     ensure!(limit > 0, ContractError::LimitMustNotBeZero {});
     // Send the funds if they haven't been sent yet and if all of the tokens have been transferred.

@@ -26,6 +26,55 @@
         "additionalProperties": false
       },
       {
+        "type": "object",
+        "required": [
+          "a_m_p_direct"
+        ],
+        "properties": {
+          "a_m_p_direct": {
+            "type": "object",
+            "required": [
+              "message",
+              "recipient"
+            ],
+            "properties": {
+              "exit_at_error": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "gas_limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "message": {
+                "$ref": "#/definitions/Binary"
+              },
+              "recipient": {
+                "type": "string"
+              },
+              "reply_on": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ReplyOn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Upserts a key address to the kernel, restricted to the owner of the kernel",
         "type": "object",
         "required": [

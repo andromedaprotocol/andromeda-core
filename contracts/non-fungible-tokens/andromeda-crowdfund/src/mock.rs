@@ -5,7 +5,7 @@ use andromeda_non_fungible_tokens::{
     crowdfund::{CrowdfundMintMsg, ExecuteMsg, InstantiateMsg},
     cw721::TokenExtension,
 };
-use andromeda_os::recipient::AMPRecipient as Recipient;
+use andromeda_os::recipient::Recipient;
 use common::ado_base::modules::Module;
 use cosmwasm_std::{Coin, Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};

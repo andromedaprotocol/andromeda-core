@@ -3,7 +3,7 @@ use andromeda_app_contract::mock::{
     mock_andromeda_app, mock_app_instantiate_msg, mock_get_components_msg,
 };
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_os::recipient::AMPRecipient;
+use andromeda_os::recipient::Recipient;
 
 use andromeda_kernel::mock::mock_get_key_address;
 use andromeda_splitter::mock::{
@@ -74,21 +74,27 @@ fn kernel() {
     );
 
     // Generate Splitter Contract
-    let vault_deposit_message =
-        mock_vault_deposit_msg(Some(AMPRecipient::Addr(recipient.to_string())), None, None);
-    let vault_deposit_message2 =
-        mock_vault_deposit_msg(Some(AMPRecipient::Addr(recipient2.to_string())), None, None);
+    let vault_deposit_message = mock_vault_deposit_msg(
+        Some(Recipient::from_string(recipient.to_string())),
+        None,
+        None,
+    );
+    let vault_deposit_message2 = mock_vault_deposit_msg(
+        Some(Recipient::from_string(recipient2.to_string())),
+        None,
+        None,
+    );
 
     let recipients: Vec<AddressPercent> = vec![
         AddressPercent {
-            recipient: AMPRecipient::ado(
+            recipient: Recipient::ado(
                 "/am/app1/vault",
                 Some(to_binary(&vault_deposit_message).unwrap()),
             ),
             percent: Decimal::percent(80),
         },
         AddressPercent {
-            recipient: AMPRecipient::ado(
+            recipient: Recipient::ado(
                 "/am/app1/vault",
                 Some(to_binary(&vault_deposit_message2).unwrap()),
             ),

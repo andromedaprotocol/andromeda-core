@@ -123,7 +123,7 @@ pub fn execute_deposit(
 
     let recipient = match recipient {
         Some(recipient) => recipient,
-        None => Recipient::Addr(info.sender.to_string()),
+        None => Recipient::from_string(info.sender.to_string()),
     };
 
     let payment = &info.funds[0];
@@ -180,7 +180,7 @@ pub fn execute_withdraw(
 
     let aust_address = contract.get_cached_address(deps.storage, ANCHOR_AUST)?;
 
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let recipient = recipient.unwrap_or_else(|| Recipient::from_string(info.sender.to_string()));
 
     let recipient_addr = recipient.get_addr(
         deps.api,
@@ -193,7 +193,7 @@ pub fn execute_withdraw(
     ensure!(authorized, ContractError::Unauthorized {})?;
 
     ensure!(
-        matches!(recipient, Recipient::Addr(_)),
+        matches!(recipient, Recipient::from_string(_)),
         ContractError::InvalidRecipientType {
             msg: "Only recipients of type Addr are allowed as it only specifies the owner of the position to withdraw from".to_string()
         },

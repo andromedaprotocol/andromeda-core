@@ -162,7 +162,7 @@ fn execute_provide_liquidity(
         app_contract,
         pooled_assets.map(|a| a.into()),
         assets,
-        Recipient::Addr(info.sender.to_string()),
+        Recipient::from_string(info.sender.to_string()),
     )?;
 
     // In the case where we want to witdraw the LP token.
@@ -231,7 +231,7 @@ fn execute_withdraw_liquidity(
         contract.is_owner_or_operator(deps.storage, sender)?,
         ContractError::Unauthorized {}
     );
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(sender.to_owned()));
+    let recipient = recipient.unwrap_or_else(|| Recipient::from_string(sender.to_owned()));
     let pair_info = query_pair_given_address(&deps.querier, pair_address)?;
     let lp_token_asset_info = AssetInfo::cw20(pair_info.liquidity_token.clone());
     let total_amount = lp_token_asset_info.query_balance(&deps.querier, env.contract.address)?;
@@ -655,7 +655,7 @@ mod tests {
             None,
             pooled_assets,
             deposited_assets.clone(),
-            Recipient::Addr("sender".to_string()),
+            Recipient::from_string("sender".to_string()),
         )
         .unwrap();
 
@@ -675,7 +675,7 @@ mod tests {
             None,
             pooled_assets,
             deposited_assets,
-            Recipient::Addr("sender".to_string()),
+            Recipient::from_string("sender".to_string()),
         )
         .unwrap();
 
@@ -706,7 +706,7 @@ mod tests {
             None,
             pooled_assets,
             deposited_assets,
-            Recipient::Addr("sender".to_string()),
+            Recipient::from_string("sender".to_string()),
         )
         .unwrap();
 
@@ -726,7 +726,7 @@ mod tests {
             None,
             pooled_assets,
             deposited_assets,
-            Recipient::Addr("sender".to_string()),
+            Recipient::from_string("sender".to_string()),
         )
         .unwrap();
 
@@ -746,7 +746,7 @@ mod tests {
             None,
             pooled_assets,
             deposited_assets,
-            Recipient::Addr("sender".to_string()),
+            Recipient::from_string("sender".to_string()),
         )
         .unwrap();
 
@@ -766,7 +766,7 @@ mod tests {
             None,
             pooled_assets,
             deposited_assets,
-            Recipient::Addr("sender".to_string()),
+            Recipient::from_string("sender".to_string()),
         )
         .unwrap();
 
@@ -786,7 +786,7 @@ mod tests {
             None,
             pooled_assets,
             deposited_assets,
-            Recipient::Addr("sender".to_string()),
+            Recipient::from_string("sender".to_string()),
         )
         .unwrap();
 

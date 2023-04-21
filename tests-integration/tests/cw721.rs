@@ -58,7 +58,7 @@ fn cw721_rates_module() {
     let rates: Vec<RateInfo> = [RateInfo {
         rate: Rate::Flat(coin(100, "uandr")),
         is_additive: true,
-        recipients: [Recipient::Addr(receiver.to_string())].to_vec(),
+        recipients: [Recipient::from_string(receiver.to_string())].to_vec(),
         description: Some("Some test rate".to_string()),
     }]
     .to_vec();

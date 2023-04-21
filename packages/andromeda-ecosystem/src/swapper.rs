@@ -1,5 +1,5 @@
-use andromeda_os::messages::AMPPkt;
-use common::ado_base::{recipient::Recipient, AndromedaMsg, AndromedaQuery};
+use andromeda_os::{messages::AMPPkt, recipient::Recipient};
+use common::ado_base::{AndromedaMsg, AndromedaQuery};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 use cw20::Cw20ReceiveMsg;

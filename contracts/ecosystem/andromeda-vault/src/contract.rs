@@ -4,8 +4,7 @@ use andromeda_ecosystem::vault::{
     BALANCES, STRATEGY_CONTRACT_ADDRESSES,
 };
 
-use andromeda_os::recipient::generate_msg_native_kernel;
-use andromeda_os::recipient::AMPRecipient as Recipient;
+use andromeda_os::recipient::{generate_msg_native_kernel, Recipient};
 
 use andromeda_os::messages::{AMPMsg, AMPPkt};
 use common::app::GetAddress;
@@ -103,7 +102,14 @@ fn execute_andr_receive(
     match msg {
         AndromedaMsg::Receive(None) => {
             let sender = info.sender.to_string();
-            execute_deposit(deps, env, info, None, Some(Recipient::Addr(sender)), None)
+            execute_deposit(
+                deps,
+                env,
+                info,
+                None,
+                Some(Recipient::from_string(sender)),
+                None,
+            )
         }
         _ => ADOContract::default().execute(deps, env, info, msg, execute),
     }
@@ -233,11 +239,11 @@ fn execute_deposit(
 ) -> Result<Response, ContractError> {
     let mut resp = Response::default();
 
-    let app_contract = ADOContract::default().get_app_contract(deps.storage)?;
-    let recipient = recipient.unwrap_or_else(|| Recipient::Addr(info.sender.to_string()));
+    let vfs_contract = ADOContract::default().get_vfs_address(deps.storage, &deps.querier)?;
+    let recipient = recipient.unwrap_or_else(|| Recipient::from_string(info.sender.to_string()));
 
     // Validate address
-    let recipient_addr = recipient.get_validated_addr(deps.api, &deps.querier, app_contract)?;
+    let recipient_addr = recipient.get_resolved_address(&deps.querier, Some(vfs_contract))?;
 
     // If no amount is provided then the sent funds are used as a deposit
     let deposited_funds = if let Some(deposit_amount) = amount {
@@ -298,7 +304,7 @@ fn execute_deposit(
         // Depositing to vault
         None => {
             for funds in deposited_funds {
-                let recipient_addr = recipient.get_addr()?;
+                let recipient_addr = recipient.address.clone();
                 let balance_key = (recipient_addr.as_str(), funds.denom.as_str());
                 let curr_balance = BALANCES
                     .may_load(deps.storage, balance_key)?
@@ -355,8 +361,8 @@ pub fn withdraw_vault(
     let mut withdrawal_amount: Vec<Coin> = Vec::new();
 
     let recipient = recipient
-        .unwrap_or_else(|| Recipient::Addr(info.sender.to_string()))
-        .get_addr()?;
+        .unwrap_or_else(|| Recipient::from_string(info.sender.to_string()))
+        .address;
     for withdrawal in withdrawals {
         let denom = withdrawal.token;
         let balance = BALANCES
@@ -421,7 +427,7 @@ pub fn withdraw_strategy(
     withdrawals: Vec<Withdrawal>,
 ) -> Result<Response, ContractError> {
     let res = Response::default();
-    let recipient = common::ado_base::recipient::Recipient::Addr(info.sender.to_string());
+    let recipient = Recipient::from_string(info.sender.to_string());
     let addr_opt = STRATEGY_CONTRACT_ADDRESSES.may_load(deps.storage, strategy.to_string())?;
     if addr_opt.is_none() {
         return Err(ContractError::InvalidStrategy {
@@ -431,7 +437,7 @@ pub fn withdraw_strategy(
 
     let addr = addr_opt.unwrap();
     let withdraw_exec = to_binary(&ExecuteMsg::AndrReceive(AndromedaMsg::Withdraw {
-        recipient: Some(recipient),
+        recipient: Some(recipient.address),
         tokens_to_withdraw: Some(withdrawals),
     }))?;
     let withdraw_submsg = SubMsg {

@@ -1,5 +1,5 @@
 use andromeda_os::messages::{AMPPkt, ReplyGasExit};
-use andromeda_os::recipient::AMPRecipient;
+use andromeda_os::recipient::Recipient;
 use common::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     error::ContractError,
@@ -10,7 +10,7 @@ use cw_utils::Expiration;
 
 #[cw_serde]
 pub struct AddressPercent {
-    pub recipient: AMPRecipient,
+    pub recipient: Recipient,
     pub percent: Decimal,
 }
 
@@ -114,7 +114,7 @@ mod tests {
         assert_eq!(res, ContractError::EmptyRecipientsList {});
 
         let inadequate_recipients = vec![AddressPercent {
-            recipient: AMPRecipient::from_string(String::from("Some Address")),
+            recipient: Recipient::from_string(String::from("Some Address")),
             percent: Decimal::percent(150),
         }];
         let res = validate_recipient_list(inadequate_recipients).unwrap_err();
@@ -122,11 +122,11 @@ mod tests {
 
         let valid_recipients = vec![
             AddressPercent {
-                recipient: AMPRecipient::from_string(String::from("Some Address")),
+                recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Decimal::percent(50),
             },
             AddressPercent {
-                recipient: AMPRecipient::from_string(String::from("Some Address")),
+                recipient: Recipient::from_string(String::from("Some Address")),
                 percent: Decimal::percent(50),
             },
         ];
