@@ -42,6 +42,18 @@ impl AndrAddr {
         AndrAddr(addr.into())
     }
 
+    /// Validates an `AndrAddr`, to be valid the given address must either be a human readable address or a valid VFS path.
+    ///
+    /// **The existence of the provided path is not validated.**
+    ///
+    /// **If you wish to validate the existence of the path you must use `get_raw_address`.**
+    pub fn validate(&self, api: &dyn Api) -> Result<(), ContractError> {
+        match self.is_vfs_path() || self.is_addr(api) {
+            true => Ok(()),
+            false => Err(ContractError::InvalidAddress {}),
+        }
+    }
+
     /// Retrieves the raw address represented by the AndrAddr.
     ///
     /// If the address is a valid human readable address then that is returned, otherwise it is assumed to be a Andromeda VFS path and is resolved accordingly.
@@ -104,6 +116,10 @@ impl AndrAddr {
     }
 
     /// Gets the chain for a given AndrAddr if it exists
+    ///
+    /// E.g. `ibc://cosmoshub-4/user/app/component` would return `cosmoshub-4`
+    ///
+    /// A human readable address will always return `None`
     pub fn get_chain(&self) -> Option<&str> {
         match self.get_protocol() {
             None => None,
@@ -116,6 +132,10 @@ impl AndrAddr {
     }
 
     /// Gets the protocol for a given AndrAddr if it exists
+    ///
+    /// E.g. `ibc://cosmoshub-4/user/app/component` would return `ibc`
+    ///
+    /// A human readable address will always return `None`
     pub fn get_protocol(&self) -> Option<&str> {
         if !self.is_vfs_path() {
             None
@@ -204,6 +224,25 @@ mod tests {
     use cosmwasm_std::testing::mock_dependencies;
 
     use super::*;
+
+    #[test]
+    fn test_validate() {
+        let deps = mock_dependencies();
+        let addr = AndrAddr("cosmos1...".to_string());
+        assert!(addr.validate(&deps.api).is_ok());
+
+        let addr = AndrAddr("ibc://cosmoshub-4/user/app/component".to_string());
+        assert!(addr.validate(&deps.api).is_ok());
+
+        let addr = AndrAddr("/user/app/component".to_string());
+        assert!(addr.validate(&deps.api).is_ok());
+
+        let addr = AndrAddr("./user/app/component".to_string());
+        assert!(addr.validate(&deps.api).is_ok());
+
+        let addr = AndrAddr("1".to_string());
+        assert!(addr.validate(&deps.api).is_err());
+    }
 
     #[test]
     fn test_is_vfs() {
