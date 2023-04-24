@@ -8,6 +8,7 @@ use crate::os::{kernel::QueryMsg as KernelQueryMsg, vfs::QueryMsg as VFSQueryMes
 #[cw_serde]
 enum AppQueryMsg {
     ComponentExists { name: String },
+    GetAddress { name: String },
 }
 
 impl<'a> ADOContract<'a> {
@@ -123,5 +124,22 @@ impl<'a> ADOContract<'a> {
         let query = VFSQueryMessage::ResolvePath { path };
         let query_resp = querier.query_wasm_smart::<Addr>(vfs_address, &query);
         Ok(query_resp.is_ok())
+    }
+
+    pub fn get_app_component_address(
+        &self,
+        storage: &dyn Storage,
+        querier: &QuerierWrapper,
+        name: impl Into<String>,
+    ) -> Addr {
+        let app_contract = self
+            .get_app_contract(storage)
+            .expect("A problem occured retrieving the associated app contract")
+            .expect("No Associated App Contract");
+
+        let query = AppQueryMsg::GetAddress { name: name.into() };
+        querier
+            .query_wasm_smart(app_contract, &query)
+            .expect("Failed to query app contract for component address")
     }
 }

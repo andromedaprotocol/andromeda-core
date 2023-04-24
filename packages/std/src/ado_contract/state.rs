@@ -62,28 +62,4 @@ impl<'a> ADOContract<'a> {
         let res: Result<T, ContractError> = parse_message(data);
         res.is_ok()
     }
-
-    #[cfg(feature = "vfs")]
-    /// Resolves a given path by querying the VFS address from the kernel and then using the VFS to resolve the given path
-    pub fn resolve_path(
-        &self,
-        storage: &dyn Storage,
-        querier: &QuerierWrapper,
-        api: &dyn Api,
-        path: String,
-    ) -> Result<String, ContractError> {
-        let kernel_address = self.kernel_address.may_load(storage)?;
-        if let Some(kernel_address) = kernel_address {
-            let vfs_address_query = KernelQueryMsg::KeyAddress {
-                key: "vfs".to_string(),
-            };
-            let vfs_address: Addr = querier.query_wasm_smart(kernel_address, &vfs_address_query)?;
-            let resolve_path_query = VFSQueryMsg::ResolvePath { path };
-            let res: String = querier.query_wasm_smart(vfs_address, &resolve_path_query)?;
-            Ok(res)
-        } else {
-            let validated_address = api.addr_validate(&path)?.into_string();
-            Ok(validated_address)
-        }
-    }
 }

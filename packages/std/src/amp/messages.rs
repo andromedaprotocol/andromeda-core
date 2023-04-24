@@ -2,9 +2,11 @@ use crate::error::ContractError;
 use crate::os::{adodb::QueryMsg as ADODBQueryMsg, kernel::QueryMsg as KernelQueryMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, QuerierWrapper,
+    to_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, QuerierWrapper,
     QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
+
+use super::addresses::AndrAddr;
 
 #[cw_serde]
 pub enum ExecuteMsg {
@@ -25,7 +27,7 @@ pub const ADO_DB_KEY: &str = "adodb";
 /// Funds can be attached for an individual message and will be attached accordingly
 pub struct AMPMsg {
     /// The message recipient, can be a contract/wallet address or a namespaced URI
-    pub recipient: String,
+    pub recipient: AndrAddr,
     /// The message to be sent to the recipient
     pub message: Binary,
     /// Any funds to be attached to the message, defaults to an empty vector
@@ -57,7 +59,7 @@ impl AMPMsg {
         gas_limit: Option<u64>,
     ) -> AMPMsg {
         AMPMsg {
-            recipient: recipient.into(),
+            recipient: AndrAddr::from_string(recipient),
             message,
             funds: funds.unwrap_or_default(),
             reply_on: reply_on.unwrap_or(ReplyOn::Always),
@@ -66,40 +68,15 @@ impl AMPMsg {
         }
     }
 
-    /// Gets the address for the recipient
-    pub fn get_recipient_address(
-        &self,
-        api: &dyn Api,
-        querier: &QuerierWrapper,
-        vfs_contract: Option<Addr>,
-    ) -> Result<Addr, ContractError> {
-        if self.recipient.contains('/') {
-            match vfs_contract {
-                Some(vfs_contract) => {
-                    let query = VFSQueryMsg::ResolvePath {
-                        path: self.recipient.clone(),
-                    };
-                    return Ok(querier.query_wasm_smart(vfs_contract, &query)?);
-                }
-                None => return Err(ContractError::InvalidAddress {}),
-            }
-        }
-
-        let addr = api.addr_validate(&self.recipient);
-        match addr {
-            Ok(addr) => Ok(addr),
-            Err(_) => Err(ContractError::InvalidAddress {}),
-        }
-    }
-
-    /// Generates a sub message for the given AMP Message
+    /// Generates an AMPPkt containing the given AMPMsg
     pub fn generate_sub_message(
         &self,
-        contract_addr: impl Into<String>,
+        deps: &Deps,
         origin: String,
         previous_sender: String,
         id: u64,
     ) -> Result<SubMsg, ContractError> {
+        let contract_addr = self.recipient.get_raw_address(deps)?;
         let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()]);
         let msg = to_binary(&ExecuteMsg::AMPReceive(pkt))?;
         Ok(SubMsg {
@@ -178,7 +155,7 @@ impl AMPPkt {
             .messages
             .iter()
             .cloned()
-            .map(|msg| msg.recipient)
+            .map(|msg| msg.recipient.to_string())
             .collect();
         recipients.sort_unstable();
         recipients.dedup();
@@ -193,6 +170,15 @@ impl AMPPkt {
             .filter(|msg| msg.recipient == recipient.clone())
             .collect()
     }
+
+    /// Used to verify that the sender of the AMPPkt is authorised to attach the given origin field.
+    /// A sender is valid if:
+    ///
+    /// 1. The origin matches the sender
+    /// 2. The sender is the kernel
+    /// 3. The sender has a code ID stored within the ADODB (and as such is a valid ADO)
+    ///
+    /// If the sender is not valid, an error is returned
     pub fn verify_origin(
         &self,
         sender: &str,
