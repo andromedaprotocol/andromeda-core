@@ -400,8 +400,7 @@ dependencies = [
 name = "andromeda-finance"
 version = "0.1.0"
 dependencies = [
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-utils 0.16.0",

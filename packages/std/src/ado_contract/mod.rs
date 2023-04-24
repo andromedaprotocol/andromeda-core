@@ -12,6 +12,6 @@ pub mod primitive;
 mod query;
 pub mod state;
 #[cfg(feature = "withdraw")]
-mod withdraw;
+pub mod withdraw;
 
 pub use crate::ado_contract::state::ADOContract;

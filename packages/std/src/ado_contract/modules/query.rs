@@ -1,5 +1,5 @@
+use crate::ado_contract::{modules::Module, ADOContract};
 use crate::error::ContractError;
-use crate::{modules::Module, ADOContract};
 use cosmwasm_std::{Deps, Order, Uint64};
 use cw_storage_plus::Bound;
 
@@ -27,7 +27,7 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modules::Module;
+    use crate::ado_contract::modules::Module;
     use cosmwasm_std::{testing::mock_dependencies, Addr};
 
     #[test]

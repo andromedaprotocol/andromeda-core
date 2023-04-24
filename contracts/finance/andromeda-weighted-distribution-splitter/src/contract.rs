@@ -104,9 +104,7 @@ pub fn execute(
             let splitter = SPLITTER.load(deps.storage)?;
             let mut andr_addresses: Vec<String> = vec![];
             for recipient in splitter.recipients {
-                if let Recipient::ADO(ado_recipient) = recipient.recipient {
-                    andr_addresses.push(ado_recipient.address);
-                }
+                andr_addresses.push(recipient.recipient.address)
             }
             return contract.execute_update_app_contract(deps, info, address, Some(andr_addresses));
         } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {

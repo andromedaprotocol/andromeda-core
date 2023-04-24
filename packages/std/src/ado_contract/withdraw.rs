@@ -1,6 +1,8 @@
 use crate::ado_contract::ADOContract;
-use crate::{ado_base::recipient::Recipient, error::ContractError, withdraw::Withdrawal};
-use cosmwasm_std::{coin, DepsMut, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg};
+use crate::{ado_base::withdraw::Withdrawal, amp::recipient::Recipient, error::ContractError};
+use cosmwasm_std::{
+    coin, ensure, DepsMut, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg,
+};
 use cw20::Cw20Coin;
 
 use cw_asset::AssetInfo;
@@ -41,8 +43,8 @@ impl<'a> ADOContract<'a> {
         let sender = info.sender.as_str();
         ensure!(
             self.is_owner_or_operator(deps.storage, sender)?,
-            ContractError::Unauthorized {},
-        )?;
+            ContractError::Unauthorized {}
+        );
 
         let withdrawals = match tokens_to_withdraw {
             Some(tokens_to_withdraw) => tokens_to_withdraw,
@@ -76,12 +78,7 @@ impl<'a> ADOContract<'a> {
                         None
                     } else {
                         let coin = coin(withdrawal.get_amount(balance)?.u128(), denom);
-                        Some(recipient.generate_msg_native(
-                            deps.api,
-                            &deps.querier,
-                            self.app_contract.may_load(deps.storage)?,
-                            vec![coin],
-                        )?)
+                        Some(recipient.generate_direct_msg(&deps.as_ref(), vec![coin])?)
                     }
                 }
                 AssetInfo::Cw20(contract_addr) => {
@@ -95,14 +92,12 @@ impl<'a> ADOContract<'a> {
                             address: contract_addr_str,
                             amount: withdrawal.get_amount(balance)?,
                         };
-                        Some(recipient.generate_msg_cw20(
-                            deps.api,
-                            &deps.querier,
-                            self.app_contract.may_load(deps.storage)?,
-                            cw20_coin,
-                        )?)
+                        Some(recipient.generate_msg_cw20(&deps.as_ref(), cw20_coin)?)
                     }
                 }
+                &_ => Err(ContractError::InvalidFunds {
+                    msg: "Invalid asset info".to_string(),
+                })?,
             };
             if let Some(msg) = msg {
                 msgs.push(msg);
@@ -112,8 +107,8 @@ impl<'a> ADOContract<'a> {
             !msgs.is_empty(),
             ContractError::InvalidFunds {
                 msg: "No funds to withdraw".to_string(),
-            },
-        )?;
+            }
+        );
         Ok(Response::new()
             .add_submessages(msgs)
             .add_attribute("action", "withdraw")
@@ -124,7 +119,7 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT};
+    use crate::ado_contract::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
         to_binary, Addr, BankMsg, CosmosMsg, WasmMsg,
@@ -133,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_execute_withdraw_not_authorized() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let owner = "owner";
         ADOContract::default()
             .owner
@@ -152,7 +147,7 @@ mod tests {
 
     #[test]
     fn test_execute_withdraw_no_funds() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let owner = "owner";
         ADOContract::default()
             .owner
@@ -176,7 +171,7 @@ mod tests {
 
     #[test]
     fn test_execute_withdraw_native() {
-        let mut deps = mock_dependencies(&[coin(100, "uusd")]);
+        let mut deps = mock_dependencies();
         let owner = "owner";
         ADOContract::default()
             .owner
@@ -263,7 +258,7 @@ mod tests {
 
     #[test]
     fn test_execute_withdraw_selective() {
-        let mut deps = mock_dependencies(&[coin(100, "uusd"), coin(100, "uluna")]);
+        let mut deps = mock_dependencies();
         let owner = "owner";
         ADOContract::default()
             .owner

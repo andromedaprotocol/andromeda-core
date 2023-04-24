@@ -1,6 +1,6 @@
-use andromeda_os::messages::{AMPPkt, ReplyGasExit};
-use andromeda_os::recipient::Recipient;
-use common::{
+use andromeda_std::amp::messages::{AMPPkt, ReplyGasExit};
+use andromeda_std::amp::recipient::Recipient;
+use andromeda_std::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     error::ContractError,
 };

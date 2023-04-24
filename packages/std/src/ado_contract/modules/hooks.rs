@@ -1,7 +1,7 @@
 use cosmwasm_std::{to_binary, Api, Binary, Event, QuerierWrapper, StdError, Storage, SubMsg};
 use serde::de::DeserializeOwned;
 
-use crate::modules::ADOContract;
+use crate::ado_contract::modules::ADOContract;
 use crate::{
     ado_base::{
         hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},

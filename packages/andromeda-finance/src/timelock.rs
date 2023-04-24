@@ -1,11 +1,10 @@
-use andromeda_os::messages::AMPPkt;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
 use cw_utils::Expiration;
 
-use andromeda_os::recipient::Recipient;
-use common::{
+use andromeda_std::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
+    amp::{messages::AMPPkt, recipient::Recipient},
     error::ContractError,
     merge_coins,
 };

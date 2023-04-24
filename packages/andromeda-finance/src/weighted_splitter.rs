@@ -1,6 +1,10 @@
-use andromeda_os::messages::{AMPPkt, ReplyGasExit};
-use andromeda_os::recipient::Recipient;
-use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
+use andromeda_std::{
+    ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
+    amp::{
+        messages::{AMPPkt, ReplyGasExit},
+        recipient::Recipient,
+    },
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_utils::Expiration;

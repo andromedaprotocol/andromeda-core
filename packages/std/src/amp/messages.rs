@@ -2,8 +2,8 @@ use crate::error::ContractError;
 use crate::os::{adodb::QueryMsg as ADODBQueryMsg, kernel::QueryMsg as KernelQueryMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, QuerierWrapper,
-    QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
+    to_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, QueryRequest, ReplyOn,
+    SubMsg, WasmMsg, WasmQuery,
 };
 
 use super::addresses::AndrAddr;

@@ -1,7 +1,6 @@
-use andromeda_os::{messages::AMPPkt, recipient::Recipient};
-use common::{
-    ado_base::{AndromedaMsg, AndromedaQuery},
-    withdraw::WithdrawalType,
+use andromeda_std::{
+    ado_base::{withdraw::WithdrawalType, AndromedaMsg, AndromedaQuery},
+    amp::{messages::AMPPkt, recipient::Recipient},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Uint128, VoteOption};

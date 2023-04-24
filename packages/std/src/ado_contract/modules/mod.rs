@@ -1,6 +1,6 @@
 use std::convert::TryInto;
 
-use crate::state::ADOContract;
+use crate::ado_contract::state::ADOContract;
 use cosmwasm_std::{Api, Order, QuerierWrapper, Response, Storage, Uint64};
 use cw_storage_plus::Bound;
 
@@ -136,7 +136,7 @@ impl<'a> ADOContract<'a> {
 mod tests {
     use super::*;
     use crate::ado_base::modules::{ADDRESS_LIST, AUCTION, RECEIPT};
-    use crate::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
+    use crate::ado_contract::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_info},
         Addr,

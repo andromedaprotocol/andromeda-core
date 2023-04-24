@@ -31,7 +31,7 @@ impl<'a> ADOContract<'a> {
                 );
                 #[cfg(feature = "modules")]
                 {
-                    let mut addresses = addresses;
+                    let mut addresses = addresses.clone();
                     let modules = self.load_modules(deps.storage)?;
                     if !modules.is_empty() {
                         let andr_addresses: Vec<String> =
