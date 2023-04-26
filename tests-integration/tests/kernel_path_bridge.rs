@@ -143,7 +143,14 @@ fn kernel() {
     let recipient = "ibc://juno/user_1/app2/counter";
     let message = to_binary(&CounterExecuteMsg::IncrementOne {}).unwrap();
     let _send_msg = mock_amp_direct(recipient, message.clone(), None, None, None);
-    let amp_msg = vec![AMPMsg::new(recipient, message, None, None, None, None)];
+    let amp_msg = vec![AMPMsg::new(
+        recipient,
+        message,
+        Some(coins(20, "uandr")),
+        None,
+        None,
+        None,
+    )];
     let send_amp_pkt_msg = mock_send_amp_message("juno".to_string(), amp_msg);
     let _res = router
         .execute_contract(

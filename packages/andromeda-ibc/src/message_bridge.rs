@@ -1,10 +1,10 @@
-use andromeda_os::messages::AMPMsg;
+use andromeda_os::{kernel::adjust_recipient_with_protocol, messages::AMPMsg};
 use common::{
     ado_base::{AndromedaMsg, AndromedaQuery},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, Coin, Env, IbcMsg, IbcTimeout, MessageInfo, Timestamp};
+use cosmwasm_std::{ensure, Binary, Coin, Env, IbcMsg, IbcTimeout, MessageInfo, Timestamp};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -64,7 +64,13 @@ pub fn try_ibc_funds(
 
     let mut transfer_msgs = vec![];
     for amp_msg in amp_messages {
-        let recipient = amp_msg.recipient;
+        // We need to parse the recipient
+        let recipient = adjust_recipient_with_protocol(&amp_msg.recipient);
+
+        ensure!(
+            !amp_msg.funds.is_empty(),
+            ContractError::InsufficientFunds {}
+        );
         let new_amount = amp_msg.funds[0].amount.u128();
         let new_coin = Coin::new(new_amount, new_denom.clone());
 

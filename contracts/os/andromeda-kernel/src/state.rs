@@ -1,6 +1,9 @@
 // use andromeda_os::messages::extract_chain;
 use andromeda_ibc::message_bridge::ExecuteMsg as BridgeExecuteMsg;
-use andromeda_os::messages::{extract_chain, AMPMsg};
+use andromeda_os::{
+    kernel::adjust_recipient_with_protocol,
+    messages::{extract_chain, AMPMsg},
+};
 use common::error::ContractError;
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, WasmMsg};
 use cw_storage_plus::Map;
@@ -11,29 +14,6 @@ pub const IBC_BRIDGE: &str = "ibc-bridge";
 pub const WORMHOLE_BRIDGE: &str = "wormhole-bridge";
 
 pub const KERNEL_ADDRESSES: Map<&str, Addr> = Map::new("kernel_addresses");
-
-// turns ibc://juno/path into /path
-fn adjust_recipient_with_protocol(recipient: &str) -> String {
-    let mut count_slashes = 0;
-    let mut last_slash_index = 0;
-
-    // Iterate through each character in the input string
-    for (i, c) in recipient.chars().enumerate() {
-        // If the current character is a slash
-        if c == '/' {
-            count_slashes += 1;
-            last_slash_index = i;
-
-            // If we've found the third slash, exit the loop
-            if count_slashes == 3 {
-                break;
-            }
-        }
-    }
-
-    // Return the substring starting from the last slash index
-    recipient[last_slash_index..].to_owned()
-}
 
 pub fn parse_path(
     recipient: String,
