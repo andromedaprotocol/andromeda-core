@@ -2,6 +2,8 @@
     "cosmywasmy.chainConfigName": "Juno uni-5",
     "rust-analyzer.linkedProjects": [
         "./packages/std/Cargo.toml",
-        "./packages/ado-base/Cargo.toml"
+        "./packages/ado-base/Cargo.toml",
+        "./packages/std/Cargo.toml",
+        "./packages/std/Cargo.toml"
     ]
 }

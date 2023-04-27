@@ -1,5 +1,5 @@
-use andromeda_os::messages::AMPPkt;
-use common::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
+use andromeda_std::ado_base::{modules::Module, AndromedaMsg, AndromedaQuery};
+use andromeda_std::amp::messages::AMPPkt;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw721::Cw721ReceiveMsg;
 

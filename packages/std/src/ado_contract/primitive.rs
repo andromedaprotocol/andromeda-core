@@ -1,9 +1,8 @@
+use crate::ado_base::primitive::GetValueResponse;
 use crate::ado_contract::ADOContract;
 
 use crate::os::kernel::QueryMsg as KernelQueryMsg;
-use crate::{
-    ado_base::query_get, encode_binary, error::ContractError, primitive::GetValueResponse,
-};
+use crate::{ado_base::query_get, encode_binary, error::ContractError};
 use cosmwasm_std::{Addr, DepsMut, Order, QuerierWrapper, Response, Storage};
 use cw_storage_plus::Bound;
 
@@ -105,7 +104,7 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT};
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT};
     use cosmwasm_std::Addr;
 
     #[test]

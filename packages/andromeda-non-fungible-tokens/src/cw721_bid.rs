@@ -1,5 +1,7 @@
-use andromeda_os::messages::AMPPkt;
-use common::ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery};
+use andromeda_std::{
+    ado_base::{hooks::AndromedaHook, AndromedaMsg, AndromedaQuery},
+    amp::messages::AMPPkt,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Event, SubMsg, Uint128};
 use cw721::Expiration;

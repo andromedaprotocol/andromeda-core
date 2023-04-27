@@ -50,7 +50,7 @@ pub fn mock_dependencies_custom(
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
     let custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
-    let mut storage = MockStorage::default();
+    let storage = MockStorage::default();
     let mut deps = OwnedDeps {
         storage,
         api: MockApi::default(),

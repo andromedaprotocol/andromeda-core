@@ -17,7 +17,7 @@ impl<'a> ADOContract<'a> {
         storage: &mut dyn Storage,
         modules: Vec<Module>,
     ) -> Result<Response, ContractError> {
-        self.validate_modules(&modules, &self.ado_type.load(storage)?)?;
+        self.validate_modules(&modules)?;
         let mut resp = Response::new();
         for module in modules {
             let register_response = self.execute_register_module(storage, sender, module, false)?;
@@ -116,16 +116,16 @@ impl<'a> ADOContract<'a> {
         let module_addresses: Vec<String> = self
             .load_modules(storage)?
             .into_iter()
-            .map(|m| m.address)
+            .map(|m| m.address.to_string())
             .collect();
 
         Ok(module_addresses)
     }
 
     /// Validates all modules.
-    fn validate_modules(&self, modules: &[Module], ado_type: &str) -> Result<(), ContractError> {
+    fn validate_modules(&self, modules: &[Module]) -> Result<(), ContractError> {
         for module in modules {
-            module.validate(modules, ado_type)?;
+            module.validate(modules)?;
         }
 
         Ok(())
@@ -135,7 +135,6 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ado_base::modules::{ADDRESS_LIST, AUCTION, RECEIPT};
     use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_info},
@@ -146,12 +145,7 @@ mod tests {
     fn test_execute_register_module_unauthorized() {
         let mut deps = mock_dependencies();
 
-        let module = Module {
-            module_name: Some(ADDRESS_LIST.to_owned()),
-            address: "address".to_string(),
-
-            is_mutable: false,
-        };
+        let module = Module::new("address_list", "address", false);
         let deps_mut = deps.as_mut();
         ADOContract::default()
             .owner
@@ -176,12 +170,7 @@ mod tests {
     fn test_execute_register_module_addr() {
         let mut deps = mock_dependencies();
 
-        let module = Module {
-            module_name: Some(ADDRESS_LIST.to_owned()),
-            address: "address".to_string(),
-
-            is_mutable: false,
-        };
+        let module = Module::new("address_list", "address", false);
         let deps_mut = deps.as_mut();
         ADOContract::default()
             .owner
@@ -217,12 +206,7 @@ mod tests {
     fn test_execute_register_module_validate() {
         let mut deps = mock_dependencies();
 
-        let module = Module {
-            module_name: Some(AUCTION.to_owned()),
-            address: "address".to_string(),
-
-            is_mutable: false,
-        };
+        let module = Module::new("auction", "address", false);
         let deps_mut = deps.as_mut();
         ADOContract::default()
             .owner
@@ -257,12 +241,7 @@ mod tests {
     fn test_execute_alter_module_unauthorized() {
         let mut deps = mock_dependencies();
         let info = mock_info("sender", &[]);
-        let module = Module {
-            module_name: Some(ADDRESS_LIST.to_owned()),
-            address: "address".to_string(),
-
-            is_mutable: true,
-        };
+        let module = Module::new("address_list", "address", true);
         ADOContract::default()
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
@@ -283,12 +262,7 @@ mod tests {
     fn test_execute_alter_module_addr() {
         let mut deps = mock_dependencies();
         let info = mock_info("owner", &[]);
-        let module = Module {
-            module_name: Some(ADDRESS_LIST.to_owned()),
-            address: "address".to_string(),
-
-            is_mutable: true,
-        };
+        let module = Module::new("address_list", "address", true);
 
         ADOContract::default()
             .owner
@@ -304,12 +278,7 @@ mod tests {
             .save(deps.as_mut().storage, &"cw20".to_string())
             .unwrap();
 
-        let module = Module {
-            module_name: Some(RECEIPT.to_owned()),
-            address: "other_address".to_string(),
-
-            is_mutable: true,
-        };
+        let module = Module::new("receipt", "other_address", true);
 
         let res = ADOContract::default()
             .execute_alter_module(deps.as_mut(), info, 1u64.into(), module.clone())
@@ -335,12 +304,7 @@ mod tests {
     fn test_execute_alter_module_immutable() {
         let mut deps = mock_dependencies();
         let info = mock_info("owner", &[]);
-        let module = Module {
-            module_name: Some(ADDRESS_LIST.to_owned()),
-            address: "address".to_string(),
-
-            is_mutable: false,
-        };
+        let module = Module::new("address_list", "address", false);
 
         ADOContract::default()
             .owner
@@ -356,12 +320,7 @@ mod tests {
             .save(deps.as_mut().storage, &"cw20".to_string())
             .unwrap();
 
-        let module = Module {
-            module_name: Some(RECEIPT.to_owned()),
-            address: "other_address".to_string(),
-
-            is_mutable: true,
-        };
+        let module = Module::new("receipt", "other_address", true);
 
         let res =
             ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), module);
@@ -373,12 +332,7 @@ mod tests {
     fn test_execute_alter_module_nonexisting_module() {
         let mut deps = mock_dependencies();
         let info = mock_info("owner", &[]);
-        let module = Module {
-            module_name: Some(AUCTION.to_owned()),
-            address: "address".to_string(),
-
-            is_mutable: true,
-        };
+        let module = Module::new("auction", "address", true);
 
         ADOContract::default()
             .owner
@@ -393,41 +347,6 @@ mod tests {
             ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), module);
 
         assert_eq!(ContractError::ModuleDoesNotExist {}, res.unwrap_err());
-    }
-
-    #[test]
-    fn test_execute_alter_module_incompatible_module() {
-        let mut deps = mock_dependencies();
-        let info = mock_info("owner", &[]);
-        let module = Module {
-            module_name: Some(AUCTION.to_owned()),
-            address: "address".to_string(),
-            is_mutable: true,
-        };
-
-        ADOContract::default()
-            .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
-            .unwrap();
-
-        ADOContract::default()
-            .module_info
-            .save(deps.as_mut().storage, "1", &module)
-            .unwrap();
-        ADOContract::default()
-            .ado_type
-            .save(deps.as_mut().storage, &"cw20".to_string())
-            .unwrap();
-
-        let res =
-            ADOContract::default().execute_alter_module(deps.as_mut(), info, 1u64.into(), module);
-
-        assert_eq!(
-            ContractError::IncompatibleModules {
-                msg: "An Auction module cannot be used for a CW20 ADO".to_string()
-            },
-            res.unwrap_err(),
-        );
     }
 
     #[test]
@@ -454,12 +373,7 @@ mod tests {
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
 
-        let module = Module {
-            module_name: Some(ADDRESS_LIST.to_owned()),
-            address: "address".to_string(),
-
-            is_mutable: true,
-        };
+        let module = Module::new("address_list", "address", true);
 
         ADOContract::default()
             .module_info
@@ -491,12 +405,7 @@ mod tests {
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
 
-        let module = Module {
-            module_name: Some(ADDRESS_LIST.to_owned()),
-            address: "address".to_string(),
-
-            is_mutable: false,
-        };
+        let module = Module::new("address_list", "address", false);
 
         ADOContract::default()
             .module_info
@@ -537,11 +446,7 @@ mod tests {
             .save(
                 deps.as_mut().storage,
                 "1",
-                &Module {
-                    module_name: Some("address_list".to_string()),
-                    address: "address".to_string(),
-                    is_mutable: true,
-                },
+                &Module::new("address_list", "address", true),
             )
             .unwrap();
 
@@ -550,11 +455,7 @@ mod tests {
             .save(
                 deps.as_mut().storage,
                 "2",
-                &Module {
-                    module_name: Some("address_list".to_string()),
-                    address: "a".to_string(),
-                    is_mutable: true,
-                },
+                &Module::new("address_list", "a", true),
             )
             .unwrap();
         let deps_mut = deps.as_mut();

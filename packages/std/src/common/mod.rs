@@ -1,15 +1,14 @@
-pub mod ado_base;
-pub mod ado_contract;
-pub mod amp;
-pub mod common;
+pub mod app;
+pub mod context;
 pub mod error;
-pub mod os;
+pub mod expiration;
+pub mod queries;
+pub mod rates;
+pub mod response;
+pub mod withdraw;
 
-#[cfg(test)]
-pub mod testing;
-
+use crate::ado_base::{AndromedaQuery, QueryMsg};
 use crate::error::ContractError;
-use ado_base::{AndromedaQuery, QueryMsg};
 use cosmwasm_std::{
     ensure, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, QueryRequest,
     SubMsg, WasmQuery,

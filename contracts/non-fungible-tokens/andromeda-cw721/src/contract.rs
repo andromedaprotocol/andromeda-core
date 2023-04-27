@@ -1,7 +1,4 @@
-use andromeda_os::{
-    messages::{AMPMsg, AMPPkt},
-    recipient::generate_msg_native_kernel,
-};
+use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -10,21 +7,21 @@ use cosmwasm_std::{
 };
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
-use ado_base::state::ADOContract;
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
+use andromeda_std::ado_contract::ADOContract;
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use common::{
+use andromeda_std::{
     ado_base::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
-        AndromedaMsg, InstantiateMsg as BaseInstantiateMsg,
+        InstantiateMsg as BaseInstantiateMsg,
     },
+    common::rates::get_tax_amount,
     encode_binary,
     error::{from_semver, ContractError},
-    rates::get_tax_amount,
     Funds,
 };
 use cw721::ContractInfoResponse;
@@ -88,19 +85,19 @@ pub fn execute(
 
     // Do this before the hooks get fired off to ensure that there are no errors from the app
     // address not being fully setup yet.
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
-        if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
-            let andr_minter = ANDR_MINTER.load(execute_env.deps.storage)?;
-            return contract.execute_update_app_contract(
-                execute_env.deps,
-                execute_env.info,
-                address,
-                Some(vec![andr_minter]),
-            );
-        } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
-            return contract.execute_update_owner(execute_env.deps, execute_env.info, address);
-        }
-    }
+    // if let ExecuteMsg::AndrReceive(andr_msg) = msg.clone() {
+    //     if let AndromedaMsg::UpdateAppContract { address } = andr_msg {
+    //         let andr_minter = ANDR_MINTER.load(execute_env.deps.storage)?;
+    //         return contract.execute_update_app_contract(
+    //             execute_env.deps,
+    //             execute_env.info,
+    //             address,
+    //             Some(vec![andr_minter]),
+    //         );
+    //     } else if let AndromedaMsg::UpdateOwner { address } = andr_msg {
+    //         return contract.execute_update_owner(execute_env.deps, execute_env.info, address);
+    //     }
+    // }
 
     //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
     if let ExecuteMsg::AndrReceive(andr_msg) = msg {
@@ -182,7 +179,7 @@ fn handle_amp_packet(
         let mut exec_info = execute_env.info.clone();
         exec_info.funds = funds.clone();
 
-        if msg.exit_at_error {
+        if msg.config.exit_at_error {
             let env = execute_env.env.clone();
             let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
 
@@ -195,13 +192,9 @@ fn handle_amp_packet(
                     .flat_map(|msg| msg.funds.iter().cloned())
                     .collect();
 
-                let kernel_message = generate_msg_native_kernel(
-                    unused_funds,
-                    origin,
-                    previous_sender.to_string(),
-                    adjusted_messages,
-                    kernel_address.into_string(),
-                )?;
+                let new_pkt =
+                    AMPPkt::new(origin, previous_sender.to_string(), adjusted_messages, None);
+                let kernel_message = new_pkt.to_sub_msg(kernel_address, Some(unused_funds), 1)?;
 
                 exec_res.messages.push(kernel_message);
             }
@@ -227,13 +220,14 @@ fn handle_amp_packet(
                             .flat_map(|msg| msg.funds.iter().cloned())
                             .collect();
 
-                        let kernel_message = generate_msg_native_kernel(
-                            unused_funds,
+                        let new_pkt = AMPPkt::new(
                             origin,
                             previous_sender.to_string(),
                             adjusted_messages,
-                            kernel_address.into_string(),
-                        )?;
+                            None,
+                        );
+                        let kernel_message =
+                            new_pkt.to_sub_msg(kernel_address, Some(unused_funds), 1)?;
 
                         exec_res.messages.push(kernel_message);
                     }
@@ -250,13 +244,13 @@ fn handle_amp_packet(
                         let adjusted_messages: Vec<AMPMsg> =
                             packet.messages.iter().skip(1).cloned().collect();
 
-                        let kernel_message = generate_msg_native_kernel(
-                            funds,
+                        let new_pkt = AMPPkt::new(
                             origin,
                             previous_sender.to_string(),
                             adjusted_messages,
-                            kernel_address.into_string(),
-                        )?;
+                            None,
+                        );
+                        let kernel_message = new_pkt.to_sub_msg(kernel_address, Some(funds), 1)?;
                         res = res.add_submessage(kernel_message);
                     }
                 }
@@ -267,36 +261,31 @@ fn handle_amp_packet(
     Ok(res)
 }
 
-fn resolve_minter(
-    storage: &dyn Storage,
-    querier: &QuerierWrapper,
-    api: &dyn Api,
-) -> Result<String, ContractError> {
-    let andr_minter = ANDR_MINTER.load(storage)?;
-    ADOContract::default().resolve_path(storage, querier, api, andr_minter)
+fn resolve_minter(deps: &Deps) -> Result<Addr, ContractError> {
+    let andr_minter = ANDR_MINTER.load(deps.storage)?;
+    andr_minter.get_raw_address(deps)
 }
 
 /// Called before the standing CW721 minting method in order to update the current minting address for the contract
-fn pre_mint(
-    storage: &mut dyn Storage,
-    querier: &QuerierWrapper,
-    api: &dyn Api,
-) -> Result<(), ContractError> {
+fn pre_mint(deps: &mut DepsMut) -> Result<(), ContractError> {
     let cw721_contract = AndrCW721Contract::default();
 
     // Update the minter before minting in case of any changes
-    let andr_minter = resolve_minter(storage, querier, api)?;
-    let addr = api.addr_validate(&andr_minter)?;
-    save_minter(&cw721_contract, storage, &addr)?;
+    let andr_minter = resolve_minter(&deps.as_ref())?;
+    save_minter(&cw721_contract, deps, &andr_minter)?;
 
     Ok(())
 }
 
 fn execute_mint(env: ExecuteEnv, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let ExecuteEnv { deps, info, env } = env;
+    let ExecuteEnv {
+        mut deps,
+        info,
+        env,
+    } = env;
     let cw721_contract = AndrCW721Contract::default();
 
-    pre_mint(deps.storage, &deps.querier, deps.api)?;
+    pre_mint(&mut deps)?;
 
     Ok(cw721_contract.execute(deps, env, info, msg.into())?)
 }
@@ -314,7 +303,7 @@ fn execute_batch_mint(
 
     // Update the minter before minting in case of any changes
     let cw721_contract = AndrCW721Contract::default();
-    pre_mint(deps.storage, &deps.querier, deps.api)?;
+    pre_mint(&mut deps)?;
     for msg in tokens_to_mint {
         let mint_resp = cw721_contract.mint(deps.branch(), env.clone(), info.clone(), msg)?;
         resp = resp
@@ -327,10 +316,10 @@ fn execute_batch_mint(
 
 fn save_minter(
     cw721_contract: &AndrCW721Contract,
-    storage: &mut dyn Storage,
+    deps: &mut DepsMut,
     minter: &Addr,
 ) -> Result<(), ContractError> {
-    Ok(cw721_contract.minter.save(storage, minter)?)
+    Ok(cw721_contract.minter.save(deps.storage, minter)?)
 }
 
 fn execute_transfer(
@@ -372,9 +361,7 @@ fn execute_transfer(
     {
         let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
         let (mut msgs, events, remainder) = base_contract.on_funds_transfer(
-            deps.storage,
-            deps.api,
-            &deps.querier,
+            &deps.as_ref(),
             info.sender.to_string(),
             Funds::Native(agreement_amount.clone()),
             encode_binary(&ExecuteMsg::TransferNft {
@@ -570,7 +557,7 @@ pub fn query_transfer_agreement(
 
 pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
     let minter = ANDR_MINTER.load(deps.storage)?;
-    Ok(minter)
+    Ok(minter.to_string())
 }
 
 fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
@@ -581,9 +568,7 @@ fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractEr
             amount,
         } => {
             let (msgs, events, remainder) = ADOContract::default().on_funds_transfer(
-                deps.storage,
-                deps.api,
-                &deps.querier,
+                &deps,
                 sender,
                 amount,
                 encode_binary(&String::default())?,

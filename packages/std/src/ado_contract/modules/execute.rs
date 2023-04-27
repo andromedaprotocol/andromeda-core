@@ -19,7 +19,7 @@ impl<'a> ADOContract<'a> {
         let resp = Response::default();
         let idx = self.register_module(storage, &module)?;
         if should_validate {
-            self.validate_modules(&self.load_modules(storage)?, &self.ado_type.load(storage)?)?;
+            self.validate_modules(&self.load_modules(storage)?)?;
         }
         Ok(resp
             .add_attribute("action", "register_module")
@@ -40,10 +40,7 @@ impl<'a> ADOContract<'a> {
             ContractError::Unauthorized {}
         );
         self.alter_module(deps.storage, module_idx, &module)?;
-        self.validate_modules(
-            &self.load_modules(deps.storage)?,
-            &self.ado_type.load(deps.storage)?,
-        )?;
+        self.validate_modules(&self.load_modules(deps.storage)?)?;
         Ok(Response::default()
             .add_attribute("action", "alter_module")
             .add_attribute("module_idx", module_idx))

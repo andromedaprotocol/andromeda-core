@@ -1,5 +1,7 @@
-use andromeda_os::messages::AMPPkt;
-use common::ado_base::{AndromedaMsg, AndromedaQuery};
+use andromeda_std::{
+    ado_base::{AndromedaMsg, AndromedaQuery},
+    amp::messages::AMPPkt,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Timestamp};
 use cw721::Cw721ReceiveMsg;

@@ -40,19 +40,9 @@ mod tests {
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
 
-        let module1 = Module {
-            module_name: Some("module_name1".to_string()),
-            address: "address1".to_string(),
+        let module1 = Module::new("module_name1", "address1", true);
 
-            is_mutable: true,
-        };
-
-        let module2 = Module {
-            module_name: Some("module_name2".to_string()),
-            address: "address2".to_string(),
-
-            is_mutable: true,
-        };
+        let module2 = Module::new("module_name2", "address2", true);
 
         contract
             .module_info

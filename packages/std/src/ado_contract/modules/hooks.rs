@@ -1,11 +1,11 @@
-use cosmwasm_std::{to_binary, Api, Binary, Event, QuerierWrapper, StdError, Storage, SubMsg};
+use cosmwasm_std::{Api, Binary, Deps, Event, QuerierWrapper, StdError, Storage, SubMsg};
 use serde::de::DeserializeOwned;
 
 use crate::ado_contract::modules::ADOContract;
 use crate::{
     ado_base::{
         hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
-        modules::{Module, RECEIPT},
+        modules::Module,
     },
     error::ContractError,
     Funds,
@@ -36,27 +36,19 @@ impl<'a> ADOContract<'a> {
     /// Sends the provided hook message to all registered modules
     pub fn on_funds_transfer(
         &self,
-        storage: &dyn Storage,
-        _api: &dyn Api,
-        querier: &QuerierWrapper,
+        deps: &Deps,
         sender: String,
         amount: Funds,
         msg: Binary,
     ) -> Result<(Vec<SubMsg>, Vec<Event>, Funds), ContractError> {
-        let modules: Vec<Module> = self.load_modules(storage)?;
+        let modules: Vec<Module> = self.load_modules(deps.storage)?;
         let mut remainder = amount;
         let mut msgs: Vec<SubMsg> = Vec::new();
         let mut events: Vec<Event> = Vec::new();
-        let mut receipt_module_address: Option<String> = None;
         for module in modules {
-            let module_address = module.address;
-            if module.module_name == Some(RECEIPT.to_string()) {
-                // If receipt module exists we want to make sure we do it last.
-                receipt_module_address = Some(module_address);
-                continue;
-            }
+            let module_address = module.address.get_raw_address(deps)?;
             let mod_resp: Option<OnFundsTransferResponse> = hook_query(
-                querier,
+                &deps.querier,
                 AndromedaHook::OnFundsTransfer {
                     payload: msg.clone(),
                     sender: sender.clone(),
@@ -66,21 +58,6 @@ impl<'a> ADOContract<'a> {
             )?;
             if let Some(mod_resp) = mod_resp {
                 remainder = mod_resp.leftover_funds;
-                msgs = [msgs, mod_resp.msgs].concat();
-                events = [events, mod_resp.events].concat();
-            }
-        }
-        if let Some(receipt_module_address) = receipt_module_address {
-            let mod_resp: Option<OnFundsTransferResponse> = hook_query(
-                querier,
-                AndromedaHook::OnFundsTransfer {
-                    payload: to_binary(&events)?,
-                    sender,
-                    amount: remainder.clone(),
-                },
-                receipt_module_address,
-            )?;
-            if let Some(mod_resp) = mod_resp {
                 msgs = [msgs, mod_resp.msgs].concat();
                 events = [events, mod_resp.events].concat();
             }
@@ -113,7 +90,7 @@ fn process_module_response<T>(
 fn hook_query<T: DeserializeOwned>(
     querier: &QuerierWrapper,
     hook_msg: AndromedaHook,
-    addr: String,
+    addr: impl Into<String>,
 ) -> Result<Option<T>, ContractError> {
     let msg = HookMsg::AndrHook(hook_msg);
     let mod_resp: Result<Option<T>, StdError> = querier.query_wasm_smart(addr, &msg);

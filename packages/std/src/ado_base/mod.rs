@@ -5,6 +5,8 @@ pub mod kernel_address;
 pub mod modules;
 pub mod operators;
 pub mod ownership;
+#[cfg(feature = "primitive")]
+pub mod primitive;
 pub mod version;
 #[cfg(feature = "withdraw")]
 pub mod withdraw;

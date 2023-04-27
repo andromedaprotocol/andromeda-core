@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter, Result as FMTResult};
 
 use crate::error::ContractError;
 use crate::{ado_contract::ADOContract, os::vfs::vfs_resolve_path};
-use cosmwasm_std::{Addr, Api, Deps};
+use cosmwasm_std::{Addr, Api, Deps, Storage};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -60,20 +60,9 @@ impl AndrAddr {
     ///
     /// If the address is assumed to be a VFS path and no VFS contract address is provided then an appropriate error is returned.
     pub fn get_raw_address(&self, deps: &Deps) -> Result<Addr, ContractError> {
-        match deps.api.addr_validate(&self.0) {
-            // Assume to be a valid address
-            Ok(addr) => Ok(addr),
-            // Otherwise assume to be VFS path
-            Err(..) => {
-                let contract = ADOContract::default();
-                if self.0.starts_with("./") {
-                    Ok(contract.get_app_component_address(deps.storage, &deps.querier, &self.0))
-                } else {
-                    let vfs_addr = contract.get_vfs_address(deps.storage, &deps.querier)?;
-                    vfs_resolve_path(&self.0, vfs_addr, &deps.querier)
-                }
-            }
-        }
+        let contract = ADOContract::default();
+        let vfs_contract = contract.get_vfs_address(deps.storage, &deps.querier)?;
+        self.get_raw_address_from_vfs(deps, vfs_contract)
     }
 
     /// Retrieves the raw address represented by the AndrAddr from the given VFS contract.
@@ -84,16 +73,33 @@ impl AndrAddr {
     pub fn get_raw_address_from_vfs(
         &self,
         deps: &Deps,
-        vfs_contract: String,
+        vfs_contract: impl Into<String>,
     ) -> Result<Addr, ContractError> {
-        match deps.api.addr_validate(&self.0) {
-            // Assume to be a valid address
-            Ok(addr) => Ok(addr),
-            // Otherwise assume to be VFS path
-            Err(..) => {
+        match self.is_vfs_path() {
+            false => Ok(deps.api.addr_validate(&self.0)?),
+            true => {
+                // Convert local path to VFS path before querying
+                let valid_vfs_path = self.local_path_to_vfs_path(deps.storage)?;
                 let vfs_addr = Addr::unchecked(vfs_contract);
-                vfs_resolve_path(&self.0, vfs_addr, &deps.querier)
+                vfs_resolve_path(&valid_vfs_path, vfs_addr, &deps.querier)
             }
+        }
+    }
+
+    /// Converts a local path to a valid VFS path by replacing `./` with the app contract address
+    fn local_path_to_vfs_path(&self, storage: &dyn Storage) -> Result<AndrAddr, ContractError> {
+        match self.is_local_path() {
+            true => {
+                let app_contract = ADOContract::default().get_app_contract(storage)?;
+                match app_contract {
+                    None => Err(ContractError::AppContractNotSpecified {}),
+                    Some(app_contract) => Ok(AndrAddr(
+                        self.0
+                            .replace("./", &format!("{}/", app_contract.to_string()).to_string()),
+                    )),
+                }
+            }
+            false => Ok(self.clone()),
         }
     }
 

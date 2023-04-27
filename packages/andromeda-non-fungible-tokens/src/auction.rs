@@ -1,6 +1,6 @@
-use andromeda_os::messages::AMPPkt;
-use common::{
+use andromeda_std::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
+    amp::messages::AMPPkt,
     OrderBy,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};

@@ -255,12 +255,11 @@ dependencies = [
 name = "andromeda-cw721"
 version = "0.2.1"
 dependencies = [
- "ado-base",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
  "andromeda-os",
+ "andromeda-std",
  "andromeda-testing",
- "common",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -616,8 +615,7 @@ dependencies = [
 name = "andromeda-non-fungible-tokens"
 version = "0.1.0"
 dependencies = [
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-utils 0.16.0",
