@@ -119,7 +119,7 @@ impl<'a> ADOContract<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ado_contract::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT};
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
         to_binary, Addr, BankMsg, CosmosMsg, WasmMsg,

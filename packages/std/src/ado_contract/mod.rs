@@ -3,8 +3,8 @@ mod auth;
 mod execute;
 #[cfg(feature = "instantiate")]
 mod instantiate;
-#[cfg(test)]
-mod mock_querier;
+// #[cfg(test)]
+// mod mock_querier;
 #[cfg(feature = "modules")]
 pub mod modules;
 #[cfg(feature = "primitive")]

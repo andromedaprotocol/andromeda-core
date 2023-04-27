@@ -201,7 +201,7 @@ impl<'a> ADOContract<'a> {
 mod tests {
     use super::*;
     use crate::ado_base::modules::Module;
-    use crate::ado_contract::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
         Addr, Uint64,
@@ -246,20 +246,12 @@ mod tests {
         let module = Module {
             module_name: Some("module".to_owned()),
             address: "z".to_string(),
-
             is_mutable: false,
         };
 
         let msg = AndromedaMsg::RegisterModule { module };
 
         let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
-
-        // assert_eq!(
-        //     ContractError::InvalidComponent {
-        //         name: "z".to_string()
-        //     },
-        //     res.unwrap_err()
-        // );
         assert!(res.is_err())
     }
 

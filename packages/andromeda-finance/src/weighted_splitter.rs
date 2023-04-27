@@ -1,7 +1,7 @@
 use andromeda_std::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
     amp::{
-        messages::{AMPPkt, ReplyGasExit},
+        messages::{AMPMsgConfig, AMPPkt},
         recipient::Recipient,
     },
 };
@@ -62,7 +62,7 @@ pub enum ExecuteMsg {
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {
-        reply_gas_exit: Option<ReplyGasExit>,
+        reply_gas_exit: Option<AMPMsgConfig>,
         packet: Option<AMPPkt>,
     },
 }

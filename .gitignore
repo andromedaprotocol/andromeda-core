@@ -3,4 +3,4 @@ artifacts/
 target/
 .DS_Store/
 artifacts*
-.vs_code/
+.vscode*

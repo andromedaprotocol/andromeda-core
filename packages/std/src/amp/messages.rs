@@ -1,27 +1,63 @@
+use crate::ado_contract::ADOContract;
+use crate::encode_binary;
 use crate::error::ContractError;
-use crate::os::{adodb::QueryMsg as ADODBQueryMsg, kernel::QueryMsg as KernelQueryMsg};
+use crate::os::{
+    adodb::QueryMsg as ADODBQueryMsg, kernel::ExecuteMsg as KernelExecuteMsg,
+    kernel::QueryMsg as KernelQueryMsg,
+};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, QueryRequest, ReplyOn,
-    SubMsg, WasmMsg, WasmQuery,
+    to_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, MessageInfo,
+    QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
 };
 
 use super::addresses::AndrAddr;
+use super::ADO_DB_KEY;
 
+/// Exposed for ease of serialisation.
 #[cw_serde]
 pub enum ExecuteMsg {
+    /// The common message enum to receive an AMP message within a contract.
     AMPReceive(AMPPkt),
 }
 
+/// The configuration of the message to be sent.
+///
+/// Used when a sub message is generated for the given AMP Msg (only used in the case of Wasm Messages).
 #[cw_serde]
-pub enum VFSQueryMsg {
-    ResolvePath { path: String },
+pub struct AMPMsgConfig {
+    /// When the message should reply, defaults to Always
+    pub reply_on: ReplyOn,
+    /// Determines whether the operation should terminate or proceed upon a failed message
+    pub exit_at_error: bool,
+    /// An optional imposed gas limit for the message
+    pub gas_limit: Option<u64>,
 }
-pub const ADO_DB_KEY: &str = "adodb";
+
+impl AMPMsgConfig {
+    #[inline]
+    pub fn new(reply_on: ReplyOn, exit_at_error: bool, gas_limit: Option<u64>) -> AMPMsgConfig {
+        AMPMsgConfig {
+            reply_on,
+            exit_at_error,
+            gas_limit,
+        }
+    }
+}
+
+impl Default for AMPMsgConfig {
+    #[inline]
+    fn default() -> AMPMsgConfig {
+        AMPMsgConfig {
+            reply_on: ReplyOn::Always,
+            exit_at_error: true,
+            gas_limit: None,
+        }
+    }
+}
 
 #[cw_serde]
 /// This struct defines how the kernel parses and relays messages between ADOs
-/// It contains a simple recipient string which may use our namespacing implementation or a simple contract address
 /// If the desired recipient is via IBC then namespacing must be employed
 /// The attached message must be a binary encoded execute message for the receiving ADO
 /// Funds can be attached for an individual message and will be attached accordingly
@@ -33,19 +69,7 @@ pub struct AMPMsg {
     /// Any funds to be attached to the message, defaults to an empty vector
     pub funds: Vec<Coin>,
     /// When the message should reply, defaults to Always
-    pub reply_on: ReplyOn,
-    /// Determines whether the operation should terminate or proceed upon a failed message
-    pub exit_at_error: bool,
-    /// An optional imposed gas limit for the message
-    pub gas_limit: Option<u64>,
-}
-
-pub fn extract_chain(pathname: &str) -> Option<&str> {
-    let start = pathname.find('/')? + 2;
-    let end = pathname[start..]
-        .find('/')
-        .unwrap_or(pathname[start..].len());
-    Some(&pathname[start..start + end])
+    pub config: AMPMsgConfig,
 }
 
 impl AMPMsg {
@@ -54,35 +78,31 @@ impl AMPMsg {
         recipient: impl Into<String>,
         message: Binary,
         funds: Option<Vec<Coin>>,
-        reply_on: Option<ReplyOn>,
-        exit_at_error: Option<bool>,
-        gas_limit: Option<u64>,
+        config: Option<AMPMsgConfig>,
     ) -> AMPMsg {
         AMPMsg {
             recipient: AndrAddr::from_string(recipient),
             message,
             funds: funds.unwrap_or_default(),
-            reply_on: reply_on.unwrap_or(ReplyOn::Always),
-            exit_at_error: exit_at_error.unwrap_or(true),
-            gas_limit,
+            config: config.unwrap_or_default(),
         }
     }
 
     /// Generates an AMPPkt containing the given AMPMsg
-    pub fn generate_sub_message(
+    pub fn generate_amp_pkt(
         &self,
         deps: &Deps,
-        origin: String,
-        previous_sender: String,
+        origin: impl Into<String>,
+        previous_sender: impl Into<String>,
         id: u64,
     ) -> Result<SubMsg, ContractError> {
         let contract_addr = self.recipient.get_raw_address(deps)?;
-        let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()]);
+        let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()], None);
         let msg = to_binary(&ExecuteMsg::AMPReceive(pkt))?;
         Ok(SubMsg {
             id,
-            reply_on: self.reply_on.clone(),
-            gas_limit: self.gas_limit,
+            reply_on: self.config.reply_on.clone(),
+            gas_limit: self.config.gas_limit,
             msg: CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.into(),
                 msg,
@@ -93,31 +113,16 @@ impl AMPMsg {
 }
 
 #[cw_serde]
-/// Allows the user to choose between bypassing or using the kernel
-pub enum MessagePath {
-    Direct(),
-    Kernel(ReplyGasExit),
-}
-
-#[cw_serde]
-pub struct ReplyGasExit {
-    pub reply_on: Option<ReplyOn>,
-    pub gas_limit: Option<u64>,
-    pub exit_at_error: Option<bool>,
-}
-
-#[cw_serde]
 /// An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating
 /// It contains an original sender, if used for authorisation the sender must be authorised
 /// The previous sender is the one who sent the message
 /// A packet may contain several messages which allows for message batching
 pub struct AMPPkt {
-    /// The original sender of the packet, immutable, can be retrieved with `AMPPkt.get_origin`
-    origin: String,
-    /// The previous sender of the packet, immutable, can be retrieved with `AMPPkt.get_previous_sender`
-    previous_sender: String,
     /// Any messages associated with the packet
     pub messages: Vec<AMPMsg>,
+    origin: String,
+    origin_username: Option<AndrAddr>,
+    pub previous_sender: String,
 }
 
 impl AMPPkt {
@@ -126,9 +131,11 @@ impl AMPPkt {
         origin: impl Into<String>,
         previous_sender: impl Into<String>,
         messages: Vec<AMPMsg>,
+        origin_username: Option<AndrAddr>,
     ) -> AMPPkt {
         AMPPkt {
             origin: origin.into(),
+            origin_username,
             previous_sender: previous_sender.into(),
             messages,
         }
@@ -179,14 +186,9 @@ impl AMPPkt {
     /// 3. The sender has a code ID stored within the ADODB (and as such is a valid ADO)
     ///
     /// If the sender is not valid, an error is returned
-    pub fn verify_origin(
-        &self,
-        sender: &str,
-        kernel_address: &str,
-        origin: &str,
-        deps: Deps,
-    ) -> Result<(), ContractError> {
-        if sender == origin || sender == kernel_address {
+    pub fn verify_origin(&self, info: &MessageInfo, deps: &Deps) -> Result<(), ContractError> {
+        let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+        if info.sender.to_string() == self.origin || info.sender == kernel_address.to_string() {
             Ok(())
         } else {
             let adodb_address: Addr =
@@ -201,7 +203,7 @@ impl AMPPkt {
             let contract_info: ContractInfoResponse =
                 deps.querier
                     .query(&QueryRequest::Wasm(WasmQuery::ContractInfo {
-                        contract_addr: sender.to_owned(),
+                        contract_addr: info.sender.to_string(),
                     }))?;
 
             let sender_code_id = contract_info.code_id;
@@ -223,46 +225,156 @@ impl AMPPkt {
         }
     }
 
+    /// Verifies the origin of the AMPPkt and returns the origin if it is valid
     pub fn get_verified_origin(
         &self,
-        sender: &str,
-        kernel_address: &str,
-        deps: Deps,
+        info: &MessageInfo,
+        deps: &Deps,
     ) -> Result<String, ContractError> {
         let origin = self.get_origin();
-        let res = self.verify_origin(sender, kernel_address, origin.as_str(), deps);
+        let res = self.verify_origin(info, deps);
         match res {
             Ok(_) => Ok(origin),
             Err(err) => Err(err),
         }
     }
+
+    /// Generates a SubMsg to send the AMPPkt to the kernel
+    pub fn to_sub_msg(
+        &self,
+        kernel_address: impl Into<String>,
+        funds: Option<Vec<Coin>>,
+        id: u64,
+    ) -> Result<SubMsg, ContractError> {
+        let sub_msg = SubMsg::reply_always(
+            WasmMsg::Execute {
+                contract_addr: kernel_address.into(),
+                msg: encode_binary(&KernelExecuteMsg::AMPReceive(self.clone()))?,
+                funds: funds.unwrap_or(vec![]),
+            },
+            id,
+        );
+        Ok(sub_msg)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use cosmwasm_std::testing::{mock_dependencies, mock_info};
 
-    fn extract_chain(s: &str) -> Option<&str> {
-        let juno_start = s.find('/')? + 2;
-        let juno_end = s[juno_start..].find('/').unwrap_or(s[juno_start..].len());
-        Some(&s[juno_start..juno_start + juno_end])
+    use crate::testing::mock_querier::mock_dependencies_custom;
+
+    use super::*;
+
+    #[test]
+    fn test_generate_amp_pkt() {
+        let deps = mock_dependencies();
+        let msg = AMPMsg::new("test", Binary::default(), None, None);
+
+        let sub_msg = msg
+            .generate_amp_pkt(&deps.as_ref(), "origin", "previoussender", 1)
+            .unwrap();
+
+        let expected_msg = ExecuteMsg::AMPReceive(AMPPkt::new(
+            "origin",
+            "previoussender",
+            vec![AMPMsg::new("test", Binary::default(), None, None)],
+            None,
+        ));
+        assert_eq!(sub_msg.id, 1);
+        assert_eq!(sub_msg.reply_on, ReplyOn::Always);
+        assert_eq!(sub_msg.gas_limit, None);
+        assert_eq!(
+            sub_msg.msg,
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "test".to_string(),
+                msg: to_binary(&expected_msg).unwrap(),
+                funds: vec![],
+            })
+        );
     }
 
     #[test]
-    fn test_explicit_with_protocol() {
-        let s = "ibc://juno/path";
-        let res = extract_chain(s);
-        assert_eq!("juno", res.unwrap())
+    fn test_get_unique_recipients() {
+        let msg = AMPMsg::new("test", Binary::default(), None, None);
+        let msg2 = AMPMsg::new("test2", Binary::default(), None, None);
+
+        let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2], None);
+
+        let recipients = pkt.get_unique_recipients();
+        assert_eq!(recipients.len(), 2);
+        assert_eq!(recipients[0], "test".to_string());
+        assert_eq!(recipients[1], "test2".to_string());
+
+        pkt.add_message(AMPMsg::new("test", Binary::default(), None, None));
+        let recipients = pkt.get_unique_recipients();
+        assert_eq!(recipients.len(), 2);
+        assert_eq!(recipients[0], "test".to_string());
+        assert_eq!(recipients[1], "test2".to_string());
     }
+
     #[test]
-    fn test_explicit_without_protocol() {
-        let s = "juno/path";
-        let res = s.split('/').next();
-        assert_eq!("juno", res.unwrap())
+    fn test_get_messages_for_recipient() {
+        let msg = AMPMsg::new("test", Binary::default(), None, None);
+        let msg2 = AMPMsg::new("test2", Binary::default(), None, None);
+
+        let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2], None);
+
+        let messages = pkt.get_messages_for_recipient("test".to_string());
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].recipient.to_string(), "test".to_string());
+
+        let messages = pkt.get_messages_for_recipient("test2".to_string());
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].recipient.to_string(), "test2".to_string());
+
+        pkt.add_message(AMPMsg::new("test", Binary::default(), None, None));
+        let messages = pkt.get_messages_for_recipient("test".to_string());
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].recipient.to_string(), "test".to_string());
+        assert_eq!(messages[1].recipient.to_string(), "test".to_string());
     }
+
     #[test]
-    fn test_explicit_without_protocol_without_chain() {
-        let s = "/path";
-        let res = s.split('/').next();
-        assert!(res.unwrap().is_empty())
+    fn test_verify_origin() {
+        let deps = mock_dependencies_custom(&[]);
+        let msg = AMPMsg::new("test", Binary::default(), None, None);
+
+        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()], None);
+
+        let info = mock_info("validaddress", &[]);
+        let res = pkt.verify_origin(&info, &deps.as_ref());
+        assert!(res.is_ok());
+
+        let info = mock_info("fake_address", &[]);
+        let res = pkt.verify_origin(&info, &deps.as_ref());
+        assert!(res.is_err());
+
+        let offchain_pkt = AMPPkt::new("fake_address", "fake_address", vec![msg], None);
+        let res = offchain_pkt.verify_origin(&info, &deps.as_ref());
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_to_sub_msg() {
+        let msg = AMPMsg::new("test", Binary::default(), None, None);
+
+        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()], None);
+
+        let sub_msg = pkt.to_sub_msg("kernel", None, 1).unwrap();
+
+        let expected_msg =
+            ExecuteMsg::AMPReceive(AMPPkt::new("origin", "previoussender", vec![msg], None));
+        assert_eq!(sub_msg.id, 1);
+        assert_eq!(sub_msg.reply_on, ReplyOn::Always);
+        assert_eq!(sub_msg.gas_limit, None);
+        assert_eq!(
+            sub_msg.msg,
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "kernel".to_string(),
+                msg: to_binary(&expected_msg).unwrap(),
+                funds: vec![],
+            })
+        );
     }
 }

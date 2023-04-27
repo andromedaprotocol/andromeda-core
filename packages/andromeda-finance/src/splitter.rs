@@ -1,4 +1,4 @@
-use andromeda_std::amp::messages::{AMPPkt, ReplyGasExit};
+use andromeda_std::amp::messages::{AMPMsgConfig, AMPPkt};
 use andromeda_std::amp::recipient::Recipient;
 use andromeda_std::{
     ado_base::{modules::Module, AndromedaMsg, AndromedaQuery},
@@ -52,7 +52,7 @@ pub enum ExecuteMsg {
     },
     /// Divides any attached funds to the message amongst the recipients list.
     Send {
-        reply_gas: ReplyGasExit,
+        reply_gas: AMPMsgConfig,
         packet: Option<AMPPkt>,
     },
 

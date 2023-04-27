@@ -1,12 +1,8 @@
+use super::{addresses::AndrAddr, messages::AMPMsg};
 use crate::{encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
-
-use crate::amp::messages::{AMPMsg, AMPPkt};
-use crate::os::kernel::ExecuteMsg as KernelExecuteMsg;
-
-use super::addresses::AndrAddr;
 
 /// A simple struct used for inter-contract communication. The struct can be used in two ways:
 ///
@@ -104,26 +100,134 @@ impl Recipient {
             self.msg.clone().unwrap_or_default(),
             funds,
             None,
-            None,
-            None,
         )
     }
 }
 
-pub fn generate_msg_native_kernel(
-    funds: Vec<Coin>,
-    origin: String,
-    previous_sender: String,
-    messages: Vec<AMPMsg>,
-    kernel_address: String,
-) -> Result<SubMsg, ContractError> {
-    Ok(SubMsg::new(WasmMsg::Execute {
-        contract_addr: kernel_address,
-        msg: encode_binary(&KernelExecuteMsg::AMPReceive(AMPPkt::new(
-            origin,
-            previous_sender,
-            messages,
-        )))?,
-        funds,
-    }))
+#[cfg(test)]
+mod test {
+    use cosmwasm_std::{from_binary, testing::mock_dependencies, Uint128};
+
+    use super::*;
+
+    #[test]
+    fn test_generate_direct_msg() {
+        let deps = mock_dependencies();
+        let recipient = Recipient::from_string("test");
+        let funds = vec![Coin {
+            denom: "test".to_string(),
+            amount: Uint128::from(100u128),
+        }];
+        let msg = recipient
+            .generate_direct_msg(&deps.as_ref(), funds.clone())
+            .unwrap();
+        match msg.msg {
+            CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
+                assert_eq!(to_address, "test");
+                assert_eq!(amount, funds);
+            }
+            _ => panic!("Unexpected message type"),
+        }
+
+        let recipient = Recipient::new("test", Some(Binary::from(b"test".to_vec())));
+        let msg = recipient
+            .generate_direct_msg(&deps.as_ref(), funds.clone())
+            .unwrap();
+        match msg.msg {
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg,
+                funds: msg_funds,
+            }) => {
+                assert_eq!(contract_addr, "test");
+                assert_eq!(msg, Binary::from(b"test".to_vec()));
+                assert_eq!(msg_funds, funds);
+            }
+            _ => panic!("Unexpected message type"),
+        }
+    }
+
+    #[test]
+    fn test_generate_msg_cw20() {
+        let deps = mock_dependencies();
+        let recipient = Recipient::from_string("test");
+        let cw20_coin = Cw20Coin {
+            address: "test".to_string(),
+            amount: Uint128::from(100u128),
+        };
+        let msg = recipient
+            .generate_msg_cw20(&deps.as_ref(), cw20_coin.clone())
+            .unwrap();
+        match msg.msg {
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg,
+                funds,
+            }) => {
+                assert_eq!(contract_addr, "test");
+                assert_eq!(funds, vec![] as Vec<Coin>);
+                match from_binary(&msg).unwrap() {
+                    Cw20ExecuteMsg::Transfer { recipient, amount } => {
+                        assert_eq!(recipient, "test");
+                        assert_eq!(amount, cw20_coin.amount);
+                    }
+                    _ => panic!("Unexpected message type"),
+                }
+            }
+            _ => panic!("Unexpected message type"),
+        }
+
+        let recipient = Recipient::new("test", Some(Binary::from(b"test".to_vec())));
+        let msg = recipient
+            .generate_msg_cw20(&deps.as_ref(), cw20_coin.clone())
+            .unwrap();
+        match msg.msg {
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg,
+                funds,
+            }) => {
+                assert_eq!(contract_addr, "test");
+                assert_eq!(funds, vec![] as Vec<Coin>);
+                match from_binary(&msg).unwrap() {
+                    Cw20ExecuteMsg::Send {
+                        contract,
+                        amount,
+                        msg: send_msg,
+                    } => {
+                        assert_eq!(contract, "test");
+                        assert_eq!(amount, cw20_coin.amount);
+                        assert_eq!(send_msg, Binary::from(b"test".to_vec()));
+                    }
+                    _ => panic!("Unexpected message type"),
+                }
+            }
+            _ => panic!("Unexpected message type"),
+        }
+    }
+
+    #[test]
+    fn test_generate_amp_msg() {
+        let recipient = Recipient::from_string("test");
+        let msg = recipient.generate_amp_msg(None);
+        assert_eq!(msg.recipient, "test");
+        assert_eq!(msg.message, Binary::default());
+        assert_eq!(msg.funds, vec![] as Vec<Coin>);
+
+        let recipient = Recipient::new("test", Some(Binary::from(b"test".to_vec())));
+        let msg = recipient.generate_amp_msg(None);
+        assert_eq!(msg.recipient, "test");
+        assert_eq!(msg.message, Binary::from(b"test".to_vec()));
+        assert_eq!(msg.funds, vec![] as Vec<Coin>);
+
+        let funds = vec![Coin {
+            denom: "test".to_string(),
+            amount: Uint128::from(100u128),
+        }];
+        let recipient = Recipient::from_string("test");
+        let msg = recipient.generate_amp_msg(Some(funds.clone()));
+        assert_eq!(msg.recipient, "test");
+        assert_eq!(msg.message, Binary::default());
+        assert_eq!(msg.funds, funds);
+    }
 }

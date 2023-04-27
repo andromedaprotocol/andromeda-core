@@ -136,7 +136,7 @@ impl<'a> ADOContract<'a> {
 mod tests {
     use super::*;
     use crate::ado_base::modules::{ADDRESS_LIST, AUCTION, RECEIPT};
-    use crate::ado_contract::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
+    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_info},
         Addr,

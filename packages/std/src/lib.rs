@@ -4,6 +4,9 @@ pub mod amp;
 pub mod error;
 pub mod os;
 
+#[cfg(test)]
+pub mod testing;
+
 use crate::error::ContractError;
 use ado_base::{AndromedaQuery, QueryMsg};
 use cosmwasm_std::{
