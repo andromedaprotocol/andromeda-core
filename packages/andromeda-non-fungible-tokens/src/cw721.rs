@@ -1,7 +1,8 @@
 use andromeda_std::{
     ado_base::primitive::Value,
     ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
-    amp::{addresses::AndrAddr, messages::AMPPkt},
+    amp::addresses::AndrAddr,
+    andr_exec,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
@@ -76,10 +77,10 @@ pub struct TokenExtension {
 impl CustomMsg for ExecuteMsg {}
 impl CustomMsg for QueryMsg {}
 
+#[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     AndrReceive(AndromedaMsg),
-    AMPReceive(AMPPkt),
     /// Mints a token
     Mint(Box<MintMsg<TokenExtension>>),
     /// Transfers ownership of a token

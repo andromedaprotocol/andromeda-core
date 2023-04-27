@@ -31,6 +31,8 @@ hex = "0.4"
 cw1155 = "0.16.0"
 cw1155-base = "0.16.0"
 cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
+andromeda-macros = { workspace = true }
+strum_macros = { workspace = true }
 
 [dev-dependencies]
 cw20 = "0.16.0"

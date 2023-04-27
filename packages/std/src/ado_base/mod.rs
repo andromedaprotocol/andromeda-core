@@ -13,7 +13,9 @@ pub mod withdraw;
 #[cfg(feature = "withdraw")]
 use crate::ado_base::withdraw::Withdrawal;
 
-use crate::{ado_base::modules::Module, amp::recipient::Recipient, error::ContractError};
+#[cfg(feature = "withdraw")]
+use crate::amp::recipient::Recipient;
+use crate::{ado_base::modules::Module, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, Uint64, WasmQuery};
 

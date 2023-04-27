@@ -40,3 +40,8 @@ rpath = false
 lto = true
 overflow-checks = true
 panic='abort'
+
+[workspace.dependencies]
+andromeda-std = { path = "./packages/std" }
+andromeda-macros = { path = "./packages/std/macros" }
+strum_macros = "0.24.3"

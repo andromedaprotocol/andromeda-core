@@ -5,6 +5,9 @@ pub mod common;
 pub mod error;
 pub mod os;
 
+pub use andromeda_macros::andr_exec;
+pub use strum_macros::AsRefStr;
+
 #[cfg(test)]
 pub mod testing;
 
