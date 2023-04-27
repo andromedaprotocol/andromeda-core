@@ -7,7 +7,6 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-strum_macros = { workspace = true }
 syn = { version = "1.0.0", features = ["derive"]}
 proc-macro2 = "1.0"
 quote="1.0"

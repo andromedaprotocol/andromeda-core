@@ -1,6 +1,5 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use strum_macros::AsRefStr;
 use syn::{parse_macro_input, DeriveInput};
 
 /// Taken from: https://github.com/DA0-DA0/dao-contracts/blob/74bd3881fdd86829e5e8b132b9952dd64f2d0737/packages/dao-macros/src/lib.rs#L9
