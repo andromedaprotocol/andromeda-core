@@ -262,7 +262,7 @@ impl AMPPkt {
 mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_info};
 
-    use crate::testing::mock_querier::mock_dependencies_custom;
+    use crate::testing::mock_querier::{mock_dependencies_custom, INVALID_CONTRACT};
 
     use super::*;
 
@@ -346,11 +346,11 @@ mod tests {
         let res = pkt.verify_origin(&info, &deps.as_ref());
         assert!(res.is_ok());
 
-        let info = mock_info("fake_address", &[]);
+        let info = mock_info(INVALID_CONTRACT, &[]);
         let res = pkt.verify_origin(&info, &deps.as_ref());
         assert!(res.is_err());
 
-        let offchain_pkt = AMPPkt::new("fake_address", "fake_address", vec![msg], None);
+        let offchain_pkt = AMPPkt::new(INVALID_CONTRACT, INVALID_CONTRACT, vec![msg], None);
         let res = offchain_pkt.verify_origin(&info, &deps.as_ref());
         assert!(res.is_ok());
     }

@@ -3,7 +3,7 @@ use crate::ado_contract::primitive::{GetValueResponse, Primitive};
 use crate::{
     ado_base::{AndromedaQuery, QueryMsg},
     ado_contract::ADOContract,
-    amp::ADO_DB_KEY,
+    amp::{ADO_DB_KEY, VFS_KEY},
     os::adodb::QueryMsg as ADODBQueryMsg,
     os::kernel::QueryMsg as KernelQueryMsg,
     os::vfs::QueryMsg as VFSQueryMsg,
@@ -11,22 +11,40 @@ use crate::{
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, Decimal, OwnedDeps,
-    Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    to_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, OwnedDeps, Querier,
+    QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
+#[cfg(feature = "primitive")]
+use cosmwasm_std::{Decimal, Uint128};
 use cw20::{BalanceResponse, Cw20QueryMsg};
 
+/// Mock CW20 Contract Address
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
+/// Mock App Contract Address
 pub const MOCK_APP_CONTRACT: &str = "app_contract";
+/// Mock Primitive Contract Address
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
+/// Mock Kernel Contract Address
 pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
+/// Mock VFS Contract Address
 pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
+/// Mock ADODB Contract Address
 pub const MOCK_ADODB_CONTRACT: &str = "adodb_contract";
+
+/// An invalid contract address
+pub const INVALID_CONTRACT: &str = "invalid_contract";
+/// An invalid VFS Path
+pub const FAKE_VFS_PATH: &str = "fake_path";
+/// An invalid ADODB Key
+pub const FAKE_ADODB_KEY: &str = "fake_adodb_key";
 
 pub struct WasmMockQuerier {
     pub base: MockQuerier,
 }
 
+/// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
+///
+/// Automatically assigns a kernel address as MOCK_KERNEL_CONTRACT.
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
@@ -39,10 +57,13 @@ pub fn mock_dependencies_custom(
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
     };
-    ADOContract::default().kernel_address.save(
-        deps.as_mut().storage,
-        &Addr::unchecked(MOCK_KERNEL_CONTRACT),
-    );
+    ADOContract::default()
+        .kernel_address
+        .save(
+            deps.as_mut().storage,
+            &Addr::unchecked(MOCK_KERNEL_CONTRACT),
+        )
+        .unwrap();
     deps
 }
 
@@ -63,6 +84,13 @@ impl Querier for WasmMockQuerier {
 }
 
 impl WasmMockQuerier {
+    /// A custom query handler that provides custom handling for the mock contract addresses provided in this crate.
+    ///
+    /// Each contract address has its own handler within the Querier and is called when the contract address is set as such.
+    ///
+    /// A custom response is added for `cosmwasm_std::ContractInfo` queries that returns a code id of 2 for `INVALID_CONTRACT` and 1 for all other addresses.
+    ///
+    /// Any other addresses are handled by the default querier.
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
@@ -77,11 +105,11 @@ impl WasmMockQuerier {
                     _ => panic!("Unsupported query for contract: {}", contract_addr),
                 }
             }
-            // Defaults to code ID 1, returns 2 for `"fake_address"` which is considered an invalid ADODB code id
+            // Defaults to code ID 1, returns 2 for `INVALID_CONTRACT` which is considered an invalid ADODB code id
             QueryRequest::Wasm(WasmQuery::ContractInfo { contract_addr }) => {
                 let mut resp = ContractInfoResponse::default();
                 resp.code_id = match contract_addr.as_str() {
-                    "fake_address" => 2,
+                    INVALID_CONTRACT => 2,
                     _ => 1,
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&resp).unwrap()))
@@ -90,10 +118,15 @@ impl WasmMockQuerier {
         }
     }
 
+    /// Handles all kernel queries.
+    ///
+    /// Returns the appropriate `MOCK_CONTRACT_*` address for the given key in the case of a `KeyAddress` query.
+    ///
+    /// Returns `true` for `VerifyAddress` for any address excluding `INVALID_CONTRACT`.
     fn handle_kernel_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             KernelQueryMsg::KeyAddress { key } => match key.as_str() {
-                "vfs" => {
+                VFS_KEY => {
                     SystemResult::Ok(ContractResult::Ok(to_binary(&MOCK_VFS_CONTRACT).unwrap()))
                 }
                 ADO_DB_KEY => {
@@ -102,7 +135,7 @@ impl WasmMockQuerier {
                 &_ => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
             },
             KernelQueryMsg::VerifyAddress { address } => match address.as_str() {
-                "fake_address" => {
+                INVALID_CONTRACT => {
                     SystemResult::Ok(ContractResult::Err("Invalid Address".to_string()))
                 }
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&true).unwrap())),
@@ -111,15 +144,21 @@ impl WasmMockQuerier {
         }
     }
 
+    /// Handles all VFS queries.
+    ///
+    /// Returns the path provided for `ResolvePath` queries, or an error for`FAKE_PATH`.
     fn handle_vfs_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             VFSQueryMsg::ResolvePath { path } => match path.as_str() {
-                "fake_path" => SystemResult::Ok(ContractResult::Err("Invalid Path".to_string())),
+                FAKE_VFS_PATH => SystemResult::Ok(ContractResult::Err("Invalid Path".to_string())),
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&path).unwrap())),
             },
         }
     }
 
+    /// Handles all App queries.
+    ///
+    /// Returns `"actual_address"` for `Get` queries.
     fn handle_app_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             QueryMsg::AndrQuery(AndromedaQuery::Get(_)) => {
@@ -129,6 +168,11 @@ impl WasmMockQuerier {
         }
     }
 
+    /// Handles all ADODB queries.
+    ///
+    /// Returns `"ADOType"` for `ADOType` queries with code ID 1 and an error otherwise.
+    ///
+    /// Returns an error for `CodeId` queries with key `FAKE_ADODB_KEY` and 1 otherwise.
     fn handle_adodb_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             ADODBQueryMsg::ADOType { code_id } => match code_id {
@@ -136,7 +180,7 @@ impl WasmMockQuerier {
                 _ => SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string())),
             },
             ADODBQueryMsg::CodeId { key } => match key.as_str() {
-                "fake_key" => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
+                FAKE_ADODB_KEY => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&1).unwrap())),
             },
             _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
@@ -144,6 +188,9 @@ impl WasmMockQuerier {
     }
 
     #[cfg(feature = "primitive")]
+    /// Handles all primitive queries.
+    ///
+    /// Returns a default value for each primitive type.
     fn handle_primitive_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             QueryMsg::AndrQuery(AndromedaQuery::Get(data)) => {
@@ -194,6 +241,9 @@ impl WasmMockQuerier {
         }
     }
 
+    /// Handles all CW20 queries.
+    ///
+    /// Returns a balance of 10 for any `Balance` query.
     fn handle_cw20_query(&self, msg: &Binary) -> QuerierResult {
         match from_binary(msg).unwrap() {
             Cw20QueryMsg::Balance { .. } => {

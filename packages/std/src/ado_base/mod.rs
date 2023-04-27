@@ -5,7 +5,6 @@ pub mod kernel_address;
 pub mod modules;
 pub mod operators;
 pub mod ownership;
-pub mod recipient;
 pub mod version;
 #[cfg(feature = "withdraw")]
 pub mod withdraw;
