@@ -38,6 +38,7 @@ pub fn validate_path_name(_path: String) -> Result<bool, ContractError> {
 pub struct InstantiateMsg {
     /// Address of the Kernel contract on chain
     pub kernel_address: String,
+    pub owner: Option<String>,
 }
 
 #[cw_serde]

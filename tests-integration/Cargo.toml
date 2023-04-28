@@ -60,7 +60,7 @@ andromeda-vfs = { path = "../contracts/os/andromeda-vfs", features = ["testing"]
 
 #Other Crates
 common = { version = "0.1.0", path = "../packages/common" }
-andromeda-testing = { path = "../packages/andromeda-testing", features = ["testing"] }
+# andromeda-testing = { path = "../packages/andromeda-testing", features = ["testing"] }
 
 #Cosmwasm Crates
 cosmwasm-std = "1.1.6"

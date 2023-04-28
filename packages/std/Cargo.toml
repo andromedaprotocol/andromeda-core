@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2018"
 
 [features]
-withdraw = ["cw-asset"]
+withdraw = ["cw-asset", "andromeda-macros/withdraw"]
 primitive = []
-modules = []
+modules = ["andromeda-macros/modules"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = "1.2.1"
+cosmwasm-std = { workspace=true, features = ["ibc3"] }
 cosmwasm-schema = "1.2.1"
 cw-storage-plus = "0.16.0"
 schemars = "0.8.10"
@@ -30,9 +30,13 @@ lazy_static = "1"
 hex = "0.4"
 cw1155 = "0.16.0"
 cw1155-base = "0.16.0"
-cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
 andromeda-macros = { workspace = true }
 strum_macros = { workspace = true }
+cw721 = "0.16"
+zip-optional = { git = "https://github.com/public-awesome/ics721.git" }
+cw721-proxy-derive = { git = "https://github.com/0xekez/cw721-proxy.git" }
+cw-cii = { git = "https://github.com/public-awesome/ics721.git" }
+cw-pause-once = { git = "https://github.com/public-awesome/ics721.git" }
 
 [dev-dependencies]
 cw20 = "0.16.0"

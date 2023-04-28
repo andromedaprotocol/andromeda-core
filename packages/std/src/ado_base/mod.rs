@@ -12,12 +12,16 @@ pub mod version;
 pub mod withdraw;
 #[cfg(feature = "withdraw")]
 use crate::ado_base::withdraw::Withdrawal;
-
 #[cfg(feature = "withdraw")]
 use crate::amp::recipient::Recipient;
-use crate::{ado_base::modules::Module, error::ContractError};
+use crate::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, Uint64, WasmQuery};
+use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, WasmQuery};
+#[cfg(feature = "modules")]
+pub use modules::Module;
+
+#[cfg(feature = "primitive")]
+use cosmwasm_std::Uint64;
 
 use serde::de::DeserializeOwned;
 
@@ -35,8 +39,10 @@ pub struct InstantiateMsg {
     pub ado_type: String,
     pub ado_version: String,
     pub operators: Option<Vec<String>>,
+    #[cfg(feature = "modules")]
     pub modules: Option<Vec<Module>>,
-    pub kernel_address: Option<String>,
+    pub kernel_address: String,
+    pub owner: Option<String>,
 }
 
 #[cw_serde]
@@ -57,19 +63,24 @@ pub enum AndromedaMsg {
         recipient: Option<Recipient>,
         tokens_to_withdraw: Option<Vec<Withdrawal>>,
     },
+    #[cfg(feature = "modules")]
     RegisterModule {
         module: Module,
     },
+    #[cfg(feature = "modules")]
     DeregisterModule {
         module_idx: Uint64,
     },
+    #[cfg(feature = "modules")]
     AlterModule {
         module_idx: Uint64,
         module: Module,
     },
+    #[cfg(feature = "primitive")]
     RefreshAddress {
         contract: String,
     },
+    #[cfg(feature = "primitive")]
     RefreshAddresses {
         limit: Option<u32>,
         start_after: Option<String>,
@@ -95,6 +106,7 @@ pub enum AndromedaQuery {
     BlockHeightUponCreation {},
     #[returns(IsOperatorResponse)]
     IsOperator { address: String },
+    #[cfg(feature = "modules")]
     #[returns(Module)]
     Module { id: Uint64 },
     #[returns(Vec<String>)]

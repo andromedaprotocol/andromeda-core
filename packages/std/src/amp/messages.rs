@@ -36,10 +36,14 @@ pub struct AMPMsgConfig {
 
 impl AMPMsgConfig {
     #[inline]
-    pub fn new(reply_on: ReplyOn, exit_at_error: bool, gas_limit: Option<u64>) -> AMPMsgConfig {
+    pub fn new(
+        reply_on: Option<ReplyOn>,
+        exit_at_error: Option<bool>,
+        gas_limit: Option<u64>,
+    ) -> AMPMsgConfig {
         AMPMsgConfig {
-            reply_on,
-            exit_at_error,
+            reply_on: reply_on.unwrap_or(ReplyOn::Always),
+            exit_at_error: exit_at_error.unwrap_or(true),
             gas_limit,
         }
     }

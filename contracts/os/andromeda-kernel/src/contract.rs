@@ -1,13 +1,11 @@
-use ado_base::state::ADOContract;
-use andromeda_os::messages::{AMPMsg, AMPPkt};
-use andromeda_os::{
+use andromeda_std::ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg};
+use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::amp::messages::{AMPMsg, AMPMsgConfig, AMPPkt};
+use andromeda_std::common::encode_binary;
+use andromeda_std::error::ContractError;
+use andromeda_std::os::{
     adodb::QueryMsg as ADODBQueryMsg,
     kernel::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-};
-use common::{
-    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
-    error::ContractError,
 };
 use cosmwasm_std::{
     attr, ensure, entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply,
@@ -27,7 +25,7 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     ADOContract::default().instantiate(
@@ -40,7 +38,8 @@ pub fn instantiate(
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             modules: None,
-            kernel_address: None,
+            kernel_address: env.contract.address.to_string(),
+            owner: msg.owner,
         },
     )
 }
@@ -130,10 +129,9 @@ pub fn handle_amp_direct(
                 recipient.clone(),
                 message.clone(),
                 Some(info.clone().funds),
-                reply_on,
-                exit_at_error,
-                gas_limit,
+                Some(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
             )],
+            None,
         );
         Ok(Response::default()
             .add_submessage(SubMsg::new(WasmMsg::Execute {

@@ -6,6 +6,10 @@ edition = "2018"
 [lib]
 proc-macro = true
 
+[features]
+modules = []
+withdraw = []
+
 [dependencies]
 syn = { version = "1.0.0", features = ["derive"]}
 proc-macro2 = "1.0"

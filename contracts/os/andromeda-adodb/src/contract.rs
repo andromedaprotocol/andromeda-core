@@ -1,12 +1,9 @@
 use crate::state::{read_code_id, store_code_id, ADO_TYPE};
-use ado_base::state::ADOContract;
-use andromeda_os::adodb::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use common::{
-    ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg},
-    encode_binary,
-    error::{from_semver, ContractError},
-    parse_message,
-};
+use andromeda_std::ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg};
+use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::common::{encode_binary, parse_message};
+use andromeda_std::error::{from_semver, ContractError};
+use andromeda_std::os::adodb::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
     attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
@@ -36,6 +33,7 @@ pub fn instantiate(
             operators: None,
             modules: None,
             kernel_address: msg.kernel_address,
+            owner: msg.owner,
         },
     )
 }

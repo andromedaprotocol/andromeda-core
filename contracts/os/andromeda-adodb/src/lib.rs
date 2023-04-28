@@ -4,4 +4,4 @@ pub mod mock;
 mod state;
 
 #[cfg(test)]
-mod testing;
+mod tests;

@@ -19,26 +19,28 @@ impl<'a> ADOContract<'a> {
         &self,
         storage: &mut dyn Storage,
         env: Env,
-        #[cfg(feature = "primitive")] api: &dyn Api,
-        #[cfg(not(feature = "primitive"))] api: &dyn Api,
+        api: &dyn Api,
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
-        self.owner.save(storage, &info.sender)?;
+        self.owner.save(
+            storage,
+            &api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?,
+        )?;
         self.original_publisher.save(storage, &info.sender)?;
         self.block_height.save(storage, &env.block.height)?;
         self.ado_type.save(storage, &msg.ado_type)?;
         self.version.save(storage, &msg.ado_version)?;
-        if let Some(kernel_address) = msg.kernel_address {
-            self.kernel_address
-                .save(storage, &api.addr_validate(&kernel_address)?)?;
-        }
+        self.kernel_address
+            .save(storage, &api.addr_validate(&msg.kernel_address)?)?;
         let attributes = [attr("method", "instantiate"), attr("type", &msg.ado_type)];
         #[cfg(feature = "modules")]
-        if let Some(modules) = msg.modules {
-            return Ok(self
-                .register_modules(info.sender.as_str(), storage, modules)?
-                .add_attributes(attributes));
+        {
+            if let Some(modules) = msg.modules {
+                return Ok(self
+                    .register_modules(info.sender.as_str(), storage, modules)?
+                    .add_attributes(attributes));
+            }
         }
         Ok(Response::new().add_attributes(attributes))
     }
@@ -186,7 +188,9 @@ impl<'a> ADOContract<'a> {
 mod tests {
     use super::*;
     use crate::ado_base::modules::Module;
-    use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
+    use crate::testing::mock_querier::{
+        mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT,
+    };
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
         Addr, Uint64,
@@ -218,7 +222,8 @@ mod tests {
                     modules: None,
                     operators: None,
                     ado_version: "version".to_string(),
-                    kernel_address: None,
+                    kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                    owner: None,
                 },
             )
             .unwrap();
@@ -254,7 +259,8 @@ mod tests {
                     ado_version: "version".to_string(),
                     modules: Some(vec![Module::new("module", "cosmos1...".to_string(), false)]),
                     operators: None,
-                    kernel_address: None,
+                    kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                    owner: None,
                 },
             )
             .unwrap();
@@ -293,7 +299,8 @@ mod tests {
                     ado_version: "version".to_string(),
                     modules: None,
                     operators: None,
-                    kernel_address: None,
+                    kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                    owner: None,
                 },
             )
             .unwrap();

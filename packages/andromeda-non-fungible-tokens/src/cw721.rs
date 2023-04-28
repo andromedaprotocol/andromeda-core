@@ -1,8 +1,8 @@
 use andromeda_std::{
     ado_base::primitive::Value,
-    ado_base::{hooks::AndromedaHook, modules::Module, AndromedaMsg, AndromedaQuery},
+    ado_base::{hooks::AndromedaHook, AndromedaQuery},
     amp::addresses::AndrAddr,
-    andr_exec,
+    andr_exec, andr_instantiate, andr_query,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
@@ -14,6 +14,7 @@ use cw721::{
 pub use cw721_base::MintMsg;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MinterResponse, QueryMsg as Cw721QueryMsg};
 
+#[andr_instantiate]
 #[cw_serde]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
@@ -25,9 +26,6 @@ pub struct InstantiateMsg {
     /// This is designed for a base NFT that is controlled by an external program
     /// or contract. You will likely replace this with custom logic in custom NFTs
     pub minter: AndrAddr,
-    ///The attached Andromeda modules
-    pub modules: Option<Vec<Module>>,
-    pub kernel_address: Option<String>,
 }
 
 #[cw_serde]
@@ -80,7 +78,6 @@ impl CustomMsg for QueryMsg {}
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
     /// Mints a token
     Mint(Box<MintMsg<TokenExtension>>),
     /// Transfers ownership of a token
@@ -180,6 +177,7 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
     }
 }
 
+#[andr_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {

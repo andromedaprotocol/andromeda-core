@@ -1,36 +1,36 @@
 [workspace]
 members = [
     "packages/*",
-    "contracts/fungible-tokens/*",
+    # "contracts/fungible-tokens/*",
     "contracts/non-fungible-tokens/*",
-    "contracts/ecosystem/*",
-    "contracts/data-storage/*",
-    "contracts/app/*",
-    "contracts/finance/*",
-    "contracts/automation/*",
-    "contracts/modules/*",
+    # "contracts/ecosystem/*",
+    # "contracts/data-storage/*",
+    # "contracts/app/*",
+    # "contracts/finance/*",
+    # "contracts/automation/*",
+    # "contracts/modules/*",
     "contracts/os/*",
 
     #Internal
-    "tests-integration"
+    # "tests-integration"
 ]
 
-[profile.release.package.common]
+[profile.release.package.std]
 codegen-units = 1
 incremental = false
 
-[profile.release.package.ado-base]
-codegen-units = 1
-incremental = false
+# [profile.release.package.ado-base]
+# codegen-units = 1
+# incremental = false
 
 [profile.release.package.andromeda-cw721]
 codegen-units = 1
 
-[profile.release.package.andromeda-cw20]
-codegen-units = 1
+# [profile.release.package.andromeda-cw20]
+# codegen-units = 1
 
-[profile.release.package.andromeda-crowdfund]
-codegen-units = 1
+# [profile.release.package.andromeda-crowdfund]
+# codegen-units = 1
 
 [profile.release]
 debug = false
@@ -45,3 +45,4 @@ panic='abort'
 andromeda-std = { path = "./packages/std" }
 andromeda-macros = { path = "./packages/std/macros" }
 strum_macros = "0.24.3"
+cosmwasm-std={version = "1.2.4"}

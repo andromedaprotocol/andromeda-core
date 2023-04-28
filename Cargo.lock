@@ -3,23 +3,6 @@
 version = 3
 
 [[package]]
-name = "ado-base"
-version = "0.1.0"
-dependencies = [
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
 name = "ahash"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -40,212 +23,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-address-list"
-version = "0.1.3"
-dependencies = [
- "ado-base",
- "andromeda-modules",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
 name = "andromeda-adodb"
 version = "0.1.2"
 dependencies = [
- "ado-base",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
  "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-app"
-version = "0.1.0"
-dependencies = [
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-app-contract"
-version = "0.2.1"
-dependencies = [
- "ado-base",
- "andromeda-app",
- "andromeda-automation",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "prost",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-auction"
-version = "0.2.2"
-dependencies = [
- "ado-base",
- "andromeda-modules",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-automation"
-version = "0.1.0"
-dependencies = [
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-condition"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-finance",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-counter"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-os",
- "andromeda-testing",
- "base64",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "cw20 0.13.4",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-crowdfund"
-version = "0.2.1"
-dependencies = [
- "ado-base",
- "andromeda-app",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-cw20"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-app",
- "andromeda-fungible-tokens",
- "andromeda-modules",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "cw20-base",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-cw20-staking"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -255,234 +42,13 @@ dependencies = [
 name = "andromeda-cw721"
 version = "0.2.1"
 dependencies = [
- "andromeda-modules",
  "andromeda-non-fungible-tokens",
- "andromeda-os",
  "andromeda-std",
- "andromeda-testing",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
- "cw721",
- "cw721-base",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-cw721-bids"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "cw721-base",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-cw721-staking"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-cw721-timelock"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-data-storage"
-version = "0.1.0"
-dependencies = [
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-ecosystem"
-version = "0.1.0"
-dependencies = [
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw20 0.16.0",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-evaluation"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "cw20 0.13.4",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-execute"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "cw20 0.13.4",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-finance"
-version = "0.1.0"
-dependencies = [
- "andromeda-std",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-utils 0.16.0",
- "cw20 0.16.0",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-fungible-tokens"
-version = "0.1.0"
-dependencies = [
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-utils 0.16.0",
- "cw20 0.16.0",
- "cw20-base",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "andromeda-gumball"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "base64",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-ibc"
-version = "0.1.0"
-dependencies = [
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-cii",
- "cw-paginate",
- "cw-pause-once",
- "cw-storage-plus 1.0.1",
- "cw-utils 1.0.1",
- "cw2 1.0.1",
- "cw721",
- "cw721-base",
- "cw721-proxy-derive",
- "serde",
- "thiserror",
- "zip-optional",
-]
-
-[[package]]
-name = "andromeda-ics721"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-ibc",
- "andromeda-non-fungible-tokens",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-cii",
- "cw-multi-test",
- "cw-pause-once",
- "cw-storage-plus 1.0.1",
- "cw-utils 1.0.1",
- "cw2 1.0.1",
  "cw721",
  "cw721-base",
  "schemars",
@@ -494,37 +60,13 @@ dependencies = [
 name = "andromeda-kernel"
 version = "0.2.0"
 dependencies = [
- "ado-base",
- "andromeda-ibc",
- "andromeda-os",
- "andromeda-testing",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
  "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-lockdrop"
-version = "1.2.0"
-dependencies = [
- "ado-base",
- "andromeda-fungible-tokens",
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
  "schemars",
  "semver",
  "serde",
@@ -534,98 +76,16 @@ dependencies = [
 name = "andromeda-macros"
 version = "0.1.0"
 dependencies = [
- "cw20 0.16.0",
+ "cw20",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
 ]
 
 [[package]]
-name = "andromeda-marketplace"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-app",
- "andromeda-modules",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-merkle-airdrop"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-fungible-tokens",
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "hex",
- "schemars",
- "semver",
- "serde",
- "sha2 0.9.9",
-]
-
-[[package]]
-name = "andromeda-message-bridge"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-ibc",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-modules"
-version = "0.1.0"
-dependencies = [
- "andromeda-finance",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "andromeda-non-fungible-tokens"
 version = "0.1.0"
 dependencies = [
- "andromeda-macros",
  "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -637,159 +97,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-oracle"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "cw20 0.13.4",
- "schemars",
- "semver",
- "serde",
- "serde-json-value-wasm",
- "serde-json-wasm 0.4.1",
-]
-
-[[package]]
-name = "andromeda-os"
-version = "0.1.0"
-dependencies = [
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "lazy_static",
- "regex",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-primitive"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-data-storage",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-process"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.15.1",
- "cw2 0.15.1",
- "prost",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-rate-limiting-withdrawals"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-finance",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-rates"
-version = "0.1.2"
-dependencies = [
- "ado-base",
- "andromeda-modules",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-receipt"
-version = "0.1.2"
-dependencies = [
- "ado-base",
- "andromeda-modules",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-splitter"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-finance",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
 name = "andromeda-std"
 version = "0.1.0"
 dependencies = [
@@ -797,15 +104,18 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-asset",
+ "cw-cii",
  "cw-pause-once",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw1155",
  "cw1155-base",
  "cw2 0.16.0",
- "cw20 0.16.0",
+ "cw20",
  "cw20-base",
+ "cw721",
  "cw721-base",
+ "cw721-proxy-derive",
  "hex",
  "lazy_static",
  "regex",
@@ -814,202 +124,19 @@ dependencies = [
  "serde",
  "strum_macros",
  "thiserror",
-]
-
-[[package]]
-name = "andromeda-storage"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "cw20 0.13.4",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-swapper"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-ecosystem",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "prost",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-task-balancer"
-version = "0.1.0"
-dependencies = [
- "ado-base",
- "andromeda-app",
- "andromeda-automation",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus 0.15.1",
- "cw2 0.15.1",
- "schemars",
- "semver",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "andromeda-testing"
-version = "0.1.0"
-dependencies = [
- "andromeda-adodb",
- "andromeda-app",
- "andromeda-kernel",
- "andromeda-modules",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-primitive",
- "andromeda-vfs",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw20 0.16.0",
- "cw721",
- "prost",
-]
-
-[[package]]
-name = "andromeda-timelock"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-finance",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-vault"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-ecosystem",
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-vesting"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-finance",
- "andromeda-os",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
+ "zip-optional",
 ]
 
 [[package]]
 name = "andromeda-vfs"
 version = "0.2.0"
 dependencies = [
- "ado-base",
- "andromeda-os",
- "common",
+ "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-weighted-distribution-splitter"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-app",
- "andromeda-finance",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "semver",
- "serde",
-]
-
-[[package]]
-name = "andromeda-wrapped-cw721"
-version = "0.2.0"
-dependencies = [
- "ado-base",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-testing",
- "common",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "cw721-base",
  "schemars",
  "semver",
  "serde",
@@ -1074,28 +201,6 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
-
-[[package]]
-name = "common"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-pause-once",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw1155",
- "cw1155-base",
- "cw20 0.16.0",
- "cw20-base",
- "cw721-base",
- "hex",
- "schemars",
- "semver",
- "serde",
- "thiserror",
-]
 
 [[package]]
 name = "const-oid"
@@ -1163,20 +268,10 @@ dependencies = [
  "hex",
  "schemars",
  "serde",
- "serde-json-wasm 0.5.1",
+ "serde-json-wasm",
  "sha2 0.10.6",
  "thiserror",
  "uint",
-]
-
-[[package]]
-name = "cosmwasm-storage"
-version = "1.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88f7944b5204c3a998f73248925a097ace887bdf01c2f70de00d8b92cd69e807"
-dependencies = [
- "cosmwasm-std",
- "serde",
 ]
 
 [[package]]
@@ -1239,7 +334,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-storage-plus 0.16.0",
  "cw1155",
- "cw20 0.16.0",
+ "cw20",
 ]
 
 [[package]]
@@ -1271,17 +366,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-paginate"
-version = "2.0.0-beta"
-source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v2.0.0-beta#74bd3881fdd86829e5e8b132b9952dd64f2d0737"
-dependencies = [
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-storage-plus 0.16.0",
- "serde",
-]
-
-[[package]]
 name = "cw-pause-once"
 version = "0.0.1"
 source = "git+https://github.com/public-awesome/ics721.git#3af19e421a95aec5291a0cabbe796c58698ac97f"
@@ -1291,30 +375,6 @@ dependencies = [
  "cw-storage-plus 0.15.1",
  "cw-utils 0.15.1",
  "thiserror",
-]
-
-[[package]]
-name = "cw-rate-limiter"
-version = "0.0.1"
-source = "git+https://github.com/0xekez/cw721-proxy.git#b1c98f5b84f21eac2c5a8a89f18209802ce6a3dd"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cw-storage-plus"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "648b1507290bbc03a8d88463d7cd9b04b1fa0155e5eef366c4fa052b9caaac7a"
-dependencies = [
- "cosmwasm-std",
- "schemars",
- "serde",
 ]
 
 [[package]]
@@ -1348,18 +408,6 @@ dependencies = [
  "cosmwasm-std",
  "schemars",
  "serde",
-]
-
-[[package]]
-name = "cw-utils"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9dbaecb78c8e8abfd6b4258c7f4fbeb5c49a5e45ee4d910d3240ee8e1d714e1b"
-dependencies = [
- "cosmwasm-std",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -1439,18 +487,6 @@ dependencies = [
 
 [[package]]
 name = "cw2"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04cf4639517490dd36b333bbd6c4fbd92e325fd0acf4683b41753bc5eb63bfc1"
-dependencies = [
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "cw2"
 version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5abb8ecea72e09afff830252963cb60faf945ce6cef2c20a43814516082653da"
@@ -1490,18 +526,6 @@ dependencies = [
 
 [[package]]
 name = "cw20"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cb782b8f110819a4eb5dbbcfed25ffba49ec16bbe32b4ad8da50a5ce68fec05"
-dependencies = [
- "cosmwasm-std",
- "cw-utils 0.13.4",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "cw20"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a45a8794a5dd33b66af34caee52a7beceb690856adcc1682b6e3db88b2cdee62"
@@ -1524,7 +548,7 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw20 0.16.0",
+ "cw20",
  "schemars",
  "semver",
  "serde",
@@ -1562,19 +586,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw721-proxy"
-version = "0.0.1"
-source = "git+https://github.com/0xekez/cw721-proxy.git#b1c98f5b84f21eac2c5a8a89f18209802ce6a3dd"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 0.16.0",
- "cw721",
- "cw721-proxy-derive",
- "thiserror",
-]
-
-[[package]]
 name = "cw721-proxy-derive"
 version = "0.0.1"
 source = "git+https://github.com/0xekez/cw721-proxy.git#b1c98f5b84f21eac2c5a8a89f18209802ce6a3dd"
@@ -1583,22 +594,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "cw721-rate-limited-proxy"
-version = "0.0.1"
-source = "git+https://github.com/0xekez/cw721-proxy.git#b1c98f5b84f21eac2c5a8a89f18209802ce6a3dd"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-rate-limiter",
- "cw-storage-plus 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "cw721-proxy",
- "cw721-proxy-derive",
- "thiserror",
 ]
 
 [[package]]
@@ -1996,24 +991,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde-json-value-wasm"
-version = "0.1.0"
-source = "git+https://github.com/chris-ricketts/serde-json-value-wasm#fa4ad6b5ba39715d71eb378af697563f76065415"
-dependencies = [
- "serde",
- "serde-json-wasm 0.4.1",
-]
-
-[[package]]
-name = "serde-json-wasm"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "479b4dbc401ca13ee8ce902851b834893251404c4f3c65370a49e047a6be09a5"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "serde-json-wasm"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2144,50 +1121,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "tests-integration"
-version = "0.1.0"
-dependencies = [
- "andromeda-address-list",
- "andromeda-adodb",
- "andromeda-app",
- "andromeda-app-contract",
- "andromeda-auction",
- "andromeda-automation",
- "andromeda-counter",
- "andromeda-crowdfund",
- "andromeda-cw20",
- "andromeda-cw20-staking",
- "andromeda-cw721",
- "andromeda-ecosystem",
- "andromeda-finance",
- "andromeda-fungible-tokens",
- "andromeda-ibc",
- "andromeda-ics721",
- "andromeda-kernel",
- "andromeda-marketplace",
- "andromeda-message-bridge",
- "andromeda-modules",
- "andromeda-non-fungible-tokens",
- "andromeda-os",
- "andromeda-rates",
- "andromeda-splitter",
- "andromeda-testing",
- "andromeda-vault",
- "andromeda-vfs",
- "andromeda-wrapped-cw721",
- "common",
- "cosmwasm-std",
- "cw-cii",
- "cw-multi-test",
- "cw-pause-once",
- "cw20 0.16.0",
- "cw20-base",
- "cw721",
- "cw721-base",
- "cw721-rate-limited-proxy",
 ]
 
 [[package]]

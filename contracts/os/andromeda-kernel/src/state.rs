@@ -1,7 +1,8 @@
-// use andromeda_os::messages::extract_chain;
-use andromeda_ibc::message_bridge::ExecuteMsg as BridgeExecuteMsg;
-use andromeda_os::messages::{extract_chain, AMPMsg};
-use common::error::ContractError;
+use andromeda_std::amp::messages::AMPMsgConfig;
+// use andromeda_std::os::messages::extract_chain;
+use andromeda_std::amp::{addresses::AndrAddr, messages::AMPMsg};
+use andromeda_std::error::ContractError;
+use andromeda_std::ibc::message_bridge::ExecuteMsg as BridgeExecuteMsg;
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, WasmMsg};
 use cw_storage_plus::Map;
 
@@ -36,18 +37,13 @@ fn adjust_recipient_with_protocol(recipient: &str) -> String {
 }
 
 pub fn parse_path(
-    recipient: String,
+    recipient: AndrAddr,
     amp_message: AMPMsg,
     storage: &dyn Storage,
 ) -> Result<Option<SubMsg>, ContractError> {
-    if recipient.contains('/') {
+    if recipient.is_vfs_path() {
         let pathname = &recipient;
-        let protocol: Option<&str> = if let Some(idx) = pathname.find(':') {
-            let protocol = &pathname[..idx];
-            Some(protocol)
-        } else {
-            None
-        };
+        let protocol: Option<&str> = recipient.get_protocol();
         let binary_message = amp_message.message;
         let funds = amp_message.funds;
 
@@ -59,41 +55,40 @@ pub fn parse_path(
 
                 // Will import the bridge's execute msg once merged
                 Some("ibc") => {
-                    let recipient = adjust_recipient_with_protocol(&recipient);
+                    // let recipient = adjust_recipient_with_protocol(&recipient);
                     Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                         contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
                         msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
-                            chain: extract_chain(pathname).unwrap_or_default().to_owned(),
+                            chain: recipient.get_chain().unwrap_or_default().to_string(),
                             message: vec![AMPMsg::new(
-                                recipient,
+                                recipient.get_raw_path(),
                                 binary_message,
                                 Some(funds.clone()),
-                                Some(amp_message.reply_on),
-                                Some(amp_message.exit_at_error),
-                                amp_message.gas_limit,
+                                Some(amp_message.config),
                             )],
                         })?,
                         funds,
                     }))))
                 }
-                Some("wormhole") => {
-                    let recipient = adjust_recipient_with_protocol(&recipient);
-                    Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
-                        msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
-                            chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                            message: vec![AMPMsg::new(
-                                recipient,
-                                binary_message,
-                                Some(funds.clone()),
-                                Some(amp_message.reply_on),
-                                Some(amp_message.exit_at_error),
-                                amp_message.gas_limit,
-                            )],
-                        })?,
-                        funds,
-                    }))))
-                }
+                //TODO: Uncomment once wormhole bridge is merged
+                // Some("wormhole") => {
+                //     let recipient = adjust_recipient_with_protocol(&recipient);
+                //     Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                //         contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
+                //         msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
+                //             chain: extract_chain(pathname).unwrap_or_default().to_owned(),
+                //             message: vec![AMPMsg::new(
+                //                 recipient,
+                //                 binary_message,
+                //                 Some(funds.clone()),
+                //                 Some(amp_message.reply_on),
+                //                 Some(amp_message.exit_at_error),
+                //                 amp_message.gas_limit,
+                //             )],
+                //         })?,
+                //         funds,
+                //     }))))
+                // }
                 _ => Err(ContractError::UnsupportedProtocol {}),
             }
         } else {
@@ -116,9 +111,7 @@ pub fn parse_path(
                                     recipient,
                                     binary_message,
                                     Some(funds.clone()),
-                                    Some(amp_message.reply_on),
-                                    Some(amp_message.exit_at_error),
-                                    amp_message.gas_limit,
+                                    Some(amp_message.config),
                                 )],
                             })?,
                             funds,
@@ -168,9 +161,7 @@ pub fn parse_path_direct(
                                 recipient,
                                 message,
                                 Some(funds.clone()),
-                                reply_on,
-                                exit_at_error,
-                                gas_limit,
+                                Some(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
                             )],
                         })?,
                         funds,
@@ -186,9 +177,7 @@ pub fn parse_path_direct(
                                 recipient,
                                 message,
                                 Some(funds.clone()),
-                                reply_on,
-                                exit_at_error,
-                                gas_limit,
+                                Some(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
                             )],
                         })?,
                         funds,
@@ -219,9 +208,7 @@ pub fn parse_path_direct(
                                         recipient,
                                         message,
                                         Some(funds.clone()),
-                                        reply_on,
-                                        exit_at_error,
-                                        gas_limit,
+                                        Some(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
                                     )],
                                 })?,
                                 funds,

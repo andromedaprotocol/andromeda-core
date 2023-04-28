@@ -1,6 +1,5 @@
 pub mod app;
 pub mod context;
-pub mod error;
 pub mod expiration;
 pub mod queries;
 pub mod rates;

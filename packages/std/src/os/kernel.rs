@@ -4,7 +4,9 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, ReplyOn};
 
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub owner: Option<String>,
+}
 
 #[cw_serde]
 pub enum ExecuteMsg {
