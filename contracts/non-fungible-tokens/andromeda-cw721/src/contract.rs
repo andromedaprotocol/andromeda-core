@@ -69,6 +69,7 @@ pub fn instantiate(
             operators: None,
             modules: msg.modules,
             kernel_address: msg.kernel_address,
+            owner: msg.owner,
         },
     )
 }
@@ -100,15 +101,15 @@ pub fn execute(
     // }
 
     //Andromeda Messages can be executed without modules, if they are a wrapped execute message they will loop back
-    if let ExecuteMsg::AndrReceive(andr_msg) = msg {
-        return contract.execute(
-            execute_env.deps,
-            execute_env.env,
-            execute_env.info,
-            andr_msg,
-            execute,
-        );
-    };
+    // if let ExecuteMsg::AndrReceive(andr_msg) = msg {
+    //     return contract.execute(
+    //         execute_env.deps,
+    //         execute_env.env,
+    //         execute_env.info,
+    //         andr_msg,
+    //         execute,
+    //     );
+    // };
 
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
