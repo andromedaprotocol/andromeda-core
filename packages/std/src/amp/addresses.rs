@@ -94,8 +94,7 @@ impl AndrAddr {
                 match app_contract {
                     None => Err(ContractError::AppContractNotSpecified {}),
                     Some(app_contract) => Ok(AndrAddr(
-                        self.0
-                            .replace("./", &format!("{}/", app_contract.to_string()).to_string()),
+                        self.0.replace("./", &format!("{}/", app_contract)),
                     )),
                 }
             }
@@ -111,9 +110,9 @@ impl AndrAddr {
     /// Whether the provided address is a VFS path
     pub fn is_vfs_path(&self) -> bool {
         self.is_local_path()
-            || self.0.starts_with("/")
+            || self.0.starts_with('/')
             || self.0.split("://").count() > 1
-            || self.0.split("/").count() > 1
+            || self.0.split('/').count() > 1
     }
 
     /// Whether the provided address is a valid human readable address
@@ -168,7 +167,9 @@ impl AndrAddr {
                 None => self.0.as_str(),
                 Some(..) => {
                     let start = self.0.find("://").unwrap() + 3;
-                    let end = self.0[start..].find('/').unwrap_or(self.0[start..].len());
+                    let end = self.0[start..]
+                        .find('/')
+                        .unwrap_or_else(|| self.0[start..].len());
                     &self.0[start + end..]
                 }
             }

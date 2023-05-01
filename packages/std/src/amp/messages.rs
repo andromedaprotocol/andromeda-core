@@ -194,7 +194,7 @@ impl AMPPkt {
     /// If the sender is not valid, an error is returned
     pub fn verify_origin(&self, info: &MessageInfo, deps: &Deps) -> Result<(), ContractError> {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
-        if info.sender.to_string() == self.origin || info.sender == kernel_address.to_string() {
+        if info.sender == self.origin || info.sender == kernel_address {
             Ok(())
         } else {
             let adodb_address: Addr =
@@ -256,7 +256,7 @@ impl AMPPkt {
             WasmMsg::Execute {
                 contract_addr: kernel_address.into(),
                 msg: encode_binary(&KernelExecuteMsg::AMPReceive(self.clone()))?,
-                funds: funds.unwrap_or(vec![]),
+                funds: funds.unwrap_or_default(),
             },
             id,
         );

@@ -25,7 +25,7 @@ impl<'a> ADOContract<'a> {
     ) -> Result<Response, ContractError> {
         self.owner.save(
             storage,
-            &api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?,
+            &api.addr_validate(&msg.owner.unwrap_or_else(|| info.sender.to_string()))?,
         )?;
         self.original_publisher.save(storage, &info.sender)?;
         self.block_height.save(storage, &env.block.height)?;

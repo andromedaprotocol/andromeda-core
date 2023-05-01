@@ -104,7 +104,7 @@ pub fn handle_amp_direct(
     gas_limit: Option<u64>,
 ) -> Result<Response, ContractError> {
     let origin = info.clone().sender;
-    let previous_sender = env.clone().contract.address;
+    let previous_sender = env.contract.address;
 
     let parsed_path = parse_path_direct(
         recipient.clone(),
@@ -164,10 +164,10 @@ pub fn handle_amp_packet(
         }
     );
 
-    let mut res = Response::default();
+    let res = Response::default();
     let id = new_message_id(execute_env.deps.storage)?;
     let packet = packet.with_id(id);
-    let vfs_address = KERNEL_ADDRESSES
+    let _vfs_address = KERNEL_ADDRESSES
         .may_load(execute_env.deps.storage, VFS_KEY)?
         .unwrap();
     if let Some(message) = packet.messages.first() {
@@ -182,7 +182,7 @@ pub fn handle_amp_packet(
     Ok(res)
 }
 
-fn handle_ibc_packet(execute_env: ExecuteEnv, packet: AMPPkt) -> Result<Response, ContractError> {
+fn handle_ibc_packet(_execute_env: ExecuteEnv, _packet: AMPPkt) -> Result<Response, ContractError> {
     Ok(Response::default().set_data(to_binary(&true)?))
 }
 

@@ -42,7 +42,7 @@ impl<'a> ADOContract<'a> {
                     }
                 }
                 for address in addresses {
-                    self.validate_andr_address(&deps, address, vfs_address.clone())?;
+                    self.validate_andr_address(deps, address, vfs_address.clone())?;
                 }
                 Ok(())
             }
