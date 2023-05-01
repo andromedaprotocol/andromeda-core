@@ -1,5 +1,5 @@
 use super::{addresses::AndrAddr, messages::AMPMsg};
-use crate::{encode_binary, error::ContractError};
+use crate::{common::encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};

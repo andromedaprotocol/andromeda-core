@@ -4,8 +4,8 @@ use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::{
     ado_base::{AndromedaMsg, ExecuteMsg, InstantiateMsg},
+    common::parse_message,
     error::ContractError,
-    parse_message,
 };
 #[cfg(feature = "modules")]
 use cosmwasm_std::Deps;
@@ -80,14 +80,6 @@ impl<'a> ADOContract<'a> {
             AndromedaMsg::AlterModule { module_idx, module } => {
                 self.validate_module_address(&deps.as_ref(), &module)?;
                 self.execute_alter_module(deps, info, module_idx, module)
-            }
-            #[cfg(feature = "primitive")]
-            AndromedaMsg::RefreshAddress { contract } => {
-                self.execute_refresh_address(deps, contract)
-            }
-            #[cfg(feature = "primitive")]
-            AndromedaMsg::RefreshAddresses { start_after, limit } => {
-                self.execute_refresh_addresses(deps, start_after, limit)
             }
             _ => Err(ContractError::UnsupportedOperation {}),
         }

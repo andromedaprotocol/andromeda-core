@@ -19,5 +19,5 @@ cw-utils = "1.0.1"
 cw721 = "0.17.0"
 cw721-base = { version = "0.17.0", features=["library"]}
 
-andromeda-std = { workspace = true, features=["modules", "primitive"] }
+andromeda-std = { workspace = true, features=["modules"] }
 

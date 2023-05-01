@@ -1,4 +1,4 @@
-use crate::{ado_base::query_get, encode_binary, error::ContractError};
+use crate::{ado_base::query_get, common::encode_binary, error::ContractError};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, QuerierWrapper};
 

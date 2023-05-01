@@ -35,7 +35,7 @@ semver = "1"
 cw-ownable="0.5.1"
 
 andromeda-non-fungible-tokens = { version = "0.1.0", path = "../../../packages/andromeda-non-fungible-tokens" }
-andromeda-std = { workspace = true, features = ["modules", "primitive"] }
+andromeda-std = { workspace = true, features = ["modules"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { version = "0.16.0", optional = true }

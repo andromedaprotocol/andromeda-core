@@ -2,7 +2,7 @@ use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::os::vfs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::InstantiateMsg as BaseInstantiateMsg, encode_binary, error::ContractError,
+    ado_base::InstantiateMsg as BaseInstantiateMsg, common::encode_binary, error::ContractError,
 };
 use cosmwasm_std::{
     ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,

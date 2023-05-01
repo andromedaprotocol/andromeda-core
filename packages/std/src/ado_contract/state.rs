@@ -1,11 +1,7 @@
 #[cfg(feature = "modules")]
 use crate::ado_base::modules::Module;
-#[cfg(feature = "vfs")]
-use crate::os::{kernel::QueryMsg as KernelQueryMsg, vfs::QueryMsg as VFSQueryMsg};
-use crate::{error::ContractError, parse_message};
+use crate::{common::parse_message, error::ContractError};
 use cosmwasm_std::{Addr, Binary};
-#[cfg(feature = "vfs")]
-use cosmwasm_std::{Api, QuerierWrapper, Storage};
 #[cfg(feature = "withdraw")]
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
@@ -20,10 +16,6 @@ pub struct ADOContract<'a> {
     pub(crate) version: Item<'a, String>,
     pub(crate) app_contract: Item<'a, Addr>,
     pub(crate) kernel_address: Item<'a, Addr>,
-    #[cfg(feature = "primitive")]
-    pub(crate) primitive_contract: Item<'a, Addr>,
-    #[cfg(feature = "primitive")]
-    pub(crate) cached_addresses: Map<'a, &'a str, String>,
     #[cfg(feature = "modules")]
     pub(crate) module_info: Map<'a, &'a str, Module>,
     #[cfg(feature = "modules")]
@@ -43,10 +35,6 @@ impl<'a> Default for ADOContract<'a> {
             version: Item::new("version"),
             app_contract: Item::new("app_contract"),
             kernel_address: Item::new("kernel_address"),
-            #[cfg(feature = "primitive")]
-            primitive_contract: Item::new("primitive_contract"),
-            #[cfg(feature = "primitive")]
-            cached_addresses: Map::new("cached_addresses"),
             #[cfg(feature = "modules")]
             module_info: Map::new("andr_modules"),
             #[cfg(feature = "modules")]

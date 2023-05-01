@@ -1,24 +1,19 @@
 use cosmwasm_std::{
     attr, from_binary,
     testing::{mock_env, mock_info},
-    Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
+    Addr, Coin, DepsMut, Env, Response, Uint128,
 };
 
 use andromeda_std::ado_base::{modules::Module, AndromedaQuery};
+use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::error::ContractError;
-use andromeda_std::{
-    ado_base::primitive::{PrimitivePointer, Value},
-    amp::addresses::AndrAddr,
-};
 use cw_ownable::is_owner;
 
 use crate::{contract::*, state::ANDR_MINTER};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
-use andromeda_std::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_KERNEL_CONTRACT, MOCK_PRIMITIVE_CONTRACT,
-};
+use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
 use cw721::{AllNftInfoResponse, OwnerOfResponse};
 
 const MINTER: &str = "minter";
@@ -145,7 +140,7 @@ fn test_agreed_transfer_nft() {
     let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
         token_id: token_id.clone(),
         agreement: Some(TransferAgreement {
-            amount: Value::Raw(agreed_amount.clone()),
+            amount: agreed_amount.clone(),
             purchaser: purchaser.to_string(),
         }),
     };
@@ -187,112 +182,6 @@ fn test_agreed_transfer_nft() {
 }
 
 #[test]
-fn test_agreed_transfer_token_doesnt_exist() {
-    let token_id = String::from("testtoken");
-    let creator = String::from("creator");
-    let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
-    let valid_info = mock_info(creator.as_str(), &[]);
-    let purchaser = "purchaser";
-    let agreement = TransferAgreement {
-        amount: Value::Pointer(PrimitivePointer {
-            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-
-            key: Some("sell_amount".to_string()),
-        }),
-        purchaser: purchaser.to_string(),
-    };
-    init_setup(deps.as_mut(), env.clone(), None);
-
-    let transfer_agreement = ExecuteMsg::TransferAgreement {
-        token_id,
-        agreement: Some(agreement),
-    };
-    let received = execute(deps.as_mut(), env, valid_info, transfer_agreement).unwrap_err();
-    let expected = ContractError::Std(StdError::NotFound {
-        kind: "cw721_base::state::TokenInfo<andromeda_non_fungible_tokens::cw721::TokenExtension>"
-            .to_string(),
-    });
-
-    assert_eq!(received, expected)
-}
-
-//TODO: Do we need this functionality?
-// #[test]
-// fn test_agreed_transfer_nft_primitive_pointer() {
-// let token_id = String::from("testtoken");
-// let creator = String::from("creator");
-// let mut deps = mock_dependencies_custom(&[]);
-// let env = mock_env();
-// let agreed_amount = Coin {
-//     denom: "uusd".to_string(),
-//     amount: Uint128::from(100u64),
-// };
-// let valid_info = mock_info(creator.as_str(), &[]);
-// let purchaser = "purchaser";
-// let agreement = TransferAgreement {
-//     amount: Value::Pointer(PrimitivePointer {
-//         address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-
-//         key: Some("sell_amount".to_string()),
-//     }),
-//     purchaser: purchaser.to_string(),
-// };
-// init_setup(deps.as_mut(), env.clone(), None);
-// mint_token(
-//     deps.as_mut(),
-//     env.clone(),
-//     token_id.clone(),
-//     creator.clone(),
-//     TokenExtension { publisher: creator },
-// );
-
-// let transfer_agreement = ExecuteMsg::TransferAgreement {
-//     token_id: token_id.clone(),
-//     agreement: Some(agreement),
-// };
-// execute(deps.as_mut(), env.clone(), valid_info, transfer_agreement).unwrap();
-
-// let transfer_msg = ExecuteMsg::TransferNft {
-//     recipient: Addr::unchecked("recipient").to_string(),
-//     token_id: token_id.clone(),
-// };
-
-// let invalid_info = mock_info(purchaser, &[]);
-// assert_eq!(
-//     execute(
-//         deps.as_mut(),
-//         env.clone(),
-//         invalid_info,
-//         transfer_msg.clone()
-//     )
-//     .unwrap_err(),
-//     ContractError::InsufficientFunds {}
-// );
-
-// let info = mock_info(purchaser, &[agreed_amount.clone()]);
-// let res = execute(deps.as_mut(), env.clone(), info, transfer_msg).unwrap();
-
-// assert_eq!(
-//     Response::new()
-//         .add_message(BankMsg::Send {
-//             to_address: "creator".to_string(),
-//             amount: vec![agreed_amount]
-//         })
-//         .add_attribute("action", "transfer")
-//         .add_attribute("recipient", "recipient"),
-//     res
-// );
-
-// let query_msg = QueryMsg::OwnerOf {
-//     token_id,
-//     include_expired: None,
-// };
-// let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-// let resp: OwnerOfResponse = from_binary(&query_resp).unwrap();
-// assert_eq!(resp.owner, String::from("recipient"))
-// }
-#[test]
 fn test_agreed_transfer_nft_wildcard() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
@@ -318,7 +207,7 @@ fn test_agreed_transfer_nft_wildcard() {
     let msg = ExecuteMsg::TransferAgreement {
         token_id: token_id.clone(),
         agreement: Some(TransferAgreement {
-            amount: Value::Raw(agreed_amount.clone()),
+            amount: agreed_amount.clone(),
             purchaser: purchaser.to_string(),
         }),
     };
@@ -469,10 +358,10 @@ fn test_transfer_agreement() {
     let env = mock_env();
     let agreement = TransferAgreement {
         purchaser: String::from("purchaser"),
-        amount: Value::Raw(Coin {
+        amount: Coin {
             amount: Uint128::from(100u64),
             denom: "uluna".to_string(),
-        }),
+        },
     };
     init_setup(deps.as_mut(), env.clone(), None);
     mint_token(

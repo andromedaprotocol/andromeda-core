@@ -1,5 +1,5 @@
 use crate::ado_contract::ADOContract;
-use crate::encode_binary;
+use crate::common::encode_binary;
 use crate::error::ContractError;
 use crate::os::{
     adodb::QueryMsg as ADODBQueryMsg, kernel::ExecuteMsg as KernelExecuteMsg,

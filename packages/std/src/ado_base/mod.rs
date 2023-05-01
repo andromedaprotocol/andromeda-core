@@ -20,7 +20,7 @@ use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, WasmQuery};
 #[cfg(feature = "modules")]
 pub use modules::Module;
 
-#[cfg(feature = "primitive")]
+#[cfg(feature = "modules")]
 use cosmwasm_std::Uint64;
 
 use serde::de::DeserializeOwned;

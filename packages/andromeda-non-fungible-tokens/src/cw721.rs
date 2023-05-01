@@ -1,5 +1,4 @@
 use andromeda_std::{
-    ado_base::primitive::Value,
     ado_base::{hooks::AndromedaHook, AndromedaQuery},
     amp::addresses::AndrAddr,
     andr_exec, andr_instantiate, andr_query,
@@ -31,7 +30,7 @@ pub struct InstantiateMsg {
 /// A struct used to represent an agreed transfer of a token. The `purchaser` may use the `Transfer` message for this token as long as funds are provided equalling the `amount` defined in the agreement.
 pub struct TransferAgreement {
     /// The amount required for the purchaser to transfer ownership of the token
-    pub amount: Value<Coin>,
+    pub amount: Coin,
     /// The address of the purchaser
     pub purchaser: String,
 }

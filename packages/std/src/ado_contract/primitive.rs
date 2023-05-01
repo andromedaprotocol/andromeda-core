@@ -2,7 +2,7 @@ use crate::ado_base::primitive::GetValueResponse;
 use crate::ado_contract::ADOContract;
 
 use crate::os::kernel::QueryMsg as KernelQueryMsg;
-use crate::{ado_base::query_get, encode_binary, error::ContractError};
+use crate::{ado_base::query_get, common::encode_binary, error::ContractError};
 use cosmwasm_std::{Addr, DepsMut, Order, QuerierWrapper, Response, Storage};
 use cw_storage_plus::Bound;
 

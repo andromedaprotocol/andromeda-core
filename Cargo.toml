@@ -19,9 +19,9 @@ members = [
 codegen-units = 1
 incremental = false
 
-# [profile.release.package.ado-base]
-# codegen-units = 1
-# incremental = false
+[profile.release.package.andromeda-macros]
+codegen-units = 1
+incremental = false
 
 [profile.release.package.andromeda-cw721]
 codegen-units = 1

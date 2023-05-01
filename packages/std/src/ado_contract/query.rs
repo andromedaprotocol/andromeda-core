@@ -9,9 +9,8 @@ use crate::{
         version::VersionResponse,
         AndromedaQuery, QueryMsg,
     },
-    encode_binary,
+    common::{encode_binary, parse_message},
     error::ContractError,
-    parse_message,
 };
 use cosmwasm_std::{ensure, Binary, Deps, Env, Order};
 use serde::de::DeserializeOwned;

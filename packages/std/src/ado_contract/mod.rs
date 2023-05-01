@@ -7,8 +7,11 @@ mod instantiate;
 // mod mock_querier;
 #[cfg(feature = "modules")]
 pub mod modules;
-#[cfg(feature = "primitive")]
-pub mod primitive;
+
+//TODO: Redo this feature
+// #[cfg(feature = "primitive")]
+// pub mod primitive;
+
 mod query;
 pub mod state;
 #[cfg(feature = "withdraw")]

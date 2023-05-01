@@ -19,9 +19,9 @@ use andromeda_std::{
         hooks::{AndromedaHook, OnFundsTransferResponse},
         InstantiateMsg as BaseInstantiateMsg,
     },
+    common::encode_binary,
     common::rates::get_tax_amount,
     common::Funds,
-    encode_binary,
     error::{from_semver, ContractError},
 };
 use cw721::ContractInfoResponse;
@@ -401,16 +401,11 @@ fn execute_transfer(
 
 fn get_transfer_agreement_amount(
     _api: &dyn Api,
-    querier: &QuerierWrapper,
+    _querier: &QuerierWrapper,
     agreement: &TransferAgreement,
 ) -> Result<Coin, ContractError> {
-    let agreement_amount = agreement.amount.clone().try_into_coin(querier)?;
-    match agreement_amount {
-        Some(amount) => Ok(amount),
-        None => Err(ContractError::PrimitiveDoesNotExist {
-            msg: "TransferAgreement price is None".to_string(),
-        }),
-    }
+    let agreement_amount = agreement.amount.clone();
+    Ok(agreement_amount)
 }
 
 fn check_can_send(
