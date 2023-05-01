@@ -1,6 +1,6 @@
 use andromeda_std::amp::messages::AMPMsgConfig;
 // use andromeda_std::os::messages::extract_chain;
-use andromeda_std::amp::{addresses::AndrAddr, messages::AMPMsg};
+use andromeda_std::amp::messages::AMPMsg;
 use andromeda_std::error::ContractError;
 use andromeda_std::ibc::message_bridge::ExecuteMsg as BridgeExecuteMsg;
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, CosmosMsg, ReplyOn, Storage, SubMsg, WasmMsg};
@@ -36,95 +36,92 @@ fn adjust_recipient_with_protocol(recipient: &str) -> String {
     recipient[last_slash_index..].to_owned()
 }
 
-pub fn parse_path(
-    recipient: AndrAddr,
-    amp_message: AMPMsg,
-    storage: &dyn Storage,
-) -> Result<Option<SubMsg>, ContractError> {
-    if recipient.is_vfs_path() {
-        let pathname = &recipient;
-        let protocol: Option<&str> = recipient.get_protocol();
-        let binary_message = amp_message.message;
-        let funds = amp_message.funds;
+// pub fn parse_path(
+//     recipient: AndrAddr,
+//     amp_message: AMPMsg,
+//     storage: &dyn Storage,
+// ) -> Result<Option<SubMsg>, ContractError> {
+//     if recipient.is_vfs_path() {
+//         let pathname = &recipient;
+//         let protocol: Option<&str> = recipient.get_protocol();
+//         let binary_message = amp_message.message;
+//         let funds = amp_message.funds;
 
-        if protocol.is_some() {
-            match protocol {
-                // load vector of supported chains
-                // load bridge contract address
-                // extract message from path
+//         if protocol.is_some() {
+//             match protocol {
+//                 // load vector of supported chains
+//                 // load bridge contract address
+//                 // extract message from path
 
-                // Will import the bridge's execute msg once merged
-                Some("ibc") => {
-                    // let recipient = adjust_recipient_with_protocol(&recipient);
-                    Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
-                        msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
-                            chain: recipient.get_chain().unwrap_or_default().to_string(),
-                            message: vec![AMPMsg::new(
-                                recipient.get_raw_path(),
-                                binary_message,
-                                Some(funds.clone()),
-                                Some(amp_message.config),
-                            )],
-                        })?,
-                        funds,
-                    }))))
-                }
-                //TODO: Uncomment once wormhole bridge is merged
-                // Some("wormhole") => {
-                //     let recipient = adjust_recipient_with_protocol(&recipient);
-                //     Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                //         contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
-                //         msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
-                //             chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                //             message: vec![AMPMsg::new(
-                //                 recipient,
-                //                 binary_message,
-                //                 Some(funds.clone()),
-                //                 Some(amp_message.reply_on),
-                //                 Some(amp_message.exit_at_error),
-                //                 amp_message.gas_limit,
-                //             )],
-                //         })?,
-                //         funds,
-                //     }))))
-                // }
-                _ => Err(ContractError::UnsupportedProtocol {}),
-            }
-        } else {
-            // In case there's no protocol, the pathname should look like this : chain/path or just /path
-            let chain = pathname.split('/').next();
-            match chain {
-                // In case of andromeda we proceed as usual
-                // This approach assumes that andromeda's always the native chain
-                Some("andromeda") => Ok(None),
-                // In case of other chain, we forward to bridge contract
-                Some(chain) => {
-                    if chain.is_empty() {
-                        Ok(None)
-                    } else {
-                        Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
-                            msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
-                                chain: extract_chain(pathname).unwrap_or_default().to_owned(),
-                                message: vec![AMPMsg::new(
-                                    recipient,
-                                    binary_message,
-                                    Some(funds.clone()),
-                                    Some(amp_message.config),
-                                )],
-                            })?,
-                            funds,
-                        }))))
-                    }
-                }
-                None => Err(ContractError::InvalidPathname { error: None }),
-            }
-        }
-    } else {
-        Ok(None)
-    }
-}
+//                 // Will import the bridge's execute msg once merged
+//                 Some("ibc") => Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+//                     contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
+//                     msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
+//                         chain: recipient.get_chain().unwrap_or_default().to_string(),
+//                         message: vec![AMPMsg::new(
+//                             recipient.get_raw_path(),
+//                             binary_message,
+//                             Some(funds.clone()),
+//                             Some(amp_message.config),
+//                         )],
+//                     })?,
+//                     funds,
+//                 })))),
+//                 //TODO: Uncomment once wormhole bridge is merged
+//                 // Some("wormhole") => {
+//                 //     let recipient = adjust_recipient_with_protocol(&recipient);
+//                 //     Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+//                 //         contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
+//                 //         msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
+//                 //             chain: extract_chain(pathname).unwrap_or_default().to_owned(),
+//                 //             message: vec![AMPMsg::new(
+//                 //                 recipient,
+//                 //                 binary_message,
+//                 //                 Some(funds.clone()),
+//                 //                 Some(amp_message.reply_on),
+//                 //                 Some(amp_message.exit_at_error),
+//                 //                 amp_message.gas_limit,
+//                 //             )],
+//                 //         })?,
+//                 //         funds,
+//                 //     }))))
+//                 // }
+//                 _ => Err(ContractError::UnsupportedProtocol {}),
+//             }
+//         } else {
+//             // In case there's no protocol, the pathname should look like this : chain/path or just /path
+//             let chain = pathname.split('/').next();
+//             match chain {
+//                 // In case of andromeda we proceed as usual
+//                 // This approach assumes that andromeda's always the native chain
+//                 Some("andromeda") => Ok(None),
+//                 // In case of other chain, we forward to bridge contract
+//                 Some(chain) => {
+//                     if chain.is_empty() {
+//                         Ok(None)
+//                     } else {
+//                         Ok(Some(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+//                             contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
+//                             msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
+//                                 chain: extract_chain(pathname).unwrap_or_default().to_owned(),
+//                                 message: vec![AMPMsg::new(
+//                                     recipient,
+//                                     binary_message,
+//                                     Some(funds.clone()),
+//                                     Some(amp_message.config),
+//                                 )],
+//                             })?,
+//                             funds,
+//                         }))))
+//                     }
+//                 }
+//                 None => Err(ContractError::InvalidPathname { error: None }),
+//             }
+//         }
+//     } else {
+//         Ok(None)
+//     }
+// }
 #[allow(clippy::too_many_arguments)]
 pub fn parse_path_direct(
     recipient: String,

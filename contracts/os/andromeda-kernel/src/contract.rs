@@ -14,7 +14,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{parse_path, parse_path_direct, ADO_DB_KEY, KERNEL_ADDRESSES, VFS_KEY};
+use crate::state::{parse_path_direct, ADO_DB_KEY, KERNEL_ADDRESSES, VFS_KEY};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-kernel";
@@ -159,34 +159,22 @@ pub fn handle_amp_packet(
 
     let mut res = Response::default();
 
-    let vfs_address = KERNEL_ADDRESSES.may_load(execute_env.deps.storage, VFS_KEY)?;
-    for amp_message in packet.clone().messages {
-        let parsed_path = parse_path(
-            amp_message.recipient.clone(),
-            amp_message.clone(),
-            execute_env.deps.storage,
-        )?;
-        if let Some(sub_msg) = parsed_path {
-            res = res.add_submessage(sub_msg);
-            continue;
-        };
-        let contract_addr = amp_message.get_recipient_address(
-            execute_env.deps.api,
-            &execute_env.deps.querier,
-            vfs_address.clone(),
-        )?;
-        let msg = amp_message.generate_sub_message(
-            contract_addr,
-            packet.get_origin(),
-            packet.get_previous_sender(),
-            1,
-        )?;
-
-        res = res.add_submessage(msg)
+    let vfs_address = KERNEL_ADDRESSES
+        .may_load(execute_env.deps.storage, VFS_KEY)?
+        .unwrap();
+    if let Some(message) = packet.messages.first() {
+        if let Some(protocol) = message.recipient.get_protocol() {
+            match protocol {
+                "ibc" => {}
+            }
+        }
     }
 
-    // TODO: GENERATE ATTRIBUTES FROM AMP PACKET
     Ok(res)
+}
+
+fn handle_ibc_packet(execute_env: ExecuteEnv, packet: AMPPkt) -> Result<Response, ContractError> {
+    Ok(Response::default().set_data(to_binary(&true)?))
 }
 
 fn upsert_key_address(
