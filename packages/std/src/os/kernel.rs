@@ -1,7 +1,7 @@
 use crate::amp::messages::AMPPkt;
 use crate::{ado_base::AndromedaQuery, amp::addresses::AndrAddr};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, ReplyOn};
+use cosmwasm_std::{Binary, ReplyOn};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -32,7 +32,7 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {
     #[returns(AndromedaQuery)]
     AndrQuery(AndromedaQuery),
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     KeyAddress { key: String },
     #[returns(bool)]
     VerifyAddress { address: String },

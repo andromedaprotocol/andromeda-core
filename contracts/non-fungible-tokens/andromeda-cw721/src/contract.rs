@@ -538,7 +538,6 @@ fn execute_burn(env: ExecuteEnv, token_id: String) -> Result<Response, ContractE
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
-        QueryMsg::AndrQuery(msg) => ADOContract::default().query(deps, env, msg, query),
         QueryMsg::IsArchived { token_id } => Ok(to_binary(&is_archived(deps.storage, &token_id)?)?),
         QueryMsg::TransferAgreement { token_id } => {
             Ok(to_binary(&query_transfer_agreement(deps, token_id)?)?)

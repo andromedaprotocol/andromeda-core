@@ -1,16 +1,13 @@
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, AndromedaQuery},
-    amp::addresses::AndrAddr,
-    andr_exec, andr_instantiate, andr_query,
+    ado_base::hooks::AndromedaHook, amp::addresses::AndrAddr, andr_exec, andr_instantiate,
+    andr_query,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use cosmwasm_std::{Binary, Coin, CustomMsg};
-use cw721::{
-    AllNftInfoResponse, ApprovalResponse, ApprovalsResponse, ContractInfoResponse, Expiration,
-    NftInfoResponse, NumTokensResponse, OperatorsResponse, OwnerOfResponse, TokensResponse,
-};
-use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MinterResponse, QueryMsg as Cw721QueryMsg};
+use cw721::Expiration;
+
+use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -198,19 +195,17 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
-    #[returns(AndromedaHook)]
+    #[returns(andromeda_std::ado_base::hooks::AndromedaHook)]
     AndrHook(AndromedaHook),
 
     /// Owner of the given token by ID
-    #[returns(OwnerOfResponse)]
+    #[returns(cw721::OwnerOfResponse)]
     OwnerOf {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// Approvals for a given address (paginated)
-    #[returns(OperatorsResponse)]
+    #[returns(cw721::OperatorsResponse)]
     AllOperators {
         owner: String,
         include_expired: Option<bool>,
@@ -218,26 +213,26 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Amount of tokens minted by the contract
-    #[returns(NumTokensResponse)]
+    #[returns(cw721::NumTokensResponse)]
     NumTokens {},
     /// The data of a token
-    #[returns(NftInfoResponse<TokenExtension>)]
+    #[returns(cw721::NftInfoResponse<TokenExtension>)]
     NftInfo { token_id: String },
     /// The data of a token and any approvals assigned to it
-    #[returns(AllNftInfoResponse<TokenExtension>)]
+    #[returns(cw721::AllNftInfoResponse<TokenExtension>)]
     AllNftInfo {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// All tokens minted by the contract owned by a given address (paginated)
-    #[returns(TokensResponse)]
+    #[returns(cw721::TokensResponse)]
     Tokens {
         owner: String,
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// All tokens minted by the contract (paginated)
-    #[returns(TokensResponse)]
+    #[returns(cw721::TokensResponse)]
     AllTokens {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -249,13 +244,13 @@ pub enum QueryMsg {
     #[returns(Option<TransferAgreement>)]
     TransferAgreement { token_id: String },
     /// The current config of the contract
-    #[returns(ContractInfoResponse)]
+    #[returns(cw721::ContractInfoResponse)]
     ContractInfo {},
     #[returns(TokenExtension)]
     Extension { msg: Box<QueryMsg> },
-    #[returns(MinterResponse)]
+    #[returns(cw721_base::MinterResponse)]
     Minter {},
-    #[returns(ApprovalResponse)]
+    #[returns(cw721::ApprovalResponse)]
     Approval {
         token_id: String,
         spender: String,
@@ -263,7 +258,7 @@ pub enum QueryMsg {
     },
     /// Return approvals that a token has
     /// Return type: `ApprovalsResponse`
-    #[returns(ApprovalsResponse)]
+    #[returns(cw721::ApprovalsResponse)]
     Approvals {
         token_id: String,
         include_expired: Option<bool>,

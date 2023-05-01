@@ -4,7 +4,7 @@ use cosmwasm_std::{
     Addr, Coin, DepsMut, Env, Response, Uint128,
 };
 
-use andromeda_std::ado_base::{modules::Module, AndromedaQuery};
+use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::error::ContractError;
 use cw_ownable::is_owner;
@@ -51,17 +51,6 @@ fn mint_token(deps: DepsMut, env: Env, token_id: String, owner: String, extensio
         extension,
     };
     execute(deps, env, info, mint_msg).unwrap();
-}
-
-#[test]
-fn test_andr_query() {
-    let mut deps = mock_dependencies_custom(&[]);
-    init_setup(deps.as_mut(), mock_env(), None);
-
-    let msg = QueryMsg::AndrQuery(AndromedaQuery::Owner {});
-    let res = query(deps.as_ref(), mock_env(), msg);
-    // Test that the query is hooked up correctly.
-    assert!(res.is_ok())
 }
 
 #[test]

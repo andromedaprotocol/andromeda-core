@@ -25,15 +25,6 @@ use cosmwasm_std::Uint64;
 
 use serde::de::DeserializeOwned;
 
-use self::{
-    ado_type::TypeResponse,
-    block_height::BlockHeightResponse,
-    kernel_address::KernelAddressResponse,
-    operators::{IsOperatorResponse, OperatorsResponse},
-    ownership::{ContractOwnerResponse, PublisherResponse},
-    version::VersionResponse,
-};
-
 #[cw_serde]
 pub struct InstantiateMsg {
     pub ado_type: String,
@@ -90,26 +81,26 @@ pub enum AndromedaMsg {
 pub enum AndromedaQuery {
     #[returns(Option<Binary>)]
     Get(Option<Binary>),
-    #[returns(ContractOwnerResponse)]
+    #[returns(self::ownership::ContractOwnerResponse)]
     Owner {},
-    #[returns(OperatorsResponse)]
+    #[returns(self::operators::OperatorsResponse)]
     Operators {},
-    #[returns(TypeResponse)]
+    #[returns(self::ado_type::TypeResponse)]
     Type {},
-    #[returns(KernelAddressResponse)]
+    #[returns(self::kernel_address::KernelAddressResponse)]
     KernelAddress {},
-    #[returns(PublisherResponse)]
+    #[returns(self::ownership::PublisherResponse)]
     OriginalPublisher {},
-    #[returns(BlockHeightResponse)]
+    #[returns(self::block_height::BlockHeightResponse)]
     BlockHeightUponCreation {},
-    #[returns(IsOperatorResponse)]
+    #[returns(self::operators::IsOperatorResponse)]
     IsOperator { address: String },
     #[cfg(feature = "modules")]
     #[returns(Module)]
     Module { id: Uint64 },
     #[returns(Vec<String>)]
     ModuleIds {},
-    #[returns(VersionResponse)]
+    #[returns(self::version::VersionResponse)]
     Version {},
 }
 
