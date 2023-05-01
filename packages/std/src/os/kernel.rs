@@ -1,5 +1,5 @@
-use crate::ado_base::AndromedaQuery;
 use crate::amp::messages::AMPPkt;
+use crate::{ado_base::AndromedaQuery, amp::addresses::AndrAddr};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, ReplyOn};
 
@@ -14,7 +14,7 @@ pub enum ExecuteMsg {
     AMPReceive(AMPPkt),
     /// Creates an original AMP packet
     AMPDirect {
-        recipient: String,
+        recipient: AndrAddr,
         message: Binary,
         reply_on: Option<ReplyOn>,
         exit_at_error: Option<bool>,

@@ -1,5 +1,6 @@
 use andromeda_std::ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg};
 use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPMsg, AMPMsgConfig, AMPPkt};
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::ContractError;
@@ -30,7 +31,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     ADOContract::default().instantiate(
         deps.storage,
-        env,
+        env.clone(),
         deps.api,
         info,
         BaseInstantiateMsg {
@@ -96,7 +97,7 @@ pub fn handle_amp_direct(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    recipient: String,
+    recipient: AndrAddr,
     message: Binary,
     reply_on: Option<ReplyOn>,
     exit_at_error: Option<bool>,
@@ -135,7 +136,7 @@ pub fn handle_amp_direct(
         );
         Ok(Response::default()
             .add_submessage(SubMsg::new(WasmMsg::Execute {
-                contract_addr: recipient.clone(),
+                contract_addr: recipient.clone().into(),
                 msg: to_binary(&ExecuteMsg::AMPReceive(amp_pkt))?,
                 funds: info.funds,
             }))
@@ -166,6 +167,7 @@ pub fn handle_amp_packet(
         if let Some(protocol) = message.recipient.get_protocol() {
             match protocol {
                 "ibc" => {}
+                &_ => panic!("Invalid protocol"),
             }
         }
     }
