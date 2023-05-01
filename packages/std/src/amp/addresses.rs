@@ -81,7 +81,7 @@ impl AndrAddr {
                 // Convert local path to VFS path before querying
                 let valid_vfs_path = self.local_path_to_vfs_path(deps.storage)?;
                 let vfs_addr = Addr::unchecked(vfs_contract);
-                vfs_resolve_path(&valid_vfs_path, vfs_addr, &deps.querier)
+                vfs_resolve_path(valid_vfs_path, vfs_addr, &deps.querier)
             }
         }
     }
