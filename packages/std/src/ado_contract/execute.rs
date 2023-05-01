@@ -34,14 +34,6 @@ impl<'a> ADOContract<'a> {
         self.kernel_address
             .save(storage, &api.addr_validate(&msg.kernel_address)?)?;
         let attributes = [attr("method", "instantiate"), attr("type", &msg.ado_type)];
-        #[cfg(feature = "modules")]
-        {
-            if let Some(modules) = msg.modules {
-                return Ok(self
-                    .register_modules(info.sender.as_str(), storage, modules)?
-                    .add_attributes(attributes));
-            }
-        }
         Ok(Response::new().add_attributes(attributes))
     }
 
@@ -219,7 +211,6 @@ mod tests {
                 info.clone(),
                 InstantiateMsg {
                     ado_type: "type".to_string(),
-                    modules: None,
                     operators: None,
                     ado_version: "version".to_string(),
                     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -249,6 +240,13 @@ mod tests {
         let info = mock_info("owner", &[]);
         let deps_mut = deps.as_mut();
         contract
+            .register_modules(
+                info.sender.as_str(),
+                deps_mut.storage,
+                Some(vec![Module::new("module", "cosmos1...".to_string(), false)]),
+            )
+            .unwrap();
+        contract
             .instantiate(
                 deps_mut.storage,
                 mock_env(),
@@ -257,7 +255,6 @@ mod tests {
                 InstantiateMsg {
                     ado_type: "type".to_string(),
                     ado_version: "version".to_string(),
-                    modules: Some(vec![Module::new("module", "cosmos1...".to_string(), false)]),
                     operators: None,
                     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                     owner: None,
@@ -297,7 +294,6 @@ mod tests {
                 InstantiateMsg {
                     ado_type: "type".to_string(),
                     ado_version: "version".to_string(),
-                    modules: None,
                     operators: None,
                     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                     owner: None,

@@ -605,11 +605,14 @@ impl From<Cw721ContractError> for ContractError {
         match err {
             Cw721ContractError::Std(std) => ContractError::Std(std),
             Cw721ContractError::Expired {} => ContractError::Expired {},
-            Cw721ContractError::Unauthorized {} => ContractError::Unauthorized {},
+            Cw721ContractError::Ownership(_) => ContractError::Unauthorized {},
             Cw721ContractError::Claimed {} => ContractError::Claimed {},
             Cw721ContractError::ApprovalNotFound { spender } => {
                 ContractError::ApprovalNotFound { spender }
             }
+            Cw721ContractError::WrongMigrateVersion(_) => ContractError::CannotMigrate {
+                previous_contract: "".to_string(),
+            },
         }
     }
 }

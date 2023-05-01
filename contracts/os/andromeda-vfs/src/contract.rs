@@ -33,7 +33,6 @@ pub fn instantiate(
             ado_type: "vfs".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },

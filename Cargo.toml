@@ -15,7 +15,7 @@ members = [
     # "tests-integration"
 ]
 
-[profile.release.package.std]
+[profile.release.package.andromeda-std]
 codegen-units = 1
 incremental = false
 

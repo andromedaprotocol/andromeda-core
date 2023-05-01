@@ -130,7 +130,9 @@ impl AndrAddr {
             None => None,
             Some(..) => {
                 let start = self.0.find("://").unwrap() + 3;
-                let end = self.0[start..].find('/').unwrap_or(self.0[start..].len());
+                let end = self.0[start..]
+                    .find('/')
+                    .unwrap_or_else(|| self.0[start..].len());
                 Some(&self.0[start..start + end])
             }
         }

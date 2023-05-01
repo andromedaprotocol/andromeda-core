@@ -9,6 +9,7 @@ pub mod os;
 pub use andromeda_macros::{andr_exec, andr_instantiate, andr_query};
 pub use strum_macros::AsRefStr;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod testing;
 
 use crate::error::ContractError;
@@ -17,7 +18,6 @@ use cosmwasm_std::{
     ensure, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, QueryRequest,
     SubMsg, WasmQuery,
 };
-use cw20::Cw20Coin;
 
 use serde::{de::DeserializeOwned, Serialize};
 use std::collections::BTreeMap;
@@ -78,24 +78,6 @@ where
         msg: encode_binary(&message)?,
     }))?;
     Ok(resp)
-}
-
-#[cw_serde]
-pub enum Funds {
-    Native(Coin),
-    Cw20(Cw20Coin),
-}
-
-impl Funds {
-    // There is probably a more idiomatic way of doing this with From and Into...
-    pub fn try_get_coin(&self) -> Result<Coin, ContractError> {
-        match self {
-            Funds::Native(coin) => Ok(coin.clone()),
-            Funds::Cw20(_) => Err(ContractError::ParsingError {
-                err: "Funds is not of type Native".to_string(),
-            }),
-        }
-    }
 }
 
 /// Merges bank messages to the same recipient to a single bank message. Any sub messages

@@ -11,20 +11,24 @@ pub mod hooks;
 pub mod query;
 
 impl<'a> ADOContract<'a> {
-    pub(crate) fn register_modules(
+    pub fn register_modules(
         &self,
         sender: &str,
         storage: &mut dyn Storage,
-        modules: Vec<Module>,
+        modules: Option<Vec<Module>>,
     ) -> Result<Response, ContractError> {
-        self.validate_modules(&modules)?;
         let mut resp = Response::new();
-        for module in modules {
-            let register_response = self.execute_register_module(storage, sender, module, false)?;
-            resp = resp
-                .add_attributes(register_response.attributes)
-                .add_submessages(register_response.messages)
+        if let Some(modules) = modules {
+            self.validate_modules(&modules)?;
+            for module in modules {
+                let register_response =
+                    self.execute_register_module(storage, sender, module, false)?;
+                resp = resp
+                    .add_attributes(register_response.attributes)
+                    .add_submessages(register_response.messages)
+            }
         }
+
         Ok(resp)
     }
 

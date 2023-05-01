@@ -11,7 +11,6 @@ use cw721::{
     AllNftInfoResponse, ApprovalResponse, ApprovalsResponse, ContractInfoResponse, Expiration,
     NftInfoResponse, NumTokensResponse, OperatorsResponse, OwnerOfResponse, TokensResponse,
 };
-pub use cw721_base::MintMsg;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MinterResponse, QueryMsg as Cw721QueryMsg};
 
 #[andr_instantiate]
@@ -52,34 +51,43 @@ pub struct MetadataAttribute {
 #[cw_serde]
 #[derive(Default)]
 pub struct TokenExtension {
-    /// The name of the token
-    pub name: String,
     /// The original publisher of the token
     pub publisher: String,
-    /// An optional description of the token
-    pub description: Option<String>,
-    /// The metadata of the token (if it exists)
-    pub attributes: Vec<MetadataAttribute>,
-    /// URL to token image
-    pub image: String,
-    /// Raw SVG image data
-    pub image_data: Option<String>,
-    /// A URL to the token's source
-    pub external_url: Option<String>,
-    /// A URL to any multi-media attachments
-    pub animation_url: Option<String>,
-    /// A URL to a related YouTube videos
-    pub youtube_url: Option<String>,
 }
 
 impl CustomMsg for ExecuteMsg {}
 impl CustomMsg for QueryMsg {}
 
+#[cw_serde]
+pub struct MintMsg {
+    /// Unique ID of the NFT
+    pub token_id: String,
+    /// The owner of the newly minter NFT
+    pub owner: String,
+    /// Universal resource identifier for this NFT
+    /// Should point to a JSON file that conforms to the ERC721
+    /// Metadata JSON Schema
+    pub token_uri: Option<String>,
+    /// Any custom extension used by this contract
+    pub extension: TokenExtension,
+}
+
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Mints a token
-    Mint(Box<MintMsg<TokenExtension>>),
+    Mint {
+        /// Unique ID of the NFT
+        token_id: String,
+        /// The owner of the newly minter NFT
+        owner: String,
+        /// Universal resource identifier for this NFT
+        /// Should point to a JSON file that conforms to the ERC721
+        /// Metadata JSON Schema
+        token_uri: Option<String>,
+        /// Any custom extension used by this contract
+        extension: TokenExtension,
+    },
     /// Transfers ownership of a token
     TransferNft {
         recipient: String,
@@ -127,7 +135,7 @@ pub enum ExecuteMsg {
     },
     /// Mint multiple tokens at a time
     BatchMint {
-        tokens: Vec<MintMsg<TokenExtension>>,
+        tokens: Vec<MintMsg>,
     },
     Extension {
         msg: Box<ExecuteMsg>,
@@ -169,7 +177,17 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
                 Cw721ExecuteMsg::ApproveAll { operator, expires }
             }
             ExecuteMsg::RevokeAll { operator } => Cw721ExecuteMsg::RevokeAll { operator },
-            ExecuteMsg::Mint(msg) => Cw721ExecuteMsg::Mint(*msg),
+            ExecuteMsg::Mint {
+                extension,
+                token_id,
+                token_uri,
+                owner,
+            } => Cw721ExecuteMsg::Mint {
+                extension,
+                token_id,
+                token_uri,
+                owner,
+            },
             ExecuteMsg::Burn { token_id } => Cw721ExecuteMsg::Burn { token_id },
             ExecuteMsg::Extension { msg } => Cw721ExecuteMsg::Extension { msg: *msg },
             _ => panic!("Unsupported message"),

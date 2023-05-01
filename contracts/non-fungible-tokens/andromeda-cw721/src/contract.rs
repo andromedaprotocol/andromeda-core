@@ -8,7 +8,7 @@ use cosmwasm_std::{
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TokenExtension, TransferAgreement,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::ado_contract::ADOContract;
 use cw2::{get_contract_version, set_contract_version};
@@ -20,12 +20,12 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg,
     },
     common::rates::get_tax_amount,
+    common::Funds,
     encode_binary,
     error::{from_semver, ContractError},
-    Funds,
 };
 use cw721::ContractInfoResponse;
-use cw721_base::{state::TokenInfo, Cw721Contract, MintMsg};
+use cw721_base::{state::TokenInfo, Cw721Contract};
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
@@ -58,6 +58,9 @@ pub fn instantiate(
 
     ANDR_MINTER.save(deps.storage, &msg.minter)?;
 
+    let contract = ADOContract::default();
+    contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+
     ADOContract::default().instantiate(
         deps.storage,
         env,
@@ -67,7 +70,6 @@ pub fn instantiate(
             ado_type: "cw721".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: msg.modules,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
@@ -132,7 +134,7 @@ pub fn execute(
         ExecuteMsg::AMPReceive(pkt) => {
             handle_amp_packet(execute_env.deps, execute_env.env, execute_env.info, pkt)
         }
-        ExecuteMsg::Mint(_) => execute_mint(execute_env, msg),
+        ExecuteMsg::Mint { .. } => execute_mint(execute_env, msg),
         ExecuteMsg::BatchMint { tokens } => execute_batch_mint(execute_env, tokens),
         ExecuteMsg::TransferNft {
             recipient,
@@ -269,11 +271,9 @@ fn resolve_minter(deps: &Deps) -> Result<Addr, ContractError> {
 
 /// Called before the standing CW721 minting method in order to update the current minting address for the contract
 fn pre_mint(deps: &mut DepsMut) -> Result<(), ContractError> {
-    let cw721_contract = AndrCW721Contract::default();
-
     // Update the minter before minting in case of any changes
     let andr_minter = resolve_minter(&deps.as_ref())?;
-    save_minter(&cw721_contract, deps, &andr_minter)?;
+    save_minter(deps, &andr_minter)?;
 
     Ok(())
 }
@@ -293,12 +293,12 @@ fn execute_mint(env: ExecuteEnv, msg: ExecuteMsg) -> Result<Response, ContractEr
 
 fn execute_batch_mint(
     env: ExecuteEnv,
-    tokens_to_mint: Vec<MintMsg<TokenExtension>>,
+    tokens_to_mint: Vec<MintMsg>,
 ) -> Result<Response, ContractError> {
     let ExecuteEnv {
         mut deps,
         info,
-        env,
+        env: _env,
     } = env;
     let mut resp = Response::default();
 
@@ -306,7 +306,14 @@ fn execute_batch_mint(
     let cw721_contract = AndrCW721Contract::default();
     pre_mint(&mut deps)?;
     for msg in tokens_to_mint {
-        let mint_resp = cw721_contract.mint(deps.branch(), env.clone(), info.clone(), msg)?;
+        let mint_resp = cw721_contract.mint(
+            deps.branch(),
+            info.clone(),
+            msg.token_id,
+            msg.owner,
+            msg.token_uri,
+            msg.extension,
+        )?;
         resp = resp
             .add_attributes(mint_resp.attributes)
             .add_submessages(mint_resp.messages);
@@ -315,12 +322,9 @@ fn execute_batch_mint(
     Ok(resp)
 }
 
-fn save_minter(
-    cw721_contract: &AndrCW721Contract,
-    deps: &mut DepsMut,
-    minter: &Addr,
-) -> Result<(), ContractError> {
-    Ok(cw721_contract.minter.save(deps.storage, minter)?)
+fn save_minter(deps: &mut DepsMut, minter: &Addr) -> Result<(), ContractError> {
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some(minter.as_str()))?;
+    Ok(())
 }
 
 fn execute_transfer(

@@ -7,8 +7,8 @@ use crate::{
         hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
         modules::Module,
     },
+    common::Funds,
     error::ContractError,
-    Funds,
 };
 
 impl<'a> ADOContract<'a> {

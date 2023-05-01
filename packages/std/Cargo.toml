@@ -21,7 +21,7 @@ cw2 = "0.16.0"
 semver = "1"
 cw20 = { version = "0.16.0"}
 cw20-base = { version = "0.16.0" }
-cw721-base = { version = "0.16.0" }
+cw721-base = { version = "0.17.0" }
 cw-utils = "0.16.0"
 cw-asset = { version = "2.0.0", optional = true }
 regex = "1"
@@ -32,7 +32,7 @@ cw1155 = "0.16.0"
 cw1155-base = "0.16.0"
 andromeda-macros = { workspace = true }
 strum_macros = { workspace = true }
-cw721 = "0.16"
+cw721 = "0.17"
 zip-optional = { git = "https://github.com/public-awesome/ics721.git" }
 cw721-proxy-derive = { git = "https://github.com/0xekez/cw721-proxy.git" }
 cw-cii = { git = "https://github.com/public-awesome/ics721.git" }

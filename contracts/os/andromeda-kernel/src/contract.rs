@@ -38,7 +38,6 @@ pub fn instantiate(
             ado_type: "kernel".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            modules: None,
             kernel_address: env.contract.address.to_string(),
             owner: msg.owner,
         },
@@ -180,10 +179,6 @@ pub fn handle_amp_packet(
     }
 
     Ok(res)
-}
-
-fn handle_ibc_packet(_execute_env: ExecuteEnv, _packet: AMPPkt) -> Result<Response, ContractError> {
-    Ok(Response::default().set_data(to_binary(&true)?))
 }
 
 fn upsert_key_address(

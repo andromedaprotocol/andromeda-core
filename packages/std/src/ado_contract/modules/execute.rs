@@ -3,6 +3,19 @@ use crate::{ado_base::modules::Module, error::ContractError};
 use cosmwasm_std::{ensure, DepsMut, MessageInfo, Response, Storage, Uint64};
 
 impl<'a> ADOContract<'a> {
+    pub fn instantiate_modules(
+        &self,
+        storage: &mut dyn Storage,
+        modules: Vec<Module>,
+    ) -> Result<Response, ContractError> {
+        let mut resp = Response::default();
+        for module in modules {
+            let idx = self.register_module(storage, &module)?;
+            resp = resp.add_attribute("module_idx", idx.to_string());
+        }
+        Ok(resp)
+    }
+
     /// A wrapper for `fn register_module`. The parameters are "extracted" from `DepsMut` to be able to
     /// execute this in a loop without cloning.
     pub(crate) fn execute_register_module(

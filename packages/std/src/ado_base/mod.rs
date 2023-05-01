@@ -39,8 +39,6 @@ pub struct InstantiateMsg {
     pub ado_type: String,
     pub ado_version: String,
     pub operators: Option<Vec<String>>,
-    #[cfg(feature = "modules")]
-    pub modules: Option<Vec<Module>>,
     pub kernel_address: String,
     pub owner: Option<String>,
 }
