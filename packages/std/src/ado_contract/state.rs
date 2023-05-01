@@ -46,7 +46,7 @@ impl<'a> Default for ADOContract<'a> {
 }
 
 impl<'a> ADOContract<'a> {
-    pub(crate) fn is_nested<T: DeserializeOwned>(&self, data: &Option<Binary>) -> bool {
+    pub(crate) fn _is_nested<T: DeserializeOwned>(&self, data: &Option<Binary>) -> bool {
         let res: Result<T, ContractError> = parse_message(data);
         res.is_ok()
     }

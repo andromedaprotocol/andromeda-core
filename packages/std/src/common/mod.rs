@@ -1,4 +1,3 @@
-pub mod app;
 pub mod context;
 pub mod expiration;
 pub mod queries;
@@ -6,11 +5,9 @@ pub mod rates;
 pub mod response;
 pub mod withdraw;
 
-use crate::ado_base::{AndromedaQuery, QueryMsg};
 use crate::error::ContractError;
 use cosmwasm_std::{
-    ensure, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, QueryRequest,
-    SubMsg, WasmQuery,
+    ensure, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, QuerierWrapper, SubMsg,
 };
 use cw20::Cw20Coin;
 
@@ -60,19 +57,14 @@ pub fn unwrap_or_err<T>(val_opt: &Option<T>, err: ContractError) -> Result<&T, C
 }
 
 pub fn query_primitive<T>(
-    querier: QuerierWrapper,
-    contract_address: String,
-    key: Option<String>,
+    _querier: QuerierWrapper,
+    _contract_address: String,
+    _key: Option<String>,
 ) -> Result<T, ContractError>
 where
     T: DeserializeOwned,
 {
-    let message = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(to_binary(&key)?)));
-    let resp: T = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: contract_address,
-        msg: encode_binary(&message)?,
-    }))?;
-    Ok(resp)
+    todo!()
 }
 
 #[cw_serde]

@@ -14,16 +14,12 @@ pub mod withdraw;
 use crate::ado_base::withdraw::Withdrawal;
 #[cfg(feature = "withdraw")]
 use crate::amp::recipient::Recipient;
-use crate::error::ContractError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{to_binary, Binary, QuerierWrapper, QueryRequest, WasmQuery};
 #[cfg(feature = "modules")]
 pub use modules::Module;
 
 #[cfg(feature = "modules")]
 use cosmwasm_std::Uint64;
-
-use serde::de::DeserializeOwned;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -36,8 +32,6 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum AndromedaMsg {
-    /// Standard Messages
-    Receive(Option<Binary>),
     UpdateOwner {
         address: String,
     },
@@ -79,8 +73,6 @@ pub enum AndromedaMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum AndromedaQuery {
-    #[returns(Option<Binary>)]
-    Get(Option<Binary>),
     #[returns(self::ownership::ContractOwnerResponse)]
     Owner {},
     #[returns(self::operators::OperatorsResponse)]
@@ -95,43 +87,12 @@ pub enum AndromedaQuery {
     BlockHeightUponCreation {},
     #[returns(self::operators::IsOperatorResponse)]
     IsOperator { address: String },
+    #[returns(self::version::VersionResponse)]
+    Version {},
     #[cfg(feature = "modules")]
     #[returns(Module)]
     Module { id: Uint64 },
+    #[cfg(feature = "modules")]
     #[returns(Vec<String>)]
     ModuleIds {},
-    #[returns(self::version::VersionResponse)]
-    Version {},
-}
-
-/// Helper enum for serialization
-#[cw_serde]
-pub enum ExecuteMsg {
-    AndrReceive(AndromedaMsg),
-}
-
-/// Helper enum for serialization
-#[cw_serde]
-#[derive(QueryResponses)]
-pub enum QueryMsg {
-    #[returns(AndromedaQuery)]
-    AndrQuery(AndromedaQuery),
-}
-
-/// Helper function for querying a contract using AndromedaQuery::Get
-pub fn query_get<T>(
-    data: Option<Binary>,
-    address: String,
-    querier: &QuerierWrapper,
-) -> Result<T, ContractError>
-where
-    T: DeserializeOwned,
-{
-    let query_msg = QueryMsg::AndrQuery(AndromedaQuery::Get(data));
-    let resp: T = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: address,
-        msg: to_binary(&query_msg)?,
-    }))?;
-
-    Ok(resp)
 }

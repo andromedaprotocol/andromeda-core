@@ -3,13 +3,12 @@ use crate::ado_base::modules::Module;
 use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
 use crate::{
-    ado_base::{AndromedaMsg, ExecuteMsg, InstantiateMsg},
-    common::parse_message,
+    ado_base::{AndromedaMsg, InstantiateMsg},
     error::ContractError,
 };
 #[cfg(feature = "modules")]
 use cosmwasm_std::Deps;
-use cosmwasm_std::{attr, ensure, Api, DepsMut, Env, MessageInfo, Order, Response, Storage};
+use cosmwasm_std::{attr, ensure, Addr, Api, DepsMut, Env, MessageInfo, Response, Storage};
 use serde::de::DeserializeOwned;
 
 type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
@@ -41,20 +40,12 @@ impl<'a> ADOContract<'a> {
     pub fn execute<E: DeserializeOwned>(
         &self,
         deps: DepsMut,
-        env: Env,
+        _env: Env,
         info: MessageInfo,
         msg: AndromedaMsg,
-        execute_function: ExecuteFunction<E>,
+        _execute_function: ExecuteFunction<E>,
     ) -> Result<Response, ContractError> {
         match msg {
-            AndromedaMsg::Receive(data) => {
-                ensure!(
-                    !self.is_nested::<ExecuteMsg>(&data),
-                    ContractError::NestedAndromedaMsg {}
-                );
-                let received: E = parse_message(&data)?;
-                (execute_function)(deps, env, info, received)
-            }
             AndromedaMsg::UpdateOwner { address } => self.execute_update_owner(deps, info, address),
             AndromedaMsg::UpdateOperators { operators } => {
                 self.execute_update_operators(deps, info, operators)
@@ -90,55 +81,14 @@ impl<'a> ADOContract<'a> {
         self.validate_andr_addresses(deps, vec![module.address.to_owned()])?;
         Ok(())
     }
+
+    pub fn get_kernel_address(&self, storage: &dyn Storage) -> Result<Addr, ContractError> {
+        let kernel_address = self.kernel_address.load(storage)?;
+        Ok(kernel_address)
+    }
 }
 
 impl<'a> ADOContract<'a> {
-    /// Updates the current contract owner. **Only executable by the current contract owner.**
-    pub fn execute_update_owner(
-        &self,
-        deps: DepsMut,
-        info: MessageInfo,
-        new_owner: String,
-    ) -> Result<Response, ContractError> {
-        ensure!(
-            self.is_contract_owner(deps.storage, info.sender.as_str())?,
-            ContractError::Unauthorized {}
-        );
-        let new_owner_addr = deps.api.addr_validate(&new_owner)?;
-        self.owner.save(deps.storage, &new_owner_addr)?;
-
-        Ok(Response::new().add_attributes(vec![
-            attr("action", "update_owner"),
-            attr("value", new_owner),
-        ]))
-    }
-
-    pub fn execute_update_operators(
-        &self,
-        deps: DepsMut,
-        info: MessageInfo,
-        operators: Vec<String>,
-    ) -> Result<Response, ContractError> {
-        ensure!(
-            self.is_contract_owner(deps.storage, info.sender.as_str())?,
-            ContractError::Unauthorized {}
-        );
-
-        let keys: Vec<String> = self
-            .operators
-            .keys(deps.storage, None, None, Order::Ascending)
-            .collect::<Result<Vec<String>, _>>()?;
-        for key in keys.iter() {
-            self.operators.remove(deps.storage, key);
-        }
-
-        for op in operators.iter() {
-            self.operators.save(deps.storage, op, &true)?;
-        }
-
-        Ok(Response::new().add_attributes(vec![attr("action", "update_operators")]))
-    }
-
     pub fn execute_update_app_contract(
         &self,
         deps: DepsMut,

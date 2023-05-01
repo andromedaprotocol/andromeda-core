@@ -1,4 +1,4 @@
-use cosmwasm_std::{Api, Binary, Deps, Event, QuerierWrapper, StdError, Storage, SubMsg};
+use cosmwasm_std::{Binary, Deps, Event, QuerierWrapper, StdError, SubMsg};
 use serde::de::DeserializeOwned;
 
 use crate::ado_contract::modules::ADOContract;
@@ -15,15 +15,13 @@ impl<'a> ADOContract<'a> {
     /// Sends the provided hook message to all registered modules
     pub fn module_hook<T: DeserializeOwned>(
         &self,
-        storage: &dyn Storage,
-        api: &dyn Api,
-        querier: QuerierWrapper,
+        deps: &Deps,
         hook_msg: AndromedaHook,
     ) -> Result<Vec<T>, ContractError> {
-        let addresses: Vec<String> = self.load_module_addresses(storage, api, &querier)?;
+        let addresses: Vec<String> = self.load_module_addresses(deps)?;
         let mut resp: Vec<T> = Vec::new();
         for addr in addresses {
-            let mod_resp = hook_query::<T>(&querier, hook_msg.clone(), addr)?;
+            let mod_resp = hook_query::<T>(&deps.querier, hook_msg.clone(), addr)?;
 
             if let Some(mod_resp) = mod_resp {
                 resp.push(mod_resp);
@@ -33,7 +31,9 @@ impl<'a> ADOContract<'a> {
         Ok(resp)
     }
 
-    /// Sends the provided hook message to all registered modules
+    /// Sends a `OnFundsTransfer` hook message to all registered modules.
+    ///
+    /// Returns a vector of all required sub messages from each of the registered modules.
     pub fn on_funds_transfer(
         &self,
         deps: &Deps,
@@ -41,12 +41,16 @@ impl<'a> ADOContract<'a> {
         amount: Funds,
         msg: Binary,
     ) -> Result<(Vec<SubMsg>, Vec<Event>, Funds), ContractError> {
-        let modules: Vec<Module> = self.load_modules(deps.storage)?;
         let mut remainder = amount;
         let mut msgs: Vec<SubMsg> = Vec::new();
         let mut events: Vec<Event> = Vec::new();
+
+        let vfs_address = self.get_vfs_address(deps.storage, &deps.querier)?;
+        let modules: Vec<Module> = self.load_modules(deps.storage)?;
         for module in modules {
-            let module_address = module.address.get_raw_address(deps)?;
+            let module_address = module
+                .address
+                .get_raw_address_from_vfs(deps, vfs_address.clone())?;
             let mod_resp: Option<OnFundsTransferResponse> = hook_query(
                 &deps.querier,
                 AndromedaHook::OnFundsTransfer {
@@ -56,6 +60,7 @@ impl<'a> ADOContract<'a> {
                 },
                 module_address,
             )?;
+
             if let Some(mod_resp) = mod_resp {
                 remainder = mod_resp.leftover_funds;
                 msgs = [msgs, mod_resp.msgs].concat();

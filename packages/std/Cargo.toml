@@ -7,6 +7,7 @@ edition = "2018"
 withdraw = ["cw-asset", "andromeda-macros/withdraw"]
 primitive = []
 modules = ["andromeda-macros/modules"]
+module_hooks = ["andromeda-macros/module_hooks"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

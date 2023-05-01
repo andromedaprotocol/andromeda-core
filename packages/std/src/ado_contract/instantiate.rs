@@ -40,12 +40,8 @@ impl<'a> ADOContract<'a> {
         name: &str,
     ) -> Result<u64, ContractError> {
         // Do we want to cache the factory address?
-        let factory_address = self.get_address_from_kernel(storage, querier, "adodb")?;
-        let code_id: u64 = query_get(
-            Some(encode_binary(&name)?),
-            factory_address.to_string(),
-            querier,
-        )?;
+        let adodb_addr = self.get_address_from_kernel(storage, querier, "adodb")?;
+        let code_id: u64 = query_get(Some(encode_binary(&name)?), adodb_addr.to_string(), querier)?;
         Ok(code_id)
     }
 }

@@ -50,6 +50,7 @@ pub fn instantiate(
         name: msg.name,
         symbol: msg.symbol,
     };
+
     // Do this directly instead of with cw721_contract.instantiate because we want to have minter
     // be an AndrAddress, which cannot be validated right away.
     AndrCW721Contract::default()
@@ -60,8 +61,7 @@ pub fn instantiate(
 
     let contract = ADOContract::default();
     contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
-
-    ADOContract::default().instantiate(
+    contract.instantiate(
         deps.storage,
         env,
         deps.api,
@@ -121,9 +121,7 @@ pub fn execute(
     }
 
     contract.module_hook::<Response>(
-        execute_env.deps.storage,
-        execute_env.deps.api,
-        execute_env.deps.querier,
+        &execute_env.deps.as_ref(),
         AndromedaHook::OnExecute {
             sender: execute_env.info.sender.to_string(),
             payload: encode_binary(&msg)?,
@@ -335,9 +333,7 @@ fn execute_transfer(
     let ExecuteEnv { deps, info, env } = env;
     let base_contract = ADOContract::default();
     let responses = base_contract.module_hook::<Response>(
-        deps.storage,
-        deps.api,
-        deps.querier,
+        &deps.as_ref(),
         AndromedaHook::OnTransfer {
             token_id: token_id.clone(),
             sender: info.sender.to_string(),

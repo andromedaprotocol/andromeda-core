@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use crate::ado_contract::state::ADOContract;
-use cosmwasm_std::{Api, Order, QuerierWrapper, Response, Storage, Uint64};
+use cosmwasm_std::{Deps, Order, Response, Storage, Uint64};
 use cw_storage_plus::Bound;
 
 use crate::{ado_base::modules::Module, error::ContractError};
@@ -111,16 +111,17 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Loads all registered module addresses in Vector form
-    fn load_module_addresses(
-        &self,
-        storage: &dyn Storage,
-        _api: &dyn Api,
-        _querier: &QuerierWrapper,
-    ) -> Result<Vec<String>, ContractError> {
+    fn load_module_addresses(&self, deps: &Deps) -> Result<Vec<String>, ContractError> {
+        let vfs_address = self.get_vfs_address(deps.storage, &deps.querier)?;
         let module_addresses: Vec<String> = self
-            .load_modules(storage)?
+            .load_modules(deps.storage)?
             .into_iter()
-            .map(|m| m.address.to_string())
+            .map(|m| {
+                m.address
+                    .get_raw_address_from_vfs(deps, vfs_address.clone())
+                    .unwrap()
+                    .to_string()
+            })
             .collect();
 
         Ok(module_addresses)
@@ -462,10 +463,7 @@ mod tests {
                 &Module::new("address_list", "a", true),
             )
             .unwrap();
-        let deps_mut = deps.as_mut();
-        let module_addresses = contract
-            .load_module_addresses(deps_mut.storage, deps_mut.api, &deps_mut.querier)
-            .unwrap();
+        let module_addresses = contract.load_module_addresses(&deps.as_ref()).unwrap();
 
         assert_eq!(
             vec![String::from("address"), String::from("a")],

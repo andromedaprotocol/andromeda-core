@@ -175,6 +175,9 @@ pub fn andr_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
                 ModuleIds {},
                 #[returns(andromeda_std::ado_base::version::VersionResponse)]
                 Version {},
+                #[cfg(feature="module_hooks")]
+                #[returns(cosmwasm_std::Binary)]
+                AndrHook(andromeda_std::ado_base::hooks::HookMsg)
             }
         }
         .into(),

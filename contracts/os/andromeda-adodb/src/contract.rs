@@ -1,7 +1,7 @@
 use crate::state::{read_code_id, store_code_id, ADO_TYPE};
 use andromeda_std::ado_base::{AndromedaQuery, InstantiateMsg as BaseInstantiateMsg};
 use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::common::{encode_binary, parse_message};
+use andromeda_std::common::encode_binary;
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::adodb::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
@@ -135,10 +135,10 @@ fn handle_andromeda_query(
     msg: AndromedaQuery,
 ) -> Result<Binary, ContractError> {
     match msg {
-        AndromedaQuery::Get(data) => {
-            let code_id_key: String = parse_message(&data)?;
-            encode_binary(&query_code_id(deps, code_id_key)?)
-        }
+        // AndromedaQuery::Get(data) => {
+        //     let code_id_key: String = parse_message(&data)?;
+        //     encode_binary(&query_code_id(deps, code_id_key)?)
+        // }
         _ => ADOContract::default().query(deps, env, msg, query),
     }
 }

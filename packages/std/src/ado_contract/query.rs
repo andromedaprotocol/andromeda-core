@@ -7,12 +7,12 @@ use crate::{
         operators::{IsOperatorResponse, OperatorsResponse},
         ownership::{ContractOwnerResponse, PublisherResponse},
         version::VersionResponse,
-        AndromedaQuery, QueryMsg,
+        AndromedaQuery,
     },
-    common::{encode_binary, parse_message},
+    common::encode_binary,
     error::ContractError,
 };
-use cosmwasm_std::{ensure, Binary, Deps, Env, Order};
+use cosmwasm_std::{Binary, Deps, Env, Order};
 use serde::de::DeserializeOwned;
 
 type QueryFunction<Q> = fn(Deps, Env, Q) -> Result<Binary, ContractError>;
@@ -22,19 +22,11 @@ impl<'a> ADOContract<'a> {
     pub fn query<Q: DeserializeOwned>(
         &self,
         deps: Deps,
-        env: Env,
+        _env: Env,
         msg: AndromedaQuery,
-        query_function: QueryFunction<Q>,
+        _query_function: QueryFunction<Q>,
     ) -> Result<Binary, ContractError> {
         match msg {
-            AndromedaQuery::Get(data) => {
-                ensure!(
-                    !self.is_nested::<QueryMsg>(&data),
-                    ContractError::NestedAndromedaMsg {}
-                );
-                let received: Q = parse_message(&data)?;
-                (query_function)(deps, env, received)
-            }
             AndromedaQuery::Owner {} => encode_binary(&self.query_contract_owner(deps)?),
             AndromedaQuery::Operators {} => encode_binary(&self.query_operators(deps)?),
             AndromedaQuery::OriginalPublisher {} => {

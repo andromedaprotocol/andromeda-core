@@ -1,7 +1,6 @@
 #[cfg(feature = "primitive")]
 use crate::ado_base::primitive::{GetValueResponse, Primitive};
 use crate::{
-    ado_base::{AndromedaQuery, QueryMsg},
     ado_contract::ADOContract,
     amp::{ADO_DB_KEY, VFS_KEY},
     os::adodb::QueryMsg as ADODBQueryMsg,
@@ -159,13 +158,11 @@ impl WasmMockQuerier {
     /// Handles all App queries.
     ///
     /// Returns `"actual_address"` for `Get` queries.
-    fn handle_app_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            QueryMsg::AndrQuery(AndromedaQuery::Get(_)) => {
-                SystemResult::Ok(ContractResult::Ok(to_binary(&"actual_address").unwrap()))
-            }
-            _ => SystemResult::Ok(ContractResult::Err("Error".to_string())),
-        }
+    fn handle_app_query(&self, _msg: &Binary) -> QuerierResult {
+        // match from_binary(msg).unwrap() {
+        //     _ => SystemResult::Ok(ContractResult::Err("Error".to_string())),
+        // }
+        todo!()
     }
 
     /// Handles all ADODB queries.
