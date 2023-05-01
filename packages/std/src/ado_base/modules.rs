@@ -5,19 +5,15 @@ use cosmwasm_std::ensure;
 /// A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated
 #[cw_serde]
 pub struct Module {
-    pub module_name: Option<String>,
+    pub name: Option<String>,
     pub address: AndrAddr,
     pub is_mutable: bool,
 }
 
 impl Module {
-    pub fn new(
-        module_name: impl Into<String>,
-        address: impl Into<String>,
-        is_mutable: bool,
-    ) -> Module {
+    pub fn new(name: impl Into<String>, address: impl Into<String>, is_mutable: bool) -> Module {
         Module {
-            module_name: Some(module_name.into()),
+            name: Some(name.into()),
             address: AndrAddr::from_string(address.into()),
             is_mutable,
         }
@@ -40,7 +36,7 @@ impl Module {
     fn is_unique(&self, all_modules: &[Module]) -> bool {
         let mut total = 0;
         all_modules.iter().for_each(|m| {
-            if self.module_name == m.module_name {
+            if self.name == m.name {
                 total += 1;
             }
         });
