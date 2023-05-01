@@ -127,6 +127,7 @@ pub struct AMPPkt {
     origin: String,
     origin_username: Option<AndrAddr>,
     pub previous_sender: String,
+    pub id: u64,
 }
 
 impl AMPPkt {
@@ -142,6 +143,7 @@ impl AMPPkt {
             origin_username,
             previous_sender: previous_sender.into(),
             messages,
+            id: 0,
         }
     }
 
@@ -259,6 +261,13 @@ impl AMPPkt {
             id,
         );
         Ok(sub_msg)
+    }
+
+    /// Attaches an ID to the current packet
+    pub fn with_id(&self, id: u64) -> AMPPkt {
+        let mut new = self.clone();
+        new.id = id;
+        new
     }
 }
 

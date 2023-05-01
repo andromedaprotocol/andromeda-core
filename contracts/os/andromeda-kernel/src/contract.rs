@@ -15,7 +15,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::state::{parse_path_direct, ADO_DB_KEY, KERNEL_ADDRESSES, VFS_KEY};
+use crate::state::{new_message_id, parse_path_direct, ADO_DB_KEY, KERNEL_ADDRESSES, VFS_KEY};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-kernel";
@@ -157,9 +157,16 @@ pub fn handle_amp_packet(
         )?,
         ContractError::Unauthorized {}
     );
+    ensure!(
+        packet.id == 0,
+        ContractError::InvalidPacket {
+            error: Some("Packet ID cannot be provided from outside the Kernel".into())
+        }
+    );
 
     let mut res = Response::default();
-
+    let id = new_message_id(execute_env.deps.storage)?;
+    let packet = packet.with_id(id);
     let vfs_address = KERNEL_ADDRESSES
         .may_load(execute_env.deps.storage, VFS_KEY)?
         .unwrap();

@@ -568,6 +568,9 @@ pub enum ContractError {
 
     #[error("Invalid Username, {error:?}")]
     InvalidUsername { error: Option<String> },
+
+    #[error("Invalid Packet, {error:?}")]
+    InvalidPacket { error: Option<String> },
 }
 
 impl From<Cw20ContractError> for ContractError {

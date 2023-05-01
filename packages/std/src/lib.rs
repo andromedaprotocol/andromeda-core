@@ -9,7 +9,6 @@ pub mod os;
 pub use andromeda_macros::{andr_exec, andr_instantiate, andr_query};
 pub use strum_macros::AsRefStr;
 
-#[cfg(test)]
 pub mod testing;
 
 use crate::error::ContractError;
