@@ -70,10 +70,6 @@ The pacakges also includes the [ado_base](https://github.com/andromedaprotocol/a
 
 ## Development
 
-### Environment Setup
-
-To set up your environment follow the documentation provided at [Juno Docs](https://docs.junonetwork.io/juno/readme).
-
 ### Testing
 
 All tests can be run using:
@@ -136,6 +132,10 @@ rustup toolchain install nightly
 ```sh
 cargo clippy --all --all-targets -- -D warnings
 ```
+### Creating and Interacting with ADOs
+
+Andromeda is deployed on many of the Cosmos chains. Usually this will require you to set up an environment for each chain. Luckily, Andromeda has built the Andromeda CLI, an all in one tool to build, interact, and manage ADOs and wallets for any of the chains. The CLI documentation can be found [here](https://docs.andromedaprotocol.io/andromeda/andromeda-cli/introduction).
+
 ## Licensing
 
 [Terms and Conditions](https://github.com/andromedaprotocol/andromeda-core/blob/development/LICENSE/LICENSE.md)
