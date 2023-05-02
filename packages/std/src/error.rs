@@ -6,7 +6,7 @@ use cw_utils::{Expiration, ParseReplyError, PaymentError};
 
 use hex::FromHexError;
 use std::convert::From;
-use std::str::ParseBoolError;
+use std::str::{ParseBoolError, Utf8Error};
 use std::string::FromUtf8Error;
 use thiserror::Error;
 
@@ -619,6 +619,12 @@ impl From<Cw721ContractError> for ContractError {
 
 impl From<FromUtf8Error> for ContractError {
     fn from(err: FromUtf8Error) -> Self {
+        ContractError::Std(StdError::from(err))
+    }
+}
+
+impl From<Utf8Error> for ContractError {
+    fn from(err: Utf8Error) -> Self {
         ContractError::Std(StdError::from(err))
     }
 }
