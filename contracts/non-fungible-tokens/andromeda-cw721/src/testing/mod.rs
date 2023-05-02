@@ -403,11 +403,9 @@ fn test_modules() {
     mint_token(
         deps.as_mut(),
         env,
-        token_id.clone(),
+        token_id,
         creator.clone(),
-        TokenExtension {
-            publisher: creator.clone(),
-        },
+        TokenExtension { publisher: creator },
     );
 
     // let msg = ExecuteMsg::TransferAgreement {
