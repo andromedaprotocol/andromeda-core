@@ -1,11 +1,9 @@
 #[cfg(feature = "modules")]
 use crate::ado_base::modules::Module;
-use crate::{common::parse_message, error::ContractError};
-use cosmwasm_std::{Addr, Binary};
+use cosmwasm_std::Addr;
 #[cfg(feature = "withdraw")]
 use cw_asset::AssetInfo;
 use cw_storage_plus::{Item, Map};
-use serde::de::DeserializeOwned;
 
 pub struct ADOContract<'a> {
     pub(crate) owner: Item<'a, Addr>,
@@ -42,12 +40,5 @@ impl<'a> Default for ADOContract<'a> {
             #[cfg(feature = "withdraw")]
             withdrawable_tokens: Map::new("withdrawable_tokens"),
         }
-    }
-}
-
-impl<'a> ADOContract<'a> {
-    pub(crate) fn _is_nested<T: DeserializeOwned>(&self, data: &Option<Binary>) -> bool {
-        let res: Result<T, ContractError> = parse_message(data);
-        res.is_ok()
     }
 }
