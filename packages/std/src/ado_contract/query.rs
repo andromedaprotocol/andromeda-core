@@ -12,8 +12,9 @@ use crate::{
     common::encode_binary,
     error::ContractError,
 };
-use cosmwasm_std::{Binary, Deps, Env, Order};
+use cosmwasm_std::{from_binary, to_binary, Binary, Deps, Env, Order};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 type QueryFunction<Q> = fn(Deps, Env, Q) -> Result<Binary, ContractError>;
 
@@ -22,30 +23,40 @@ impl<'a> ADOContract<'a> {
     pub fn query<Q: DeserializeOwned>(
         &self,
         deps: Deps,
-        _env: Env,
-        msg: AndromedaQuery,
-        _query_function: QueryFunction<Q>,
+        env: Env,
+        msg: impl Serialize,
+        fallback_query_function: Option<QueryFunction<Q>>,
     ) -> Result<Binary, ContractError> {
-        match msg {
-            AndromedaQuery::Owner {} => encode_binary(&self.query_contract_owner(deps)?),
-            AndromedaQuery::Operators {} => encode_binary(&self.query_operators(deps)?),
-            AndromedaQuery::OriginalPublisher {} => {
-                encode_binary(&self.query_original_publisher(deps)?)
-            }
-            AndromedaQuery::Type {} => encode_binary(&self.query_type(deps)?),
-            AndromedaQuery::BlockHeightUponCreation {} => {
-                encode_binary(&self.query_block_height_upon_creation(deps)?)
-            }
-            AndromedaQuery::IsOperator { address } => {
-                encode_binary(&self.query_is_operator(deps, &address)?)
-            }
-            AndromedaQuery::KernelAddress {} => encode_binary(&self.query_kernel_address(deps)?),
-            AndromedaQuery::Version {} => encode_binary(&self.query_version(deps)?),
-            #[cfg(feature = "modules")]
-            AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
-            #[cfg(feature = "modules")]
-            AndromedaQuery::ModuleIds {} => encode_binary(&self.query_module_ids(deps)?),
-            _ => Err(ContractError::UnsupportedOperation {}),
+        let msg = to_binary(&msg)?;
+
+        match from_binary::<AndromedaQuery>(&msg) {
+            Ok(msg) => match msg {
+                AndromedaQuery::Owner {} => encode_binary(&self.query_contract_owner(deps)?),
+                AndromedaQuery::Operators {} => encode_binary(&self.query_operators(deps)?),
+                AndromedaQuery::OriginalPublisher {} => {
+                    encode_binary(&self.query_original_publisher(deps)?)
+                }
+                AndromedaQuery::Type {} => encode_binary(&self.query_type(deps)?),
+                AndromedaQuery::BlockHeightUponCreation {} => {
+                    encode_binary(&self.query_block_height_upon_creation(deps)?)
+                }
+                AndromedaQuery::IsOperator { address } => {
+                    encode_binary(&self.query_is_operator(deps, &address)?)
+                }
+                AndromedaQuery::KernelAddress {} => {
+                    encode_binary(&self.query_kernel_address(deps)?)
+                }
+                AndromedaQuery::Version {} => encode_binary(&self.query_version(deps)?),
+                #[cfg(feature = "modules")]
+                AndromedaQuery::Module { id } => encode_binary(&self.query_module(deps, id)?),
+                #[cfg(feature = "modules")]
+                AndromedaQuery::ModuleIds {} => encode_binary(&self.query_module_ids(deps)?),
+                _ => Err(ContractError::UnsupportedOperation {}),
+            },
+            Err(_) => match fallback_query_function {
+                Some(fallback_query_fn) => (fallback_query_fn)(deps, env, from_binary(&msg)?),
+                None => Err(ContractError::UnsupportedOperation {}),
+            },
         }
     }
 }

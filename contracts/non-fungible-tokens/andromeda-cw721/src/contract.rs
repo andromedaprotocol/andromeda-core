@@ -25,7 +25,7 @@ use andromeda_std::{
     error::{from_semver, ContractError},
 };
 use cw721::ContractInfoResponse;
-use cw721_base::{state::TokenInfo, Cw721Contract};
+use cw721_base::{state::TokenInfo, Cw721Contract, ExecuteMsg as Cw721ExecuteMsg};
 
 pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
@@ -60,12 +60,11 @@ pub fn instantiate(
     ANDR_MINTER.save(deps.storage, &msg.minter)?;
 
     let contract = ADOContract::default();
-    contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
-    contract.instantiate(
+    let resp = contract.instantiate(
         deps.storage,
         env,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
             ado_type: "cw721".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
@@ -73,7 +72,13 @@ pub fn instantiate(
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
-    )
+    )?;
+    let modules_resp =
+        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+
+    Ok(resp
+        .add_submessages(modules_resp.messages)
+        .add_attributes(modules_resp.attributes))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -144,13 +149,24 @@ pub fn execute(
         } => execute_update_transfer_agreement(execute_env, token_id, agreement),
         ExecuteMsg::Archive { token_id } => execute_archive(execute_env, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(execute_env, token_id),
-        _ => Ok(AndrCW721Contract::default().execute(
+        _ => contract.execute(
             execute_env.deps,
             execute_env.env,
             execute_env.info,
-            msg.into(),
-        )?),
+            msg,
+            Some(execute_cw721),
+        ),
     }
+}
+
+fn execute_cw721(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: Cw721ExecuteMsg<TokenExtension, ExecuteMsg>,
+) -> Result<Response, ContractError> {
+    let contract = AndrCW721Contract::default();
+    Ok(contract.execute(deps, env, info, msg)?)
 }
 
 fn handle_amp_packet(
@@ -334,7 +350,7 @@ fn execute_transfer(
     let base_contract = ADOContract::default();
     let responses = base_contract.module_hook::<Response>(
         &deps.as_ref(),
-        AndromedaHook::OnTransfer {
+        AndromedaHook::OnTokenTransfer {
             token_id: token_id.clone(),
             sender: info.sender.to_string(),
             recipient: recipient.clone(),

@@ -1,15 +1,17 @@
-#[cfg(feature = "modules")]
-use crate::ado_base::modules::Module;
 use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
+use crate::amp::VFS_KEY;
+use crate::os::kernel::QueryMsg as KernelQueryMsg;
 use crate::{
     ado_base::{AndromedaMsg, InstantiateMsg},
     error::ContractError,
 };
-#[cfg(feature = "modules")]
-use cosmwasm_std::Deps;
-use cosmwasm_std::{attr, ensure, Addr, Api, DepsMut, Env, MessageInfo, Response, Storage};
+use cosmwasm_std::{
+    attr, from_binary, to_binary, Addr, Api, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
+    Response, Storage,
+};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
 
@@ -36,78 +38,130 @@ impl<'a> ADOContract<'a> {
         Ok(Response::new().add_attributes(attributes))
     }
 
-    #[allow(unreachable_patterns)]
+    /// Handles execution of ADO specific messages.
+    ///
+    /// User may provide a fallback execute function for the case when the message may be handled by an external crate.
+    /// For example `cw721_base`.
     pub fn execute<E: DeserializeOwned>(
         &self,
         deps: DepsMut,
-        _env: Env,
+        env: Env,
         info: MessageInfo,
-        msg: AndromedaMsg,
-        _execute_function: ExecuteFunction<E>,
+        msg: impl Serialize,
+        fallback_execute_function: Option<ExecuteFunction<E>>,
     ) -> Result<Response, ContractError> {
-        match msg {
-            AndromedaMsg::UpdateOwner { address } => self.execute_update_owner(deps, info, address),
-            AndromedaMsg::UpdateOperators { operators } => {
-                self.execute_update_operators(deps, info, operators)
-            }
-            AndromedaMsg::UpdateAppContract { address } => {
-                self.execute_update_app_contract(deps, info, address, None)
-            }
-            #[cfg(feature = "withdraw")]
-            AndromedaMsg::Withdraw {
-                recipient,
-                tokens_to_withdraw,
-            } => self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
-            #[cfg(feature = "modules")]
-            AndromedaMsg::RegisterModule { module } => {
-                self.validate_module_address(&deps.as_ref(), &module)?;
-                self.execute_register_module(deps.storage, info.sender.as_str(), module, true)
-            }
-            #[cfg(feature = "modules")]
-            AndromedaMsg::DeregisterModule { module_idx } => {
-                self.execute_deregister_module(deps, info, module_idx)
-            }
-            #[cfg(feature = "modules")]
-            AndromedaMsg::AlterModule { module_idx, module } => {
-                self.validate_module_address(&deps.as_ref(), &module)?;
-                self.execute_alter_module(deps, info, module_idx, module)
-            }
-            _ => Err(ContractError::UnsupportedOperation {}),
+        let msg = to_binary(&msg)?;
+        match from_binary::<AndromedaMsg>(&msg) {
+            Ok(msg) => match msg {
+                AndromedaMsg::UpdateOwner { address } => {
+                    self.execute_update_owner(deps, info, address)
+                }
+                AndromedaMsg::UpdateOperators { operators } => {
+                    self.execute_update_operators(deps, info, operators)
+                }
+                AndromedaMsg::UpdateAppContract { address } => {
+                    self.execute_update_app_contract(deps, info, address, None)
+                }
+                #[cfg(feature = "withdraw")]
+                AndromedaMsg::Withdraw {
+                    recipient,
+                    tokens_to_withdraw,
+                } => self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
+                #[cfg(feature = "modules")]
+                AndromedaMsg::RegisterModule { module } => {
+                    self.validate_module_address(&deps.as_ref(), &module)?;
+                    self.execute_register_module(deps.storage, info.sender.as_str(), module, true)
+                }
+                #[cfg(feature = "modules")]
+                AndromedaMsg::DeregisterModule { module_idx } => {
+                    self.execute_deregister_module(deps, info, module_idx)
+                }
+                #[cfg(feature = "modules")]
+                AndromedaMsg::AlterModule { module_idx, module } => {
+                    self.validate_module_address(&deps.as_ref(), &module)?;
+                    self.execute_alter_module(deps, info, module_idx, module)
+                }
+            },
+            _ => match fallback_execute_function {
+                Some(fallback_execute_fn) => {
+                    (fallback_execute_fn)(deps, env, info, from_binary::<E>(&msg)?)
+                }
+                None => Err(ContractError::UnsupportedOperation {}),
+            },
         }
     }
 
-    #[cfg(feature = "modules")]
-    fn validate_module_address(&self, deps: &Deps, module: &Module) -> Result<(), ContractError> {
-        self.validate_andr_addresses(deps, vec![module.address.to_owned()])?;
+    /// Validates all provided `AndrAddr` addresses.
+    ///
+    /// Requires the VFS address to be set if any address is a VFS path.
+    /// Automatically validates all stored modules.
+    pub(crate) fn validate_andr_addresses(
+        &self,
+        deps: &Deps,
+        addresses: Vec<AndrAddr>,
+    ) -> Result<(), ContractError> {
+        let vfs_address = self.get_vfs_address(deps.storage, &deps.querier);
+        match vfs_address {
+            Ok(vfs_address) => {
+                #[cfg(feature = "modules")]
+                {
+                    let mut addresses = addresses.clone();
+                    let modules = self.load_modules(deps.storage)?;
+                    if !modules.is_empty() {
+                        let andr_addresses: Vec<AndrAddr> =
+                            modules.into_iter().map(|m| m.address).collect();
+                        addresses.extend(andr_addresses);
+                    }
+                }
+                for address in addresses {
+                    self.validate_andr_address(deps, address, vfs_address.clone())?;
+                }
+                Ok(())
+            }
+            Err(_) => {
+                for address in addresses {
+                    address.is_addr(deps.api);
+                }
+                Ok(())
+            }
+        }
+    }
+
+    /// Validates the given `AndrAddr` address.
+    pub(crate) fn validate_andr_address(
+        &self,
+        deps: &Deps,
+        address: AndrAddr,
+        vfs_address: Addr,
+    ) -> Result<(), ContractError> {
+        // Validate address string is valid
+        address.validate(deps.api)?;
+        if address.is_vfs_path() {
+            address.get_raw_address_from_vfs(deps, vfs_address)?;
+        }
         Ok(())
     }
 
+    /// Gets the stored address for the Kernel contract
     pub fn get_kernel_address(&self, storage: &dyn Storage) -> Result<Addr, ContractError> {
         let kernel_address = self.kernel_address.load(storage)?;
         Ok(kernel_address)
     }
-}
 
-impl<'a> ADOContract<'a> {
-    pub fn execute_update_app_contract(
+    /// Gets the current address for the VFS contract.
+    pub fn get_vfs_address(
         &self,
-        deps: DepsMut,
-        info: MessageInfo,
-        address: String,
-        addresses: Option<Vec<AndrAddr>>,
-    ) -> Result<Response, ContractError> {
-        ensure!(
-            self.is_contract_owner(deps.storage, info.sender.as_str())?,
-            ContractError::Unauthorized {}
-        );
-        self.app_contract
-            .save(deps.storage, &deps.api.addr_validate(&address)?)?;
-        self.validate_andr_addresses(&deps.as_ref(), addresses.unwrap_or_default())?;
-        Ok(Response::new()
-            .add_attribute("action", "update_app_contract")
-            .add_attribute("address", address))
+        storage: &dyn Storage,
+        querier: &QuerierWrapper,
+    ) -> Result<Addr, ContractError> {
+        let query = KernelQueryMsg::KeyAddress {
+            key: VFS_KEY.to_string(),
+        };
+        let kernel_address = self.get_kernel_address(storage)?;
+        Ok(querier.query_wasm_smart(kernel_address, &query)?)
     }
 
+    /// Updates the current version of the contract.
     pub fn execute_update_version(&self, deps: DepsMut) -> Result<Response, ContractError> {
         self.version
             .save(deps.storage, &env!("CARGO_PKG_VERSION").to_string())?;
@@ -170,7 +224,7 @@ mod tests {
 
         let msg = AndromedaMsg::RegisterModule { module };
 
-        let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
+        let res = contract.execute(deps_mut, mock_env(), info, msg, Some(dummy_function));
         assert!(res.is_err())
     }
 
@@ -216,7 +270,7 @@ mod tests {
             module,
         };
 
-        let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
+        let res = contract.execute(deps_mut, mock_env(), info, msg, Some(dummy_function));
         assert!(res.is_err())
     }
 
@@ -250,7 +304,7 @@ mod tests {
         };
 
         let res = contract
-            .execute(deps_mut, mock_env(), info, msg, dummy_function)
+            .execute(deps_mut, mock_env(), info, msg, Some(dummy_function))
             .unwrap();
 
         assert_eq!(

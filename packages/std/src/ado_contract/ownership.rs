@@ -1,6 +1,6 @@
 use crate::ado_contract::ADOContract;
 use crate::error::ContractError;
-use cosmwasm_std::{attr, ensure, DepsMut, MessageInfo, Order, Response, Storage};
+use cosmwasm_std::{attr, ensure, DepsMut, MessageInfo, Response, Storage};
 
 impl<'a> ADOContract<'a> {
     /// Updates the current contract owner. **Only executable by the current contract owner.**
@@ -23,6 +23,7 @@ impl<'a> ADOContract<'a> {
         ]))
     }
 
+    /// Updates the current contract operators. **Only executable by the current contract owner.**
     pub fn execute_update_operators(
         &self,
         deps: DepsMut,
@@ -33,15 +34,7 @@ impl<'a> ADOContract<'a> {
             self.is_contract_owner(deps.storage, info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
-
-        let keys: Vec<String> = self
-            .operators
-            .keys(deps.storage, None, None, Order::Ascending)
-            .collect::<Result<Vec<String>, _>>()?;
-        for key in keys.iter() {
-            self.operators.remove(deps.storage, key);
-        }
-
+        self.operators.clear(deps.storage);
         for op in operators.iter() {
             self.operators.save(deps.storage, op, &true)?;
         }
@@ -68,6 +61,9 @@ impl<'a> ADOContract<'a> {
         Ok(addr == owner)
     }
 
+    /// Helper function to query if a given address is the current contract owner or operator.
+    ///
+    /// Returns a boolean value indicating if the given address is the contract owner or operator.
     pub fn is_owner_or_operator(
         &self,
         storage: &dyn Storage,

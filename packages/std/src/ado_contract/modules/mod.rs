@@ -11,6 +11,17 @@ pub mod hooks;
 pub mod query;
 
 impl<'a> ADOContract<'a> {
+    /// Validates the given address for a module.
+    #[cfg(feature = "modules")]
+    pub(crate) fn validate_module_address(
+        &self,
+        deps: &Deps,
+        module: &Module,
+    ) -> Result<(), ContractError> {
+        self.validate_andr_addresses(deps, vec![module.address.to_owned()])?;
+        Ok(())
+    }
+
     pub fn register_modules(
         &self,
         sender: &str,

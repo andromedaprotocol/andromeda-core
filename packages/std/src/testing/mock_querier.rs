@@ -7,6 +7,8 @@ use crate::{
     os::kernel::QueryMsg as KernelQueryMsg,
     os::vfs::QueryMsg as VFSQueryMsg,
 };
+#[cfg(feature = "modules")]
+use cosmwasm_std::SubMsg;
 use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
@@ -30,12 +32,23 @@ pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
 /// Mock ADODB Contract Address
 pub const MOCK_ADODB_CONTRACT: &str = "adodb_contract";
 
+#[cfg(feature = "modules")]
+/// Mock Rates Contract Address
+pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
+#[cfg(feature = "modules")]
+/// Mock Address List Contract Address
+pub const MOCK_ADDRESS_LIST_CONTRACT: &str = "address_list_contract";
+
 /// An invalid contract address
 pub const INVALID_CONTRACT: &str = "invalid_contract";
 /// An invalid VFS Path
-pub const FAKE_VFS_PATH: &str = "fake_path";
+pub const FAKE_VFS_PATH: &str = "/f";
 /// An invalid ADODB Key
 pub const FAKE_ADODB_KEY: &str = "fake_adodb_key";
+#[cfg(feature = "modules")]
+pub const UNWHITELISTED_ADDRESS: &str = "unwhitelisted_address";
+#[cfg(feature = "modules")]
+pub const RATES_EXCLUDED_ADDRESS: &str = "rates_excluded_address";
 
 pub struct WasmMockQuerier {
     pub base: MockQuerier,
@@ -101,6 +114,8 @@ impl WasmMockQuerier {
                     MOCK_KERNEL_CONTRACT => self.handle_kernel_query(msg),
                     MOCK_VFS_CONTRACT => self.handle_vfs_query(msg),
                     MOCK_ADODB_CONTRACT => self.handle_adodb_query(msg),
+                    #[cfg(feature = "modules")]
+                    MOCK_ADDRESS_LIST_CONTRACT => self.handle_address_list_query(msg),
                     _ => panic!("Unsupported query for contract: {}", contract_addr),
                 }
             }
@@ -139,7 +154,7 @@ impl WasmMockQuerier {
                 }
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&true).unwrap())),
             },
-            _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
+            // _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
         }
     }
 
@@ -180,7 +195,7 @@ impl WasmMockQuerier {
                 FAKE_ADODB_KEY => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&1).unwrap())),
             },
-            _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
+            // _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
         }
     }
 
@@ -238,6 +253,66 @@ impl WasmMockQuerier {
         }
     }
 
+    #[cfg(feature = "modules")]
+    /// Handles all address list queries
+    ///
+    /// Returns `true` for `OnExecute` queries for any address excluding `UNWHITELISTED_ADDRESS`.
+    fn handle_address_list_query(&self, msg: &Binary) -> QuerierResult {
+        use cosmwasm_std::Response;
+
+        use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
+        match from_binary(msg).unwrap() {
+            HookMsg::AndrHook(hook) => match hook {
+                AndromedaHook::OnExecute { sender, .. } => match sender.as_str() {
+                    UNWHITELISTED_ADDRESS => {
+                        SystemResult::Ok(ContractResult::Err("Unwhitelisted Address".to_string()))
+                    }
+                    _ => SystemResult::Ok(ContractResult::Ok(
+                        to_binary::<Response>(&Response::default()).unwrap(),
+                    )),
+                },
+                AndromedaHook::OnFundsTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
+                    to_binary(&OnFundsTransferResponse::default()).unwrap(),
+                )),
+                AndromedaHook::OnTokenTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
+                    to_binary::<Response>(&Response::default()).unwrap(),
+                )),
+            },
+        }
+    }
+
+    #[cfg(feature = "modules")]
+    /// Handles all rates queries
+    ///
+    /// The payments required are calculated using the `calculate_mock_rates_response` method within this crate
+    /// unless the sender is assigned as `RATES_EXCLUDED_ADDRESS`.
+    fn _handle_rates_query(&self, msg: &Binary) -> QuerierResult {
+        use cosmwasm_std::Response;
+
+        use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
+        match from_binary(msg).unwrap() {
+            HookMsg::AndrHook(hook) => match hook {
+                AndromedaHook::OnExecute { sender, .. } => match sender.as_str() {
+                    _ => SystemResult::Ok(ContractResult::Ok(
+                        to_binary::<Response>(&Response::default()).unwrap(),
+                    )),
+                },
+                AndromedaHook::OnFundsTransfer { sender, .. } => {
+                    if sender.as_str() == RATES_EXCLUDED_ADDRESS {
+                        return SystemResult::Ok(ContractResult::Ok(
+                            to_binary(&OnFundsTransferResponse::default()).unwrap(),
+                        ));
+                    }
+                    // let msgs = calculate_mock_rates_response(sender, payload, amount);
+                    todo!("Implement Rates Query")
+                }
+                AndromedaHook::OnTokenTransfer { .. } => SystemResult::Ok(ContractResult::Ok(
+                    to_binary::<Response>(&Response::default()).unwrap(),
+                )),
+            },
+        }
+    }
+
     /// Handles all CW20 queries.
     ///
     /// Returns a balance of 10 for any `Balance` query.
@@ -256,4 +331,9 @@ impl WasmMockQuerier {
     pub fn new(base: MockQuerier) -> Self {
         WasmMockQuerier { base }
     }
+}
+
+#[cfg(feature = "modules")]
+pub fn calculate_mock_rates_response() -> (Vec<SubMsg>, Vec<Coin>) {
+    todo!("Implement after readding rates contract");
 }

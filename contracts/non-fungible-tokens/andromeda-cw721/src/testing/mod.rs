@@ -1,32 +1,28 @@
 use cosmwasm_std::{
-    attr, from_binary,
+    attr, coins, from_binary,
     testing::{mock_env, mock_info},
     Addr, Coin, DepsMut, Env, Response, Uint128,
 };
 
-use andromeda_std::ado_base::modules::Module;
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::error::ContractError;
+use andromeda_std::{ado_base::modules::Module, testing::mock_querier::FAKE_VFS_PATH};
 use cw_ownable::is_owner;
 
 use crate::{contract::*, state::ANDR_MINTER};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
-use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
+use andromeda_std::testing::mock_querier::{
+    mock_dependencies_custom, MOCK_ADDRESS_LIST_CONTRACT, MOCK_KERNEL_CONTRACT,
+};
 use cw721::{AllNftInfoResponse, OwnerOfResponse};
 
 const MINTER: &str = "minter";
 const SYMBOL: &str = "TT";
 const NAME: &str = "TestToken";
-// const ADDRESS_LIST: &str = "addresslist";
+const ADDRESS_LIST: &str = "addresslist";
 // const RATES: &str = "rates";
-
-// const MOCK_ADDRESSLIST_CONTRACT: &str = "address_list_contract";
-// const MOCK_RATES_CONTRACT: &str = "rates_contract";
-// const MOCK_BIDS_CONTRACT: &str = "bids_contract";
-
-// const MOCK_RATES_RECIPIENT: &str = "rates_recipient";
 
 fn init_setup(deps: DepsMut, env: Env, modules: Option<Vec<Module>>) {
     let info = mock_info(MINTER, &[]);
@@ -386,42 +382,33 @@ fn test_transfer_agreement() {
 
 #[test]
 fn test_modules() {
-    todo!()
-    // let modules: Vec<Module> = vec![
-    //     Module {
-    //         module_name: Some("rates".to_owned()),
-    //         address: AndrAddr::from_string(MOCK_RATES_CONTRACT),
-    //         is_mutable: false,
-    //     },
-    //     Module {
-    //         module_name: Some("address_list".to_owned()),
-    //         address: AndrAddr::from_string(MOCK_ADDRESSLIST_CONTRACT),
-    //         is_mutable: false,
-    //     },
-    // ];
+    let modules: Vec<Module> = vec![
+        // Module::new(RATES, MOCK_RATES_CONTRACT, false),
+        Module::new(ADDRESS_LIST, MOCK_ADDRESS_LIST_CONTRACT, false),
+    ];
 
-    // let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
+    let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
 
-    // let token_id = String::from("testtoken");
-    // let creator = String::from("creator");
-    // let env = mock_env();
-    // let agreement = TransferAgreement {
-    //     purchaser: String::from("purchaser"),
-    //     amount: Value::Raw(Coin {
-    //         amount: Uint128::from(100u64),
-    //         denom: "uusd".to_string(),
-    //     }),
-    // };
-    // init_setup(deps.as_mut(), env.clone(), Some(modules));
-    // mint_token(
-    //     deps.as_mut(),
-    //     env,
-    //     token_id.clone(),
-    //     creator.clone(),
-    //     TokenExtension {
-    //         publisher: creator.clone(),
-    //     },
-    // );
+    let token_id = String::from("testtoken");
+    let creator = String::from("creator");
+    let env = mock_env();
+    let _agreement = TransferAgreement {
+        purchaser: String::from("purchaser"),
+        amount: Coin {
+            amount: Uint128::from(100u64),
+            denom: "uusd".to_string(),
+        },
+    };
+    init_setup(deps.as_mut(), env.clone(), Some(modules));
+    mint_token(
+        deps.as_mut(),
+        env,
+        token_id.clone(),
+        creator.clone(),
+        TokenExtension {
+            publisher: creator.clone(),
+        },
+    );
 
     // let msg = ExecuteMsg::TransferAgreement {
     //     token_id: token_id.clone(),
@@ -545,127 +532,62 @@ fn test_transfer_with_offer() {
 
 #[test]
 fn test_update_app_contract() {
-    todo!()
-    // let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[]);
 
-    // let modules: Vec<Module> = vec![
-    //     Module {
-    //         module_name: Some(ADDRESS_LIST.into()),
-    //         address: AndrAddr::from_string(MOCK_ADDRESSLIST_CONTRACT),
-    //         is_mutable: false,
-    //     },
-    //     Module {
-    //         module_name: Some(RATES.into()),
-    //         address: AndrAddr::from_string(MOCK_RATES_CONTRACT),
-    //         is_mutable: false,
-    //     },
-    // ];
+    let info = mock_info("app_contract", &[]);
+    let inst_msg = InstantiateMsg {
+        name: NAME.to_string(),
+        symbol: SYMBOL.to_string(),
+        minter: AndrAddr::from_string("eee"),
+        modules: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+    };
 
-    // let info = mock_info("app_contract", &[]);
-    // let inst_msg = InstantiateMsg {
-    //     name: NAME.to_string(),
-    //     symbol: SYMBOL.to_string(),
-    //     minter: AndrAddr::from_string("eee"),
-    //     modules: Some(modules),
-    //     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-    //     owner: None,
-    // };
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
 
-    // let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
+    let msg = ExecuteMsg::UpdateAppContract {
+        address: "app_contract".to_string(),
+    };
 
-    // let msg = ExecuteMsg::UpdateAppContract {
-    //     address: "app_contract".to_string(),
-    // };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    // let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    // assert_eq!(
-    //     Response::new()
-    //         .add_attribute("action", "update_app_contract")
-    //         .add_attribute("address", "app_contract"),
-    //     res
-    // );
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "update_app_contract")
+            .add_attribute("address", "app_contract"),
+        res
+    );
 }
 
 #[test]
 fn test_update_app_contract_invalid_minter() {
-    todo!()
-    // let mut deps = mock_dependencies_custom(&[]);
+    let mut deps = mock_dependencies_custom(&[]);
 
-    // let modules: Vec<Module> = vec![
-    //     Module {
-    //         module_name: Some(ADDRESS_LIST.to_owned()),
-    //         address: AndrAddr::from_string(MOCK_ADDRESSLIST_CONTRACT),
-    //         is_mutable: false,
-    //     },
-    //     Module {
-    //         module_name: Some(RATES.to_owned()),
-    //         address: AndrAddr::from_string(MOCK_RATES_CONTRACT),
-    //         is_mutable: false,
-    //     },
-    // ];
+    let info = mock_info("app_contract", &[]);
+    let inst_msg = InstantiateMsg {
+        name: NAME.to_string(),
+        symbol: SYMBOL.to_string(),
+        minter: AndrAddr::from_string(FAKE_VFS_PATH),
+        modules: None,
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+    };
 
-    // let info = mock_info("app_contract", &[]);
-    // let inst_msg = InstantiateMsg {
-    //     name: NAME.to_string(),
-    //     symbol: SYMBOL.to_string(),
-    //     minter: AndrAddr::from_string("k"),
-    //     modules: Some(modules),
-    //     kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-    //     owner: None,
-    // };
+    instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
 
-    // let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
+    let msg = ExecuteMsg::Mint {
+        token_id: "1".to_string(),
+        owner: "owner".to_string(),
+        token_uri: None,
+        extension: TokenExtension {
+            publisher: "publisher".to_string(),
+        },
+    };
 
-    // let msg = ExecuteMsg::UpdateAppContract {
-    //     address: "app_contract".to_string(),
-    // };
-
-    // let res = execute(deps.as_mut(), mock_env(), info, msg);
-    // assert!(res.is_err());
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert!(res.is_err());
 }
-
-// TODO Commented out until we decided how to handle modules
-// #[test]
-// fn test_update_app_contract_invalid_module() {
-//     let mut deps = mock_dependencies_custom(&[]);
-
-//     let modules: Vec<Module> = vec![
-//         Module {
-//             module_name: Some(ADDRESS_LIST.to_owned()),
-//             address: MOCK_ADDRESSLIST_CONTRACT.to_owned(),
-//             is_mutable: false,
-//         },
-//         Module {
-//             module_name: Some(RATES.to_owned()),
-//             address: "k".to_owned(),
-//             is_mutable: false,
-//         },
-//     ];
-
-//     let info = mock_info("app_contract", &[]);
-//     let inst_msg = InstantiateMsg {
-//         name: NAME.to_string(),
-//         symbol: SYMBOL.to_string(),
-//         minter: MINTER.to_string(),
-//         modules: Some(modules),
-//         kernel_address: None,
-//     };
-
-//     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
-
-//     let msg = ExecuteMsg::AndrReceive(AndromedaMsg::UpdateAppContract {
-//         address: "app_contract".to_string(),
-//     });
-
-//     let res = execute(deps.as_mut(), mock_env(), info, msg);
-//     assert_eq!(
-//         ContractError::InvalidComponent {
-//             name: "k".to_string()
-//         },
-//         res.unwrap_err()
-//     );
-// }
 
 #[test]
 fn test_batch_mint() {
