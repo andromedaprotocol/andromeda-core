@@ -33,6 +33,22 @@ impl<'a> ADOContract<'a> {
         }
     }
 
+    /// Gets the address for `contract` stored in the primitive contract.
+    pub fn get_address_from_kernel(
+        &self,
+        storage: &dyn Storage,
+        querier: &QuerierWrapper,
+        contract: &str,
+    ) -> Result<Addr, ContractError> {
+        let kernel_address = self.kernel_address.load(storage)?;
+        let query = KernelQueryMsg::KeyAddress {
+            key: contract.to_string(),
+        };
+        let address: Addr = querier.query_wasm_smart(kernel_address, &query)?;
+
+        Ok(address)
+    }
+
     fn get_code_id(
         &self,
         storage: &mut dyn Storage,
