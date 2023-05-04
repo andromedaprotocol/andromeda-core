@@ -68,7 +68,7 @@
           "is_mutable": {
             "type": "boolean"
           },
-          "module_name": {
+          "name": {
             "type": [
               "string",
               "null"
@@ -91,7 +91,38 @@
         ],
         "properties": {
           "mint": {
-            "$ref": "#/definitions/MintMsg_for_TokenExtension"
+            "type": "object",
+            "required": [
+              "extension",
+              "owner",
+              "token_id"
+            ],
+            "properties": {
+              "extension": {
+                "description": "Any custom extension used by this contract",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/TokenExtension"
+                  }
+                ]
+              },
+              "owner": {
+                "description": "The owner of the newly minter NFT",
+                "type": "string"
+              },
+              "token_id": {
+                "description": "Unique ID of the NFT",
+                "type": "string"
+              },
+              "token_uri": {
+                "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -360,7 +391,7 @@
               "tokens": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/definitions/MintMsg_for_TokenExtension"
+                  "$ref": "#/definitions/MintMsg"
                 }
               }
             },
@@ -467,59 +498,41 @@
           }
         },
         "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "refresh_address"
-        ],
-        "properties": {
-          "refresh_address": {
-            "type": "object",
-            "required": [
-              "contract"
-            ],
-            "properties": {
-              "contract": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "refresh_addresses"
-        ],
-        "properties": {
-          "refresh_addresses": {
-            "type": "object",
-            "properties": {
-              "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
       }
     ],
     "definitions": {
+      "AMPCtx": {
+        "type": "object",
+        "required": [
+          "id",
+          "origin",
+          "previous_sender"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "origin": {
+            "type": "string"
+          },
+          "origin_username": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AndrAddr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_sender": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "AMPMsg": {
         "description": "This struct defines how the kernel parses and relays messages between ADOs If the desired recipient is via IBC then namespacing must be employed The attached message must be a binary encoded execute message for the receiving ADO Funds can be attached for an individual message and will be attached accordingly",
         "type": "object",
@@ -600,33 +613,19 @@
         "description": "An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating It contains an original sender, if used for authorisation the sender must be authorised The previous sender is the one who sent the message A packet may contain several messages which allows for message batching",
         "type": "object",
         "required": [
-          "messages",
-          "origin",
-          "previous_sender"
+          "ctx",
+          "messages"
         ],
         "properties": {
+          "ctx": {
+            "$ref": "#/definitions/AMPCtx"
+          },
           "messages": {
             "description": "Any messages associated with the packet",
             "type": "array",
             "items": {
               "$ref": "#/definitions/AMPMsg"
             }
-          },
-          "origin": {
-            "type": "string"
-          },
-          "origin_username": {
-            "anyOf": [
-              {
-                "$ref": "#/definitions/AndrAddr"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "previous_sender": {
-            "type": "string"
           }
         },
         "additionalProperties": false
@@ -664,7 +663,38 @@
             ],
             "properties": {
               "mint": {
-                "$ref": "#/definitions/MintMsg_for_TokenExtension"
+                "type": "object",
+                "required": [
+                  "extension",
+                  "owner",
+                  "token_id"
+                ],
+                "properties": {
+                  "extension": {
+                    "description": "Any custom extension used by this contract",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/TokenExtension"
+                      }
+                    ]
+                  },
+                  "owner": {
+                    "description": "The owner of the newly minter NFT",
+                    "type": "string"
+                  },
+                  "token_id": {
+                    "description": "Unique ID of the NFT",
+                    "type": "string"
+                  },
+                  "token_uri": {
+                    "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -933,7 +963,7 @@
                   "tokens": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/definitions/MintMsg_for_TokenExtension"
+                      "$ref": "#/definitions/MintMsg"
                     }
                   }
                 },
@@ -1040,56 +1070,6 @@
               }
             },
             "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "refresh_address"
-            ],
-            "properties": {
-              "refresh_address": {
-                "type": "object",
-                "required": [
-                  "contract"
-                ],
-                "properties": {
-                  "contract": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "refresh_addresses"
-            ],
-            "properties": {
-              "refresh_addresses": {
-                "type": "object",
-                "properties": {
-                  "limit": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
-                    "format": "uint32",
-                    "minimum": 0.0
-                  },
-                  "start_after": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
           }
         ]
       },
@@ -1140,32 +1120,7 @@
           }
         ]
       },
-      "MetadataAttribute": {
-        "type": "object",
-        "required": [
-          "trait_type",
-          "value"
-        ],
-        "properties": {
-          "display_type": {
-            "description": "The string used to display the attribute, if none is provided the `key` field can be used",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "trait_type": {
-            "description": "The key for the attribute",
-            "type": "string"
-          },
-          "value": {
-            "description": "The value for the attribute",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "MintMsg_for_TokenExtension": {
+      "MintMsg": {
         "type": "object",
         "required": [
           "extension",
@@ -1191,26 +1146,6 @@
           },
           "token_uri": {
             "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "additionalProperties": false
-      },
-      "PrimitivePointer": {
-        "type": "object",
-        "required": [
-          "address"
-        ],
-        "properties": {
-          "address": {
-            "description": "The address of the primitive contract.",
-            "type": "string"
-          },
-          "key": {
-            "description": "The optional key for the stored data.",
             "type": [
               "string",
               "null"
@@ -1264,65 +1199,12 @@
         "description": "https://docs.opensea.io/docs/metadata-standards Replicates OpenSea Metadata Standards",
         "type": "object",
         "required": [
-          "attributes",
-          "image",
-          "name",
           "publisher"
         ],
         "properties": {
-          "animation_url": {
-            "description": "A URL to any multi-media attachments",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "attributes": {
-            "description": "The metadata of the token (if it exists)",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/MetadataAttribute"
-            }
-          },
-          "description": {
-            "description": "An optional description of the token",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "external_url": {
-            "description": "A URL to the token's source",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "image": {
-            "description": "URL to token image",
-            "type": "string"
-          },
-          "image_data": {
-            "description": "Raw SVG image data",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "name": {
-            "description": "The name of the token",
-            "type": "string"
-          },
           "publisher": {
             "description": "The original publisher of the token",
             "type": "string"
-          },
-          "youtube_url": {
-            "description": "A URL to a related YouTube videos",
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "additionalProperties": false
@@ -1339,7 +1221,7 @@
             "description": "The amount required for the purchaser to transfer ownership of the token",
             "allOf": [
               {
-                "$ref": "#/definitions/Value_for_Coin"
+                "$ref": "#/definitions/Coin"
               }
             ]
           },
@@ -1357,36 +1239,6 @@
       "Uint64": {
         "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
         "type": "string"
-      },
-      "Value_for_Coin": {
-        "oneOf": [
-          {
-            "description": "The raw value.",
-            "type": "object",
-            "required": [
-              "raw"
-            ],
-            "properties": {
-              "raw": {
-                "$ref": "#/definitions/Coin"
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "description": "The pointer to the primitive. This SHOULD be of the same underlying type as `T`. For example, if `T` is `String`, then `PrimitivePointer` should point to a Primitive::String(..). This cannot be enforced at compile time though, so it is up to the discretion of the user.",
-            "type": "object",
-            "required": [
-              "pointer"
-            ],
-            "properties": {
-              "pointer": {
-                "$ref": "#/definitions/PrimitivePointer"
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
       }
     }
   },
@@ -1394,18 +1246,6 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "QueryMsg",
     "oneOf": [
-      {
-        "type": "object",
-        "required": [
-          "andr_query"
-        ],
-        "properties": {
-          "andr_query": {
-            "$ref": "#/definitions/AndromedaQuery"
-          }
-        },
-        "additionalProperties": false
-      },
       {
         "type": "object",
         "required": [
@@ -1768,6 +1608,137 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "get"
+        ],
+        "properties": {
+          "get": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "owner"
+        ],
+        "properties": {
+          "owner": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "operators"
+        ],
+        "properties": {
+          "operators": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "kernel_address"
+        ],
+        "properties": {
+          "kernel_address": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "original_publisher"
+        ],
+        "properties": {
+          "original_publisher": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "block_height_upon_creation"
+        ],
+        "properties": {
+          "block_height_upon_creation": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "is_operator"
+        ],
+        "properties": {
+          "is_operator": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -1830,10 +1801,10 @@
           {
             "type": "object",
             "required": [
-              "on_transfer"
+              "on_token_transfer"
             ],
             "properties": {
-              "on_transfer": {
+              "on_token_transfer": {
                 "type": "object",
                 "required": [
                   "recipient",
@@ -1851,175 +1822,6 @@
                     "type": "string"
                   }
                 },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
-      "AndromedaQuery": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "get"
-            ],
-            "properties": {
-              "get": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Binary"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "owner"
-            ],
-            "properties": {
-              "owner": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "operators"
-            ],
-            "properties": {
-              "operators": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "kernel_address"
-            ],
-            "properties": {
-              "kernel_address": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "original_publisher"
-            ],
-            "properties": {
-              "original_publisher": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "block_height_upon_creation"
-            ],
-            "properties": {
-              "block_height_upon_creation": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "is_operator"
-            ],
-            "properties": {
-              "is_operator": {
-                "type": "object",
-                "required": [
-                  "address"
-                ],
-                "properties": {
-                  "address": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "module"
-            ],
-            "properties": {
-              "module": {
-                "type": "object",
-                "required": [
-                  "id"
-                ],
-                "properties": {
-                  "id": {
-                    "$ref": "#/definitions/Uint64"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "module_ids"
-            ],
-            "properties": {
-              "module_ids": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "version"
-            ],
-            "properties": {
-              "version": {
-                "type": "object",
                 "additionalProperties": false
               }
             },
@@ -2092,18 +1894,6 @@
       },
       "QueryMsg": {
         "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "andr_query"
-            ],
-            "properties": {
-              "andr_query": {
-                "$ref": "#/definitions/AndromedaQuery"
-              }
-            },
-            "additionalProperties": false
-          },
           {
             "type": "object",
             "required": [
@@ -2466,15 +2256,142 @@
               }
             },
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "get"
+            ],
+            "properties": {
+              "get": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Binary"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "owner"
+            ],
+            "properties": {
+              "owner": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "operators"
+            ],
+            "properties": {
+              "operators": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "kernel_address"
+            ],
+            "properties": {
+              "kernel_address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "original_publisher"
+            ],
+            "properties": {
+              "original_publisher": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "block_height_upon_creation"
+            ],
+            "properties": {
+              "block_height_upon_creation": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "is_operator"
+            ],
+            "properties": {
+              "is_operator": {
+                "type": "object",
+                "required": [
+                  "address"
+                ],
+                "properties": {
+                  "address": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "version"
+            ],
+            "properties": {
+              "version": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
           }
         ]
       },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
-        "type": "string"
-      },
-      "Uint64": {
-        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
         "type": "string"
       }
     }
@@ -2579,31 +2496,6 @@
             }
           ]
         },
-        "MetadataAttribute": {
-          "type": "object",
-          "required": [
-            "trait_type",
-            "value"
-          ],
-          "properties": {
-            "display_type": {
-              "description": "The string used to display the attribute, if none is provided the `key` field can be used",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "trait_type": {
-              "description": "The key for the attribute",
-              "type": "string"
-            },
-            "value": {
-              "description": "The value for the attribute",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        },
         "NftInfoResponse_for_TokenExtension": {
           "type": "object",
           "required": [
@@ -2661,65 +2553,12 @@
           "description": "https://docs.opensea.io/docs/metadata-standards Replicates OpenSea Metadata Standards",
           "type": "object",
           "required": [
-            "attributes",
-            "image",
-            "name",
             "publisher"
           ],
           "properties": {
-            "animation_url": {
-              "description": "A URL to any multi-media attachments",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "attributes": {
-              "description": "The metadata of the token (if it exists)",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/MetadataAttribute"
-              }
-            },
-            "description": {
-              "description": "An optional description of the token",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "external_url": {
-              "description": "A URL to the token's source",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "image": {
-              "description": "URL to token image",
-              "type": "string"
-            },
-            "image_data": {
-              "description": "Raw SVG image data",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "name": {
-              "description": "The name of the token",
-              "type": "string"
-            },
             "publisher": {
               "description": "The original publisher of the token",
               "type": "string"
-            },
-            "youtube_url": {
-              "description": "A URL to a related YouTube videos",
-              "type": [
-                "string",
-                "null"
-              ]
             }
           },
           "additionalProperties": false
@@ -2909,10 +2748,10 @@
         {
           "type": "object",
           "required": [
-            "on_transfer"
+            "on_token_transfer"
           ],
           "properties": {
-            "on_transfer": {
+            "on_token_transfer": {
               "type": "object",
               "required": [
                 "recipient",
@@ -3002,187 +2841,6 @@
         },
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
-          "type": "string"
-        }
-      }
-    },
-    "andr_query": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "AndromedaQuery",
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "get"
-          ],
-          "properties": {
-            "get": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Binary"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "owner"
-          ],
-          "properties": {
-            "owner": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "operators"
-          ],
-          "properties": {
-            "operators": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "kernel_address"
-          ],
-          "properties": {
-            "kernel_address": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "original_publisher"
-          ],
-          "properties": {
-            "original_publisher": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "block_height_upon_creation"
-          ],
-          "properties": {
-            "block_height_upon_creation": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "is_operator"
-          ],
-          "properties": {
-            "is_operator": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "properties": {
-                "address": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "module"
-          ],
-          "properties": {
-            "module": {
-              "type": "object",
-              "required": [
-                "id"
-              ],
-              "properties": {
-                "id": {
-                  "$ref": "#/definitions/Uint64"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "module_ids"
-          ],
-          "properties": {
-            "module_ids": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "version"
-          ],
-          "properties": {
-            "version": {
-              "type": "object",
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        }
-      ],
-      "definitions": {
-        "Binary": {
-          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-          "type": "string"
-        },
-        "Uint64": {
-          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
           "type": "string"
         }
       }
@@ -3384,6 +3042,22 @@
         }
       }
     },
+    "block_height_upon_creation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BlockHeightResponse",
+      "type": "object",
+      "required": [
+        "block_height"
+      ],
+      "properties": {
+        "block_height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
     "contract_info": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ContractInfoResponse",
@@ -3408,93 +3082,31 @@
       "description": "https://docs.opensea.io/docs/metadata-standards Replicates OpenSea Metadata Standards",
       "type": "object",
       "required": [
-        "attributes",
-        "image",
-        "name",
         "publisher"
       ],
       "properties": {
-        "animation_url": {
-          "description": "A URL to any multi-media attachments",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "attributes": {
-          "description": "The metadata of the token (if it exists)",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/MetadataAttribute"
-          }
-        },
-        "description": {
-          "description": "An optional description of the token",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "external_url": {
-          "description": "A URL to the token's source",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "image": {
-          "description": "URL to token image",
-          "type": "string"
-        },
-        "image_data": {
-          "description": "Raw SVG image data",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "name": {
-          "description": "The name of the token",
-          "type": "string"
-        },
         "publisher": {
           "description": "The original publisher of the token",
           "type": "string"
-        },
-        "youtube_url": {
-          "description": "A URL to a related YouTube videos",
-          "type": [
-            "string",
-            "null"
-          ]
         }
       },
-      "additionalProperties": false,
+      "additionalProperties": false
+    },
+    "get": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Nullable_Binary",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Binary"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "definitions": {
-        "MetadataAttribute": {
-          "type": "object",
-          "required": [
-            "trait_type",
-            "value"
-          ],
-          "properties": {
-            "display_type": {
-              "description": "The string used to display the attribute, if none is provided the `key` field can be used",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "trait_type": {
-              "description": "The key for the attribute",
-              "type": "string"
-            },
-            "value": {
-              "description": "The value for the attribute",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+        "Binary": {
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
         }
       }
     },
@@ -3503,17 +3115,51 @@
       "title": "Boolean",
       "type": "boolean"
     },
+    "is_operator": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "IsOperatorResponse",
+      "type": "object",
+      "required": [
+        "is_operator"
+      ],
+      "properties": {
+        "is_operator": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "kernel_address": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "KernelAddressResponse",
+      "type": "object",
+      "required": [
+        "kernel_address"
+      ],
+      "properties": {
+        "kernel_address": {
+          "$ref": "#/definitions/Addr"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
     "minter": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "MinterResponse",
       "description": "Shows who can mint these tokens",
       "type": "object",
-      "required": [
-        "minter"
-      ],
       "properties": {
         "minter": {
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false
@@ -3544,94 +3190,16 @@
       },
       "additionalProperties": false,
       "definitions": {
-        "MetadataAttribute": {
-          "type": "object",
-          "required": [
-            "trait_type",
-            "value"
-          ],
-          "properties": {
-            "display_type": {
-              "description": "The string used to display the attribute, if none is provided the `key` field can be used",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "trait_type": {
-              "description": "The key for the attribute",
-              "type": "string"
-            },
-            "value": {
-              "description": "The value for the attribute",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        },
         "TokenExtension": {
           "description": "https://docs.opensea.io/docs/metadata-standards Replicates OpenSea Metadata Standards",
           "type": "object",
           "required": [
-            "attributes",
-            "image",
-            "name",
             "publisher"
           ],
           "properties": {
-            "animation_url": {
-              "description": "A URL to any multi-media attachments",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "attributes": {
-              "description": "The metadata of the token (if it exists)",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/MetadataAttribute"
-              }
-            },
-            "description": {
-              "description": "An optional description of the token",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "external_url": {
-              "description": "A URL to the token's source",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "image": {
-              "description": "URL to token image",
-              "type": "string"
-            },
-            "image_data": {
-              "description": "Raw SVG image data",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "name": {
-              "description": "The name of the token",
-              "type": "string"
-            },
             "publisher": {
               "description": "The original publisher of the token",
               "type": "string"
-            },
-            "youtube_url": {
-              "description": "A URL to a related YouTube videos",
-              "type": [
-                "string",
-                "null"
-              ]
             }
           },
           "additionalProperties": false
@@ -3650,6 +3218,51 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "operators": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OperatorsResponse",
+      "type": "object",
+      "required": [
+        "operators"
+      ],
+      "properties": {
+        "operators": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "original_publisher": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PublisherResponse",
+      "type": "object",
+      "required": [
+        "original_publisher"
+      ],
+      "properties": {
+        "original_publisher": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "owner": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ContractOwnerResponse",
+      "type": "object",
+      "required": [
+        "owner"
+      ],
+      "properties": {
+        "owner": {
+          "type": "string"
         }
       },
       "additionalProperties": false
@@ -3805,26 +3418,6 @@
             }
           }
         },
-        "PrimitivePointer": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "description": "The address of the primitive contract.",
-              "type": "string"
-            },
-            "key": {
-              "description": "The optional key for the stored data.",
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
         "TransferAgreement": {
           "description": "A struct used to represent an agreed transfer of a token. The `purchaser` may use the `Transfer` message for this token as long as funds are provided equalling the `amount` defined in the agreement.",
           "type": "object",
@@ -3837,7 +3430,7 @@
               "description": "The amount required for the purchaser to transfer ownership of the token",
               "allOf": [
                 {
-                  "$ref": "#/definitions/Value_for_Coin"
+                  "$ref": "#/definitions/Coin"
                 }
               ]
             },
@@ -3851,38 +3444,36 @@
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
           "type": "string"
-        },
-        "Value_for_Coin": {
-          "oneOf": [
-            {
-              "description": "The raw value.",
-              "type": "object",
-              "required": [
-                "raw"
-              ],
-              "properties": {
-                "raw": {
-                  "$ref": "#/definitions/Coin"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "description": "The pointer to the primitive. This SHOULD be of the same underlying type as `T`. For example, if `T` is `String`, then `PrimitivePointer` should point to a Primitive::String(..). This cannot be enforced at compile time though, so it is up to the discretion of the user.",
-              "type": "object",
-              "required": [
-                "pointer"
-              ],
-              "properties": {
-                "pointer": {
-                  "$ref": "#/definitions/PrimitivePointer"
-                }
-              },
-              "additionalProperties": false
-            }
-          ]
         }
       }
+    },
+    "type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TypeResponse",
+      "type": "object",
+      "required": [
+        "ado_type"
+      ],
+      "properties": {
+        "ado_type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "version": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "VersionResponse",
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

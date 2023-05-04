@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IsOperatorResponse",
+  "type": "object",
+  "required": [
+    "is_operator"
+  ],
+  "properties": {
+    "is_operator": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
