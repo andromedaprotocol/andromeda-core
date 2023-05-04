@@ -1,7 +1,6 @@
 use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
-use crate::amp::VFS_KEY;
-use crate::os::kernel::QueryMsg as KernelQueryMsg;
+use crate::os::storage_helper::StorageHelper;
 use crate::{
     ado_base::{AndromedaMsg, InstantiateMsg},
     error::ContractError,
@@ -154,11 +153,8 @@ impl<'a> ADOContract<'a> {
         storage: &dyn Storage,
         querier: &QuerierWrapper,
     ) -> Result<Addr, ContractError> {
-        let query = KernelQueryMsg::KeyAddress {
-            key: VFS_KEY.to_string(),
-        };
         let kernel_address = self.get_kernel_address(storage)?;
-        Ok(querier.query_wasm_smart(kernel_address, &query)?)
+        StorageHelper::vfs_address_getter(querier, &kernel_address)
     }
 
     /// Updates the current version of the contract.
