@@ -5,7 +5,7 @@ members = [
     "contracts/non-fungible-tokens/*",
     # "contracts/ecosystem/*",
     # "contracts/data-storage/*",
-    # "contracts/app/*",
+    "contracts/app/*",
     # "contracts/finance/*",
     # "contracts/automation/*",
     # "contracts/modules/*",
@@ -28,6 +28,7 @@ panic='abort'
 andromeda-std = { path = "./packages/std" }
 andromeda-macros = { path = "./packages/std/macros" }
 andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens" }
+andromeda-app = { path = "./packages/andromeda-app" }
 
 strum_macros = "0.24.3"
 cosmwasm-std="1.2.4"

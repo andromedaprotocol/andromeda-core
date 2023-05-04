@@ -124,7 +124,7 @@ impl WasmMockQuerier {
                     // MOCK_APP_CONTRACT => self.handle_app_raw_query(key),
                     MOCK_KERNEL_CONTRACT => self.handle_kernel_raw_query(key),
                     MOCK_VFS_CONTRACT => self.handle_kernel_raw_query(key),
-                    MOCK_ADODB_CONTRACT => self.handle_kernel_raw_query(key),
+                    MOCK_ADODB_CONTRACT => self.handle_adodb_raw_query(key),
                     _ => panic!("Unsupported query for contract: {}", contract_addr),
                 }
             }
@@ -356,12 +356,30 @@ impl WasmMockQuerier {
                 panic!("Invalid Kernel Address Raw Query")
             }
         } else {
-            panic!("Invalid Kernel Address Raw Query")
+            panic!("Invalid Kernel Raw Query")
         }
     }
 
-    pub fn handle_adodb_raw_query(&self, _key: &Binary) -> QuerierResult {
-        todo!("Implement with a valid test case")
+    pub fn handle_adodb_raw_query(&self, key: &Binary) -> QuerierResult {
+        let key_vec = key.as_slice();
+        let key_str = String::from_utf8(key_vec.to_vec()).unwrap();
+
+        if key_str.contains("code_id") {
+            let split = key_str.split("code_id");
+            let key = split.last();
+            if let Some(key) = key {
+                match key {
+                    FAKE_ADODB_KEY => {
+                        SystemResult::Ok(ContractResult::Err("Invalid Key".to_string()))
+                    }
+                    _ => SystemResult::Ok(ContractResult::Ok(to_binary(&1).unwrap())),
+                }
+            } else {
+                panic!("Invalid ADODB Raw Query")
+            }
+        } else {
+            panic!("Invalid ADODB Raw Query")
+        }
     }
 
     pub fn new(base: MockQuerier) -> Self {

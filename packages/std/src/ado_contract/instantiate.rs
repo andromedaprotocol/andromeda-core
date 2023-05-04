@@ -1,6 +1,8 @@
 use crate::ado_contract::ADOContract;
-use crate::{ado_base::query_get, encode_binary, error::ContractError};
-use cosmwasm_std::{Binary, CosmosMsg, QuerierWrapper, ReplyOn, Storage, SubMsg, WasmMsg};
+use crate::error::ContractError;
+use crate::os::aos_querier::AOSQuerier;
+use crate::os::kernel::QueryMsg as KernelQueryMsg;
+use cosmwasm_std::{Addr, Binary, CosmosMsg, QuerierWrapper, ReplyOn, Storage, SubMsg, WasmMsg};
 
 impl<'a> ADOContract<'a> {
     pub fn generate_instantiate_msg(
@@ -56,8 +58,8 @@ impl<'a> ADOContract<'a> {
         name: &str,
     ) -> Result<u64, ContractError> {
         // Do we want to cache the factory address?
-        let adodb_addr = self.get_address_from_kernel(storage, querier, "adodb")?;
-        let code_id: u64 = query_get(Some(encode_binary(&name)?), adodb_addr.to_string(), querier)?;
+        let adodb_addr = self.get_adodb_address(storage, querier)?;
+        let code_id: u64 = AOSQuerier::code_id_getter(querier, &adodb_addr, name)?;
         Ok(code_id)
     }
 }

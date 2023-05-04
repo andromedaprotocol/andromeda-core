@@ -1,4 +1,4 @@
-use crate::amp::VFS_KEY;
+use crate::amp::{ADO_DB_KEY, VFS_KEY};
 use crate::error::ContractError;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{from_slice, Addr, QuerierWrapper};
@@ -97,7 +97,32 @@ impl AOSQuerier {
         querier: &QuerierWrapper,
         kernel_addr: &Addr,
     ) -> Result<Addr, ContractError> {
-        let key = AOSQuerier::get_map_storage_key("kernel_addresses", &vec![VFS_KEY.as_bytes()])?;
+        Ok(AOSQuerier::kernel_address_getter(
+            querier,
+            kernel_addr,
+            VFS_KEY,
+        )?)
+    }
+
+    /// Queries the kernel's raw storage for the ADODB's address
+    pub fn adodb_address_getter(
+        querier: &QuerierWrapper,
+        kernel_addr: &Addr,
+    ) -> Result<Addr, ContractError> {
+        Ok(AOSQuerier::kernel_address_getter(
+            querier,
+            kernel_addr,
+            ADO_DB_KEY,
+        )?)
+    }
+
+    /// Queries the kernel's raw storage for the VFS's address
+    pub fn kernel_address_getter(
+        querier: &QuerierWrapper,
+        kernel_addr: &Addr,
+        key: &str,
+    ) -> Result<Addr, ContractError> {
+        let key = AOSQuerier::get_map_storage_key("kernel_addresses", &vec![key.as_bytes()])?;
         let verify: Option<Addr> = AOSQuerier::query_storage(querier, &kernel_addr, &key)?;
         match verify {
             Some(address) => Ok(address),

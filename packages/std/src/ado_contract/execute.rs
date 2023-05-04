@@ -161,6 +161,16 @@ impl<'a> ADOContract<'a> {
         AOSQuerier::vfs_address_getter(querier, &kernel_address)
     }
 
+    /// Gets the current address for the VFS contract.
+    pub fn get_adodb_address(
+        &self,
+        storage: &dyn Storage,
+        querier: &QuerierWrapper,
+    ) -> Result<Addr, ContractError> {
+        let kernel_address = self.get_kernel_address(storage)?;
+        AOSQuerier::adodb_address_getter(querier, &kernel_address)
+    }
+
     /// Updates the current version of the contract.
     pub fn execute_update_version(&self, deps: DepsMut) -> Result<Response, ContractError> {
         self.version

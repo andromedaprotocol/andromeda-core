@@ -123,13 +123,15 @@ pub fn andr_instantiate(_args: TokenStream, input: TokenStream) -> TokenStream {
                         .unwrap(),
                 );
                 #[cfg(feature = "modules")]
-                fields.named.push(
-                    syn::Field::parse_named
-                        .parse2(
-                            quote! { pub modules: Option<Vec<::andromeda_std::ado_base::Module>> },
-                        )
-                        .unwrap(),
-                );
+                {
+                    fields.named.push(
+                        syn::Field::parse_named
+                            .parse2(
+                                quote! { pub modules: Option<Vec<::andromeda_std::ado_base::Module>> },
+                            )
+                            .unwrap(),
+                    );
+                }
             }
 
             quote! {
