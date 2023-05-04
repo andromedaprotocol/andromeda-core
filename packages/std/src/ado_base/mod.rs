@@ -12,6 +12,7 @@ pub mod version;
 pub mod withdraw;
 #[cfg(feature = "withdraw")]
 use crate::ado_base::withdraw::Withdrawal;
+use crate::amp::messages::AMPPkt;
 #[cfg(feature = "withdraw")]
 use crate::amp::recipient::Recipient;
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -68,6 +69,7 @@ pub enum AndromedaMsg {
         limit: Option<u32>,
         start_after: Option<String>,
     },
+    AMPReceive(AMPPkt),
 }
 
 #[cw_serde]

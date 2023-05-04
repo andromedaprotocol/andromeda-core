@@ -1,9 +1,8 @@
-use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_binary, has_coins, to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg,
-    Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
+    attr, ensure, has_coins, to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
 };
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
@@ -135,7 +134,7 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::AMPReceive(pkt) => {
-            handle_amp_packet(execute_env.deps, execute_env.env, execute_env.info, pkt)
+            contract.execute_amp_receive(execute_env.deps, execute_env.env, execute_env.info, pkt)
         }
         ExecuteMsg::Mint { .. } => execute_mint(execute_env, msg),
         ExecuteMsg::BatchMint { tokens } => execute_batch_mint(execute_env, tokens),
@@ -167,115 +166,6 @@ fn execute_cw721(
 ) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract::default();
     Ok(contract.execute(deps, env, info, msg)?)
-}
-
-fn handle_amp_packet(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    packet: AMPPkt,
-) -> Result<Response, ContractError> {
-    let mut res = Response::default();
-
-    // Get kernel address
-    let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
-
-    // Original packet sender
-    let origin = packet.get_origin();
-
-    // This contract will become the previous sender after sending the message back to the kernel
-    let previous_sender = env.clone().contract.address;
-
-    let execute_env = ExecuteEnv { deps, env, info };
-
-    let msg_opt = packet.messages.first();
-
-    if let Some(msg) = msg_opt {
-        let exec_msg: ExecuteMsg = from_binary(&msg.message)?;
-        let funds = msg.funds.to_vec();
-        let mut exec_info = execute_env.info.clone();
-        exec_info.funds = funds.clone();
-
-        if msg.config.exit_at_error {
-            let env = execute_env.env.clone();
-            let mut exec_res = execute(execute_env.deps, env, exec_info, exec_msg)?;
-
-            if packet.messages.len() > 1 {
-                let adjusted_messages: Vec<AMPMsg> =
-                    packet.messages.iter().skip(1).cloned().collect();
-
-                let unused_funds: Vec<Coin> = adjusted_messages
-                    .iter()
-                    .flat_map(|msg| msg.funds.iter().cloned())
-                    .collect();
-
-                let new_pkt =
-                    AMPPkt::new(origin, previous_sender.to_string(), adjusted_messages, None);
-                let kernel_message = new_pkt.to_sub_msg(kernel_address, Some(unused_funds), 1)?;
-
-                exec_res.messages.push(kernel_message);
-            }
-
-            res = res
-                .add_attributes(exec_res.attributes)
-                .add_submessages(exec_res.messages)
-                .add_events(exec_res.events);
-        } else {
-            match execute(
-                execute_env.deps,
-                execute_env.env.clone(),
-                exec_info,
-                exec_msg,
-            ) {
-                Ok(mut exec_res) => {
-                    if packet.messages.len() > 1 {
-                        let adjusted_messages: Vec<AMPMsg> =
-                            packet.messages.iter().skip(1).cloned().collect();
-
-                        let unused_funds: Vec<Coin> = adjusted_messages
-                            .iter()
-                            .flat_map(|msg| msg.funds.iter().cloned())
-                            .collect();
-
-                        let new_pkt = AMPPkt::new(
-                            origin,
-                            previous_sender.to_string(),
-                            adjusted_messages,
-                            None,
-                        );
-                        let kernel_message =
-                            new_pkt.to_sub_msg(kernel_address, Some(unused_funds), 1)?;
-
-                        exec_res.messages.push(kernel_message);
-                    }
-
-                    res = res
-                        .add_attributes(exec_res.attributes)
-                        .add_submessages(exec_res.messages)
-                        .add_events(exec_res.events);
-                }
-                Err(_) => {
-                    // There's an error, but the user opted for the operation to proceed
-                    // No funds are used in the event of an error
-                    if packet.messages.len() > 1 {
-                        let adjusted_messages: Vec<AMPMsg> =
-                            packet.messages.iter().skip(1).cloned().collect();
-
-                        let new_pkt = AMPPkt::new(
-                            origin,
-                            previous_sender.to_string(),
-                            adjusted_messages,
-                            None,
-                        );
-                        let kernel_message = new_pkt.to_sub_msg(kernel_address, Some(funds), 1)?;
-                        res = res.add_submessage(kernel_message);
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(res)
 }
 
 fn resolve_minter(deps: &Deps) -> Result<Addr, ContractError> {

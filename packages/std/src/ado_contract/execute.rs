@@ -1,6 +1,8 @@
 use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
+use crate::amp::messages::{AMPCtx, AMPPkt};
 use crate::amp::VFS_KEY;
+use crate::common::context::ExecuteContext;
 use crate::os::kernel::QueryMsg as KernelQueryMsg;
 use crate::{
     ado_base::{AndromedaMsg, InstantiateMsg},
@@ -81,6 +83,7 @@ impl<'a> ADOContract<'a> {
                     self.validate_module_address(&deps.as_ref(), &module)?;
                     self.execute_alter_module(deps, info, module_idx, module)
                 }
+                AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
             },
             _ => match fallback_execute_function {
                 Some(fallback_execute_fn) => {
@@ -168,6 +171,27 @@ impl<'a> ADOContract<'a> {
         Ok(Response::new()
             .add_attribute("action", "update_version")
             .add_attribute("version", env!("CARGO_PKG_VERSION").to_string()))
+    }
+
+    pub fn execute_amp_receive<E: DeserializeOwned>(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        mut packet: AMPPkt,
+    ) -> Result<(E, AMPPkt), ContractError> {
+        packet.verify_origin(&info, &deps.as_ref())?;
+
+        let msg_opt = packet.messages.pop();
+
+        match msg_opt {
+            Some(msg) => {
+                let exec_msg: E = from_binary(&msg.message)?;
+                Ok((exec_msg, packet))
+            }
+            None => Err(ContractError::InvalidPacket {
+                error: Some("No messages in packet".to_string()),
+            }),
+        }
     }
 }
 

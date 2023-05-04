@@ -157,7 +157,7 @@ pub fn handle_amp_packet(
         ContractError::Unauthorized {}
     );
     ensure!(
-        packet.id == 0,
+        packet.ctx.id == 0,
         ContractError::InvalidPacket {
             error: Some("Packet ID cannot be provided from outside the Kernel".into())
         }

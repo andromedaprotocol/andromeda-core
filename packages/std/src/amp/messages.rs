@@ -117,6 +117,41 @@ impl AMPMsg {
 }
 
 #[cw_serde]
+pub struct AMPCtx {
+    origin: String,
+    origin_username: Option<AndrAddr>,
+    pub previous_sender: String,
+    pub id: u64,
+}
+
+impl AMPCtx {
+    #[inline]
+    pub fn new(
+        origin: impl Into<String>,
+        previous_sender: impl Into<String>,
+        id: u64,
+        origin_username: Option<AndrAddr>,
+    ) -> AMPCtx {
+        AMPCtx {
+            origin: origin.into(),
+            origin_username,
+            previous_sender: previous_sender.into(),
+            id,
+        }
+    }
+
+    /// Gets the original sender of a message
+    pub fn get_origin(&self) -> String {
+        self.origin.clone()
+    }
+
+    /// Gets the previous sender of a message
+    pub fn get_previous_sender(&self) -> String {
+        self.previous_sender.clone()
+    }
+}
+
+#[cw_serde]
 /// An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating
 /// It contains an original sender, if used for authorisation the sender must be authorised
 /// The previous sender is the one who sent the message
@@ -124,10 +159,7 @@ impl AMPMsg {
 pub struct AMPPkt {
     /// Any messages associated with the packet
     pub messages: Vec<AMPMsg>,
-    origin: String,
-    origin_username: Option<AndrAddr>,
-    pub previous_sender: String,
-    pub id: u64,
+    pub ctx: AMPCtx,
 }
 
 impl AMPPkt {
@@ -139,27 +171,14 @@ impl AMPPkt {
         origin_username: Option<AndrAddr>,
     ) -> AMPPkt {
         AMPPkt {
-            origin: origin.into(),
-            origin_username,
-            previous_sender: previous_sender.into(),
             messages,
-            id: 0,
+            ctx: AMPCtx::new(origin, previous_sender, 0, origin_username),
         }
     }
 
     /// Adds a message to the current AMP Packet
     pub fn add_message(&mut self, message: AMPMsg) {
         self.messages.push(message)
-    }
-
-    /// Gets the original sender of a message
-    pub fn get_origin(&self) -> String {
-        self.origin.clone()
-    }
-
-    /// Gets the previous sender of a message
-    pub fn get_previous_sender(&self) -> String {
-        self.previous_sender.clone()
     }
 
     /// Gets all unique recipients for messages
@@ -194,7 +213,7 @@ impl AMPPkt {
     /// If the sender is not valid, an error is returned
     pub fn verify_origin(&self, info: &MessageInfo, deps: &Deps) -> Result<(), ContractError> {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
-        if info.sender == self.origin || info.sender == kernel_address {
+        if info.sender == self.ctx.origin || info.sender == kernel_address {
             Ok(())
         } else {
             let adodb_address: Addr =
@@ -237,7 +256,7 @@ impl AMPPkt {
         info: &MessageInfo,
         deps: &Deps,
     ) -> Result<String, ContractError> {
-        let origin = self.get_origin();
+        let origin = self.ctx.get_origin();
         let res = self.verify_origin(info, deps);
         match res {
             Ok(_) => Ok(origin),
@@ -266,7 +285,7 @@ impl AMPPkt {
     /// Attaches an ID to the current packet
     pub fn with_id(&self, id: u64) -> AMPPkt {
         let mut new = self.clone();
-        new.id = id;
+        new.ctx.id = id;
         new
     }
 }
