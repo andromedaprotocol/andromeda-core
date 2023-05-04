@@ -32,38 +32,6 @@ impl<'a> ADOContract<'a> {
         Ok(())
     }
 
-    /// Gets the address for `contract` stored in the primitive contract.
-    /// TODO: REMOVE
-    pub fn get_address_from_primitive(
-        &self,
-        storage: &dyn Storage,
-        querier: &QuerierWrapper,
-        contract: &str,
-    ) -> Result<String, ContractError> {
-        let primitive_address = self.primitive_contract.load(storage)?;
-        let data = encode_binary(&contract)?;
-        let res: GetValueResponse = query_get(Some(data), primitive_address.to_string(), querier)?;
-        let address = res.value.try_get_string()?;
-
-        Ok(address)
-    }
-
-    /// Gets the address for `contract` stored in the primitive contract.
-    pub fn get_address_from_kernel(
-        &self,
-        storage: &dyn Storage,
-        querier: &QuerierWrapper,
-        contract: &str,
-    ) -> Result<Addr, ContractError> {
-        let kernel_address = self.kernel_address.load(storage)?;
-        let query = KernelQueryMsg::KeyAddress {
-            key: contract.to_string(),
-        };
-        let address: Addr = querier.query_wasm_smart(kernel_address, &query)?;
-
-        Ok(address)
-    }
-
     pub(crate) fn execute_refresh_address(
         &self,
         deps: DepsMut,

@@ -311,40 +311,35 @@ mod tests {
         );
     }
 
-    // // TODO Commented out until we decided how to handle modules
-    // #[test]
-    // fn test_update_app_contract_invalid_module() {
-    //     let contract = ADOContract::default();
-    //     let mut deps = mock_dependencies_custom(&[]);
+    #[test]
+    #[cfg(feature = "modules")]
+    fn test_update_app_contract_invalid_module() {
+        let contract = ADOContract::default();
+        let mut deps = mock_dependencies_custom(&[]);
 
-    //     let info = mock_info("owner", &[]);
-    //     let deps_mut = deps.as_mut();
-    //     contract
-    //         .instantiate(
-    //             deps_mut.storage,
-    //             mock_env(),
-    //             deps_mut.api,
-    //             info.clone(),
-    //             InstantiateMsg {
-    //                 ado_type: "type".to_string(),
-    //                 ado_version: "version".to_string(),
-    //                 modules: Some(vec![Module {
-    //                     module_name: Some("address_list".to_string()),
-    //                     is_mutable: true,
-    //                     address: "z".to_string(),
-    //                 }]),
-    //                 operators: None,
-    //                 kernel_address: None,
-    //             },
-    //         )
-    //         .unwrap();
-
-    //     let msg = AndromedaMsg::UpdateAppContract {
-    //         address: MOCK_APP_CONTRACT.to_owned(),
-    //     };
-
-    //     let res = contract.execute(deps_mut, mock_env(), info, msg, dummy_function);
-
-    //     assert_eq!(ContractError::InvalidAddress {}, res.unwrap_err());
-    // }
+        let info = mock_info("owner", &[]);
+        let deps_mut = deps.as_mut();
+        contract
+            .instantiate(
+                deps_mut.storage,
+                mock_env(),
+                deps_mut.api,
+                info.clone(),
+                InstantiateMsg {
+                    ado_type: "type".to_string(),
+                    ado_version: "version".to_string(),
+                    owner: None,
+                    operators: None,
+                    kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                },
+            )
+            .unwrap();
+        contract
+            .register_modules(
+                info.sender.as_str(),
+                deps_mut.storage,
+                Some(vec![Module::new("module", "cosmos1...".to_string(), false)]),
+            )
+            .unwrap();
+    }
 }

@@ -292,11 +292,9 @@ impl WasmMockQuerier {
         use crate::ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse};
         match from_binary(msg).unwrap() {
             HookMsg::AndrHook(hook) => match hook {
-                AndromedaHook::OnExecute { sender, .. } => match sender.as_str() {
-                    _ => SystemResult::Ok(ContractResult::Ok(
-                        to_binary::<Response>(&Response::default()).unwrap(),
-                    )),
-                },
+                AndromedaHook::OnExecute { .. } => SystemResult::Ok(ContractResult::Ok(
+                    to_binary::<Response>(&Response::default()).unwrap(),
+                )),
                 AndromedaHook::OnFundsTransfer { sender, .. } => {
                     if sender.as_str() == RATES_EXCLUDED_ADDRESS {
                         return SystemResult::Ok(ContractResult::Ok(

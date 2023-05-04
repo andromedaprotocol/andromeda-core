@@ -403,11 +403,9 @@ fn test_modules() {
     mint_token(
         deps.as_mut(),
         env,
-        token_id.clone(),
+        token_id,
         creator.clone(),
-        TokenExtension {
-            publisher: creator.clone(),
-        },
+        TokenExtension { publisher: creator },
     );
 
     // let msg = ExecuteMsg::TransferAgreement {
@@ -483,7 +481,7 @@ fn test_modules() {
 
 #[test]
 fn test_transfer_with_offer() {
-    todo!();
+    todo!("Implement with cw721 bids module");
     // let modules: Vec<Module> = vec![Module {
     //     module_name: Some("bids".to_owned()),
     //     address: MOCK_BIDS_CONTRACT.to_owned(),
