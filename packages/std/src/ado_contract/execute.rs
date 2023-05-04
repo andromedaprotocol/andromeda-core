@@ -1,9 +1,8 @@
 use crate::ado_contract::ADOContract;
 use crate::amp::addresses::AndrAddr;
-use crate::amp::messages::{AMPCtx, AMPPkt};
-use crate::amp::VFS_KEY;
+use crate::amp::messages::AMPPkt;
 use crate::common::context::ExecuteContext;
-use crate::os::kernel::QueryMsg as KernelQueryMsg;
+use crate::os::aos_querier::AOSQuerier;
 use crate::{
     ado_base::{AndromedaMsg, InstantiateMsg},
     error::ContractError,
@@ -15,7 +14,7 @@ use cosmwasm_std::{
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-type ExecuteFunction<E> = fn(DepsMut, Env, MessageInfo, E) -> Result<Response, ContractError>;
+type ExecuteContextFunction<E> = fn(ExecuteContext, E) -> Result<Response, ContractError>;
 
 impl<'a> ADOContract<'a> {
     pub fn instantiate(
@@ -46,23 +45,21 @@ impl<'a> ADOContract<'a> {
     /// For example `cw721_base`.
     pub fn execute<E: DeserializeOwned>(
         &self,
-        deps: DepsMut,
-        env: Env,
-        info: MessageInfo,
+        ctx: ExecuteContext,
         msg: impl Serialize,
-        fallback_execute_function: Option<ExecuteFunction<E>>,
+        fallback_execute_function: Option<ExecuteContextFunction<E>>,
     ) -> Result<Response, ContractError> {
         let msg = to_binary(&msg)?;
         match from_binary::<AndromedaMsg>(&msg) {
             Ok(msg) => match msg {
                 AndromedaMsg::UpdateOwner { address } => {
-                    self.execute_update_owner(deps, info, address)
+                    self.execute_update_owner(ctx.deps, ctx.info, address)
                 }
                 AndromedaMsg::UpdateOperators { operators } => {
-                    self.execute_update_operators(deps, info, operators)
+                    self.execute_update_operators(ctx.deps, ctx.info, operators)
                 }
                 AndromedaMsg::UpdateAppContract { address } => {
-                    self.execute_update_app_contract(deps, info, address, None)
+                    self.execute_update_app_contract(ctx.deps, ctx.info, address, None)
                 }
                 #[cfg(feature = "withdraw")]
                 AndromedaMsg::Withdraw {
@@ -71,24 +68,27 @@ impl<'a> ADOContract<'a> {
                 } => self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
                 #[cfg(feature = "modules")]
                 AndromedaMsg::RegisterModule { module } => {
-                    self.validate_module_address(&deps.as_ref(), &module)?;
-                    self.execute_register_module(deps.storage, info.sender.as_str(), module, true)
+                    self.validate_module_address(&ctx.deps.as_ref(), &module)?;
+                    self.execute_register_module(
+                        ctx.deps.storage,
+                        ctx.info.sender.as_str(),
+                        module,
+                        true,
+                    )
                 }
                 #[cfg(feature = "modules")]
                 AndromedaMsg::DeregisterModule { module_idx } => {
-                    self.execute_deregister_module(deps, info, module_idx)
+                    self.execute_deregister_module(ctx.deps, ctx.info, module_idx)
                 }
                 #[cfg(feature = "modules")]
                 AndromedaMsg::AlterModule { module_idx, module } => {
-                    self.validate_module_address(&deps.as_ref(), &module)?;
-                    self.execute_alter_module(deps, info, module_idx, module)
+                    self.validate_module_address(&ctx.deps.as_ref(), &module)?;
+                    self.execute_alter_module(ctx.deps, ctx.info, module_idx, module)
                 }
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
             },
             _ => match fallback_execute_function {
-                Some(fallback_execute_fn) => {
-                    (fallback_execute_fn)(deps, env, info, from_binary::<E>(&msg)?)
-                }
+                Some(fallback_execute_fn) => (fallback_execute_fn)(ctx, from_binary::<E>(&msg)?),
                 None => Err(ContractError::UnsupportedOperation {}),
             },
         }
@@ -157,11 +157,8 @@ impl<'a> ADOContract<'a> {
         storage: &dyn Storage,
         querier: &QuerierWrapper,
     ) -> Result<Addr, ContractError> {
-        let query = KernelQueryMsg::KeyAddress {
-            key: VFS_KEY.to_string(),
-        };
         let kernel_address = self.get_kernel_address(storage)?;
-        Ok(querier.query_wasm_smart(kernel_address, &query)?)
+        AOSQuerier::vfs_address_getter(querier, &kernel_address)
     }
 
     /// Updates the current version of the contract.
@@ -175,22 +172,22 @@ impl<'a> ADOContract<'a> {
 
     pub fn execute_amp_receive<E: DeserializeOwned>(
         &self,
-        deps: DepsMut,
-        info: MessageInfo,
+        ctx: ExecuteContext,
         mut packet: AMPPkt,
-    ) -> Result<(E, AMPPkt), ContractError> {
-        packet.verify_origin(&info, &deps.as_ref())?;
-
+        handler: ExecuteContextFunction<E>,
+    ) -> Result<Response, ContractError> {
+        packet.verify_origin(&ctx.info, &ctx.deps.as_ref())?;
+        let ctx = ctx.with_ctx(packet.clone());
         let msg_opt = packet.messages.pop();
-
-        match msg_opt {
-            Some(msg) => {
-                let exec_msg: E = from_binary(&msg.message)?;
-                Ok((exec_msg, packet))
-            }
-            None => Err(ContractError::InvalidPacket {
-                error: Some("No messages in packet".to_string()),
-            }),
+        if msg_opt.is_none() {
+            Err(ContractError::InvalidPacket {
+                error: Some("AMP Packet received with no messages".to_string()),
+            })
+        } else {
+            let amp_msg = msg_opt.unwrap();
+            let msg: E = from_binary(&amp_msg.message)?;
+            let response = handler(ctx, msg)?;
+            Ok(response)
         }
     }
 }
@@ -208,12 +205,7 @@ mod tests {
         Addr, Uint64,
     };
 
-    fn dummy_function(
-        _deps: DepsMut,
-        _env: Env,
-        _info: MessageInfo,
-        _msg: AndromedaMsg,
-    ) -> Result<Response, ContractError> {
+    fn dummy_function(_ctx: ExecuteContext, _msg: AndromedaMsg) -> Result<Response, ContractError> {
         Ok(Response::new())
     }
     #[test]
@@ -248,7 +240,11 @@ mod tests {
 
         let msg = AndromedaMsg::RegisterModule { module };
 
-        let res = contract.execute(deps_mut, mock_env(), info, msg, Some(dummy_function));
+        let res = contract.execute(
+            ExecuteContext::new(deps.as_mut(), info, mock_env()),
+            msg,
+            Some(dummy_function),
+        );
         assert!(res.is_err())
     }
 
@@ -294,7 +290,11 @@ mod tests {
             module,
         };
 
-        let res = contract.execute(deps_mut, mock_env(), info, msg, Some(dummy_function));
+        let res = contract.execute(
+            ExecuteContext::new(deps.as_mut(), info, mock_env()),
+            msg,
+            Some(dummy_function),
+        );
         assert!(res.is_err())
     }
 
@@ -328,7 +328,11 @@ mod tests {
         };
 
         let res = contract
-            .execute(deps_mut, mock_env(), info, msg, Some(dummy_function))
+            .execute(
+                ExecuteContext::new(deps.as_mut(), info, mock_env()),
+                msg,
+                Some(dummy_function),
+            )
             .unwrap();
 
         assert_eq!(

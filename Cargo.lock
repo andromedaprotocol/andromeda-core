@@ -35,7 +35,6 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-ownable",
  "cw-storage-plus 1.0.1",
  "cw2 1.0.1",
  "cw721 0.17.0",
@@ -187,9 +186,9 @@ checksum = "520fbf3c07483f94e3e3ca9d0cfd913d7718ef2483d2cfd91c0d9e91474ab913"
 
 [[package]]
 name = "cosmwasm-crypto"
-version = "1.2.4"
+version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b76d2207945b8aa3ce0735da53ab9a74f75fe3e7794754c216a9edfa04e1e627"
+checksum = "75836a10cb9654c54e77ee56da94d592923092a10b369cdb0dbd56acefc16340"
 dependencies = [
  "digest 0.10.6",
  "ed25519-zebra",
@@ -200,18 +199,18 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-derive"
-version = "1.2.4"
+version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dd07af7736164d2d8126dc67fdb33b1b5c54fb5a3190395c47f46d24fc6d592"
+checksum = "1c9f7f0e51bfc7295f7b2664fe8513c966428642aa765dad8a74acdab5e0c773"
 dependencies = [
  "syn 1.0.109",
 ]
 
 [[package]]
 name = "cosmwasm-schema"
-version = "1.2.4"
+version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e9e92cdce475a91659d0dc4d17836a484fc534e80e787281aa4adde4cb1798b"
+checksum = "0f00b363610218eea83f24bbab09e1a7c3920b79f068334fdfcc62f6129ef9fc"
 dependencies = [
  "cosmwasm-schema-derive",
  "schemars",
@@ -222,9 +221,9 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-schema-derive"
-version = "1.2.4"
+version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69681bac3dbeb0b00990279e3ed39e3d4406b29f538b16b712f6771322a45048"
+checksum = "ae38f909b2822d32b275c9e2db9728497aa33ffe67dd463bc67c6a3b7092785c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -233,9 +232,9 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-std"
-version = "1.2.4"
+version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d39f20967baeb94709123f7bba13a25ae2fa166bc5e7813f734914df3f8f6a1"
+checksum = "a49b85345e811c8e80ec55d0d091e4fcb4f00f97ab058f9be5f614c444a730cb"
 dependencies = [
  "base64",
  "cosmwasm-crypto",
@@ -327,7 +326,7 @@ dependencies = [
 [[package]]
 name = "cw-cii"
 version = "0.0.1"
-source = "git+https://github.com/public-awesome/ics721.git#3af19e421a95aec5291a0cabbe796c58698ac97f"
+source = "git+https://github.com/public-awesome/ics721.git#ff2be4e7ef8ec9a80023b7ac624662e792c4b02b"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -381,7 +380,7 @@ dependencies = [
 [[package]]
 name = "cw-pause-once"
 version = "0.0.1"
-source = "git+https://github.com/public-awesome/ics721.git#3af19e421a95aec5291a0cabbe796c58698ac97f"
+source = "git+https://github.com/public-awesome/ics721.git#ff2be4e7ef8ec9a80023b7ac624662e792c4b02b"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1180,4 +1179,4 @@ checksum = "2a0956f1ba7c7909bfb66c2e9e4124ab6f6482560f6628b5aaeba39207c9aad9"
 [[package]]
 name = "zip-optional"
 version = "0.1.0"
-source = "git+https://github.com/public-awesome/ics721.git#3af19e421a95aec5291a0cabbe796c58698ac97f"
+source = "git+https://github.com/public-awesome/ics721.git#ff2be4e7ef8ec9a80023b7ac624662e792c4b02b"

@@ -1,10 +1,8 @@
 use crate::ado_contract::ADOContract;
 use crate::common::encode_binary;
 use crate::error::ContractError;
-use crate::os::{
-    adodb::QueryMsg as ADODBQueryMsg, kernel::ExecuteMsg as KernelExecuteMsg,
-    kernel::QueryMsg as KernelQueryMsg,
-};
+use crate::os::aos_querier::AOSQuerier;
+use crate::os::{kernel::ExecuteMsg as KernelExecuteMsg, kernel::QueryMsg as KernelQueryMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, MessageInfo,
@@ -234,19 +232,7 @@ impl AMPPkt {
             let sender_code_id = contract_info.code_id;
 
             // We query the ADO type in the adodb, it will return an error if the sender's Code ID doesn't exist.
-            let verify: Option<String> =
-                deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-                    contract_addr: adodb_address.to_string(),
-                    msg: to_binary(&ADODBQueryMsg::ADOType {
-                        code_id: sender_code_id,
-                    })?,
-                }))?;
-
-            if verify.is_some() {
-                Ok(())
-            } else {
-                Err(ContractError::Unauthorized {})
-            }
+            AOSQuerier::verify_code_id(&deps.querier, &adodb_address, sender_code_id)
         }
     }
 

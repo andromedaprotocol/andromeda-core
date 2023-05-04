@@ -7,7 +7,6 @@ use cosmwasm_std::{
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::error::ContractError;
 use andromeda_std::{ado_base::modules::Module, testing::mock_querier::FAKE_VFS_PATH};
-use cw_ownable::is_owner;
 
 use crate::{contract::*, state::ANDR_MINTER};
 use andromeda_non_fungible_tokens::cw721::{
@@ -69,8 +68,6 @@ fn test_transfer_nft() {
             publisher: creator.clone(),
         },
     );
-
-    assert!(is_owner(deps.as_ref().storage, &Addr::unchecked(MINTER.to_string())).unwrap());
 
     let transfer_msg = ExecuteMsg::TransferNft {
         recipient: Addr::unchecked("recipient").to_string(),

@@ -30,7 +30,6 @@ cw721-base = { version = "0.17.0", features = ["library"] }
 cw721 = "0.17.0"
 cw2 = { workspace = true }
 semver = "1"
-cw-ownable="0.5.1"
 
 andromeda-non-fungible-tokens = { workspace = true }
 andromeda-std = { workspace = true, features = ["modules"] }
