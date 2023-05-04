@@ -71,7 +71,8 @@ pub fn instantiate(
 
     Ok(resp
         .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes))
+        .add_attributes(modules_resp.attributes)
+        .add_attributes(vec![attr("minter", msg.minter)]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

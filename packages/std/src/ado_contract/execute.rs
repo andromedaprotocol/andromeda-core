@@ -139,7 +139,7 @@ impl<'a> ADOContract<'a> {
     ) -> Result<(), ContractError> {
         // Validate address string is valid
         address.validate(deps.api)?;
-        if address.is_vfs_path() {
+        if !address.is_addr(deps.api) {
             address.get_raw_address_from_vfs(deps, vfs_address)?;
         }
         Ok(())
@@ -170,6 +170,9 @@ impl<'a> ADOContract<'a> {
             .add_attribute("version", env!("CARGO_PKG_VERSION").to_string()))
     }
 
+    /// Handles receiving and verifies an AMPPkt from the Kernel before executing the appropriate messages.
+    ///
+    /// Calls the provided handler with the AMP packet attached within the context.
     pub fn execute_amp_receive<E: DeserializeOwned>(
         &self,
         ctx: ExecuteContext,

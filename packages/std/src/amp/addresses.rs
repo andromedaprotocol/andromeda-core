@@ -117,7 +117,7 @@ impl AndrAddr {
 
     /// Whether the provided address is a valid human readable address
     pub fn is_addr(&self, api: &dyn Api) -> bool {
-        !self.is_vfs_path() && api.addr_validate(&self.0).is_ok()
+        api.addr_validate(&self.0).is_ok()
     }
 
     /// Gets the chain for a given AndrAddr if it exists
