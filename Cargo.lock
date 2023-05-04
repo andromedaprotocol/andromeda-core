@@ -51,6 +51,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-crowdfund"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-non-fungible-tokens",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw-utils 1.0.1",
+ "cw2 1.0.1",
+ "cw721 0.17.0",
+ "semver",
+]
+
+[[package]]
 name = "andromeda-cw721"
 version = "0.2.1"
 dependencies = [

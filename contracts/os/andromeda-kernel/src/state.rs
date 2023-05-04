@@ -48,12 +48,12 @@ pub fn parse_path_direct(
                         contract_addr: KERNEL_ADDRESSES.load(storage, IBC_BRIDGE)?.to_string(),
                         msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                             chain: recipient.get_chain().unwrap_or_default().to_owned(),
-                            message: vec![AMPMsg::new(
-                                raw_path,
-                                message,
-                                Some(funds.clone()),
-                                Some(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
-                            )],
+                            message: vec![AMPMsg::new(raw_path, message, Some(funds.clone()))
+                                .with_config(AMPMsgConfig::new(
+                                    reply_on,
+                                    exit_at_error,
+                                    gas_limit,
+                                ))],
                         })?,
                         funds,
                     }))))
@@ -64,12 +64,12 @@ pub fn parse_path_direct(
                         contract_addr: KERNEL_ADDRESSES.load(storage, WORMHOLE_BRIDGE)?.to_string(),
                         msg: to_binary(&BridgeExecuteMsg::SendAmpPacket {
                             chain: recipient.get_chain().unwrap_or_default().to_owned(),
-                            message: vec![AMPMsg::new(
-                                raw_path,
-                                message,
-                                Some(funds.clone()),
-                                Some(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
-                            )],
+                            message: vec![AMPMsg::new(raw_path, message, Some(funds.clone()))
+                                .with_config(AMPMsgConfig::new(
+                                    reply_on,
+                                    exit_at_error,
+                                    gas_limit,
+                                ))],
                         })?,
                         funds,
                     }))))
@@ -99,8 +99,12 @@ pub fn parse_path_direct(
                                         recipient,
                                         message,
                                         Some(funds.clone()),
-                                        Some(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
-                                    )],
+                                    )
+                                    .with_config(AMPMsgConfig::new(
+                                        reply_on,
+                                        exit_at_error,
+                                        gas_limit,
+                                    ))],
                                 })?,
                                 funds,
                             }))))

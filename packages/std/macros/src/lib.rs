@@ -153,8 +153,6 @@ pub fn andr_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
         input,
         quote! {
             enum Right {
-                #[returns(Option<::cosmwasm_std::Binary>)]
-                Get(Option<Binary>),
                 #[returns(andromeda_std::ado_base::ownership::ContractOwnerResponse)]
                 Owner {},
                 #[returns(andromeda_std::ado_base::operators::OperatorsResponse)]

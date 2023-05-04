@@ -99,7 +99,6 @@ impl Recipient {
             self.address.to_string(),
             self.msg.clone().unwrap_or_default(),
             funds,
-            None,
         )
     }
 }

@@ -190,7 +190,7 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         ExecuteMsg::ClaimOwnership { name } => execute_claim_ownership(ctx, name),
         ExecuteMsg::ProxyMessage { msg, name } => execute_message(ctx, name, msg),
         ExecuteMsg::UpdateAddress { name, addr } => execute_update_address(ctx, name, addr),
-        _ => ADOContract::default().execute::<ExecuteMsg>(ctx, msg, None),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 

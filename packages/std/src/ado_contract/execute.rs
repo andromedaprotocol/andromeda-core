@@ -40,14 +40,10 @@ impl<'a> ADOContract<'a> {
     }
 
     /// Handles execution of ADO specific messages.
-    ///
-    /// User may provide a fallback execute function for the case when the message may be handled by an external crate.
-    /// For example `cw721_base`.
-    pub fn execute<E: DeserializeOwned>(
+    pub fn execute(
         &self,
         ctx: ExecuteContext,
         msg: impl Serialize,
-        fallback_execute_function: Option<ExecuteContextFunction<E>>,
     ) -> Result<Response, ContractError> {
         let msg = to_binary(&msg)?;
         match from_binary::<AndromedaMsg>(&msg) {
@@ -87,10 +83,22 @@ impl<'a> ADOContract<'a> {
                 }
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
             },
-            _ => match fallback_execute_function {
-                Some(fallback_execute_fn) => (fallback_execute_fn)(ctx, from_binary::<E>(&msg)?),
-                None => Err(ContractError::UnsupportedOperation {}),
-            },
+            _ => Err(ContractError::NotImplemented { msg: None }),
+        }
+    }
+
+    /// Handles execution of ADO specific messages with a fallback function in the case that the provided message must be handled by an external package.
+    pub fn execute_with_fallback<E: DeserializeOwned>(
+        &self,
+        ctx: ExecuteContext,
+        msg: impl Serialize,
+        fallback_execute_function: ExecuteContextFunction<E>,
+    ) -> Result<Response, ContractError> {
+        let deserialized = from_binary::<E>(&to_binary(&msg)?);
+
+        match deserialized {
+            Ok(deserialized) => fallback_execute_function(ctx, deserialized),
+            Err(_) => self.execute(ctx, msg),
         }
     }
 
@@ -98,7 +106,7 @@ impl<'a> ADOContract<'a> {
     ///
     /// Requires the VFS address to be set if any address is a VFS path.
     /// Automatically validates all stored modules.
-    pub(crate) fn validate_andr_addresses(
+    pub fn validate_andr_addresses(
         &self,
         deps: &Deps,
         addresses: Vec<AndrAddr>,
@@ -218,9 +226,6 @@ mod tests {
         Addr, Uint64,
     };
 
-    fn dummy_function(_ctx: ExecuteContext, _msg: AndromedaMsg) -> Result<Response, ContractError> {
-        Ok(Response::new())
-    }
     #[test]
     fn test_register_module_invalid_identifier() {
         let contract = ADOContract::default();
@@ -253,11 +258,7 @@ mod tests {
 
         let msg = AndromedaMsg::RegisterModule { module };
 
-        let res = contract.execute(
-            ExecuteContext::new(deps.as_mut(), info, mock_env()),
-            msg,
-            Some(dummy_function),
-        );
+        let res = contract.execute(ExecuteContext::new(deps.as_mut(), info, mock_env()), msg);
         assert!(res.is_err())
     }
 
@@ -296,18 +297,14 @@ mod tests {
             .save(deps_mut.storage, &Addr::unchecked(MOCK_APP_CONTRACT))
             .unwrap();
 
-        let module = Module::new("module".to_owned(), "z".to_string(), false);
+        let module = Module::new("/m".to_owned(), "z".to_string(), false);
 
         let msg = AndromedaMsg::AlterModule {
             module_idx: Uint64::new(1),
             module,
         };
 
-        let res = contract.execute(
-            ExecuteContext::new(deps.as_mut(), info, mock_env()),
-            msg,
-            Some(dummy_function),
-        );
+        let res = contract.execute(ExecuteContext::new(deps.as_mut(), info, mock_env()), msg);
         assert!(res.is_err())
     }
 
@@ -341,11 +338,7 @@ mod tests {
         };
 
         let res = contract
-            .execute(
-                ExecuteContext::new(deps.as_mut(), info, mock_env()),
-                msg,
-                Some(dummy_function),
-            )
+            .execute(ExecuteContext::new(deps.as_mut(), info, mock_env()), msg)
             .unwrap();
 
         assert_eq!(

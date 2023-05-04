@@ -1,4 +1,4 @@
-use crate::{contract::*, state::ADO_ADDRESSES};
+use super::{contract::*, state::ADO_ADDRESSES};
 use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg};
 use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};

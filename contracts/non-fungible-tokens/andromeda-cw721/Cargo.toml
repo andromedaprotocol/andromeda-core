@@ -27,9 +27,9 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw721-base = { version = "0.17.0", features = ["library"] }
-cw721 = "0.17.0"
+cw721 = { workspace = true }
 cw2 = { workspace = true }
-semver = "1"
+semver = { workspace = true }
 
 andromeda-non-fungible-tokens = { workspace = true }
 andromeda-std = { workspace = true, features = ["modules"] }

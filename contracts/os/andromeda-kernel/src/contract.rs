@@ -125,13 +125,10 @@ pub fn handle_amp_direct(
         let amp_pkt = AMPPkt::new(
             origin,
             previous_sender,
-            vec![AMPMsg::new(
-                recipient.clone(),
-                message.clone(),
-                Some(info.clone().funds),
-                Some(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
-            )],
-            None,
+            vec![
+                AMPMsg::new(recipient.clone(), message.clone(), Some(info.clone().funds))
+                    .with_config(AMPMsgConfig::new(reply_on, exit_at_error, gas_limit)),
+            ],
         );
         Ok(Response::default()
             .add_submessage(SubMsg::new(WasmMsg::Execute {

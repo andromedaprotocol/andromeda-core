@@ -129,7 +129,7 @@ fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Cont
         } => execute_update_transfer_agreement(ctx, token_id, agreement),
         ExecuteMsg::Archive { token_id } => execute_archive(ctx, token_id),
         ExecuteMsg::Burn { token_id } => execute_burn(ctx, token_id),
-        _ => contract.execute(ctx, msg, Some(execute_cw721)),
+        _ => contract.execute_with_fallback(ctx, msg, execute_cw721),
     }
 }
 

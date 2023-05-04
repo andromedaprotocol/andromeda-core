@@ -30,6 +30,8 @@ pub struct AMPMsgConfig {
     pub exit_at_error: bool,
     /// An optional imposed gas limit for the message
     pub gas_limit: Option<u64>,
+    /// Whether to send the message directly to the given recipient
+    pub direct: bool,
 }
 
 impl AMPMsgConfig {
@@ -43,6 +45,17 @@ impl AMPMsgConfig {
             reply_on: reply_on.unwrap_or(ReplyOn::Always),
             exit_at_error: exit_at_error.unwrap_or(true),
             gas_limit,
+            direct: false,
+        }
+    }
+
+    /// Converts the current AMP message to be a direct message to the given contract
+    pub fn as_direct_msg(self) -> AMPMsgConfig {
+        AMPMsgConfig {
+            reply_on: self.reply_on,
+            exit_at_error: self.exit_at_error,
+            gas_limit: self.gas_limit,
+            direct: true,
         }
     }
 }
@@ -54,6 +67,7 @@ impl Default for AMPMsgConfig {
             reply_on: ReplyOn::Always,
             exit_at_error: true,
             gas_limit: None,
+            direct: false,
         }
     }
 }
@@ -76,17 +90,21 @@ pub struct AMPMsg {
 
 impl AMPMsg {
     /// Creates a new AMPMsg
-    pub fn new(
-        recipient: impl Into<String>,
-        message: Binary,
-        funds: Option<Vec<Coin>>,
-        config: Option<AMPMsgConfig>,
-    ) -> AMPMsg {
+    pub fn new(recipient: impl Into<String>, message: Binary, funds: Option<Vec<Coin>>) -> AMPMsg {
         AMPMsg {
             recipient: AndrAddr::from_string(recipient),
             message,
             funds: funds.unwrap_or_default(),
-            config: config.unwrap_or_default(),
+            config: AMPMsgConfig::default(),
+        }
+    }
+
+    pub fn with_config(&self, config: AMPMsgConfig) -> AMPMsg {
+        AMPMsg {
+            recipient: self.recipient.clone(),
+            message: self.message.clone(),
+            funds: self.funds.clone(),
+            config,
         }
     }
 
@@ -99,7 +117,7 @@ impl AMPMsg {
         id: u64,
     ) -> Result<SubMsg, ContractError> {
         let contract_addr = self.recipient.get_raw_address(deps)?;
-        let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()], None);
+        let pkt = AMPPkt::new(origin, previous_sender, vec![self.clone()]);
         let msg = to_binary(&ExecuteMsg::AMPReceive(pkt))?;
         Ok(SubMsg {
             id,
@@ -166,11 +184,10 @@ impl AMPPkt {
         origin: impl Into<String>,
         previous_sender: impl Into<String>,
         messages: Vec<AMPMsg>,
-        origin_username: Option<AndrAddr>,
     ) -> AMPPkt {
         AMPPkt {
             messages,
-            ctx: AMPCtx::new(origin, previous_sender, 0, origin_username),
+            ctx: AMPCtx::new(origin, previous_sender, 0, None),
         }
     }
 
@@ -287,7 +304,7 @@ mod tests {
     #[test]
     fn test_generate_amp_pkt() {
         let deps = mock_dependencies();
-        let msg = AMPMsg::new("test", Binary::default(), None, None);
+        let msg = AMPMsg::new("test", Binary::default(), None);
 
         let sub_msg = msg
             .generate_amp_pkt(&deps.as_ref(), "origin", "previoussender", 1)
@@ -296,8 +313,7 @@ mod tests {
         let expected_msg = ExecuteMsg::AMPReceive(AMPPkt::new(
             "origin",
             "previoussender",
-            vec![AMPMsg::new("test", Binary::default(), None, None)],
-            None,
+            vec![AMPMsg::new("test", Binary::default(), None)],
         ));
         assert_eq!(sub_msg.id, 1);
         assert_eq!(sub_msg.reply_on, ReplyOn::Always);
@@ -314,17 +330,17 @@ mod tests {
 
     #[test]
     fn test_get_unique_recipients() {
-        let msg = AMPMsg::new("test", Binary::default(), None, None);
-        let msg2 = AMPMsg::new("test2", Binary::default(), None, None);
+        let msg = AMPMsg::new("test", Binary::default(), None);
+        let msg2 = AMPMsg::new("test2", Binary::default(), None);
 
-        let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2], None);
+        let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2]);
 
         let recipients = pkt.get_unique_recipients();
         assert_eq!(recipients.len(), 2);
         assert_eq!(recipients[0], "test".to_string());
         assert_eq!(recipients[1], "test2".to_string());
 
-        pkt.add_message(AMPMsg::new("test", Binary::default(), None, None));
+        pkt.add_message(AMPMsg::new("test", Binary::default(), None));
         let recipients = pkt.get_unique_recipients();
         assert_eq!(recipients.len(), 2);
         assert_eq!(recipients[0], "test".to_string());
@@ -333,10 +349,10 @@ mod tests {
 
     #[test]
     fn test_get_messages_for_recipient() {
-        let msg = AMPMsg::new("test", Binary::default(), None, None);
-        let msg2 = AMPMsg::new("test2", Binary::default(), None, None);
+        let msg = AMPMsg::new("test", Binary::default(), None);
+        let msg2 = AMPMsg::new("test2", Binary::default(), None);
 
-        let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2], None);
+        let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2]);
 
         let messages = pkt.get_messages_for_recipient("test".to_string());
         assert_eq!(messages.len(), 1);
@@ -346,7 +362,7 @@ mod tests {
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].recipient.to_string(), "test2".to_string());
 
-        pkt.add_message(AMPMsg::new("test", Binary::default(), None, None));
+        pkt.add_message(AMPMsg::new("test", Binary::default(), None));
         let messages = pkt.get_messages_for_recipient("test".to_string());
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[0].recipient.to_string(), "test".to_string());
@@ -356,9 +372,9 @@ mod tests {
     #[test]
     fn test_verify_origin() {
         let deps = mock_dependencies_custom(&[]);
-        let msg = AMPMsg::new("test", Binary::default(), None, None);
+        let msg = AMPMsg::new("test", Binary::default(), None);
 
-        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()], None);
+        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()]);
 
         let info = mock_info("validaddress", &[]);
         let res = pkt.verify_origin(&info, &deps.as_ref());
@@ -368,21 +384,21 @@ mod tests {
         let res = pkt.verify_origin(&info, &deps.as_ref());
         assert!(res.is_err());
 
-        let offchain_pkt = AMPPkt::new(INVALID_CONTRACT, INVALID_CONTRACT, vec![msg], None);
+        let offchain_pkt = AMPPkt::new(INVALID_CONTRACT, INVALID_CONTRACT, vec![msg]);
         let res = offchain_pkt.verify_origin(&info, &deps.as_ref());
         assert!(res.is_ok());
     }
 
     #[test]
     fn test_to_sub_msg() {
-        let msg = AMPMsg::new("test", Binary::default(), None, None);
+        let msg = AMPMsg::new("test", Binary::default(), None);
 
-        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()], None);
+        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()]);
 
         let sub_msg = pkt.to_sub_msg("kernel", None, 1).unwrap();
 
         let expected_msg =
-            ExecuteMsg::AMPReceive(AMPPkt::new("origin", "previoussender", vec![msg], None));
+            ExecuteMsg::AMPReceive(AMPPkt::new("origin", "previoussender", vec![msg]));
         assert_eq!(sub_msg.id, 1);
         assert_eq!(sub_msg.reply_on, ReplyOn::Always);
         assert_eq!(sub_msg.gas_limit, None);
