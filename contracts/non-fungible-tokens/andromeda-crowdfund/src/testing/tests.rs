@@ -1713,7 +1713,7 @@ fn test_addresslist() {
     };
 
     let info = mock_info("app_contract", &[]);
-    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Not whitelisted user
     let msg = ExecuteMsg::Purchase {

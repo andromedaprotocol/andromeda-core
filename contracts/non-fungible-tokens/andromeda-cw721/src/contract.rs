@@ -176,7 +176,7 @@ fn execute_mint(
     extension: TokenExtension,
 ) -> Result<Response, ContractError> {
     can_mint(&ctx)?;
-    Ok(mint(ctx, token_id, token_uri, owner, extension)?)
+    mint(ctx, token_id, token_uri, owner, extension)
 }
 
 fn mint(
