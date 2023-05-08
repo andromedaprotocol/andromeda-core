@@ -1,7 +1,10 @@
 use crate::{
     contract::{execute, instantiate, query},
     state::{auction_infos, TOKEN_AUCTION_STATE},
-    testing::mock_querier::{mock_dependencies_custom, MOCK_RATES_CONTRACT, MOCK_TAX_RECIPIENT},
+    testing::mock_querier::{
+        mock_dependencies_custom, MOCK_RATES_CONTRACT, MOCK_TAX_RECIPIENT, MOCK_TOKEN_ADDR,
+        MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN, RATES,
+    },
 };
 use andromeda_non_fungible_tokens::{
     auction::{
@@ -15,6 +18,7 @@ use andromeda_std::{
     amp::addresses::AndrAddr,
     common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO},
     error::ContractError,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     attr, coin, coins, from_binary,
@@ -23,10 +27,6 @@ use cosmwasm_std::{
 };
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Expiration;
-
-use super::mock_querier::{
-    MOCK_KERNEL_CONTRACT, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN,
-};
 
 // const ADDRESS_LIST: &str = "addresslist";
 // const RATES: &str = "rates";
@@ -955,19 +955,12 @@ fn execute_claim() {
 fn execute_claim_with_modules() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let info = mock_info("owner", &[]);
-    let module = Module {
-        name: Some("rates".to_string()),
-        address: AndrAddr::from_string(MOCK_RATES_CONTRACT),
-
-        is_mutable: true,
-    };
-    let msg = InstantiateMsg {
-        modules: Some(vec![module]),
-        kernel_address: "kernel_address".to_string(),
-        owner: None,
-    };
-    let _res = instantiate(deps.as_mut(), env.clone(), &info, msg).unwrap();
+    let modules = vec![Module {
+        name: Some(RATES.to_owned()),
+        address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
+        is_mutable: false,
+    }];
+    let _res = init(deps.as_mut(), Some(modules));
 
     start_auction(deps.as_mut(), None, None);
 
@@ -1028,13 +1021,7 @@ fn execute_claim_with_modules() {
 fn execute_claim_auction_not_ended() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let info = mock_info("owner", &[]);
-    let msg = InstantiateMsg {
-        modules: None,
-        kernel_address: "kernel_address".to_string(),
-        owner: None,
-    };
-    let _res = instantiate(deps.as_mut(), env.clone(), &info, msg).unwrap();
+    let _res = init(deps.as_mut(), None);
 
     start_auction(deps.as_mut(), None, None);
 

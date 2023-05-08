@@ -11,7 +11,7 @@ use cosmwasm_std::{
     SystemError, SystemResult, WasmQuery,
 };
 use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
-use cw721::{Cw721QueryMsg, TokensResponse};
+use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
 pub use andromeda_std::testing::mock_querier::{
     MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
@@ -29,6 +29,7 @@ pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
 
 pub const MOCK_CONDITIONS_MET_CONTRACT: &str = "conditions_met";
 pub const MOCK_CONDITIONS_NOT_MET_CONTRACT: &str = "conditions_not_met";
+pub const RATES: &str = "rates";
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
@@ -90,6 +91,7 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
+                    MOCK_TOKEN_ADDR => self.handle_token_query(msg),
                     MOCK_TOKEN_CONTRACT => self.handle_token_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_ADDRESS_LIST_CONTRACT => self.handle_addresslist_query(msg),
@@ -124,6 +126,20 @@ impl WasmMockQuerier {
                     }
                 };
 
+                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
+            }
+            Cw721QueryMsg::OwnerOf { token_id, .. } => {
+                let res = if token_id == MOCK_UNCLAIMED_TOKEN {
+                    OwnerOfResponse {
+                        owner: mock_env().contract.address.to_string(),
+                        approvals: vec![],
+                    }
+                } else {
+                    OwnerOfResponse {
+                        owner: MOCK_TOKEN_OWNER.to_owned(),
+                        approvals: vec![],
+                    }
+                };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
             }
 
