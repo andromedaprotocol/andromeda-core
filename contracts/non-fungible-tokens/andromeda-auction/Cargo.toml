@@ -21,8 +21,7 @@ cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true}
 cw721 = { workspace = true }
 cw2 = { workspace = true }
-#TODO use workspace instead
-cw20 = "1.0.1"
+cw20 = { workspace = true }
 semver = { workspace = true }
 
 andromeda-std = { workspace = true }
