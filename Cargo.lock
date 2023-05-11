@@ -154,6 +154,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-modules"
+version = "0.1.0"
+dependencies = [
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.1",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-non-fungible-tokens"
 version = "0.1.0"
 dependencies = [
@@ -164,6 +177,23 @@ dependencies = [
  "cw721 0.17.0",
  "cw721-base 0.17.0",
  "serde",
+]
+
+[[package]]
+name = "andromeda-rates"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-modules",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw-utils 1.0.1",
+ "cw2 1.0.1",
+ "cw721 0.17.0",
+ "semver",
 ]
 
 [[package]]

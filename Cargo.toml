@@ -8,7 +8,7 @@ members = [
     "contracts/app/*",
     "contracts/finance/*",
     # "contracts/automation/*",
-    # "contracts/modules/*",
+    "contracts/modules/*",
     "contracts/os/*",
 
     #Internal
@@ -29,6 +29,7 @@ andromeda-std = { path = "./packages/std" }
 andromeda-macros = { path = "./packages/std/macros" }
 andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens" }
 andromeda-finance = { path = "./packages/andromeda-finance" }
+andromeda-modules = { path = "./packages/andromeda-modules" }
 andromeda-app = { path = "./packages/andromeda-app" }
 
 strum_macros = "0.24.3"
