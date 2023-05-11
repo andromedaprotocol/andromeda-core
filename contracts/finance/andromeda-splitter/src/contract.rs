@@ -130,12 +130,14 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateLock { lock_time } => execute_update_lock(ctx, lock_time),
-        ExecuteMsg::Send {} => execute_send(ctx.deps, ctx.env, ctx.info),
+        ExecuteMsg::Send {} => execute_send(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
-fn execute_send(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+
     let sent_funds: Vec<Coin> = info.funds.clone();
     ensure!(
         !sent_funds.is_empty(),
