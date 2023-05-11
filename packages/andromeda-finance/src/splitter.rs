@@ -1,7 +1,5 @@
 use andromeda_std::{
-    amp::{messages::AMPPkt, recipient::Recipient},
-    andr_exec, andr_instantiate, andr_query,
-    error::ContractError,
+    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query, error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Decimal, ReplyOn};

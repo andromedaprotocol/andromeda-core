@@ -11,22 +11,13 @@ use cosmwasm_std::{
     SystemError, SystemResult, WasmQuery,
 };
 use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
-use cw721::{Cw721QueryMsg, TokensResponse};
 
 pub use andromeda_std::testing::mock_querier::{
     MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
 };
 
-pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
-
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
-pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
-    "token1", "token2", "token3", "token4", "token5", "token6", "token7",
-];
-
-pub const MOCK_CONDITIONS_MET_CONTRACT: &str = "conditions_met";
-pub const MOCK_CONDITIONS_NOT_MET_CONTRACT: &str = "conditions_not_met";
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
@@ -88,44 +79,12 @@ impl WasmMockQuerier {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
-                    MOCK_TOKEN_CONTRACT => self.handle_token_query(msg),
                     MOCK_RATES_CONTRACT => self.handle_rates_query(msg),
                     MOCK_ADDRESS_LIST_CONTRACT => self.handle_addresslist_query(msg),
                     _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
                 }
             }
             _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
-        }
-    }
-
-    fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
-        match from_binary(msg).unwrap() {
-            Cw721QueryMsg::Tokens { owner, .. } => {
-                let res = if owner == MOCK_CONDITIONS_MET_CONTRACT
-                    || owner == MOCK_CONDITIONS_NOT_MET_CONTRACT
-                {
-                    TokensResponse {
-                        tokens: MOCK_TOKENS_FOR_SALE
-                            [MOCK_TOKENS_FOR_SALE.len() - self.tokens_left_to_burn..]
-                            .iter()
-                            .copied()
-                            .map(String::from)
-                            .collect(),
-                    }
-                } else {
-                    TokensResponse {
-                        tokens: MOCK_TOKENS_FOR_SALE
-                            .iter()
-                            .copied()
-                            .map(String::from)
-                            .collect(),
-                    }
-                };
-
-                SystemResult::Ok(ContractResult::Ok(to_binary(&res).unwrap()))
-            }
-
-            _ => panic!("Unsupported Query"),
         }
     }
 
