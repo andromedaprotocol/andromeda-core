@@ -48,7 +48,7 @@ pub enum Rate {
     Flat(Coin),
     /// A percentage fee
     Percent(PercentRate),
-    External(PrimitivePointer),
+    // External(PrimitivePointer),
 }
 
 #[cw_serde] // This is added such that both Rate::Flat and Rate::Percent have the same level of nesting which
@@ -70,7 +70,7 @@ impl Rate {
         match self {
             Rate::Flat(coin) => Ok(!coin.amount.is_zero()),
             Rate::Percent(PercentRate { percent }) => Ok(!percent.is_zero()),
-            Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
+            // Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
         }
     }
 
@@ -93,21 +93,21 @@ impl Rate {
         match self {
             Rate::Flat(_) => Ok(self),
             Rate::Percent(_) => Ok(self),
-            Rate::External(primitive_pointer) => {
-                let primitive = primitive_pointer.into_value(querier)?;
-                match primitive {
-                    None => Err(ContractError::ParsingError {
-                        err: "Stored primitive is None".to_string(),
-                    }),
-                    Some(primitive) => match primitive {
-                        Primitive::Coin(coin) => Ok(Rate::Flat(coin)),
-                        Primitive::Decimal(value) => Ok(Rate::from(value)),
-                        _ => Err(ContractError::ParsingError {
-                            err: "Stored rate is not a coin or Decimal".to_string(),
-                        }),
-                    },
-                }
-            }
+            // Rate::External(primitive_pointer) => {
+            //     let primitive = primitive_pointer.into_value(querier)?;
+            //     match primitive {
+            //         None => Err(ContractError::ParsingError {
+            //             err: "Stored primitive is None".to_string(),
+            //         }),
+            //         Some(primitive) => match primitive {
+            //             Primitive::Coin(coin) => Ok(Rate::Flat(coin)),
+            //             Primitive::Decimal(value) => Ok(Rate::from(value)),
+            //             _ => Err(ContractError::ParsingError {
+            //                 err: "Stored rate is not a coin or Decimal".to_string(),
+            //             }),
+            //         },
+            //     }
+            // }
         }
     }
 }
@@ -153,41 +153,38 @@ pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractErr
                 fee_amount = fee_amount.checked_add(1u128.into())?;
             }
             Ok(Coin::new(fee_amount.u128(), payment.denom.clone()))
-        }
-        Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
+        } // Rate::External(_) => Err(ContractError::UnexpectedExternalRate {}),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use andromeda_testing::testing::mock_querier::{
-        mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT,
-    };
+    use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT};
     use cosmwasm_std::{coin, Uint128};
 
     use super::*;
 
-    #[test]
-    fn test_validate_external_rate() {
-        let deps = mock_dependencies_custom(&[]);
+    // #[test]
+    // fn test_validate_external_rate() {
+    //     let deps = mock_dependencies_custom(&[]);
 
-        let rate = Rate::External(PrimitivePointer {
-            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+    //     let rate = Rate::External(PrimitivePointer {
+    //         address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
 
-            key: Some("percent".to_string()),
-        });
-        let validated_rate = rate.validate(&deps.as_ref().querier).unwrap();
-        let expected_rate = Rate::from(Decimal::percent(1));
-        assert_eq!(expected_rate, validated_rate);
+    //         key: Some("percent".to_string()),
+    //     });
+    //     let validated_rate = rate.validate(&deps.as_ref().querier).unwrap();
+    //     let expected_rate = Rate::from(Decimal::percent(1));
+    //     assert_eq!(expected_rate, validated_rate);
 
-        let rate = Rate::External(PrimitivePointer {
-            address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-            key: Some("flat".to_string()),
-        });
-        let validated_rate = rate.validate(&deps.as_ref().querier).unwrap();
-        let expected_rate = Rate::Flat(coin(1u128, "uusd"));
-        assert_eq!(expected_rate, validated_rate);
-    }
+    //     let rate = Rate::External(PrimitivePointer {
+    //         address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+    //         key: Some("flat".to_string()),
+    //     });
+    //     let validated_rate = rate.validate(&deps.as_ref().querier).unwrap();
+    //     let expected_rate = Rate::Flat(coin(1u128, "uusd"));
+    //     assert_eq!(expected_rate, validated_rate);
+    // }
 
     #[test]
     fn test_calculate_fee() {

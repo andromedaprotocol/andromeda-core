@@ -3,19 +3,30 @@ use andromeda_modules::rates::{
     calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
     QueryMsg, RateInfo,
 };
-use andromeda_std::amp::{messages::AMPPkt, recipient::Recipient};
-use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
-
 use andromeda_std::{
     ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
-    common::{deduct_funds, encode_binary, merge_sub_msgs, rates::get_tax_amount, Funds},
+    ado_contract::ADOContract,
+    common::{
+        context::ExecuteContext, deduct_funds, encode_binary, merge_sub_msgs,
+        rates::get_tax_amount, Funds,
+    },
     error::{from_semver, ContractError},
 };
+
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20Coin;
-use cw_utils::nonpayable;
 use semver::Version;
 
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{
+    attr, coins, ensure, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg,
+    Uint128, WasmMsg, WasmQuery,
+};
+use cw721::TokensResponse;
+use cw_utils::{nonpayable, Expiration};
+use std::cmp;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rates";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -91,16 +102,16 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         },
     )?;
     match msg {
-        ExecuteMsg::UpdateRates { rates } => execute_update_rates(deps, info, rates),
+        ExecuteMsg::UpdateRates { rates } => execute_update_rates(ctx, rates),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
 fn execute_update_rates(
-    deps: DepsMut,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     rates: Vec<RateInfo>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
     nonpayable(&info)?;
 
     ensure!(
@@ -148,7 +159,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Payments {} => encode_binary(&query_payments(deps)?),
