@@ -4,7 +4,10 @@ use andromeda_modules::rates::{
     QueryMsg, RateInfo,
 };
 use andromeda_std::{
-    ado_base::{hooks::AndromedaHook, InstantiateMsg as BaseInstantiateMsg},
+    ado_base::{
+        hooks::{AndromedaHook, OnFundsTransferResponse},
+        InstantiateMsg as BaseInstantiateMsg,
+    },
     ado_contract::ADOContract,
     common::{
         context::ExecuteContext, deduct_funds, encode_binary, merge_sub_msgs,
@@ -20,9 +23,9 @@ use semver::Version;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coins, ensure, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg,
-    Uint128, WasmMsg, WasmQuery,
+    attr, coin, coins, ensure, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    Event, MessageInfo, Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage,
+    SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw721::TokensResponse;
 use cw_utils::{nonpayable, Expiration};
@@ -80,6 +83,7 @@ pub fn execute(
             payload: encode_binary(&msg)?,
         },
     )?;
+
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
@@ -174,82 +178,71 @@ fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
     Ok(PaymentsResponse { payments: rates })
 }
 
-// fn query_deducted_funds(
-//     deps: Deps,
-//     funds: Funds,
-// ) -> Result<OnFundsTransferResponse, ContractError> {
-//     let config = CONFIG.load(deps.storage)?;
-//     let mut msgs: Vec<SubMsg> = vec![];
-//     let mut events: Vec<Event> = vec![];
-//     let (coin, is_native): (Coin, bool) = match funds {
-//         Funds::Native(coin) => (coin, true),
-//         Funds::Cw20(cw20_coin) => (coin(cw20_coin.amount.u128(), cw20_coin.address), false),
-//     };
-//     let mut leftover_funds = vec![coin.clone()];
-//     for rate_info in config.rates.iter() {
-//         let event_name = if rate_info.is_additive {
-//             "tax"
-//         } else {
-//             "royalty"
-//         };
-//         let mut event = Event::new(event_name);
-//         if let Some(desc) = &rate_info.description {
-//             event = event.add_attribute("description", desc);
-//         }
-//         let rate = rate_info.rate.validate(&deps.querier)?;
-//         let fee = calculate_fee(rate, &coin)?;
-//         for reciever in rate_info.recipients.iter() {
-//             if !rate_info.is_additive {
-//                 deduct_funds(&mut leftover_funds, &fee)?;
-//                 event = event.add_attribute("deducted", fee.to_string());
-//             }
-//             event = event.add_attribute(
-//                 "payment",
-//                 PaymentAttribute {
-//                     receiver: reciever.get_addr(
-//                         deps.api,
-//                         &deps.querier,
-//                         ADOContract::default().get_app_contract(deps.storage)?,
-//                     )?,
-//                     amount: fee.clone(),
-//                 }
-//                 .to_string(),
-//             );
-//             let msg = if is_native {
-//                 reciever.generate_msg_native(
-//                     deps.api,
-//                     &deps.querier,
-//                     ADOContract::default().get_app_contract(deps.storage)?,
-//                     vec![fee.clone()],
-//                 )?
-//             } else {
-//                 reciever.generate_msg_cw20(
-//                     deps.api,
-//                     &deps.querier,
-//                     ADOContract::default().get_app_contract(deps.storage)?,
-//                     Cw20Coin {
-//                         amount: fee.amount,
-//                         address: fee.denom.to_string(),
-//                     },
-//                 )?
-//             };
-//             msgs.push(msg);
-//         }
-//         events.push(event);
-//     }
-//     Ok(OnFundsTransferResponse {
-//         msgs,
-//         leftover_funds: if is_native {
-//             Funds::Native(leftover_funds[0].clone())
-//         } else {
-//             Funds::Cw20(Cw20Coin {
-//                 amount: leftover_funds[0].amount,
-//                 address: coin.denom,
-//             })
-//         },
-//         events,
-//     })
-// }
+fn query_deducted_funds(
+    deps: Deps,
+    funds: Funds,
+) -> Result<OnFundsTransferResponse, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let mut msgs: Vec<SubMsg> = vec![];
+    let mut events: Vec<Event> = vec![];
+    let (coin, is_native): (Coin, bool) = match funds {
+        Funds::Native(coin) => (coin, true),
+        Funds::Cw20(cw20_coin) => (coin(cw20_coin.amount.u128(), cw20_coin.address), false),
+    };
+    let mut leftover_funds = vec![coin.clone()];
+    for rate_info in config.rates.iter() {
+        let event_name = if rate_info.is_additive {
+            "tax"
+        } else {
+            "royalty"
+        };
+        let mut event = Event::new(event_name);
+        if let Some(desc) = &rate_info.description {
+            event = event.add_attribute("description", desc);
+        }
+        let rate = rate_info.rate.validate(&deps.querier)?;
+        let fee = calculate_fee(rate, &coin)?;
+        for receiver in rate_info.recipients.iter() {
+            if !rate_info.is_additive {
+                deduct_funds(&mut leftover_funds, &fee)?;
+                event = event.add_attribute("deducted", fee.to_string());
+            }
+            event = event.add_attribute(
+                "payment",
+                PaymentAttribute {
+                    receiver: receiver.get_addr(),
+                    amount: fee.clone(),
+                }
+                .to_string(),
+            );
+            let msg = if is_native {
+                receiver.generate_direct_msg(&deps, vec![fee.clone()])?
+            } else {
+                receiver.generate_msg_cw20(
+                    &deps,
+                    Cw20Coin {
+                        amount: fee.amount,
+                        address: fee.denom.to_string(),
+                    },
+                )?
+            };
+            msgs.push(msg);
+        }
+        events.push(event);
+    }
+    Ok(OnFundsTransferResponse {
+        msgs,
+        leftover_funds: if is_native {
+            Funds::Native(leftover_funds[0].clone())
+        } else {
+            Funds::Cw20(Cw20Coin {
+                amount: leftover_funds[0].amount,
+                address: coin.denom,
+            })
+        },
+        events,
+    })
+}
 
 // #[cfg(test)]
 // mod tests {
