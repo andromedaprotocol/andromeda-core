@@ -10,6 +10,7 @@ mod ownership;
 // #[cfg(feature = "primitive")]
 // pub mod primitive;
 
+pub mod permissioning;
 mod query;
 pub mod state;
 #[cfg(feature = "withdraw")]

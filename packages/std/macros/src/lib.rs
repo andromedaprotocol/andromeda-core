@@ -64,10 +64,14 @@ pub fn andr_exec(metadata: TokenStream, input: TokenStream) -> TokenStream {
                     recipient: Option<::andromeda_std::amp::AndrAddr>,
                     msg: Option<::cosmwasm_std::Binary>,
                 },
-                #[cfg(feature = "withdraw")]
-                Withdraw {
-                    recipient: Option<::andromeda_std::amp::Recipient>,
-                    tokens_to_withdraw: Option<Vec<::andromeda_std::ado_base::Withdrawal>>,
+                SetPermission{
+                    action: String,
+                    address: String,
+                    expiration: Option<::andromeda_std::Expiration>,
+                },
+                RemovePermission {
+                    action: String,
+                    address: String,
                 },
             }
         }
