@@ -1,14 +1,14 @@
 [workspace]
 members = [
     "packages/*",
-    # "contracts/fungible-tokens/*",
+    "contracts/fungible-tokens/*",
     "contracts/non-fungible-tokens/*",
     "contracts/ecosystem/*",
     # "contracts/data-storage/*",
     "contracts/app/*",
-    # "contracts/finance/*",
+    "contracts/finance/*",
     # "contracts/automation/*",
-    # "contracts/modules/*",
+    "contracts/modules/*",
     "contracts/os/*",
 
     #Internal
@@ -28,6 +28,9 @@ panic='abort'
 andromeda-std = { path = "./packages/std" }
 andromeda-macros = { path = "./packages/std/macros" }
 andromeda-non-fungible-tokens = { path = "./packages/andromeda-non-fungible-tokens" }
+andromeda-fungible-tokens = { path = "./packages/andromeda-fungible-tokens" }
+andromeda-finance = { path = "./packages/andromeda-finance" }
+andromeda-modules = { path = "./packages/andromeda-modules" }
 andromeda-app = { path = "./packages/andromeda-app" }
 andromeda-ecosystem = { path = "./packages/andromeda-ecosystem"}
 
@@ -38,6 +41,7 @@ cw-utils = "1.0.1"
 cw-storage-plus = "1.0.1"
 cw2 = "1.0.1"
 cw20 = "1.0.1"
+cw20-base = "1.0.1"
 cw721 = "0.17.0"
 cosmwasm-schema = "1.2.1"
 semver = "1.0.0"
