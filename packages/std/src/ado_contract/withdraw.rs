@@ -1,8 +1,7 @@
 use crate::ado_contract::ADOContract;
+use crate::common::context::ExecuteContext;
 use crate::{ado_base::withdraw::Withdrawal, amp::recipient::Recipient, error::ContractError};
-use cosmwasm_std::{
-    coin, ensure, DepsMut, Env, MessageInfo, Order, Response, StdError, Storage, SubMsg,
-};
+use cosmwasm_std::{coin, ensure, Order, Response, StdError, Storage, SubMsg};
 use cw20::Cw20Coin;
 
 use cw_asset::AssetInfo;
@@ -32,12 +31,13 @@ impl<'a> ADOContract<'a> {
     /// Withdraw all tokens in self.withdrawable_tokens with non-zero balance to the given recipient.
     pub fn execute_withdraw(
         &self,
-        deps: DepsMut,
-        env: Env,
-        info: MessageInfo,
+        ctx: ExecuteContext,
         recipient: Option<Recipient>,
         tokens_to_withdraw: Option<Vec<Withdrawal>>,
     ) -> Result<Response, ContractError> {
+        let ExecuteContext {
+            info, deps, env, ..
+        } = ctx;
         let recipient =
             recipient.unwrap_or_else(|| Recipient::from_string(info.sender.to_string()));
         let sender = info.sender.as_str();
@@ -72,8 +72,9 @@ impl<'a> ADOContract<'a> {
                 .load(deps.storage, &withdrawal.token)?;
             let msg: Option<SubMsg> = match &asset_info {
                 AssetInfo::Native(denom) => {
-                    let balance =
-                        asset_info.query_balance(&deps.querier, env.contract.address.clone())?;
+                    let balance = asset_info
+                        .query_balance(&deps.querier, env.contract.address.clone())
+                        .unwrap();
                     if balance.is_zero() {
                         None
                     } else {
@@ -83,8 +84,9 @@ impl<'a> ADOContract<'a> {
                 }
                 AssetInfo::Cw20(contract_addr) => {
                     let contract_addr_str = contract_addr.to_string();
-                    let balance =
-                        asset_info.query_balance(&deps.querier, env.contract.address.clone())?;
+                    let balance = asset_info
+                        .query_balance(&deps.querier, env.contract.address.clone())
+                        .unwrap();
                     if balance.is_zero() {
                         None
                     } else {
@@ -136,9 +138,7 @@ mod tests {
             .unwrap();
         let info = mock_info("not_owner", &[]);
         let res = ADOContract::default().execute_withdraw(
-            deps.as_mut(),
-            mock_env(),
-            info,
+            ExecuteContext::new(deps.as_mut(), info, mock_env()),
             Some(Recipient::from_string("address".to_string())),
             None,
         );
@@ -155,9 +155,7 @@ mod tests {
             .unwrap();
         let info = mock_info(owner, &[]);
         let res = ADOContract::default().execute_withdraw(
-            deps.as_mut(),
-            mock_env(),
-            info,
+            ExecuteContext::new(deps.as_mut(), info, mock_env()),
             Some(Recipient::from_string("address".to_string())),
             None,
         );
@@ -188,9 +186,7 @@ mod tests {
             .unwrap();
         let res = ADOContract::default()
             .execute_withdraw(
-                deps.as_mut(),
-                mock_env(),
-                info,
+                ExecuteContext::new(deps.as_mut(), info, mock_env()),
                 Some(Recipient::from_string("address".to_string())),
                 None,
             )
@@ -231,9 +227,7 @@ mod tests {
             .unwrap();
         let res = ADOContract::default()
             .execute_withdraw(
-                deps.as_mut(),
-                mock_env(),
-                info,
+                ExecuteContext::new(deps.as_mut(), info, mock_env()),
                 Some(Recipient::from_string("address".to_string())),
                 None,
             )
@@ -283,9 +277,7 @@ mod tests {
             .unwrap();
         let res = ADOContract::default()
             .execute_withdraw(
-                deps.as_mut(),
-                mock_env(),
-                info,
+                ExecuteContext::new(deps.as_mut(), info, mock_env()),
                 Some(Recipient::from_string("address".to_string())),
                 Some(vec![Withdrawal {
                     token: "uusd".to_string(),

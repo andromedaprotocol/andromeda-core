@@ -44,8 +44,8 @@ fn merge_variants(metadata: TokenStream, left: TokenStream, right: TokenStream) 
 ///
 /// **Must be placed before `#[cw_serde]`**
 pub fn andr_exec(metadata: TokenStream, input: TokenStream) -> TokenStream {
-    let merged = merge_variants(
-        metadata,
+    let mut merged = merge_variants(
+        metadata.clone(),
         input,
         quote! {
             enum Right {
@@ -60,28 +60,58 @@ pub fn andr_exec(metadata: TokenStream, input: TokenStream) -> TokenStream {
                 UpdateAppContract {
                     address: String,
                 },
+                Deposit {
+                    recipient: Option<::andromeda_std::amp::AndrAddr>,
+                    msg: Option<::cosmwasm_std::Binary>,
+                },
                 #[cfg(feature = "withdraw")]
                 Withdraw {
-                    recipient: Option<Recipient>,
-                    tokens_to_withdraw: Option<Vec<Withdrawal>>,
-                },
-                #[cfg(feature = "modules")]
-                RegisterModule {
-                    module: ::andromeda_std::ado_base::Module,
-                },
-                #[cfg(feature = "modules")]
-                DeregisterModule {
-                    module_idx: Uint64,
-                },
-                #[cfg(feature = "modules")]
-                AlterModule {
-                    module_idx: Uint64,
-                    module: ::andromeda_std::ado_base::Module,
+                    recipient: Option<::andromeda_std::amp::Recipient>,
+                    tokens_to_withdraw: Option<Vec<::andromeda_std::ado_base::Withdrawal>>,
                 },
             }
         }
         .into(),
     );
+    #[cfg(feature = "modules")]
+    {
+        merged = merge_variants(
+            metadata.clone(),
+            merged,
+            quote! {
+                enum Right {
+                    RegisterModule {
+                        module: ::andromeda_std::ado_base::Module,
+                    },
+                    DeregisterModule {
+                        module_idx: ::cosmwasm_std::Uint64,
+                    },
+                    AlterModule {
+                        module_idx: ::cosmwasm_std::Uint64,
+                        module: ::andromeda_std::ado_base::Module,
+                    },
+                }
+            }
+            .into(),
+        )
+    }
+
+    #[cfg(feature = "withdraw")]
+    {
+        merged = merge_variants(
+            metadata,
+            merged,
+            quote! {
+                enum Right {
+                    Withdraw {
+                        recipient: Option<::andromeda_std::amp::Recipient>,
+                        tokens_to_withdraw: Option<Vec<::andromeda_std::common::withdraw::Withdrawal>>,
+                    },
+                }
+            }
+            .into(),
+        )
+    }
     let input = parse_macro_input!(merged);
     TokenStream::from(andr_exec_derive(input).into_token_stream())
 }
@@ -148,8 +178,8 @@ pub fn andr_instantiate(_args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// **Must be placed before `#[cw_serde]`**
 pub fn andr_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
-    merge_variants(
-        metadata,
+    let mut merged = merge_variants(
+        metadata.clone(),
         input,
         quote! {
             enum Right {
@@ -167,19 +197,50 @@ pub fn andr_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
                 BlockHeightUponCreation {},
                 #[returns(andromeda_std::ado_base::operators::IsOperatorResponse)]
                 IsOperator { address: String },
-                #[cfg(feature = "modules")]
-                #[returns(andromeda_std::ado_base::Module)]
-                Module { id: ::cosmwasm_std::Uint64 },
-                #[cfg(feature = "modules")]
-                #[returns(Vec<String>)]
-                ModuleIds {},
                 #[returns(andromeda_std::ado_base::version::VersionResponse)]
                 Version {},
-                #[cfg(feature="module_hooks")]
-                #[returns(cosmwasm_std::Binary)]
-                AndrHook(andromeda_std::ado_base::hooks::HookMsg)
+                #[returns(::cosmwasm_std::BalanceResponse)]
+                Balance {
+                    address: ::andromeda_std::amp::AndrAddr,
+                },
             }
         }
         .into(),
-    )
+    );
+
+    #[cfg(feature = "modules")]
+    {
+        merged = merge_variants(
+            metadata.clone(),
+            merged,
+            quote! {
+                enum Right {
+                    #[cfg(feature = "modules")]
+                    #[returns(andromeda_std::ado_base::Module)]
+                    Module { id: ::cosmwasm_std::Uint64 },
+                    #[cfg(feature = "modules")]
+                    #[returns(Vec<String>)]
+                    ModuleIds {},
+                }
+            }
+            .into(),
+        );
+    }
+    #[cfg(feature = "module_hooks")]
+    {
+        merged = merge_variants(
+            metadata,
+            merged,
+            quote! {
+                enum Right {
+                    #[cfg(feature="module_hooks")]
+                    #[returns(cosmwasm_std::Binary)]
+                    AndrHook(andromeda_std::ado_base::hooks::HookMsg),
+                }
+            }
+            .into(),
+        );
+    }
+
+    merged
 }

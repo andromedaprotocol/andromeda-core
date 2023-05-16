@@ -102,6 +102,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-ecosystem"
+version = "0.1.0"
+dependencies = [
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 1.0.1",
+ "cw20",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "andromeda-kernel"
 version = "0.2.0"
 dependencies = [
@@ -178,6 +192,21 @@ dependencies = [
  "strum_macros",
  "thiserror",
  "zip-optional",
+]
+
+[[package]]
+name = "andromeda-vault"
+version = "0.2.0"
+dependencies = [
+ "andromeda-ecosystem",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw-utils 1.0.1",
+ "cw2 1.0.1",
+ "semver",
 ]
 
 [[package]]
