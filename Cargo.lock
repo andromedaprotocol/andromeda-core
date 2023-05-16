@@ -193,7 +193,6 @@ dependencies = [
  "cw-utils 1.0.1",
  "cw2 1.0.1",
  "cw20",
- "cw721 0.17.0",
  "semver",
 ]
 

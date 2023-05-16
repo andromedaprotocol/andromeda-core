@@ -1,4 +1,4 @@
-use crate::contract::{execute, instantiate, query};
+use crate::contract::{execute, instantiate, query, query_deducted_funds};
 use crate::state::CONFIG;
 use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateInfo};
 use andromeda_modules::rates::{PaymentsResponse, Rate};
@@ -132,95 +132,92 @@ fn test_andr_receive() {
     );
 }
 
-// #[test]
-// fn test_query_deducted_funds_native() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let owner = "owner";
-//     let info = mock_info(owner, &[]);
-//     let rates = vec![
-//         RateInfo {
-//             rate: Rate::Flat(Coin {
-//                 amount: Uint128::from(20u128),
-//                 denom: "uusd".to_string(),
-//             }),
-//             is_additive: true,
-//             description: Some("desc2".to_string()),
-//             recipients: vec![Recipient::new("1".into(), None)],
-//         },
-//         RateInfo {
-//             rate: Rate::from(Decimal::percent(10)),
-//             is_additive: false,
-//             description: Some("desc1".to_string()),
-//             recipients: vec![Recipient::new("2".into(), None)],
-//         },
-//         // RateInfo {
-//         //     rate: Rate::External(PrimitivePointer {
-//         //         address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
-//         //         key: Some("flat".into()),
-//         //     }),
-//         //     is_additive: false,
-//         //     description: Some("desc3".to_string()),
-//         //     recipients: vec![Recipient::Addr("3".into())],
-//         // },
-//     ];
-//     let msg = InstantiateMsg {
-//         rates: rates.clone(),
-//         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-//         owner: None,
-//         modules: None,
-//     };
-//     let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+#[test]
+fn test_query_deducted_funds_native() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let owner = "owner";
+    let info = mock_info(owner, &[]);
+    let rates = vec![
+        RateInfo {
+            rate: Rate::Flat(Coin {
+                amount: Uint128::from(20u128),
+                denom: "uusd".to_string(),
+            }),
+            is_additive: true,
+            description: Some("desc2".to_string()),
+            recipients: vec![Recipient::new("1", None)],
+        },
+        RateInfo {
+            rate: Rate::from(Decimal::percent(10)),
+            is_additive: false,
+            description: Some("desc1".to_string()),
+            recipients: vec![Recipient::new("2", None)],
+        },
+        // RateInfo {
+        //     rate: Rate::External(PrimitivePointer {
+        //         address: MOCK_PRIMITIVE_CONTRACT.to_owned(),
+        //         key: Some("flat"),
+        //     }),
+        //     is_additive: false,
+        //     description: Some("desc3".to_string()),
+        //     recipients: vec![Recipient::Addr("3")],
+        // },
+    ];
+    let msg = InstantiateMsg {
+        rates: rates.clone(),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+        modules: None,
+    };
+    let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-//     let res: OnFundsTransferResponse = from_binary(
-//         &query(
-//             deps.as_ref(),
-//             env,
-//             QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
-//                 encode_binary(&Funds::Native(coin(100, "uusd"))).unwrap(),
-//             ))),
-//         )
-//         .unwrap(),
-//     )
-//     .unwrap();
+    let res: OnFundsTransferResponse = query_deducted_funds(
+        deps.as_ref(),
+        Funds::Cw20(Cw20Coin {
+            amount: 100u128.into(),
+            address: "address".to_owned(),
+        }),
+    )
+    .unwrap();
 
-//     let expected_msgs: Vec<SubMsg> = vec![
-//         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-//             to_address: "1".into(),
-//             amount: coins(20, "uusd"),
-//         })),
-//         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-//             to_address: "2".into(),
-//             amount: coins(10, "uusd"),
-//         })),
-//         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-//             to_address: "3".into(),
-//             amount: coins(1, "uusd"),
-//         })),
-//     ];
+    let expected_msgs: Vec<SubMsg> = vec![
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "1".to_string(),
+            amount: coins(20, "uusd"),
+        })),
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "2".to_string(),
+            amount: coins(10, "uusd"),
+        })),
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: "3".to_string(),
+            amount: coins(1, "uusd"),
+        })),
+    ];
 
-//     assert_eq!(
-//         OnFundsTransferResponse {
-//             msgs: expected_msgs,
-//             // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
-//             leftover_funds: Funds::Native(coin(89, "uusd")),
-//             events: vec![
-//                 Event::new("tax")
-//                     .add_attribute("description", "desc2")
-//                     .add_attribute("payment", "1<20uusd"),
-//                 Event::new("royalty")
-//                     .add_attribute("description", "desc1")
-//                     .add_attribute("deducted", "10uusd")
-//                     .add_attribute("payment", "2<10uusd"),
-//                 Event::new("royalty")
-//                     .add_attribute("description", "desc3")
-//                     .add_attribute("deducted", "1uusd")
-//                     .add_attribute("payment", "3<1uusd"),
-//             ]
-//         },
-//         res
-//     );
-// }
+    assert_eq!(
+        OnFundsTransferResponse {
+            msgs: expected_msgs,
+            // Deduct 10% from the percent rate, followed by flat fee of 1 from the external rate.
+            leftover_funds: Funds::Native(coin(89, "uusd")),
+            events: vec![
+                Event::new("tax")
+                    .add_attribute("description", "desc2")
+                    .add_attribute("payment", "1<20uusd"),
+                Event::new("royalty")
+                    .add_attribute("description", "desc1")
+                    .add_attribute("deducted", "10uusd")
+                    .add_attribute("payment", "2<10uusd"),
+                Event::new("royalty")
+                    .add_attribute("description", "desc3")
+                    .add_attribute("deducted", "1uusd")
+                    .add_attribute("payment", "3<1uusd"),
+            ]
+        },
+        res
+    );
+}
 
 // #[test]
 // fn test_query_deducted_funds_cw20() {
@@ -237,13 +234,13 @@ fn test_andr_receive() {
 //             }),
 //             is_additive: true,
 //             description: Some("desc2".to_string()),
-//             recipients: vec![Recipient::new("1".into(), None)],
+//             recipients: vec![Recipient::new("1", None)],
 //         },
 //         RateInfo {
 //             rate: Rate::from(Decimal::percent(10)),
 //             is_additive: false,
 //             description: Some("desc1".to_string()),
-//             recipients: vec![Recipient::new("2".into(), None)],
+//             recipients: vec![Recipient::new("2", None)],
 //         },
 //         // RateInfo {
 //         //     rate: Rate::External(PrimitivePointer {
@@ -252,7 +249,7 @@ fn test_andr_receive() {
 //         //     }),
 //         //     is_additive: false,
 //         //     description: Some("desc3".to_string()),
-//         //     recipients: vec![Recipient::Addr("3".into())],
+//         //     recipients: vec![Recipient::Addr("3")],
 //         // },
 //     ];
 //     let msg = InstantiateMsg {
@@ -263,21 +260,7 @@ fn test_andr_receive() {
 //     };
 //     let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-//     let res: OnFundsTransferResponse = from_binary(
-//         &query(
-//             deps.as_ref(),
-//             env,
-//             QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
-//                 encode_binary(&Funds::Cw20(Cw20Coin {
-//                     amount: 100u128.into(),
-//                     address: "address".into(),
-//                 }))
-//                 .unwrap(),
-//             ))),
-//         )
-//         .unwrap(),
-//     )
-//     .unwrap();
+//     let res: OnFundsTransferResponse = query_deducted_funds
 
 //     let expected_msgs: Vec<SubMsg> = vec![
 //         SubMsg::new(WasmMsg::Execute {

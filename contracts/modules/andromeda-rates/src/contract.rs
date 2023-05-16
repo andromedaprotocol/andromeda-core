@@ -27,7 +27,6 @@ use cosmwasm_std::{
     Event, MessageInfo, Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage,
     SubMsg, Uint128, WasmMsg, WasmQuery,
 };
-use cw721::TokensResponse;
 use cw_utils::{nonpayable, Expiration};
 use std::cmp;
 // version info for migration info
@@ -81,6 +80,15 @@ pub fn execute(
         AndromedaHook::OnExecute {
             sender: info.sender.to_string(),
             payload: encode_binary(&msg)?,
+        },
+    )?;
+
+    contract.module_hook::<Response>(
+        &deps.as_ref(),
+        AndromedaHook::OnFundsTransfer {
+            sender: info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+            amount: todo!(),
         },
     )?;
 
@@ -178,7 +186,8 @@ fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
     Ok(PaymentsResponse { payments: rates })
 }
 
-fn query_deducted_funds(
+// Remove pub
+pub fn query_deducted_funds(
     deps: Deps,
     funds: Funds,
 ) -> Result<OnFundsTransferResponse, ContractError> {
