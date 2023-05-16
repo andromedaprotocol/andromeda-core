@@ -86,6 +86,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-cw20"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-fungible-tokens",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw-utils 1.0.1",
+ "cw2 1.0.1",
+ "cw20",
+ "cw20-base",
+ "semver",
+]
+
+[[package]]
 name = "andromeda-cw721"
 version = "0.2.1"
 dependencies = [
@@ -111,6 +129,19 @@ dependencies = [
  "cw-utils 1.0.1",
  "cw721 0.17.0",
  "cw721-base 0.17.0",
+ "serde",
+]
+
+[[package]]
+name = "andromeda-fungible-tokens"
+version = "0.1.0"
+dependencies = [
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.1",
+ "cw20",
+ "cw20-base",
  "serde",
 ]
 
