@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Config",
+  "type": "object",
+  "required": [
+    "number_of_reward_tokens",
+    "staking_token"
+  ],
+  "properties": {
+    "number_of_reward_tokens": {
+      "description": "The current number of reward tokens, cannot exceed `MAX_REWARD_TOKENS`.",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "staking_token": {
+      "description": "The token accepted for staking.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,9 +1,9 @@
 use cosmwasm_std::{OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
 use cw721_base::ContractError as Cw721ContractError;
+use cw_asset::AssetError;
 use cw_pause_once::PauseError;
 use cw_utils::{Expiration, ParseReplyError, PaymentError};
-
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};
@@ -485,6 +485,9 @@ pub enum ContractError {
     #[error("Invalid Asset: {asset}")]
     InvalidAsset { asset: String },
 
+    #[error("Asset Error")]
+    AssetError {},
+
     #[error("Invalid cycle duration")]
     InvalidCycleDuration {},
 
@@ -632,6 +635,12 @@ impl From<Utf8Error> for ContractError {
 impl From<OverflowError> for ContractError {
     fn from(_err: OverflowError) -> Self {
         ContractError::Overflow {}
+    }
+}
+
+impl From<AssetError> for ContractError {
+    fn from(_err: AssetError) -> Self {
+        ContractError::AssetError {}
     }
 }
 
