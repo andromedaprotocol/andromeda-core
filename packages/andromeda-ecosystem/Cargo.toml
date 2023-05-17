@@ -1,0 +1,22 @@
+[package]
+name = "andromeda-ecosystem"
+version = "0.1.0"
+edition = "2018"
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+serde = { workspace = true }
+schemars = "0.8.10"
+#astroport = "1.0.1"
+cw20 = { workspace = true }
+cw-asset = { workspace = true  }
+andromeda-std = { workspace = true, features = ["withdraw"] }

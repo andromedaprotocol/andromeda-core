@@ -61,7 +61,7 @@ impl<'a> ADOContract<'a> {
                 AndromedaMsg::Withdraw {
                     recipient,
                     tokens_to_withdraw,
-                } => self.execute_withdraw(deps, env, info, recipient, tokens_to_withdraw),
+                } => self.execute_withdraw(ctx, recipient, tokens_to_withdraw),
                 #[cfg(feature = "modules")]
                 AndromedaMsg::RegisterModule { module } => {
                     self.validate_module_address(&ctx.deps.as_ref(), &module)?;
@@ -82,6 +82,7 @@ impl<'a> ADOContract<'a> {
                     self.execute_alter_module(ctx.deps, ctx.info, module_idx, module)
                 }
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
+                AndromedaMsg::Deposit { .. } => Err(ContractError::NotImplemented { msg: None }),
             },
             _ => Err(ContractError::NotImplemented { msg: None }),
         }

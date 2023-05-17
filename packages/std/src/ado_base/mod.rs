@@ -12,10 +12,11 @@ pub mod version;
 pub mod withdraw;
 #[cfg(feature = "withdraw")]
 use crate::ado_base::withdraw::Withdrawal;
-use crate::amp::messages::AMPPkt;
 #[cfg(feature = "withdraw")]
 use crate::amp::recipient::Recipient;
+use crate::amp::{messages::AMPPkt, AndrAddr};
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Binary;
 #[cfg(feature = "modules")]
 pub use modules::Module;
 
@@ -69,6 +70,10 @@ pub enum AndromedaMsg {
         limit: Option<u32>,
         start_after: Option<String>,
     },
+    Deposit {
+        recipient: Option<AndrAddr>,
+        msg: Option<Binary>,
+    },
     AMPReceive(AMPPkt),
 }
 
@@ -97,4 +102,7 @@ pub enum AndromedaQuery {
     #[cfg(feature = "modules")]
     #[returns(Vec<String>)]
     ModuleIds {},
+    #[cfg(feature = "withdraw")]
+    #[returns(::cosmwasm_std::BalanceResponse)]
+    Balance { address: AndrAddr },
 }
