@@ -86,16 +86,9 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
     // };
-
-    contract.module_hook::<Response>(
-        &ctx.deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: ctx.info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
+    let contract = ADOContract::default();
+    
     match msg {
         ExecuteMsg::Transfer { recipient, amount } => execute_transfer(ctx, recipient, amount),
         ExecuteMsg::Burn { amount } => execute_burn(ctx, amount),
@@ -316,6 +309,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        _ => Ok(query_cw20(deps, env, msg.into())?),
+        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        // _ => Ok(query_cw20(deps, env, msg.into())?),
     }
 }

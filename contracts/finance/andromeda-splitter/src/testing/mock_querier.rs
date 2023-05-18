@@ -41,7 +41,7 @@ pub fn mock_dependencies_custom(
             &deps.api,
             mock_info("sender", &[]),
             InstantiateMsg {
-                ado_type: "crowdfund".to_string(),
+                ado_type: "splitter".to_string(),
                 ado_version: "test".to_string(),
                 operators: None,
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),

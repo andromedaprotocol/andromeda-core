@@ -1,5 +1,5 @@
 use crate::contract::{execute, instantiate, query};
-use crate::testing::mock_querier::mock_dependencies_custom;
+use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_RATES_CONTRACT};
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::Module, amp::addresses::AndrAddr, error::ContractError,
@@ -11,12 +11,12 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;
-const MOCK_RATES_CONTRACT: &str = "rates_contract";
-const RATES: &str = "rates";
+
+use super::mock_querier::MOCK_CW20_CONTRACT;
 
 fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
     let msg = InstantiateMsg {
-        name: "Name".into(),
+        name: MOCK_CW20_CONTRACT.into(),
         symbol: "Symbol".into(),
         decimals: 6,
         initial_balances: vec![Cw20Coin {
@@ -49,7 +49,7 @@ fn test_andr_query() {
 fn test_transfer() {
     let modules: Vec<Module> = vec![
         Module {
-            name: Some(RATES.to_owned()),
+            name: Some(MOCK_RATES_CONTRACT.to_owned()),
             address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
 
             is_mutable: false,
@@ -67,14 +67,15 @@ fn test_transfer() {
     let res = init(deps.as_mut(), Some(modules));
     assert_eq!(
         Response::new()
+            .add_attribute("method", "instantiate")
+            .add_attribute("type", "cw20")
             .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "1")
-            // .add_attribute("action", "register_module")
-            // .add_attribute("module_idx", "2")
-            // .add_attribute("action", "register_module")
-            // .add_attribute("module_idx", "3")
-            // .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw20"),
+            .add_attribute("module_idx", "1"),
+        // .add_attribute("action", "register_module")
+        // .add_attribute("module_idx", "2")
+        // .add_attribute("action", "register_module")
+        // .add_attribute("module_idx", "3")
+        // .add_attribute("method", "instantiate")
         res
     );
 
@@ -141,7 +142,7 @@ fn test_transfer() {
 fn test_send() {
     let modules: Vec<Module> = vec![
         Module {
-            name: Some(RATES.to_owned()),
+            name: Some(MOCK_RATES_CONTRACT.to_owned()),
             address: AndrAddr::from_string(MOCK_RATES_CONTRACT.to_owned()),
 
             is_mutable: false,
@@ -163,14 +164,13 @@ fn test_send() {
 
     assert_eq!(
         Response::new()
-            .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "1")
-            .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "2")
-            .add_attribute("action", "register_module")
-            .add_attribute("module_idx", "3")
             .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw20"),
+            .add_attribute("type", "cw20")
+            .add_attribute("action", "register_module")
+            .add_attribute("module_idx", "1"), // .add_attribute("action", "register_module")
+        // .add_attribute("module_idx", "2")
+        // .add_attribute("action", "register_module")
+        // .add_attribute("module_idx", "3")
         res
     );
 
