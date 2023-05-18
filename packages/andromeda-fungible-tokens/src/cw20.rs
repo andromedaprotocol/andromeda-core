@@ -2,8 +2,8 @@ use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Uint128};
 use cw20::{
-    AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, BalanceResponse, Cw20Coin,
-    DownloadLogoResponse, Logo, MarketingInfoResponse, MinterResponse, TokenInfoResponse,
+    AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, Cw20Coin, DownloadLogoResponse,
+    Logo, MarketingInfoResponse, MinterResponse, TokenInfoResponse,
 };
 use cw20_base::msg::{
     ExecuteMsg as Cw20ExecuteMsg, InstantiateMarketingInfo, InstantiateMsg as Cw20InstantiateMsg,
@@ -179,10 +179,11 @@ pub struct MigrateMsg {}
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    //NOTE: Balance is included in andr_query
     /// Returns the current balance of the given address, 0 if unset.
     /// Return type: BalanceResponse.
-    #[returns(BalanceResponse)]
-    Balance { address: String },
+    // #[returns(BalanceResponse)]
+    // Balance { address: AndrAddr },
     /// Returns metadata on the contract - name, decimals, supply, etc.
     /// Return type: TokenInfoResponse.
     #[returns(TokenInfoResponse)]
@@ -231,7 +232,9 @@ pub enum QueryMsg {
 impl From<QueryMsg> for Cw20QueryMsg {
     fn from(msg: QueryMsg) -> Self {
         match msg {
-            QueryMsg::Balance { address } => Cw20QueryMsg::Balance { address },
+            QueryMsg::Balance { address } => Cw20QueryMsg::Balance {
+                address: address.to_string(),
+            },
             QueryMsg::TokenInfo {} => Cw20QueryMsg::TokenInfo {},
             QueryMsg::Minter {} => Cw20QueryMsg::Minter {},
             QueryMsg::Allowance { owner, spender } => Cw20QueryMsg::Allowance { owner, spender },
@@ -247,7 +250,7 @@ impl From<QueryMsg> for Cw20QueryMsg {
             QueryMsg::AllAccounts { start_after, limit } => {
                 Cw20QueryMsg::AllAccounts { start_after, limit }
             }
-            QueryMsg::MarketingInfo {} => Cw20QueryMsg::DownloadLogo {},
+            QueryMsg::MarketingInfo {} => Cw20QueryMsg::MarketingInfo {},
             QueryMsg::DownloadLogo {} => Cw20QueryMsg::DownloadLogo {},
             _ => panic!("Unsupported Msg"),
         }

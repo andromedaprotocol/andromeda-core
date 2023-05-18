@@ -1,11 +1,9 @@
 use crate::contract::{execute, instantiate, query};
+use crate::testing::mock_querier::mock_dependencies_custom;
 use andromeda_fungible_tokens::cw20::{ExecuteMsg, InstantiateMsg, QueryMsg};
-
 use andromeda_std::{
-    ado_base::Module,
-    amp::addresses::AndrAddr,
-    error::ContractError,
-    testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT},
+    ado_base::Module, amp::addresses::AndrAddr, error::ContractError,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
