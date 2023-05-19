@@ -15,17 +15,11 @@ use cosmwasm_std::{BankMsg, CosmosMsg, Response, SubMsg, Uint128};
 pub use andromeda_std::testing::mock_querier::{
     MOCK_ADDRESS_LIST_CONTRACT, MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT, MOCK_RATES_CONTRACT,
 };
-
-pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
-
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
-pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
-    "token1", "token2", "token3", "token4", "token5", "token6", "token7",
-];
-
-pub const MOCK_CONDITIONS_MET_CONTRACT: &str = "conditions_met";
-pub const MOCK_CONDITIONS_NOT_MET_CONTRACT: &str = "conditions_not_met";
+pub const MOCK_OWNER: &str = "owner";
+pub const MOCK_RECIPIENT1: &str = "recipient1";
+pub const MOCK_RECIPIENT2: &str = "recipient2";
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
@@ -49,7 +43,7 @@ pub fn mock_dependencies_custom(
             &deps.api,
             mock_info("sender", &[]),
             InstantiateMsg {
-                ado_type: "crowdfund".to_string(),
+                ado_type: "rates".to_string(),
                 ado_version: "test".to_string(),
                 operators: None,
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),

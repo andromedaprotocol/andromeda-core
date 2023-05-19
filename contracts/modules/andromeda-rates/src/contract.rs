@@ -1,3 +1,4 @@
+#[cfg(not(feature = "library"))]
 use crate::state::{Config, CONFIG};
 use andromeda_modules::rates::{
     calculate_fee, ExecuteMsg, InstantiateMsg, MigrateMsg, PaymentAttribute, PaymentsResponse,
@@ -9,26 +10,18 @@ use andromeda_std::{
         InstantiateMsg as BaseInstantiateMsg,
     },
     ado_contract::ADOContract,
-    common::{
-        context::ExecuteContext, deduct_funds, encode_binary, merge_sub_msgs,
-        rates::get_tax_amount, Funds,
-    },
+    common::{context::ExecuteContext, deduct_funds, encode_binary, Funds},
     error::{from_semver, ContractError},
 };
 
-use cw2::{get_contract_version, set_contract_version};
-use cw20::Cw20Coin;
-use semver::Version;
-
-#[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, coins, ensure, has_coins, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    Event, MessageInfo, Order, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage,
-    SubMsg, Uint128, WasmMsg, WasmQuery,
+    attr, coin, ensure, Binary, Coin, Deps, DepsMut, Env, Event, MessageInfo, Response, SubMsg,
 };
-use cw_utils::{nonpayable, Expiration};
-use std::cmp;
+use cw2::{get_contract_version, set_contract_version};
+use cw20::Cw20Coin;
+use cw_utils::nonpayable;
+use semver::Version;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rates";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -72,25 +65,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
     // };
-
-    contract.module_hook::<Response>(
-        &deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
-
-    contract.module_hook::<Response>(
-        &deps.as_ref(),
-        AndromedaHook::OnFundsTransfer {
-            sender: info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-            amount: todo!(),
-        },
-    )?;
 
     let ctx = ExecuteContext::new(deps, info, env);
 
@@ -186,7 +161,7 @@ fn query_payments(deps: Deps) -> Result<PaymentsResponse, ContractError> {
     Ok(PaymentsResponse { payments: rates })
 }
 
-// Remove pub
+//NOTE Currently set as pub for testing
 pub fn query_deducted_funds(
     deps: Deps,
     funds: Funds,
