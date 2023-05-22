@@ -89,19 +89,26 @@ pub fn instantiate(
         },
     )?;
 
-    ADOContract::default().instantiate(
+    let contract = ADOContract::default();
+    let resp = contract.instantiate(
         deps.storage,
         env,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
-            ado_type: "cw20-staking".to_string(),
+            ado_type: "auction".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
-    )
+    )?;
+    let modules_resp =
+        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+
+    Ok(resp
+        .add_submessages(modules_resp.messages)
+        .add_attributes(modules_resp.attributes))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -111,47 +118,74 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    match msg {
-        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
+    let contract = ADOContract::default();
+    // };
 
-        ExecuteMsg::AddRewardToken { reward_token } => {
-            execute_add_reward_token(deps, env, info, reward_token)
+    contract.module_hook::<Response>(
+        &deps.as_ref(),
+        AndromedaHook::OnExecute {
+            sender: info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+    let ctx = ExecuteContext::new(deps, info, env);
+
+    match msg {
+        ExecuteMsg::AMPReceive(pkt) => {
+            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
         }
+        _ => handle_execute(ctx, msg),
+    }
+}
+
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let contract = ADOContract::default();
+    // };
+
+    contract.module_hook::<Response>(
+        &ctx.deps.as_ref(),
+        AndromedaHook::OnExecute {
+            sender: ctx.info.sender.to_string(),
+            payload: encode_binary(&msg)?,
+        },
+    )?;
+    match msg {
+        ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
+
+        ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
             None => update_global_indexes(
-                deps.storage,
-                &deps.querier,
-                env.block.time.seconds(),
-                env.contract.address,
+                ctx.deps.storage,
+                &ctx.deps.querier,
+                ctx.env.block.time.seconds(),
+                ctx.env.contract.address,
                 None,
             ),
             Some(asset_infos) => {
                 let asset_infos: Result<Vec<AssetInfo>, ContractError> = asset_infos
                     .iter()
-                    .map(|a| Ok(a.check(deps.api, None)?))
+                    .map(|a| Ok(a.check(ctx.deps.api, None)?))
                     .collect();
                 update_global_indexes(
-                    deps.storage,
-                    &deps.querier,
-                    env.block.time.seconds(),
-                    env.contract.address,
+                    ctx.deps.storage,
+                    &ctx.deps.querier,
+                    ctx.env.block.time.seconds(),
+                    ctx.env.contract.address,
                     Some(asset_infos?),
                 )
             }
         },
-        ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(deps, env, info, amount),
-        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
+        ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(ctx, amount),
+        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx),
         // _ => ADOContract::default().execute(ctx, msg),
-        _ => todo!(),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
-fn receive_cw20(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: Cw20ReceiveMsg,
-) -> Result<Response, ContractError> {
+fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     ensure!(
         !msg.amount.is_zero(),
         ContractError::InvalidFunds {
@@ -174,11 +208,12 @@ fn receive_cw20(
 }
 
 fn execute_add_reward_token(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     let contract = ADOContract::default();
     ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
@@ -291,11 +326,12 @@ fn execute_stake_tokens(
 }
 
 fn execute_unstake_tokens(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    ctx: ExecuteContext,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     nonpayable(&info)?;
     let sender = info.sender.as_str();
 
@@ -357,11 +393,10 @@ fn execute_unstake_tokens(
     }
 }
 
-fn execute_claim_rewards(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
+fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
     let sender = info.sender.as_str();
     if let Some(staker) = STAKERS.may_load(deps.storage, sender)? {
         // Update indexes, important for allocated rewards.
@@ -582,7 +617,7 @@ pub(crate) fn get_staking_token(deps: Deps) -> Result<AssetInfo, ContractError> 
     let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
 
-    let mission_contract = contract.get_app_contract(deps.storage)?;
+    // let mission_contract = contract.get_app_contract(deps.storage)?;
     let staking_token_address = config.staking_token.get_raw_address(&deps)?;
 
     let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address.as_ref())?);
@@ -600,7 +635,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             encode_binary(&query_stakers(deps, env, start_after, limit)?)
         }
         QueryMsg::Timestamp {} => encode_binary(&query_timestamp(env)),
-        _ => todo!(),
+        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
     }
 }
 
