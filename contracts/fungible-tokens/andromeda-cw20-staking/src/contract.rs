@@ -45,8 +45,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let additional_reward_tokens = if let Some(additional_rewards) = msg.clone().additional_rewards
-    {
+    let additional_reward_tokens = if let Some(additional_rewards) = msg.additional_rewards {
         ensure!(
             additional_rewards.len() <= MAX_REWARD_TOKENS as usize,
             ContractError::MaxRewardTokensExceeded {
@@ -63,7 +62,7 @@ pub fn instantiate(
                 ensure!(
                     staking_token != r.asset_info,
                     ContractError::InvalidAsset {
-                        asset: staking_token_identifier.to_string(),
+                        asset: staking_token_identifier.to_string().clone(),
                     }
                 );
                 r.check(&env.block, deps.api)
@@ -79,7 +78,7 @@ pub fn instantiate(
     CONFIG.save(
         deps.storage,
         &Config {
-            staking_token: msg.clone().staking_token,
+            staking_token: msg.staking_token,
             number_of_reward_tokens: additional_reward_tokens.len() as u32,
         },
     )?;
@@ -90,26 +89,19 @@ pub fn instantiate(
         },
     )?;
 
-    let contract = ADOContract::default();
-    let resp = contract.instantiate(
+    ADOContract::default().instantiate(
         deps.storage,
-        env.clone(),
+        env,
         deps.api,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "cw20-staking".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
-            kernel_address: msg.clone().kernel_address,
-            owner: msg.clone().owner,
+            kernel_address: msg.kernel_address,
+            owner: msg.owner,
         },
-    )?;
-    let modules_resp =
-        contract.register_modules(info.sender.as_str(), deps.storage, msg.clone().modules)?;
-
-    Ok(resp
-        .add_submessages(modules_resp.messages)
-        .add_attributes(modules_resp.attributes))
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -119,72 +111,47 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    // };
-
-    contract.module_hook::<Response>(
-        &deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
-    let ctx = ExecuteContext::new(deps, info, env);
-
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
+        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
+
+        ExecuteMsg::AddRewardToken { reward_token } => {
+            execute_add_reward_token(deps, env, info, reward_token)
         }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
-    // };
-
-    contract.module_hook::<Response>(
-        &ctx.deps.as_ref(),
-        AndromedaHook::OnExecute {
-            sender: ctx.info.sender.to_string(),
-            payload: encode_binary(&msg)?,
-        },
-    )?;
-    match msg {
-        ExecuteMsg::Receive(msg) => receive_cw20(ctx, msg),
-        ExecuteMsg::AddRewardToken { reward_token } => execute_add_reward_token(ctx, reward_token),
         ExecuteMsg::UpdateGlobalIndexes { asset_infos } => match asset_infos {
             None => update_global_indexes(
-                ctx.deps.storage,
-                &ctx.deps.querier,
-                ctx.env.block.time.seconds(),
-                ctx.env.contract.address,
+                deps.storage,
+                &deps.querier,
+                env.block.time.seconds(),
+                env.contract.address,
                 None,
             ),
             Some(asset_infos) => {
                 let asset_infos: Result<Vec<AssetInfo>, ContractError> = asset_infos
                     .iter()
-                    .map(|a| Ok(a.check(ctx.deps.api, None)?))
+                    .map(|a| Ok(a.check(deps.api, None)?))
                     .collect();
                 update_global_indexes(
-                    ctx.deps.storage,
-                    &ctx.deps.querier,
-                    ctx.env.block.time.seconds(),
-                    ctx.env.contract.address,
+                    deps.storage,
+                    &deps.querier,
+                    env.block.time.seconds(),
+                    env.contract.address,
                     Some(asset_infos?),
                 )
             }
         },
-        ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(ctx, amount),
-        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(ctx.deps, ctx.env, ctx.info),
-        _ => ADOContract::default().execute(ctx, msg),
+        ExecuteMsg::UnstakeTokens { amount } => execute_unstake_tokens(deps, env, info, amount),
+        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
+        // _ => ADOContract::default().execute(ctx, msg),
+        _ => todo!(),
     }
 }
 
-fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
+fn receive_cw20(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
     ensure!(
         !msg.amount.is_zero(),
         ContractError::InvalidFunds {
@@ -207,12 +174,11 @@ fn receive_cw20(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, Co
 }
 
 fn execute_add_reward_token(
-    ctx: ExecuteContext,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
     reward_token: RewardTokenUnchecked,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
     let contract = ADOContract::default();
     ensure!(
         contract.is_owner_or_operator(deps.storage, info.sender.as_str())?,
@@ -298,7 +264,7 @@ fn execute_stake_tokens(
     // Update the rewards for the user. This must be done before the new share is calculated.
     update_staker_rewards(deps.storage, &sender, &staker)?;
 
-    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address.as_str())?);
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address.as_ref())?);
 
     // Balance already increased, so subtract deposit amount
     let total_balance = staking_token
@@ -325,16 +291,15 @@ fn execute_stake_tokens(
 }
 
 fn execute_unstake_tokens(
-    ctx: ExecuteContext,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
     nonpayable(&info)?;
     let sender = info.sender.as_str();
 
-    let staking_token = get_staking_token(deps.as_ref(), deps.api)?;
+    let staking_token = get_staking_token(deps.as_ref())?;
 
     let total_balance = staking_token.query_balance(&deps.querier, env.contract.address.clone())?;
 
@@ -518,7 +483,7 @@ fn update_global_index(
         return Ok(());
     }
 
-    match &reward_token.reward_type {
+    match reward_token.reward_type {
         RewardType::NonAllocated {
             previous_reward_balance,
         } => {
@@ -526,7 +491,7 @@ fn update_global_index(
                 state,
                 querier,
                 reward_token,
-                *previous_reward_balance,
+                previous_reward_balance,
                 contract_address,
             )?;
         }
@@ -537,8 +502,8 @@ fn update_global_index(
             update_allocated_index(
                 state.total_share,
                 reward_token,
-                allocation_config.clone(),
-                allocation_state.clone(),
+                allocation_config,
+                allocation_state,
                 current_timestamp,
             )?;
         }
@@ -613,12 +578,14 @@ fn update_staker_reward_info(
     staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards, 1u128);
 }
 
-pub(crate) fn get_staking_token(deps: Deps, api: &dyn Api) -> Result<AssetInfo, ContractError> {
+pub(crate) fn get_staking_token(deps: Deps) -> Result<AssetInfo, ContractError> {
+    let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
 
+    let mission_contract = contract.get_app_contract(deps.storage)?;
     let staking_token_address = config.staking_token.get_raw_address(&deps)?;
 
-    let staking_token = AssetInfo::cw20(api.addr_validate(&staking_token_address.as_str())?);
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address.as_ref())?);
 
     Ok(staking_token)
 }
@@ -633,7 +600,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             encode_binary(&query_stakers(deps, env, start_after, limit)?)
         }
         QueryMsg::Timestamp {} => encode_binary(&query_timestamp(env)),
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+        _ => todo!(),
     }
 }
 
@@ -650,7 +617,7 @@ fn query_staker(deps: Deps, env: Env, address: String) -> Result<StakerResponse,
     let state = STATE.load(deps.storage)?;
     let pending_rewards =
         get_pending_rewards(deps.storage, &deps.querier, &env, &address, &staker)?;
-    let staking_token = get_staking_token(deps, deps.api)?;
+    let staking_token = get_staking_token(deps)?;
     let total_balance = staking_token.query_balance(&deps.querier, env.contract.address)?;
     let balance = staker
         .share

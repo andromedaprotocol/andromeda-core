@@ -57,7 +57,7 @@ pub(crate) fn get_stakers(
             let state = STATE.load(deps.storage)?;
             let pending_rewards =
                 get_pending_rewards(deps.storage, querier, env, &address, &staker)?;
-            let staking_token = get_staking_token(deps, api)?;
+            let staking_token = get_staking_token(deps)?;
             let total_balance =
                 staking_token.query_balance(querier, env.contract.address.clone())?;
             let balance = staker
