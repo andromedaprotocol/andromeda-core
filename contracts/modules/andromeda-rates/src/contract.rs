@@ -43,7 +43,7 @@ pub fn instantiate(
         deps.api,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "crowdfund".to_string(),
+            ado_type: "rates".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             kernel_address: msg.kernel_address,
