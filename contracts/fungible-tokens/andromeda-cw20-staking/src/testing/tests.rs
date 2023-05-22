@@ -1626,7 +1626,7 @@ fn test_add_reward_token_unauthorized() {
 
 #[test]
 fn test_add_reward_token_exceeds_max() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies_custom(&[]);
 
     let mut reward_tokens: Vec<RewardTokenUnchecked> = vec![];
 
