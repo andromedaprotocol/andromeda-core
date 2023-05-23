@@ -96,7 +96,7 @@ pub fn instantiate(
         deps.api,
         info.clone(),
         BaseInstantiateMsg {
-            ado_type: "auction".to_string(),
+            ado_type: "cw20-staking".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             kernel_address: msg.kernel_address,
@@ -518,7 +518,7 @@ fn update_global_index(
         return Ok(());
     }
 
-    match reward_token.reward_type {
+    match &reward_token.reward_type {
         RewardType::NonAllocated {
             previous_reward_balance,
         } => {
@@ -526,7 +526,7 @@ fn update_global_index(
                 state,
                 querier,
                 reward_token,
-                previous_reward_balance,
+                previous_reward_balance.clone(),
                 contract_address,
             )?;
         }
@@ -537,8 +537,8 @@ fn update_global_index(
             update_allocated_index(
                 state.total_share,
                 reward_token,
-                allocation_config,
-                allocation_state,
+                allocation_config.clone(),
+                allocation_state.clone(),
                 current_timestamp,
             )?;
         }
