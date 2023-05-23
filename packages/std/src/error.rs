@@ -135,6 +135,9 @@ pub enum ContractError {
     #[error("NoResults")]
     NoResults {},
 
+    #[error("NotEnoughTokens")]
+    NotEnoughTokens {},
+
     #[error("MissingParameters")]
     MissingParameters {},
 
