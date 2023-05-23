@@ -14,7 +14,10 @@ pub mod withdraw;
 use crate::ado_base::withdraw::Withdrawal;
 #[cfg(feature = "withdraw")]
 use crate::amp::recipient::Recipient;
-use crate::amp::{messages::AMPPkt, AndrAddr};
+use crate::{
+    ado_contract::permissioning::Permission,
+    amp::{messages::AMPPkt, AndrAddr},
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 #[cfg(feature = "modules")]
@@ -75,6 +78,15 @@ pub enum AndromedaMsg {
         msg: Option<Binary>,
     },
     AMPReceive(AMPPkt),
+    SetPermission {
+        identifier: String,
+        action: String,
+        permission: Permission,
+    },
+    RemovePermission {
+        action: String,
+        address: String,
+    },
 }
 
 #[cw_serde]
