@@ -474,4 +474,73 @@ mod tests {
             contract.is_permissioned_strict(deps.as_mut().storage, env.clone(), action, actor);
         assert!(res.is_ok());
     }
+
+    #[test]
+    fn test_owner_escape_clause() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "action";
+        let actor = "actor";
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(actor.clone()))
+            .unwrap();
+
+        let res =
+            contract.is_permissioned_strict(deps.as_mut().storage, env.clone(), action, actor);
+        assert!(res.is_ok());
+
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_permission_expiration() {
+        let mut deps = mock_dependencies();
+        let mut env = mock_env();
+        env.block.height = 0;
+        let action = "action";
+        let actor = "actor";
+        let contract = ADOContract::default();
+        let block = 100;
+        let expiration = Expiration::AtHeight(block);
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
+
+        ADOContract::permission_action(action, deps.as_mut().storage).unwrap();
+
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+
+        assert!(res.is_err());
+
+        // Test Whitelist
+        let permission = Permission::Whitelisted(Some(expiration));
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
+            .unwrap();
+
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        assert!(res.is_ok());
+
+        env.block.height = block + 1;
+
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        assert!(res.is_err());
+
+        env.block.height = 0;
+        // Test Blacklist
+        let permission = Permission::Blacklisted(Some(expiration));
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
+            .unwrap();
+
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        assert!(res.is_err());
+
+        env.block.height = block + 1;
+
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        assert!(res.is_ok());
+    }
 }
