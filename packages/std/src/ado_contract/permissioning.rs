@@ -160,6 +160,10 @@ impl<'a> ADOContract<'a> {
         let action_string: String = action.into();
         let identifier_string: String = identifier.into();
 
+        if self.is_contract_owner(store, identifier_string.as_str())? {
+            return Ok(());
+        }
+
         let permission =
             Self::get_permission(store, action_string.clone(), identifier_string.clone())?;
         let permissioned_action = PERMISSIONED_ACTIONS
@@ -200,12 +204,19 @@ impl<'a> ADOContract<'a> {
     ///
     /// Returns an error if the permission has expired or if no permission exists for a restricted ADO
     pub fn is_permissioned_strict(
+        &self,
         store: &dyn Storage,
         env: Env,
         action: impl Into<String>,
         identifier: impl Into<String>,
     ) -> Result<(), ContractError> {
-        let permission = Self::get_permission(store, action, identifier)?;
+        let identifier_string: String = identifier.into();
+
+        if self.is_contract_owner(store, identifier_string.as_str())? {
+            return Ok(());
+        }
+
+        let permission = Self::get_permission(store, action, identifier_string)?;
         match permission {
             Some(permission) => {
                 ensure!(
@@ -352,7 +363,10 @@ impl<'a> ADOContract<'a> {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env},
+        Addr,
+    };
 
     use super::*;
 
@@ -362,37 +376,42 @@ mod tests {
         let env = mock_env();
         let action = "action";
         let actor = "actor";
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
 
         ADOContract::permission_action(action, deps.as_mut().storage).unwrap();
 
         // Test Whitelisting
-        let res = ADOContract::is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
 
         assert!(res.is_err());
         let permission = Permission::whitelisted(None);
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
             .unwrap();
 
-        let res = ADOContract::is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
 
         assert!(res.is_ok());
 
         ADOContract::remove_permission(deps.as_mut().storage, action, actor).unwrap();
 
         // Test Limited
-        let res = ADOContract::is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
 
         assert!(res.is_err());
         let permission = Permission::limited(None, 1);
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
             .unwrap();
 
-        let res = ADOContract::is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
 
         assert!(res.is_ok());
 
         // Ensure use is consumed
-        let res = ADOContract::is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
         assert!(res.is_err());
 
         ADOContract::remove_permission(deps.as_mut().storage, action, actor).unwrap();
@@ -402,7 +421,7 @@ mod tests {
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
             .unwrap();
 
-        let res = ADOContract::is_permissioned(deps.as_mut().storage, env, action, actor);
+        let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
 
         assert!(res.is_err());
     }
@@ -413,6 +432,11 @@ mod tests {
         let env = mock_env();
         let action = "action";
         let actor = "actor";
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
 
         ADOContract::permission_action(action, deps.as_mut().storage).unwrap();
 
@@ -421,7 +445,7 @@ mod tests {
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
             .unwrap();
 
-        let res = ADOContract::is_permissioned(deps.as_mut().storage, env, action, actor);
+        let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
 
         assert!(res.is_err());
     }
@@ -432,9 +456,14 @@ mod tests {
         let env = mock_env();
         let action = "action";
         let actor = "actor";
+        let contract = ADOContract::default();
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .unwrap();
 
         let res =
-            ADOContract::is_permissioned_strict(deps.as_mut().storage, env.clone(), action, actor);
+            contract.is_permissioned_strict(deps.as_mut().storage, env.clone(), action, actor);
         assert!(res.is_err());
 
         let permission = Permission::whitelisted(None);
@@ -442,7 +471,7 @@ mod tests {
             .unwrap();
 
         let res =
-            ADOContract::is_permissioned_strict(deps.as_mut().storage, env.clone(), action, actor);
+            contract.is_permissioned_strict(deps.as_mut().storage, env.clone(), action, actor);
         assert!(res.is_ok());
     }
 }
