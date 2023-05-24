@@ -14,6 +14,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-address-list"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-modules",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw-utils 1.0.1",
+ "cw2 1.0.1",
+ "semver",
+]
+
+[[package]]
 name = "andromeda-adodb"
 version = "0.1.2"
 dependencies = [
