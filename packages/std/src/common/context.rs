@@ -1,4 +1,4 @@
-use crate::amp::messages::AMPPkt;
+use crate::{amp::messages::AMPPkt, error::ContractError};
 use cosmwasm_std::{DepsMut, Env, MessageInfo};
 pub struct ExecuteContext<'a> {
     pub deps: DepsMut<'a>,

@@ -9,7 +9,10 @@ use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
-use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
+use andromeda_std::{
+    ado_contract::{permissioning::is_context_permissioned, ADOContract},
+    common::context::ExecuteContext,
+};
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
@@ -96,6 +99,11 @@ pub fn execute(
 
 fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+    ensure!(
+        is_context_permissioned(ctx, msg.as_ref()),
+        ContractError::Unauthorized {}
+    );
+
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
             !is_archived(ctx.deps.storage, token_id)?,
