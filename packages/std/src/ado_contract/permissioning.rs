@@ -189,11 +189,8 @@ impl<'a> ADOContract<'a> {
                 Ok(())
             }
             None => {
-                if !permissioned_action {
-                    Ok(())
-                } else {
-                    Err(ContractError::Unauthorized {})
-                }
+                ensure!(!permissioned_action, ContractError::Unauthorized {});
+                Ok(())
             }
         }
     }
@@ -205,24 +202,38 @@ impl<'a> ADOContract<'a> {
     /// Returns an error if the permission has expired or if no permission exists for a restricted ADO
     pub fn is_permissioned_strict(
         &self,
-        store: &dyn Storage,
+        store: &mut dyn Storage,
         env: Env,
         action: impl Into<String>,
         identifier: impl Into<String>,
     ) -> Result<(), ContractError> {
+        // Converted to strings for cloning
+        let action_string: String = action.into();
         let identifier_string: String = identifier.into();
 
         if self.is_contract_owner(store, identifier_string.as_str())? {
             return Ok(());
         }
 
-        let permission = Self::get_permission(store, action, identifier_string)?;
+        let permission =
+            Self::get_permission(store, action_string.clone(), identifier_string.clone())?;
         match permission {
-            Some(permission) => {
+            Some(mut permission) => {
                 ensure!(
                     permission.is_permissioned(&env, true),
                     ContractError::Unauthorized {}
                 );
+
+                // Consume a use for a limited permission
+                if let Permission::Limited { .. } = permission {
+                    permission.consume_use();
+                    permissions().save(
+                        store,
+                        (action_string + &identifier_string.as_str()).as_str(),
+                        &permission,
+                    )?;
+                }
+
                 Ok(())
             }
             None => Err(ContractError::Unauthorized {}),
