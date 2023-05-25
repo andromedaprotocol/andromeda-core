@@ -1,7 +1,7 @@
 use crate::contract::{execute, instantiate, query};
-use crate::state::{ADDRESS_LIST, IS_INCLUSIVE};
+use crate::state::{ADDRESS_LIST};
 use crate::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_KERNEL_CONTRACT, MOCK_OWNER, MOCK_RECIPIENT1, MOCK_RECIPIENT2,
+    mock_dependencies_custom, MOCK_KERNEL_CONTRACT,
 };
 use andromeda_modules::address_list::{
     ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg,
@@ -12,9 +12,7 @@ use andromeda_std::error::ContractError;
 
 use cosmwasm_std::{attr, from_binary, DepsMut, MessageInfo};
 use cosmwasm_std::{
-    coins,
-    testing::{mock_env, mock_info},
-    BankMsg, Coin, CosmosMsg, Response, SubMsg, Uint128, WasmMsg,
+    testing::{mock_env, mock_info}, Response,
 };
 
 fn init(deps: DepsMut, info: MessageInfo) {

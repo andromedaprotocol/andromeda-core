@@ -226,21 +226,21 @@ fn test_execute_send_ado_recipient() {
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
-    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let expected_res = Response::new()
         .add_submessages(vec![
             SubMsg::new(
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
-                    to_address: recip_address1.to_string(),
+                    to_address: recip_address1,
                     amount: vec![Coin::new(1000, "uluna")], // 10000 * 0.7   remainder
                 }),
             ),
             SubMsg::new(
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
-                    to_address: recip_address2.to_string(),
+                    to_address: recip_address2,
                     amount: vec![Coin::new(2000, "uluna")], // 10000 * 0.7   remainder
                 }),
             ),

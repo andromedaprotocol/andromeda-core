@@ -6,22 +6,18 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::Funds;
 use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
 use andromeda_std::{
-    ado_base::modules::Module,
-    amp::addresses::AndrAddr,
-    common::{encode_binary, expiration::MILLISECONDS_TO_NANOSECONDS_RATIO},
-    error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::testing::{
-    mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
+    mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
 use cosmwasm_std::{
-    from_binary, from_slice, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg, Empty,
+    from_binary, from_slice, to_binary, BankMsg, Binary, Coin, ContractResult, CosmosMsg,
     OwnedDeps, Querier, QuerierResult, QueryRequest, Response, SubMsg, SystemError, SystemResult,
     Uint128, WasmQuery,
 };
 
-use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
+
 use std::collections::HashMap;
 pub const MOCK_CW20_CONTRACT: &str = "mock_cw20_contract";
 pub const MOCK_RATES_CONTRACT: &str = "mock_rates_contract";
