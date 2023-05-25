@@ -62,7 +62,7 @@ pub fn instantiate(
                 ensure!(
                     staking_token != r.asset_info,
                     ContractError::InvalidAsset {
-                        asset: staking_token_identifier.to_string().clone(),
+                        asset: staking_token_identifier.to_string(),
                     }
                 );
                 r.check(&env.block, deps.api)
@@ -237,7 +237,7 @@ fn execute_add_reward_token(
     );
 
     let staking_token_address = config.staking_token.get_raw_address(&deps.as_ref())?;
-    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address.as_str())?);
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(staking_token_address.as_str())?);
     ensure!(
         staking_token != reward_token.asset_info,
         ContractError::InvalidAsset {
@@ -276,7 +276,7 @@ fn execute_stake_tokens(
     let contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
 
-    let mission_contract = contract.get_app_contract(deps.storage)?;
+    let _mission_contract = contract.get_app_contract(deps.storage)?;
     let staking_token_address = config.staking_token.get_raw_address(&deps.as_ref())?;
     ensure!(
         token_address == staking_token_address,
@@ -299,7 +299,7 @@ fn execute_stake_tokens(
     // Update the rewards for the user. This must be done before the new share is calculated.
     update_staker_rewards(deps.storage, &sender, &staker)?;
 
-    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address.as_ref())?);
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(staking_token_address.as_ref())?);
 
     // Balance already increased, so subtract deposit amount
     let total_balance = staking_token
@@ -526,7 +526,7 @@ fn update_global_index(
                 state,
                 querier,
                 reward_token,
-                previous_reward_balance.clone(),
+                *previous_reward_balance,
                 contract_address,
             )?;
         }
@@ -614,13 +614,13 @@ fn update_staker_reward_info(
 }
 
 pub(crate) fn get_staking_token(deps: Deps) -> Result<AssetInfo, ContractError> {
-    let contract = ADOContract::default();
+    let _contract = ADOContract::default();
     let config = CONFIG.load(deps.storage)?;
 
     // let mission_contract = contract.get_app_contract(deps.storage)?;
     let staking_token_address = config.staking_token.get_raw_address(&deps)?;
 
-    let staking_token = AssetInfo::cw20(deps.api.addr_validate(&staking_token_address.as_ref())?);
+    let staking_token = AssetInfo::cw20(deps.api.addr_validate(staking_token_address.as_ref())?);
 
     Ok(staking_token)
 }

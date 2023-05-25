@@ -215,7 +215,7 @@ pub fn andr_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
     #[cfg(feature = "modules")]
     {
         merged = merge_variants(
-            metadata.clone(),
+            metadata,
             merged,
             quote! {
                 enum Right {

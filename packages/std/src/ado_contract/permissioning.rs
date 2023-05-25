@@ -1,13 +1,9 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, DepsMut, Env, MessageInfo, Response, StdError, Storage};
+use cosmwasm_std::{ensure, Env, MessageInfo, Response, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use cw_utils::Expiration;
 
-use crate::{
-    amp::messages::{AMPCtx, AMPPkt},
-    common::context::ExecuteContext,
-    error::ContractError,
-};
+use crate::{amp::messages::AMPPkt, common::context::ExecuteContext, error::ContractError};
 
 use super::ADOContract;
 
@@ -185,7 +181,7 @@ impl<'a> ADOContract<'a> {
                     permission.consume_use();
                     permissions().save(
                         store,
-                        (action_string + &identifier_string.as_str()).as_str(),
+                        (action_string + identifier_string.as_str()).as_str(),
                         &permission,
                     )?;
                 }
@@ -233,7 +229,7 @@ impl<'a> ADOContract<'a> {
                     permission.consume_use();
                     permissions().save(
                         store,
-                        (action_string + &identifier_string.as_str()).as_str(),
+                        (action_string + identifier_string.as_str()).as_str(),
                         &permission,
                     )?;
                 }
@@ -295,7 +291,7 @@ impl<'a> ADOContract<'a> {
         action: impl Into<String>,
         permission: Permission,
     ) -> Result<Response, ContractError> {
-        Self::is_contract_owner(&self, ctx.deps.storage, ctx.info.sender.as_str())?;
+        Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
         let identifier = identifier.into();
         let action = action.into();
         Self::set_permission(
@@ -321,7 +317,7 @@ impl<'a> ADOContract<'a> {
         identifier: impl Into<String>,
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
-        Self::is_contract_owner(&self, ctx.deps.storage, ctx.info.sender.as_str())?;
+        Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
         let identifier = identifier.into();
         let action = action.into();
         Self::remove_permission(ctx.deps.storage, action.clone(), identifier.clone())?;
@@ -353,7 +349,7 @@ impl<'a> ADOContract<'a> {
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
         let action_string: String = action.into();
-        Self::is_contract_owner(&self, ctx.deps.storage, ctx.info.sender.as_str())?;
+        Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
         Self::permission_action(action_string.clone(), ctx.deps.storage)?;
         Ok(Response::default().add_attributes(vec![
             ("action", "permission_action"),
@@ -367,8 +363,8 @@ impl<'a> ADOContract<'a> {
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
         let action_string: String = action.into();
-        Self::is_contract_owner(&self, ctx.deps.storage, ctx.info.sender.as_str())?;
-        Self::disable_action_permission(&self, action_string.clone(), ctx.deps.storage);
+        Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
+        Self::disable_action_permission(self, action_string.clone(), ctx.deps.storage);
         Ok(Response::default().add_attributes(vec![
             ("action", "disable_action_permission"),
             ("action", action_string.as_str()),
@@ -480,8 +476,7 @@ mod tests {
 
         assert!(res.is_err());
         let permission = Permission::whitelisted(None);
-        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
-            .unwrap();
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
 
@@ -494,8 +489,7 @@ mod tests {
 
         assert!(res.is_err());
         let permission = Permission::limited(None, 1);
-        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
-            .unwrap();
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
 
@@ -509,8 +503,7 @@ mod tests {
 
         // Test Blacklisted
         let permission = Permission::blacklisted(None);
-        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
-            .unwrap();
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
         let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
 
@@ -533,8 +526,7 @@ mod tests {
 
         // Test Blacklisted
         let permission = Permission::blacklisted(None);
-        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
-            .unwrap();
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
         let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
 
@@ -558,11 +550,9 @@ mod tests {
         assert!(res.is_err());
 
         let permission = Permission::whitelisted(None);
-        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
-            .unwrap();
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
-        let res =
-            contract.is_permissioned_strict(deps.as_mut().storage, env.clone(), action, actor);
+        let res = contract.is_permissioned_strict(deps.as_mut().storage, env, action, actor);
         assert!(res.is_ok());
     }
 
@@ -582,7 +572,7 @@ mod tests {
             contract.is_permissioned_strict(deps.as_mut().storage, env.clone(), action, actor);
         assert!(res.is_ok());
 
-        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
         assert!(res.is_ok());
     }
 
@@ -609,8 +599,7 @@ mod tests {
 
         // Test Whitelist
         let permission = Permission::Whitelisted(Some(expiration));
-        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
-            .unwrap();
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
         assert!(res.is_ok());
@@ -623,15 +612,14 @@ mod tests {
         env.block.height = 0;
         // Test Blacklist
         let permission = Permission::Blacklisted(Some(expiration));
-        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
-            .unwrap();
+        ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
         let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
         assert!(res.is_err());
 
         env.block.height = block + 1;
 
-        let res = contract.is_permissioned(deps.as_mut().storage, env.clone(), action, actor);
+        let res = contract.is_permissioned(deps.as_mut().storage, env, action, actor);
         assert!(res.is_ok());
     }
 
@@ -672,10 +660,9 @@ mod tests {
         )
         .unwrap());
 
-        let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
+        let context = ExecuteContext::new(deps.as_mut(), info, env.clone());
         let permission = Permission::whitelisted(None);
-        ADOContract::set_permission(context.deps.storage, action, actor, permission.clone())
-            .unwrap();
+        ADOContract::set_permission(context.deps.storage, action, actor, permission).unwrap();
 
         assert!(is_context_permissioned(
             context.deps.storage,
@@ -751,8 +738,7 @@ mod tests {
         .unwrap());
 
         let amp_ctx = AMPPkt::new("mock_actor", "owner", vec![]);
-        let context =
-            ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
+        let context = ExecuteContext::new(deps.as_mut(), unauth_info, env).with_ctx(amp_ctx);
 
         assert!(is_context_permissioned(
             context.deps.storage,
@@ -789,10 +775,9 @@ mod tests {
         )
         .unwrap());
 
-        let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
+        let context = ExecuteContext::new(deps.as_mut(), info, env.clone());
         let permission = Permission::whitelisted(None);
-        ADOContract::set_permission(context.deps.storage, action, actor, permission.clone())
-            .unwrap();
+        ADOContract::set_permission(context.deps.storage, action, actor, permission).unwrap();
 
         assert!(is_context_permissioned_strict(
             context.deps.storage,
@@ -842,8 +827,7 @@ mod tests {
         .unwrap());
 
         let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![]);
-        let context =
-            ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
+        let context = ExecuteContext::new(deps.as_mut(), unauth_info, env).with_ctx(amp_ctx);
 
         assert!(!is_context_permissioned_strict(
             context.deps.storage,
