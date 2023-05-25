@@ -1,9 +1,13 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, DepsMut, Env, Response, StdError, Storage};
+use cosmwasm_std::{ensure, DepsMut, Env, MessageInfo, Response, StdError, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use cw_utils::Expiration;
 
-use crate::{common::context::ExecuteContext, error::ContractError};
+use crate::{
+    amp::messages::{AMPCtx, AMPPkt},
+    common::context::ExecuteContext,
+    error::ContractError,
+};
 
 use super::ADOContract;
 
@@ -378,28 +382,25 @@ impl<'a> ADOContract<'a> {
 /// - The context does not contain any AMP context and the **sender** is the actor
 /// - The context contains AMP context and the **previous sender** or **origin** are considered the actor
 pub fn is_context_permissioned(
-    ctx: ExecuteContext,
+    storage: &mut dyn Storage,
+    info: &MessageInfo,
+    env: &Env,
+    ctx: &Option<AMPPkt>,
     action: impl Into<String>,
 ) -> Result<bool, ContractError> {
     let contract = ADOContract::default();
-    let ExecuteContext {
-        deps,
-        info,
-        env,
-        amp_ctx,
-    } = ctx;
 
-    match amp_ctx {
+    match ctx {
         Some(amp_ctx) => {
             let action: String = action.into();
             let is_origin_permissioned = contract.is_permissioned(
-                deps.storage,
+                storage,
                 env.clone(),
                 action.clone(),
                 amp_ctx.ctx.get_origin().as_str(),
             );
             let is_previous_sender_permissioned = contract.is_permissioned(
-                deps.storage,
+                storage,
                 env.clone(),
                 action,
                 amp_ctx.ctx.get_previous_sender().as_str(),
@@ -407,7 +408,7 @@ pub fn is_context_permissioned(
             Ok(is_origin_permissioned.is_ok() || is_previous_sender_permissioned.is_ok())
         }
         None => Ok(contract
-            .is_permissioned(deps.storage, env.clone(), action, info.sender.to_string())
+            .is_permissioned(storage, env.clone(), action, info.sender.to_string())
             .is_ok()),
     }
 }
@@ -418,28 +419,25 @@ pub fn is_context_permissioned(
 /// - The context does not contain any AMP context and the **sender** is the actor
 /// - The context contains AMP context and the **previous sender** or **origin** are considered the actor
 pub fn is_context_permissioned_strict(
-    ctx: ExecuteContext,
+    storage: &mut dyn Storage,
+    info: &MessageInfo,
+    env: &Env,
+    ctx: &Option<AMPPkt>,
     action: impl Into<String>,
 ) -> Result<bool, ContractError> {
     let contract = ADOContract::default();
-    let ExecuteContext {
-        deps,
-        info,
-        env,
-        amp_ctx,
-    } = ctx;
 
-    match amp_ctx {
+    match ctx {
         Some(amp_ctx) => {
             let action: String = action.into();
             let is_origin_permissioned = contract.is_permissioned_strict(
-                deps.storage,
+                storage,
                 env.clone(),
                 action.clone(),
                 amp_ctx.ctx.get_origin().as_str(),
             );
             let is_previous_sender_permissioned = contract.is_permissioned_strict(
-                deps.storage,
+                storage,
                 env.clone(),
                 action,
                 amp_ctx.ctx.get_previous_sender().as_str(),
@@ -447,7 +445,7 @@ pub fn is_context_permissioned_strict(
             Ok(is_origin_permissioned.is_ok() || is_previous_sender_permissioned.is_ok())
         }
         None => Ok(contract
-            .is_permissioned_strict(deps.storage, env.clone(), action, info.sender.to_string())
+            .is_permissioned_strict(storage, env.clone(), action, info.sender.to_string())
             .is_ok()),
     }
 }
@@ -653,54 +651,117 @@ mod tests {
             .save(context.deps.storage, &Addr::unchecked("owner"))
             .unwrap();
 
-        assert!(is_context_permissioned(context, action.clone()).unwrap());
+        assert!(is_context_permissioned(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
         ADOContract::permission_action(action, context.deps.storage).unwrap();
 
-        assert!(!is_context_permissioned(context, action.clone()).unwrap());
+        assert!(!is_context_permissioned(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
         let permission = Permission::whitelisted(None);
         ADOContract::set_permission(context.deps.storage, action, actor, permission.clone())
             .unwrap();
 
-        assert!(is_context_permissioned(context, action.clone()).unwrap());
+        assert!(is_context_permissioned(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let unauth_info = mock_info("mock_actor", &[]);
         let context = ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone());
 
-        assert!(!is_context_permissioned(context, action.clone()).unwrap());
+        assert!(!is_context_permissioned(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let amp_ctx = AMPPkt::new("mock_actor", actor, vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(is_context_permissioned(context, action.clone()).unwrap());
+        assert!(is_context_permissioned(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let amp_ctx = AMPPkt::new(actor, "mock_actor", vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(is_context_permissioned(context, action.clone()).unwrap());
+        assert!(is_context_permissioned(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(!is_context_permissioned(context, action.clone()).unwrap());
+        assert!(!is_context_permissioned(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let amp_ctx = AMPPkt::new("owner", "mock_actor", vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(is_context_permissioned(context, action.clone()).unwrap());
+        assert!(is_context_permissioned(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let amp_ctx = AMPPkt::new("mock_actor", "owner", vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(is_context_permissioned(context, action.clone()).unwrap());
+        assert!(is_context_permissioned(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
     }
 
     #[test]
@@ -719,36 +780,78 @@ mod tests {
             .save(context.deps.storage, &Addr::unchecked("owner"))
             .unwrap();
 
-        assert!(!is_context_permissioned_strict(context, action.clone()).unwrap());
+        assert!(!is_context_permissioned_strict(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
         let permission = Permission::whitelisted(None);
         ADOContract::set_permission(context.deps.storage, action, actor, permission.clone())
             .unwrap();
 
-        assert!(is_context_permissioned_strict(context, action.clone()).unwrap());
+        assert!(is_context_permissioned_strict(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let unauth_info = mock_info("mock_actor", &[]);
         let context = ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone());
 
-        assert!(!is_context_permissioned_strict(context, action.clone()).unwrap());
+        assert!(!is_context_permissioned_strict(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let amp_ctx = AMPPkt::new("mock_actor", actor, vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(is_context_permissioned_strict(context, action.clone()).unwrap());
+        assert!(is_context_permissioned_strict(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let amp_ctx = AMPPkt::new(actor, "mock_actor", vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(is_context_permissioned_strict(context, action.clone()).unwrap());
+        assert!(is_context_permissioned_strict(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
 
         let amp_ctx = AMPPkt::new("mock_actor", "mock_actor", vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(!is_context_permissioned_strict(context, action.clone()).unwrap());
+        assert!(!is_context_permissioned_strict(
+            context.deps.storage,
+            &context.info,
+            &context.env,
+            &context.amp_ctx,
+            action.clone()
+        )
+        .unwrap());
     }
 }

@@ -10,7 +10,7 @@ use cosmwasm_std::{
     attr, entry_point, Attribute, Decimal, Decimal256, Order, QuerierWrapper, Uint256,
 };
 use cosmwasm_std::{
-    ensure, from_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
+    ensure, from_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
     Storage, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};

@@ -8,7 +8,7 @@ use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::error::ContractError;
 use andromeda_std::{ado_base::modules::Module, testing::mock_querier::FAKE_VFS_PATH};
 
-use crate::{contract::*, state::ANDR_MINTER};
+use crate::contract::*;
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
@@ -55,10 +55,6 @@ fn test_transfer_nft() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone(), None);
-    assert_eq!(
-        MINTER.to_owned(),
-        ANDR_MINTER.load(deps.as_ref().storage).unwrap()
-    );
     mint_token(
         deps.as_mut(),
         env.clone(),
@@ -566,7 +562,7 @@ fn test_update_app_contract_invalid_minter() {
         minter: AndrAddr::from_string(FAKE_VFS_PATH),
         modules: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        owner: None,
+        owner: Some("owner".to_string()),
     };
 
     instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();

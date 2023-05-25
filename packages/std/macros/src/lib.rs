@@ -64,14 +64,14 @@ pub fn andr_exec(metadata: TokenStream, input: TokenStream) -> TokenStream {
                     recipient: Option<::andromeda_std::amp::AndrAddr>,
                     msg: Option<::cosmwasm_std::Binary>,
                 },
-                SetPermission{
+                SetPermission {
+                    identifier: String,
                     action: String,
-                    address: String,
-                    expiration: Option<::andromeda_std::Expiration>,
+                    permission: ::andromeda_std::ado_contract::permissioning::Permission,
                 },
                 RemovePermission {
                     action: String,
-                    address: String,
+                    identifier: String,
                 },
             }
         }
