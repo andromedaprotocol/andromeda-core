@@ -1,15 +1,21 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, has_coins, to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    attr, ensure, has_coins, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
     Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
 };
 
-use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
+use crate::state::{is_archived, ARCHIVED, MINT_ACTION, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
-use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
+use andromeda_std::{
+    ado_contract::{
+        permissioning::{is_context_permissioned, is_context_permissioned_strict, Permission},
+        ADOContract,
+    },
+    common::context::ExecuteContext,
+};
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
@@ -50,9 +56,13 @@ pub fn instantiate(
         .contract_info
         .save(deps.storage, &contract_info)?;
 
-    ANDR_MINTER.save(deps.storage, &msg.minter)?;
-
     let contract = ADOContract::default();
+    ADOContract::set_permission(
+        deps.storage,
+        MINT_ACTION,
+        msg.minter.clone(),
+        Permission::whitelisted(None),
+    )?;
     let resp = contract.instantiate(
         deps.storage,
         env,
@@ -96,6 +106,16 @@ pub fn execute(
 
 fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let contract = ADOContract::default();
+    ensure!(
+        is_context_permissioned(
+            ctx.deps.storage,
+            &ctx.info,
+            &ctx.env,
+            &ctx.amp_ctx,
+            msg.as_ref()
+        )?,
+        ContractError::Unauthorized {}
+    );
     if let ExecuteMsg::Approve { token_id, .. } = &msg {
         ensure!(
             !is_archived(ctx.deps.storage, token_id)?,
@@ -141,33 +161,6 @@ fn execute_cw721(
     Ok(contract.execute(ctx.deps, ctx.env, ctx.info, msg)?)
 }
 
-fn resolve_minter(deps: &Deps) -> Result<Addr, ContractError> {
-    let andr_minter = ANDR_MINTER.load(deps.storage)?;
-    andr_minter.get_raw_address(deps)
-}
-
-/// Verifies that an address within context can mint tokens.
-fn can_mint(ctx: &ExecuteContext) -> Result<(), ContractError> {
-    let andr_minter = resolve_minter(&ctx.deps.as_ref())?;
-    let senders = match &ctx.amp_ctx {
-        Some(amp_ctx) => {
-            vec![
-                amp_ctx.ctx.get_origin(),
-                amp_ctx.ctx.get_previous_sender(),
-                ctx.info.sender.to_string(),
-            ]
-        }
-        None => vec![ctx.info.sender.to_string()],
-    };
-
-    ensure!(
-        senders.contains(&andr_minter.to_string()),
-        ContractError::Unauthorized {}
-    );
-
-    Ok(())
-}
-
 fn execute_mint(
     ctx: ExecuteContext,
     token_id: String,
@@ -175,7 +168,16 @@ fn execute_mint(
     owner: String,
     extension: TokenExtension,
 ) -> Result<Response, ContractError> {
-    can_mint(&ctx)?;
+    ensure!(
+        is_context_permissioned_strict(
+            ctx.deps.storage,
+            &ctx.info,
+            &ctx.env,
+            &ctx.amp_ctx,
+            MINT_ACTION
+        )?,
+        ContractError::Unauthorized {}
+    );
     mint(ctx, token_id, token_uri, owner, extension)
 }
 
@@ -215,7 +217,16 @@ fn execute_batch_mint(
     tokens_to_mint: Vec<MintMsg>,
 ) -> Result<Response, ContractError> {
     let mut resp = Response::default();
-    can_mint(&ctx)?;
+    ensure!(
+        is_context_permissioned_strict(
+            ctx.deps.storage,
+            &ctx.info,
+            &ctx.env,
+            &ctx.amp_ctx,
+            MINT_ACTION,
+        )?,
+        ContractError::Unauthorized {}
+    );
     for msg in tokens_to_mint {
         let ctx = ExecuteContext {
             deps: ctx.deps.branch(),
@@ -460,8 +471,8 @@ pub fn query_transfer_agreement(
 }
 
 pub fn query_minter(deps: Deps) -> Result<String, ContractError> {
-    let minter = ANDR_MINTER.load(deps.storage)?;
-    Ok(minter.to_string())
+    let owner = ADOContract::default().query_contract_owner(deps)?;
+    Ok(owner.owner)
 }
 
 fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {

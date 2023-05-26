@@ -448,7 +448,7 @@ fn query_balance(
     } else if let Some(denom) = denom {
         let balance = BALANCES.load(
             deps.storage,
-            (&address.get_raw_address(&deps)?.as_str(), denom.as_str()),
+            ((address.get_raw_address(&deps)?.as_str()), denom.as_str()),
         )?;
         Ok(to_binary(&[Coin {
             denom,
@@ -456,7 +456,7 @@ fn query_balance(
         }])?)
     } else {
         let balances: Result<Vec<Coin>, ContractError> = BALANCES
-            .prefix(&address.get_raw_address(&deps)?.as_str())
+            .prefix(address.get_raw_address(&deps)?.as_str())
             .range(deps.storage, None, None, Order::Ascending)
             .map(|v| {
                 let (denom, balance) = v?;

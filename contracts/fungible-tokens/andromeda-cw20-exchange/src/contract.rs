@@ -126,7 +126,7 @@ pub fn execute_receive(
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
-    nonpayable(&info)?;
+    nonpayable(info)?;
 
     let asset_sent = AssetInfo::Cw20(info.sender.clone());
     let amount_sent = receive_msg.amount;
@@ -324,7 +324,7 @@ pub fn execute_purchase_native(
     let sender = info.sender.to_string();
 
     // Only allow one coin for purchasing
-    one_coin(&info)?;
+    one_coin(info)?;
 
     let payment = info.funds.first().unwrap();
     let asset = AssetInfo::Native(payment.denom.to_string());

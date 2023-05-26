@@ -147,7 +147,7 @@ fn test_query_deducted_funds_native() {
         owner: None,
         modules: None,
     };
-    let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let res = query_deducted_funds(deps.as_ref(), Funds::Native(coin(100, "uusd"))).unwrap();
 
     let expected_msgs: Vec<SubMsg> = vec![
@@ -223,12 +223,12 @@ fn test_query_deducted_funds_cw20() {
         // },
     ];
     let msg = InstantiateMsg {
-        rates: rates.clone(),
+        rates: rates,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
         modules: None,
     };
-    let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+    let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
     let res: OnFundsTransferResponse = query_deducted_funds(
         deps.as_ref(),

@@ -89,7 +89,7 @@ impl Rate {
 
     /// If `self` is Flat or Percent it returns itself. Otherwise it queries the primitive contract
     /// and retrieves the actual Flat or Percent rate.
-    fn get_rate(self, querier: &QuerierWrapper) -> Result<Rate, ContractError> {
+    fn get_rate(self, _querier: &QuerierWrapper) -> Result<Rate, ContractError> {
         match self {
             Rate::Flat(_) => Ok(self),
             Rate::Percent(_) => Ok(self),

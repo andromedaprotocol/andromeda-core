@@ -41,7 +41,7 @@ const DEFAULT_LIMIT: u32 = 10;
 pub(crate) fn get_stakers(
     deps: Deps,
     querier: &QuerierWrapper,
-    api: &dyn Api,
+    _api: &dyn Api,
     env: &Env,
     start_after: Option<&str>,
     limit: Option<u32>,

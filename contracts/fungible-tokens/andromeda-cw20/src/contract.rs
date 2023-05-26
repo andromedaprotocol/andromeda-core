@@ -15,7 +15,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw20_base::{
-    contract::{execute as execute_cw20, instantiate as cw20_instantiate, query as query_cw20},
+    contract::{execute as execute_cw20, instantiate as cw20_instantiate},
     state::BALANCES,
 };
 use semver::Version;
@@ -307,8 +307,5 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    match msg {
-        _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
-        // _ => Ok(query_cw20(deps, env, msg.into())?),
-    }
+    ADOContract::default().query::<QueryMsg>(deps, env, msg, None)
 }

@@ -860,12 +860,12 @@ fn test_andr_query() {
         .unwrap();
 
     let msg = QueryMsg::Sale {
-        asset: exchange_asset.clone(),
+        asset: exchange_asset,
     };
     let query_msg_response: SaleResponse =
-        from_binary(&query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
+        from_binary(&query(deps.as_ref(), env, msg).unwrap()).unwrap();
 
-    assert_eq!(query_msg_response.sale, Some(sale.clone()));
+    assert_eq!(query_msg_response.sale, Some(sale));
 
     // let key_msg = QueryMsg::AndrQuery(AndromedaQuery::Get(Some(
     //     to_binary(&exchange_asset.to_string()).unwrap(),
