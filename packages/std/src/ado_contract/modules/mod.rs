@@ -1,18 +1,42 @@
 use std::convert::TryInto;
 
-use crate::ado_contract::state::ADOContract;
-use cosmwasm_std::{Deps, Order, Response, Storage, Uint64};
+use crate::{
+    ado_base::hooks::{AndromedaHook, HookMsg, OnFundsTransferResponse},
+    ado_contract::state::ADOContract,
+    common::Funds,
+};
+use cosmwasm_std::{
+    Binary, Deps, Event, Order, QuerierWrapper, Response, StdError, Storage, SubMsg, Uint64,
+};
 use cw_storage_plus::Bound;
+use serde::de::DeserializeOwned;
 
 use crate::{ado_base::modules::Module, error::ContractError};
 
 pub mod execute;
-pub mod hooks;
 pub mod query;
 
 impl<'a> ADOContract<'a> {
+    /// Sends the provided hook message to all registered modules
+    pub fn module_hook<T: DeserializeOwned>(
+        &self,
+        deps: &Deps,
+        hook_msg: AndromedaHook,
+    ) -> Result<Vec<T>, ContractError> {
+        let addresses: Vec<String> = self.load_module_addresses(deps)?;
+        let mut resp: Vec<T> = Vec::new();
+        for addr in addresses {
+            let mod_resp = hook_query::<T>(&deps.querier, hook_msg.clone(), addr)?;
+
+            if let Some(mod_resp) = mod_resp {
+                resp.push(mod_resp);
+            }
+        }
+
+        Ok(resp)
+    }
+
     /// Validates the given address for a module.
-    #[cfg(feature = "modules")]
     pub(crate) fn validate_module_address(
         &self,
         deps: &Deps,
@@ -146,6 +170,76 @@ impl<'a> ADOContract<'a> {
 
         Ok(())
     }
+
+    /// Sends a `OnFundsTransfer` hook message to all registered modules.
+    ///
+    /// Returns a vector of all required sub messages from each of the registered modules.
+    pub fn on_funds_transfer(
+        &self,
+        deps: &Deps,
+        sender: String,
+        amount: Funds,
+        msg: Binary,
+    ) -> Result<(Vec<SubMsg>, Vec<Event>, Funds), ContractError> {
+        let mut remainder = amount;
+        let mut msgs: Vec<SubMsg> = Vec::new();
+        let mut events: Vec<Event> = Vec::new();
+
+        let vfs_address = self.get_vfs_address(deps.storage, &deps.querier)?;
+        let modules: Vec<Module> = self.load_modules(deps.storage)?;
+        for module in modules {
+            let module_address = module
+                .address
+                .get_raw_address_from_vfs(deps, vfs_address.clone())?;
+            let mod_resp: Option<OnFundsTransferResponse> = hook_query(
+                &deps.querier,
+                AndromedaHook::OnFundsTransfer {
+                    payload: msg.clone(),
+                    sender: sender.clone(),
+                    amount: remainder.clone(),
+                },
+                module_address,
+            )?;
+
+            if let Some(mod_resp) = mod_resp {
+                remainder = mod_resp.leftover_funds;
+                msgs = [msgs, mod_resp.msgs].concat();
+                events = [events, mod_resp.events].concat();
+            }
+        }
+
+        Ok((msgs, events, remainder))
+    }
+}
+
+/// Processes the given module response by hiding the error if it is `UnsupportedOperation` and
+/// bubbling up any other one. A return value of Ok(None) signifies that the operation was not
+/// supported.
+fn process_module_response<T>(
+    mod_resp: Result<Option<T>, StdError>,
+) -> Result<Option<T>, ContractError> {
+    match mod_resp {
+        Ok(mod_resp) => Ok(mod_resp),
+        Err(StdError::NotFound { kind }) => {
+            if kind.contains("operation") {
+                Ok(None)
+            } else {
+                Err(ContractError::Std(StdError::NotFound { kind }))
+            }
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Queries the given address with the given hook message and returns the processed result.
+fn hook_query<T: DeserializeOwned>(
+    querier: &QuerierWrapper,
+    hook_msg: AndromedaHook,
+    addr: impl Into<String>,
+) -> Result<Option<T>, ContractError> {
+    let msg = HookMsg::AndrHook(hook_msg);
+    let mod_resp: Result<Option<T>, StdError> = querier.query_wasm_smart(addr, &msg);
+    process_module_response(mod_resp)
 }
 
 #[cfg(test)]
@@ -479,6 +573,24 @@ mod tests {
         assert_eq!(
             vec![String::from("address"), String::from("a")],
             module_addresses
+        );
+    }
+
+    #[test]
+    fn test_process_module_response() {
+        let res: Option<Response> = process_module_response(Ok(Some(Response::new()))).unwrap();
+        assert_eq!(Some(Response::new()), res);
+
+        let res: Option<Response> =
+            process_module_response(Err(StdError::not_found("operation".to_string()))).unwrap();
+        assert_eq!(None, res);
+
+        let res: ContractError =
+            process_module_response::<Response>(Err(StdError::generic_err("AnotherError")))
+                .unwrap_err();
+        assert_eq!(
+            ContractError::Std(StdError::generic_err("AnotherError")),
+            res
         );
     }
 }

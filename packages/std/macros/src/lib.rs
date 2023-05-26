@@ -287,13 +287,11 @@ pub fn andr_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
     #[cfg(feature = "module_hooks")]
     {
         merged = merge_variants(
-            metadata,
             merged,
             quote! {
                 enum Right {
-                    #[cfg(feature="module_hooks")]
-                    #[returns(cosmwasm_std::Binary)]
-                    AndrHook(andromeda_std::ado_base::hooks::HookMsg),
+                    #[returns(::cosmwasm_std::Binary)]
+                    AndrHook(::andromeda_std::ado_base::hooks::AndromedaHook),
                 }
             }
             .into(),

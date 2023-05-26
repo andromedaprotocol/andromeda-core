@@ -4,6 +4,7 @@ mod execute;
 mod instantiate;
 #[cfg(feature = "modules")]
 pub mod modules;
+
 mod ownership;
 
 //TODO: Redo this feature

@@ -4,7 +4,7 @@ use andromeda_std::{
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Coin, Decimal, Fraction, QuerierWrapper};
 
-#[andr_instantiate]
+#[andr_instantiate("no_modules")]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub rates: Vec<RateInfo>,

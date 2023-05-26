@@ -1,7 +1,7 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_query, ado_base::hooks::AndromedaHook};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-#[andr_instantiate]
+#[andr_instantiate("no_modules")]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub is_inclusive: bool,
@@ -17,7 +17,6 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-#[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
 #[andr_query]
@@ -27,8 +26,6 @@ pub enum QueryMsg {
     /// Query if address is included
     #[returns(IncludesAddressResponse)]
     IncludesAddress { address: String },
-    #[returns(AndromedaHook)]
-    AndrHook(AndromedaHook),
     #[returns(bool)]
     IsInclusive {},
 }

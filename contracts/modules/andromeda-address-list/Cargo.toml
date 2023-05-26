@@ -22,7 +22,7 @@ cw-utils = { workspace = true}
 cw2 = { workspace = true }
 semver = { workspace = true }
 
-andromeda-std = { workspace = true }
+andromeda-std = { workspace = true, feature = ["module_hooks"] }
 andromeda-modules = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
