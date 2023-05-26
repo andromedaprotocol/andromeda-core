@@ -8,8 +8,8 @@ use andromeda_std::{
     error::{from_semver, ContractError},
 };
 
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{entry_point, to_binary};
 use cw2::{get_contract_version, set_contract_version};
 use cw_utils::nonpayable;
 use semver::Version;
@@ -159,9 +159,25 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::AndrHook(msg) => handle_andr_hook(deps, msg),
         QueryMsg::IncludesAddress { address } => encode_binary(&query_address(deps, &address)?),
         QueryMsg::IsInclusive {} => encode_binary(&handle_is_inclusive(deps)?),
         _ => ADOContract::default().query::<QueryMsg>(deps, env, msg, None),
+    }
+}
+
+fn handle_andr_hook(deps: Deps, msg: AndromedaHook) -> Result<Binary, ContractError> {
+    match msg {
+        AndromedaHook::OnExecute { sender, .. } => {
+            let is_included = includes_address(deps.storage, &sender)?;
+            let is_inclusive = IS_INCLUSIVE.load(deps.storage)?;
+            if is_included != is_inclusive {
+                Err(ContractError::Unauthorized {})
+            } else {
+                Ok(to_binary(&None::<Response>)?)
+            }
+        }
+        _ => Ok(to_binary(&None::<Response>)?),
     }
 }
 

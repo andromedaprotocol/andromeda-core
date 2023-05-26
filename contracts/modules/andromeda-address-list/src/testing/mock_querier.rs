@@ -17,9 +17,6 @@ pub use andromeda_std::testing::mock_querier::{
 };
 pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
-pub const MOCK_OWNER: &str = "owner";
-pub const MOCK_RECIPIENT1: &str = "recipient1";
-pub const MOCK_RECIPIENT2: &str = "recipient2";
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
