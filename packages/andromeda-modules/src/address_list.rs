@@ -1,4 +1,4 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_query};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query, ado_base::hooks::AndromedaHook};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[andr_instantiate]
@@ -27,6 +27,8 @@ pub enum QueryMsg {
     /// Query if address is included
     #[returns(IncludesAddressResponse)]
     IncludesAddress { address: String },
+    #[returns(AndromedaHook)]
+    AndrHook(AndromedaHook),
     #[returns(bool)]
     IsInclusive {},
 }
