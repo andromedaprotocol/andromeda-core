@@ -11,7 +11,6 @@ use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
 
 #[andr_instantiate]
 #[cw_serde]
-#[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     /// Name of the NFT contract
     pub name: String,

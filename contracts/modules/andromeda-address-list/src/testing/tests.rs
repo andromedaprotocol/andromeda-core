@@ -1,8 +1,6 @@
 use crate::contract::{execute, instantiate, query};
-use crate::state::{ADDRESS_LIST};
-use crate::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_KERNEL_CONTRACT,
-};
+use crate::state::ADDRESS_LIST;
+use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
 use andromeda_modules::address_list::{
     ExecuteMsg, IncludesAddressResponse, InstantiateMsg, QueryMsg,
 };
@@ -12,7 +10,8 @@ use andromeda_std::error::ContractError;
 
 use cosmwasm_std::{attr, from_binary, DepsMut, MessageInfo};
 use cosmwasm_std::{
-    testing::{mock_env, mock_info}, Response,
+    testing::{mock_env, mock_info},
+    Response,
 };
 
 fn init(deps: DepsMut, info: MessageInfo) {
@@ -24,7 +23,6 @@ fn init(deps: DepsMut, info: MessageInfo) {
             is_inclusive: true,
             kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             owner: None,
-            modules: None,
         },
     )
     .unwrap();
