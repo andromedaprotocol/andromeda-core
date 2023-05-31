@@ -23,4 +23,15 @@ impl<'a> ExecuteContext<'a> {
         self.amp_ctx = Some(amp_ctx);
         self
     }
+
+    pub fn contains_sender(&self, addr: &str) -> bool {
+        if self.info.sender.to_string() == addr {
+            return true;
+        }
+
+        match &self.amp_ctx {
+            None => false,
+            Some(ctx) => ctx.ctx.get_origin() == addr || ctx.ctx.get_previous_sender() == addr,
+        }
+    }
 }

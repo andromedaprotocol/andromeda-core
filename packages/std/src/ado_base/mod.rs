@@ -81,13 +81,13 @@ pub enum AndromedaMsg {
     },
     AMPReceive(AMPPkt),
     SetPermission {
-        identifier: String,
+        actor: AndrAddr,
         action: String,
         permission: Permission,
     },
     RemovePermission {
         action: String,
-        address: String,
+        actor: AndrAddr,
     },
 }
 

@@ -57,13 +57,13 @@ pub fn andr_exec(args: TokenStream, input: TokenStream) -> TokenStream {
                     msg: Option<::cosmwasm_std::Binary>,
                 },
                 SetPermission {
-                    identifier: String,
+                    actor: ::andromeda_std::amp::AndrAddr,
                     action: String,
                     permission: ::andromeda_std::ado_contract::permissioning::Permission,
                 },
                 RemovePermission {
                     action: String,
-                    identifier: String,
+                    actor: ::andromeda_std::amp::AndrAddr,
                 },
             }
         }
