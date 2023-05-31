@@ -25,7 +25,6 @@ fn init(deps: DepsMut, info: MessageInfo) {
             is_inclusive: true,
             kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             owner: None,
-            modules: None,
         },
     )
     .unwrap();

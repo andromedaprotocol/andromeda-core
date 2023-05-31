@@ -43,7 +43,7 @@ impl AppComponent {
     }
 }
 
-#[andr_instantiate]
+#[andr_instantiate("no_modules")]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub app_components: Vec<AppComponent>,

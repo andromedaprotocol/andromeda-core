@@ -3,18 +3,6 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
-      "type": "object",
-      "required": [
-        "andr_receive"
-      ],
-      "properties": {
-        "andr_receive": {
-          "$ref": "#/definitions/AndromedaMsg"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
       "description": "Add an address to the address list",
       "type": "object",
       "required": [
@@ -57,63 +45,393 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "amp_receive"
+      ],
+      "properties": {
+        "amp_receive": {
+          "$ref": "#/definitions/AMPPkt"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_owner"
+      ],
+      "properties": {
+        "update_owner": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_operators"
+      ],
+      "properties": {
+        "update_operators": {
+          "type": "object",
+          "required": [
+            "operators"
+          ],
+          "properties": {
+            "operators": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_app_contract"
+      ],
+      "properties": {
+        "update_app_contract": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "deposit"
+      ],
+      "properties": {
+        "deposit": {
+          "type": "object",
+          "properties": {
+            "msg": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "set_permission"
+      ],
+      "properties": {
+        "set_permission": {
+          "type": "object",
+          "required": [
+            "action",
+            "identifier",
+            "permission"
+          ],
+          "properties": {
+            "action": {
+              "type": "string"
+            },
+            "identifier": {
+              "type": "string"
+            },
+            "permission": {
+              "$ref": "#/definitions/Permission"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_permission"
+      ],
+      "properties": {
+        "remove_permission": {
+          "type": "object",
+          "required": [
+            "action",
+            "identifier"
+          ],
+          "properties": {
+            "action": {
+              "type": "string"
+            },
+            "identifier": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
-    "ADORecipient": {
-      "description": "ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message",
+    "AMPCtx": {
       "type": "object",
       "required": [
-        "address"
+        "id",
+        "origin",
+        "previous_sender"
       ],
       "properties": {
-        "address": {
-          "description": "Addr can also be a human-readable identifier used in a app contract.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/AndrAddress"
-            }
-          ]
+        "id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         },
-        "msg": {
+        "origin": {
+          "type": "string"
+        },
+        "origin_username": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Binary"
+              "$ref": "#/definitions/AndrAddr"
             },
             {
               "type": "null"
             }
           ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "AndrAddress": {
-      "type": "object",
-      "required": [
-        "identifier"
-      ],
-      "properties": {
-        "identifier": {
-          "description": "Can be either an address or identifier of an ADO in a app.",
+        },
+        "previous_sender": {
           "type": "string"
         }
       },
       "additionalProperties": false
     },
-    "AndromedaMsg": {
+    "AMPMsg": {
+      "description": "This struct defines how the kernel parses and relays messages between ADOs If the desired recipient is via IBC then namespacing must be employed The attached message must be a binary encoded execute message for the receiving ADO Funds can be attached for an individual message and will be attached accordingly",
+      "type": "object",
+      "required": [
+        "config",
+        "funds",
+        "message",
+        "recipient"
+      ],
+      "properties": {
+        "config": {
+          "description": "When the message should reply, defaults to Always",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AMPMsgConfig"
+            }
+          ]
+        },
+        "funds": {
+          "description": "Any funds to be attached to the message, defaults to an empty vector",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
+        },
+        "message": {
+          "description": "The message to be sent to the recipient",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "recipient": {
+          "description": "The message recipient, can be a contract/wallet address or a namespaced URI",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AndrAddr"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AMPMsgConfig": {
+      "description": "The configuration of the message to be sent.\n\nUsed when a sub message is generated for the given AMP Msg (only used in the case of Wasm Messages).",
+      "type": "object",
+      "required": [
+        "direct",
+        "exit_at_error",
+        "reply_on"
+      ],
+      "properties": {
+        "direct": {
+          "description": "Whether to send the message directly to the given recipient",
+          "type": "boolean"
+        },
+        "exit_at_error": {
+          "description": "Determines whether the operation should terminate or proceed upon a failed message",
+          "type": "boolean"
+        },
+        "gas_limit": {
+          "description": "An optional imposed gas limit for the message",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "reply_on": {
+          "description": "When the message should reply, defaults to Always",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ReplyOn"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AMPPkt": {
+      "description": "An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating It contains an original sender, if used for authorisation the sender must be authorised The previous sender is the one who sent the message A packet may contain several messages which allows for message batching",
+      "type": "object",
+      "required": [
+        "ctx",
+        "messages"
+      ],
+      "properties": {
+        "ctx": {
+          "$ref": "#/definitions/AMPCtx"
+        },
+        "messages": {
+          "description": "Any messages associated with the packet",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AMPMsg"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "AndrAddr": {
+      "description": "An address that can be used within the Andromeda ecosystem. Inspired by the cosmwasm-std `Addr` type. https://github.com/CosmWasm/cosmwasm/blob/2a1c698520a1aacedfe3f4803b0d7d653892217a/packages/std/src/addresses.rs#L33\n\nThis address can be one of two things: 1. A valid human readable address e.g. `cosmos1...` 2. A valid Andromeda VFS path e.g. `/home/user/app/component`\n\nVFS paths can be local in the case of an app and can be done by referencing `./component` they can also contain protocols for cross chain communication. A VFS path is usually structured as so:\n\n`<protocol>://<chain (required if ibc used)>/<path>` or `ibc://cosmoshub-4/user/app/component`",
+      "type": "string"
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
+    "Expiration": {
+      "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
       "oneOf": [
         {
-          "description": "Standard Messages",
+          "description": "AtHeight will expire when `env.block.height` >= height",
           "type": "object",
           "required": [
-            "receive"
+            "at_height"
           ],
           "properties": {
-            "receive": {
+            "at_height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "AtTime will expire when `env.block.time` >= time",
+          "type": "object",
+          "required": [
+            "at_time"
+          ],
+          "properties": {
+            "at_time": {
+              "$ref": "#/definitions/Timestamp"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Never will never expire. Used to express the empty variant",
+          "type": "object",
+          "required": [
+            "never"
+          ],
+          "properties": {
+            "never": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Permission": {
+      "description": "An enum to represent a user's permission for an action\n\n- **Blacklisted** - The user cannot perform the action until after the provided expiration - **Limited** - The user can perform the action while uses are remaining and before the provided expiration **for a permissioned action** - **Whitelisted** - The user can perform the action until the provided expiration **for a permissioned action**\n\nExpiration defaults to `Never` if not provided",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "blacklisted"
+          ],
+          "properties": {
+            "blacklisted": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Binary"
+                  "$ref": "#/definitions/Expiration"
                 },
                 {
                   "type": "null"
@@ -126,279 +444,95 @@
         {
           "type": "object",
           "required": [
-            "update_owner"
+            "limited"
           ],
           "properties": {
-            "update_owner": {
+            "limited": {
               "type": "object",
               "required": [
-                "address"
+                "uses"
               ],
               "properties": {
-                "address": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_operators"
-          ],
-          "properties": {
-            "update_operators": {
-              "type": "object",
-              "required": [
-                "operators"
-              ],
-              "properties": {
-                "operators": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "update_app_contract"
-          ],
-          "properties": {
-            "update_app_contract": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "properties": {
-                "address": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "withdraw"
-          ],
-          "properties": {
-            "withdraw": {
-              "type": "object",
-              "properties": {
-                "recipient": {
+                "expiration": {
                   "anyOf": [
                     {
-                      "$ref": "#/definitions/Recipient"
+                      "$ref": "#/definitions/Expiration"
                     },
                     {
                       "type": "null"
                     }
                   ]
                 },
-                "tokens_to_withdraw": {
-                  "type": [
-                    "array",
-                    "null"
-                  ],
-                  "items": {
-                    "$ref": "#/definitions/Withdrawal"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "register_module"
-          ],
-          "properties": {
-            "register_module": {
-              "type": "object",
-              "required": [
-                "module"
-              ],
-              "properties": {
-                "module": {
-                  "$ref": "#/definitions/Module"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "deregister_module"
-          ],
-          "properties": {
-            "deregister_module": {
-              "type": "object",
-              "required": [
-                "module_idx"
-              ],
-              "properties": {
-                "module_idx": {
-                  "$ref": "#/definitions/Uint64"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "alter_module"
-          ],
-          "properties": {
-            "alter_module": {
-              "type": "object",
-              "required": [
-                "module",
-                "module_idx"
-              ],
-              "properties": {
-                "module": {
-                  "$ref": "#/definitions/Module"
-                },
-                "module_idx": {
-                  "$ref": "#/definitions/Uint64"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "refresh_address"
-          ],
-          "properties": {
-            "refresh_address": {
-              "type": "object",
-              "required": [
-                "contract"
-              ],
-              "properties": {
-                "contract": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "refresh_addresses"
-          ],
-          "properties": {
-            "refresh_addresses": {
-              "type": "object",
-              "properties": {
-                "limit": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
+                "uses": {
+                  "type": "integer",
                   "format": "uint32",
                   "minimum": 0.0
-                },
-                "start_after": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
                 }
               },
               "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "whitelisted"
+          ],
+          "properties": {
+            "whitelisted": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false
         }
       ]
     },
-    "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-      "type": "string"
-    },
-    "Decimal": {
-      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
-      "type": "string"
-    },
-    "Module": {
-      "description": "A struct describing a token module, provided with the instantiation message this struct is used to record the info about the module and how/if it should be instantiated",
-      "type": "object",
-      "required": [
-        "address",
-        "is_mutable"
-      ],
-      "properties": {
-        "address": {
-          "type": "string"
-        },
-        "is_mutable": {
-          "type": "boolean"
-        },
-        "module_name": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "Recipient": {
+    "ReplyOn": {
+      "description": "Use this to define when the contract gets a response callback. If you only need it for errors or success you can select just those in order to save gas.",
       "oneOf": [
         {
-          "description": "An address that is not another ADO. It is assumed that it is a valid address.",
-          "type": "object",
-          "required": [
-            "addr"
-          ],
-          "properties": {
-            "addr": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+          "description": "Always perform a callback after SubMsg is processed",
+          "type": "string",
+          "enum": [
+            "always"
+          ]
         },
         {
-          "type": "object",
-          "required": [
-            "a_d_o"
-          ],
-          "properties": {
-            "a_d_o": {
-              "$ref": "#/definitions/ADORecipient"
-            }
-          },
-          "additionalProperties": false
+          "description": "Only callback if SubMsg returned an error, no callback on success case",
+          "type": "string",
+          "enum": [
+            "error"
+          ]
+        },
+        {
+          "description": "Only callback if SubMsg was successful, no callback on error case",
+          "type": "string",
+          "enum": [
+            "success"
+          ]
+        },
+        {
+          "description": "Never make a callback - this is like the original CosmosMsg semantics",
+          "type": "string",
+          "enum": [
+            "never"
+          ]
+        }
+      ]
+    },
+    "Timestamp": {
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint64"
         }
       ]
     },
@@ -409,56 +543,6 @@
     "Uint64": {
       "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
       "type": "string"
-    },
-    "Withdrawal": {
-      "type": "object",
-      "required": [
-        "token"
-      ],
-      "properties": {
-        "token": {
-          "type": "string"
-        },
-        "withdrawal_type": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/WithdrawalType"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "WithdrawalType": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "amount"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Uint128"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "percentage"
-          ],
-          "properties": {
-            "percentage": {
-              "$ref": "#/definitions/Decimal"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
     }
   }
 }

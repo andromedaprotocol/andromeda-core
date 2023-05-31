@@ -46,7 +46,6 @@ fn test_instantiate_query() {
         rates: rates.clone(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
     let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -91,7 +90,6 @@ fn test_andr_receive() {
         rates: rates.clone(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
     let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -145,7 +143,6 @@ fn test_query_deducted_funds_native() {
         rates,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     let res = query_deducted_funds(deps.as_ref(), Funds::Native(coin(100, "uusd"))).unwrap();
@@ -223,10 +220,9 @@ fn test_query_deducted_funds_cw20() {
         // },
     ];
     let msg = InstantiateMsg {
-        rates: rates,
+        rates,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        modules: None,
     };
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 

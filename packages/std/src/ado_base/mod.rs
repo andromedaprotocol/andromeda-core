@@ -1,7 +1,9 @@
 pub mod ado_type;
 pub mod block_height;
+#[cfg(any(feature = "module_hooks", feature = "modules"))]
 pub mod hooks;
 pub mod kernel_address;
+#[cfg(feature = "modules")]
 pub mod modules;
 pub mod operators;
 pub mod ownership;

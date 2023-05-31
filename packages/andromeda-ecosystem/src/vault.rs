@@ -101,7 +101,7 @@ impl DepositMsg {
     }
 }
 
-#[andr_instantiate]
+#[andr_instantiate("no_modules")]
 #[cw_serde]
 pub struct InstantiateMsg {}
 

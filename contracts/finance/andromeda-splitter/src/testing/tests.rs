@@ -1,8 +1,6 @@
-use andromeda_std::testing::mock_querier::MOCK_ADDRESS_LIST_CONTRACT;
 use andromeda_std::{
     ado_base::modules::Module,
     amp::{
-        addresses::AndrAddr,
         messages::{AMPMsg, AMPPkt},
         recipient::Recipient,
     },
@@ -34,8 +32,8 @@ fn init(deps: DepsMut, modules: Option<Vec<Module>>) -> Response {
         percent: Decimal::percent(100),
     }];
     let msg = InstantiateMsg {
-        owner: Some(OWNER.to_owned()),
         modules,
+        owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
         lock_time: Some(100_000),
@@ -396,11 +394,7 @@ fn test_modules() {
     let env = mock_env();
     let info = mock_info("creator", &[]);
     let msg = InstantiateMsg {
-        modules: Some(vec![Module {
-            name: Some("address_list".to_string()),
-            is_mutable: false,
-            address: AndrAddr::from_string(MOCK_ADDRESS_LIST_CONTRACT.to_owned()),
-        }]),
+        modules: None,
         recipients: vec![AddressPercent {
             recipient: Recipient::from_string(String::from("Some Address")),
             percent: Decimal::percent(100),

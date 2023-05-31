@@ -1,7 +1,4 @@
-use andromeda_std::{
-    ado_base::hooks::AndromedaHook, amp::addresses::AndrAddr, andr_exec, andr_instantiate,
-    andr_query,
-};
+use andromeda_std::{amp::addresses::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use cosmwasm_std::{Binary, Coin, CustomMsg};
@@ -11,7 +8,6 @@ use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
 
 #[andr_instantiate]
 #[cw_serde]
-#[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     /// Name of the NFT contract
     pub name: String,
@@ -195,9 +191,6 @@ impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(andromeda_std::ado_base::hooks::AndromedaHook)]
-    AndrHook(AndromedaHook),
-
     /// Owner of the given token by ID
     #[returns(cw721::OwnerOfResponse)]
     OwnerOf {
