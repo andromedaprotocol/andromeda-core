@@ -339,6 +339,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-timelock"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-finance",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw-utils 1.0.1",
+ "cw2 1.0.1",
+ "semver",
+]
+
+[[package]]
 name = "andromeda-vault"
 version = "0.2.0"
 dependencies = [
