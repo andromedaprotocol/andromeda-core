@@ -3,7 +3,11 @@ use cosmwasm_std::{ensure, Env, MessageInfo, Response, Storage};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 use cw_utils::Expiration;
 
-use crate::{amp::messages::AMPPkt, common::context::ExecuteContext, error::ContractError};
+use crate::{
+    amp::{messages::AMPPkt, AndrAddr},
+    common::context::ExecuteContext,
+    error::ContractError,
+};
 
 use super::ADOContract;
 
@@ -118,9 +122,9 @@ impl Permission {
 }
 
 pub struct PermissionsIndices<'a> {
-    /// PK: action + identifier
+    /// PK: action + actor
     ///
-    /// Secondary key: identifier
+    /// Secondary key: actor
     pub permissions: MultiIndex<'a, String, Permission, String>,
 }
 
@@ -133,39 +137,34 @@ impl<'a> IndexList<Permission> for PermissionsIndices<'a> {
 
 /// Permissions for the ADO contract
 ///
-/// Permissions are stored in a multi-indexed map with the primary key being the action and identifier
+/// Permissions are stored in a multi-indexed map with the primary key being the action and actor
 pub fn permissions<'a>() -> IndexedMap<'a, &'a str, Permission, PermissionsIndices<'a>> {
     let indexes = PermissionsIndices {
-        permissions: MultiIndex::new(
-            |_pk: &[u8], r| r.to_string(),
-            "andr_permissions",
-            "identifier",
-        ),
+        permissions: MultiIndex::new(|_pk: &[u8], r| r.to_string(), "andr_permissions", "actor"),
     };
     IndexedMap::new("andr_permissions", indexes)
 }
 
 impl<'a> ADOContract<'a> {
-    /// Determines if the provided identifier is authorised to perform the given action
+    /// Determines if the provided actor is authorised to perform the given action
     ///
-    /// Returns an error if the given action is not permissioned for the given identifier
+    /// Returns an error if the given action is not permissioned for the given actor
     pub fn is_permissioned(
         &self,
         store: &mut dyn Storage,
         env: Env,
         action: impl Into<String>,
-        identifier: impl Into<String>,
+        actor: impl Into<String>,
     ) -> Result<(), ContractError> {
         // Converted to strings for cloning
         let action_string: String = action.into();
-        let identifier_string: String = identifier.into();
+        let actor_string: String = actor.into();
 
-        if self.is_contract_owner(store, identifier_string.as_str())? {
+        if self.is_contract_owner(store, actor_string.as_str())? {
             return Ok(());
         }
 
-        let permission =
-            Self::get_permission(store, action_string.clone(), identifier_string.clone())?;
+        let permission = Self::get_permission(store, action_string.clone(), actor_string.clone())?;
         let permissioned_action = PERMISSIONED_ACTIONS
             .may_load(store, action_string.clone())?
             .unwrap_or(false);
@@ -181,7 +180,7 @@ impl<'a> ADOContract<'a> {
                     permission.consume_use();
                     permissions().save(
                         store,
-                        (action_string + identifier_string.as_str()).as_str(),
+                        (action_string + actor_string.as_str()).as_str(),
                         &permission,
                     )?;
                 }
@@ -195,7 +194,7 @@ impl<'a> ADOContract<'a> {
         }
     }
 
-    /// Determines if the provided identifier is authorised to perform the given action
+    /// Determines if the provided actor is authorised to perform the given action
     ///
     /// **Ignores the `PERMISSIONED_ACTIONS` map**
     ///
@@ -205,18 +204,17 @@ impl<'a> ADOContract<'a> {
         store: &mut dyn Storage,
         env: Env,
         action: impl Into<String>,
-        identifier: impl Into<String>,
+        actor: impl Into<String>,
     ) -> Result<(), ContractError> {
         // Converted to strings for cloning
         let action_string: String = action.into();
-        let identifier_string: String = identifier.into();
+        let actor_string: String = actor.into();
 
-        if self.is_contract_owner(store, identifier_string.as_str())? {
+        if self.is_contract_owner(store, actor_string.as_str())? {
             return Ok(());
         }
 
-        let permission =
-            Self::get_permission(store, action_string.clone(), identifier_string.clone())?;
+        let permission = Self::get_permission(store, action_string.clone(), actor_string.clone())?;
         match permission {
             Some(mut permission) => {
                 ensure!(
@@ -229,7 +227,7 @@ impl<'a> ADOContract<'a> {
                     permission.consume_use();
                     permissions().save(
                         store,
-                        (action_string + identifier_string.as_str()).as_str(),
+                        (action_string + actor_string.as_str()).as_str(),
                         &permission,
                     )?;
                 }
@@ -240,41 +238,41 @@ impl<'a> ADOContract<'a> {
         }
     }
 
-    /// Gets the permission for the given action and identifier
+    /// Gets the permission for the given action and actor
     pub fn get_permission(
         store: &dyn Storage,
         action: impl Into<String>,
-        identifier: impl Into<String>,
+        actor: impl Into<String>,
     ) -> Result<Option<Permission>, ContractError> {
         let action = action.into();
-        let identifier = identifier.into();
-        let key = action + &identifier;
+        let actor = actor.into();
+        let key = action + &actor;
         Ok(permissions().may_load(store, &key)?)
     }
 
-    /// Sets the permission for the given action and identifier
+    /// Sets the permission for the given action and actor
     pub fn set_permission(
         store: &mut dyn Storage,
         action: impl Into<String>,
-        identifier: impl Into<String>,
+        actor: impl Into<String>,
         permission: Permission,
     ) -> Result<(), ContractError> {
         let action = action.into();
-        let identifier = identifier.into();
-        let key = action + &identifier;
+        let actor = actor.into();
+        let key = action + &actor;
         permissions().save(store, &key, &permission)?;
         Ok(())
     }
 
-    /// Removes the permission for the given action and identifier
+    /// Removes the permission for the given action and actor
     pub fn remove_permission(
         store: &mut dyn Storage,
         action: impl Into<String>,
-        identifier: impl Into<String>,
+        actor: impl Into<String>,
     ) -> Result<(), ContractError> {
         let action = action.into();
-        let identifier = identifier.into();
-        let key = action + &identifier;
+        let actor = actor.into();
+        let key = action + &actor;
         permissions().remove(store, &key)?;
         Ok(())
     }
@@ -287,23 +285,23 @@ impl<'a> ADOContract<'a> {
     pub fn execute_set_permission(
         &self,
         ctx: ExecuteContext,
-        identifier: impl Into<String>,
+        actor: AndrAddr,
         action: impl Into<String>,
         permission: Permission,
     ) -> Result<Response, ContractError> {
         Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
-        let identifier = identifier.into();
+        let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
         let action = action.into();
         Self::set_permission(
             ctx.deps.storage,
             action.clone(),
-            identifier.clone(),
+            actor_addr.clone(),
             permission.clone(),
         )?;
 
         Ok(Response::default().add_attributes(vec![
             ("action", "set_permission"),
-            ("identifier", identifier.as_str()),
+            ("actor", actor_addr.as_str()),
             ("action", action.as_str()),
             ("permission", permission.to_string().as_str()),
         ]))
@@ -314,17 +312,17 @@ impl<'a> ADOContract<'a> {
     pub fn execute_remove_permission(
         &self,
         ctx: ExecuteContext,
-        identifier: impl Into<String>,
+        actor: AndrAddr,
         action: impl Into<String>,
     ) -> Result<Response, ContractError> {
         Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?;
-        let identifier = identifier.into();
+        let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
         let action = action.into();
-        Self::remove_permission(ctx.deps.storage, action.clone(), identifier.clone())?;
+        Self::remove_permission(ctx.deps.storage, action.clone(), actor_addr.clone())?;
 
         Ok(Response::default().add_attributes(vec![
             ("action", "remove_permission"),
-            ("identifier", identifier.as_str()),
+            ("actor", actor_addr.as_str()),
             ("action", action.as_str()),
         ]))
     }

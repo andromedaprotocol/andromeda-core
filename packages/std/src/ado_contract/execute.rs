@@ -82,12 +82,12 @@ impl<'a> ADOContract<'a> {
                     self.execute_alter_module(ctx.deps, ctx.info, module_idx, module)
                 }
                 AndromedaMsg::SetPermission {
-                    identifier,
+                    actor,
                     action,
                     permission,
-                } => self.execute_set_permission(ctx, identifier, action, permission),
-                AndromedaMsg::RemovePermission { action, address } => {
-                    self.execute_remove_permission(ctx, address, action)
+                } => self.execute_set_permission(ctx, actor, action, permission),
+                AndromedaMsg::RemovePermission { action, actor } => {
+                    self.execute_remove_permission(ctx, actor, action)
                 }
                 AndromedaMsg::AMPReceive(_) => panic!("AMP Receive should be handled separately"),
                 AndromedaMsg::Deposit { .. } => Err(ContractError::NotImplemented { msg: None }),

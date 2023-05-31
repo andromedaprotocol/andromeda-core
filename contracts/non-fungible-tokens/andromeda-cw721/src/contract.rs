@@ -2,10 +2,12 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, has_coins, to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, QuerierWrapper, Response, SubMsg, Uint128,
+    Empty, Env, MessageInfo, QuerierWrapper, Response, Storage, SubMsg, Uint128,
 };
 
-use crate::state::{is_archived, ARCHIVED, MINT_ACTION, TRANSFER_AGREEMENTS};
+use crate::state::{
+    is_archived, ANDR_MINTER, ARCHIVED, BATCH_MINT_ACTION, MINT_ACTION, TRANSFER_AGREEMENTS,
+};
 use andromeda_non_fungible_tokens::cw721::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
@@ -57,12 +59,8 @@ pub fn instantiate(
         .save(deps.storage, &contract_info)?;
 
     let contract = ADOContract::default();
-    ADOContract::set_permission(
-        deps.storage,
-        MINT_ACTION,
-        msg.minter.clone(),
-        Permission::whitelisted(None),
-    )?;
+    ANDR_MINTER.save(deps.storage, &msg.minter)?;
+
     let resp = contract.instantiate(
         deps.storage,
         env,
@@ -168,14 +166,18 @@ fn execute_mint(
     owner: String,
     extension: TokenExtension,
 ) -> Result<Response, ContractError> {
+    let minter = ANDR_MINTER
+        .load(ctx.deps.storage)?
+        .get_raw_address(&ctx.deps.as_ref())?;
     ensure!(
-        is_context_permissioned_strict(
-            ctx.deps.storage,
-            &ctx.info,
-            &ctx.env,
-            &ctx.amp_ctx,
-            MINT_ACTION
-        )?,
+        ctx.contains_sender(minter.as_str())
+            | is_context_permissioned_strict(
+                ctx.deps.storage,
+                &ctx.info,
+                &ctx.env,
+                &ctx.amp_ctx,
+                MINT_ACTION
+            )?,
         ContractError::Unauthorized {}
     );
     mint(ctx, token_id, token_uri, owner, extension)
@@ -217,14 +219,18 @@ fn execute_batch_mint(
     tokens_to_mint: Vec<MintMsg>,
 ) -> Result<Response, ContractError> {
     let mut resp = Response::default();
+    let minter = ANDR_MINTER
+        .load(ctx.deps.storage)?
+        .get_raw_address(&ctx.deps.as_ref())?;
     ensure!(
-        is_context_permissioned_strict(
-            ctx.deps.storage,
-            &ctx.info,
-            &ctx.env,
-            &ctx.amp_ctx,
-            MINT_ACTION,
-        )?,
+        ctx.contains_sender(minter.as_str())
+            | is_context_permissioned_strict(
+                ctx.deps.storage,
+                &ctx.info,
+                &ctx.env,
+                &ctx.amp_ctx,
+                BATCH_MINT_ACTION
+            )?,
         ContractError::Unauthorized {}
     );
     for msg in tokens_to_mint {
