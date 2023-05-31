@@ -23,7 +23,7 @@ use crate::state::{escrows, get_key, get_keys_for_recipient};
 const CONTRACT_NAME: &str = "crates.io:andromeda-timelock";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
@@ -32,7 +32,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let inst_resp = ADOContract::default().instantiate(
+    let contract = ADOContract::default();
+    let resp = contract.instantiate(
         deps.storage,
         env,
         deps.api,
@@ -45,12 +46,12 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let mod_resp =
-        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+    let modules_resp =
+        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(inst_resp
-        .add_attributes(mod_resp.attributes)
-        .add_submessages(mod_resp.messages))
+    Ok(resp
+        .add_submessages(modules_resp.messages)
+        .add_attributes(modules_resp.attributes))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -252,7 +253,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetLockedFunds { owner, recipient } => {
