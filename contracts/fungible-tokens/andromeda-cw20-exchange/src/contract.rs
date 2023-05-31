@@ -56,7 +56,12 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    Ok(resp)
+    let modules_resp =
+        contract.register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
+
+    Ok(resp
+        .add_submessages(modules_resp.messages)
+        .add_attributes(modules_resp.attributes))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
