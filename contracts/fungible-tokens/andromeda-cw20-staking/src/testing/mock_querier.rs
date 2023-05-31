@@ -1,11 +1,8 @@
-
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
-use andromeda_std::{
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
-};
+use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::testing::{
     mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
 };
