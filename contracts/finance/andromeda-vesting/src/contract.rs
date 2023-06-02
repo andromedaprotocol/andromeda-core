@@ -252,7 +252,7 @@ fn execute_claim(
     key.save(deps.storage, &batch)?;
 
     let config = CONFIG.load(deps.storage)?;
-    let withdraw_msg = config.recipient.generate_msg_cw20(
+    let withdraw_msg = config.recipient.generate_direct_msg(
         &deps.as_ref(),
         vec![Coin::new(amount_to_send.u128(), config.denom)],
     )?;
