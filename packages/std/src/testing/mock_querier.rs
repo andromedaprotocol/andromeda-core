@@ -200,11 +200,11 @@ impl WasmMockQuerier {
                 1 => SystemResult::Ok(ContractResult::Ok(to_binary(&"ADOType").unwrap())),
                 _ => SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string())),
             },
-            ADODBQueryMsg::CodeId { key } => match key.as_str() {
+            ADODBQueryMsg::CodeId { ado_type } => match ado_type.as_str() {
                 FAKE_ADODB_KEY => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
                 _ => SystemResult::Ok(ContractResult::Ok(to_binary(&1).unwrap())),
             },
-            // _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
+            _ => SystemResult::Ok(ContractResult::Err("Not implemented".to_string())),
         }
     }
 

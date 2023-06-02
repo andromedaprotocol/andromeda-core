@@ -1,11 +1,16 @@
-use crate::state::{read_code_id, store_code_id, ADO_TYPE};
+use crate::state::{
+    read_code_id, store_code_id, ACTION_FEES, ADO_TYPE, PUBLISHER, VERSION_CODE_ID,
+};
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::common::encode_binary;
 use andromeda_std::error::{from_semver, ContractError};
-use andromeda_std::os::adodb::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use andromeda_std::os::adodb::{
+    ADOVersion, ActionFee, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
 use cosmwasm_std::{
     attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    Storage,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -60,6 +65,23 @@ pub fn execute(
             code_id_key,
             code_id,
         } => add_update_code_id(deps, env, info, code_id_key, code_id),
+        ExecuteMsg::Publish {
+            code_id,
+            ado_type,
+            action_fees,
+            version,
+            publisher,
+        } => publish(
+            deps,
+            env,
+            info,
+            code_id,
+            ado_type,
+            version,
+            action_fees,
+            publisher,
+        ),
+        _ => Ok(Response::default()),
     }
 }
 
@@ -74,12 +96,82 @@ pub fn add_update_code_id(
         ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    store_code_id(deps.storage, &code_id_key, code_id)?;
+    store_code_id(
+        deps.storage,
+        &ADOVersion::from_string(code_id_key.clone()),
+        code_id,
+    )?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "add_update_code_id"),
         attr("code_id_key", code_id_key),
         attr("code_id", code_id.to_string()),
+    ]))
+}
+
+pub fn update_action_fees(
+    storage: &mut dyn Storage,
+    ado_type: String,
+    fees: Vec<ActionFee>,
+) -> Result<(), ContractError> {
+    for action_fee in fees {
+        ACTION_FEES.save(
+            storage,
+            (ado_type.clone(), action_fee.clone().action),
+            &action_fee,
+        )?;
+    }
+
+    Ok(())
+}
+
+pub fn publish(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    code_id: u64,
+    ado_type: String,
+    version: String,
+    action_fees: Option<Vec<ActionFee>>,
+    publisher: Option<String>,
+) -> Result<Response, ContractError> {
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    //TODO: Get Code ID info with cosmwasm 1.2
+
+    let version = ADOVersion::from_type(ado_type).with_version(version);
+    ensure!(
+        version.validate(),
+        ContractError::InvalidADOVersion { msg: None }
+    );
+
+    // Ensure version is not already published
+    let curr_code_id =
+        VERSION_CODE_ID.may_load(deps.storage, (version.get_type(), version.get_version()))?;
+    ensure!(
+        curr_code_id.is_none(),
+        ContractError::InvalidADOVersion {
+            msg: Some(String::from("Version already published"))
+        }
+    );
+
+    store_code_id(deps.storage, &version, code_id)?;
+    if let Some(publisher) = publisher.clone() {
+        PUBLISHER.save(deps.storage, version.get_type(), &publisher)?;
+    }
+
+    if let Some(fees) = action_fees {
+        update_action_fees(deps.storage, version.get_type(), fees)?;
+    }
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "publish_ado"),
+        attr("ado_type", version.into_string()),
+        attr("code_id", code_id.to_string()),
+        attr("publisher", publisher.unwrap_or_default()),
     ]))
 }
 
@@ -120,8 +212,9 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::CodeId { key } => encode_binary(&query_code_id(deps, key)?),
+        QueryMsg::CodeId { ado_type } => encode_binary(&query_code_id(deps, ado_type)?),
         QueryMsg::ADOType { code_id } => encode_binary(&query_ado_type(deps, code_id)?),
+        _ => encode_binary(&true),
     }
 }
 

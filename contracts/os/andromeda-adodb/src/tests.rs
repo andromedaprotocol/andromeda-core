@@ -128,3 +128,34 @@ fn test_update_code_id_unauthorized() {
 
     assert_eq!(ContractError::Unauthorized {}, resp.unwrap_err());
 }
+
+#[test]
+fn test_publish() {
+    let owner = String::from("owner");
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info(owner.as_str(), &[]);
+
+    instantiate(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(&owner, &[]),
+        InstantiateMsg {
+            kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+            owner: None,
+        },
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::Publish {
+        ado_type: "ado_type".to_string(),
+        version: "0.1.0".to_string(),
+        code_id: 1,
+        action_fees: None,
+        publisher: Some(owner),
+    };
+
+    let resp = execute(deps.as_mut(), env, info, msg);
+
+    assert!(resp.is_ok())
+}
