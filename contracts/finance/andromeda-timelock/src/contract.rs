@@ -126,7 +126,7 @@ fn execute_hold_funds(
     let recipient_addr = rec.clone().address;
     rec.address.validate(deps.api)?;
 
-    let key = get_key(info.sender.as_str(), &recipient_addr.as_str());
+    let key = get_key(info.sender.as_str(), recipient_addr.as_str());
     let mut escrow = Escrow {
         coins: info.funds,
         condition,

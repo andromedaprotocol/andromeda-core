@@ -13,7 +13,7 @@ use andromeda_non_fungible_tokens::cw721::{
 };
 use andromeda_std::{
     ado_contract::{
-        permissioning::{is_context_permissioned, is_context_permissioned_strict, Permission},
+        permissioning::{is_context_permissioned, is_context_permissioned_strict},
         ADOContract,
     },
     common::context::ExecuteContext,

@@ -127,7 +127,7 @@ pub fn update_action_fees(
 
 pub fn publish(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     code_id: u64,
     ado_type: String,

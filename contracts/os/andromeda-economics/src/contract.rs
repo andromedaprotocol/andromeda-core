@@ -2,12 +2,11 @@ use crate::state::BALANCES;
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::AndrAddr;
-use andromeda_std::common::encode_binary;
+
 use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::economics::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
-    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError,
+    attr, ensure, entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -42,7 +41,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
@@ -63,7 +62,7 @@ pub fn execute_deposit_native(
         .unwrap_or(AndrAddr::from_string(info.sender.to_string()))
         .get_raw_address(&deps.as_ref())?;
 
-    for funds in info.funds.clone() {
+    for funds in info.funds {
         let balance = BALANCES
             .load(
                 deps.as_ref().storage,
@@ -84,8 +83,8 @@ pub fn execute_deposit_native(
 }
 
 fn execute_pay_fee(
-    deps: DepsMut,
-    env: Env,
+    _deps: DepsMut,
+    _env: Env,
     info: MessageInfo,
     payee: Addr,
     action: String,
@@ -137,6 +136,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {}
 }

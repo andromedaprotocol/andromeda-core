@@ -5,14 +5,12 @@ use cosmwasm_std::{coin, Addr, Uint128};
 use crate::contract::{execute, instantiate};
 use crate::state::BALANCES;
 
-use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::error::ContractError;
+
+
 use andromeda_std::os::economics::{ExecuteMsg, InstantiateMsg};
 
 use cosmwasm_std::{
-    attr,
     testing::{mock_dependencies, mock_env, mock_info},
-    Response,
 };
 
 #[test]
@@ -57,7 +55,7 @@ fn test_deposit() {
     // Test Multiple Coin Deposit
     let info = mock_info("creator", &[coin(100, "uandr"), coin(100, "uusd")]);
     let msg = ExecuteMsg::Deposit { address: None };
-    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    execute(deps.as_mut(), env, info, msg).unwrap();
 
     let balance = BALANCES
         .load(

@@ -158,7 +158,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractErr
 
 #[cfg(test)]
 mod tests {
-    use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_PRIMITIVE_CONTRACT};
+    
     use cosmwasm_std::{coin, Uint128};
 
     use super::*;

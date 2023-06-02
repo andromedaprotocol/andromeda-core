@@ -33,7 +33,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info.clone(),
+        info,
         BaseInstantiateMsg {
             ado_type: "address-list".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
@@ -53,7 +53,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let _contract = ADOContract::default();
     let ctx = ExecuteContext::new(deps, info, env);
 
     match msg {
@@ -65,7 +65,7 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = ADOContract::default();
+    let _contract = ADOContract::default();
     match msg {
         ExecuteMsg::AddAddress { address } => execute_add_address(ctx, address),
         ExecuteMsg::RemoveAddress { address } => execute_remove_address(ctx, address),

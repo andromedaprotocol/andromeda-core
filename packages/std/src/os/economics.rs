@@ -25,5 +25,5 @@ pub enum QueryMsg {}
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    
 }

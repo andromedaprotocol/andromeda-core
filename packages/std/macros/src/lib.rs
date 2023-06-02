@@ -131,11 +131,7 @@ fn andr_exec_derive(input: DeriveInput) -> DeriveInput {
 fn excludes_modules(args: Vec<NestedMeta>) -> bool {
     args.iter().any(|arg| {
         if let NestedMeta::Lit(Lit::Str(path)) = arg {
-            if path.value() == "no_modules" {
-                true
-            } else {
-                false
-            }
+            path.value() == "no_modules"
         } else {
             false
         }

@@ -103,7 +103,7 @@ impl ADOVersion {
     #[inline]
     pub fn with_version(&self, version: impl Into<String>) -> ADOVersion {
         let mut ado_version = self.clone();
-        ado_version.0.push_str("@");
+        ado_version.0.push('@');
         ado_version.0.push_str(&version.into());
         ado_version
     }
@@ -119,7 +119,7 @@ impl ADOVersion {
     /// - `ado_type`
     /// - `ado_type@latest`
     pub fn validate(&self) -> bool {
-        !self.clone().into_string().is_empty() && self.clone().into_string().split("@").count() <= 2
+        !self.clone().into_string().is_empty() && self.clone().into_string().split('@').count() <= 2
     }
 
     /// Gets the version for the given ADOVersion
@@ -129,18 +129,18 @@ impl ADOVersion {
         match self
             .clone()
             .into_string()
-            .split("@")
+            .split('@')
             .collect::<Vec<&str>>()
             .len()
         {
             1 => "latest".to_string(),
-            _ => self.clone().into_string().split("@").collect::<Vec<&str>>()[1].to_string(),
+            _ => self.clone().into_string().split('@').collect::<Vec<&str>>()[1].to_string(),
         }
     }
 
     /// Gets the type for the given ADOVersion
     pub fn get_type(&self) -> String {
-        self.clone().into_string().split("@").collect::<Vec<&str>>()[0].to_string()
+        self.clone().into_string().split('@').collect::<Vec<&str>>()[0].to_string()
     }
 }
 
