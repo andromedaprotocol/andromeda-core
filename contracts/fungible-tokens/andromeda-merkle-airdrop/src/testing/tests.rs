@@ -5,7 +5,7 @@ use andromeda_fungible_tokens::airdrop::{
 use andromeda_std::{
     ado_contract::ADOContract, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::{cw_serde, serde::Deserialize};
 use cosmwasm_std::{
     attr, from_binary, from_slice,
     testing::{mock_env, mock_info},
@@ -280,7 +280,7 @@ struct Proof {
     proofs: Vec<String>,
 }
 
-#[cw_serde]
+#[derive(Deserialize, Debug)]
 struct MultipleData {
     total_claimed_amount: Uint128,
     root: String,
