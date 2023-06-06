@@ -5,13 +5,9 @@ use cosmwasm_std::{coin, Addr, Uint128};
 use crate::contract::{execute, instantiate};
 use crate::state::BALANCES;
 
-
-
 use andromeda_std::os::economics::{ExecuteMsg, InstantiateMsg};
 
-use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env, mock_info},
-};
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 #[test]
 fn proper_initialization() {

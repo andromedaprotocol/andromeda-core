@@ -24,6 +24,4 @@ pub struct MigrateMsg {}
 pub enum QueryMsg {}
 
 #[cfg(test)]
-mod test {
-    
-}
+mod test {}

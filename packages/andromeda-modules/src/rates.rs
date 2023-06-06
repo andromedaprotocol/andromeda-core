@@ -158,7 +158,7 @@ pub fn calculate_fee(fee_rate: Rate, payment: &Coin) -> Result<Coin, ContractErr
 
 #[cfg(test)]
 mod tests {
-    
+
     use cosmwasm_std::{coin, Uint128};
 
     use super::*;

@@ -178,7 +178,7 @@ fn test_publish() {
     let publisher = PUBLISHER
         .load(deps.as_ref().storage, "ado_type".to_string())
         .unwrap();
-    assert_eq!(publisher, owner.to_string());
+    assert_eq!(publisher, owner);
 
     let code_id = CODE_ID.load(deps.as_ref().storage, "ado_type").unwrap();
     assert_eq!(code_id, 1u64);
