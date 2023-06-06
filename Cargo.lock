@@ -36,6 +36,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-multi-test",
  "cw-storage-plus 1.0.1",
  "cw2 1.0.1",

@@ -81,6 +81,10 @@ pub fn execute(
             action_fees,
             publisher,
         ),
+        ExecuteMsg::UpdateActionFees {
+            action_fees,
+            ado_type,
+        } => execute_update_action_fees(deps, info, ado_type, action_fees),
         _ => Ok(Response::default()),
     }
 }
@@ -172,6 +176,25 @@ pub fn publish(
         attr("ado_type", version.into_string()),
         attr("code_id", code_id.to_string()),
         attr("publisher", publisher.unwrap_or_default()),
+    ]))
+}
+
+fn execute_update_action_fees(
+    deps: DepsMut,
+    info: MessageInfo,
+    ado_type: String,
+    action_fees: Vec<ActionFee>,
+) -> Result<Response, ContractError> {
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    update_action_fees(deps.storage, ado_type.clone(), action_fees)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_action_fees"),
+        attr("ado_type", ado_type),
     ]))
 }
 

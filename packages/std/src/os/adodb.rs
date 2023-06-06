@@ -25,13 +25,15 @@ pub enum ExecuteMsg {
         publisher: Option<String>,
     },
     UpdateActionFees {
+        ado_type: String,
         action_fees: Vec<ActionFee>,
-    },
-    UpdateMaintainers {
-        maintainers: Vec<String>,
     },
     UpdatePublisher {
         publisher: String,
+    },
+    RemoveActionFees {
+        ado_type: String,
+        actions: Vec<String>,
     },
 }
 
@@ -40,6 +42,16 @@ pub struct ActionFee {
     pub action: String,
     pub fee_asset: AssetInfo,
     pub fee_amount: Uint128,
+}
+
+impl ActionFee {
+    pub fn new(action: String, fee_asset: AssetInfo, fee_amount: Uint128) -> Self {
+        Self {
+            action,
+            fee_asset,
+            fee_amount,
+        }
+    }
 }
 
 #[cw_serde]
