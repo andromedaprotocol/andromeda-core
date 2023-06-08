@@ -1,5 +1,8 @@
+use andromeda_std::error::ContractError;
 #[cfg(test)]
-use andromeda_std::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT};
+use andromeda_std::testing::mock_querier::{
+    mock_dependencies_custom, MOCK_ACTION, MOCK_KERNEL_CONTRACT,
+};
 use cosmwasm_std::{coin, Addr, Uint128};
 
 use crate::contract::{execute, instantiate};
@@ -71,4 +74,38 @@ fn test_deposit() {
 }
 
 #[test]
-fn test_pay_fee() {}
+fn test_pay_fee() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let payee = "payee";
+
+    let msg = ExecuteMsg::PayFee {
+        payee: Addr::unchecked(payee),
+        action: MOCK_ACTION.to_string(),
+    };
+
+    // Paying fee without funds
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    assert_eq!(res, ContractError::InsufficientFunds {});
+
+    BALANCES
+        .save(
+            deps.as_mut().storage,
+            (Addr::unchecked(payee), "uusd".to_string()),
+            &Uint128::from(10u128),
+        )
+        .unwrap();
+
+    //Paying fee with funds
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    assert!(res.is_ok());
+
+    let balance = BALANCES
+        .load(
+            deps.as_ref().storage,
+            (Addr::unchecked(payee), "uusd".to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance, Uint128::from(0u128));
+}

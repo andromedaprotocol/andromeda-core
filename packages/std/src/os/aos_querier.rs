@@ -7,6 +7,8 @@ use lazy_static::__Deref;
 use serde::de::DeserializeOwned;
 use std::str::from_utf8;
 
+use super::adodb::ActionFee;
+
 #[cw_serde]
 pub struct AOSQuerier();
 
@@ -118,5 +120,20 @@ impl AOSQuerier {
             Some(address) => Ok(address),
             None => Err(ContractError::InvalidAddress {}),
         }
+    }
+
+    pub fn action_fee_getter(
+        querier: &QuerierWrapper,
+        adodb_addr: &Addr,
+        ado_type: &str,
+        action: &str,
+    ) -> Result<Option<ActionFee>, ContractError> {
+        let key = AOSQuerier::get_map_storage_key(
+            "action_fees",
+            &[ado_type.as_bytes(), action.as_bytes()],
+        )?;
+        let fee: Option<ActionFee> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
+
+        Ok(fee)
     }
 }

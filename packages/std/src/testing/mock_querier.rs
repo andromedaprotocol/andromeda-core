@@ -3,7 +3,7 @@ use crate::ado_base::primitive::{GetValueResponse, Primitive};
 use crate::{
     ado_contract::ADOContract,
     amp::{ADO_DB_KEY, VFS_KEY},
-    os::adodb::QueryMsg as ADODBQueryMsg,
+    os::adodb::{ActionFee, QueryMsg as ADODBQueryMsg},
     os::kernel::QueryMsg as KernelQueryMsg,
     os::vfs::QueryMsg as VFSQueryMsg,
 };
@@ -13,11 +13,12 @@ use cosmwasm_std::{
     from_binary, from_slice,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, OwnedDeps, Querier,
-    QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
+    QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::{BalanceResponse, Cw20QueryMsg};
+use cw_asset::AssetInfo;
 
 /// Mock CW20 Contract Address
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
@@ -45,6 +46,8 @@ pub const INVALID_CONTRACT: &str = "invalid_contract";
 pub const FAKE_VFS_PATH: &str = "/f";
 /// An invalid ADODB Key
 pub const FAKE_ADODB_KEY: &str = "fake_adodb_key";
+/// A valid action
+pub const MOCK_ACTION: &str = "action";
 #[cfg(feature = "modules")]
 pub const UNWHITELISTED_ADDRESS: &str = "unwhitelisted_address";
 #[cfg(feature = "modules")]
@@ -376,6 +379,36 @@ impl WasmMockQuerier {
                 }
             } else {
                 panic!("Invalid ADODB Raw Query")
+            }
+        } else if key_str.contains("action_fees") {
+            let split = key_str.split("action_fees");
+            let key = split.last();
+            match key {
+                Some(key) => {
+                    if key.contains("ADOTypeaction") {
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_binary(&ActionFee::new(
+                                MOCK_ACTION.to_string(),
+                                AssetInfo::native("uusd"),
+                                Uint128::from(10u128),
+                            ))
+                            .unwrap(),
+                        ))
+                    } else {
+                        SystemResult::Ok(ContractResult::Err("Invalid Key".to_string()))
+                    }
+                }
+                None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
+            }
+        } else if key_str.contains("ado_type") {
+            let split = key_str.split("ado_type");
+            let key = split.last();
+            match key {
+                Some(key) => match key {
+                    "1" => SystemResult::Ok(ContractResult::Ok(to_binary("ADOType").unwrap())),
+                    _ => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
+                },
+                None => SystemResult::Ok(ContractResult::Err("Invalid Key".to_string())),
             }
         } else {
             panic!("Invalid ADODB Raw Query")

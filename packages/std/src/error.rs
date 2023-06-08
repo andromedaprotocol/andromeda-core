@@ -42,6 +42,9 @@ pub enum ContractError {
     #[error("InvalidOrigin")]
     InvalidOrigin {},
 
+    #[error("InvalidSender")]
+    InvalidSender {},
+
     #[error("RewardTooLow")]
     RewardTooLow {},
 
