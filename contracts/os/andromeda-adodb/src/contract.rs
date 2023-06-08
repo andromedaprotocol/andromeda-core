@@ -1,5 +1,5 @@
 use crate::state::{
-    read_code_id, store_code_id, ACTION_FEES, ADO_TYPE, PUBLISHER, VERSION_CODE_ID,
+    read_code_id, store_code_id, ACTION_FEES, ADO_TYPE, CODE_ID, PUBLISHER, VERSION_CODE_ID,
 };
 use andromeda_std::ado_base::InstantiateMsg as BaseInstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
@@ -85,7 +85,13 @@ pub fn execute(
             action_fees,
             ado_type,
         } => execute_update_action_fees(deps, info, ado_type, action_fees),
-        _ => Ok(Response::default()),
+        ExecuteMsg::RemoveActionFees { ado_type, actions } => {
+            execute_remove_actions(deps, info, ado_type, actions)
+        }
+        ExecuteMsg::UpdatePublisher {
+            ado_type,
+            publisher,
+        } => execute_update_publisher(deps, info, ado_type, publisher),
     }
 }
 
@@ -189,12 +195,78 @@ fn execute_update_action_fees(
         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
+    let ado_type_exists = CODE_ID.may_load(deps.storage, &ado_type)?;
+    ensure!(
+        ado_type_exists.is_some(),
+        ContractError::InvalidADOVersion {
+            msg: Some("ADO type does not exist".to_string())
+        }
+    );
 
     update_action_fees(deps.storage, ado_type.clone(), action_fees)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "update_action_fees"),
         attr("ado_type", ado_type),
+    ]))
+}
+
+fn execute_remove_actions(
+    deps: DepsMut,
+    info: MessageInfo,
+    ado_type: String,
+    actions: Vec<String>,
+) -> Result<Response, ContractError> {
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+    let ado_type_exists = CODE_ID.may_load(deps.storage, &ado_type)?;
+    ensure!(
+        ado_type_exists.is_some(),
+        ContractError::InvalidADOVersion {
+            msg: Some("ADO type does not exist".to_string())
+        }
+    );
+
+    let mut res = Response::default().add_attributes(vec![
+        attr("action", "remove_actions"),
+        attr("ado_type", ado_type.clone()),
+    ]);
+
+    for action in actions {
+        ACTION_FEES.remove(deps.storage, (ado_type.clone(), action.clone()));
+        res = res.add_attribute("action_fee_removed", action);
+    }
+
+    Ok(res)
+}
+
+fn execute_update_publisher(
+    deps: DepsMut,
+    info: MessageInfo,
+    ado_type: String,
+    publisher: String,
+) -> Result<Response, ContractError> {
+    ensure!(
+        ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+        ContractError::Unauthorized {}
+    );
+
+    let ado_type_exists = CODE_ID.may_load(deps.storage, &ado_type)?;
+    ensure!(
+        ado_type_exists.is_some(),
+        ContractError::InvalidADOVersion {
+            msg: Some("ADO type does not exist".to_string())
+        }
+    );
+
+    PUBLISHER.save(deps.storage, ado_type.clone(), &publisher)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "update_publisher"),
+        attr("ado_type", ado_type),
+        attr("publisher", publisher),
     ]))
 }
 

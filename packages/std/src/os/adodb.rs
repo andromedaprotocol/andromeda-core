@@ -28,12 +28,13 @@ pub enum ExecuteMsg {
         ado_type: String,
         action_fees: Vec<ActionFee>,
     },
-    UpdatePublisher {
-        publisher: String,
-    },
     RemoveActionFees {
         ado_type: String,
         actions: Vec<String>,
+    },
+    UpdatePublisher {
+        ado_type: String,
+        publisher: String,
     },
 }
 

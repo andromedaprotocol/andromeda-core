@@ -273,3 +273,116 @@ fn test_update_action_fees() {
     let resp = execute(deps.as_mut(), env, unauth_info, msg);
     assert!(resp.is_err());
 }
+
+#[test]
+fn test_remove_action_fees() {
+    let owner = String::from("owner");
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info(owner.as_str(), &[]);
+    let ado_type = "ado_type";
+    let action = "action";
+    instantiate(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(&owner, &[]),
+        InstantiateMsg {
+            kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+            owner: None,
+        },
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::RemoveActionFees {
+        ado_type: ado_type.to_string(),
+        actions: vec![action.to_string(), "not_an_action".to_string()], // Add extra action to ensure no error when a false action is provided
+    };
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    assert_eq!(
+        res,
+        ContractError::InvalidADOVersion {
+            msg: Some("ADO type does not exist".to_string())
+        }
+    );
+
+    CODE_ID
+        .save(deps.as_mut().storage, ado_type, &1u64)
+        .unwrap();
+
+    ACTION_FEES
+        .save(
+            deps.as_mut().storage,
+            (ado_type.to_string(), action.to_string()),
+            &ActionFee::new(
+                action.to_string(),
+                AssetInfo::Native("uusd".to_string()),
+                Uint128::from(1u128),
+            ),
+        )
+        .unwrap();
+
+    let unauth_info = mock_info("not_owner", &[]);
+    let res = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
+    assert_eq!(res, ContractError::Unauthorized {});
+
+    execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+
+    let fee = ACTION_FEES
+        .may_load(
+            deps.as_ref().storage,
+            (ado_type.to_string(), action.to_string()),
+        )
+        .unwrap();
+
+    assert!(fee.is_none());
+}
+
+#[test]
+fn test_update_publisher() {
+    let owner = String::from("owner");
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    let info = mock_info(owner.as_str(), &[]);
+    let ado_type = "ado_type";
+
+    instantiate(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(&owner, &[]),
+        InstantiateMsg {
+            kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+            owner: None,
+        },
+    )
+    .unwrap();
+
+    let msg = ExecuteMsg::UpdatePublisher {
+        ado_type: ado_type.to_string(),
+        publisher: "new_publisher".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    assert_eq!(
+        res,
+        ContractError::InvalidADOVersion {
+            msg: Some("ADO type does not exist".to_string())
+        }
+    );
+
+    CODE_ID
+        .save(deps.as_mut().storage, ado_type, &1u64)
+        .unwrap();
+
+    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    assert!(res.is_ok());
+
+    let publisher = PUBLISHER
+        .load(deps.as_ref().storage, ado_type.to_string())
+        .unwrap();
+    assert_eq!(publisher, "new_publisher".to_string());
+
+    // Test unauthorised
+    let unauth_info = mock_info("not_owner", &[]);
+    let resp = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
+    assert_eq!(resp, ContractError::Unauthorized {});
+}
