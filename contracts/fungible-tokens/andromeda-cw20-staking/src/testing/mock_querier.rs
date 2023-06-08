@@ -3,9 +3,12 @@ use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
+use cosmwasm_std::coin;
 use cosmwasm_std::testing::{
     mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
 };
+use cosmwasm_std::BankMsg;
+use cosmwasm_std::BankQuery;
 use cosmwasm_std::{
     from_binary, from_slice, to_binary, Coin, ContractResult, Empty, OwnedDeps, Querier,
     QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
@@ -131,7 +134,17 @@ impl WasmMockQuerier {
                     _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
                 }
             }
-            _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
+            //TODO: Need better support for passing the base querier to the custom querier.
+            QueryRequest::Bank(BankQuery::Balance { address, denom }) => {
+                println!("{:?}", request);
+                AndrMockQuerier::new(MockQuerier::new(&[(address, &[coin(40, denom)])]))
+                    .handle_query(request)
+            }
+            _ => AndrMockQuerier::new(MockQuerier::new(&[(
+                MOCK_CONTRACT_ADDR,
+                &[coin(100, "uusd")],
+            )]))
+            .handle_query(request),
         }
     }
 }
