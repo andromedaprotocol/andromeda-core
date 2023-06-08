@@ -325,7 +325,7 @@ fn test_remove_action_fees() {
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err();
     assert_eq!(res, ContractError::Unauthorized {});
 
-    execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+    execute(deps.as_mut(), env, info, msg).unwrap();
 
     let fee = ACTION_FEES
         .may_load(
