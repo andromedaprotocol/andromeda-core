@@ -1,9 +1,6 @@
-use andromeda_std::{
-    amp::recipient::Recipient, andr_exec, andr_instantiate, andr_query, error::ContractError,
-};
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Decimal, ReplyOn, Timestamp, Uint128};
-use cw_utils::Expiration;
+use cosmwasm_std::{Timestamp, Uint128};
 
 #[cw_serde]
 /// Keeps track of the account's balance and time of latest withdrawal
