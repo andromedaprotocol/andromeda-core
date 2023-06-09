@@ -19,7 +19,6 @@ use cosmwasm_std::{
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::{BalanceResponse, Cw20QueryMsg};
-use cw_asset::AssetInfo;
 
 /// Mock CW20 Contract Address
 pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";

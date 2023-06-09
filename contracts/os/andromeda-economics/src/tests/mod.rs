@@ -385,7 +385,7 @@ fn test_withdraw() {
         )
         .unwrap();
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(res, ContractError::InsufficientFunds {});
 
     // Partial withdraw
@@ -402,7 +402,7 @@ fn test_withdraw() {
         )
         .unwrap();
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
     assert_eq!(res.messages.len(), 1);
     assert_eq!(
         res.messages.first().unwrap().msg,
@@ -413,10 +413,7 @@ fn test_withdraw() {
     );
 
     let balance = BALANCES
-        .load(
-            deps.as_ref().storage,
-            (info.sender.clone(), "uusd".to_string()),
-        )
+        .load(deps.as_ref().storage, (info.sender, "uusd".to_string()))
         .unwrap();
     assert_eq!(balance, Uint128::from(5u128));
 }

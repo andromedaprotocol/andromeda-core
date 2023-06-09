@@ -7,8 +7,8 @@ use andromeda_std::error::{from_semver, ContractError};
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::economics::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{
-    attr, coin, ensure, entry_point, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty,
-    Env, MessageInfo, Response, Storage, Uint128,
+    attr, coin, ensure, entry_point, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, Response, Storage, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -248,7 +248,7 @@ fn execute_withdraw(
 
     let bank_msg = BankMsg::Send {
         to_address: info.sender.clone().into(),
-        amount: vec![coin(amount.u128(), asset.clone())],
+        amount: vec![coin(amount.u128(), asset)],
     };
     let cosmos_msg: CosmosMsg<Empty> = CosmosMsg::Bank(bank_msg);
 
