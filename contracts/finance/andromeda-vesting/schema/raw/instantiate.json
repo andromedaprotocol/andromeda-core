@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "denom",
+    "is_multi_batch_enabled",
+    "recipient",
+    "unbonding_duration"
+  ],
+  "properties": {
+    "denom": {
+      "description": "The denom of the coin being vested.",
+      "type": "string"
+    },
+    "is_multi_batch_enabled": {
+      "description": "Whether or not multi-batching has been enabled.",
+      "type": "boolean"
+    },
+    "kernel_address": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "recipient": {
+      "description": "The recipient of all funds locked in this contract.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Recipient"
+        }
+      ]
+    },
+    "unbonding_duration": {
+      "description": "The unbonding duration of the native staking module.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Duration"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ADORecipient": {
+      "description": "ADOs use a default Receive message for handling funds, this struct states that the recipient is an ADO and may attach the data field to the Receive message",
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "description": "Addr can also be a human-readable identifier used in a app contract.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AndrAddress"
+            }
+          ]
+        },
+        "msg": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AndrAddress": {
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "Can be either an address or identifier of an ADO in a app.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Duration": {
+      "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "height"
+          ],
+          "properties": {
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Time in seconds",
+          "type": "object",
+          "required": [
+            "time"
+          ],
+          "properties": {
+            "time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Recipient": {
+      "oneOf": [
+        {
+          "description": "An address that is not another ADO. It is assumed that it is a valid address.",
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "a_d_o"
+          ],
+          "properties": {
+            "a_d_o": {
+              "$ref": "#/definitions/ADORecipient"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

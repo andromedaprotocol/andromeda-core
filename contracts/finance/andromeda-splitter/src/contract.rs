@@ -74,15 +74,19 @@ pub fn instantiate(
         deps.api,
         info,
         BaseInstantiateMsg {
-            ado_type: "crowdfund".to_string(),
+            ado_type: "splitter".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             operators: None,
             kernel_address: msg.kernel_address,
             owner: msg.owner,
         },
     )?;
+    let mod_resp =
+        ADOContract::default().register_modules(info.sender.as_str(), deps.storage, msg.modules)?;
 
-    Ok(inst_resp)
+    Ok(inst_resp
+        .add_attributes(mod_resp.attributes)
+        .add_submessages(mod_resp.messages))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

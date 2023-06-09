@@ -241,6 +241,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-lockdrop"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-fungible-tokens",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw-utils 1.0.1",
+ "cw2 1.0.1",
+ "cw20",
+ "semver",
+]
+
+[[package]]
 name = "andromeda-macros"
 version = "0.1.0"
 dependencies = [
@@ -267,6 +285,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-merkle-airdrop"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-fungible-tokens",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw-utils 1.0.1",
+ "cw2 1.0.1",
+ "cw20",
+ "hex",
+ "semver",
+ "serde",
+ "sha2 0.10.6",
+]
+
+[[package]]
 name = "andromeda-modules"
 version = "0.1.0"
 dependencies = [
@@ -290,6 +329,23 @@ dependencies = [
  "cw721 0.17.0",
  "cw721-base 0.17.0",
  "serde",
+]
+
+[[package]]
+name = "andromeda-rate-limiting-withdrawals"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-finance",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw-utils 1.0.1",
+ "cw2 1.0.1",
+ "cw20",
+ "semver",
 ]
 
 [[package]]
@@ -376,6 +432,23 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.0.1",
+ "cw-utils 1.0.1",
+ "cw2 1.0.1",
+ "semver",
+]
+
+[[package]]
+name = "andromeda-vesting"
+version = "0.2.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-finance",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
  "cw-multi-test",
  "cw-storage-plus 1.0.1",
  "cw-utils 1.0.1",

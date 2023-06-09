@@ -1,14 +1,11 @@
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
-
-use andromeda_std::testing::mock_querier::WasmMockQuerier as AndrMockQuerier;
-use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
-use cosmwasm_std::coin;
+use andromeda_std::testing::mock_querier::{
+    WasmMockQuerier as AndrMockQuerier, MOCK_KERNEL_CONTRACT,
+};
 use cosmwasm_std::testing::{
     mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
 };
-use cosmwasm_std::BankMsg;
-use cosmwasm_std::BankQuery;
 use cosmwasm_std::{
     from_binary, from_slice, to_binary, Coin, ContractResult, Empty, OwnedDeps, Querier,
     QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
@@ -55,29 +52,6 @@ pub struct WasmMockQuerier {
 pub struct TokenQuerier {
     // this lets us iterate over all pairs that match the first string
     balances: HashMap<String, HashMap<String, Uint128>>,
-}
-
-impl TokenQuerier {
-    pub fn new(balances: &[(&String, &[(&String, &Uint128)])]) -> Self {
-        TokenQuerier {
-            balances: balances_to_map(balances),
-        }
-    }
-}
-
-pub(crate) fn balances_to_map(
-    balances: &[(&String, &[(&String, &Uint128)])],
-) -> HashMap<String, HashMap<String, Uint128>> {
-    let mut balances_map: HashMap<String, HashMap<String, Uint128>> = HashMap::new();
-    for (contract_addr, balances) in balances.iter() {
-        let mut contract_balances_map: HashMap<String, Uint128> = HashMap::new();
-        for (addr, balance) in balances.iter() {
-            contract_balances_map.insert(addr.to_string(), **balance);
-        }
-
-        balances_map.insert(contract_addr.to_string(), contract_balances_map);
-    }
-    balances_map
 }
 
 impl Querier for WasmMockQuerier {
@@ -134,17 +108,7 @@ impl WasmMockQuerier {
                     _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
                 }
             }
-            //TODO: Need better support for passing the base querier to the custom querier.
-            QueryRequest::Bank(BankQuery::Balance { address, denom }) => {
-                println!("{:?}", request);
-                AndrMockQuerier::new(MockQuerier::new(&[(address, &[coin(40, denom)])]))
-                    .handle_query(request)
-            }
-            _ => AndrMockQuerier::new(MockQuerier::new(&[(
-                MOCK_CONTRACT_ADDR,
-                &[coin(100, "uusd")],
-            )]))
-            .handle_query(request),
+            _ => AndrMockQuerier::new(MockQuerier::new(&[])).handle_query(request),
         }
     }
 }
@@ -155,10 +119,5 @@ impl WasmMockQuerier {
             base,
             token_querier: TokenQuerier::default(),
         }
-    }
-
-    // configure the mint whitelist mock querier
-    pub fn with_token_balances(&mut self, balances: &[(&String, &[(&String, &Uint128)])]) {
-        self.token_querier = TokenQuerier::new(balances);
     }
 }
