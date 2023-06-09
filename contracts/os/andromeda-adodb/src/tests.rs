@@ -220,6 +220,7 @@ fn test_update_action_fees() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let info = mock_info(owner.as_str(), &[]);
+    let ado_type = "ado_type";
 
     instantiate(
         deps.as_mut(),
@@ -249,8 +250,20 @@ fn test_update_action_fees() {
 
     let msg = ExecuteMsg::UpdateActionFees {
         action_fees: action_fees.clone(),
-        ado_type: "ado_type".to_string(),
+        ado_type: ado_type.to_string(),
     };
+
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+    assert_eq!(
+        res,
+        ContractError::InvalidADOVersion {
+            msg: Some("ADO type does not exist".to_string())
+        }
+    );
+
+    CODE_ID
+        .save(deps.as_mut().storage, ado_type, &1u64)
+        .unwrap();
 
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());

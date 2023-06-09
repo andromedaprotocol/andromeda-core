@@ -72,7 +72,7 @@ pub fn instantiate(
         deps.storage,
         env,
         deps.api,
-        info,
+        info.clone(),
         BaseInstantiateMsg {
             ado_type: "splitter".to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
