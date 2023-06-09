@@ -109,7 +109,7 @@ fn test_spend_balance() {
 
     let res = spend_balance(deps.as_mut().storage, &payee, asset.to_string(), amount).unwrap();
     let post_balance = BALANCES
-        .load(deps.as_ref().storage, (payee.clone(), asset.to_string()))
+        .load(deps.as_ref().storage, (payee, asset.to_string()))
         .unwrap();
     assert_eq!(res, Uint128::zero());
     assert_eq!(post_balance, Uint128::from(50u128));
@@ -140,7 +140,7 @@ fn test_pay_fee() {
         .unwrap();
 
     //Paying fee with funds
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    let res = execute(deps.as_mut(), env, info, msg);
     assert!(res.is_ok());
 
     let balance = BALANCES
@@ -180,14 +180,11 @@ fn test_pay_fee_contract() {
         )
         .unwrap();
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    let res = execute(deps.as_mut(), env, info.clone(), msg);
     assert!(res.is_ok());
 
     let balance = BALANCES
-        .load(
-            deps.as_ref().storage,
-            (info.sender.clone(), "uusd".to_string()),
-        )
+        .load(deps.as_ref().storage, (info.sender, "uusd".to_string()))
         .unwrap();
     assert_eq!(balance, Uint128::from(0u128));
 
@@ -219,14 +216,11 @@ fn test_pay_fee_app() {
         )
         .unwrap();
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    let res = execute(deps.as_mut(), env, info.clone(), msg);
     assert!(res.is_ok());
 
     let balance = BALANCES
-        .load(
-            deps.as_ref().storage,
-            (info.sender.clone(), "uusd".to_string()),
-        )
+        .load(deps.as_ref().storage, (info.sender, "uusd".to_string()))
         .unwrap();
     assert_eq!(balance, Uint128::from(0u128));
 
@@ -331,6 +325,6 @@ fn test_pay_fee_joint() {
         )
         .unwrap();
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(res, ContractError::InsufficientFunds {});
 }

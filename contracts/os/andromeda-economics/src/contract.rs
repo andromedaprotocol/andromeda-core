@@ -114,7 +114,7 @@ pub(crate) fn spend_balance(
         Uint128::zero()
     };
 
-    BALANCES.save(storage, (addr.clone(), asset.to_string()), &post_balance)?;
+    BALANCES.save(storage, (addr.clone(), asset), &post_balance)?;
 
     Ok(remainder)
 }
@@ -153,10 +153,10 @@ fn execute_pay_fee(
             action.as_str(),
         )?;
         match fee {
-            None => return Ok(resp),
+            None => Ok(resp),
             Some(fee) => {
                 let asset_string = fee.asset.to_string();
-                let asset = asset_string.split(":").last().unwrap();
+                let asset = asset_string.split(':').last().unwrap();
 
                 // Charge ADO first
                 let mut remainder =
@@ -212,11 +212,11 @@ fn execute_pay_fee(
                 resp = resp
                     .add_attribute("paid_fee", format!("{}{}", fee.amount, fee.asset))
                     .add_attribute("fee_recipient", recipient.to_string());
-                return Ok(resp);
+                Ok(resp)
             }
         }
     } else {
-        return Err(ContractError::InvalidSender {});
+        Err(ContractError::InvalidSender {})
     }
 }
 
