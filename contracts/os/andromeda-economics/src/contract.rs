@@ -147,13 +147,21 @@ fn execute_pay_fee(
         let code_id = contract_info.code_id;
         let adodb_addr = ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
         let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?;
+        if ado_type.is_none() {
+            // Not an ADO
+            return Ok(resp);
+        }
+
+        let ado_type = ado_type.unwrap();
         let fee = AOSQuerier::action_fee_getter(
             &deps.querier,
             &adodb_addr,
             ado_type.as_str(),
             action.as_str(),
         )?;
+
         match fee {
+            // No fee
             None => Ok(resp),
             Some(fee) => {
                 let asset_string = fee.asset.to_string();
@@ -217,6 +225,7 @@ fn execute_pay_fee(
             }
         }
     } else {
+        // Not a contract
         Err(ContractError::InvalidSender {})
     }
 }

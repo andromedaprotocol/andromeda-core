@@ -52,14 +52,11 @@ impl AOSQuerier {
         querier: &QuerierWrapper,
         adodb_addr: &Addr,
         code_id: u64,
-    ) -> Result<String, ContractError> {
+    ) -> Result<Option<String>, ContractError> {
         let key = AOSQuerier::get_map_storage_key("ado_type", &[code_id.to_string().as_bytes()])?;
-        let verify: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
+        let ado_type: Option<String> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
 
-        match verify {
-            Some(ado_type) => Ok(ado_type),
-            None => Err(ContractError::InvalidAddress {}),
-        }
+        Ok(ado_type)
     }
 
     pub fn ado_publisher_getter(
